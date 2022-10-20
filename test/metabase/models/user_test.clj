@@ -479,12 +479,13 @@
              (serdes.hash/identity-hash user))))))
 
 (deftest init-from-config-file-test
-  (mt/with-model-cleanup [User]
-    (binding [config.file/*config* {:version 1
-                                    :config  {:users [{:first_name "Cam"
-                                                       :last_name  "Era"
-                                                       :email      "cam+config-file-test@metabase.com"
-                                                       :password   "2cans"}]}}]
+  (try
+    (binding [config.file/*supported-versions* {:min 1, :max 1}
+              config.file/*config*             {:version 1
+                                                :config  {:users [{:first_name "Cam"
+                                                                   :last_name  "Era"
+                                                                   :email      "cam+config-file-test@metabase.com"
+                                                                   :password   "2cans"}]}}]
       (testing "Create a User if it does not already exist"
         (is (= :ok
                (config.file/initialize!)))
@@ -507,7 +508,49 @@
           (is (partial= {:first_name "Cam"
                          :last_name  "Saul"
                          :email      "cam+config-file-test@metabase.com"}
-                        (db/select-one User :email "cam+config-file-test@metabase.com"))))))))
+                        (db/select-one User :email "cam+config-file-test@metabase.com"))))))
+    (finally
+      (db/delete! User :email "cam+config-file-test@metabase.com"))))
+
+(deftest init-from-config-file-force-admin-for-first-user-test
+  (testing "If this is the first user being created, always make the user a superuser regardless of what is specified"
+    (try
+      (binding [config.file/*supported-versions* {:min 1, :max 1}]
+        (testing "Create the first User"
+          (binding [config.file/*config* {:version 1
+                                          :config  {:users [{:first_name   "Cam"
+                                                             :last_name    "Era"
+                                                             :email        "cam+config-file-admin-test@metabase.com"
+                                                             :password     "2cans"
+                                                             :is_superuser false}]}}]
+            (with-redefs [user/init-from-config-file-is-first-user? (constantly true)]
+              (is (= :ok
+                     (config.file/initialize!)))
+              (is (partial= {:first_name   "Cam"
+                             :last_name    "Era"
+                             :email        "cam+config-file-admin-test@metabase.com"
+                             :is_superuser true}
+                            (db/select-one User :email "cam+config-file-admin-test@metabase.com")))
+              (is (= 1
+                     (db/count User :email "cam+config-file-admin-test@metabase.com"))))))
+        (testing "Create the another User, DO NOT force them to be an admin"
+          (binding [config.file/*config* {:version 1
+                                          :config  {:users [{:first_name   "Cam"
+                                                             :last_name    "Saul"
+                                                             :email        "cam+config-file-admin-test-2@metabase.com"
+                                                             :password     "2cans"
+                                                             :is_superuser false}]}}]
+            (is (= :ok
+                   (config.file/initialize!)))
+            (is (partial= {:first_name   "Cam"
+                           :last_name    "Saul"
+                           :email        "cam+config-file-admin-test-2@metabase.com"
+                           :is_superuser false}
+                          (db/select-one User :email "cam+config-file-admin-test-2@metabase.com")))
+            (is (= 1
+                   (db/count User :email "cam+config-file-admin-test-2@metabase.com"))))))
+      (finally (db/delete! User :email [:in #{"cam+config-file-admin-test@metabase.com"
+                                              "cam+config-file-admin-test-2@metabase.com"}])))))
 
 (deftest ^:parallel init-from-config-file-validation-test
   (binding [config.file/*supported-versions* {:min 1, :max 1}]
@@ -525,13 +568,13 @@
 
       ;; missing first name
       {:last_name  "Era"
-       :email      "cam+config-file-test@metabase.com"
+       :email      "cam+config-file-admin-test@metabase.com"
        :password   "2cans"}
       (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :first_name)"))
 
       ;; missing last name
       {:first_name "Cam"
-       :email      "cam+config-file-test@metabase.com"
+       :email      "cam+config-file-admin-test@metabase.com"
        :password   "2cans"}
       (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :last_name)"))
 

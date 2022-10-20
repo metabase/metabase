@@ -393,16 +393,24 @@
   [_section]
   (s/spec (s/* ::config-file-spec)))
 
+(defn- init-from-config-file-is-first-user?
+  "For [[init-from-config-file!]]: `true` if this the first User being created for this instance. If so, we will ALWAYS
+  create that User as a superuser, regardless of what is specified in the config file. (It doesn't make sense to
+  create the first User as anything other than a superuser)."
+  []
+  (zero? (db/count User)))
+
 (defn- init-from-config-file!
   [user]
-  ;; TODO -- should we disallow certain keys, like ID?
-  ;;
   ;; TODO -- if this is the FIRST user, we should probably make them a superuser, right?
   (if-let [existing-user-id (db/select-one-id User :email (:email user))]
     (do
       (log/info (u/colorize :blue (trs "Updating User with email {0}" (pr-str (:email user)))))
       (db/update! User existing-user-id user))
-    (do
+    ;; create a new user. If they are the first User, force them to be an admin.
+    (let [user (cond-> user
+                 (init-from-config-file-is-first-user?) (assoc :is_superuser true))]
+      (log/info (u/colorize :green (trs "Creating the first User for this instance. The first user is always created as an admin.")))
       (log/info (u/colorize :green (trs "Creating new User {0} with email {1}"
                                         (pr-str (str (:first_name user) \space (:last_name user)))
                                         (pr-str (:email user)))))
