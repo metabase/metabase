@@ -1,6 +1,5 @@
 (ns metabase.models.app
-  (:require [metabase.models.action :as action]
-            [metabase.models.collection :as collection :refer [Collection]]
+  (:require [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.interface :as mi]
             [metabase.models.query :as query]
             [metabase.models.serialization.hash :as serdes.hash]
