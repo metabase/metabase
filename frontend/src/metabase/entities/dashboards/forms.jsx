@@ -3,7 +3,7 @@ import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 
-import DashboardCopyModalShallowCheckboxLabel from "metabase/dashboard/components/DashboardCopyModalShallowCheckboxLabel";
+import DashboardCopyModalShallowCheckboxLabel from "metabase/dashboard/components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel";
 
 function createNameField() {
   return {
