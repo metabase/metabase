@@ -18,7 +18,7 @@
             [metabase.sync.field-values :as sync.field-values]
             [metabase.types :as types]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :refer [deferred-tru trs]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -338,7 +338,7 @@
   "Schema name to use for the saved questions virtual database for Cards that are in the root collection (i.e., not in
   any collection)."
   []
-  (tru "Everything else"))
+  "Everything else")
 
 (defn card->virtual-table
   "Return metadata for a 'virtual' table for a `card` in the Saved Questions 'virtual' database. Optionally include
