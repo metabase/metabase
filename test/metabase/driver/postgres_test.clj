@@ -797,21 +797,6 @@
                  (db/select-field->field :name :fingerprint Field
                    :table_id (db/select-one-id Table :db_id (u/the-id database))))))))))
 
-
-(deftest datetimediff-test
-  (mt/test-driver :postgres
-    (mt/dataset useful-dates
-      (testing "Does not mark as a year or day unless it has completely elapsed"
-        (is (= [[0 0]
-                [0 364]]
-               (mt/rows
-                (mt/run-mbql-query datediff-edgecases
-                                   {:fields [[:expression "diff-year"]
-                                             [:expression "diff-day"]]
-                                    :expressions
-                                    {"diff-year" [:datetimediff $start $end :year]
-                                     "diff-day" [:datetimediff $start $end :day]}}))))))))
-
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
 (deftest exception-test
