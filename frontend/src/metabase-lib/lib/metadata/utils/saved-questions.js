@@ -24,6 +24,10 @@ export function getCollectionVirtualSchemaId(collection, { isDatasets } = {}) {
   );
 }
 
+export function getRootCollectionVirtualSchemaId({ isModels }) {
+  return getCollectionVirtualSchemaId(null, { isDatasets: isModels });
+}
+
 export function getQuestionVirtualTableId(card) {
   return `card__${card.id}`;
 }

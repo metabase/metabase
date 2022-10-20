@@ -12,7 +12,10 @@ import Search from "metabase/entities/search";
 
 import type { State } from "metabase-types/store";
 
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/lib/metadata/utils/saved-questions";
+import {
+  getRootCollectionVirtualSchemaId,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+} from "metabase-lib/lib/metadata/utils/saved-questions";
 
 import type {
   DataPickerProps as DataPickerOwnProps,
@@ -71,13 +74,24 @@ function DataPicker({
 
   const handleDataTypeChange = useCallback(
     (type: DataPickerDataType) => {
-      const isUsingVirtualTables = type === "models" || type === "questions";
+      const isModels = type === "models";
+      const isUsingVirtualTables = isModels || type === "questions";
+
+      // When switching to models or questions,
+      // we want to automatically open Our analytics collection
+      const databaseId = isUsingVirtualTables
+        ? SAVED_QUESTIONS_VIRTUAL_DB_ID
+        : undefined;
+      const schemaId = isUsingVirtualTables
+        ? getRootCollectionVirtualSchemaId({ isModels })
+        : undefined;
+      const collectionId = isUsingVirtualTables ? "root" : undefined;
+
       onChange({
         type,
-        databaseId: isUsingVirtualTables
-          ? SAVED_QUESTIONS_VIRTUAL_DB_ID
-          : undefined,
-        schemaId: undefined,
+        databaseId,
+        schemaId,
+        collectionId,
         tableIds: [],
       });
     },
