@@ -13,6 +13,7 @@ const ChartSettingFieldsPicker = ({
   options,
   onChange,
   addAnother,
+  readOnly = false,
   ...props
 }) => {
   const handleDragEnd = ({ source, destination }) => {
@@ -41,6 +42,7 @@ const ChartSettingFieldsPicker = ({
                       key={`draggable-${field}`}
                       draggableId={`draggable-${field}`}
                       index={index}
+                      isDragDisabled={readOnly}
                     >
                       {provided => (
                         <div
@@ -51,6 +53,7 @@ const ChartSettingFieldsPicker = ({
                         >
                           <ChartSettingFieldPicker
                             {...props}
+                            readOnly={readOnly}
                             key={index}
                             value={field}
                             options={calculateOptions(field)}
@@ -81,7 +84,7 @@ const ChartSettingFieldsPicker = ({
                                     ])
                                 : null
                             }
-                            showDragHandle={fields.length > 1}
+                            showDragHandle={fields.length > 1 && !readOnly}
                           />
                         </div>
                       )}
