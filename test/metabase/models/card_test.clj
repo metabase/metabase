@@ -118,7 +118,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Card can only go in Collections in the \"default\" namespace"
+               #"A Card can only go in Collections in the \"default\" or :apps namespace"
                (db/insert! Card (assoc (tt/with-temp-defaults Card) :collection_id collection-id, :name card-name))))
           (finally
             (db/delete! Card :name card-name)))))
@@ -127,7 +127,7 @@
       (mt/with-temp Card [{card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Card can only go in Collections in the \"default\" namespace"
+             #"A Card can only go in Collections in the \"default\" or :apps namespace"
              (db/update! Card card-id {:collection_id collection-id})))))))
 
 (deftest normalize-result-metadata-test

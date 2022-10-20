@@ -97,21 +97,22 @@
                    #(assoc % :collection {:id true, :name true :authority_level nil :app_id false})
                    (default-search-results)))
 
-(defn- do-with-search-items [search-string in-root-collection? f]
-  (let [data-map      (fn [instance-name]
-                        {:name (format instance-name search-string)})
+(defn- do-with-search-items [search-string {:keys [in-root-collection? in-app-collection?]} f]
+  (let [data-map      (fn [instance-name app-collection?]
+                        (cond-> {:name (format instance-name search-string)}
+                          app-collection? (assoc :namespace :apps)))
         coll-data-map (fn [instance-name collection]
-                        (merge (data-map instance-name)
+                        (merge (data-map instance-name false)
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
-    (mt/with-temp* [Collection [coll      (data-map "collection %s collection")]
+    (mt/with-temp* [Collection [coll      (data-map "collection %s collection" in-app-collection?)]
                     Card       [card      (coll-data-map "card %s card" coll)]
                     Card       [dataset   (assoc (coll-data-map "dataset %s dataset" coll)
                                                  :dataset true)]
                     Dashboard  [dashboard (coll-data-map "dashboard %s dashboard" coll)]
                     Pulse      [pulse     (coll-data-map "pulse %s pulse" coll)]
-                    Metric     [metric    (data-map "metric %s metric")]
-                    Segment    [segment   (data-map "segment %s segment")]]
+                    Metric     [metric    (data-map "metric %s metric" false)]
+                    Segment    [segment   (data-map "segment %s segment" false)]]
       (f {:collection coll
           :card       card
           :dataset    dataset
@@ -121,10 +122,13 @@
           :segment    segment}))))
 
 (defmacro ^:private with-search-items-in-root-collection [search-string & body]
-  `(do-with-search-items ~search-string true (fn [~'_] ~@body)))
+  `(do-with-search-items ~search-string {:in-root-collection? true} (fn [~'_] ~@body)))
 
 (defmacro ^:private with-search-items-in-collection [created-items-sym search-string & body]
-  `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
+  `(do-with-search-items ~search-string nil (fn [~created-items-sym] ~@body)))
+
+(defmacro ^:private with-search-items-in-app-collection [created-items-sym search-string & body]
+  `(do-with-search-items ~search-string {:in-app-collection? true} (fn [~created-items-sym] ~@body)))
 
 (def ^:private ^:dynamic *search-request-results-database-id*
   "Filter out all results from `search-request` that don't have this Database ID. Default: the default H2 `test-data`
@@ -614,7 +618,7 @@
 
 (deftest app-test
   (testing "App collections should come with app_id set"
-    (with-search-items-in-collection {:keys [collection]} "test"
+    (with-search-items-in-app-collection {:keys [collection]} "test"
       (mt/with-temp App [_app {:collection_id (:id collection)}]
         (is (= (mapv
                 (fn [result]
@@ -622,14 +626,14 @@
                     (not (#{"metric" "segment"} (:model result))) (assoc-in [:collection :app_id] true)
                     (= (:model result) "collection")              (assoc :model "app" :app_id true)))
                 (default-results-with-collection))
-               (search-request-data :rasta :q "test"))))))
+               (search-request-data :crowberto :q "test"))))))
   (testing "App collections should filterable as \"app\""
-    (mt/with-temp* [Collection [collection {:name "App collection to find"}]
+    (mt/with-temp* [Collection [collection {:name "App collection to find", :namespace :apps}]
                     App [_ {:collection_id (:id collection)}]
                     Collection [_ {:name "Another collection to find"}]]
       (is (partial= [(assoc (select-keys collection [:name])
                             :model "app")]
-             (search-request-data :rasta :q "find" :models "app"))))))
+             (search-request-data :crowberto :q "find" :models "app"))))))
 
 (deftest page-test
   (testing "Search results should pages with model \"page\""
@@ -643,10 +647,10 @@
 
 (deftest collection-app-id-test
   (testing "app_id and id of containing collection should not be confused (#25213)"
-    (mt/with-temp* [Collection [{coll-id :id}]
+    (mt/with-temp* [Collection [{coll-id :id} {:namespace :apps}]
                       ;; The ignored elements are there to make sure the IDs
                       ;; coll-id and app-id are different.
-                    Collection [{ignored-collection-id :id}]
+                    Collection [{ignored-collection-id :id} {:namespace :apps}]
                     App [_ignored-app {:collection_id ignored-collection-id}]
                     App [{app-id :id} {:collection_id coll-id}]
                     Dashboard [_ {:name          "Not a page but contains important text!"
@@ -664,4 +668,4 @@
       (is (not= app-id coll-id) "app-id and coll-id should be different. Fix the test!")
       (is (partial= (repeat 4 {:collection {:app_id app-id
                                             :id coll-id}})
-                    (:data (make-search-request :rasta [:q "important text"])))))))
+                    (:data (make-search-request :crowberto [:q "important text"])))))))

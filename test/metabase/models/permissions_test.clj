@@ -49,6 +49,8 @@
    "/data-model/db/1/schema/PUBLIC/table/1/"
    ;; db details permissions
    "/details/db/1/"
+   ;; execution permissions
+   "/execute/"
    ;; full admin (everything) root permissions
    "/"])
 
@@ -690,7 +692,7 @@
                        :details    :yes}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
-                   (select-keys [db-id]))))))))
+                   (select-keys [db-id :execute]))))))))
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
