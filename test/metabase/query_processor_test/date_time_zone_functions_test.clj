@@ -323,17 +323,6 @@
 
 (deftest datetimediff-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
-    (mt/dataset useful-dates
-      (testing "Does not mark as a year or day unless it has completely elapsed"
-        (is (= [[0 0]
-                [0 364]]
-               (mt/rows
-                (mt/run-mbql-query datediff-edgecases
-                  {:fields [[:expression "diff-year"]
-                            [:expression "diff-day"]]
-                   :expressions
-                   {"diff-year" [:datetimediff $start $end :year]
-                    "diff-day" [:datetimediff $start $end :day]}}))))))
     (mt/dataset more-useful-dates
       (testing "Edge cases at year and month boundary"
         (let [test-cases (fn [unit cases]
@@ -358,13 +347,13 @@
                                            :filter      (into [:= $description] descriptions)
                                            :order-by    [[:asc $description]]}))))))))]
           (test-cases :month [["day under a month" 0]
-                              ["minute under a month" 1]
                               ["day under a year" 11]
+                              ["minute under a month" 1]
                               ["minute under a year" 12]])
           (test-cases :year [["day under a year" 0]
                              ["minute under a year" 1]])
-          (test-cases :day [["<24h same day" 0]
-                            ["<24h consecutive days" 1]
+          (test-cases :day [["<24h consecutive days" 1]
+                            ["<24h same day" 0]
                             ["day under a month" 30]
                             ["minute under a month" 31]]))
         (testing "Types from nested functions are ok"
