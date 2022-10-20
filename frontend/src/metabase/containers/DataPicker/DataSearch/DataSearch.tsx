@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 
 import { SearchResults } from "metabase/query_builder/components/DataSelector/data-search";
 
@@ -29,7 +29,13 @@ type TableSearchResult = {
   collection: Collection | null;
 };
 
-const SEARCH_MODELS = ["table", "dataset", "card"];
+type SearchModel = "card" | "dataset" | "table";
+
+const DATA_TYPE_SEARCH_MODEL_MAP: Record<DataPickerDataType, SearchModel> = {
+  "raw-data": "table",
+  models: "dataset",
+  questions: "card",
+};
 
 function getDataTypeForSearchResult(
   table: TableSearchResult,
@@ -76,9 +82,16 @@ function getNextValue(table: TableSearchResult): DataPickerValue {
     : getValueForRawTable(table);
 }
 
-function DataSearch({ searchQuery, onChange }: DataSearchProps) {
+function DataSearch({ value, searchQuery, onChange }: DataSearchProps) {
   const { search } = useDataPicker();
   const { setQuery } = search;
+
+  const searchModels: SearchModel[] = useMemo(() => {
+    if (!value.type) {
+      return Object.values(DATA_TYPE_SEARCH_MODEL_MAP);
+    }
+    return [DATA_TYPE_SEARCH_MODEL_MAP[value.type]];
+  }, [value.type]);
 
   const onSelect = useCallback(
     (table: TableSearchResult) => {
@@ -91,7 +104,7 @@ function DataSearch({ searchQuery, onChange }: DataSearchProps) {
 
   return (
     <SearchResults
-      searchModels={SEARCH_MODELS as any}
+      searchModels={searchModels}
       searchQuery={searchQuery.trim()}
       onSelect={onSelect}
     />
