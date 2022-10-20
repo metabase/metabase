@@ -121,37 +121,29 @@
                  render.tu/render-as-hiccup
                  render.tu/remove-attrs
                  (render.tu/nodes-with-tag :th)
-                 (->> (map second))
-                 (->> (take (count (first rows))))))))
+                 (->> (map second))))))
     (testing "Column format settings are respected in render."
-      (is (= ["10%" "9,000" "12/10/2022" "0.12" "0.667"]
+      (is (= ["10%" "9E3" "12/10/2022" "---0.12___" "0.667"]
              (-> rows
                  (render.tu/make-card-and-data :table)
                  (render.tu/make-column-settings [{:number-style "percent"}
-                                                  {}
+                                                  {:number-style "scientific"}
                                                   {:date-style "D/M/YYYY"}
-                                                  {}
+                                                  {:prefix "---" :suffix "___"}
                                                   {:decimals 3}])
                  render.tu/render-as-hiccup
                  render.tu/remove-attrs
                  (render.tu/nodes-with-tag :td)
-                 (->> (map second))
-                 (->> (take (count (first rows))))))))
+                 (->> (map second))))))
     (testing "Site Localization Settings are respected in columns."
       (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style      "D/M/YYYY"
                                                                             :date_separator  "-"
                                                                             :date_abbreviate false}
                                                             :type/Number   {:number_separators ",."}}]
-        (is (= ["10%" "9.000" "12-10-2022" "0,12" "0,667"]
+        (is (= ["0,1" "9.000" "12-10-2022" "0,12" "0,67"]
              (-> rows
                  (render.tu/make-card-and-data :table)
-                 (render.tu/make-column-settings [{:number-style "percent"}
-                                                  {}
-                                                  {}
-                                                  {}
-                                                  {:decimals 3}])
                  render.tu/render-as-hiccup
                  render.tu/remove-attrs
                  (render.tu/nodes-with-tag :td)
-                 (->> (map second))
-                 (->> (take (count (first rows)))))))))))
+                 (->> (map second)))))))))
