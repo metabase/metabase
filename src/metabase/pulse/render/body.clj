@@ -1,6 +1,5 @@
 (ns metabase.pulse.render.body
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [hiccup.core :refer [h]]
             [medley.core :as m]
             [metabase.public-settings :as public-settings]
