@@ -21,7 +21,10 @@ import Database from "metabase/entities/databases";
 import {
   QueryOptionsGridItem,
   QueryOptionsRoot,
+  EducationalButton,
 } from "./NewQueryOptions.styled";
+
+const EDUCATIONAL_LINK = "https://www.metabase.com/learn/data-modeling/models";
 
 const mapStateToProps = state => ({
   hasDataAccess: getHasDataAccess(state),
@@ -106,6 +109,14 @@ class NewDatasetOptions extends Component {
             </QueryOptionsGridItem>
           )}
         </Grid>
+
+        <EducationalButton
+          target="_blank"
+          href={EDUCATIONAL_LINK}
+          className="mt4"
+        >
+          {t`What's a model?`}
+        </EducationalButton>
       </QueryOptionsRoot>
     );
   }
