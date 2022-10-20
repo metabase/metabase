@@ -567,7 +567,7 @@
                                     (not= current target-type)
                                     (hx/cast target-type)))]
         ;; select one of datetime_diff, timestamp_diff, date_diff and ensure types are compatible.
-        (hsql/call bq-fn (maybe-cast x' (first types)) (maybe-cast y' (second types))
+        (hsql/call bq-fn (maybe-cast y' (first types)) (maybe-cast x' (second types))
           (hsql/raw (name unit))))
       (throw (ex-info (tru "Unsupported datetimediff unit {0}" unit)
                       {:clause          clause

@@ -809,8 +809,8 @@
                                    {:fields [[:expression "diff-year"]
                                              [:expression "diff-day"]]
                                     :expressions
-                                    {"diff-year" [:datetimediff $end $start :year]
-                                     "diff-day" [:datetimediff $end $start :day]}}))))))))
+                                    {"diff-year" [:datetimediff $start $end :year]
+                                     "diff-day" [:datetimediff $start $end :day]}}))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 

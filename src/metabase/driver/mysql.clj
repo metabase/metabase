@@ -351,9 +351,8 @@
   [driver [_ x y unit]]
   (hsql/call :timestampdiff
              (hsql/raw (name unit))
-             ;; intentionally flipped. This subtracts them under the hood
-             (sql.qp/->honeysql driver y)
-             (sql.qp/->honeysql driver x)))
+             (sql.qp/->honeysql driver x)
+             (sql.qp/->honeysql driver y)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

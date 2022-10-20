@@ -268,7 +268,7 @@
                                   :fields [[:expression ~(str "diff-" (name unit))]]
                                   :expressions
                                   {~(str "diff-" (name unit))
-                                   [:datetimediff ~'$end ~'$start ~unit]}})))]
+                                   [:datetimediff ~'$start ~'$end ~unit]}})))]
       (mt/dataset useful-dates
         (testing "year"
           (is (= (case driver/*driver*
@@ -292,11 +292,11 @@
         (is (= [[428 396 31]]
                (mt/rows
                 (mt/run-mbql-query datediff-mixed-types
-                                   {:fields [[:expression "dt->tz"]
-                                             [:expression "d->tz"]
-                                             [:expression "dt->d"]]
+                                   {:fields [[:expression "tz,dt"]
+                                             [:expression "tz,d"]
+                                             [:expression "d,dt"]]
                                     :filter [:= $index 1]
                                     :expressions
-                                    {"dt->tz" [:datetimediff $dt $tz :day]
-                                     "d->tz"  [:datetimediff $d $tz :day]
-                                     "dt->d"  [:datetimediff $dt $d :day]}}))))))))
+                                    {"tz,dt" [:datetimediff $tz $dt :day]
+                                     "tz,d"  [:datetimediff $tz $d :day]
+                                     "d,dt"  [:datetimediff $d $dt :day]}}))))))))

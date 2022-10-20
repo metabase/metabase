@@ -308,8 +308,8 @@
      :integer
      (hsql/call :date_part (hx/literal (name unit))
                 (hsql/call (case unit :year :age :day :-)
-                           (sql.qp/->honeysql driver x)
-                           (sql.qp/->honeysql driver y))))
+                           (sql.qp/->honeysql driver y)
+                           (sql.qp/->honeysql driver x))))
 
     :week
     (->> (hsql/call :/ (sql.qp/->honeysql driver [:datetimediff x y :day]) 7)
@@ -330,8 +330,8 @@
         (hsql/call :floor
                    (hsql/call :date_part (hsql/raw (format "'%s'" (name unit)))
                               (hsql/call :age
-                                         (sql.qp/->honeysql driver x)
-                                         (sql.qp/->honeysql driver y)))))))
+                                         (sql.qp/->honeysql driver y)
+                                         (sql.qp/->honeysql driver x)))))))
 
     ;; else
     (throw (ex-info (trs "Invalid datetimediff unit: {0}" unit)
