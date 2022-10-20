@@ -19,7 +19,7 @@ import {
 import { ActionsApi } from "metabase/services";
 
 import type {
-  Dashboard,
+  DataAppPage,
   DashboardOrderedCard,
   ActionDashboardCard,
   ParametersForActionExecution,
@@ -232,7 +232,7 @@ export const deleteManyRowsFromDataApp = (
 };
 
 export type ExecuteRowActionPayload = {
-  dashboard: Dashboard;
+  page: DataAppPage;
   dashcard: ActionDashboardCard;
   parameters: ParametersForActionExecution;
   dispatch: Dispatch;
@@ -240,7 +240,7 @@ export type ExecuteRowActionPayload = {
 };
 
 export const executeRowAction = async ({
-  dashboard,
+  page,
   dashcard,
   parameters,
   dispatch,
@@ -249,7 +249,7 @@ export const executeRowAction = async ({
   let message = "";
   try {
     const result = await ActionsApi.execute({
-      dashboardId: dashboard.id,
+      dashboardId: page.id,
       dashcardId: dashcard.id,
       modelId: dashcard.card_id,
       slug: dashcard.action?.slug,

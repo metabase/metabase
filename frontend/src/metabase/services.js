@@ -482,6 +482,9 @@ export const ActionsApi = {
   delete: POST("/api/action/row/delete"),
   bulkUpdate: POST("/api/action/bulk/update/:tableId"),
   bulkDelete: POST("/api/action/bulk/delete/:tableId"),
+  prefetchValues: GET(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute/:slug",
+  ),
   execute: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute/:slug",
   ),

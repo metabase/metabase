@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 
 import type {
   ActionDashboardCard,
-  Dashboard,
+  DataAppPage,
   ParametersForActionExecution,
   WritebackQueryAction,
 } from "metabase-types/api";
@@ -17,22 +17,23 @@ import {
   getNotProvidedActionParameters,
 } from "metabase/modes/components/drill/ActionClickDrill/utils";
 import { executeRowAction } from "metabase/dashboard/actions";
+import { setNumericValues } from "metabase/writeback/containers/ActionParametersInputForm/utils";
+import { generateFieldSettingsFromParameters } from "../ActionCreator/FormCreator";
 import { StyledButton } from "./ActionButton.styled";
 
 import LinkButton from "./LinkButton";
-import ImplicitActionButton from "./ImplicitActionButton";
 import ActionForm from "./ActionForm";
 
 interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;
-  dashboard: Dashboard;
+  dashboard: DataAppPage;
   dispatch: Dispatch;
   parameterValues: { [id: string]: ParameterValueOrArray };
 }
 
 function ActionComponent({
   dashcard,
-  dashboard,
+  dashboard: page,
   dispatch,
   isSettings,
   settings,
@@ -63,18 +64,26 @@ function ActionComponent({
     actionDisplayType !== "form" || !missingParameters.length;
 
   const onSubmit = useCallback(
-    (parameterMap: ParametersForActionExecution) =>
-      executeRowAction({
-        dashboard,
+    (parameterMap: ParametersForActionExecution) => {
+      const params = {
+        ...dashcardParamValues,
+        ...parameterMap,
+      };
+
+      const paramsForExecution = setNumericValues(
+        params,
+        generateFieldSettingsFromParameters(dashcard?.action?.parameters ?? []),
+      );
+
+      return executeRowAction({
+        page,
         dashcard,
-        parameters: {
-          ...dashcardParamValues,
-          ...parameterMap,
-        },
+        parameters: paramsForExecution,
         dispatch,
         shouldToast: shouldDisplayButton,
-      }),
-    [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
+      });
+    },
+    [page, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
   );
 
   if (dashcard.action) {
@@ -82,7 +91,9 @@ function ActionComponent({
       <ActionForm
         onSubmit={onSubmit}
         dashcard={dashcard}
+        page={page}
         missingParameters={missingParameters}
+        dashcardParamValues={dashcardParamValues}
         action={dashcard.action as WritebackQueryAction}
         shouldDisplayButton={shouldDisplayButton}
       />
