@@ -17,7 +17,7 @@
    :str-plural        nil
    :fuzzy?            false
    :plural?           false
-   :source-references ["src/metabase/models/table.clj"]
+   :source-references ["metabase/models/table.clj"]
    :comment           nil})
 
 (def singular-template-message-frontend
@@ -37,7 +37,7 @@
    :str-plural        nil
    :fuzzy?            false
    :plural?           false
-   :source-references ["src/metabase/models/table.clj"]
+   :source-references ["src/metabase/models/table.clj:80"]
    :comment           nil})
 
 (def plural-message-frontend
