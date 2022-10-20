@@ -37,12 +37,14 @@
           (testing "the Collections properly exported"
             (is (= (-> (into {} (db/select-one Collection :id (:id parent)))
                        (dissoc :id :location)
-                       (assoc :parent_id nil))
+                       (assoc :parent_id nil)
+                       (update :created_at str))
                    (yaml/from-file (io/file dump-dir "Collection" parent-filename))))
 
             (is (= (-> (into {} (db/select-one Collection :id (:id child)))
                        (dissoc :id :location)
-                       (assoc :parent_id (:entity_id parent)))
+                       (assoc :parent_id (:entity_id parent))
+                       (update :created_at str))
                    (yaml/from-file (io/file dump-dir "Collection" child-filename))))))))))
 
 (deftest embedded-slash-test
