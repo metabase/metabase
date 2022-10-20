@@ -67,8 +67,6 @@ Once you've made a question or dashboard [embeddable](#making-a-question-or-dash
 
 For more examples, see our [reference apps repo](https://github.com/metabase/embedding-reference-apps).
 
-![Code samples for embedding](./images/05-code.png)
-
 ## Previewing the server code for an embed
 
 1. Go to the question or dashboard > **sharing icon** > **Embed this item in an application**.
@@ -76,7 +74,9 @@ For more examples, see our [reference apps repo](https://github.com/metabase/emb
 3. In the top code block, you'll find the sample code for your web server.
 4. Optional: Select your web framework from the dropdown menu.
 
-When you make changes to the settings on the right, the code sample will update as well. Make sure to copy these changes to your actual server code.
+When you make changes to the style, appearance, or parameter preview settings, the server code sample will update as well. Make sure to copy these changes to your actual server code.
+
+![Code samples for embedding](./images/05-code.png)
 
 ## Previewing the frontend code for an embed
 
