@@ -27,7 +27,7 @@ You can add [filter widgets](https://www.metabase.com/glossary/filter_widget) to
 
 **Editable** parameters are responsible for passing filter values from the embedded filter widget (displayed on the iframe) through to the filters on your original dashboard or SQL question (in your Metabase).
 
-Note that [locked parameters](#pre-filtering-data-in-a-signed-embed) may limit the values that show up in an embedded filter widget.
+Note that [locked parameters](#restricting-data-in-a-signed-embed) may limit the values that show up in an embedded filter widget.
 
 ## Populating an embedded filter widget with a default value
 
