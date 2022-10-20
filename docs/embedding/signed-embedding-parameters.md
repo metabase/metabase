@@ -59,7 +59,7 @@ your_embedding_url?breakfast=Scrambled_eggs&breakfast=Bacon
 
 If you want to restrict the data that's displayed in an embedded dashboard or SQL question, you can set up a **locked parameter**. A locked parameter filters the data in a dashboard or SQL question _before_ the results are displayed to the end user in a signed embed.
 
-You can use locked parameters to display filtered data based on attributes captured by your web server, such as a user login or a tenant ID. For more examples, see the [reference apps repo](https://github.com/metabase/embedding-reference-apps).
+You can use locked parameters to display filtered data based on attributes captured by your web server, such as a username or a tenant ID. For more examples, see the [reference apps repo](https://github.com/metabase/embedding-reference-apps).
 
 1. Go to your dashboard or SQL question. Make sure you've set up a [dashboard filter](../dashboards/filters.md) or [SQL variable](../questions/native-editor/sql-parameters.md).
 2. Click on the **sharing icon** > **Embed this item in an application**.
@@ -76,7 +76,7 @@ Locked parameters will apply the selected filter values to your original dashboa
 If your [locked parameter](#restricting-data-in-a-signed-embed) is linked to a:
 
 - dashboard filter, change the filter type to a [dropdown filter](../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter). 
-- SQL question, [change the SQL variable type](/docs/latest/questions/native-editor/sql-parameters#filter-widget-with-dropdown-menu-and-search).
+- SQL question, [change the SQL variable type](/docs/latest/questions/native-editor/sql-parameters.md#filter-widget-with-dropdown-menu-and-search).
 
 For example, let's say you have a text box filter on your original dashboard called "Breakfast" with the values "Scrambled eggs", "Bacon", and "Waffles". With this setup, you'll be able to choose _one_ of "Scrambled eggs", "Bacon", or "Waffles" for a locked parameter linked to the "Breakfast" filter. If you want to provide the values "Scrambled eggs" _and_ "Bacon to the locked parameter, change the original "Breakfast" filter on your dashboard to a dropdown filter.
 
