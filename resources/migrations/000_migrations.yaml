@@ -13092,20 +13092,29 @@ databaseChangeLog:
         - sql:
             dbms: postgresql
             sql: >-
-              UPDATE COLLECTION c
+              UPDATE collection c
               SET created_at = u.date_joined
               FROM core_user u
               WHERE c.personal_owner_id = u.id;
         - sql:
             dbms: mysql,mariadb
             sql: >-
-              TODO
+              UPDATE collection c
+              INNER JOIN core_user u
+              ON c.personal_owner_id = u.id
+              SET c.created_at = u.date_joined;
         - sql:
             dbms: h2
             sql: >-
-              TODO
+              UPDATE collection c
+              SET created_at = (
+                SELECT u.date_joined
+                FROM core_user u
+                WHERE c.personal_owner_id = u.id
+              )
+              WHERE c.personal_owner_id IS NOT NULL;
 
-  # Seed Collection created_at based on the max created at of child objects
+  # seed Collection created_at based on the max created at of child objects
   #
   # At the time of this writing, the following Models can appear in a Collection:
   #
@@ -13142,11 +13151,44 @@ databaseChangeLog:
         - sql:
             dbms: mysql,mariadb
             sql: >-
-              TODO
+              UPDATE collection c
+              LEFT JOIN (
+                SELECT min(created_at) AS created_at, collection_id
+                FROM (
+                  SELECT created_at, collection_id FROM app                  UNION ALL
+                  SELECT created_at, collection_id FROM report_card          UNION ALL
+                  SELECT created_at, collection_id FROM report_dashboard     UNION ALL
+                  SELECT created_at, collection_id FROM pulse                UNION ALL
+                  SELECT created_at, collection_id FROM timeline             UNION ALL
+                  SELECT created_at, collection_id FROM native_query_snippet
+                ) created_ats
+                GROUP BY collection_id
+              ) created_ats
+              ON c.id = created_ats.collection_id
+              SET c.created_at = created_ats.created_at
+              WHERE c.personal_owner_id IS NULL;
         - sql:
             dbms: h2
             sql: >-
-              TODO
+              WITH created_ats AS (
+                SELECT min(created_at) AS created_at, collection_id
+                FROM (
+                  SELECT created_at, collection_id FROM app                  UNION ALL
+                  SELECT created_at, collection_id FROM report_card          UNION ALL
+                  SELECT created_at, collection_id FROM report_dashboard     UNION ALL
+                  SELECT created_at, collection_id FROM pulse                UNION ALL
+                  SELECT created_at, collection_id FROM timeline             UNION ALL
+                  SELECT created_at, collection_id FROM native_query_snippet
+                ) created_ats
+                GROUP BY collection_id
+              )
+              UPDATE collection c
+              SET created_at = (
+                SELECT created_ats.created_at
+                FROM created_ats
+                WHERE created_ats.collection_id = c.id
+              )
+              WHERE c.personal_owner_id IS NULL;
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
