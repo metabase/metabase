@@ -27,7 +27,7 @@ export const QueryOptionsRoot = styled.div`
   }
 `;
 
-export const EducationalButton = styled(ExternalLink)<EducationalButtonProps>`
+export const EducationalButton = styled(ExternalLink)`
   background-color: ${color("bg-medium")};
   border-radius: 0.5rem;
   color: ${color("brand")};
