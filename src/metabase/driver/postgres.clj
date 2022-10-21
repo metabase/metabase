@@ -282,8 +282,10 @@
   (let [expr         (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? expr "timestamptz")]
     (when (and timestamptz? source-timezone)
-      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:target-timezone target-timezone
-                                                                                             :source-timezone source-timezone})))
+      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`"
+                      {:target-timezone target-timezone
+                       :source-timezone source-timezone
+                       :type            qp.error-type/invalid-parameter})))
     (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
           ;; If a column doesn't have a timezone, calling `timezone(source-timezone, column)` will cast it
           ;; to `timestamp with time zone` with time zone is the `source-timezone`.
