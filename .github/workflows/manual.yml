@@ -1,6 +1,7 @@
 name: Manual
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       logLevel:
