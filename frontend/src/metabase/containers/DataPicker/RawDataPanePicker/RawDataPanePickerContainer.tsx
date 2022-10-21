@@ -8,9 +8,10 @@ import Tables from "metabase/entities/tables";
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Table from "metabase-lib/lib/metadata/Table";
 
-import { DataPickerProps } from "../types";
+import { DataPickerProps, DataPickerSelectedItem } from "../types";
 
-import useSelectedTables from "./useSelectedTables";
+import useSelectedTables from "../useSelectedTables";
+
 import RawDataPanePickerView from "./RawDataPanePickerView";
 
 interface DatabaseListLoaderProps {
@@ -21,17 +22,18 @@ interface TableListLoaderProps {
   tables: Table[];
 }
 
-type RawDataPickerSelectedItem = {
-  type: "database" | "schema" | "table";
-  id: string | number;
-};
+interface RawDataPanePickerOwnProps extends DataPickerProps {
+  onBack?: () => void;
+}
 
-type RawDataPanePickerProps = DataPickerProps & DatabaseListLoaderProps;
+type RawDataPanePickerProps = RawDataPanePickerOwnProps &
+  DatabaseListLoaderProps;
 
 function RawDataPanePicker({
   value,
   databases,
   onChange,
+  onBack,
 }: RawDataPanePickerProps) {
   const { databaseId: selectedDatabaseId, schemaId: selectedSchemaId } = value;
 
@@ -56,7 +58,7 @@ function RawDataPanePicker({
   }, [selectedDatabase, selectedSchemaId]);
 
   const selectedItems = useMemo(() => {
-    const items: RawDataPickerSelectedItem[] = [];
+    const items: DataPickerSelectedItem[] = [];
 
     if (selectedDatabaseId) {
       items.push({ type: "database", id: selectedDatabaseId });
@@ -66,7 +68,7 @@ function RawDataPanePicker({
       items.push({ type: "schema", id: selectedSchemaId });
     }
 
-    const tables: RawDataPickerSelectedItem[] = selectedTableIds.map(id => ({
+    const tables: DataPickerSelectedItem[] = selectedTableIds.map(id => ({
       type: "table",
       id,
     }));
@@ -96,9 +98,9 @@ function RawDataPanePicker({
         const hasSingleSchema = schemas.length === 1;
         nextSchemaId = hasSingleSchema ? schemas[0].id : undefined;
       }
-      onChange({ databaseId, schemaId: nextSchemaId, tableIds: [] });
+      onChange({ ...value, databaseId, schemaId: nextSchemaId, tableIds: [] });
     },
-    [databases, onChange],
+    [value, databases, onChange],
   );
 
   const handleSelectedTablesChange = useCallback(
@@ -130,6 +132,7 @@ function RawDataPanePicker({
           onSelectDatabase={handleSelectedDatabaseIdChange}
           onSelectSchema={handleSelectedSchemaIdChange}
           onSelectedTable={handleSelectedTablesChange}
+          onBack={onBack}
         />
       );
     },
@@ -139,6 +142,7 @@ function RawDataPanePicker({
       handleSelectedDatabaseIdChange,
       handleSelectedSchemaIdChange,
       handleSelectedTablesChange,
+      onBack,
     ],
   );
 

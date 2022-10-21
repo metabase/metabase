@@ -9,22 +9,19 @@ import type Database from "metabase-lib/lib/metadata/Database";
 import type Table from "metabase-lib/lib/metadata/Table";
 import type Schema from "metabase-lib/lib/metadata/Schema";
 
+import type { DataPickerSelectedItem } from "../types";
+
 import PanePicker from "../PanePicker";
-
 import { StyledSelectList } from "./RawDataPanePickerView.styled";
-
-type RawDataPickerSelectedItem = {
-  type: "database" | "schema" | "table";
-  id: string | number;
-};
 
 interface RawDataPanePickerViewProps {
   databases: Database[];
   tables?: Table[];
-  selectedItems: RawDataPickerSelectedItem[];
+  selectedItems: DataPickerSelectedItem[];
   onSelectDatabase: (id: Database["id"]) => void;
   onSelectSchema: (id: Schema["id"]) => void;
   onSelectedTable: (id: Table["id"]) => void;
+  onBack?: () => void;
 }
 
 function schemaToTreeItem(schema: Schema): ITreeNodeItem {
@@ -80,6 +77,7 @@ function RawDataPanePickerView({
   onSelectDatabase,
   onSelectSchema,
   onSelectedTable,
+  onBack,
 }: RawDataPanePickerViewProps) {
   const treeData = useMemo(() => databases.map(dbToTreeItem), [databases]);
 
@@ -149,6 +147,7 @@ function RawDataPanePickerView({
       data={treeData}
       selectedId={selectedTreeItemId}
       onSelect={handlePanePickerSelect}
+      onBack={onBack}
     >
       <StyledSelectList>{tables?.map?.(renderTable)}</StyledSelectList>
     </PanePicker>
