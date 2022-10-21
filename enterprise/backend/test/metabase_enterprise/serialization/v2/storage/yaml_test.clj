@@ -1,14 +1,16 @@
 (ns metabase-enterprise.serialization.v2.storage.yaml-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [metabase-enterprise.serialization.test-util :as ts]
-            [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
-            [metabase.models :refer [Collection Database Field FieldValues Table]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.util.date-2 :as u.date]
-            [toucan.db :as db]
-            [yaml.core :as yaml]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
+   [metabase.models :refer [Collection Database Field FieldValues Table]]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.util.date-2 :as u.date]
+   [toucan.db :as db]
+   [yaml.core :as yaml]))
 
 (defn- dir->file-set [dir]
   (->> dir
@@ -37,13 +39,17 @@
           (testing "the Collections properly exported"
             (is (= (-> (into {} (db/select-one Collection :id (:id parent)))
                        (dissoc :id :location)
-                       (assoc :parent_id nil))
-                   (yaml/from-file (io/file dump-dir "Collection" parent-filename))))
+                       (assoc :parent_id nil)
+                       (update :created_at t/offset-date-time))
+                   (-> (yaml/from-file (io/file dump-dir "Collection" parent-filename))
+                       (update :created_at t/offset-date-time))))
 
             (is (= (-> (into {} (db/select-one Collection :id (:id child)))
                        (dissoc :id :location)
-                       (assoc :parent_id (:entity_id parent)))
-                   (yaml/from-file (io/file dump-dir "Collection" child-filename))))))))))
+                       (assoc :parent_id (:entity_id parent))
+                       (update :created_at t/offset-date-time))
+                   (-> (yaml/from-file (io/file dump-dir "Collection" child-filename))
+                       (update :created_at t/offset-date-time))))))))))
 
 (deftest embedded-slash-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
