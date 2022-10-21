@@ -1,5 +1,9 @@
 import styled from "@emotion/styled";
+
+import Icon from "metabase/components/Icon";
+
 import { color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
 
 export const ModalRoot = styled.div`
   display: flex;
@@ -40,4 +44,41 @@ export const ModalFooter = styled.div`
   padding: 1.5rem 2rem;
 
   border-top: 1px solid ${color("border")};
+`;
+
+export const SearchInputContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  position: relative;
+
+  max-width: 14rem;
+  padding: 12px 14px;
+
+  border: 1px solid ${color("border")};
+  border-radius: 8px;
+`;
+
+export const SearchIcon = styled(Icon)`
+  color: ${color("text-light")};
+`;
+
+export const SearchInput = styled.input`
+  background-color: transparent;
+  border: none;
+
+  color: ${color("text-medium")};
+  font-weight: 700;
+
+  width: 100%;
+  margin-left: 8px;
+
+  &:focus {
+    outline: none;
+  }
+
+  &::placeholder {
+    color: ${color("text-light")};
+    font-weight: 700;
+  }
 `;
