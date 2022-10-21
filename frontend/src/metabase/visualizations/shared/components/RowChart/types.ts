@@ -1,7 +1,7 @@
 import { AxisStyle, ChartFont, GoalStyle } from "../../types/style";
 
 export type XValue = number | null;
-export type YValue = string | number | boolean | null;
+export type YValue = string | number | boolean;
 
 export type Series<TDatum, TSeriesInfo = unknown> = {
   seriesKey: string;

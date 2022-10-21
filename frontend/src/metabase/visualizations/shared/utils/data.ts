@@ -174,7 +174,7 @@ const getBreakoutSeries = (
   metric: ColumnDescriptor,
   dimension: ColumnDescriptor,
 ): Series<GroupedDatum, SeriesInfo>[] => {
-  return breakoutValues.map((breakoutValue, seriesIndex) => {
+  return breakoutValues.map(breakoutValue => {
     const breakoutName = String(breakoutValue);
     return {
       seriesKey: breakoutName,
@@ -199,7 +199,8 @@ const getMultipleMetricSeries = (
     return {
       seriesKey: metric.column.name,
       seriesName: metric.column.display_name ?? metric.column.name,
-      yAccessor: (datum: GroupedDatum) => datum.dimensionValue,
+      yAccessor: (datum: GroupedDatum) =>
+        datum.dimensionValue != null ? datum.dimensionValue : "null",
       xAccessor: (datum: GroupedDatum) => datum.metrics[metric.column.name],
       seriesInfo: {
         dimensionColumn: dimension.column,

@@ -48,6 +48,7 @@ import {
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
+import { GroupedDatum } from "metabase/visualizations/shared/types/data";
 import { isDimension, isMetric } from "metabase-lib/lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -56,20 +57,19 @@ import {
   RowChartLegendLayout,
   RowLegendCaption,
 } from "./RowChart.styled";
+import { getLegendItems } from "./utils/legend";
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 const RowChartRenderer = ExplicitSize({
   wrapped: true,
   refreshMode: "throttle",
-})((props: RowChartProps<any>) => (
+  selector: false,
+})((props: RowChartProps<GroupedDatum>) => (
   <RowChartContainer>
     <RowChart {...props} />
   </RowChartContainer>
 ));
 
-// FIXME: fix the props type
-interface RowChartVisualizationProps extends Record<string, any> {
+interface RowChartVisualizationProps {
   className: string;
   width: number;
   height: number;
@@ -77,13 +77,22 @@ interface RowChartVisualizationProps extends Record<string, any> {
   settings: VisualizationSettings;
   visualizationIsClickable: (data: Record<string, unknown>) => boolean;
   onVisualizationClick: (data: Record<string, unknown>) => void;
+  card: any;
+  series: any;
+  hovered: any;
+  headerIcon: any;
+  actionButtons: any;
+  isFullscreen: boolean;
+  isQueryBuilder: boolean;
+  showTitle: boolean;
+  onRender: (data: Record<string, unknown>) => void;
+  onHoverChange: (data: Record<string, unknown> | null) => void;
+  onChangeCardAndRun: (data: Record<string, unknown>) => void;
 }
 
 const RowChartVisualization = ({
   card,
   className,
-  width,
-  height,
   settings,
   data,
   visualizationIsClickable,
@@ -96,12 +105,8 @@ const RowChartVisualization = ({
   isQueryBuilder,
   onRender,
   onHoverChange,
-  onAddSeries,
-  onRemoveSeries,
   showTitle,
   onChangeCardAndRun,
-  onEditSeries,
-  ...props
 }: RowChartVisualizationProps) => {
   const { chartColumns, series, seriesColors } = useMemo(
     () => getTwoDimensionalChartSeries(data, settings, formatColumnValue),
@@ -238,12 +243,12 @@ const RowChartVisualization = ({
   const description = settings["card.description"];
   const canSelectTitle = !!onChangeCardAndRun;
 
-  const seriesSettings =
-    settings.series && rawSeries.map((single: any) => settings.series(single));
-
-  const labels = seriesSettings
-    ? seriesSettings.map((s: any) => s.title)
-    : series.map(single => single.seriesName);
+  const { labels, colors } = getLegendItems(
+    series,
+    seriesColors,
+    settings,
+    rawSeries,
+  );
 
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
@@ -259,8 +264,8 @@ const RowChartVisualization = ({
       <RowChartLegendLayout
         hasLegend={series.length > 1}
         labels={labels}
+        colors={colors}
         actionButtons={!hasTitle ? actionButtons : undefined}
-        colors={Object.values(seriesColors)}
         hovered={hovered}
         onHoverChange={onHoverChange}
         isFullscreen={isFullscreen}
@@ -328,19 +333,18 @@ RowChartVisualization.settings = {
   },
   "graph.label_value_formatting": {
     section: t`Display`,
-    title: t`Auto formatting`,
+    title: t`Value labels formatting`,
     widget: "segmentedControl",
     getHidden: (_series: any, vizSettings: any) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
     props: {
       options: [
-        { name: t`Auto`, value: "auto" },
         { name: t`Compact`, value: "compact" },
         { name: t`Full`, value: "full" },
       ],
     },
-    default: "auto",
+    default: "full",
     readDependencies: ["graph.show_values"],
   },
   ...GRAPH_GOAL_SETTINGS,
@@ -362,7 +366,6 @@ RowChartVisualization.isLiveResizable = (series: any[]) => {
   return totalRows < 10;
 };
 
-// rename these settings
 RowChartVisualization.settings["graph.metrics"] = {
   ...RowChartVisualization.settings["graph.metrics"],
   title: t`X-axis`,

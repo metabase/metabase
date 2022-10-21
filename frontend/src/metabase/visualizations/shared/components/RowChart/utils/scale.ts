@@ -14,7 +14,7 @@ import {
 } from "metabase/visualizations/shared/types/scale";
 import { ChartFont } from "metabase/visualizations/shared/types/style";
 import { DATA_LABEL_OFFSET } from "../../RowChartView";
-import { Series } from "../types";
+import { Series, YValue } from "../types";
 import { createYDomain } from "./domain";
 
 export const createYScale = <TDatum>(
@@ -22,7 +22,7 @@ export const createYScale = <TDatum>(
   series: Series<TDatum>[],
   chartHeight: number,
 ) => {
-  return scaleBand<string | number>({
+  return scaleBand<YValue>({
     domain: createYDomain(data, series),
     range: [0, chartHeight],
     padding: 0.2,

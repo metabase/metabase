@@ -23,7 +23,6 @@ export function unaggregatedDataWarning(col, axis = "x") {
     key: UNAGGREGATED_DATA_WARNING,
     text: t`"${getFriendlyName(
       col,
-      // TODO: y-axis
     )}" is an unaggregated field: if it has more than one value at a point on the ${axis}-axis, the values will be summed.`,
   };
 }

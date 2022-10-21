@@ -9,13 +9,13 @@ import { scaleBand } from "@visx/scale";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
 import { Margin } from "metabase/visualizations/shared/types/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
-import { RowChartTheme, SeriesData } from "../RowChart/types";
+import { RowChartTheme, SeriesData, YValue } from "../RowChart/types";
 import { DATA_LABEL_OFFSET } from "./constants";
 
 export interface RowChartViewProps {
   width: number;
   height: number;
-  yScale: ScaleBand<string>;
+  yScale: ScaleBand<YValue>;
   xScale: ScaleContinuousNumeric<number, number, never>;
   seriesData: SeriesData<unknown>[];
   labelsFormatter: (value: NumberValue) => string;
