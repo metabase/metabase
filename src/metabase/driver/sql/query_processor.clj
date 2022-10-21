@@ -149,14 +149,14 @@
 
   A full week is a week that contains 7 days in the same year.
 
-  Explanation:
+  Example:
   Assume start-of-week setting is :monday
 
     (days-till-start-of-first-full-week driver '2000-04-05')
     -> 2
 
-  Because '2000-01-01' is Saturday, and 1st full week starts on Monday(2000-01-03) => 2 days
-  "
+  Because '2000-01-01' is Saturday, and 1st full week starts on Monday(2000-01-03)
+  => 2 days"
   [driver expr]
   (let [start-of-year                (date driver :year expr)
         day-of-week-of-start-of-year (date driver :day-of-week start-of-year)]
@@ -165,19 +165,21 @@
 (defn- week-of-year
   "Calculate the week of year for us or instance mode.
 
-  The idea for both mode are quite similar:
+  The idea for both modes are quite similar:
   - 1st Jan is always in the 1st week
   - the 2nd weeks start on the first `start-of-week` setting.
 
-  We could think week-of-year = 1 partial week + `n` full-weeks
+  The algorithm:
+  week-of-year = 1 partial-week + `n` full-weeks
   Where:
-  - partial week is a week starts from 1st Jan, until the next `start-of-week`
-  - full-weeks are weeks that has all week-days are in the same year.
+  - partial-week: is the week that starts from 1st Jan, until the next `start-of-week`
+  - full-weeks: are weeks that has all week-days are in the same year.
 
-  full-weeks = ceil( (doy - days-till-start-of-first-full-week) / 7)
+  Now, all we need to do is to find `full-weeks`, and it could be computed by this formula:
+    full-weeks = ceil((doy - days-till-start-of-first-full-week) / 7)
   Where:
-  - doy is the day of year of the input date
-  - days-till-start-of-first-full-week is how many days from 1st Jan to the first start-of-week."
+  - doy: is the day of year of the input date
+  - days-till-start-of-first-full-week: is how many days from 1st Jan to the first start-of-week."
   [driver expr mode]
   (let [days-till-start-of-first-full-week (binding [driver.common/*start-of-week*
                                                      (case mode
