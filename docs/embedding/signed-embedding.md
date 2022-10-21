@@ -10,7 +10,7 @@ In general, embedding works by displaying a Metabase URL inside an iframe on you
 
 Signed embeds can't be combined with [data sandboxes](../permissions/data-sandboxes.md) because signed JWTs don't create user sessions (server-side sessions).
 
-To restrict data in signed embeds for specific people or groups, set up [locked parameters](./signed-embedding-parameters.md#pre-filtering-data-in-a-signed-embed) instead.
+To restrict data in signed embeds for specific people or groups, set up [locked parameters](./signed-embedding-parameters.md#restricting-data-in-a-signed-embed) instead.
 
 ## How signed embedding works
 
