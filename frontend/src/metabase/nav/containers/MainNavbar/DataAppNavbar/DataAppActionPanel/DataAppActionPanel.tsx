@@ -7,7 +7,7 @@ import * as Urls from "metabase/lib/urls";
 
 import type { DataApp } from "metabase-types/api";
 
-import { DataAppActionsContainer } from "../MainNavbar.styled";
+import { DataAppActionsContainer } from "../../MainNavbar.styled";
 
 interface Props {
   dataApp: DataApp;
