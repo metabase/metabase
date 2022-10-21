@@ -7,7 +7,7 @@ import * as Urls from "metabase/lib/urls";
 
 import type { DataApp } from "metabase-types/api";
 
-import { DataAppActionsContainer } from "../../MainNavbar.styled";
+import { Root } from "./DataAppActionPanel.styled";
 
 interface Props {
   dataApp: DataApp;
@@ -32,9 +32,9 @@ function DataAppActionPanel({ dataApp, onEditAppSettings }: Props) {
   );
 
   return (
-    <DataAppActionsContainer>
+    <Root>
       <EntityMenu items={menuItems} triggerIcon="ellipsis" />
-    </DataAppActionsContainer>
+    </Root>
   );
 }
 

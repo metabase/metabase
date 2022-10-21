@@ -11,11 +11,7 @@ import NewButton from "./NewButton";
 import DataAppPageLink from "./DataAppPageLink";
 import DataAppActionPanel from "./DataAppActionPanel";
 
-import {
-  Root,
-  NavItemsList,
-  ActionPanelContainer,
-} from "./DataAppNavbarView.styled";
+import { Root, NavItemsList } from "./DataAppNavbarView.styled";
 
 interface Props extends Omit<MainNavbarProps, "location" | "params"> {
   dataApp: DataApp;
@@ -83,12 +79,10 @@ function DataAppNavbarView({
           <NewButton onAddData={onAddData} onNewPage={onNewPage} />
         </li>
       </NavItemsList>
-      <ActionPanelContainer>
-        <DataAppActionPanel
-          dataApp={dataApp}
-          onEditAppSettings={onEditAppSettings}
-        />
-      </ActionPanelContainer>
+      <DataAppActionPanel
+        dataApp={dataApp}
+        onEditAppSettings={onEditAppSettings}
+      />
     </Root>
   );
 }

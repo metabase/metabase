@@ -24,8 +24,3 @@ export const NavItemsList = styled.ul`
   white-space: nowrap;
   overflow-x: scroll;
 `;
-
-export const ActionPanelContainer = styled.div`
-  display: flex;
-  align-items: center;
-`;
