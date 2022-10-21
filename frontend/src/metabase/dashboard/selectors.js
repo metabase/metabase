@@ -247,6 +247,9 @@ export const getDataApp = (state, routerParams) => {
 
 export const getDataAppNavItem = (state, routerParams) => {
   const dashboard = getDashboardComplete(state);
+  if (!dashboard) {
+    return;
+  }
   const dataApp = getDataApp(state, routerParams);
   return dataApp?.nav_items.find(navItem => navItem.page_id === dashboard.id);
 };
