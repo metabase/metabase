@@ -61,8 +61,8 @@
                               ;; and not have any metadata. Since we don't know the metadata, we can never
                               ;; match a key with metadata, even if we do have the correct name or id
                               (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))]
-    (-> (or (all-cols-settings {::mb.viz/field-id field-id})
-            (all-cols-settings {::mb.viz/column-name field-id})))))
+    (or (all-cols-settings {::mb.viz/field-id field-id})
+        (all-cols-settings {::mb.viz/column-name field-id}))))
 
 (defn format-temporal-str
   "Reformat a temporal literal string `s` (i.e., an ISO-8601 string) with a human-friendly format based on the
