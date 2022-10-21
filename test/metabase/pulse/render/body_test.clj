@@ -115,8 +115,8 @@
 (deftest prefers-col-visualization-settings-for-header
   (testing "Users can give columns custom names. Use those if they exist."
     (let [card    {:visualization_settings
-                   {:column_settings {(keyword "[\"ref\",[\"field-id\",321]]") {:column_title "Custom Last Login"}
-                                      (keyword "[\"name\",\"name\"]")          {:column_title "Custom Name"}}}}
+                   {:column_settings {"[\"ref\",[\"field\",321,null]]" {:column_title "Custom Last Login"}
+                                      "[\"name\",\"name\"]"            {:column_title "Custom Name"}}}}
           cols    [{:name            "last_login"
                     :display_name    "Last Login"
                     :base_type       :type/DateTime
