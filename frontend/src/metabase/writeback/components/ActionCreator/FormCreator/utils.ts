@@ -12,6 +12,7 @@ import validate from "metabase/lib/validate";
 import type { Parameter } from "metabase-types/types/Parameter";
 import type { TemplateTag } from "metabase-types/types/Query";
 import type { Validator } from "metabase-types/forms";
+import { humanize } from "metabase/lib/formatting";
 
 export const getDefaultFormSettings = (
   overrides: Partial<ActionFormSettings> = {},
@@ -122,11 +123,24 @@ export const getFormFromParameters = (
 export const getFormTitle = (action: WritebackAction): string =>
   action.visualization_settings?.name ||
   action.name ||
-  action.slug ||
+  humanize(action.slug ?? "") ||
   "Action form";
 
-export const getSubmitButtonLabel = (action: WritebackAction): string =>
-  action.visualization_settings?.submitButtonLabel || t`Save`;
+export const getSubmitButtonLabel = (action: WritebackAction): string => {
+  if (action.visualization_settings?.submitButtonLabel) {
+    return action.visualization_settings.submitButtonLabel;
+  }
+
+  if (action.slug === "delete") {
+    return t`Delete`;
+  }
+
+  if (action.slug === "update") {
+    return t`Update`;
+  }
+
+  return t`Save`;
+};
 
 export const generateFieldSettingsFromParameters = (params: Parameter[]) => {
   const fieldSettings: Record<ParameterId, FieldSettings> = {};
