@@ -1,5 +1,6 @@
 (ns metabase.api.app
   (:require
+    [clojure.set :as set]
     [clojure.string :as str]
     [clojure.walk :as walk]
     [compojure.core :refer [POST PUT]]
@@ -187,8 +188,7 @@
 (defn- page-infos-and-models-from-table-ids
   [table-ids]
   (when (seq table-ids)
-    (let [table-ids (distinct table-ids)
-          tables (hydrate (db/select Table :id [:in table-ids]) :fields)
+    (let [tables (hydrate (db/select Table :id [:in table-ids]) :fields)
           _ (when (not= (count table-ids) (count tables))
               (throw (ex-info (i18n/tru "Some tables could not be found. Given: {0} Found: {1}"
                                         (pr-str table-ids)
@@ -223,8 +223,7 @@
 (defn- page-infos-from-model-ids
   [model-ids]
   (when (seq model-ids)
-    (let [model-ids (distinct model-ids)
-          models (db/select Card :id [:in model-ids])
+    (let [models (db/select Card :id [:in model-ids])
           model-id->model (m/index-by :id models)
           model-id->params (action/implicit-action-parameters models)]
       (for [model-id model-ids
@@ -240,7 +239,7 @@
             page-type ["list" "detail"]]
         {:page-type page-type
          :pk-field-slug pk-field-slug
-         :pk-field-id (:id pk-param)
+         :pk-field-id (::action/field-id pk-param)
          :pk-field-name (:id pk-param)
          :page-ident model-id
          :ident-type ident-type
@@ -252,9 +251,25 @@
                             (get-in page-type-display [page-type :name]))}))))
 
 (defn- generate-scaffold
-  [app-name table-ids model-ids]
-  (let [{:keys [page-infos models]} (page-infos-and-models-from-table-ids table-ids)
-        page-infos (concat page-infos (page-infos-from-model-ids model-ids))]
+  [app-name source-table-ids]
+  (let [table-ids (filter number? (distinct source-table-ids))
+        extract-model-id #(if-let [[_ card-id] (and (string? %) (re-find #"^card__(\d+)$" %))]
+                           (parse-long card-id)
+                           %)
+        model-ids (->> source-table-ids
+                       distinct
+                       (filter string?)
+                       (map extract-model-id))
+        page-sort (->> source-table-ids
+                       (map (juxt #(if (string? %) "model" "table")
+                                  extract-model-id))
+                       m/indexed
+                       (into {})
+                       set/map-invert)
+        {:keys [page-infos models]} (page-infos-and-models-from-table-ids table-ids)
+        page-infos (->> (page-infos-from-model-ids model-ids)
+                        (concat page-infos)
+                        (sort-by (comp page-sort (juxt :ident-type :page-ident))))]
     {:app {:collection {:name app-name :color "#FFA500"}
            :dashboard_id ["scaffold-target-id" "page" (:ident-type (first page-infos)) (:page-ident (first page-infos)) "list"]
            :nav_items (for [{:keys [ident-type page-ident page-type]} page-infos]
@@ -270,59 +285,59 @@
                      :dataset_query {:database mbql.s/saved-questions-virtual-database-id,
                                      :type "query",
                                      :query {:source_table card-ref}}}))
-     :pages (for [{:keys [ident-type page-type pk-field-slug pk-field-name pg-field-id page-ident page-name model-ref actions]} page-infos]
+     :pages (for [{:keys [ident-type page-type pk-field-slug pk-field-name pk-field-id page-ident page-name model-ref actions]} page-infos]
               (cond->
-               {:name page-name
-                :scaffold-target ["page" ident-type page-ident page-type]
-                :ordered_cards (if (= "list" page-type)
-                                 (cond-> [{:size_y 12 :size_x 18 :row 1 :col 0
-                                           :card_id ["scaffold-target-id" "card" ident-type page-ident page-type]
-                                           :visualization_settings {"click_behavior"
-                                                                    {"type" "link"
-                                                                     "linkType" "page"
-                                                                     "parameterMapping" {(str "scaffold_" page-ident)
-                                                                                         {"source" {"type" "column",
-                                                                                                    "id" pk-field-name
-                                                                                                    "name" pk-field-name},
-                                                                                          "target" {"type" "parameter",
-                                                                                                    "id" (str "scaffold_" page-ident)},
-                                                                                          "id" (str "scaffold_" page-ident)}}
-                                                                     "targetId" ["scaffold-target-id" "page" ident-type page-ident "detail"]}}}]
-                                   (contains? actions "insert")
-                                   (conj {:size_y 1 :size_x 2 :row 0 :col 16
-                                          :card_id model-ref
-                                          :visualization_settings {"virtual_card" {"display" "action"}
-                                                                   "button.label" (i18n/tru "New"),
-                                                                   "action_slug" "insert"}}))
-                                 (cond-> [{:size_y 12 :size_x 18 :row 1 :col 0
-                                           :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
-                                                                 "card_id" ["scaffold-target-id" "card" ident-type page-ident "detail"]
-                                                                 "target" ["dimension", ["field", pg-field-id nil]]}]
-                                           :card_id ["scaffold-target-id" "card" ident-type page-ident "detail"]
-                                           :scaffold-target ["dashcard" ident-type page-ident]}
-                                          {:size_y 1 :size_x 3 :row 0 :col 0
+                {:name page-name
+                 :scaffold-target ["page" ident-type page-ident page-type]
+                 :ordered_cards (if (= "list" page-type)
+                                  (cond-> [{:size_y 12 :size_x 18 :row 1 :col 0
+                                            :card_id ["scaffold-target-id" "card" ident-type page-ident page-type]
+                                            :visualization_settings {"click_behavior"
+                                                                     {"type" "link"
+                                                                      "linkType" "page"
+                                                                      "parameterMapping" {(str "scaffold_" page-ident)
+                                                                                          {"source" {"type" "column",
+                                                                                                     "id" pk-field-name
+                                                                                                     "name" pk-field-name},
+                                                                                           "target" {"type" "parameter",
+                                                                                                     "id" (str "scaffold_" page-ident)},
+                                                                                           "id" (str "scaffold_" page-ident)}}
+                                                                      "targetId" ["scaffold-target-id" "page" ident-type page-ident "detail"]}}}]
+                                    (contains? actions "insert")
+                                    (conj {:size_y 1 :size_x 2 :row 0 :col 16
+                                           :card_id model-ref
                                            :visualization_settings {"virtual_card" {"display" "action"}
-                                                                    "button.label" (i18n/tru "← Back to list"),
-                                                                    "click_behavior" {"type" "link" "linkType" "page" "targetId" ["scaffold-target-id" "page" ident-type page-ident "list"]}}}]
+                                                                    "button.label" (i18n/tru "New"),
+                                                                    "action_slug" "insert"}}))
+                                  (cond-> [{:size_y 12 :size_x 18 :row 1 :col 0
+                                            :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
+                                                                  "card_id" ["scaffold-target-id" "card" ident-type page-ident "detail"]
+                                                                  "target" ["dimension", ["field", pk-field-id nil]]}]
+                                            :card_id ["scaffold-target-id" "card" ident-type page-ident "detail"]
+                                            :scaffold-target ["dashcard" ident-type page-ident]}
+                                           {:size_y 1 :size_x 3 :row 0 :col 0
+                                            :visualization_settings {"virtual_card" {"display" "action"}
+                                                                     "button.label" (i18n/tru "← Back to list"),
+                                                                     "click_behavior" {"type" "link" "linkType" "page" "targetId" ["scaffold-target-id" "page" ident-type page-ident "list"]}}}]
 
-                                   (contains? actions "delete")
-                                   (conj {:size_y 1 :size_x 2 :row 0 :col 16
-                                          :card_id model-ref
-                                          :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
-                                                                "target" ["variable", ["template-tag", pk-field-slug]]}]
-                                          :visualization_settings {"virtual_card" {"display" "action"}
-                                                                   "button.label" (i18n/tru "Delete"),
-                                                                   "button.variant" "danger"
-                                                                   "action_slug" "delete"}})
+                                    (contains? actions "delete")
+                                    (conj {:size_y 1 :size_x 2 :row 0 :col 16
+                                           :card_id model-ref
+                                           :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
+                                                                 "target" ["variable", ["template-tag", pk-field-slug]]}]
+                                           :visualization_settings {"virtual_card" {"display" "action"}
+                                                                    "button.label" (i18n/tru "Delete"),
+                                                                    "button.variant" "danger"
+                                                                    "action_slug" "delete"}})
 
-                                   (contains? actions "update")
-                                   {:size_y 1 :size_x 2 :row 0 :col 14
-                                    :card_id model-ref
-                                    :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
-                                                          "target" ["variable", ["template-tag", pk-field-slug]]}]
-                                    :visualization_settings {"virtual_card" {"display" "action"}
-                                                             "button.label" (i18n/tru "Edit"),
-                                                             "action_slug" "update"}}))}
+                                    (contains? actions "update")
+                                    (conj {:size_y 1 :size_x 2 :row 0 :col 14
+                                           :card_id model-ref
+                                           :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
+                                                                 "target" ["variable", ["template-tag", pk-field-slug]]}]
+                                           :visualization_settings {"virtual_card" {"display" "action"}
+                                                                    "button.label" (i18n/tru "Edit"),
+                                                                    "action_slug" "update"}})))}
                 (= "detail" page-type) (assoc :parameters [{:name "ID",
                                                             :slug "id",
                                                             :id (str "scaffold_" page-ident),
@@ -332,9 +347,9 @@
 
 (api/defendpoint POST "/scaffold"
   "Endpoint to scaffold a fully working data-app"
-  [:as {{:keys [table-ids model-ids app-name]} :body}]
+  [:as {{:keys [table-ids app-name]} :body}]
   (db/transaction
-    (let [{:keys [app pages cards] :as scaffold} (generate-scaffold app-name table-ids model-ids)
+    (let [{:keys [app pages cards] :as scaffold} (generate-scaffold app-name table-ids)
           ;; Create a blank app with just the collection info, we will update the rest later after we replace scaffold-target-id
           {app-id :id {collection-id :id} :collection} (create-app! (select-keys app [:collection]))
           scaffold-target->id (create-scaffold-cards-and-pages! collection-id cards pages)
@@ -346,12 +361,12 @@
 
 (api/defendpoint POST "/:app-id/scaffold"
   "Endpoint to scaffold a new table onto an existing data-app"
-  [app-id :as {{:keys [table-ids model-ids]} :body}]
+  [app-id :as {{:keys [table-ids]} :body}]
   (api/write-check App app-id)
   (db/transaction
     (let [{app-id :id app-name :name nav-items :nav_items {collection-id :id} :collection} (hydrate-details (db/select-one App :id app-id))
           ;; We can scaffold this as a new app, but use the existing collection-id and nav-items to merge into the existing app
-          {:keys [pages cards] :as scaffold} (generate-scaffold app-name table-ids model-ids)
+          {:keys [pages cards] :as scaffold} (generate-scaffold app-name table-ids)
           scaffold-target->id (create-scaffold-cards-and-pages! collection-id cards pages)
           ;; now replace targets with actual ids
           {:keys [app pages]} (replace-scaffold-targets scaffold scaffold-target->id)]

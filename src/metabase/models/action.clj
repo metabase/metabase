@@ -186,7 +186,8 @@
                                              {:id (u/slugify (:name field))
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
                                               :type (:base_type field)
-                                              ::pk? (isa? (:semantic_type field) :type/PK)})))]]
+                                              ::pk? (isa? (:semantic_type field) :type/PK)
+                                              ::field-id (:id field)})))]]
             [(:id card) parameters]))))
 
 (defn merged-model-action
@@ -216,7 +217,7 @@
                 implicit-action (when-let [parameters (get parameters-by-model-id (:card_id model-action))]
                                   {:parameters (cond->> parameters
                                                  (= "delete" (:slug model-action)) (filter ::pk?)
-                                                 :always (map #(dissoc % ::pk?)))
+                                                 :always (map #(dissoc % ::pk? ::field-id)))
                                    :type "implicit"})]]
       (m/deep-merge (-> model-action
                         (select-keys [:card_id :slug :action_id :visualization_settings :parameter_mappings :requires_pk])

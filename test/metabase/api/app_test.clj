@@ -8,7 +8,6 @@
     [metabase.models.collection.graph :as graph]
     [metabase.models.permissions :as perms]
     [metabase.models.permissions-group :as perms-group]
-    [metabase.query-processor :as qp]
     [metabase.test :as mt]
     [metabase.test.data :as data]
     [metabase.test.initialize :as initialize]
@@ -228,14 +227,14 @@
   (mt/with-model-cleanup [Card Dashboard Collection Permissions]
     (mt/with-all-users-permission (perms/app-root-collection-permission :read)
       (testing "Golden path"
-        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]]
+        (mt/with-temp* [Card [{card-id :id card-name :name} {:dataset true :dataset_query (mt/mbql-query categories)}]]
           (let [app (mt/user-http-request
                       :crowberto :post 200 "app/scaffold"
-                      {:model-ids [card-id]
+                      {:table-ids [(str "card__" card-id)]
                        :app-name "My test app"})
                 pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
-                list-page (get pages "Venues List")
-                detail-page (get pages "Venues Detail")]
+                list-page (get pages (str card-name " List"))
+                detail-page (get pages (str card-name " Detail"))]
             (is (partial= {:nav_items [{:page_id (:id list-page)}
                                        {:page_id (:id detail-page) :hidden true :indent 1}]
                            :dashboard_id (:id list-page)}
@@ -245,7 +244,13 @@
                                                                       :linkType "page",
                                                                       :targetId (:id detail-page)}}}
                                            {}]}
-                          list-page))))))))
+                          list-page))
+            (is (partial= {:ordered_cards [{:parameter_mappings
+                                            [{:target [:dimension [:field (mt/id :categories :id) nil]]}]}
+                                           {}
+                                           {}
+                                           {}]}
+                          detail-page))))))))
 
 (deftest scaffold-app-test
   (mt/with-model-cleanup [Card Dashboard]
