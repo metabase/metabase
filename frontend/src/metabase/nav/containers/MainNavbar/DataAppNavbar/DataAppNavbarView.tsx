@@ -1,11 +1,7 @@
 import React, { useCallback, useMemo } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 
 import type { DataApp, DataAppNavItem } from "metabase-types/api";
-
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -19,7 +15,6 @@ import {
   Root,
   NavItemsList,
   ActionPanelContainer,
-  ExitAppLink,
 } from "./DataAppNavbarView.styled";
 
 interface Props extends Omit<MainNavbarProps, "location" | "params"> {

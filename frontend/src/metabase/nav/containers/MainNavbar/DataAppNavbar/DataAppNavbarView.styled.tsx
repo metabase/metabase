@@ -31,7 +31,3 @@ export const ActionPanelContainer = styled.div`
   display: flex;
   align-items: center;
 `;
-
-export const ExitAppLink = styled(Link)`
-  margin-left: 1rem;
-`;
