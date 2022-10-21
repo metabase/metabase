@@ -35,13 +35,14 @@ export const LeftPaneContainer = styled.div`
 `;
 
 export const BackButton = styled.a`
-  font-weight: 700;
-  font-size: 16px;
   display: flex;
   align-items: center;
+
   color: ${color("text-dark")};
-  border-bottom: 1px solid ${color("border")};
-  padding: 1rem;
+  font-weight: 700;
+
+  margin-left: 1rem;
+  padding-bottom: 1rem;
 
   &:hover {
     color: ${color("brand")};
