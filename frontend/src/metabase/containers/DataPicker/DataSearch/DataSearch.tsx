@@ -13,11 +13,12 @@ import { generateSchemaId } from "metabase-lib/lib/metadata/utils/schema";
 
 import { useDataPicker } from "../DataPickerContext";
 
-import { DataPickerValue, DataPickerDataType } from "../types";
+import type { DataPickerValue, DataPickerDataType } from "../types";
 
 interface DataSearchProps {
   value: DataPickerValue;
   searchQuery: string;
+  availableDataTypes: DataPickerDataType[];
   onChange: (value: DataPickerValue) => void;
 }
 
@@ -82,16 +83,21 @@ function getNextValue(table: TableSearchResult): DataPickerValue {
     : getValueForRawTable(table);
 }
 
-function DataSearch({ value, searchQuery, onChange }: DataSearchProps) {
+function DataSearch({
+  value,
+  searchQuery,
+  availableDataTypes,
+  onChange,
+}: DataSearchProps) {
   const { search } = useDataPicker();
   const { setQuery } = search;
 
   const searchModels: SearchModel[] = useMemo(() => {
     if (!value.type) {
-      return Object.values(DATA_TYPE_SEARCH_MODEL_MAP);
+      return availableDataTypes.map(type => DATA_TYPE_SEARCH_MODEL_MAP[type]);
     }
     return [DATA_TYPE_SEARCH_MODEL_MAP[value.type]];
-  }, [value.type]);
+  }, [value.type, availableDataTypes]);
 
   const onSelect = useCallback(
     (table: TableSearchResult) => {

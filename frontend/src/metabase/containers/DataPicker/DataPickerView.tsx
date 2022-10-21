@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
@@ -32,6 +32,11 @@ function DataPickerViewContent({
 }: DataPickerViewProps) {
   const { value, onChange } = props;
 
+  const availableDataTypes = useMemo(
+    () => dataTypes.map(type => type.id),
+    [dataTypes],
+  );
+
   if (!hasDataAccess) {
     return (
       <EmptyStateContainer>
@@ -45,7 +50,12 @@ function DataPickerViewContent({
 
   if (searchQuery.trim().length > MIN_SEARCH_LENGTH) {
     return (
-      <DataSearch value={value} searchQuery={searchQuery} onChange={onChange} />
+      <DataSearch
+        value={value}
+        searchQuery={searchQuery}
+        availableDataTypes={availableDataTypes}
+        onChange={onChange}
+      />
     );
   }
 
