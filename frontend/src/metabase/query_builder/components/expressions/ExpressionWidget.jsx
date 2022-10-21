@@ -4,10 +4,10 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isExpression } from "metabase/lib/expressions";
 import MetabaseSettings from "metabase/lib/settings";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { isExpression } from "metabase-lib/lib/expressions";
 import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 
 // TODO: combine with ExpressionPopover

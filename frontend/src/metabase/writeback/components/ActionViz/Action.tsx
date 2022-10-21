@@ -2,14 +2,10 @@ import React, { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import { isImplicitActionButton } from "metabase/writeback/utils";
-
 import type {
   ActionDashboardCard,
-  ArbitraryParameterForActionExecution,
-  ActionParametersMapping,
   Dashboard,
-  ParameterMappedForActionExecution,
+  ParametersForActionExecution,
   WritebackQueryAction,
 } from "metabase-types/api";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
@@ -19,12 +15,11 @@ import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 import {
   getDashcardParamValues,
   getNotProvidedActionParameters,
-  prepareParameter,
 } from "metabase/modes/components/drill/ActionClickDrill/utils";
 import { executeRowAction } from "metabase/dashboard/actions";
 import { StyledButton } from "./ActionButton.styled";
 
-import DefaultActionButton from "./DefaultActionButton";
+import LinkButton from "./LinkButton";
 import ImplicitActionButton from "./ImplicitActionButton";
 import ActionForm from "./ActionForm";
 
@@ -41,14 +36,13 @@ function ActionComponent({
   dispatch,
   isSettings,
   settings,
-  getExtraDataForClick,
   onVisualizationClick,
   parameterValues,
 }: ActionProps) {
   const dashcardSettings = dashcard.visualization_settings;
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
-    dashcardSettings?.actionDisplayType ?? actionSettings?.type ?? "modal";
+    dashcardSettings?.actionDisplayType ?? actionSettings?.type ?? "button";
 
   const dashcardParamValues = useMemo(
     () => getDashcardParamValues(dashcard, parameterValues),
@@ -66,43 +60,40 @@ function ActionComponent({
   }, [dashcard, dashcardParamValues]);
 
   const shouldDisplayButton =
-    actionDisplayType !== "inline" || !missingParameters.length;
+    actionDisplayType !== "form" || !missingParameters.length;
 
   const onSubmit = useCallback(
-    (extra_parameters: ArbitraryParameterForActionExecution[]) =>
+    (parameterMap: ParametersForActionExecution) =>
       executeRowAction({
         dashboard,
         dashcard,
-        parameters: dashcardParamValues,
-        extra_parameters,
+        parameters: {
+          ...dashcardParamValues,
+          ...parameterMap,
+        },
         dispatch,
         shouldToast: shouldDisplayButton,
       }),
     [dashboard, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
   );
 
-  if (isImplicitActionButton(dashcard)) {
-    return <ImplicitActionButton isSettings={isSettings} settings={settings} />;
-  }
-
-  if (shouldDisplayButton) {
+  if (dashcard.action) {
     return (
-      <DefaultActionButton
+      <ActionForm
         onSubmit={onSubmit}
+        dashcard={dashcard}
         missingParameters={missingParameters}
-        isSettings={isSettings}
-        settings={settings}
-        getExtraDataForClick={getExtraDataForClick}
-        onVisualizationClick={onVisualizationClick}
+        action={dashcard.action as WritebackQueryAction}
+        shouldDisplayButton={shouldDisplayButton}
       />
     );
   }
 
   return (
-    <ActionForm
-      onSubmit={onSubmit}
-      missingParameters={missingParameters}
-      action={dashcard.action as WritebackQueryAction}
+    <LinkButton
+      isSettings={isSettings}
+      settings={settings}
+      onVisualizationClick={onVisualizationClick}
     />
   );
 }

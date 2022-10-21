@@ -22,44 +22,25 @@ import {
   AggregationDimension,
   FieldDimension,
 } from "metabase-lib/lib/Dimension";
-import Mode from "metabase-lib/lib/Mode";
-import { isStandard } from "metabase/lib/query/filter";
-import { isFK } from "metabase/lib/schema_metadata";
+import { isFK } from "metabase-lib/lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
-/* eslint-enable import/order */
 
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import {
-  findColumnIndexForColumnSetting,
-  findColumnSettingIndexForColumn,
-  syncTableColumnsToQuery,
-} from "metabase/lib/dataset";
-import { isTransientId } from "metabase/meta/Card";
-import {
   getCardUiParameters,
   remapParameterValuesToTemplateTags,
 } from "metabase/parameters/utils/cards";
-import { fieldFilterParameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import {
   normalizeParameterValue,
   getParameterValuesBySlug,
 } from "metabase/parameters/utils/parameter-values";
-import {
-  aggregate,
-  breakout,
-  distribution,
-  drillFilter,
-  filter,
-  pivot,
-} from "metabase/modes/lib/actions";
 import {
   DashboardApi,
   CardApi,
   maybeUsePivotEndpoint,
   MetabaseApi,
 } from "metabase/services";
-import Questions from "metabase/entities/questions";
 import {
   Parameter as ParameterObject,
   ParameterValues,
@@ -77,15 +58,32 @@ import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions/saved-questions";
+import { fieldFilterParameterToMBQLFilter } from "metabase-lib/lib/parameters/utils/mbql";
+import { getQuestionVirtualTableId } from "metabase-lib/lib/metadata/utils/saved-questions";
+import {
+  aggregate,
+  breakout,
+  distribution,
+  drillFilter,
+  filter,
+  pivot,
+} from "metabase-lib/lib/queries/utils/actions";
+import { isTransientId } from "metabase-lib/lib/queries/utils/card";
+import {
+  findColumnIndexForColumnSetting,
+  findColumnSettingIndexForColumn,
+  syncTableColumnsToQuery,
+} from "metabase-lib/lib/queries/utils/dataset";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
+import { getBaseDimensionReference } from "metabase-lib/lib/references";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
+  dataset?: boolean;
   tableId?: TableId;
   collectionId?: CollectionId;
   metadata?: Metadata;
@@ -538,16 +536,20 @@ class QuestionInner {
     return pivot(this, breakouts, dimensions) || this;
   }
 
-  drillUnderlyingRecords(values: DimensionValue[], column?: Column): Question {
+  drillUnderlyingRecords(
+    dimensions: DimensionValue[],
+    column?: Column,
+  ): Question {
     let query = this.query();
     if (!(query instanceof StructuredQuery)) {
       return this;
     }
 
-    query = values.reduce(
-      (query, { value, column }) => drillFilter(query, value, column),
-      query,
-    );
+    dimensions.forEach(({ value, column }) => {
+      if (column.source !== "aggregation") {
+        query = drillFilter(query, value, column);
+      }
+    });
 
     const dimension = column && query.parseFieldReference(column.field_ref);
     if (dimension instanceof AggregationDimension) {
@@ -600,7 +602,7 @@ class QuestionInner {
   }
 
   composeDataset() {
-    if (!this.isDataset()) {
+    if (!this.isDataset() || !this.isSaved()) {
       return this;
     }
 
@@ -710,7 +712,7 @@ class QuestionInner {
             const dimension = query.columnDimensionWithName(name);
             return {
               name: name,
-              field_ref: dimension.baseDimension().mbql(),
+              field_ref: getBaseDimensionReference(dimension.mbql()),
               enabled: true,
             };
           }),
@@ -816,32 +818,6 @@ class QuestionInner {
     }
   }
 
-  mode(): Mode | null | undefined {
-    return Mode.forQuestion(this);
-  }
-
-  /**
-   * Returns true if, based on filters and table columns, the expected result is a single row.
-   * However, it might not be true when a PK column is not unique, leading to multiple rows.
-   * Because of that, always check query results in addition to this property.
-   */
-  isObjectDetail(): boolean {
-    const mode = this.mode();
-    return mode ? mode.name() === "object" : false;
-  }
-
-  objectDetailPK(): any {
-    const query = this.query();
-
-    if (this.isObjectDetail() && query instanceof StructuredQuery) {
-      const filters = query.filters();
-
-      if (filters[0] && isStandard(filters[0])) {
-        return filters[0][2];
-      }
-    }
-  }
-
   /**
    * A user-defined name for the question
    */
@@ -941,6 +917,7 @@ class QuestionInner {
     query,
     includeDisplayIsLocked,
     creationType,
+    ...options
   }: {
     originalQuestion?: Question;
     clean?: boolean;
@@ -1038,7 +1015,7 @@ class QuestionInner {
     // we frequently treat dataset/model questions like they are already nested
     // so we need to fetch the virtual card table representation of the Question
     // so that we can properly access the table's fields in various scenarios
-    if (this.isDataset()) {
+    if (this.isDataset() && this.isSaved()) {
       dependencies.push({
         type: "table",
         id: getQuestionVirtualTableId(this.card()),
@@ -1161,39 +1138,6 @@ class QuestionInner {
     }
   }
 
-  // NOTE: prefer `reduxCreate` so the store is automatically updated
-  async apiCreate() {
-    const createdCard = await Questions.api.create(this.card());
-    return this.setCard(createdCard);
-  }
-
-  // NOTE: prefer `reduxUpdate` so the store is automatically updated
-  async apiUpdate() {
-    const updatedCard = await Questions.api.update(this.card());
-    return this.setCard(updatedCard);
-  }
-
-  async reduxCreate(dispatch) {
-    const action = await dispatch(Questions.actions.create(this.card()));
-    return this.setCard(Questions.HACK_getObjectFromAction(action));
-  }
-
-  async reduxUpdate(dispatch, { excludeDatasetQuery = false } = {}) {
-    const fullCard = this.card();
-    const card = excludeDatasetQuery
-      ? _.omit(fullCard, "dataset_query")
-      : fullCard;
-    const action = await dispatch(
-      Questions.actions.update(
-        {
-          id: this.id(),
-        },
-        card,
-      ),
-    );
-    return this.setCard(Questions.HACK_getObjectFromAction(action));
-  }
-
   setParameters(parameters) {
     return this.setCard(assoc(this.card(), "parameters", parameters));
   }
@@ -1264,6 +1208,7 @@ class QuestionInner {
       dataset_query: query.datasetQuery(),
       display: this._card.display,
       parameters: this._card.parameters,
+      dataset: this._card.dataset,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
         : {
@@ -1356,10 +1301,9 @@ class QuestionInner {
   }
 }
 
-export default class Question extends memoizeClass<QuestionInner>(
-  "query",
-  "mode",
-)(QuestionInner) {
+export default class Question extends memoizeClass<QuestionInner>("query")(
+  QuestionInner,
+) {
   /**
    * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
    * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
@@ -1374,6 +1318,7 @@ export default class Question extends memoizeClass<QuestionInner>(
     name,
     display = "table",
     visualization_settings = {},
+    dataset,
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
@@ -1383,6 +1328,7 @@ export default class Question extends memoizeClass<QuestionInner>(
       collection_id: collectionId,
       display,
       visualization_settings,
+      dataset,
       dataset_query,
     };
 

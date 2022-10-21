@@ -10,7 +10,9 @@ export interface FieldFilterUiParameter extends ValuePopulatedParameter {
   hasVariableTemplateTagTarget?: boolean;
 }
 
-export type UiParameter = FieldFilterUiParameter | ValuePopulatedParameter;
+export type UiParameter = (FieldFilterUiParameter | ValuePopulatedParameter) & {
+  hidden?: boolean;
+};
 
 export type ParameterWithTarget = Parameter & {
   target: ParameterTarget;

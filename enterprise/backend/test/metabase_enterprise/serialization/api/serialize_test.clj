@@ -33,10 +33,9 @@
                  (sort (map str (u.files/files-seq path))))
                (files [& path-components]
                  (path-files (apply u.files/get-path dir path-components)))]
-         (is (= ["/tmp/serdes-dir/Card"
-                 "/tmp/serdes-dir/Collection"
-                 "/tmp/serdes-dir/Dashboard"
-                 "/tmp/serdes-dir/settings.yaml"]
+         (is (= (map
+                 #(.toString (u.files/get-path (System/getProperty "java.io.tmpdir") "serdes-dir" %))
+                 ["Card" "Collection" "Dashboard" "settings.yaml"])
                 (files)))
          (testing "subdirs"
            (testing "Card"

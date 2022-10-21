@@ -90,10 +90,11 @@
   (merge
    models/IModelDefaults
    ;; todo: add hydration keys??
-   {:properties (constantly {:timestamped? true})})
+   {:properties (constantly {:timestamped? true})}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name :timestamp (serdes.hash/hydrated-hash :timeline)])})
+(defmethod serdes.hash/identity-hash-fields TimelineEvent
+  [_timeline-event]
+  [:name :timestamp (serdes.hash/hydrated-hash :timeline)])
 
 ;;;; serialization
 (defmethod serdes.base/serdes-entity-id "TimelineEvent" [_model-name {:keys [timestamp]}]

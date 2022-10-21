@@ -278,20 +278,54 @@
        (str/ends-with? database-type "\"")))
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
-  [driver [_ arg to-tz from-tz]]
-  (let [clause       (sql.qp/->honeysql driver arg)
-        timestamptz? (hx/is-of-type? clause "timestamptz")]
-    (when (and timestamptz? from-tz)
-      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone` argument")
-                    {:type    qp.error-type/invalid-parameter
-                     :to-tz   to-tz
-                     :from-tz from-tz})))
-    (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
-      (cond->> clause
-        (and (not timestamptz?) from-tz)
-        (hsql/call :timezone from-tz)
-        to-tz
-        (hsql/call :timezone to-tz)))))
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr         (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? expr "timestamptz")]
+    (when (and timestamptz? source-timezone)
+      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:target-timezone target-timezone
+                                                                                             :source-timezone source-timezone})))
+    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
+          ;; If a column doesn't have a timezone, calling `timezone(source-timezone, column)` will cast it
+          ;; to `timestamp with time zone` with time zone is the `source-timezone`.
+          ;; For `timestamp with time zone` columns, Postgres will retuns all values in the report-tz regardless of
+          ;; what time zone column is in.
+          ;; So what we care is to just make sure the output of `convert-timezone` is a `timestammp with time zone`.
+          ;; And the actual conversion will be done in `format-rows` middleware.
+          expr (if-not timestamptz?
+                 (hsql/call :timezone source-timezone expr)
+                 expr)]
+      (hx/with-type-info expr
+        {::hx/convert-timezone {:source-timezone source-timezone
+                                :target-timezone target-timezone}
+         ::hx/database-type    "timestamptz"}))))
+
+(defn- zone->total-seconds-offset
+  [zone]
+  (.. (t/zone-id zone) getRules (getOffset (t/instant)) getTotalSeconds))
+
+(defn- source-timezone->target-timezone-offset
+  [source-timezone target-timezone]
+  (- (zone->total-seconds-offset target-timezone)
+     (zone->total-seconds-offset source-timezone)))
+
+(defn- shift-time-if-needed
+  "If the expr was converted to a timezone, shift the hours so that the result of extract time on this column return the time
+  in the timezone that it was converted to.
+
+  In Postgres, if a column is `timestamp with time zone`, then extract hour on this column will return the hour in `report-tz`.
+  I.e: select extract(hour, timestamp with time zone '2000/01/01 07:00:00+07:00') => 0 (assuming report-tz = UTC)
+
+  This is unintuive and our users will expect [:temporal-extract '2000/01/01 07:00:00+07:00' :hour] to returns 7 instead."
+  [driver expr]
+  (if-let [{:keys [source-timezone target-timezone]} (hx/type-info->convert-timezone-info (hx/type-info expr))]
+    (sql.qp/->honeysql driver [:date-add expr (source-timezone->target-timezone-offset source-timezone target-timezone) :second])
+    expr))
+
+(defmethod sql.qp/->honeysql [:postgres :temporal-extract]
+  [driver [_ arg unit]]
+  (->> (sql.qp/->honeysql driver arg)
+       (shift-time-if-needed driver)
+       (sql.qp/date driver (sql.qp/temporal-extract-unit->date-unit unit))))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]

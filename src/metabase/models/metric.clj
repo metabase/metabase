@@ -44,37 +44,35 @@
    {:types      (constantly {:definition :metric-segment-definition})
     :properties (constantly {:timestamped? true
                              :entity_id    true})
-    :pre-update pre-update})
+    :pre-update pre-update}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
+(defmethod serdes.hash/identity-hash-fields Metric
+  [_metric]
+  [:name (serdes.hash/hydrated-hash :table)])
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
 
-(defn- serialize-metric [_ _ instance]
+(defmethod revision/serialize-instance Metric
+  [_model _id instance]
   (dissoc instance :created_at :updated_at))
 
-(defn- diff-metrics [this metric1 metric2]
+(defmethod revision/diff-map Metric
+  [model metric1 metric2]
   (if-not metric1
-    ;; this is the first version of the metric
+    ;; model is the first version of the metric
     (m/map-vals (fn [v] {:after v}) (select-keys metric2 [:name :description :definition]))
     ;; do our diff logic
-    (let [base-diff (revision/default-diff-map this
-                                               (select-keys metric1 [:name :description :definition])
-                                               (select-keys metric2 [:name :description :definition]))]
+    (let [base-diff ((get-method revision/diff-map :default)
+                     model
+                     (select-keys metric1 [:name :description :definition])
+                     (select-keys metric2 [:name :description :definition]))]
       (cond-> (merge-with merge
-                (m/map-vals (fn [v] {:after v}) (:after base-diff))
-                (m/map-vals (fn [v] {:before v}) (:before base-diff)))
+                          (m/map-vals (fn [v] {:after v}) (:after base-diff))
+                          (m/map-vals (fn [v] {:before v}) (:before base-diff)))
         (or (get-in base-diff [:after :definition])
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in metric1 [:definition])
                                                                           :after  (get-in metric2 [:definition])})))))
-
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Metric)
-  revision/IRevisioned
-  (merge revision/IRevisionedDefaults
-         {:serialize-instance serialize-metric
-          :diff-map           diff-metrics}))
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
@@ -83,6 +81,9 @@
   [_ metric]
   (let [base (serdes.base/infer-self-path "Metric" metric)]
     [(assoc base :label (:name metric))]))
+
+(defmethod serdes.base/extract-query "Metric" [_model-name _opts]
+  (serdes.base/raw-reducible-query "Metric" {:where [:= :archived false]}))
 
 (defmethod serdes.base/extract-one "Metric"
   [_model-name _opts metric]

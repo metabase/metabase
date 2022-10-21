@@ -1,15 +1,20 @@
 (ns metabase.models.action
   (:require [cheshire.core :as json]
+            [clojure.set :as set]
             [medley.core :as m]
             [metabase.models.interface :as mi]
+            [metabase.models.query :as query]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [metabase.util.encryption :as encryption]
             [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
 
 (models/defmodel QueryAction :query_action)
 (models/defmodel HTTPAction :http_action)
 (models/defmodel Action :action)
+(models/defmodel ModelAction :model_action)
 
 (models/add-type! ::json-with-nested-parameters
   :in  (comp mi/json-in
@@ -51,6 +56,19 @@
   models/IModel
   (merge Action-subtype-IModel-impl
          {:types (constantly {:template ::json-with-nested-parameters})}))
+
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ModelAction)
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties (constantly {:entity_id    true})
+          :types      (constantly {:parameter_mappings     :parameters-list
+                                   :visualization_settings :visualization-settings})}))
+
+;;; TODO -- this doesn't seem right. [[serdes.hash/identity-hash-fields]] is used to calculate `entity_id`, so we
+;;; shouldn't use it in the calculation. We can fix this later
+(defmethod serdes.hash/identity-hash-fields ModelAction
+  [_model-action]
+  [:entity_id])
 
 (defn insert!
   "Inserts an Action and related HTTPAction or QueryAction. Returns the action id."
@@ -152,12 +170,83 @@
       (m/assoc-some card :action_id (get card-id->action-id (:id card))))
     cards))
 
+(defn unique-field-slugs?
+  "Makes sure that if `coll` is indexed by `index-by`, no keys will be in conflict."
+  [fields]
+  (empty? (m/filter-vals #(not= % 1) (frequencies (map (comp u/slugify :name) fields)))))
+
+(defn- implicit-action-parameters
+  [cards]
+  (let [card-id-by-table-id (into {}
+                                  (for [card cards
+                                        :let [{:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
+                                        :when table-id]
+                                    [table-id (:id card)]))
+        tables (when-let [table-ids (seq (keys card-id-by-table-id))]
+                 (hydrate (db/select 'Table :id [:in table-ids]) :fields))]
+    (into {}
+          (for [table tables
+                :let [fields (:fields table)]
+                ;; Skip tables for have conflicting slugified columns i.e. table has "name" and "NAME" columns.
+                :when (unique-field-slugs? fields)
+                :let [parameters (->> fields
+                                      (map (fn [field]
+                                             {:id (u/slugify (:name field))
+                                              :target [:variable [:template-tag (u/slugify (:name field))]]
+                                              :type (:base_type field)
+                                              ::pk? (isa? (:semantic_type field) :type/PK)})))]]
+            [(get card-id-by-table-id (:id table)) parameters]))))
+
+(defn merged-model-action
+  "Find model-actions given options and merge in the referenced action or generate implicit parameters for execution.
+   The goal is to generally hide the existence of model-action and be able to treat this merged information as an action.
+
+   Pass in known-models to save a second Card lookup."
+  [known-models & options]
+  (let [model-actions (apply db/select ModelAction {:order-by [:id]} options)
+        model-action-by-model-slug (m/index-by (juxt :card_id :slug)
+                                               model-actions)
+        actions-by-id (when-let [action-ids (not-empty (keep :action_id model-actions))]
+                        (m/index-by :id (select-actions :id [:in action-ids])))
+        model-ids-with-implicit-actions (set (map :card_id (remove :action_id model-actions)))
+        models-with-implicit-actions (if known-models
+                                       (->> known-models
+                                            (filter #(contains? model-ids-with-implicit-actions (:id %)))
+                                            distinct)
+                                       (when (seq model-ids-with-implicit-actions)
+                                         (db/select 'Card :id [:in model-ids-with-implicit-actions])))
+        parameters-by-model-id (when (seq models-with-implicit-actions)
+                                 (implicit-action-parameters models-with-implicit-actions))]
+    (for [model-action model-actions
+          :let [model-slug [(:card_id model-action) (:slug model-action)]
+                model-action (get model-action-by-model-slug model-slug)
+                action (get actions-by-id (:action_id model-action))
+                implicit-action (when-let [parameters (get parameters-by-model-id (:card_id model-action))]
+                                  {:parameters (cond->> parameters
+                                                 (not (:requires_pk model-action)) (remove #(::pk? %))
+                                                 (= "delete" (:slug model-action)) (filter #(::pk? %))
+                                                 :always (map #(dissoc % ::pk?)))
+                                   :type "implicit"})]]
+      (m/deep-merge (-> model-action
+                        (select-keys [:card_id :slug :action_id :visualization_settings :parameter_mappings])
+                        (set/rename-keys {:card_id :model_id}))
+                    implicit-action
+                    action))))
+
 (defn dashcard-action
   "Hydrates action from DashboardCard"
   {:batched-hydrate :dashcard/action}
   [dashcards]
-  (if-let [action-ids (not-empty (keep :action_id dashcards))]
-    (let [actions-by-id (m/index-by :id (select-actions :id [:in action-ids]))]
-      (for [dashcard dashcards]
-        (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard)))))
-    dashcards))
+  (let [model-slug-by-dashcard-id (->> dashcards
+                                       (keep (fn [dashcard]
+                                               (when-let [slug (get-in dashcard [:visualization_settings :action_slug])]
+                                                 [(:id dashcard) [(:card_id dashcard) slug]])))
+                                       (into {})
+                                       not-empty)
+        actions (when model-slug-by-dashcard-id
+                  (merged-model-action (map :card dashcards) [:card_id :slug] [:in (vals model-slug-by-dashcard-id)]))
+        action-by-model-slug (m/index-by (juxt :model_id :slug) actions)]
+    (for [dashcard dashcards]
+      (if-let [model-slug (get model-slug-by-dashcard-id (:id dashcard))]
+        (m/assoc-some dashcard :action (get action-by-model-slug model-slug))
+        dashcard))))

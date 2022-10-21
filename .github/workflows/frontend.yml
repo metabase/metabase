@@ -61,7 +61,7 @@ jobs:
         flags: front-end
 
   fe-tests-timezones:
-    runs-on: buildjet-2vcpu-ubuntu-2004
+    runs-on: ubuntu-20.04
     timeout-minutes: 14
     steps:
     - uses: actions/checkout@v3

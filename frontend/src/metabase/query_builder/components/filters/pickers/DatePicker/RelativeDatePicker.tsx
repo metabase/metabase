@@ -3,6 +3,8 @@ import { t } from "ttag";
 import { assoc } from "icepick";
 
 import { DurationInputArg2 } from "moment-timezone";
+import { isValidTimeInterval } from "metabase/lib/time";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import {
   formatStartingFrom,
   getRelativeDatetimeInterval,
@@ -11,9 +13,7 @@ import {
   setRelativeDatetimeValue,
   setStartingFrom,
   toTimeInterval,
-} from "metabase/lib/query_time";
-import { isValidTimeInterval } from "metabase/lib/time";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
+} from "metabase-lib/lib/queries/utils/query-time";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import {

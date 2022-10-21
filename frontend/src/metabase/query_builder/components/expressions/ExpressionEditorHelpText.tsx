@@ -2,11 +2,12 @@ import React from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { getHelpDocsUrl } from "metabase/lib/expressions/helper-text-strings";
-import { HelpText } from "metabase/lib/expressions/types";
+import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { getHelpDocsUrl } from "metabase-lib/lib/expressions/helper-text-strings";
+import { HelpText } from "metabase-lib/lib/expressions/types";
 
 interface ExpressionEditorHelpTextProps {
   helpText: HelpText;
@@ -53,7 +54,7 @@ const ExpressionEditorHelpText = ({
               <ExternalLink
                 className="link text-bold block my1"
                 target="_blank"
-                href={getHelpDocsUrl(helpText)}
+                href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
               >
                 <Icon name="reference" size={12} className="mr1" />
                 {t`Learn more`}

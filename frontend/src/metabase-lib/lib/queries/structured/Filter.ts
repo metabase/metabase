@@ -8,11 +8,13 @@ import {
   Field,
 } from "metabase-types/types/Query";
 import { FilterOperator } from "metabase-types/types/Metadata";
+import { isExpression } from "metabase-lib/lib/expressions";
+import { getFilterArgumentFormatOptions } from "metabase-lib/lib/operators/utils";
 import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeField,
   isStartingFrom,
-} from "metabase/lib/query_time";
+} from "metabase-lib/lib/queries/utils/query-time";
 import {
   isStandard,
   isSegment,
@@ -21,9 +23,7 @@ import {
   hasFilterOptions,
   getFilterOptions,
   setFilterOptions,
-} from "metabase/lib/query/filter";
-import { isExpression } from "metabase/lib/expressions";
-import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
+} from "metabase-lib/lib/queries/utils/filter";
 import Dimension from "../../Dimension";
 import StructuredQuery from "../StructuredQuery";
 import MBQLClause from "./MBQLClause";

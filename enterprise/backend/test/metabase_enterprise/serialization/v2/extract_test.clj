@@ -229,7 +229,6 @@
                                                                     :aggregation [[:count]]}
                                                             :database "My Database"})
                         :created_at                  LocalDateTime
-                        (s/optional-key :updated_at) LocalDateTime
                         s/Keyword                    s/Any}
                        ser))
           (is (not (contains? ser :id)))
@@ -245,18 +244,17 @@
                    (set (serdes.base/serdes-dependencies ser))))))
 
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c2-id]))]
-          (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c2-eid}])
-                        :table_id                    (s/eq ["My Database" "PUBLIC" "Schema'd Table"])
-                        :creator_id                  (s/eq "mark@direstrai.ts")
-                        :collection_id               (s/eq coll-eid)
-                        :dataset_query               (s/eq {})
-                        :parameter_mappings          (s/eq [{:parameter_id "deadbeef"
-                                                             :card_id      c1-eid
-                                                             :target [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
-                                                                                  {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}])
-                        :created_at                  LocalDateTime
-                        (s/optional-key :updated_at) LocalDateTime
-                        s/Keyword      s/Any}
+          (is (schema= {:serdes/meta         (s/eq [{:model "Card" :id c2-eid}])
+                        :table_id            (s/eq ["My Database" "PUBLIC" "Schema'd Table"])
+                        :creator_id          (s/eq "mark@direstrai.ts")
+                        :collection_id       (s/eq coll-eid)
+                        :dataset_query       (s/eq {})
+                        :parameter_mappings  (s/eq [{:parameter_id "deadbeef"
+                                                     :card_id      c1-eid
+                                                     :target [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
+                                                                          {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}])
+                        :created_at          LocalDateTime
+                        s/Keyword            s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
@@ -266,6 +264,7 @@
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]
+                     [{:model "Card"       :id c1-eid}]
                      [{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]
@@ -302,8 +301,7 @@
                                  :enabled true}]
                                :column_settings
                                {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}})
-                        :created_at                  LocalDateTime
-                        (s/optional-key :updated_at) LocalDateTime
+                        :created_at    LocalDateTime
                         s/Keyword      s/Any}
                        ser))
           (is (not (contains? ser :id)))
@@ -324,14 +322,15 @@
                    (set (serdes.base/serdes-dependencies ser))))))
 
         (let [ser (serdes.base/extract-one "DashboardCard" {} (select-one "DashboardCard" [:= :id dc1-id]))]
-          (is (schema= {:serdes/meta                 (s/eq [{:model "Dashboard" :id dash-eid}
-                                                            {:model "DashboardCard" :id dc1-eid}])
-                        :dashboard_id                (s/eq dash-eid)
-                        :parameter_mappings          (s/eq [{:parameter_id "12345678"
-                                                             :card_id      c1-eid
-                                                             :target [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
-                                                                                  {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}])
-                        s/Keyword      s/Any}
+          (is (schema= {:serdes/meta         (s/eq [{:model "Dashboard" :id dash-eid}
+                                                    {:model "DashboardCard" :id dc1-eid}])
+                        :dashboard_id        (s/eq dash-eid)
+                        :parameter_mappings  (s/eq [{:parameter_id "12345678"
+                                                     :card_id      c1-eid
+                                                     :target [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
+                                                                          {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}])
+                        :created_at          LocalDateTime
+                        s/Keyword            s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
@@ -349,16 +348,15 @@
 
       (testing "Cards can be based on other cards"
         (let [ser (serdes.base/extract-one "Card" {} (select-one "Card" [:= :id c5-id]))]
-          (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c5-eid}])
-                        :table_id                    (s/eq ["My Database" "PUBLIC" "Schema'd Table"])
-                        :creator_id                  (s/eq "mark@direstrai.ts")
-                        :collection_id               (s/eq coll-eid)
-                        :dataset_query               (s/eq {:query    {:source-table c4-eid
-                                                                       :aggregation [[:count]]}
-                                                            :database "My Database"})
-                        :created_at                  LocalDateTime
-                        (s/optional-key :updated_at) LocalDateTime
-                        s/Keyword      s/Any}
+          (is (schema= {:serdes/meta    (s/eq [{:model "Card" :id c5-eid}])
+                        :table_id       (s/eq ["My Database" "PUBLIC" "Schema'd Table"])
+                        :creator_id     (s/eq "mark@direstrai.ts")
+                        :collection_id  (s/eq coll-eid)
+                        :dataset_query  (s/eq {:query    {:source-table c4-eid
+                                                          :aggregation [[:count]]}
+                                               :database "My Database"})
+                        :created_at     LocalDateTime
+                        s/Keyword       s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
@@ -393,7 +391,8 @@
                                                          :enabled true}]
                                                        :column_settings
                                                        {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}})
-                        s/Keyword      s/Any}
+                        :created_at             LocalDateTime
+                        s/Keyword               s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
@@ -471,6 +470,7 @@
           (is (schema= {:serdes/meta             (s/eq [{:model "Dimension" :id dim1-eid}])
                         :field_id                (s/eq ["My Database" nil "Schemaless Table" "email"])
                         :human_readable_field_id (s/eq nil)
+                        :created_at              LocalDateTime
                         s/Keyword                s/Any}
                        ser))
           (is (not (contains? ser :id)))
@@ -486,6 +486,7 @@
           (is (schema= {:serdes/meta             (s/eq [{:model "Dimension" :id dim2-eid}])
                         :field_id                (s/eq ["My Database" "PUBLIC" "Schema'd Table" "foreign_id"])
                         :human_readable_field_id (s/eq ["My Database" "PUBLIC" "Foreign Table"  "real_field"])
+                        :created_at              LocalDateTime
                         s/Keyword                s/Any}
                        ser))
           (is (not (contains? ser :id)))
@@ -518,16 +519,15 @@
                                                                :aggregation [[:sum [:field field-id nil]]]}}]]
       (testing "metrics"
         (let [ser (serdes.base/extract-one "Metric" {} (select-one "Metric" [:= :id m1-id]))]
-          (is (schema= {:serdes/meta                 (s/eq [{:model "Metric" :id m1-eid :label "My Metric"}])
-                        :table_id                    (s/eq ["My Database" nil "Schemaless Table"])
-                        :creator_id                  (s/eq "ann@heart.band")
-                        :definition                  (s/eq {:source-table ["My Database" nil "Schemaless Table"]
-                                                            :aggregation
-                                                            [[:sum [:field ["My Database" nil
-                                                                            "Schemaless Table" "Some Field"] nil]]]})
-                        :created_at                  LocalDateTime
-                        (s/optional-key :updated_at) LocalDateTime
-                        s/Keyword                    s/Any}
+          (is (schema= {:serdes/meta (s/eq [{:model "Metric" :id m1-eid :label "My Metric"}])
+                        :table_id    (s/eq ["My Database" nil "Schemaless Table"])
+                        :creator_id  (s/eq "ann@heart.band")
+                        :definition  (s/eq {:source-table ["My Database" nil "Schemaless Table"]
+                                            :aggregation
+                                            [[:sum [:field ["My Database" nil
+                                                            "Schemaless Table" "Some Field"] nil]]]})
+                        :created_at  LocalDateTime
+                        s/Keyword    s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
@@ -559,14 +559,13 @@
       (testing "native query snippets"
         (testing "can belong to :snippets collections"
           (let [ser (serdes.base/extract-one "NativeQuerySnippet" {} (select-one "NativeQuerySnippet" [:= :id s1-id]))]
-            (is (schema= {:serdes/meta                 (s/eq [{:model "NativeQuerySnippet"
-                                                               :id s1-eid
-                                                               :label "Snippet 1"}])
-                          :collection_id               (s/eq coll-eid)
-                          :creator_id                  (s/eq "ann@heart.band")
-                          :created_at                  OffsetDateTime
-                          (s/optional-key :updated_at) OffsetDateTime
-                          s/Keyword                    s/Any}
+            (is (schema= {:serdes/meta   (s/eq [{:model "NativeQuerySnippet"
+                                                 :id s1-eid
+                                                 :label "Snippet 1"}])
+                          :collection_id (s/eq coll-eid)
+                          :creator_id    (s/eq "ann@heart.band")
+                          :created_at    OffsetDateTime
+                          s/Keyword      s/Any}
                          ser))
             (is (not (contains? ser :id)))
 
@@ -582,7 +581,6 @@
                           (s/optional-key :collection_id) (s/eq nil)
                           :creator_id                     (s/eq "ann@heart.band")
                           :created_at                     OffsetDateTime
-                          (s/optional-key :updated_at)    OffsetDateTime
                           s/Keyword                       s/Any}
                          ser))
             (is (not (contains? ser :id)))
@@ -613,12 +611,11 @@
       (testing "timelines"
         (testing "with no events"
           (let [ser (serdes.base/extract-one "Timeline" {} (select-one "Timeline" [:= :id empty-id]))]
-            (is (schema= {:serdes/meta                 (s/eq [{:model "Timeline" :id empty-eid}])
-                          :collection_id               (s/eq coll-eid)
-                          :creator_id                  (s/eq "ann@heart.band")
-                          :created_at                  OffsetDateTime
-                          (s/optional-key :updated_at) OffsetDateTime
-                          s/Keyword                    s/Any}
+            (is (schema= {:serdes/meta   (s/eq [{:model "Timeline" :id empty-eid}])
+                          :collection_id (s/eq coll-eid)
+                          :creator_id    (s/eq "ann@heart.band")
+                          :created_at    OffsetDateTime
+                          s/Keyword      s/Any}
                          ser))
             (is (not (contains? ser :id)))
 
@@ -628,12 +625,11 @@
 
         (testing "with events"
           (let [ser   (serdes.base/extract-one "Timeline" {} (select-one "Timeline" [:= :id line-id]))]
-            (is (schema= {:serdes/meta                    (s/eq [{:model "Timeline" :id line-eid}])
-                          :collection_id                  (s/eq coll-eid)
-                          :creator_id                     (s/eq "ann@heart.band")
-                          :created_at                     OffsetDateTime
-                          (s/optional-key :updated_at)    OffsetDateTime
-                          s/Keyword                       s/Any}
+            (is (schema= {:serdes/meta   (s/eq [{:model "Timeline" :id line-eid}])
+                          :collection_id (s/eq coll-eid)
+                          :creator_id    (s/eq "ann@heart.band")
+                          :created_at    OffsetDateTime
+                          s/Keyword      s/Any}
                          ser))
             (is (not (contains? ser :id)))
 
@@ -644,16 +640,15 @@
       (testing "timeline events"
         (let [ser   (serdes.base/extract-one "TimelineEvent" {} (select-one "TimelineEvent" [:= :id e1-id]))
               stamp "2020-04-11T00:00:00Z"]
-            (is (schema= {:serdes/meta                    (s/eq [{:model "Timeline" :id line-eid}
-                                                                 {:model "TimelineEvent"
-                                                                  :id    stamp
-                                                                  :label "First Event"}])
-                          :timestamp                      (s/eq stamp)
-                          :timeline_id                    (s/eq line-eid)
-                          :creator_id                     (s/eq "ann@heart.band")
-                          :created_at                     OffsetDateTime
-                          (s/optional-key :updated_at)    OffsetDateTime
-                          s/Keyword                       s/Any}
+            (is (schema= {:serdes/meta (s/eq [{:model "Timeline" :id line-eid}
+                                              {:model "TimelineEvent"
+                                               :id    stamp
+                                               :label "First Event"}])
+                          :timestamp   (s/eq stamp)
+                          :timeline_id (s/eq line-eid)
+                          :creator_id  (s/eq "ann@heart.band")
+                          :created_at  OffsetDateTime
+                          s/Keyword    s/Any}
                          ser))
             (is (not (contains? ser :id)))
 
@@ -678,17 +673,16 @@
                                                                            :filter [:< [:field field-id nil] 18]}}]]
       (testing "segment"
         (let [ser (serdes.base/extract-one "Segment" {} (select-one "Segment" [:= :id s1-id]))]
-          (is (schema= {:serdes/meta                 (s/eq [{:model "Segment" :id s1-eid :label "My Segment"}])
-                        :table_id                    (s/eq ["My Database" nil "Schemaless Table"])
-                        :creator_id                  (s/eq "ann@heart.band")
-                        :created_at                  LocalDateTime
-                        :definition                  (s/eq {:source-table ["My Database" nil "Schemaless Table"]
-                                                            :aggregation [[:count]]
-                                                            :filter ["<" [:field ["My Database" nil
-                                                                                 "Schemaless Table" "Some Field"]
-                                                                         nil] 18]})
-                        (s/optional-key :updated_at) LocalDateTime
-                        s/Keyword                    s/Any}
+          (is (schema= {:serdes/meta (s/eq [{:model "Segment" :id s1-eid :label "My Segment"}])
+                        :table_id    (s/eq ["My Database" nil "Schemaless Table"])
+                        :creator_id  (s/eq "ann@heart.band")
+                        :definition  (s/eq {:source-table ["My Database" nil "Schemaless Table"]
+                                            :aggregation [[:count]]
+                                            :filter ["<" [:field ["My Database" nil
+                                                                 "Schemaless Table" "Some Field"]
+                                                         nil] 18]})
+                        :created_at  LocalDateTime
+                        s/Keyword    s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
@@ -724,14 +718,13 @@
                                               "Seafood" "Steakhouse" "Tea Room" "Winery"]}]]
       (testing "field values"
         (let [ser (serdes.base/extract-one "FieldValues" {} (select-one "FieldValues" [:= :id fv-id]))]
-          (is (schema= {:serdes/meta                 (s/eq [{:model "Database" :id "My Database"}
-                                                            {:model "Table"    :id "Schemaless Table"}
-                                                            {:model "Field"    :id "Some Field"}
-                                                            {:model "FieldValues" :id "0"}]) ; Always 0.
-                        :created_at                  LocalDateTime
-                        (s/optional-key :updated_at) OffsetDateTime
-                        :values                      (s/eq (json/generate-string values))
-                        s/Keyword                    s/Any}
+          (is (schema= {:serdes/meta (s/eq [{:model "Database" :id "My Database"}
+                                            {:model "Table"    :id "Schemaless Table"}
+                                            {:model "Field"    :id "Some Field"}
+                                            {:model "FieldValues" :id "0"}]) ; Always 0.
+                        :created_at  LocalDateTime
+                        :values      (s/eq (json/generate-string values))
+                        s/Keyword    s/Any}
                        ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :field_id))
@@ -772,10 +765,9 @@
         (let [ser (serdes.base/extract-one "Pulse" {} (select-one "Pulse" [:= :id p-none-id]))]
           (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-none-eid}])
                         :creator_id                     (s/eq "ann@heart.band")
-                        :created_at                     LocalDateTime
-                        (s/optional-key :updated_at)    LocalDateTime
                         (s/optional-key :dashboard_id)  (s/eq nil)
                         (s/optional-key :collection_id) (s/eq nil)
+                        :created_at                     LocalDateTime
                         s/Keyword                       s/Any}
                        ser))
           (is (not (contains? ser :id)))
@@ -788,10 +780,9 @@
         (let [ser (serdes.base/extract-one "Pulse" {} (select-one "Pulse" [:= :id p-coll-id]))]
           (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-coll-eid}])
                         :creator_id                     (s/eq "ann@heart.band")
-                        :created_at                     LocalDateTime
-                        (s/optional-key :updated_at)    LocalDateTime
                         (s/optional-key :dashboard_id)  (s/eq nil)
                         :collection_id                  (s/eq coll-eid)
+                        :created_at                     LocalDateTime
                         s/Keyword                       s/Any}
                        ser))
           (is (not (contains? ser :id)))
@@ -804,10 +795,9 @@
         (let [ser (serdes.base/extract-one "Pulse" {} (select-one "Pulse" [:= :id p-dash-id]))]
           (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-dash-eid}])
                         :creator_id                     (s/eq "ann@heart.band")
-                        :created_at                     LocalDateTime
-                        (s/optional-key :updated_at)    LocalDateTime
                         :dashboard_id                   (s/eq dash-eid)
                         (s/optional-key :collection_id) (s/eq nil)
+                        :created_at                     LocalDateTime
                         s/Keyword                       s/Any}
                        ser))
           (is (not (contains? ser :id)))
@@ -818,13 +808,12 @@
 
       (testing "pulse with both collection and dashboard"
         (let [ser (serdes.base/extract-one "Pulse" {} (select-one "Pulse" [:= :id p-both-id]))]
-          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-both-eid}])
-                        :creator_id                     (s/eq "ann@heart.band")
-                        :created_at                     LocalDateTime
-                        (s/optional-key :updated_at)    LocalDateTime
-                        :dashboard_id                   (s/eq dash-eid)
-                        :collection_id                  (s/eq coll-eid)
-                        s/Keyword                       s/Any}
+          (is (schema= {:serdes/meta   (s/eq [{:model "Pulse" :id p-both-eid}])
+                        :creator_id    (s/eq "ann@heart.band")
+                        :dashboard_id  (s/eq dash-eid)
+                        :collection_id (s/eq coll-eid)
+                        :created_at    LocalDateTime
+                        s/Keyword      s/Any}
                        ser))
           (is (not (contains? ser :id)))
 

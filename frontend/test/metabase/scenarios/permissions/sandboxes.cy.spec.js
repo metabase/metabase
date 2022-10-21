@@ -321,9 +321,8 @@ describeEE("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.server();
-        cy.route("POST", "/api/card/*/query").as("cardQuery");
-        cy.route("POST", "/api/dataset").as("dataset");
+        cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+        cy.intercept("POST", "/api/dataset").as("dataset");
 
         // Find saved question in "Our analytics"
         cy.visit("/collection/root");
@@ -395,9 +394,8 @@ describeEE("formatting > sandboxes", () => {
       cy.signOut();
       cy.signInAsSandboxedUser();
 
-      cy.server();
-      cy.route("POST", "/api/card/*/query").as("cardQuery");
-      cy.route("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+      cy.intercept("POST", "/api/dataset").as("dataset");
 
       // Find saved question in "Our analytics"
       cy.visit("/collection/root");
@@ -432,9 +430,6 @@ describeEE("formatting > sandboxes", () => {
        * that uses a query builder instead of SQL based questions.
        */
       it("should be able to sandbox using query builder saved questions", () => {
-        cy.server();
-        cy.route("POST", "/api/dataset").as("dataset");
-
         cy.log("Create 'Orders'-based question using QB");
         cy.createQuestion({
           name: "520_Orders",
@@ -503,9 +498,8 @@ describeEE("formatting > sandboxes", () => {
       // which is a bug fixed in ssue metabase#14302
       ["normal" /* , "workaround" */].forEach(test => {
         it(`${test.toUpperCase()} version:\n advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)`, () => {
-          cy.server();
-          cy.route("POST", "/api/card/*/query").as("cardQuery");
-          cy.route("PUT", "/api/card/*").as("questionUpdate");
+          cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+          cy.intercept("PUT", "/api/card/*").as("questionUpdate");
 
           cy.createNativeQuestion({
             name: "EE_520_Q1",
@@ -606,9 +600,6 @@ describeEE("formatting > sandboxes", () => {
       });
 
       it("simple sandboxing should work (metabase#14629)", () => {
-        cy.server();
-        cy.route("POST", "/api/dataset").as("dataset");
-
         cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
@@ -690,9 +681,8 @@ describeEE("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.server();
-        cy.route("POST", "/api/card/*/query").as("cardQuery");
-        cy.route("POST", "/api/dataset").as("dataset");
+        cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+        cy.intercept("POST", "/api/dataset").as("dataset");
 
         cy.visit("/collection/root");
         cy.findByText(QUESTION_NAME).click();
@@ -717,9 +707,8 @@ describeEE("formatting > sandboxes", () => {
       const ERROR_MESSAGE =
         "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.";
 
-      cy.server();
-      cy.route("POST", "/api/mt/gtap").as("sandboxTable");
-      cy.route("GET", "/api/permissions/group").as("tablePermissions");
+      cy.intercept("POST", "/api/mt/gtap").as("sandboxTable");
+      cy.intercept("GET", "/api/permissions/group").as("tablePermissions");
 
       // Question with differently-typed columns than the sandboxed table
       cy.createNativeQuestion({
@@ -742,9 +731,9 @@ describeEE("formatting > sandboxes", () => {
       cy.findByText(QUESTION_NAME).click();
       cy.button("Save").click();
 
-      cy.wait("@sandboxTable").then(xhr => {
-        expect(xhr.status).to.eq(400);
-        expect(xhr.response.body.message).to.eq(ERROR_MESSAGE);
+      cy.wait("@sandboxTable").then(({ response }) => {
+        expect(response.statusCode).to.eq(400);
+        expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
       cy.get(".Modal").scrollTo("bottom");
       cy.findByText(ERROR_MESSAGE);
@@ -770,8 +759,7 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("should be able to remove columns via QB sidebar / settings (metabase#14841)", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/dataset").as("dataset");
 
       cy.sandboxTable({
         table_id: ORDERS_ID,
@@ -894,8 +882,7 @@ describeEE("formatting > sandboxes", () => {
     it.skip("sandboxed user should be able to send pulses to Slack (metabase#14844)", () => {
       cy.viewport(1400, 1000);
 
-      cy.server();
-      cy.route("GET", "/api/collection/*").as("collection");
+      cy.intercept("GET", "/api/collection/*").as("collection");
 
       cy.sandboxTable({
         table_id: ORDERS_ID,
@@ -918,9 +905,6 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it.skip("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
@@ -942,9 +926,6 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
       remapDisplayValueToFK({
         display_value: ORDERS.USER_ID,
         name: "User ID",
