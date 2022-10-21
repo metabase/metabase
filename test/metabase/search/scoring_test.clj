@@ -267,8 +267,8 @@
                            :d {:name "customer examples of bad sorting" :model "dashboard"}}
         {:keys [a b c d]} labeled-results]
     (is (= (map :name [a                ; exact text match
-                       b                ; good text match
                        c                ; weak text match, but awesome other stuff
+                       b                ; good text match
                        d])              ; middling text match, no other signal
            (->> labeled-results
                 vals

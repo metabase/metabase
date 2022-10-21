@@ -444,8 +444,8 @@
                       Collection [_ (archived {:name "collection test collection 2"})]
                       Metric     [_ (archived {:name "metric test metric 2"})]
                       Segment    [_ (archived {:name "segment test segment 2"})]]
-        (is (= (default-search-results)
-               (search-request-data :crowberto :q "test"))))))
+        (is (= (map :name (default-search-results))
+               (map :name (search-request-data :crowberto :q "test")))))))
 
   (testing "Should return archived results when specified"
     (with-search-items-in-root-collection "test2"
@@ -456,8 +456,8 @@
                       Collection [_ (archived {:name "collection test collection"})]
                       Metric     [_ (archived {:name "metric test metric"})]
                       Segment    [_ (archived {:name "segment test segment"})]]
-        (is (= (default-archived-results)
-               (search-request-data :crowberto :q "test", :archived "true"))))))
+        (is (= (map :name (default-archived-results))
+               (map :name (search-request-data :crowberto :q "test", :archived "true")))))))
   (testing "Should return archived results when specified without a search query"
     (with-search-items-in-root-collection "test2"
       (mt/with-temp* [Card       [_ (archived {:name "card test card"})]
@@ -466,8 +466,8 @@
                       Collection [_ (archived {:name "collection test collection"})]
                       Metric     [_ (archived {:name "metric test metric"})]
                       Segment    [_ (archived {:name "segment test segment"})]]
-        (is (= (default-archived-results)
-               (search-request-data :crowberto :archived "true")))))))
+        (is (= (map :name (default-archived-results))
+               (map :name (search-request-data :crowberto :archived "true"))))))))
 
 (deftest alerts-test
   (testing "Search should not return alerts"
