@@ -3,8 +3,6 @@ import _ from "underscore";
 
 import type { DataApp, DataAppNavItem } from "metabase-types/api";
 
-import * as Urls from "metabase/lib/urls";
-
 import { MainNavbarProps, SelectedItem } from "../types";
 
 import NewButton from "./NewButton";
@@ -68,8 +66,6 @@ function DataAppNavbarView({
     ),
     [dataApp, pageMap, dataAppPage],
   );
-
-  const exitAppPath = Urls.dataApp(dataApp, { mode: "preview" });
 
   return (
     <Root>
