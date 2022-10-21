@@ -35,50 +35,43 @@
 (deftest official-collection-tests
   (testing "it should bump up the value of items in official collections"
     ;; using the ee implementation that isn't wrapped by enable-enhancements? check
-    (let [search-string     "custom expression examples"
-          labeled-results   {:a {:name "custom expression examples" :model "dashboard"}
-                             :b {:name "examples of custom expressions" :model "dashboard"}
-                             :c {:name                "customer success stories"
-                                 :dashboardcard_count 50
-                                 :updated_at          (t/offset-date-time)
-                                 :collection_position 1
-                                 :model               "dashboard"}
-                             :d {:name "customer examples of bad sorting" :model "dashboard"}}
-          {:keys [a b c d]} labeled-results]
+    (let [search-string "custom expression examples"
+          a             {:id "a" :name "custom expression examples" :model "dashboard"}
+          b             {:id "b" :name "examples of custom expressions" :model "dashboard"}
+          c             {:id "c"
+                         :name                "customer success stories"
+                         :dashboardcard_count 50
+                         :updated_at          (t/offset-date-time)
+                         :collection_position 1
+                         :model               "dashboard"}
+          d             {:id "d" :name "customer examples of bad sorting" :model "dashboard"}]
       (doseq [item [a b c d]]
         (is (> (ee-score search-string (assoc item :collection_authority_level "official"))
                (ee-score search-string item))
-            (str "Item not greater for model: " (:model item))))
+            (str "Item not greater for item: " item)))
       (let [items (shuffle [a b c d])]
-        (is (= (sort-by #(oss-score search-string %) items)
-               ;; assert that the ordering remains the same even if scores are slightly different
-               (sort-by #(ee-score search-string %) items)))
-        (is (= ["customer examples of bad sorting"
-                "customer success stories"
-                "examples of custom expressions"
-                "custom expression examples"]
-               (map :name (sort-by #(oss-score search-string %) [a b c d]))))
-        (is (= ["customer success stories"
-                "customer examples of bad sorting" ;; bumped up slightly in results
-                "examples of custom expressions"
-                "custom expression examples"]
-               (map :name (sort-by #(ee-score search-string %)
-                                   [a b c
-                                    (assoc d :collection_authority_level "official")])))))))
+        (is (= ["d" "b" "c" "a"]
+               (map :id (sort-by #(oss-score search-string %) [a b c d]))))
+        (is (= ["c" "b" "d" "a"]
+               (map :id (sort-by #(ee-score search-string %)
+                                 [a b c (assoc d :collection_authority_level "official")]))))
+        (is (= ["d" "b" "c" "a"]
+               (map :id (sort-by #(oss-score search-string %)
+                                 [a b c (assoc d :collection_authority_level "official")])))))))
   (testing "It should bump up the value of verified items"
     (let [ss "foo"
-          a {:name "foobar"
-             :model "card"
-             :id :a
-             :dashboardcard_count 0}
-          b {:name "foo foo"
-             :model "card"
-             :id :b
-             :dashboardcard_count 0}
-          c {:name "foo foo foo"
-             :model "card"
-             :id :c
-             :dashboardcard_count 0}]
+          a  {:name                "foobar"
+              :model               "card"
+              :id                  :a
+              :dashboardcard_count 0}
+          b  {:name                "foo foo"
+              :model               "card"
+              :id                  :b
+              :dashboardcard_count 0}
+          c  {:name                "foo foo foo"
+              :model               "card"
+              :id                  :c
+              :dashboardcard_count 0}]
       (doseq [item [a b c]]
         (is (> (ee-score ss (assoc item :moderated_status "verified"))
                (ee-score ss item))
@@ -96,20 +89,15 @@
                             c])))))))
 
 (defn- all-permutations-all-orders
-  "(all-permutations-all-orders []) ;; => [[]]
-
-   (all-permutations-all-orders [1]) ;; => [[] [1]]
-
+  "(all-permutations-all-orders [1]) ;; => [[] [1]]
    (all-permutations-all-orders [1 2])
-   ;; => [[]
-   ;;     [1] [2]
-   ;;     [1 2] [2 1]]
-
+   ;; => [[] [1] [2] [1 2] [2 1]]
    (all-permutations-all-orders [1 2 3])
-   ;; => [[]
-   ;;     [1]             [2]             [3]
-   ;;     [1 2]   [2 1]   [1 3]   [3 1]   [2 3]   [3 2]
-   ;;     [1 2 3] [1 3 2] [2 1 3] [2 3 1] [3 1 2] [3 2 1]]"
+   ;; => [[]                                               ;; size 0
+   ;;     [1]             [2]             [3]              ;; size 1
+   ;;     [1 2]   [2 1]   [1 3]   [3 1]   [2 3]   [3 2]    ;; size 2
+   ;;     [1 2 3] [1 3 2] [2 1 3] [2 3 1] [3 1 2] [3 2 1]] ;; size 3
+  "
   [values]
   {:pre [(> 10 (count values))]}
   (mapv vec (mapcat math.combo/permutations (math.combo/subsets values))))
@@ -124,12 +112,11 @@
         results (map ->query corpus)]
     (doseq [search-string corpus]
       (is (= search-string
-             (-> results
-                 (scoring/top-results
-                  2
-                  #(metabase.search.scoring/score-and-result search-string %))
+             (-> (scoring/top-results
+                  results
+                  1
+                  (map #(metabase.search.scoring/score-and-result search-string %)))
                  first
-                 :result
                  :name))))))
 
 (deftest identical-results-result-in-identical-hits

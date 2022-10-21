@@ -144,7 +144,7 @@
                               {:score  [2 2 i]
                                :result (str "item " i)})))]
         (is (= (map :result items)
-               (scoring/top-results items 20 xf)))))
+               (scoring/top-results items 200 xf)))))
     (testing "a full queue only saves the top items"
       (let [sorted-items (->> (+ 10 search-config/max-filtered-results)
                               range
@@ -153,7 +153,7 @@
                                      {:score  [1 2 3 i]
                                       :result (str "item " i)})))]
         (is (= (->> sorted-items
-                    (take search-config/max-filtered-results)
+                    (take 20)
                     (map :result))
                (scoring/top-results (shuffle sorted-items) 20 xf)))))))
 

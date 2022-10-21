@@ -227,11 +227,7 @@
      (max (- stale-time days-ago) 0)
      stale-time)))
 
-(defn compare-score-and-result
-  "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
-  compared in order."
-  [{score-1 :score} {score-2 :score}]
-  (compare score-1 score-2))
+
 
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
@@ -292,14 +288,20 @@
          text-match-score (reduce + (map :score text-matches))
          all-scores       (vec (concat (score-result result) text-matches))
          relevant-scores  (remove #(= 0 (:score %)) all-scores)
-         total-score      (compute-normalized-score relevant-scores)]
+         total-score      (compute-normalized-score all-scores)]
      ;; Searches with a blank search string mean "show me everything, ranked";
      ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
      ;; If the search string is non-blank, results with no text match have a score of zero.
      (if (or (str/blank? raw-search-string) (pos? text-match-score))
-       {:score  total-score
+       {:score total-score
         :result (serialize result all-scores relevant-scores)}
        {:score 0}))))
+
+(defn compare-score
+  "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
+  compared in order."
+  [{score-1 :score} {score-2 :score}]
+  (compare score-1 score-2))
 
 (defn top-results
   "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the
@@ -307,5 +309,5 @@
   maps with `:score` and `:result` keys."
   [reducible-results max-results xf]
   (->> reducible-results
-       (transduce xf (u/sorted-take max-results compare-score-and-result))
+       (transduce xf (u/sorted-take max-results compare-score))
        (map :result)))
