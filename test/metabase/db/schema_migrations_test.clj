@@ -697,8 +697,10 @@
 (deftest populate-collection-created-at-test
   (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
     (impl/test-migrations ["v45.00-048" "v45.00-050"] [migrate!]
-      (let [database-id              (db/simple-insert! Database (-> (mt/with-temp-defaults Database)
-                                                                     (assoc :engine "h2")))
+      (let [database-id              (db/simple-insert! Database {:details   "{}"
+                                                                  :engine    "h2"
+                                                                  :is_sample false
+                                                                  :name      "populate-collection-created-at-test-db"})
             user-id                  (db/simple-insert! User {:first_name  "Cam"
                                                               :last_name   "Era"
                                                               :email       "cam@example.com"
