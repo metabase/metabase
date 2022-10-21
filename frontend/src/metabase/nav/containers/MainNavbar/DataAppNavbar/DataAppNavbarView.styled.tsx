@@ -19,7 +19,7 @@ export const NavItemsList = styled.ul`
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: 1rem;
 
   height: 3rem;
 
