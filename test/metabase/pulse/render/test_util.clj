@@ -102,7 +102,8 @@
       :gauge       {}
       :table       {}
       :scatter     {}
-      :row         {}
+      :row         {:graph.dimensions [(first header-row)]
+                    :graph.metrics (vec (rest header-row))}
       :list        {}
       :pivot       {}} display-type)))
 
