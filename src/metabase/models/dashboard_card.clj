@@ -48,14 +48,15 @@
                                    :entity_id    true})
           :types      (constantly {:parameter_mappings     :parameters-list
                                    :visualization_settings :visualization-settings})
-          :pre-insert pre-insert})
+          :pre-insert pre-insert}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :card)
-                                      (comp serdes.hash/identity-hash
-                                            #(db/select-one 'Dashboard :id %)
-                                            :dashboard_id)
-                                      :visualization_settings])})
+(defmethod serdes.hash/identity-hash-fields DashboardCard
+  [_dashboard-card]
+  [(serdes.hash/hydrated-hash :card "<none>") ; :card is optional, eg. text cards
+   (comp serdes.hash/identity-hash
+         #(db/select-one 'Dashboard :id %)
+         :dashboard_id)
+   :visualization_settings])
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
@@ -135,21 +136,26 @@
    s/Keyword                                s/Any})
 
 (s/defn update-dashboard-card!
-  "Update an existing DashboardCard` including all DashboardCardSeries.
+  "Update an existing DashboardCard including all DashboardCardSeries.
    Returns the updated DashboardCard or throws an Exception."
-  [{:keys [id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
+  [{:keys [id card_id action_id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
   (let [{:keys [size_x size_y row col series]} (merge {:series []} dashboard-card)]
     (db/transaction
      ;; update the dashcard itself (positional attributes)
      (when (and size_x size_y row col)
        (db/update-non-nil-keys! DashboardCard id
-                                :action_id              action_id
-                                :size_x                 size_x
-                                :size_y                 size_y
-                                :row                    row
-                                :col                    col
-                                :parameter_mappings     parameter_mappings
-                                :visualization_settings visualization_settings))
+                                (cond->
+                                  {:action_id              action_id
+                                   :size_x                 size_x
+                                   :size_y                 size_y
+                                   :row                    row
+                                   :col                    col
+                                   :parameter_mappings     parameter_mappings
+                                   :visualization_settings visualization_settings}
+                                  ;; Allow changing card for model_actions
+                                  ;; This is to preserve the existing behavior of questions and card_id
+                                  ;; I don't know why card_id couldn't be changed for questions though.
+                                  (:action_slug visualization_settings) (assoc :card_id card_id))))
      ;; update series (only if they changed)
      (when-not (= series (map :card_id (db/select [DashboardCardSeries :card_id]
                                                   :dashboardcard_id id
@@ -213,24 +219,16 @@
     (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-(defmethod serdes.base/extract-query "DashboardCard" [_ {:keys [user]}]
-  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
-  (serdes.base/raw-reducible-query
-    "DashboardCard"
-    {:select     [:dc.*]
-     :from       [[:report_dashboardcard :dc]]
-     :left-join  [[:report_dashboard :dash] [:= :dash.id :dc.dashboard_id]
-                  [:collection :coll]       [:= :coll.id :dash.collection_id]]
-     :where      (if user
-                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                   [:is :coll.personal_owner_id nil])}))
+(defmethod serdes.base/extract-query "DashboardCard" [_ {:keys [collection-set]}]
+  (let [dashboards (db/select-ids 'Dashboard :collection_id [:in collection-set])]
+    (db/select-reducible DashboardCard :dashboard_id [:in dashboards])))
 
 (defmethod serdes.base/serdes-dependencies "DashboardCard"
   [{:keys [card_id dashboard_id parameter_mappings visualization_settings]}]
   (->> (mapcat serdes.util/mbql-deps parameter_mappings)
        (concat (serdes.util/visualization-settings-deps visualization_settings))
-       (concat #{[{:model "Dashboard" :id dashboard_id}]
-                 [{:model "Card"      :id card_id}]})
+       (concat #{[{:model "Dashboard" :id dashboard_id}] })
+       (concat (when card_id #{[{:model "Card" :id card_id}]}))
        set))
 
 (defmethod serdes.base/serdes-generate-path "DashboardCard" [_ dashcard]
@@ -254,6 +252,11 @@
       (update :visualization_settings serdes.util/import-visualization-settings)))
 
 (defmethod serdes.base/serdes-descendants "DashboardCard" [_model-name id]
-  (let [{:keys [card_id dashboard_id]} (db/select-one DashboardCard :id id)]
-    #{["Card"      card_id]
-      ["Dashboard" dashboard_id]}))
+  (let [{:keys [card_id dashboard_id parameter_mappings]} (db/select-one DashboardCard :id id)
+        cards-in-params (set (for [{:keys [card_id]} parameter_mappings
+                                   :when card_id]
+                               ["Card" card_id]))]
+    (cond-> #{["Dashboard" dashboard_id]}
+      ;; card_id is nil for text cards; in that case there's no Card to depend on.
+      card_id               (conj ["Card" card_id])
+      (seq cards-in-params) (set/union cards-in-params))))

@@ -4,23 +4,8 @@ import {
   describeEE,
   mockSessionProperty,
   isEE,
+  typeAndBlurUsingLabel,
 } from "__support__/e2e/helpers";
-
-function typeField(label, value) {
-  cy.findByLabelText(label).clear().type(value).blur();
-}
-
-function toggleFieldWithDisplayName(displayName) {
-  cy.contains(displayName).closest(".Form-field").find("input").click();
-}
-
-function selectFieldOption(fieldName, option) {
-  cy.contains(fieldName)
-    .parents(".Form-field")
-    .findByTestId("select-button")
-    .click();
-  popover().contains(option).click({ force: true });
-}
 
 describe("scenarios > admin > databases > add", () => {
   beforeEach(() => {
@@ -28,103 +13,21 @@ describe("scenarios > admin > databases > add", () => {
     cy.signInAsAdmin();
   });
 
-  it("should add a database and redirect to listing", () => {
-    cy.intercept("POST", "/api/database", req => {
-      req.reply({ body: { id: 42 }, delay: 1000 });
-    }).as("createDatabase");
-
-    cy.visit("/admin/databases/create");
-
-    // Instead of bloating our test suite with a separate repro, this line will do
-    cy.log(
-      "**Repro for [metabase#14334](https://github.com/metabase/metabase/issues/14334)**",
-    );
-    cy.findByText("Show advanced options").click();
-    cy.findByLabelText("Rerun queries for simple explorations").should(
-      "have.attr",
-      "aria-checked",
-      "true",
-    );
-
-    typeField("Display name", "Test db name");
-    typeField("Host", "localhost");
-    typeField("Database name", "test_postgres_db");
-    typeField("Username", "uberadmin");
-
-    cy.button("Save").should("not.be.disabled").click();
-
-    cy.wait("@createDatabase");
-
-    cy.findByText("We're taking a look at your database!");
-    cy.findByText("Explore sample data");
-  });
-
-  it("should trim fields needed to connect to the database (metabase#12972)", () => {
-    cy.intercept("POST", "/api/database", req => {
-      req.reply({ body: { id: 42 } });
-    }).as("createDatabase");
-
-    cy.visit("/admin/databases/create");
-
-    typeField("Display name", "Test db name");
-    typeField("Host", "localhost  \n  ");
-    typeField("Database name", " test_postgres_db");
-    typeField("Username", "   uberadmin   ");
-
-    cy.findByText("Save").click();
-
-    cy.wait("@createDatabase").then(({ request }) => {
-      expect(request.body.details.host).to.equal("localhost");
-      expect(request.body.details.dbname).to.equal("test_postgres_db");
-      expect(request.body.details.user).to.equal("uberadmin");
-    });
-  });
-
-  it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
+  it("should show validation error if you enter invalid db connection info", () => {
     cy.intercept("POST", "/api/database").as("createDatabase");
+
+    // should display a setup help card
     cy.visit("/admin/databases/create");
+    cy.findByText("Need help connecting?");
 
     chooseDatabase("H2");
-    typeField("Display name", "Test db name");
-    typeField("Connection String", "invalid");
-
-    cy.findByText("Show advanced options").click();
-    toggleFieldWithDisplayName("Choose when syncs and scans happen");
+    typeAndBlurUsingLabel("Display name", "Test");
+    typeAndBlurUsingLabel("Connection String", "invalid");
 
     cy.button("Save").click();
     cy.wait("@createDatabase");
     cy.findByText(": check your connection string");
     cy.findByText("Implicitly relative file paths are not allowed.");
-  });
-
-  it("should show scheduling settings if you enable the toggle", () => {
-    cy.intercept("POST", "/api/database", req => {
-      req.reply({ body: { id: 42 } });
-    }).as("createDatabase");
-    cy.intercept("POST", "/api/database/validate", req => {
-      req.reply({ body: { valid: true } });
-    });
-
-    cy.visit("/admin/databases/create");
-
-    typeField("Display name", "Test db name");
-    typeField("Database name", "test_postgres_db");
-    typeField("Username", "uberadmin");
-
-    cy.findByText("Show advanced options").click();
-    toggleFieldWithDisplayName("Choose when syncs and scans happen");
-
-    cy.findByText("Never, I'll do this manually if I need to").click();
-
-    cy.button("Save").click();
-
-    cy.wait("@createDatabase").then(({ request }) => {
-      expect(request.body.engine).to.equal("postgres");
-      expect(request.body.name).to.equal("Test db name");
-      expect(request.body.details.user).to.equal("uberadmin");
-    });
-
-    cy.url().should("match", /admin\/databases\?created=true$/);
   });
 
   it("should show error correctly on server error", () => {
@@ -138,9 +41,9 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
-    typeField("Display name", "Test db name");
-    typeField("Database name", "test_postgres_db");
-    typeField("Username", "uberadmin");
+    typeAndBlurUsingLabel("Display name", "Test");
+    typeAndBlurUsingLabel("Database name", "db");
+    typeAndBlurUsingLabel("Username", "admin");
 
     cy.button("Save").click();
 
@@ -162,45 +65,6 @@ describe("scenarios > admin > databases > add", () => {
     });
   });
 
-  it("should display a setup help card", () => {
-    cy.visit("/admin/databases/create");
-    cy.findByText("Need help connecting?");
-  });
-
-  it("should respect users' decision to manually sync large database (metabase#17450)", () => {
-    const H2_CONNECTION_STRING =
-      "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest";
-
-    const databaseName = "Another H2";
-
-    cy.intercept("POST", "/api/database").as("createDatabase");
-    cy.visit("/admin/databases/create");
-
-    chooseDatabase("H2");
-
-    typeField("Display name", databaseName);
-    typeField("Connection String", H2_CONNECTION_STRING);
-
-    cy.findByText("Show advanced options").click();
-    cy.findByLabelText("Choose when syncs and scans happen")
-      .click()
-      .should("have.attr", "aria-checked", "true");
-
-    isSyncOptionSelected("Never, I'll do this manually if I need to");
-
-    cy.button("Save").click();
-    cy.wait("@createDatabase");
-
-    cy.findByText("We're taking a look at your database!");
-    cy.findByLabelText("close icon").click();
-
-    cy.findByRole("table").within(() => {
-      cy.findByText(databaseName).click();
-    });
-
-    isSyncOptionSelected("Never, I'll do this manually if I need to");
-  });
-
   describe("BigQuery", () => {
     it("should let you upload the service account json from a file", () => {
       cy.visit("/admin/databases/create");
@@ -208,8 +72,8 @@ describe("scenarios > admin > databases > add", () => {
       chooseDatabase("BigQuery");
 
       // enter text
-      typeField("Display name", "bq db");
-      // typeField("Dataset ID", "some-dataset");
+      typeAndBlurUsingLabel("Display name", "bq db");
+      // typeAndBlurUsingLabel("Dataset ID", "some-dataset");
       selectFieldOption("Datasets", "Only these...");
       cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
 
@@ -288,9 +152,9 @@ describe("scenarios > admin > databases > add", () => {
       cy.visit("/admin/databases/create");
       chooseDatabase("Google Analytics");
 
-      typeField("Display name", "google analytics");
+      typeAndBlurUsingLabel("Display name", "google analytics");
 
-      typeField("Google Analytics Account ID", " 999  ");
+      typeAndBlurUsingLabel("Google Analytics Account ID", " 999  ");
 
       // create blob to act as selected file
       cy.get("input[type=file]")
@@ -323,18 +187,19 @@ describe("scenarios > admin > databases > add", () => {
   describeEE("caching", () => {
     beforeEach(() => {
       mockSessionProperty("enable-query-caching", true);
-    });
 
-    it("sets cache ttl to null by default", () => {
       cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
       cy.visit("/admin/databases/create");
 
-      typeField("Display name", "Test db name");
-      typeField("Host", "localhost");
-      typeField("Database name", "test_postgres_db");
-      typeField("Username", "uberadmin");
+      typeAndBlurUsingLabel("Display name", "Test");
+      typeAndBlurUsingLabel("Host", "localhost");
+      typeAndBlurUsingLabel("Database name", "db");
+      typeAndBlurUsingLabel("Username", "admin");
 
       cy.findByText("Show advanced options").click();
+    });
+
+    it("sets cache ttl to null by default", () => {
       cy.button("Save").click();
 
       cy.wait("@createDatabase").then(({ request }) => {
@@ -343,15 +208,6 @@ describe("scenarios > admin > databases > add", () => {
     });
 
     it("allows to set cache ttl", () => {
-      cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
-      cy.visit("/admin/databases/create");
-
-      typeField("Display name", "Test db name");
-      typeField("Host", "localhost");
-      typeField("Database name", "test_postgres_db");
-      typeField("Username", "uberadmin");
-
-      cy.findByText("Show advanced options").click();
       cy.findByText("Use instance default (TTL)").click();
       popover().findByText("Custom").click();
       cy.findByDisplayValue("24").clear().type("48").blur();
@@ -407,12 +263,18 @@ describe("scenarios > admin > databases > add", () => {
     );
   });
 });
+function toggleFieldWithDisplayName(displayName) {
+  cy.contains(displayName).closest(".Form-field").find("input").click();
+}
+
+function selectFieldOption(fieldName, option) {
+  cy.contains(fieldName)
+    .parents(".Form-field")
+    .findByTestId("select-button")
+    .click();
+  popover().contains(option).click({ force: true });
+}
 
 function chooseDatabase(database) {
   selectFieldOption("Database type", database);
-}
-
-function isSyncOptionSelected(option) {
-  // This is a really bad way to assert that the text element is selected/active. Can it be fixed in the FE code?
-  cy.findByText(option).parent().should("have.class", "text-brand");
 }

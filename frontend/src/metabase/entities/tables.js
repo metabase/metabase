@@ -23,12 +23,11 @@ import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 
 import { GET, PUT } from "metabase/lib/api";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
-} from "metabase/lib/saved-questions";
-
-import { getMetadata } from "metabase/selectors/metadata";
+} from "metabase-lib/lib/metadata/utils/saved-questions";
 
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>

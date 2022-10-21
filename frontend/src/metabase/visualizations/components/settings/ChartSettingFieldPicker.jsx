@@ -2,7 +2,7 @@
 import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { keyForColumn } from "metabase-lib/lib/queries/utils/dataset";
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 import ChartSettingSelect from "./ChartSettingSelect";
 import {
   SettingsIcon,
@@ -25,7 +25,7 @@ const ChartSettingFieldPicker = ({
   if (value && showColumnSetting && columns) {
     const column = _.findWhere(columns, { name: value });
     if (column && columnHasSettings(column)) {
-      columnKey = keyForColumn(column);
+      columnKey = getColumnKey(column);
     }
   }
   return (

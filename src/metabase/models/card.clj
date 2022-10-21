@@ -324,21 +324,15 @@
           :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
           :post-insert    post-insert
           :pre-delete     pre-delete
-          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields Card
+  [_card]
+  [:name (serdes.hash/hydrated-hash :collection)])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
-(defmethod serdes.base/extract-query "Card" [_ {:keys [user]}]
-  (serdes.base/raw-reducible-query
-   "Card"
-   {:select     [:card.*]
-    :from       [[:report_card :card]]
-    :left-join  [[:collection :coll] [:= :coll.id :card.collection_id]]
-    :where      (if user
-                  [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                  [:is :coll.personal_owner_id nil])}))
+(defmethod serdes.base/extract-query "Card" [_ {:keys [collection-set]}]
+  (db/select-reducible Card :collection_id [:in collection-set]))
 
 (defmethod serdes.base/extract-one "Card"
   [_model-name _opts card]
@@ -351,7 +345,8 @@
       (update :table_id               serdes.util/export-table-fk)
       (update :collection_id          serdes.util/export-fk 'Collection)
       (update :creator_id             serdes.util/export-user)
-      (update :dataset_query          serdes.util/export-json-mbql)
+      (update :made_public_by_id      serdes.util/export-user)
+      (update :dataset_query          serdes.util/export-mbql)
       (update :parameter_mappings     serdes.util/export-parameter-mappings)
       (update :visualization_settings serdes.util/export-visualization-settings)
       (dissoc :result_metadata))) ; Not portable, and can be rebuilt on the other side.
@@ -363,8 +358,9 @@
       (update :database_id            serdes.util/import-fk-keyed 'Database :name)
       (update :table_id               serdes.util/import-table-fk)
       (update :creator_id             serdes.util/import-user)
+      (update :made_public_by_id      serdes.util/import-user)
       (update :collection_id          serdes.util/import-fk 'Collection)
-      (update :dataset_query          serdes.util/import-json-mbql)
+      (update :dataset_query          serdes.util/import-mbql)
       (update :parameter_mappings     serdes.util/import-parameter-mappings)
       (update :visualization_settings serdes.util/import-visualization-settings)))
 
@@ -381,8 +377,13 @@
        vec))
 
 (defmethod serdes.base/serdes-descendants "Card" [_model-name id]
-  (let [card (db/select-one Card :id id)
-        source-table (some-> card :dataset_query :query :source-table)]
-    (when (and (string? source-table)
-               (.startsWith ^String source-table "card__"))
-      #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})))
+  (let [card          (db/select-one Card :id id)
+        source-table  (some->  card :dataset_query :query :source-table)
+        template-tags (some->> card :dataset_query :native :template-tags vals (filter :card-id))]
+    (set/union
+      (when (and (string? source-table)
+                 (.startsWith ^String source-table "card__"))
+        #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})
+      (when (seq template-tags)
+        (set (for [{:keys [card-id]} template-tags]
+               ["Card" card-id]))))))

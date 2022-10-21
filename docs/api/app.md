@@ -27,6 +27,18 @@ Fetch a specific App.
 
 *  **`id`**
 
+## `GET /api/app/global-graph`
+
+Fetch the global graph of all App Permissions.
+
+You must be a superuser to do this.
+
+## `GET /api/app/graph`
+
+Fetch the graph of all App Permissions.
+
+You must be a superuser to do this.
+
 ## `POST /api/app/`
 
 Endpoint to create an app.
@@ -84,6 +96,26 @@ Endpoint to change an app.
 *  **`options`** value may be nil, or if non-nil, value must be a map.
 
 *  **`nav_items`** value may be nil, or if non-nil, value must be an array. Each value may be nil, or if non-nil, value must be a map.
+
+## `PUT /api/app/global-graph`
+
+Do a batch update of the global App Permissions by passing in a modified graph.
+
+You must be a superuser to do this.
+
+### PARAMS:
+
+*  **`body`** value must be a map.
+
+## `PUT /api/app/graph`
+
+Do a batch update of the advanced App Permissions by passing in a modified graph.
+
+You must be a superuser to do this.
+
+### PARAMS:
+
+*  **`body`** value must be a map.
 
 ---
 

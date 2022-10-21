@@ -198,6 +198,7 @@
     metabase.automagic-dashboards.populate                          populate
     metabase.cmd.copy.h2                                            copy.h2
     metabase.config                                                 config
+    metabase.config.file                                            config.file
     metabase.connection-pool                                        connection-pool
     metabase.db.connection                                          mdb.connection
     metabase.db.jdbc-protocols                                      mdb.jdbc-protocols

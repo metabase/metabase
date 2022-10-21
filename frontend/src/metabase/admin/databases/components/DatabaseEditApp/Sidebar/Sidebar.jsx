@@ -8,10 +8,6 @@ import ActionButton from "metabase/components/ActionButton";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Button from "metabase/core/components/Button";
-import {
-  isDatabaseWritebackEnabled,
-  isWritebackSupported,
-} from "metabase/writeback/utils";
 
 import ModelCachingControl from "./ModelCachingControl";
 import { SidebarRoot } from "./Sidebar.styled";
@@ -32,7 +28,6 @@ const propTypes = {
 const DatabaseEditAppSidebar = ({
   database,
   deleteDatabase,
-  updateDatabase,
   syncDatabaseSchema,
   dismissSyncSpinner,
   rescanDatabaseFields,
@@ -42,14 +37,7 @@ const DatabaseEditAppSidebar = ({
   isModelPersistenceEnabled,
 }) => {
   const discardSavedFieldValuesModal = useRef();
-  const enableWritebackModal = useRef();
   const deleteDatabaseModal = useRef();
-
-  const hasWriteback = isDatabaseWritebackEnabled(database);
-  const showWriteback =
-    isWritebackEnabled &&
-    typeof database.id === "number" &&
-    isWritebackSupported(database);
 
   return (
     <SidebarRoot>
@@ -134,38 +122,6 @@ const DatabaseEditAppSidebar = ({
                     database={database}
                     onClose={() => deleteDatabaseModal.current.toggle()}
                     onDelete={() => deleteDatabase(database.id, true)}
-                  />
-                </ModalWithTrigger>
-              </li>
-            )}
-
-            {showWriteback && (
-              <li className="mt2">
-                <ModalWithTrigger
-                  ref={enableWritebackModal}
-                  triggerClasses="Button Button--danger Button--discardSavedFieldValues"
-                  triggerElement={
-                    hasWriteback ? t`Disable actions` : t`Enable actions`
-                  }
-                >
-                  <ConfirmContent
-                    title={
-                      hasWriteback
-                        ? t`Disable Actions`
-                        : t`[EXPERIMENTAL] Enable Actions`
-                    }
-                    message={
-                      hasWriteback
-                        ? undefined
-                        : t`Are you sure you want to enable EXPERIMENTAL Actions? This will enable Metabase features that write to your database`
-                    }
-                    onClose={() => enableWritebackModal.current.toggle()}
-                    onAction={() =>
-                      updateDatabase({
-                        id: database.id,
-                        settings: { "database-enable-actions": !hasWriteback },
-                      })
-                    }
                   />
                 </ModalWithTrigger>
               </li>

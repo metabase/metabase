@@ -1,6 +1,7 @@
 (ns metabase.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require [cheshire.core :as json]
+            [clojure.walk :as walk]
             [metabase.db :as mdb]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.interface :as mi]
@@ -93,6 +94,30 @@
     (map? source-query)     (query->database-and-table-ids {:database database-id
                                                             :type     query-type
                                                             :query    source-query})))
+
+(defn- parse-source-query-id
+  "Return the ID of the card used as source table, if applicable; otherwise return `nil`."
+  [source-table]
+  (when (string? source-table)
+    (when-let [[_ card-id-str] (re-matches #"card__(\d+)" source-table)]
+      (parse-long card-id-str))))
+
+(defn collect-card-ids
+  "Return a sequence of model ids referenced in the MBQL query `mbql-form`."
+  [mbql-form]
+  (let [ids (java.util.HashSet.)
+        walker (fn [form]
+                 (when (map? form)
+                   ;; model references in native queries
+                   (when-let [card-id (:card-id form)]
+                     (when (int? card-id)
+                       (.add ids card-id)))
+                   ;; source tables (possibly in joins)
+                   (when-let [card-id (parse-source-query-id (:source-table form))]
+                     (.add ids card-id)))
+                 form)]
+    (walk/prewalk walker mbql-form)
+    (seq ids)))
 
 (defn adhoc-query
   "Wrap query map into a Query object (mostly to fascilitate type dispatch)."

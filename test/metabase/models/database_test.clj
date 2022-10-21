@@ -1,25 +1,28 @@
 (ns metabase.models.database-test
-  (:require [cheshire.core :refer [decode encode]]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database Permissions]]
-            [metabase.models.database :as database]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.secret :as secret :refer [Secret]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.user :as user]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.task :as task]
-            [metabase.task.sync-databases :as task.sync-databases]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :refer [decode encode]]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.config.file :as config.file]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database Permissions Table]]
+   [metabase.models.database :as database]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.secret :as secret :refer [Secret]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.user :as user]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.task :as task]
+   [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -52,7 +55,6 @@
         (is (schema= {:description         (s/eq (format "sync-and-analyze Database %d" db-id))
                       :key                 (s/eq (format "metabase.task.sync-and-analyze.trigger.%d" db-id))
                       :misfire-instruction (s/eq "DO_NOTHING")
-                      :state               (s/eq "NORMAL")
                       :may-fire-again?     (s/eq true)
                       :schedule            (s/eq "0 50 * * * ? *")
                       :final-fire-time     (s/eq nil)
@@ -215,9 +217,9 @@
                 (testing " updating the value works as expected"
                   (db/update! Database id :details (assoc details :password-path  "/path/to/my/password-file"))
                   (check-db-fn (db/select-one Database :id id) {:kind    :password
-                                              :source  :file-path
-                                              :version 2
-                                              :value   "/path/to/my/password-file"}))))
+                                                                :source  :file-path
+                                                                :version 2
+                                                                :value   "/path/to/my/password-file"}))))
             (testing "Secret instances are deleted from the app DB when the DatabaseInstance is deleted"
               (is (seq @secret-ids) "At least one Secret instance should have been created")
               (doseq [secret-id @secret-ids]
@@ -261,3 +263,46 @@
       (let [db (db/insert! Database (dissoc (mt/with-temp-defaults Database) :details))]
         (is (partial= {:details {}}
                       db))))))
+
+(deftest init-from-config-file-test
+  (let [db-type     (mdb.connection/db-type)
+        original-db (mt/with-driver db-type (mt/db))]
+    (try
+      (binding [config.file/*supported-versions* {:min 1, :max 1}
+                config.file/*config*             {:version 1
+                                                  :config  {:databases [{:name    "init-from-config-file-test/test-data"
+                                                                         :engine  (name db-type)
+                                                                         :details (:details original-db)}]}}]
+        (testing "Create a Database if it does not already exist"
+          (is (= :ok
+                 (config.file/initialize!)))
+          (let [db (db/select-one Database :name "init-from-config-file-test/test-data")]
+            (is (partial= {:engine db-type}
+                          db))
+            (is (= 1
+                   (db/count Database :name "init-from-config-file-test/test-data")))
+            (testing "do not duplicate if Database already exists"
+              (is (= :ok
+                     (config.file/initialize!)))
+              (is (= 1
+                     (db/count Database :name "init-from-config-file-test/test-data")))
+              (is (partial= {:engine db-type}
+                            (db/select-one Database :name "init-from-config-file-test/test-data"))))
+            (testing "Database should have been synced"
+              (is (= (db/count Table :db_id (u/the-id original-db))
+                     (db/count Table :db_id (u/the-id db))))))))
+      (finally
+        (db/delete! Database :name "init-from-config-file-test/test-data")))))
+
+(deftest ^:parallel init-from-config-file-connection-validation-test
+  (testing "Validate connection details when creating a Database from a config file, and error if they are invalid"
+    (binding [config.file/*supported-versions* {:min 1, :max 1}
+              config.file/*config*             {:version 1
+                                                :config  {:databases [{:name    "inist-from-config-file-test/test-data-in-memory"
+                                                                       :engine  "h2"
+                                                                       :details {:db "mem:some-in-memory-db"}}]}}]
+      (testing "Create a Database if it does not already exist"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Database cannot be found\."
+             (config.file/initialize!)))))))

@@ -29,8 +29,8 @@ export default Object.assign(Action, {
       widget: "radio",
       props: {
         options: [
-          { name: t`Inline`, value: "inline" },
-          { name: t`Modal`, value: "modal" },
+          { name: t`Form`, value: "form" },
+          { name: t`Button`, value: "button" },
         ],
       },
     },

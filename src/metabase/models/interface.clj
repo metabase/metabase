@@ -30,6 +30,12 @@
   model
   instance])
 
+(def ^:dynamic *deserializing?*
+  "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
+  deserialization. Most notably, we don't want to generate an `:entity_id`, as that would lead to duplicated entities
+  on a future deserialization."
+  false)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -228,10 +234,12 @@
   ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
-  (assoc obj :created_at (now)))
+  (cond-> obj
+    (not (:created_at obj)) (assoc :created_at (now))))
 
 (defn- add-updated-at-timestamp [obj & _]
-  (assoc obj :updated_at (now)))
+  (cond-> obj
+    (not (:updated_at obj)) (assoc :updated_at (now))))
 
 (models/add-property! :timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
@@ -247,7 +255,10 @@
   :update add-updated-at-timestamp)
 
 (defn- add-entity-id [obj & _]
-  (if (contains? obj :entity_id)
+  (if (or (contains? obj :entity_id)
+          *deserializing?*)
+    ;; Don't generate a new entity_id if either: (a) there's already one set; or (b) we're deserializing.
+    ;; Generating them at deserialization time can lead to duplicated entities if they're deserialized again.
     obj
     (assoc obj :entity_id (u/generate-nano-id))))
 
@@ -454,3 +465,5 @@
          (alter-meta! (var ~model) assoc ::defmodel-hash ~(hash &form))))))
 
 (alter-var-root #'models/defmodel (constantly @#'defmodel))
+(alter-meta! #'models/defmodel (fn [mta]
+                                 (merge mta (select-keys (meta #'defmodel) [:file :line :column :ns]))))

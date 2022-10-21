@@ -1,5 +1,11 @@
-import { isa, isFK, isPK, TYPE } from "metabase/lib/types";
-import { isDate, isNumeric } from "metabase/lib/schema_metadata";
+import {
+  isa,
+  isTypeFK,
+  isTypePK,
+  isDate,
+  isNumeric,
+} from "metabase-lib/lib/types/utils/isa";
+import { TYPE } from "metabase-lib/lib/types/constants";
 import { isLocalField } from "metabase-lib/lib/queries/utils";
 
 const INVALID_TYPES = [TYPE.Structured];
@@ -17,7 +23,7 @@ export function quickFilterDrill({ question, clicked }) {
   }
 
   const { column } = clicked;
-  if (isPK(column.semantic_type) || isFK(column.semantic_type)) {
+  if (isTypePK(column.semantic_type) || isTypeFK(column.semantic_type)) {
     return null;
   }
 

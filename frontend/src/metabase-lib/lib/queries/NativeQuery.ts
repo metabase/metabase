@@ -1,17 +1,11 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { t } from "ttag";
-import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
+import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
-import { countLines } from "metabase/lib/string";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
-import {
-  getEngineNativeAceMode,
-  getEngineNativeType,
-  getEngineNativeRequiresTable,
-} from "metabase/lib/engine";
 import {
   Card,
   DatasetQuery,
@@ -19,8 +13,8 @@ import {
 } from "metabase-types/types/Card";
 import {
   DependentMetadataItem,
-  TemplateTags,
   TemplateTag,
+  TemplateTags,
 } from "metabase-types/types/Query";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import Question from "metabase-lib/lib/Question";
@@ -31,7 +25,8 @@ import Variable from "metabase-lib/lib/variables/Variable";
 import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
 import ValidationError from "metabase-lib/lib/ValidationError";
-import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
+import { isFieldReference } from "metabase-lib/lib/references";
+import Dimension, { FieldDimension, TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
@@ -50,9 +45,15 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
 ///////////////////////////
 // QUERY TEXT TAG UTILS
 
-// Matches all snippet, card, and variable template tags. See unit tests for `recognizeTemplateTags` for examples
-const TAG_REGEX: RegExp =
-  /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|(#[0-9]*(?:-[a-z0-9-]*)?))\s*\}\}/g;
+const VARIABLE_TAG_REGEX: RegExp = /\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}/g;
+const SNIPPET_TAG_REGEX: RegExp = /\{\{\s*(snippet:\s*[^}]+)\s*\}\}/g;
+export const CARD_TAG_REGEX: RegExp =
+  /\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}/g;
+const TAG_REGEXES: RegExp[] = [
+  VARIABLE_TAG_REGEX,
+  SNIPPET_TAG_REGEX,
+  CARD_TAG_REGEX,
+];
 
 // look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
 // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
@@ -60,24 +61,14 @@ const TAG_REGEX: RegExp =
 // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
 // See unit tests for examples
 export function recognizeTemplateTags(queryText: string): string[] {
-  const tagNames = [];
-  let match;
-  while ((match = TAG_REGEX.exec(queryText)) != null) {
-    tagNames.push(match[1]);
-  }
-
-  // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
+  const tagNames = TAG_REGEXES.flatMap(r =>
+    Array.from(queryText.matchAll(r)),
+  ).map(m => m[1]);
   return _.uniq(tagNames);
 }
 
-// needs to match logically with `cardTagRegexFromId`
 // matches '#123-foo-bar' and '#123' but not '#123foo'
 const CARD_TAG_NAME_REGEX: RegExp = /^#([0-9]*)(-[a-z0-9-]*)?$/;
-
-// needs to match logically with `CARD_TAG_NAME_REGEX`
-function cardTagRegexFromId(cardId: number): RegExp {
-  return new RegExp(`{{\\s*#${cardId}(-[a-z0-9-]*)?\\s*}}`, "g");
-}
 
 function tagRegex(tagName: string): RegExp {
   return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
@@ -94,22 +85,9 @@ function replaceTagName(
   return query.setQueryText(queryText);
 }
 
-// replaces template tag with given cardId with a new tag name
-// the new tag name could reference a completely different card
-export function replaceCardTagNameById(
-  query: NativeQuery,
-  cardId: number,
-  newTagName: string,
-): NativeQuery {
-  const queryText = query
-    .queryText()
-    .replace(cardTagRegexFromId(cardId), `{{${newTagName}}}`);
-  return query.setQueryText(queryText);
-}
-
 export function cardIdFromTagName(name: string): number | null {
   const match = name.match(CARD_TAG_NAME_REGEX);
-  return match && match[1].length > 0 ? parseInt(match[1]) : null;
+  return parseInt(match?.[1]) || null;
 }
 
 function isCardTagName(tagName: string): boolean {
@@ -331,28 +309,14 @@ export default class NativeQuery extends AtomicQuery {
 
   lineCount(): number {
     const queryText = this.queryText();
-    return queryText ? countLines(queryText) : 0;
-  }
-
-  /**
-   * The ACE Editor mode name, e.g. 'ace/mode/json'
-   */
-  aceMode(): string {
-    return getEngineNativeAceMode(this.engine());
-  }
-
-  /**
-   * Name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
-   */
-  nativeQueryLanguage() {
-    return getEngineNativeType(this.engine()).toUpperCase();
+    return queryText ? queryText.split(/\n/g).length : 0;
   }
 
   /**
    * Whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
    */
   requiresTable() {
-    return getEngineNativeRequiresTable(this.engine());
+    return this.engine() === "mongo";
   }
 
   templateTagsMap(): TemplateTags {
@@ -361,6 +325,12 @@ export default class NativeQuery extends AtomicQuery {
 
   templateTags(): TemplateTag[] {
     return Object.values(this.templateTagsMap());
+  }
+
+  variableTemplateTags(): TemplateTag[] {
+    return this.templateTags().filter(t =>
+      ["dimension", "text", "number", "date"].includes(t.type),
+    );
   }
 
   hasSnippets() {
@@ -581,9 +551,7 @@ export default class NativeQuery extends AtomicQuery {
     const templateTags = this.templateTags();
     return templateTags
       .filter(
-        tag =>
-          tag.type === "dimension" &&
-          FieldDimension.isFieldClause(tag.dimension),
+        tag => tag.type === "dimension" && isFieldReference(tag.dimension),
       )
       .map(tag => {
         const dimension = FieldDimension.parseMBQL(

@@ -1,7 +1,7 @@
 import React from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { getDataFromClicked } from "metabase/lib/click-behavior";
+import { getDataFromClicked } from "metabase-lib/lib/parameters/utils/click-behavior";
 import { renderLinkTextForClick } from "./link";
 
 import { OptionsType } from "./types";

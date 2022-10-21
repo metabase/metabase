@@ -1,4 +1,8 @@
-import { isAddress, isCategory, isDate } from "metabase/lib/schema_metadata";
+import {
+  isAddress,
+  isCategory,
+  isDate,
+} from "metabase-lib/lib/types/utils/isa";
 
 function pivotDrill({ question, clicked, fieldFilter }) {
   const query = question.query();

@@ -44,10 +44,11 @@
    {:types      (constantly {:definition :metric-segment-definition})
     :properties (constantly {:timestamped? true
                              :entity_id    true})
-    :pre-update pre-update})
+    :pre-update pre-update}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
+(defmethod serdes.hash/identity-hash-fields Metric
+  [_metric]
+  [:name (serdes.hash/hydrated-hash :table "<none>")])
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
@@ -86,14 +87,14 @@
   (-> (serdes.base/extract-one-basics "Metric" metric)
       (update :table_id   serdes.util/export-table-fk)
       (update :creator_id serdes.util/export-user)
-      (update :definition serdes.util/export-json-mbql)))
+      (update :definition serdes.util/export-mbql)))
 
 (defmethod serdes.base/load-xform "Metric" [metric]
   (-> metric
       serdes.base/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
       (update :creator_id serdes.util/import-user)
-      (update :definition serdes.util/import-json-mbql)))
+      (update :definition serdes.util/import-mbql)))
 
 (defmethod serdes.base/serdes-dependencies "Metric" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes.util/table->path table_id)}

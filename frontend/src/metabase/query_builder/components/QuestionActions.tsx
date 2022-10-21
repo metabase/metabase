@@ -15,14 +15,14 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { State } from "metabase-types/store";
 import { color } from "metabase/lib/colors";
-import {
-  checkCanBeModel,
-  checkDatabaseCanPersistDatasets,
-} from "metabase/lib/data-modeling/utils";
 
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Question from "metabase-lib/lib/Question";
 
+import {
+  checkCanBeModel,
+  checkDatabaseCanPersistDatasets,
+} from "metabase-lib/lib/metadata/utils/models";
 import {
   QuestionActionsDivider,
   StrengthIndicator,

@@ -1,12 +1,12 @@
 import React from "react";
 
-import type { UiParameter } from "metabase/parameters/types";
 import type {
   ActionDashboardCard,
   Dashboard,
   DashboardOrderedCard,
   ClickBehavior,
 } from "metabase-types/api";
+import type { UiParameter } from "metabase-lib/lib/parameters/types";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 import ActionOptions from "../ActionOptions";
@@ -33,6 +33,14 @@ function ClickBehaviorOptions({
   parameters,
   updateSettings,
 }: ClickBehaviorOptionsProps) {
+  if (dashcard.action) {
+    return (
+      <ActionOptions
+        dashcard={dashcard as ActionDashboardCard}
+        parameters={parameters}
+      />
+    );
+  }
   if (clickBehavior.type === "link") {
     return (
       <LinkOptions
@@ -53,12 +61,7 @@ function ClickBehaviorOptions({
       />
     );
   }
-  return (
-    <ActionOptions
-      dashcard={dashcard as unknown as ActionDashboardCard}
-      parameters={parameters}
-    />
-  );
+  return null;
 }
 
 interface ClickBehaviorSidebarMainViewProps {
@@ -88,21 +91,23 @@ function ClickBehaviorSidebarMainView({
 
   return (
     <>
-      <SidebarContentBordered>
-        <SidebarItem.Selectable
-          onClick={handleShowTypeSelector}
-          isSelected
-          padded={false}
-        >
-          <SelectedClickBehaviorItemIcon
-            name={currentOption?.icon || "unknown"}
-          />
-          <SidebarItem.Content>
-            <SidebarItem.Name>{clickBehaviorOptionName}</SidebarItem.Name>
-            <SidebarItem.CloseIcon />
-          </SidebarItem.Content>
-        </SidebarItem.Selectable>
-      </SidebarContentBordered>
+      {!dashcard.action && (
+        <SidebarContentBordered>
+          <SidebarItem.Selectable
+            onClick={handleShowTypeSelector}
+            isSelected
+            padded={false}
+          >
+            <SelectedClickBehaviorItemIcon
+              name={currentOption?.icon || "unknown"}
+            />
+            <SidebarItem.Content>
+              <SidebarItem.Name>{clickBehaviorOptionName}</SidebarItem.Name>
+              <SidebarItem.CloseIcon />
+            </SidebarItem.Content>
+          </SidebarItem.Selectable>
+        </SidebarContentBordered>
+      )}
 
       <ClickBehaviorOptions
         clickBehavior={clickBehavior}
