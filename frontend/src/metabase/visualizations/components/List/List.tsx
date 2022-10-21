@@ -7,33 +7,20 @@ import React, {
 } from "react";
 import { getIn } from "icepick";
 import _ from "lodash";
-import { t } from "ttag";
-import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
 import CheckBox from "metabase/core/components/CheckBox";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import Modal from "metabase/components/Modal";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 
-import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
-import {
-  DeleteRowFromDataAppPayload,
-  UpdateRowFromDataAppPayload,
-  deleteRowFromDataApp,
-  updateRowFromDataApp,
-} from "metabase/dashboard/actions";
-
 import { useDataAppContext } from "metabase/writeback/containers/DataAppContext";
 
 import { SavedCard } from "metabase-types/types/Card";
-import { Row } from "metabase-types/types/Dataset";
 import { DashboardWithCards } from "metabase-types/types/Dashboard";
 import { VisualizationProps } from "metabase-types/types/Visualization";
-import { State } from "metabase-types/store";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Question from "metabase-lib/lib/Question";
@@ -49,8 +36,6 @@ import {
   ListItemContainer,
   BulkSelectionControlContainer,
   InfoContentContainer,
-  RowActionsContainer,
-  RowActionButtonContainer,
   RowIconContainer,
   LIST_ITEM_BORDER_DIVIDER_WIDTH,
 } from "./List.styled";
@@ -63,11 +48,6 @@ function stopClickPropagation(event: React.SyntheticEvent) {
   event.stopPropagation();
 }
 
-interface ListVizDispatchProps {
-  updateRow: (payload: UpdateRowFromDataAppPayload) => void;
-  deleteRow: (payload: DeleteRowFromDataAppPayload) => void;
-}
-
 interface ListVizOwnProps extends VisualizationProps {
   dashboard?: DashboardWithCards;
   isDataApp?: boolean;
@@ -76,12 +56,7 @@ interface ListVizOwnProps extends VisualizationProps {
   getColumnTitle: (columnIndex: number) => string;
 }
 
-export type ListVizProps = ListVizOwnProps & ListVizDispatchProps;
-
-const mapDispatchToProps = {
-  deleteRow: deleteRowFromDataApp,
-  updateRow: updateRowFromDataApp,
-};
+export type ListVizProps = ListVizOwnProps;
 
 function List({
   card,
@@ -96,8 +71,6 @@ function List({
   getColumnTitle,
   onVisualizationClick,
   visualizationIsClickable,
-  updateRow,
-  deleteRow,
 }: ListVizProps) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(1);
@@ -154,49 +127,6 @@ function List({
       dc => dc.card_id === maybeSavedCard.id,
     );
   }, [dashboard, card]);
-
-  const handleUpdate = useCallback(
-    (values: Record<string, unknown>) => {
-      if (!table || !focusedRow || !connectedDashCard) {
-        return;
-      }
-      const pkColumnIndex = table.fields.findIndex(field => field.isPK());
-      const pkValue = focusedRow[pkColumnIndex];
-      if (typeof pkValue === "string" || typeof pkValue === "number") {
-        return updateRow({
-          id: pkValue,
-          table,
-          values,
-        });
-      }
-    },
-    [table, connectedDashCard, focusedRow, updateRow],
-  );
-
-  const handleDelete = useCallback(
-    (row: Row) => {
-      if (!table || !connectedDashCard) {
-        return;
-      }
-      const pkColumnIndex = table.fields.findIndex(field => field.isPK());
-      const pkValue = row[pkColumnIndex];
-
-      if (typeof pkValue !== "string" && typeof pkValue !== "number") {
-        return;
-      }
-      requestConfirmation({
-        title: t`Delete?`,
-        message: t`This can't be undone.`,
-        onConfirm: async () => {
-          deleteRow({
-            id: pkValue,
-            table,
-          });
-        },
-      });
-    },
-    [table, connectedDashCard, deleteRow, requestConfirmation],
-  );
 
   const { rows, cols } = data;
   const limit = getIn(card, ["dataset_query", "query", "limit"]) || undefined;
@@ -397,16 +327,6 @@ function List({
         }
       };
 
-      const onEditClick = (event: React.SyntheticEvent) => {
-        setFocusedRow(row);
-        event.stopPropagation();
-      };
-
-      const onDeleteClick = (event: React.SyntheticEvent) => {
-        handleDelete(row);
-        event.stopPropagation();
-      };
-
       const canClick = isSelectingItems || isClickable;
 
       return (
@@ -419,29 +339,6 @@ function List({
         >
           {renderListItemLeftPart(rowIndex)}
           {right.map(columnIndex => renderListItemCell(rowIndex, columnIndex))}
-          {hasInlineActions && (
-            <RowActionsContainer>
-              {hasEditButton && (
-                <RowActionButtonContainer>
-                  <Button
-                    disabled={!isDataApp}
-                    onClick={onEditClick}
-                    small
-                  >{t`Edit`}</Button>
-                </RowActionButtonContainer>
-              )}
-              {hasDeleteButton && (
-                <RowActionButtonContainer>
-                  <Button
-                    disabled={!isDataApp}
-                    onClick={onDeleteClick}
-                    small
-                    danger
-                  >{t`Delete`}</Button>
-                </RowActionButtonContainer>
-              )}
-            </RowActionsContainer>
-          )}
         </ListItemContainer>
       );
     },
@@ -450,9 +347,6 @@ function List({
       data,
       settings,
       listColumnIndexes,
-      hasInlineActions,
-      hasEditButton,
-      hasDeleteButton,
       isDataApp,
       isSelectingItems,
       bulkActions,
@@ -460,7 +354,6 @@ function List({
       onVisualizationClick,
       renderListItemLeftPart,
       renderListItemCell,
-      handleDelete,
     ],
   );
 
@@ -570,34 +463,13 @@ function List({
           />
         )}
       </Root>
-      {isDataApp && table && Array.isArray(focusedRow) && (
-        <Modal onClose={resetFocusedRow}>
-          <WritebackModalForm
-            table={table}
-            row={focusedRow}
-            onSubmit={handleUpdate}
-            onClose={resetFocusedRow}
-          />
-        </Modal>
-      )}
-      {isDataApp && confirmationModalContent}
     </>
   );
 }
-
-const ConnectedList = connect<
-  unknown,
-  ListVizDispatchProps,
-  ListVizOwnProps,
-  State
->(
-  null,
-  mapDispatchToProps,
-)(List);
 
 export default ExplicitSize({
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   refreshMode: (props: VisualizationProps) =>
     props.isDashboard && !props.isEditing ? "debounce" : "throttle",
-})(ConnectedList);
+})(List);
