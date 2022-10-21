@@ -1,6 +1,6 @@
 import React from "react";
-import { t } from "ttag";
 
+import type { DataTypeInfoItem } from "../utils";
 import type { DataPickerDataType } from "../types";
 
 import {
@@ -14,39 +14,12 @@ import {
 } from "./DataTypePicker.styled";
 
 interface DataTypePickerProps {
+  types: DataTypeInfoItem[];
   onChange: (value: DataPickerDataType) => void;
 }
 
-interface ListItemProps {
-  id: DataPickerDataType;
-  icon: string;
-  name: string;
-  description: string;
+interface ListItemProps extends DataTypeInfoItem {
   onSelect: () => void;
-}
-
-function getDataTypes(): Omit<ListItemProps, "onSelect">[] {
-  return [
-    {
-      id: "models",
-      icon: "model",
-      name: t`Models`,
-      description: t`The best starting place for new questions.`,
-    },
-    {
-      id: "raw-data",
-      icon: "database",
-      name: t`Raw Data`,
-      description: t`Unaltered tables in connected databases.`,
-    },
-    // TODO enable when DataPicker has items filtering API
-    // {
-    //   id: "questions",
-    //   name: t`Saved Questions`,
-    //   icon: "folder",
-    //   description: t`Use any question’s results to start a new question.`,
-    // },
-  ];
 }
 
 function DataTypePickerListItem({
@@ -69,10 +42,10 @@ function DataTypePickerListItem({
   );
 }
 
-function DataTypePicker({ onChange }: DataTypePickerProps) {
+function DataTypePicker({ types, onChange }: DataTypePickerProps) {
   return (
     <List>
-      {getDataTypes().map(dataType => (
+      {types.map(dataType => (
         <DataTypePickerListItem
           {...dataType}
           key={dataType.id}
