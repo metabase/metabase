@@ -8,6 +8,7 @@ export const Root = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
 
   background-color: ${color("bg-white")};
   border-bottom: 1px solid ${color("border")};
@@ -17,7 +18,13 @@ export const Root = styled.div`
 export const NavItemsList = styled.ul`
   display: flex;
   flex-direction: row;
+  align-items: center;
   gap: 6px;
+
+  height: 3rem;
+
+  white-space: nowrap;
+  overflow-x: scroll;
 `;
 
 export const ActionPanelContainer = styled.div`
