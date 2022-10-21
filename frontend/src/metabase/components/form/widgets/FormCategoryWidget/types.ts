@@ -5,7 +5,5 @@ export interface CategoryWidgetProps {
     value: string;
     onChange: (value: string) => void;
   };
-  formField: {
-    fieldInstance: Field;
-  };
+  fieldInstance: Field;
 }

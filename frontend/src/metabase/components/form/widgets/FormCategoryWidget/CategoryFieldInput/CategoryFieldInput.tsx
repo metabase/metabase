@@ -1,9 +1,7 @@
 import React from "react";
-import PropTypes from "prop-types";
-
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-import Field from "metabase-lib/lib/metadata/Field";
+import type Field from "metabase-lib/lib/metadata/Field";
 
 import {
   OptionListContainer,
@@ -11,7 +9,17 @@ import {
   FieldValuesWidgetContainer,
 } from "./CategoryFieldInput.styled";
 
-const DefaultTokenFieldLayout = ({ valuesList, optionsList, isFocused }) => (
+interface DefaultTokenFieldLayoutProps {
+  valuesList: string[];
+  optionsList: string[];
+  isFocused: boolean;
+}
+
+const DefaultTokenFieldLayout = ({
+  valuesList,
+  optionsList,
+  isFocused,
+}: DefaultTokenFieldLayoutProps) => (
   <TippyPopover
     visible={isFocused && !!optionsList}
     content={<OptionListContainer>{optionsList}</OptionListContainer>}
@@ -21,37 +29,37 @@ const DefaultTokenFieldLayout = ({ valuesList, optionsList, isFocused }) => (
   </TippyPopover>
 );
 
-DefaultTokenFieldLayout.propTypes = {
-  valuesList: PropTypes.arrayOf(PropTypes.string),
-  optionsList: PropTypes.arrayOf(PropTypes.string),
-  isFocused: PropTypes.bool,
-};
+interface CategoryFieldInputProps {
+  value: string | number;
+  field: Field;
+  onChange: (newValue: string) => void;
+}
 
-function CategoryFieldInput({ value, field, onChange }) {
+function CategoryFieldInput({
+  value,
+  field,
+  onChange,
+}: CategoryFieldInputProps) {
   return (
     <FieldValuesWidgetContainer>
       <StyledFieldValuesWidget
-        value={value ? [String(value)] : []}
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore, typescript is very confused about the value type for this non-tsx component
+        value={value ? [String(value)] : ([] as any)}
         fields={[field]}
-        onChange={values => onChange(values[0])}
+        onChange={(newVals: string[]) => onChange(newVals[0])}
         multi={false}
         autoFocus={false}
         alwaysShowOptions={false}
         disableSearch={false}
         forceTokenField
         layoutRenderer={DefaultTokenFieldLayout}
-        valueRenderer={value => <span>{value}</span>}
+        valueRenderer={(val: string) => <span>{val}</span>}
         color="brand"
         maxWidth={null}
       />
     </FieldValuesWidgetContainer>
   );
 }
-
-CategoryFieldInput.propTypes = {
-  value: PropTypes.string,
-  field: PropTypes.instanceOf(Field).isRequired,
-  onChange: PropTypes.func.isRequired,
-};
 
 export default CategoryFieldInput;
