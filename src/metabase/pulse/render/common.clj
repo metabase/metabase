@@ -121,4 +121,6 @@
   - Removes any rows that have a nil value for the `x-axis-fn` OR `y-axis-fn`
   - Normalizes bigints and bigdecs to ordinary sizes"
   [x-axis-fn y-axis-fn rows]
-  (map coerce-bignum-to-int (filter (every-pred x-axis-fn y-axis-fn) rows)))
+  (->> rows
+       (filter (every-pred x-axis-fn y-axis-fn))
+       (map coerce-bignum-to-int)))

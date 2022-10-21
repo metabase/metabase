@@ -301,7 +301,7 @@
                (get-in [:table-fields (:table_id visit-val)])))
 
     ;; Users' emails need to be unique. This enforces it, and appends junk to before the @ if needed.
-    (= ent-type :core_user)
+    (= ent-type :core-user)
     (update :email unique-email)
 
     ;; Database names need to be unique. This enforces it, and appends junk to names if needed.

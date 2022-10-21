@@ -293,6 +293,7 @@
   ;; There's one optional foreign key: creator_id. Resolve it as an email.
   (cond-> (serdes.base/extract-one-basics "Database" entity)
     true                 (update :creator_id serdes.util/export-user)
+    true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
     (= :exclude secrets) (dissoc :details)))
 
 (defmethod serdes.base/serdes-entity-id "Database"
