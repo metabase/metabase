@@ -104,16 +104,20 @@ export default class SaveQuestionModal extends Component {
         ? t`First, save your question`
         : t`First, save your model`;
 
-    const singleStepTitle =
-      questionType === "question" ? t`Save question` : t`Save model`;
-
-    const title = this.props.multiStep ? multiStepTitle : singleStepTitle;
-
     const showSaveType =
       !card.id &&
       !!originalCard &&
       !originalCard.dataset &&
       originalCard.can_write;
+
+    const singleStepTitle =
+      questionType === "question"
+        ? showSaveType
+          ? t`Save question`
+          : t`Save new question`
+        : t`Save model`;
+
+    const title = this.props.multiStep ? multiStepTitle : singleStepTitle;
 
     const nameInputPlaceholder =
       questionType === "question"
