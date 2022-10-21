@@ -6,7 +6,7 @@ import type { DataPickerProps, DataPickerDataType } from "./types";
 
 import CardPicker from "./CardPicker";
 import DataTypePicker from "./DataTypePicker";
-import RawDataPanePicker from "./RawDataPanePicker";
+import RawDataPicker from "./RawDataPicker";
 
 function DataPicker(props: DataPickerProps) {
   const { value, onChange } = props;
@@ -40,7 +40,7 @@ function DataPicker(props: DataPickerProps) {
   }
 
   if (value.type === "raw-data") {
-    return <RawDataPanePicker {...props} onBack={handleBack} />;
+    return <RawDataPicker {...props} onBack={handleBack} />;
   }
 
   if (value.type === "models") {
