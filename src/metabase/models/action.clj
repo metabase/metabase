@@ -193,9 +193,9 @@
                 ;; Skip tables for have conflicting slugified columns i.e. table has "name" and "NAME" columns.
                 :when (unique-field-slugs? fields)
                 :let [card (get card-by-table-id (:id table))
-                      exposed-fields (set (map (juxt :table_id :id) (remove (comp nil? :id) (:result_metadata card))))
+                      exposed-fields (into #{} (keep :id) (:result_metadata card))
                       parameters (->> fields
-                                      (filter #(contains? exposed-fields [(:id table) (:id %)]))
+                                      (filter #(contains? exposed-fields (:id %)))
                                       (map (fn [field]
                                              {:id (u/slugify (:name field))
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
