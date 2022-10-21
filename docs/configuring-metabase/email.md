@@ -8,6 +8,15 @@ redirect_from:
 
 Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users. Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
 
+## Metabase Cloud
+
+Metabase Cloud manages an email server for you, so you don't need to set up email (and you won't see SMTP settings in your Admin console).
+
+If you like, you can still set up:
+
+- a name for your Cloud email account (from name)
+- an email address to recieve email replies (reply-to address)
+
 ## Configuring your email account
 
 For Metabase to send messages to your organization's users, you'll need to set up an email account to send emails via **SMTP** (simple mail transfer protocol), which is an email standard that secures emails with SSL security protection.
@@ -51,7 +60,3 @@ Check if [email quotas](https://docs.aws.amazon.com/ses/latest/dg/quotas.html) a
 
 * SSL is strongly recommended because it’s more secure and gives your account extra protection from threats.
 * If your email service has a whitelist of email addresses that are allowed to send email, be sure to whitelist the email address that you put in the **From Address** field to ensure you and your teammates receive all emails from Metabase.
-
-## Metabase Cloud
-
-Metabase Cloud manages an email server for you. If you use Metabase Cloud, you don't need to set up email (and you won't see SMTP settings in your Admin console).
