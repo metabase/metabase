@@ -10,6 +10,8 @@ import Tooltip from "metabase/components/Tooltip";
 import * as Urls from "metabase/lib/urls";
 
 import { MainNavbarProps, SelectedItem } from "../types";
+
+import NewButton from "./NewButton";
 import DataAppPageLink from "./DataAppPageLink";
 import DataAppActionPanel from "./DataAppActionPanel";
 
@@ -80,7 +82,12 @@ function DataAppNavbarView({
 
   return (
     <Root>
-      <NavItemsList>{navItems.map(renderNavItem)}</NavItemsList>
+      <NavItemsList>
+        {navItems.map(renderNavItem)}
+        <li>
+          <NewButton onAddData={onAddData} onNewPage={onNewPage} />
+        </li>
+      </NavItemsList>
       <ActionPanelContainer>
         <DataAppActionPanel
           dataApp={dataApp}
