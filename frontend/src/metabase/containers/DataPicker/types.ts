@@ -19,9 +19,19 @@ export interface VirtualTable {
   };
 }
 
+export interface DataPickerFilters {
+  types: (type: DataPickerDataType) => boolean;
+  databases: (database: Database) => boolean;
+  schemas: (schema: Schema) => boolean;
+  tables: (table: Table | VirtualTable) => boolean;
+}
+
+export type DataPickerFiltersProp = Partial<DataPickerFilters>;
+
 export interface DataPickerProps {
   value: DataPickerValue;
   onChange: (value: DataPickerValue) => void;
+  filters?: DataPickerFiltersProp;
 }
 
 export type DataPickerSelectedItem = {

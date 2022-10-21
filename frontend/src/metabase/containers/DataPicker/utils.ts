@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { DataPickerDataType } from "./types";
+import type { DataPickerDataType, DataPickerFilters } from "./types";
 
 export type DataTypeInfoItem = {
   id: DataPickerDataType;
@@ -35,14 +35,20 @@ export function getDataTypes({
       });
     }
 
-    // TODO enable when DataPicker has items filtering API
-    // dataTypes.push({
-    //   id: "questions",
-    //   name: t`Saved Questions`,
-    //   icon: "folder",
-    //   description: t`Use any question’s results to start a new question.`,
-    // });
+    dataTypes.push({
+      id: "questions",
+      name: t`Saved Questions`,
+      icon: "folder",
+      description: t`Use any question’s results to start a new question.`,
+    });
   }
 
   return dataTypes;
 }
+
+export const DEFAULT_DATA_PICKER_FILTERS: DataPickerFilters = {
+  types: () => true,
+  databases: () => true,
+  schemas: () => true,
+  tables: () => true,
+};
