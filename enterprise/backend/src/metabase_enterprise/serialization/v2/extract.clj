@@ -14,6 +14,23 @@
     [toucan.db :as db]
     [toucan.hydrate :refer [hydrate]]))
 
+(defn collection-set-for-user
+  "Given an optional user ID, find the transitive set of all Collection IDs which are either:
+  (a) global (ie. no one's personal collection);
+  (b) owned by this user (when user ID is non-nil); or
+  (c) descended from one of the above."
+  [user-or-nil]
+  (let [roots    (db/select ['Collection :id :location :personal_owner_id] :location "/")
+        unowned  (remove :personal_owner_id roots)
+        owned    (when user-or-nil
+                   (filter #(= user-or-nil (:personal_owner_id %)) roots))
+        top-ids  (->> (concat owned unowned)
+                      (map :id)
+                      set)]
+    (->> (concat unowned owned)
+         (map collection/descendant-ids)
+         (reduce set/union top-ids))))
+
 (defn extract-metabase
   "Extracts the appdb into a reducible stream of serializable maps, with `:serdes/meta` keys.
 
@@ -26,7 +43,9 @@
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
   (let [model-pred (if (:data-model-only opts)
                      #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
-                     (constantly true))]
+                     (constantly true))
+        ;; This set of unowned top-level collections is used in several `extract-query` implementations.
+        opts       (assoc opts :collection-set (collection-set-for-user (:user opts)))]
     (eduction cat (for [model serdes.models/exported-models
                         :when (model-pred model)]
                     (serdes.base/extract-all model opts)))))
@@ -60,16 +79,21 @@
         cards          (reduce set/union (for [coll-id collection-set]
                                            (db/select-ids Card :collection_id coll-id)))
 
-        ;; Map of {dashboard-id #{DashboardCard}} for dashcards whose cards are outside the transitive collection set.
+        ;; Map of {dashboard-id #{DashboardCard}} for dashcards whose cards OR parameter-bound cards are outside the
+        ;; transitive collection set.
         escaped-dashcards  (into {}
                                  (for [dash  dashboards
                                        :let [dcs (db/select DashboardCard :dashboard_id (:id dash))
                                              escapees (->> dcs
-                                                           (filter :card_id) ; Text cards have a nil card_id
-                                                           (filter (comp not cards :card_id))
-                                                           set)]
-                                       :when (seq escapees)]
-                                   [(:id dash) escapees]))
+                                                           (keep :card_id) ; Text cards have a nil card_id
+                                                           set)
+                                             params   (->> dcs
+                                                           (mapcat :parameter_mappings)
+                                                           (keep :card_id)
+                                                           set)
+                                             combined (set/difference (set/union escapees params) cards)]
+                                       :when (seq combined)]
+                                   [(:id dash) combined]))
         ;; {source-card-id target-card-id} the key is in the curated set, the value is not.
         all-cards          (for [id cards]
                              (db/select-one [Card :id :collection_id :dataset_query] :id id))
@@ -86,10 +110,7 @@
                                  :when   (not (cards card-id))]
                              [(:id card) card-id])
         escaped-questions  (into {} (concat bad-source bad-template-tags))
-        problem-cards      (set/union (set (vals escaped-questions))
-                                      (set (for [[_ dashcards] escaped-dashcards
-                                                 dc            dashcards]
-                                             (:card_id dc))))]
+        problem-cards      (reduce set/union (set (vals escaped-questions)) (vals escaped-dashcards))]
     (cond-> nil
       (seq escaped-dashcards) (assoc :escaped-dashcards escaped-dashcards)
       (seq escaped-questions) (assoc :escaped-questions escaped-questions)
@@ -110,12 +131,12 @@
   (when-not (empty? escaped-dashcards)
     (println "Dashboard cards outside the collection")
     (println "======================================")
-    (doseq [[dash-id dashcards] escaped-dashcards
+    (doseq [[dash-id card-ids] escaped-dashcards
             :let [dash-name (db/select-one-field :name Dashboard :id dash-id)]]
       (printf "Dashboard %d: %s\n" dash-id dash-name)
-      (doseq [{:keys [card_id col row]} dashcards
+      (doseq [card_id card-ids
               :let [card (db/select-one [Card :collection_id :name] :id card_id)]]
-        (printf "    %dx%d \tCard %d: %s\n"    col row card_id (:name card))
+        (printf "          \tCard %d: %s\n"    card_id (:name card))
         (printf "        from collection %s\n" (collection-label (:collection_id card))))))
 
   (when-not (empty? escaped-questions)
@@ -155,4 +176,4 @@
                         (m/map-vals #(set (map second %))))]
       (eduction cat (for [[model ids] by-model]
                       (eduction (map #(serdes.base/extract-one model opts %))
-                                (serdes.base/raw-reducible-query model {:where [:in :id ids]})))))))
+                                (db/select-reducible (symbol model) :id [:in ids])))))))

@@ -80,7 +80,7 @@
   [img-bytes]
   (str "data:image/png;base64," (String. (Base64Coder/encode img-bytes))))
 
-(defn svg-image [kind]
+#_(defn svg-image [kind]
   (let [line|bar-data [["2015-02-01T00:00:00-08:00" 443]
                        ["2015-03-01T00:00:00-08:00" 875]
                        ["2015-04-01T00:00:00-07:00" 483]
@@ -100,7 +100,7 @@
       (throw (ex-info (str "Invalid chart type: " kind "\n Valid choices are :line, :bar, :donut")
                       {})))))
 
-(defn preview-html
+#_(defn preview-html
   "Chart type is one of :line, :bar, :donut. Html is a string with a placeholder {{chart}} which will be replaced with
   the [:img {:src chart-placeholder}] and the resulting html will be opened."
   [{:keys [chart html-file html-inline]}]

@@ -161,7 +161,7 @@
       (let [msg (tru "Invalid Collection location: path is invalid.")]
         (throw (ex-info msg {:status-code 400, :errors {:location msg}}))))
     ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
-    (when (contains? collection :personal_owner_id)
+    (when (:personal_owner_id collection)
       (when-not (= location "/")
         (let [msg (tru "You cannot move a Personal Collection.")]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))
@@ -351,7 +351,7 @@
   highest-level (e.g. most distant) ancestor."
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
-    (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:%lower.name]})))
+    (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:location]})))
 
 (s/defn effective-ancestors :- [(s/cond-pre RootCollection (mi/InstanceOf Collection))]
   "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
@@ -907,20 +907,8 @@
           :pre-update     pre-update
           :pre-delete     pre-delete}))
 
-(defn- collection-query [maybe-user]
-  (serdes.base/raw-reducible-query
-   "Collection"
-   {:where [:and
-            [:= :archived false]
-            (if (nil? maybe-user)
-              [:is :personal_owner_id nil]
-              [:= :personal_owner_id maybe-user])]}))
-
-(defmethod serdes.base/extract-query "Collection" [_ {:keys [user]}]
-  (let [unowned (collection-query nil)]
-    (if user
-      (eduction cat [unowned (collection-query user)])
-      unowned)))
+(defmethod serdes.base/extract-query "Collection" [_ {:keys [collection-set]}]
+  (db/select-reducible Collection :id [:in collection-set]))
 
 (defmethod serdes.base/extract-one "Collection"
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
