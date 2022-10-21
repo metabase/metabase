@@ -310,4 +310,5 @@
   [reducible-results max-results xf]
   (->> reducible-results
        (transduce xf (u/sorted-take max-results compare-score))
+       rseq
        (map :result)))
