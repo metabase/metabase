@@ -9,13 +9,11 @@
             [metabase.models.action :as action]
             [metabase.models.database :refer [Database]]
             [metabase.models.setting :as setting]
-            [metabase.models.table :as table]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+            [toucan.db :as db]))
 
 (def ^:private JsonQuerySchema
   (su/with-api-error-message
@@ -36,20 +34,6 @@
    (s/optional-key :headers) (s/maybe s/Str)
    (s/optional-key :parameters) (s/maybe [su/Map])
    (s/optional-key :parameter_mappings) (s/maybe su/Map)})
-
-(api/defendpoint POST "/:action-namespace/:action-name"
-  "Generic API endpoint for executing any sort of Action."
-  [action-namespace action-name :as {:keys [body]}]
-  (let [action (keyword action-namespace action-name)]
-    (actions/perform-action! action body)))
-
-(api/defendpoint POST "/:action-namespace/:action-name/:table-id"
-  "Generic API endpoint for executing any sort of Action with source Table ID specified as part of the route."
-  [action-namespace action-name table-id :as {:keys [body]}]
-  (let [action (keyword action-namespace action-name)]
-    (actions/perform-action! action {:database (api/check-404 (table/table-id->database-id table-id))
-                                     :table-id table-id
-                                     :arg      body})))
 
 (defn check-actions-enabled
   "Check whether Actions are enabled and allowed for the [[metabase.models.database]] with `database-id`, or return a
@@ -77,7 +61,7 @@
 
 (api/defendpoint GET "/:action-id"
   [action-id]
-  (api/check-404 (first (hydrate (action/select-actions :id action-id) :action/emitter-usages))))
+  (api/check-404 (first (action/select-actions :id action-id))))
 
 (api/defendpoint DELETE "/:action-id"
   [action-id]
@@ -108,6 +92,6 @@
    response_handle (s/maybe JsonQuerySchema)
    error_handle (s/maybe JsonQuerySchema)}
   (db/update! HTTPAction id action)
-  (first (hydrate (action/select-actions :id id) :action/emitter-usages)))
+  (first (action/select-actions :id id)))
 
-(api/define-routes actions/+check-actions-enabled)
+(api/define-routes actions/+check-actions-enabled actions/+check-data-apps-enabled)

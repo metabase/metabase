@@ -6,6 +6,8 @@ import Utils from "metabase/lib/utils";
 import {
   RESET_QB,
   INITIALIZE_QB,
+  SET_DATA_REFERENCE_STACK,
+  OPEN_DATA_REFERENCE_AT_QUESTION,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   TOGGLE_SNIPPET_SIDEBAR,
@@ -63,6 +65,7 @@ import {
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
+  dataReferenceStack: null,
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
@@ -156,6 +159,23 @@ export const uiControls = handleActions(
         ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingDataReference: !state.isShowingDataReference,
       }),
+    },
+    [SET_DATA_REFERENCE_STACK]: {
+      next: (state, { payload }) => ({
+        ...state,
+        dataReferenceStack: payload,
+      }),
+    },
+    [OPEN_DATA_REFERENCE_AT_QUESTION]: {
+      next: (state, { payload }) => {
+        return payload
+          ? {
+              ...state,
+              dataReferenceStack: payload,
+              isShowingDataReference: true,
+            }
+          : state;
+      },
     },
     [TOGGLE_TEMPLATE_TAGS_EDITOR]: {
       next: (state, { payload }) => ({

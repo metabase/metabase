@@ -9,6 +9,9 @@ describe("scenarios > native question > data reference sidebar", () => {
   it("should show tables", () => {
     openNativeEditor();
     cy.icon("reference").click();
+    cy.get("[data-testid='sidebar-header-title']").findByText(
+      "Sample Database",
+    );
     cy.findByText("ORDERS").click();
     cy.findByText(
       "Confirmed Sample Company orders for a product, from a user.",
@@ -16,6 +19,13 @@ describe("scenarios > native question > data reference sidebar", () => {
     cy.findByText("9 columns");
     cy.findByText("QUANTITY").click();
     cy.findByText("Number of products bought.");
+    // clicking the title should navigate back
+    cy.findByText("QUANTITY").click();
+    cy.findByText("ORDERS").click();
+    cy.get("[data-testid='sidebar-header-title']")
+      .findByText("Sample Database")
+      .click();
+    cy.findByText("Data Reference");
   });
 
   it("should show models", () => {

@@ -1,10 +1,12 @@
 import { ngettext, msgid } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
-import { getParameterType } from "metabase-lib/lib/parameters/utils/parameter-type";
+import {
+  getParameterType,
+  isFieldFilterParameter,
+} from "metabase-lib/lib/parameters/utils/parameter-type";
 
-import { UiParameter } from "../types";
-import { isFieldFilterParameter } from "./parameter-type";
+import { UiParameter } from "metabase-lib/lib/parameters/types";
 import { formatDateValue } from "./date-formatting";
 
 function inferValueType(parameter: UiParameter) {

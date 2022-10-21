@@ -392,3 +392,39 @@ export const isDayOfWeekDateFilter = testTemporalUnit("day-of-week");
 export const isMonthOfYearDateFilter = testTemporalUnit("month-of-year");
 export const isQuarterofYearDateFilter = testTemporalUnit("quarter-of-year");
 export const isHourOfDayDateFilter = testTemporalUnit("hour-of-day");
+
+export function getDateFilterValue(mbql: any[]) {
+  const [_op, _field, value] = mbql;
+  return value;
+}
+
+export function setDateFilterValue(mbql: any[], newValue: string | null) {
+  const [op, field] = mbql;
+  return [op, field, newValue];
+}
+
+export function clearDateFilterTime(mbql: any[]) {
+  return setDateFilterValue(mbql, setTimeComponent(getDateFilterValue(mbql)));
+}
+
+export function getDateRangeFilterValue(mbql: any[]) {
+  const [_op, _field, startValue, endValue] = mbql;
+  return [startValue, endValue];
+}
+
+export function setDateRangeFilterValue(
+  mbql: any[],
+  [startValue, endValue]: [string | null, string | null],
+) {
+  const [op, field] = mbql;
+  return [op, field, startValue, endValue];
+}
+
+export function clearDateRangeFilterTime(mbql: any[]) {
+  const [startValue, endValue] = getDateRangeFilterValue(mbql);
+
+  return setDateRangeFilterValue(mbql, [
+    setTimeComponent(startValue),
+    setTimeComponent(endValue),
+  ]);
+}

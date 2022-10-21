@@ -17,7 +17,9 @@ export default ({ question, clicked }) => {
       name: "pivot-by-category",
       section: "breakout",
       buttonType: "token",
-      title: (
+      title: clicked ? (
+        t`Category`
+      ) : (
         <span>
           {jt`Break out by ${(
             <span className="text-dark">{t`category`}</span>

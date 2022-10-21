@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { UiParameter } from "metabase/parameters/types";
+import { UiParameter } from "metabase-lib/lib/parameters/types";
 import { isEqualsOperator } from "metabase-lib/lib/operators/utils";
 
 import { getParameterType } from "metabase-lib/lib/parameters/utils/parameter-type";

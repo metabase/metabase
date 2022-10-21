@@ -15,7 +15,6 @@ import {
 import { MetabaseApi } from "metabase/services";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardUiParameters } from "metabase/parameters/utils/cards";
-import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 
 import Databases from "metabase/entities/databases";
 import Timelines from "metabase/entities/timelines";
@@ -34,6 +33,7 @@ import {
 import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { normalizeParameterValue } from "metabase-lib/lib/parameters/utils/parameter-values";
 import { isPK } from "metabase-lib/lib/types/utils/isa";
 import Mode from "metabase-lib/lib/Mode";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -945,3 +945,13 @@ export const getAutocompleteResultsFn = state => {
     return apiCall;
   };
 };
+
+export const getDataReferenceStack = createSelector(
+  [getUiControls, getDatabaseId],
+  (uiControls, dbId) =>
+    uiControls.dataReferenceStack
+      ? uiControls.dataReferenceStack
+      : dbId
+      ? [{ type: "database", item: { id: dbId } }]
+      : [],
+);
