@@ -7,11 +7,12 @@ redirect_from:
 # Running Metabase on AWS Elastic Beanstalk
 
 This quick launch setup is intended for testing purposes only, and is not intended for production use. We'll focus on deploying Metabase with a single instance and the embedded H2 database with the following components:
+
 - a region (where your Metabase application will exist)
 - a network (where your application will reside and interact with other applications or servers if needed)
 - a security group (a firewall, for keeping everything secure)
 - a load balancer (to make this deployment future proof and also provide features like HTTPS or Web Application Firewall security features)
-If you want to see a high-level architectural diagram of what you will achieve once you follow this guide, [click here](images/Metabase-AWS-H2.png).
+  If you want to see a high-level architectural diagram of what you will achieve once you follow this guide, [click here](images/Metabase-AWS-H2.png).
 
 If you would like a reliable, scalable and fully managed Metabase, please consider [Metabase Cloud](https://www.metabase.com/start/).
 
@@ -75,7 +76,7 @@ While most of the fields here will be correctly pre-filled by following the laun
 
 These settings will run the Metabase application using the [official Metabase Docker image on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
 
-Click **Review and launch**.  You'll be directed to a page to configure and launch your instance.
+Click **Review and launch**. You'll be directed to a page to configure and launch your instance.
 
 ## Step 2 - Configure the basic Metabase architecture
 
@@ -87,7 +88,7 @@ Click on the `Edit` link under the Load Balancer section as seen here:
 
 ![Elastic Beanstalk Monitoring](images/EBLoadBalancerEdit.png)
 
-Select `Application Load Balancer` in the ***Load Balancer type*** if not already selected.
+Select `Application Load Balancer` under **Load Balancer type** if not already selected.
 
 In the **Processes** section, select the default process and click on `Actions` → Edit.
 
@@ -109,7 +110,7 @@ You must configure your Application launch in a VPC, otherwise you'll receive an
 
 Once inside the Network configuration, you need to select the VPC where the Application will exist. If you haven't created a VPC, then AWS creates a `default` VPC per region that you can use.
 
-You need to select __at least__ 2 zones where the Load Balancer will balance the traffic, and  __at least__ 1 zone where the instance will exist. For the load balancer to send traffic to a living instance, there has to be a zone in common.
+You need to select _at least_ 2 zones where the Load Balancer will balance the traffic, and _at least_ 1 zone where the instance will exist. For the load balancer to send traffic to a living instance, there has to be a zone in common.
 
 ![Elastic Beanstalk Networking configuration](images/EBNetworkingConfig.png)
 
@@ -121,7 +122,7 @@ Now go to the Capacity section and click **Edit**.
 
 ![Elastic Beanstalk Networking configuration](images/EBCapacity.png)
 
-The only change you need to do here is to reduce the number of Instances from 4 (the default number) to 1, as we still haven't created a centralized database where Metabase will save all of its configurations and will be using only the embedded H2 database which lives __inside__ the Metabase container and [is *not recommended* for production workloads](configuring-application-database.md) as there will be no way to backup and maintain that database. **When your instance is restarted for any reason you'll lose all your Metabase data**. If you are just doing a quick trial of Metabase that may be okay but otherwise you would like to start [creating your database engine in RDS separately](creating-RDS-database-on-AWS.md) or deploy one a separate server. You can take a look at the [Metabase at Scale](https://www.metabase.com/learn/data-diet/analytics/metabase-at-scale) article we wrote about how you can build redundant and scalable Metabase architectures.
+The only change you need to do here is to reduce the number of Instances from 4 (the default number) to 1, as we still haven't created a centralized database where Metabase will save all of its configurations and will be using only the embedded H2 database which lives _inside_ the Metabase container and [is _not recommended_ for production workloads](configuring-application-database.md) as there will be no way to backup and maintain that database. **When your instance is restarted for any reason you'll lose all your Metabase data**. If you are just doing a quick trial of Metabase that may be okay but otherwise you would like to start [creating your database engine in RDS separately](creating-RDS-database-on-AWS.md) or deploy one a separate server. You can take a look at the [Metabase at Scale](https://www.metabase.com/learn/data-diet/analytics/metabase-at-scale.html) article we wrote about how you can build redundant and scalable Metabase architectures.
 
 ![Elastic Beanstalk Networking configuration](images/EBCapacityModified.png)
 
@@ -139,10 +140,6 @@ To see your new Metabase instance, simply click on the link under your environme
 
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).
 
-# Optional extras
-
-There are many ways to customize your Elastic Beanstalk deployment, but commonly modified settings include:
-
 ## Instance Details
 
 - `Instance type` (`Instances` block) is for picking the size of AWS instance you want to run. We recommend **at least** `t3a.small` for most uses. You can always [scale](https://www.metabase.com/learn/data-diet/analytics/metabase-at-scale.html) vertically by changing this configuration.
@@ -150,7 +147,7 @@ There are many ways to customize your Elastic Beanstalk deployment, but commonly
 
 ## Application Database creation inside Elastic Beanstalk configuration (not recommended)
 
-When you hit the `Create App` button, AWS Elastic Beanstalk creates a CloudFormation template.  This template means that the database will be created with the Elastic Beanstalk stack, and removed when you remove the application.
+When you hit the `Create App` button, AWS Elastic Beanstalk creates a CloudFormation template. This template means that the database will be created with the Elastic Beanstalk stack, and removed when you remove the application.
 
 If you want to use a production-grade database based on best practices to persist all Metabase configurations you have to [create one in RDS separately](creating-RDS-database-on-AWS.md) or manage your own on a separate server and then connect the Elastic Beanstalk instance/s with the RDS database through [environment variables](#set-or-change-environment-variables).
 
@@ -183,11 +180,9 @@ When you click `Next` a new tab will open in your browser and you will be prompt
 
 ![ebiamrole](images/EBIAMRole.png)
 
-
 ## Set or change environment variables
 
 In order to configure environment variables for your Elastic Beanstalk deployment (e.g., [to connect the deployment to a separate RDS database](creating-RDS-database-on-AWS.md)), click on your Metabase environment in Elastic Beanstak, go to Configuration → Software, and look for the Environment Properties in the bottom.
-
 
 In the Environment Properties section, you'll be able to set or change the variables for [configuring your Metabase deployment](../configuring-metabase/environment-variables.md).
 
@@ -195,10 +190,9 @@ In the Environment Properties section, you'll be able to set or change the varia
 
 ## Notifications
 
-For a simple way to keep tabs on your application, enter an email address  in the **Notifications** block to get notifications about your deployment and any changes to your application.
+For a simple way to keep tabs on your application, enter an email address in the **Notifications** block to get notifications about your deployment and any changes to your application.
 
----
-# Deploying New Versions of Metabase on Elastic Beanstalk
+## Deploying New Versions of Metabase on Elastic Beanstalk
 
 Upgrading to the next version of Metabase is a very simple process where you will grab the latest published Elastic Beanstalk deployment file from Metabase and upload it to your `Application Versions` listing. From there it's a couple clicks and you're upgraded.
 
@@ -207,7 +201,8 @@ Here's each step:
 - Go to Elastic Beanstalk and select your `Metabase` application.
 - Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page).
 - Download the latest Metabase Elastic Beanstalk deployment file:
-  - [https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip](https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip)
+  - [Open source](https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip)
+  - [Pro or Enterprise](https://downloads.metabase.com/enterprise/{{ site.latest_enterprise }}/metabase-aws-eb.zip)
 - Upload a new Application Version:
   - Click the `Upload` button on the upper right side of the listing.
   - Give the new version a name, ideally including the Metabase version number (e.g. {{ site.latest_version }}).
