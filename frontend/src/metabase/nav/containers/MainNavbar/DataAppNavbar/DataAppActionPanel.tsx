@@ -1,28 +1,39 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/components/Tooltip";
+import EntityMenu from "metabase/components/EntityMenu";
 
-import {
-  ActionGroup,
-  DataAppActionsContainer,
-  DataAppActionButton,
-} from "../MainNavbar.styled";
+import * as Urls from "metabase/lib/urls";
+
+import type { DataApp } from "metabase-types/api";
+
+import { DataAppActionsContainer } from "../MainNavbar.styled";
 
 interface Props {
+  dataApp: DataApp;
   onEditAppSettings: () => void;
 }
 
-function DataAppActionPanel({ onEditAppSettings }: Props) {
+function DataAppActionPanel({ dataApp, onEditAppSettings }: Props) {
+  const menuItems = useMemo(
+    () => [
+      {
+        title: t`Manage content`,
+        icon: "list",
+        link: Urls.dataApp(dataApp, { mode: "preview" }),
+      },
+      {
+        title: t`App settings`,
+        icon: "gear",
+        action: onEditAppSettings,
+      },
+    ],
+    [dataApp, onEditAppSettings],
+  );
+
   return (
     <DataAppActionsContainer>
-      <ActionGroup>
-        <ActionGroup.Cell>
-          <Tooltip tooltip={t`Settings`}>
-            <DataAppActionButton icon="gear" onClick={onEditAppSettings} />
-          </Tooltip>
-        </ActionGroup.Cell>
-      </ActionGroup>
+      <EntityMenu items={menuItems} triggerIcon="ellipsis" />
     </DataAppActionsContainer>
   );
 }

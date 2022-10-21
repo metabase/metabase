@@ -91,15 +91,8 @@ function DataAppNavbarView({
       <ActionPanelContainer>
         <DataAppActionPanel
           dataApp={dataApp}
-          onAddData={onAddData}
-          onNewPage={onNewPage}
           onEditAppSettings={onEditAppSettings}
         />
-        <Tooltip tooltip={t`App elements`}>
-          <ExitAppLink to={exitAppPath}>
-            <Icon name="list" />
-          </ExitAppLink>
-        </Tooltip>
       </ActionPanelContainer>
     </Root>
   );
