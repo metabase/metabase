@@ -609,6 +609,22 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
+    name: "get-week",
+    structure: "week(" + t`column` + ", " + t`mode` + ")",
+    description: t`Takes a datetime and returns an integer (1-52) with the number of the week in the year.`,
+    example: "week([" + t`Created At` + '], "iso")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The datetime column.`,
+      },
+      {
+        name: t`mode`,
+        description: t`iso8601 or US or instance. Default is iso8601.`,
+      },
+    ],
+  },
+  {
     name: "get-day",
     structure: "day(" + t`column` + ")",
     description: t`Takes a datetime and returns an integer (1-31) with the number of the day of the month.`,
