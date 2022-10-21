@@ -376,8 +376,12 @@
   [attrs]
   (when attrs
     (into {} (map (fn [i]
-                    (let [item (bean (.item attrs i))]
-                      [(keyword (:name item)) (:value item)]))
+                    (let [item (bean (.item attrs i))
+                          unparsed-value (:value item)
+                          value (or (parse-long unparsed-value)
+                                    (parse-double unparsed-value)
+                                    unparsed-value)]
+                      [(keyword (:name item)) value]))
                   (range (.getLength attrs))))))
 
 (defn- hiccup-zip

@@ -409,9 +409,24 @@
 
 (deftest render-bar-graph-test
   (testing "Render a bar graph with non-nil values for the x and y axis"
-    (is (has-inline-image?
-         (render-bar-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+    (let [col-headers ["Price" "NumPurchased"]
+          rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
+          rendered-bars (-> (concat [col-headers] rows)
+                            (render.tu/make-card-and-data :bar)
+                            render.tu/render-as-hiccup
+                            (render.tu/nodes-with-tag :rect)
+                            (->> (map #(select-keys (second %) [:x :height]))))]
+      (is (= (count rows) (count rendered-bars))
+          "correct number of bars are rendered")
+      (is (= (sort-by :x rendered-bars)
+             (sort-by :height rendered-bars))
+          "leftmost bar is shortest, rightmost bar is tallest, as expected by rows passed in")
+      (let [first-height (second (first rows))
+            first-rendered-height (:height (first rendered-bars))]
+        (is (= (map #(int (/ (second %) (double first-height))) rows)
+               (map #(int (/ (:height %) (double first-rendered-height))) rendered-bars))
+            "bar height ratios match the input row value ratios"))))
+
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
          (render-bar-graph {:cols default-columns
