@@ -24,6 +24,13 @@ const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(on, config) {
+    // Cypress analytics and the alternative to Cypress dashboard
+    // Needs to be at the very top in the config!
+    [on, config] = require("@deploysentinel/cypress-debugger/plugin")(
+      on,
+      config,
+    );
+
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
     require("cypress-grep/src/plugin")(config);
@@ -70,10 +77,6 @@ const defaultConfig = {
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
     config.env.TARGET_VERSION = targetVersion;
-
-    // Cypress analytics and the alternative to Cypress dashboard
-    // Needs to be the very last thing in the config!
-    require("@deploysentinel/cypress-debugger/plugin")(on, config);
 
     return config;
   },
