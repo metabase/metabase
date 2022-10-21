@@ -73,6 +73,12 @@ const QuestionPane = ({
           <QuestionPaneDetailText>{t`ID #${question.id()}`}</QuestionPaneDetailText>
         </QuestionPaneDetail>
         <QuestionPaneDetail>
+          <QuestionPaneIcon name="all" />
+          <QuestionPaneDetailText>
+            {question.card().collection?.name || t`Our analytics`}
+          </QuestionPaneDetailText>
+        </QuestionPaneDetail>
+        <QuestionPaneDetail>
           <QuestionPaneIcon name="calendar" />
           <QuestionPaneDetailText>
             {jt`Last edited ${(
