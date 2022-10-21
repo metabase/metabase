@@ -2,12 +2,7 @@ import React from "react";
 import { Group } from "@visx/group";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Bar } from "@visx/shape";
-import type {
-  NumberValue,
-  ScaleBand,
-  ScaleContinuousNumeric,
-  ScaleLinear,
-} from "d3-scale";
+import type { NumberValue, ScaleBand, ScaleContinuousNumeric } from "d3-scale";
 import { Text } from "@visx/text";
 import { GridColumns } from "@visx/grid";
 import { scaleBand } from "@visx/scale";
@@ -15,6 +10,7 @@ import { HoveredData } from "metabase/visualizations/shared/types/events";
 import { Margin } from "metabase/visualizations/shared/types/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
 import { RowChartTheme, SeriesData } from "../RowChart/types";
+import { DATA_LABEL_OFFSET } from "./constants";
 
 export interface RowChartViewProps {
   width: number;
@@ -117,8 +113,14 @@ export const RowChartView = ({
 
         {seriesData.map((series, seriesIndex) => {
           return series.bars.map(bar => {
-            const { xStartValue, xEndValue, isNegative, yValue, datumIndex } =
-              bar;
+            const {
+              xStartValue,
+              xEndValue,
+              isNegative,
+              yValue,
+              datumIndex,
+              isBorderValue,
+            } = bar;
 
             let y = yScale(yValue);
 
@@ -145,7 +147,8 @@ export const RowChartView = ({
                 ? 1
                 : 0.4;
 
-            const isLabelVisible = shouldShowDataLabels && series.canShowValues;
+            const isLabelVisible =
+              shouldShowDataLabels && (!isStacked || isBorderValue);
 
             const height = innerBarScale?.bandwidth() ?? yScale.bandwidth();
             const value = isNegative ? xStartValue : xEndValue;
@@ -173,7 +176,7 @@ export const RowChartView = ({
                     fontSize={theme.dataLabels.size}
                     fill={theme.dataLabels.color}
                     fontWeight={theme.dataLabels.weight}
-                    dx={`${isNegative ? "-" : ""}0.33em`}
+                    dx={(isNegative ? "-" : "") + DATA_LABEL_OFFSET}
                     x={xScale(value)}
                     y={y + height / 2}
                     verticalAnchor="middle"

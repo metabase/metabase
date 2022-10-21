@@ -104,6 +104,29 @@ export const getClickData = (
   };
 };
 
+export const getLegendClickData = (
+  seriesIndex: number,
+  series: Series<GroupedDatum, SeriesInfo>[],
+  visualizationSettings: VisualizationSettings,
+  chartColumns: ChartColumns,
+) => {
+  const currentSeries = series[seriesIndex];
+
+  const dimensions =
+    "breakout" in chartColumns
+      ? {
+          column: chartColumns.breakout.column,
+          value: currentSeries.seriesInfo?.breakoutValue,
+        }
+      : undefined;
+
+  return {
+    column: currentSeries.seriesInfo?.metricColumn,
+    dimensions,
+    settings: visualizationSettings,
+  };
+};
+
 export const getHoverData = (
   seriesIndex: number,
   datumIndex: number,

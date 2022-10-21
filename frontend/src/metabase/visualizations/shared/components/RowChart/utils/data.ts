@@ -1,6 +1,8 @@
 import _ from "underscore";
-
 import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3-shape";
+import type { Series as D3Series } from "d3-shape";
+import d3 from "d3";
+
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 import { isNotEmpty } from "metabase/core/utils/is-not-empty";
 import { BarData, Series, SeriesData, StackOffset } from "../types";
@@ -65,37 +67,48 @@ export const calculateStackedBars = <TDatum>({
   );
   const xScale = createXScale(xDomain, [0, innerWidth], xScaleType);
 
+  const getDatumExtent = _.memoize(
+    (stackedSeries: D3Series<TDatum, string>[], datumIndex: number) => {
+      return d3.extent(stackedSeries.flatMap(series => series[datumIndex]));
+    },
+    (_series, datumIndex) => datumIndex,
+  );
+
   const seriesData: SeriesData<TDatum>[] = multipleSeries.map(
     (series, seriesIndex) => {
       const bars = data.map<BarData<TDatum>>((originalDatum, datumIndex) => {
+        const [datumMin, datumMax] = getDatumExtent(stackedSeries, datumIndex);
         const stackedDatum = stackedSeries[seriesIndex][datumIndex];
 
-        const xStartValue = Math.min(...stackedDatum);
-        const xEndValue = Math.max(...stackedDatum);
+        const [xStartValue, xEndValue] = stackedDatum;
+
         const yValue = series.yAccessor(stackedDatum.data);
+        const isNegative = xStartValue < 0;
+        const isBorderValue =
+          (isNegative && xStartValue === datumMin) ||
+          (!isNegative && xEndValue === datumMax);
 
         return {
           xStartValue,
           xEndValue,
           yValue,
-          isNegative: xStartValue < 0 || xEndValue < 0,
+          isNegative,
           originalDatum,
           datumIndex,
+          isBorderValue,
         };
       });
-
-      const canShowValues = seriesIndex === multipleSeries.length - 1;
 
       return {
         bars,
         key: series.seriesKey,
         color: seriesColors[series.seriesKey],
-        canShowValues,
       };
     },
   );
 
   return {
+    xDomain,
     xScale,
     yScale,
     seriesData,
@@ -160,9 +173,8 @@ export const calculateNonStackedBars = <TDatum>({
       bars,
       color: seriesColors[series.seriesKey],
       key: series.seriesKey,
-      canShowValues: true,
     };
   });
 
-  return { xScale, yScale, seriesData };
+  return { xDomain, xScale, yScale, seriesData };
 };

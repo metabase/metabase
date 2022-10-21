@@ -199,7 +199,7 @@ const getMultipleMetricSeries = (
     return {
       seriesKey: metric.column.name,
       seriesName: metric.column.display_name ?? metric.column.name,
-      yAccessor: (datum: GroupedDatum) => String(datum.dimensionValue),
+      yAccessor: (datum: GroupedDatum) => datum.dimensionValue,
       xAccessor: (datum: GroupedDatum) => datum.metrics[metric.column.name],
       seriesInfo: {
         dimensionColumn: dimension.column,
@@ -214,8 +214,6 @@ export const getSeries = (
   chartColumns: ChartColumns,
   columnFormatter: ColumnFormatter,
 ): Series<GroupedDatum, SeriesInfo>[] => {
-  let series: Series<GroupedDatum, SeriesInfo>[];
-
   if ("breakout" in chartColumns) {
     const breakoutValues = getBreakoutDistinctValues(
       data,

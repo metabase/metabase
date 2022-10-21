@@ -1,30 +1,30 @@
 import { AxisStyle, ChartFont, GoalStyle } from "../../types/style";
 
 export type XValue = number | null;
-export type yValue = string;
+export type YValue = string | number | boolean | null;
 
 export type Series<TDatum, TSeriesInfo = unknown> = {
   seriesKey: string;
   seriesName: string;
   xAccessor: (datum: TDatum) => XValue;
-  yAccessor: (datum: TDatum) => yValue;
+  yAccessor: (datum: TDatum) => YValue;
   seriesInfo?: TSeriesInfo;
 };
 
 export type BarData<TDatum> = {
   xStartValue: number;
   xEndValue: number;
-  yValue: string;
+  yValue: YValue;
   isNegative: boolean;
   originalDatum: TDatum;
   datumIndex: number;
+  isBorderValue?: boolean;
 };
 
 export type SeriesData<TDatum> = {
   key: string;
   color: string;
   bars: BarData<TDatum>[];
-  canShowValues: boolean;
 };
 
 export type RowChartTheme = {

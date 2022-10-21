@@ -19,24 +19,28 @@ const omitOverlappingTicks = (
     return ticks;
   }
 
-  const nonOverlappingTicks = [ticks[0]];
-  let nextAvailableX =
-    measureText(tickFormatter(ticks[0]), tickFont) / 2 + TICK_SPACING;
+  const [_min, max] = xScale.range();
 
-  for (let i = 1; i < ticks.length; i++) {
+  const nonOverlappingTicks: number[] = [];
+  let nextAvailableX = Infinity;
+
+  for (let i = ticks.length - 1; i >= 0; i--) {
     const currentTick = ticks[i];
     const currentTickWidth = measureText(tickFormatter(currentTick), tickFont);
     const currentTickX = xScale(currentTick);
+
+    const currentTickEnd = currentTickX + currentTickWidth / 2;
     const currentTickStart = currentTickX - currentTickWidth / 2;
 
-    if (currentTickStart < nextAvailableX) {
+    if (currentTickEnd > nextAvailableX || currentTickEnd > max) {
       continue;
     }
 
     nonOverlappingTicks.push(currentTick);
-    nextAvailableX = currentTickX + currentTickWidth / 2 + TICK_SPACING;
+    nextAvailableX = currentTickStart + TICK_SPACING;
   }
 
+  nonOverlappingTicks.sort((a, b) => a - b);
   return nonOverlappingTicks;
 };
 

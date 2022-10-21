@@ -17,7 +17,7 @@ import {
 import { getXTicks } from "./utils/ticks";
 import { RowChartTheme, Series, StackOffset } from "./types";
 import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
-import { addSideSpacingForXScale } from "./utils/scale";
+import { addSideSpacingForTicksAndLabels } from "./utils/scale";
 
 const MIN_BAR_HEIGHT = 24;
 
@@ -136,7 +136,7 @@ export const RowChart = <TDatum,>({
     [goal],
   );
 
-  const { xScale, yScale, seriesData } = useMemo(
+  const { xScale, yScale, xDomain, seriesData } = useMemo(
     () =>
       stackOffset != null
         ? calculateStackedBars<TDatum>({
@@ -170,32 +170,12 @@ export const RowChart = <TDatum,>({
     ],
   );
 
-  const xTicks = useMemo(
-    () =>
-      getXTicks(
-        theme.axis.ticks,
-        innerWidth,
-        xScale,
-        xTickFormatter,
-        measureText,
-        xScaleType,
-      ),
-    [
-      innerWidth,
-      measureText,
-      theme.axis.ticks,
-      xScale,
-      xScaleType,
-      xTickFormatter,
-    ],
-  );
-
   const paddedXScale = useMemo(
     () =>
-      addSideSpacingForXScale(
+      addSideSpacingForTicksAndLabels(
         xScale,
+        xDomain,
         measureText,
-        xTicks,
         theme.axis.ticks,
         xTickFormatter,
         theme.dataLabels,
@@ -208,15 +188,35 @@ export const RowChart = <TDatum,>({
       shouldShowDataLabels,
       theme.axis.ticks,
       theme.dataLabels,
+      xDomain,
       xScale,
       xTickFormatter,
-      xTicks,
+    ],
+  );
+
+  const xTicks = useMemo(
+    () =>
+      getXTicks(
+        theme.axis.ticks,
+        innerWidth,
+        paddedXScale,
+        xTickFormatter,
+        measureText,
+        xScaleType,
+      ),
+    [
+      innerWidth,
+      measureText,
+      theme.axis.ticks,
+      paddedXScale,
+      xScaleType,
+      xTickFormatter,
     ],
   );
 
   const rowChartGoal = useMemo(
-    () => getRowChartGoal(goal, theme.goal, measureText, xScale),
-    [goal, measureText, theme.goal, xScale],
+    () => getRowChartGoal(goal, theme.goal, measureText, paddedXScale),
+    [goal, measureText, theme.goal, paddedXScale],
   );
 
   return (

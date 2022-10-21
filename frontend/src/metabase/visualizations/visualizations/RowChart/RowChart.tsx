@@ -27,6 +27,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import {
   getClickData,
   getHoverData,
+  getLegendClickData,
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
 
 import { getChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
@@ -186,6 +187,33 @@ const RowChartVisualization = ({
     });
   };
 
+  const openQuestion = () => {
+    if (onChangeCardAndRun) {
+      onChangeCardAndRun({
+        nextCard: card,
+        seriesIndex: 0,
+      });
+    }
+  };
+
+  const handleSelectSeries = (event: React.MouseEvent, seriesIndex: number) => {
+    const clickData = getLegendClickData(
+      seriesIndex,
+      series,
+      settings,
+      chartColumns,
+    );
+
+    if ("breakout" in chartColumns && visualizationIsClickable(clickData)) {
+      onVisualizationClick({
+        ...clickData,
+        element: event.currentTarget,
+      });
+    } else {
+      openQuestion();
+    }
+  };
+
   const hoverData =
     hovered?.index != null
       ? {
@@ -210,24 +238,6 @@ const RowChartVisualization = ({
   const description = settings["card.description"];
   const canSelectTitle = !!onChangeCardAndRun;
 
-  const handleSelectTitle = () => {
-    if (onChangeCardAndRun) {
-      onChangeCardAndRun({
-        nextCard: card,
-        seriesIndex: 0,
-      });
-    }
-  };
-
-  const handleSelectSeries = (event: any, index: number) => {
-    const single = series[index];
-    const hasBreakout = "breakout" in chartColumns;
-
-    if (onEditSeries && !hasBreakout) {
-      onEditSeries(event, index);
-    }
-  };
-
   const seriesSettings =
     settings.series && rawSeries.map((single: any) => settings.series(single));
 
@@ -243,7 +253,7 @@ const RowChartVisualization = ({
           description={description}
           icon={headerIcon}
           actionButtons={actionButtons}
-          onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
+          onSelectTitle={canSelectTitle ? openQuestion : undefined}
         />
       )}
       <RowChartLegendLayout
@@ -288,7 +298,6 @@ RowChartVisualization.iconName = "horizontal_bar";
 RowChartVisualization.noun = t`row chart`;
 
 RowChartVisualization.noHeader = true;
-RowChartVisualization.supportsSeries = true;
 RowChartVisualization.minSize = { width: 4, height: 3 };
 
 const stackingSettings = {

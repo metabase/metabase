@@ -37,7 +37,7 @@ export const createStackedXDomain = <TDatum>(
   stackedSeries: D3Series<TDatum, string>[],
   additionalValues: number[],
   xScaleType: ContinuousScaleType,
-) => {
+): ContinuousDomain => {
   const [min, max] = d3.extent([...stackedSeries.flat(2), ...additionalValues]);
 
   if (xScaleType === "log") {
