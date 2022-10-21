@@ -81,6 +81,11 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
+        (and (some? maybe-dashcard)
+             (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard)))
+             (not (#{:combo} display-type)))
+        (chart-type :multiple "result has multiple card semantics, a multiple chart")
+
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
         (and (not (contains? #{:progress :gauge} display-type))
              (= @col-sample-count @row-sample-count 1))
@@ -99,11 +104,6 @@
            :table
            :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
-
-        (and (some? maybe-dashcard)
-             (> (count (dashboard-card/dashcard->multi-cards maybe-dashcard)) 0)
-             (not (#{:combo} display-type)))
-        (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
         (= display-type :pie)
         (chart-type :categorical/donut "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))

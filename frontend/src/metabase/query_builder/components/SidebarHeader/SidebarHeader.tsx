@@ -43,7 +43,11 @@ function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {
 
   return (
     <HeaderRoot className={className}>
-      <HeaderTitleContainer variant={headerVariant} onClick={onBack}>
+      <HeaderTitleContainer
+        variant={headerVariant}
+        onClick={onBack}
+        data-testid="sidebar-header-title"
+      >
         {onBack && <HeaderIcon name="chevronleft" />}
         {icon && <HeaderIcon name={icon} />}
         {hasDefaultBackButton ? t`Back` : title}
