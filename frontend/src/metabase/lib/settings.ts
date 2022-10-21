@@ -196,9 +196,9 @@ class Settings {
     return this.get("ldap-configured?");
   }
 
-  // JWT or SAML is configured
-  isOtherSsoConfigured() {
-    return this.get("other-sso-configured?");
+  // JWT or SAML is enabled
+  isOtherSsoEnabled() {
+    return this.get("other-sso-enabled?");
   }
 
   isSsoEnabled() {
