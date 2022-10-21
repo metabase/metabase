@@ -1,7 +1,9 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 
+import Button from "metabase/core/components/Button";
 import EntityMenu from "metabase/components/EntityMenu";
+import Tooltip from "metabase/components/Tooltip";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -11,10 +13,15 @@ import { Root } from "./DataAppActionPanel.styled";
 
 interface Props {
   dataApp: DataApp;
+  onEditAppPage: () => void;
   onEditAppSettings: () => void;
 }
 
-function DataAppActionPanel({ dataApp, onEditAppSettings }: Props) {
+function DataAppActionPanel({
+  dataApp,
+  onEditAppPage,
+  onEditAppSettings,
+}: Props) {
   const menuItems = useMemo(
     () => [
       {
@@ -33,7 +40,14 @@ function DataAppActionPanel({ dataApp, onEditAppSettings }: Props) {
 
   return (
     <Root>
-      <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+      <Tooltip tooltip={t`Edit page`}>
+        <Button icon="pencil" onlyIcon onClick={onEditAppPage} />
+      </Tooltip>
+      <EntityMenu
+        items={menuItems}
+        triggerIcon="ellipsis"
+        tooltip={t`Manage content, settings and more…`}
+      />
     </Root>
   );
 }

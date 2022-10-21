@@ -15,6 +15,7 @@ interface Props extends Omit<MainNavbarProps, "location" | "params"> {
   dataApp: DataApp;
   pages: any[];
   selectedItems: SelectedItem[];
+  onEditAppPage: () => void;
   onEditAppSettings: () => void;
   onAddData: () => void;
   onNewPage: () => void;
@@ -24,6 +25,7 @@ function DataAppNavbarView({
   dataApp,
   pages,
   selectedItems,
+  onEditAppPage,
   onEditAppSettings,
   onAddData,
   onNewPage,
@@ -77,6 +79,7 @@ function DataAppNavbarView({
       </NavItemsList>
       <DataAppActionPanel
         dataApp={dataApp}
+        onEditAppPage={onEditAppPage}
         onEditAppSettings={onEditAppSettings}
       />
     </Root>

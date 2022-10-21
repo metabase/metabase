@@ -14,6 +14,10 @@ import DataApps from "metabase/entities/data-apps";
 import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
+import {
+  setEditingDashboard as setEditingDataAppPage,
+  setPageTitleTemplate,
+} from "metabase/dashboard/actions";
 import ScaffoldDataAppPagesModal from "metabase/writeback/containers/ScaffoldDataAppPagesModal";
 
 import type { DataApp, Dashboard } from "metabase-types/api";
@@ -40,6 +44,7 @@ interface DataAppNavbarContainerOwnProps extends MainNavbarProps {
 }
 
 interface DataAppNavbarContainerDispatchProps {
+  setEditingDataAppPage: (isEditing: boolean) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
@@ -60,6 +65,7 @@ type SearchRenderProps = {
 };
 
 const mapDispatchToProps = {
+  setEditingDataAppPage,
   onChangeLocation: push,
 };
 
@@ -69,6 +75,7 @@ function DataAppNavbarContainer({
   location,
   params,
   onReloadNavbar,
+  setEditingDataAppPage,
   onChangeLocation,
   ...props
 }: DataAppNavbarContainerProps) {
@@ -78,6 +85,10 @@ function DataAppNavbarContainer({
     () => getSelectedItems({ dataApp, pages, location, params }),
     [dataApp, pages, location, params],
   );
+
+  const handleEnablePageEditing = useCallback(() => {
+    setEditingDataAppPage(true);
+  }, [setEditingDataAppPage]);
 
   const handleNewDataAdded = useCallback(
     async (nextDataAppState: DataApp) => {
@@ -162,6 +173,7 @@ function DataAppNavbarContainer({
         selectedItems={selectedItems}
         onAddData={onAddData}
         onNewPage={onNewPage}
+        onEditAppPage={handleEnablePageEditing}
         onEditAppSettings={onEditAppSettings}
       />
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
