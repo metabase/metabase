@@ -111,9 +111,9 @@
                                     (db/insert-many! ModelAction [{:card_id (:id card) :slug "insert" :requires_pk false}
                                                                   {:card_id (:id card) :slug "update" :requires_pk true}
                                                                   {:card_id (:id card) :slug "delete" :requires_pk true}]))
-                                  (assoc accum (into ["scaffold-target-id"] scaffold-target)
-                                         (cond->> (:id card)
-                                           (:dataset card) (str "card__")))))
+                                  (cond-> (assoc accum (into ["scaffold-target-id"] scaffold-target) (:id card))
+                                    (:dataset card)
+                                    (assoc (conj (into ["scaffold-target-id"] scaffold-target) "card") (str "card__" (:id card))))))
                               {}
                               cards)]
     ;; We create the dashboards (without dashcards) so we can replace scaffold-target-id elsewhere
@@ -173,11 +173,10 @@
                                                  {:priority 2 :field-id (:id field)}))))
                                      (sort-by :priority)
                                      first
-                                     :field-id)]
-        page-type "model"]
-    {:scaffold-target ["card" table-id page-type]
+                                     :field-id)]]
+    {:scaffold-target ["card" "table" table-id "model"]
      :name (or (:display_name table) (:name table))
-     :display (get-in page-type-display [page-type :display])
+     :display (get-in page-type-display ["model" :display])
      :visualization_settings {}
      :dataset true
      :dataset_query {:type "query"
@@ -215,6 +214,7 @@
           :ident-type ident-type
           :actions #{"insert" "update" "delete"}
           :model-ref ["scaffold-target-id" "card" ident-type table-id "model"]
+          :card-ref ["scaffold-target-id" "card" ident-type table-id "model" "card"]
           :page-name (format "%s %s"
                              (or (:display_name table) (:name table))
                              (get-in page-type-display [page-type :name]))})
@@ -246,6 +246,7 @@
          :ident-type ident-type
          :actions #{"insert" "update" "delete"}
          :model-ref model-id
+         :card-ref (str "card__" model-id)
          :page-name (format "%s %s"
                             (:name model)
                             (get-in page-type-display [page-type :name]))}))))
@@ -260,7 +261,7 @@
                         (cond-> {:page_id ["scaffold-target-id" "page" ident-type page-ident page-type]}
                           (= page-type "detail") (assoc :indent 1 :hidden true)))}
      :cards (into (vec models)
-                  (for [{:keys [page-name page-type ident-type page-ident model-ref]} page-infos]
+                  (for [{:keys [page-name page-type ident-type page-ident card-ref]} page-infos]
                     {:scaffold-target ["card" ident-type page-ident page-type]
                      :name page-name
                      :display (get-in page-type-display [page-type :display])
@@ -268,7 +269,7 @@
                                                (= page-type "list") (assoc "actions.bulk_enabled" false))
                      :dataset_query {:database mbql.s/saved-questions-virtual-database-id,
                                      :type "query",
-                                     :query {:source_table model-ref}}}))
+                                     :query {:source_table card-ref}}}))
      :pages (for [{:keys [ident-type page-type pk-field-slug pk-field-name pg-field-id page-ident page-name model-ref actions]} page-infos]
               (cond->
                {:name page-name

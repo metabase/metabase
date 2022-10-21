@@ -3,16 +3,12 @@
     [cheshire.core :as json]
     [clojure.test :refer [deftest is testing]]
     [medley.core :as m]
-    [metabase.models :refer [App
-                             Card
-                             Collection
-                             Dashboard
-                             DashboardCard
-                             ModelAction
-                             Permissions]]
+    [metabase.models :refer [App Card Collection Dashboard DashboardCard
+                             ModelAction Permissions]]
     [metabase.models.collection.graph :as graph]
     [metabase.models.permissions :as perms]
     [metabase.models.permissions-group :as perms-group]
+    [metabase.query-processor :as qp]
     [metabase.test :as mt]
     [metabase.test.data :as data]
     [metabase.test.initialize :as initialize]
@@ -227,6 +223,29 @@
                 :crowberto :post 400 "app/scaffold"
                 {:table-ids [(data/id :venues) (data/id :venues) Integer/MAX_VALUE]
                  :app-name (str "My test app " (gensym))})))))))
+
+(deftest scaffold-model-test
+  (mt/with-model-cleanup [Card Dashboard Collection Permissions]
+    (mt/with-all-users-permission (perms/app-root-collection-permission :read)
+      (testing "Golden path"
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]]
+          (let [app (mt/user-http-request
+                      :crowberto :post 200 "app/scaffold"
+                      {:model-ids [card-id]
+                       :app-name "My test app"})
+                pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
+                list-page (get pages "Venues List")
+                detail-page (get pages "Venues Detail")]
+            (is (partial= {:nav_items [{:page_id (:id list-page)}
+                                       {:page_id (:id detail-page) :hidden true :indent 1}]
+                           :dashboard_id (:id list-page)}
+                          app))
+            (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                     {:type "link",
+                                                                      :linkType "page",
+                                                                      :targetId (:id detail-page)}}}
+                                           {}]}
+                          list-page))))))))
 
 (deftest scaffold-app-test
   (mt/with-model-cleanup [Card Dashboard]
