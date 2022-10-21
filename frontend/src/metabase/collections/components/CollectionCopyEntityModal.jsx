@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useState } from "react";
 import { connect } from "react-redux";
 import { dissoc } from "icepick";
 import { t } from "ttag";
@@ -30,6 +30,21 @@ function CollectionCopyEntityModal({
   onSaved,
   triggerToast,
 }) {
+  const [isShallowCopy, setIsShallowCopy] = useState(true);
+  const handleValuesChange = ({ is_shallow_copy }) => {
+    setIsShallowCopy(is_shallow_copy);
+  };
+
+  const getTitle = () => {
+    if (entityObject.model !== "dashboard") {
+      return "";
+    } else if (isShallowCopy) {
+      return t`Duplicate "${entityObject.name}"`;
+    } else {
+      return t`Duplicate "${entityObject.name}" and its questions`;
+    }
+  };
+
   return (
     <EntityCopyModal
       overwriteOnInitialValuesChange
@@ -39,6 +54,7 @@ function CollectionCopyEntityModal({
         collection_id: initialCollectionId,
       }}
       form={Dashboards.forms.duplicate}
+      title={getTitle()}
       copy={async values => {
         return entityObject.copy(dissoc(values, "id"));
       }}
@@ -60,6 +76,7 @@ function CollectionCopyEntityModal({
 
         onSaved(newEntityObject);
       }}
+      onValuesChange={handleValuesChange}
     />
   );
 }

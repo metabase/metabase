@@ -49,7 +49,7 @@ const DashboardCopyModalInner = ({
   };
 
   const getTitle = () => {
-    if (!dashboard || !dashboard?.name) {
+    if (!dashboard?.name) {
       return "";
     } else if (isShallowCopy) {
       return t`Duplicate "${dashboard.name}"`;
