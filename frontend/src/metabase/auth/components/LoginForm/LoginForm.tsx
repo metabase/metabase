@@ -31,7 +31,7 @@ const LoginForm = ({
   isCookieEnabled,
   onSubmit,
 }: LoginFormProps): JSX.Element => {
-  const { getFieldProps, getFieldMeta, handleSubmit, isValid, isSubmitting } =
+  const { isValid, isSubmitting, getFieldProps, getFieldMeta, handleSubmit } =
     useFormik({
       initialValues: { username: "", password: "", remember: isCookieEnabled },
       validationSchema: isLdapEnabled ? LdapSchema : PasswordSchema,
