@@ -1,19 +1,23 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
+
+import { MIN_SEARCH_LENGTH } from "./constants";
 
 import type { DataPickerProps, DataPickerDataType } from "./types";
 import type { DataTypeInfoItem } from "./utils";
 
 import CardPicker from "./CardPicker";
 import DataTypePicker from "./DataTypePicker";
+import DataSearch from "./DataSearch";
 import RawDataPicker from "./RawDataPicker";
 
 import { Root, EmptyStateContainer } from "./DataPickerView.styled";
 
 interface DataPickerViewProps extends DataPickerProps {
   dataTypes: DataTypeInfoItem[];
+  searchQuery: string;
   hasDataAccess: boolean;
   onDataTypeChange: (type: DataPickerDataType) => void;
   onBack?: () => void;
@@ -21,11 +25,17 @@ interface DataPickerViewProps extends DataPickerProps {
 
 function DataPickerViewContent({
   dataTypes,
+  searchQuery,
   hasDataAccess,
   onDataTypeChange,
   ...props
 }: DataPickerViewProps) {
-  const { value } = props;
+  const { value, onChange } = props;
+
+  const availableDataTypes = useMemo(
+    () => dataTypes.map(type => type.id),
+    [dataTypes],
+  );
 
   if (!hasDataAccess) {
     return (
@@ -35,6 +45,17 @@ function DataPickerViewContent({
           icon="database"
         />
       </EmptyStateContainer>
+    );
+  }
+
+  if (searchQuery.trim().length > MIN_SEARCH_LENGTH) {
+    return (
+      <DataSearch
+        value={value}
+        searchQuery={searchQuery}
+        availableDataTypes={availableDataTypes}
+        onChange={onChange}
+      />
     );
   }
 
