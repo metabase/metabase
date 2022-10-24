@@ -8,7 +8,7 @@ import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import { State } from "metabase-types/store";
 
-import { CategoryWidgetProps as CategoryWidgetOwnProps } from "../types";
+import { CategoryWidgetProps as CategoryWidgetOwnProps } from "./types";
 
 interface CategoryWidgetStateProps {
   fieldValues: unknown[][];
@@ -25,7 +25,7 @@ interface CategoryWidgetProps
 
 function mapStateToProps(
   state: State,
-  { formField: { fieldInstance } }: CategoryWidgetOwnProps,
+  { fieldInstance }: CategoryWidgetOwnProps,
 ) {
   const fieldValues = Fields.selectors.getFieldValues(state, {
     entityId: fieldInstance.id,
@@ -41,12 +41,10 @@ const mapDispatchToProps = {
 
 function CategoryRadioPicker({
   field,
-  formField,
+  fieldInstance,
   fieldValues = [],
   fetchFieldValues,
 }: CategoryWidgetProps) {
-  const { fieldInstance } = formField;
-
   useOnMount(() => {
     if (typeof fieldInstance.id === "number") {
       fetchFieldValues({ id: fieldInstance.id });

@@ -1,15 +1,14 @@
 import React from "react";
 
-import CategoryFieldInput from "../components/CategoryFieldInput";
-import { CategoryWidgetProps } from "../types";
+import CategoryFieldInput from "./CategoryFieldInput";
+import { CategoryWidgetProps } from "./types";
 
 import CategoryRadioPicker from "./CategoryRadioPicker";
 
 const MAX_DISTINCT_OPTIONS_FOR_RADIO_INPUT = 7;
 
-function CategoryFieldPicker({ field, formField }: CategoryWidgetProps) {
+function CategoryFieldPicker({ field, fieldInstance }: CategoryWidgetProps) {
   const { value } = field;
-  const { fieldInstance } = formField;
 
   const distinctCount = fieldInstance.fingerprint?.global?.["distinct-count"];
 
@@ -17,7 +16,7 @@ function CategoryFieldPicker({ field, formField }: CategoryWidgetProps) {
     distinctCount != null &&
     distinctCount <= MAX_DISTINCT_OPTIONS_FOR_RADIO_INPUT
   ) {
-    return <CategoryRadioPicker field={field} formField={formField} />;
+    return <CategoryRadioPicker field={field} fieldInstance={fieldInstance} />;
   }
 
   return (

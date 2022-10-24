@@ -90,7 +90,7 @@ function FormItem({
 
   const hasOptions =
     fieldSettings.inputType === "dropdown" ||
-    fieldSettings.inputType === "inline-select";
+    fieldSettings.inputType === "radio";
 
   return (
     <FormItemWrapper>

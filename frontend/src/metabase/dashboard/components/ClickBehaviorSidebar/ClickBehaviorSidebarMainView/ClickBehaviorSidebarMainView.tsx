@@ -26,6 +26,12 @@ interface ClickBehaviorOptionsProps {
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }
 
+export function isActionDashboardCard(
+  dashcard: unknown,
+): dashcard is ActionDashboardCard {
+  return "action" in (dashcard as ActionDashboardCard);
+}
+
 function ClickBehaviorOptions({
   clickBehavior,
   dashboard,
@@ -33,13 +39,8 @@ function ClickBehaviorOptions({
   parameters,
   updateSettings,
 }: ClickBehaviorOptionsProps) {
-  if (dashcard.action) {
-    return (
-      <ActionOptions
-        dashcard={dashcard as ActionDashboardCard}
-        parameters={parameters}
-      />
-    );
+  if (isActionDashboardCard(dashcard)) {
+    return <ActionOptions dashcard={dashcard} parameters={parameters} />;
   }
   if (clickBehavior.type === "link") {
     return (

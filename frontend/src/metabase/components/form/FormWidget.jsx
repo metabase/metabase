@@ -21,6 +21,7 @@ import FormSnippetCollectionWidget from "./widgets/FormSnippetCollectionWidget";
 import FormHiddenWidget from "./widgets/FormHiddenWidget";
 import FormTextFileWidget from "./widgets/FormTextFileWidget";
 import FormModelWidget from "./widgets/FormModelWidget";
+import CategoryFieldPicker from "./widgets/FormCategoryWidget";
 
 const WIDGETS = {
   info: FormInfoWidget,
@@ -41,6 +42,7 @@ const WIDGETS = {
   hidden: FormHiddenWidget,
   textFile: FormTextFileWidget,
   model: FormModelWidget,
+  category: CategoryFieldPicker,
 };
 
 export function getWidgetComponent(formField) {
