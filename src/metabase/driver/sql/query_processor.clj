@@ -838,19 +838,17 @@
     (->honeysql driver (hx/identifier :table-alias join-alias))]
    (->honeysql driver condition)])
 
-(def ^:private join-strategy->merge-fn
-  {:left-join  hh/merge-left-join
-   :right-join hh/merge-right-join
-   :inner-join hh/merge-join
-   :full-join  hh/merge-full-join})
+(defn- strategy->abbr [strategy-kw]
+  (->> strategy-kw name (re-find #"\w+") keyword))
 
 (defmethod apply-top-level-clause [:sql :joins]
   [driver _ honeysql-form {:keys [joins]}]
-  (reduce
-   (fn [honeysql-form {:keys [strategy], :as join}]
-     (apply (join-strategy->merge-fn strategy) honeysql-form (join->honeysql driver join)))
-   honeysql-form
-   joins))
+  (apply hx/ordered-join
+         honeysql-form
+         (mapcat #(apply vector
+                         (strategy->abbr (:strategy %))
+                         (join->honeysql driver %))
+                 joins)))
 
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
