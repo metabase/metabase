@@ -202,7 +202,11 @@ class Settings {
   }
 
   isSsoEnabled() {
-    return this.isLdapEnabled() || this.isGoogleAuthEnabled();
+    return (
+      this.isLdapEnabled() ||
+      this.isGoogleAuthEnabled() ||
+      this.isOtherSsoEnabled()
+    );
   }
 
   isPasswordLoginEnabled() {
