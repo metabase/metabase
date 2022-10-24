@@ -13168,7 +13168,7 @@ databaseChangeLog:
               ON c.id = created_ats.collection_id
               SET c.created_at = created_ats.created_at
               WHERE c.personal_owner_id IS NULL
-                AND c.created_at IS NOT NULL;
+                AND created_ats.created_at IS NOT NULL;
         - sql:
             dbms: h2
             # I would have preferred using MERGE ... USING instead of WHERE EXISTS ... but it's broken in 1.4.197
