@@ -1,4 +1,5 @@
 import {
+  openNativeEditor,
   openQuestionActions,
   restore,
   visitQuestion,
@@ -66,44 +67,33 @@ describe("scenarios > question > native subquery", () => {
         },
         dataset: true,
       }).then(({ body: { id: questionId2 } }) => {
-        cy.createNativeQuestion({
-          name: "Count ",
-          native: {
-            query: `select COUNT(*) from `,
-          },
-        }).then(({ body: { id: questionId3 } }) => {
-          // Move question 2 to personal collection
-          cy.visit(`/question/${questionId2}`);
-          openQuestionActions();
-          cy.findByTestId("move-button").click();
-          cy.findByText("My personal collection").click();
-          cy.findByText("Move").click();
+        // Move question 2 to personal collection
+        cy.visit(`/question/${questionId2}`);
+        openQuestionActions();
+        cy.findByTestId("move-button").click();
+        cy.findByText("My personal collection").click();
+        cy.findByText("Move").click();
 
-          cy.visit(`/question/${questionId3}`);
-          cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
-          cy.findByText("Open Editor").click();
-          cy.get(".ace_editor")
-            .should("be.visible")
-            .type(" ")
-            .type("{{#people");
+        openNativeEditor();
+        cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
+        cy.get(".ace_editor").should("be.visible").type(" ").type("{{#people");
 
-          // Wait until another explicit autocomplete is triggered
-          // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
-          // See https://github.com/metabase/metabase/pull/20970
-          cy.wait(1000);
-          cy.get(".ace_autocomplete")
-            .should("be.visible")
-            .findByText(`${questionId2}-a-`);
-          cy.get(".ace_autocomplete")
-            .should("be.visible")
-            .findByText("Model in Bobby Tables's Personal Collection");
-          cy.get(".ace_autocomplete")
-            .should("be.visible")
-            .findByText(`${questionId1}-a-`);
-          cy.get(".ace_autocomplete")
-            .should("be.visible")
-            .findByText("Question in Our analytics");
-        });
+        // Wait until another explicit autocomplete is triggered
+        // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
+        // See https://github.com/metabase/metabase/pull/20970
+        cy.wait(1000);
+        cy.get(".ace_autocomplete")
+          .should("be.visible")
+          .findByText(`${questionId2}-a-`);
+        cy.get(".ace_autocomplete")
+          .should("be.visible")
+          .findByText("Model in Bobby Tables's Personal Collection");
+        cy.get(".ace_autocomplete")
+          .should("be.visible")
+          .findByText(`${questionId1}-a-`);
+        cy.get(".ace_autocomplete")
+          .should("be.visible")
+          .findByText("Question in Our analytics");
       });
     });
   });
