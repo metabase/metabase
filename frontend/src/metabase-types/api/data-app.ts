@@ -7,6 +7,7 @@ import {
 } from "./dashboard";
 import { WritebackAction } from "./writeback";
 import { ActionDisplayType } from "./writeback-form-settings";
+import type { Card } from "./card";
 
 export type DataAppId = number;
 export type DataAppPage = Dashboard;
@@ -48,6 +49,7 @@ export interface ActionDashboardCard
   extends Omit<BaseDashboardOrderedCard, "parameter_mappings"> {
   action?: WritebackAction;
   card_id?: number; // model card id for the associated action
+  card?: Card;
 
   parameter_mappings?: ActionParametersMapping[] | null;
   visualization_settings: {

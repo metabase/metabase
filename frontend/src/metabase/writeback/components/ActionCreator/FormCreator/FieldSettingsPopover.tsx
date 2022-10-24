@@ -84,8 +84,7 @@ export function FormCreatorPopoverBody({
     });
 
   const hasPlaceholder =
-    fieldSettings.fieldType !== "date" &&
-    fieldSettings.inputType !== "inline-select";
+    fieldSettings.fieldType !== "date" && fieldSettings.inputType !== "radio";
 
   return (
     <SettingsPopoverBody data-testid="field-settings-popover">
