@@ -126,6 +126,13 @@ export const getFormTitle = (action: WritebackAction): string =>
   humanize(action.slug ?? "") ||
   "Action form";
 
+export const getSubmitButtonColor = (action: WritebackAction): string => {
+  if (action.slug === "delete") {
+    return "danger";
+  }
+  return action.visualization_settings?.submitButtonColor ?? "primary";
+};
+
 export const getSubmitButtonLabel = (action: WritebackAction): string => {
   if (action.visualization_settings?.submitButtonLabel) {
     return action.visualization_settings.submitButtonLabel;

@@ -3,6 +3,7 @@ import { t } from "ttag";
 import Form from "metabase/containers/FormikForm";
 
 import {
+  getSubmitButtonColor,
   getSubmitButtonLabel,
   generateFieldSettingsFromParameters,
   getFormFromParameters,
@@ -35,6 +36,7 @@ interface Props {
   action: WritebackQueryAction;
   page?: DataAppPage;
   dashcard?: ActionDashboardCard;
+  submitButtonColor?: string;
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
 }
@@ -45,6 +47,7 @@ function ActionParametersInputForm({
   action,
   page,
   dashcard,
+  submitButtonColor,
   onSubmit,
   onSubmitSuccess,
 }: Props) {
@@ -141,6 +144,7 @@ function ActionParametersInputForm({
       overwriteOnInitialValuesChange
       onSubmit={handleSubmit}
       submitTitle={submitButtonLabel}
+      submitButtonColor={getSubmitButtonColor(action)}
     />
   );
 }
