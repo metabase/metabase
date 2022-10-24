@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models :refer [Card]]
             [metabase.query-processor :as qp]
@@ -869,3 +870,205 @@
                       ["Doohickey" 3976 2 2 "Small Marble Shoes"]]
                      (mt/formatted-rows [str int int int str]
                        (qp/process-query query)))))))))))
+
+;; honeysql 1 join ordering tests (#15342)
+
+(def ^:private join-template-data
+  "Template used to generate test data for [[join-ordering-test]]"
+  [{:alias "Checkins"
+    :table :checkins
+    :left [:venues :id]
+    :right [:checkins :venue_id {:join-alias "Checkins"}]}
+   {:alias "Users"
+    :table :users
+    :left [:checkins :user_id {:join-alias "Checkins"}]
+    :right [:users :id {:join-alias "Users"}]}
+   {:alias "Categories"
+    :table :categories
+    :left [:venues :category_id]
+    :right [:categories :id {:join-alias "Categories"}]}])
+
+(def ^:private join-seqs
+  "Sequences of joins to be tested in [[join-ordering-test]]"
+  [[:left-join]
+   [:inner-join]
+   [:right-join]
+   [:full-join]
+   [:left-join :full-join]
+   [:right-join :inner-join]
+   [:full-join :inner-join]
+   [:right-join :right-join]
+   [:full-join :full-join]
+   [:full-join :right-join :inner-join]
+   [:right-join :left-join :inner-join]
+   [:right-join :right-join :right-join]
+   [:full-join :full-join :full-join]])
+
+(def ^:private fields-rows-template-data
+  "Template used to generate `:fields` and expected rows for mbql query in [[join-ordering-test]]"
+  [{:table :venues
+    :fields-kws [:id :name :category_id :latitude :longitude]
+    :rows-format-fns [int str int float float]
+    :expected-rows [[90 "Señor Fish" 50 34.0489 -118.238]
+                    [51 "Empress of China" 15 37.7949 -122.406]
+                    [85 "Cha Cha Chicken" 14 34.0071 -118.49]]}
+   {:table :checkins
+    :fields-kws [:id :date :user_id :venue_id]
+    :rows-format-fns [int str int int]
+    :expected-rows [[693 "2015-12-29T00:00:00Z" 10 90]
+                    [570 "2015-12-26T00:00:00Z" 12 51]
+                    [135 "2015-12-26T00:00:00Z" 6 85]]}
+   {:table :users
+    :fields-kws [:id :name :last_login]
+    :rows-format-fns [int str str]
+    :expected-rows [[10 "Frans Hevel" "2014-07-03T19:30:00Z"]
+                    [12 "Kfir Caj" "2014-07-03T01:30:00Z"]
+                    [6 "Shad Ferdynand" "2014-08-02T12:30:00Z"]]}
+   {:table :categories
+    :fields-kws [:id :name]
+    :rows-format-fns [int str]
+    :expected-rows [[50 "Mexican"]
+                    [15 "Chinese"]
+                    [14 "Caribbean"]]}])
+
+(defn- fields-for-mbql
+  "Generate `:fields` for mbql query in [[join-ordering-test]]"
+  [join-seq]
+  (let [create-field (fn [{:keys [table fields-kws]}]
+                       (map #(vector :field (mt/id table %) nil) fields-kws))
+        fields (mapcat create-field (take (+ 1 (count join-seq)) fields-rows-template-data))]
+    fields))
+
+(defn- rows-format-fns
+  "Generate sequence of format functions for eg. [[mt/formatted-rows]] used in [[join-ordering-test]]"
+  [join-seq]
+  (mapcat #(:rows-format-fns %) (take (+ 1 (count join-seq)) fields-rows-template-data)))
+
+(defn- expected-rows
+  "Generate rows to be matched against rows of mbql query in [[join-ordering-test]]"
+  [join-seq]
+  (->> (reduce (fn [acc {:keys [expected-rows]}]
+                 (map concat acc expected-rows))
+               ;; acc must be initialized
+               (repeat 3 nil)
+               (take (+ 1 (count join-seq)) fields-rows-template-data))
+       (mt/format-rows-by (rows-format-fns join-seq))))
+
+(defn- joins-for-mbql
+  "Generate content for `:joins` clause of mbql query used in [[join-ordering-test]].
+   
+   Input is one `join-seq` eg. `[:left-join :full-join]`. See [[join-seqs]]."
+  [join-seq]
+  (map (fn [strategy data]
+         (let [{:keys [alias table left right]} data
+               [left-col [left-alias]] (split-with (comp not map?) left)
+               [right-col [right-alias]] (split-with (comp not map?) right)]
+           {:alias alias
+            :source-table (mt/id table)
+            :strategy strategy
+            :condition [:=
+                        [:field (apply mt/id left-col) left-alias]
+                        [:field (apply mt/id right-col) right-alias]]}))
+       join-seq
+       join-template-data))
+
+(defn- expected-join-data
+  "Generate data used to verify that `:joins` in mbql match joins in honeysql in [[join-ordering-test]]
+   
+   Structure of data returned is as follows:
+   `[[<type of join>
+      <table> 
+      <last component of left `=` operand> 
+      <last component of righ `=` operand>]
+     ...]`
+   
+   Eg. `([:left :checkins :id :venue_id]
+         [:right :users :user_id :id] 
+         [:full :categories :category_id :id])`
+
+   Data are matched against output of [[actual-join-data]]."
+  [join-seq]
+  (map (fn [type {:keys [table left right]}]
+         (let [join->abbr #(->> % name (re-find #"\w+") keyword) ;; eg. :left-join -> :left
+               last-col-comp #(->> % (split-with (comp not map?)) first last)
+               left-col-comp (last-col-comp left)
+               right-col-comp (last-col-comp right)]
+           [(join->abbr type) table left-col-comp right-col-comp]))
+       join-seq
+       join-template-data))
+
+(defn- actual-join-data--triplet
+  [join-triplet]
+  (let [join-type (-> join-triplet first)
+        table (->> join-triplet
+                   ;; get table name 
+                   second first :components last str/lower-case
+                    ;; remove db qualifier for table
+                   (re-find #"\p{Alnum}+$")
+                   keyword)
+        operand-left (-> join-triplet (nth 2) second :form :components last str/lower-case keyword)
+        operand-right (-> join-triplet (nth 2) (nth 2) :form :components last str/lower-case keyword)]
+    [join-type table operand-left operand-right]))
+
+(defmulti actual-join-data--extract
+  "Extract `:ordered-join` value from honeysql and use [[actual-join-data--common]] to prepare test data"
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod actual-join-data--extract :sql
+  [_driver hsql-form]
+  (->> hsql-form :ordered-join (partition 3) (map actual-join-data--triplet)))
+
+(defmethod actual-join-data--extract :oracle
+  [_driver hsql-form]
+  (->> hsql-form :from first :ordered-join (partition 3) (map actual-join-data--triplet)))
+
+(defn- actual-join-data
+  "Extract test data from honeysql generated with [[sql.qp/mbql->honeysql]] in [[join-ordering-test]]
+   
+   Return value is matched against output of [[expected-join-data]]"
+  [hsql-form]
+  (actual-join-data--extract driver/*driver* hsql-form))
+
+(defn- join-pattern
+  "Generate pattern for matching joins in sql generated in [[join-ordering-test]]"
+  [join-seq]
+  (->> (map (fn [type-kw {:keys [alias table left right]}]
+              (let [join-str (-> type-kw name (str/replace "-" " ")) ;; :left-join -> left join
+                    col-pattern-str #(->> % (split-with (comp not map?)) first (map name) (str/join ".*"))]
+                (str/join ".*" [join-str (name table) (str/lower-case alias)
+                                "on" (col-pattern-str left) "=" (col-pattern-str right)])))
+            join-seq
+            join-template-data)
+       (str/join ".*")
+       re-pattern))
+
+(deftest join-ordering-test
+  (testing "Mbql's `:joins` should be translated and executed with regard to order and types of joins used (#15342)"
+    (doseq [join-seq join-seqs]
+      (mt/test-drivers
+       (apply mt/normal-drivers-with-feature join-seq)
+       (mt/with-everything-store
+         (let [mbql (mt/mbql-query venues
+                                   {:fields (fields-for-mbql join-seq)
+                                    :joins (joins-for-mbql join-seq)
+                                    :order-by [[:desc [:field (mt/id :checkins :date)]]
+                                               [:desc [:field (mt/id :checkins :user_id)]]]
+                                    :filter [:not-null [:field (mt/id :venues :id)]]
+                                    :limit 3})
+               generated-hsql (->> mbql qp/preprocess (sql.qp/mbql->honeysql driver/*driver*))
+               actual-joins (actual-join-data generated-hsql)
+               expected-joins (expected-join-data join-seq)
+               sql (-> mbql qp/compile :query str/lower-case)
+               pattern (join-pattern join-seq)
+               query-rows (->> mbql qp/process-query (mt/formatted-rows (rows-format-fns join-seq)))]
+           (testing "\nJoins in generated honeysql match joins in mbql"
+             (is (= expected-joins actual-joins)
+                 (str "Join sequence: " (vec join-seq))))
+           (testing "\nJoins in generated sql match joins in mbql"
+             (is (re-find pattern sql)
+                 (str "Join sequence: " (vec join-seq))))
+           (testing "\nQuery returns expected results"
+             (is (= (expected-rows join-seq)
+                    query-rows)
+                 (str "Join sequence: " (vec join-seq))))))))))
