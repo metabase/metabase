@@ -565,7 +565,7 @@
                              :integer
                              (hsql/call
                               :floor
-                              (hsql/call :/ (hsql/call :datetime_diff b a (hsql/raw (name unit)))))))]
+                              (hsql/call :/ (hsql/call :datetime_diff b a (hsql/raw "day")) 7))))]
         (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hsql/call :* -1 (positive-diff y' x'))))
 
       :day
