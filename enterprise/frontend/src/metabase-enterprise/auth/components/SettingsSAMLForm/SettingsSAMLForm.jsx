@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
@@ -22,20 +22,22 @@ const propTypes = {
   onSubmit: PropTypes.func,
 };
 
-const SAML_ATTRIBUTES = [
-  "saml-attribute-email",
-  "saml-attribute-firstname",
-  "saml-attribute-lastname",
-];
-
 const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
-  const settings = _.indexBy(elements, "key");
-  const fields = _.mapObject(settings, settingToFormField);
-  const defaultValues = _.mapObject(settings, "default");
-  const acsCustomerUrl = `${MetabaseSettings.get("site-url")}/auth/sso`;
-  const attributeValues = _.object(
-    SAML_ATTRIBUTES.map(key => [key, settingValues[key] ?? defaultValues[key]]),
-  );
+  const settings = useMemo(() => {
+    return _.indexBy(elements, "key");
+  }, [elements]);
+
+  const fields = useMemo(() => {
+    return _.mapObject(settings, settingToFormField);
+  }, [settings]);
+
+  const defaultValues = useMemo(() => {
+    return _.mapObject(settings, "default");
+  }, [settings]);
+
+  const attributeValues = useMemo(() => {
+    return getAttributeValues(settingValues, defaultValues);
+  }, [settingValues, defaultValues]);
 
   return (
     <Form
@@ -68,7 +70,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
           <div className="Form-label">{t`URL the IdP should redirect back to`}</div>
           <div className="pb1">{t`This is called the Single Sign On URL in Okta, the Application Callback URL in Auth0,
                                   and the ACS (Consumer) URL in OneLogin. `}</div>
-          <CopyWidget value={acsCustomerUrl} />
+          <CopyWidget value={getAcsCustomerUrl()} />
         </div>
 
         <h4 className="pt2">{t`SAML attributes`}</h4>
@@ -174,6 +176,20 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
       </div>
     </Form>
   );
+};
+
+const SAML_ATTRS = [
+  "saml-attribute-email",
+  "saml-attribute-firstname",
+  "saml-attribute-lastname",
+];
+
+const getAttributeValues = (values, defaults) => {
+  return _.object(SAML_ATTRS.map(key => [key, values[key] ?? defaults[key]]));
+};
+
+const getAcsCustomerUrl = () => {
+  return `${MetabaseSettings.get("site-url")}/auth/sso`;
 };
 
 SettingsSAMLForm.propTypes = propTypes;
