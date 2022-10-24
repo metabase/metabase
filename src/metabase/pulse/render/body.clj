@@ -460,7 +460,7 @@
         {:keys [rows percentages]}  (donut-info slice-threshold rows)
         legend-colors               (merge (zipmap (map first rows) (cycle colors))
                                            (update-keys (:pie.colors viz-settings) name))
-        settings                    {:show_labels (:pie.show_data_labels viz-settings)}
+        settings                    {:show_values (:pie.show_data_labels viz-settings)}
         image-bundle                (image-bundle/make-image-bundle
                                      render-type
                                      (js-svg/categorical-donut rows legend-colors settings))
