@@ -24,11 +24,11 @@ export const OptionsList = styled.ul<OptionListProps>`
   overflow: auto;
   list-style: none;
   max-height: ${props => (props.isDashboardFilter ? "300px" : "none")};
-  padding: ${props => (props.isDashboardFilter ? "0.5rem" : "0")};
+  padding: 0.5rem 0 0;
 `;
 
 export const OptionContainer = styled.li`
-  padding: 0.5rem 0.125rem;
+  padding: 0;
 `;
 
 interface OptionItemProps {
@@ -37,14 +37,18 @@ interface OptionItemProps {
 }
 
 export const OptionItem = styled.div<OptionItemProps>`
-  border-radius: var(--default-border-radius);
-  display: inline-block;
-  width: 100%;
+  border-radius: 4px;
   cursor: pointer;
+  display: inline-block;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  width: 100%;
+  background-color: ${props =>
+    color(props.selected ? props.selectedColor : color("white"))};
+  color: ${props => color(props.selected ? "white" : color("text"))};
+
   &:hover {
     background-color: ${props =>
-      color(props.selected ? props.selectedColor : "var(--color-bg-light)")};
+      color(props.selected ? props.selectedColor : color("bg-light"))};
   }
-  background-color: ${props =>
-    color(props.selected ? props.selectedColor : "bg-white")};
 `;
