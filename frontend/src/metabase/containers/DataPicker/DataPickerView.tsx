@@ -3,10 +3,10 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 
+import { MIN_SEARCH_LENGTH } from "./constants";
+
 import type { DataPickerProps, DataPickerDataType } from "./types";
 import type { DataTypeInfoItem } from "./utils";
-
-import { MIN_SEARCH_LENGTH } from "./utils";
 
 import CardPicker from "./CardPicker";
 import DataTypePicker from "./DataTypePicker";

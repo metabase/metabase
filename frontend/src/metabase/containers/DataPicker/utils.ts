@@ -2,8 +2,6 @@ import { t } from "ttag";
 
 import type { DataPickerDataType, DataPickerFilters } from "./types";
 
-export const MIN_SEARCH_LENGTH = 2;
-
 export type DataTypeInfoItem = {
   id: DataPickerDataType;
   icon: string;
