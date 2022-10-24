@@ -7,42 +7,61 @@ import Tooltip from "metabase/components/Tooltip";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { DataApp } from "metabase-types/api";
+import type { DataApp, DataAppPage } from "metabase-types/api";
 
 import { Root } from "./DataAppActionPanel.styled";
 
 interface Props {
   dataApp: DataApp;
+  selectedPageId?: DataAppPage["id"];
+  hasManageContentAction?: boolean;
   onEditAppPage: () => void;
   onEditAppSettings: () => void;
 }
 
+type MenuItem = {
+  title: string;
+  icon: string;
+  link?: string;
+  action?: () => void;
+};
+
 function DataAppActionPanel({
   dataApp,
+  selectedPageId,
+  hasManageContentAction = true,
   onEditAppPage,
   onEditAppSettings,
 }: Props) {
-  const menuItems = useMemo(
-    () => [
-      {
-        title: t`Manage content`,
-        icon: "list",
-        link: Urls.dataApp(dataApp, { mode: "preview" }),
-      },
+  const hasSelectedPage = typeof selectedPageId === "number";
+
+  const menuItems = useMemo(() => {
+    const items: MenuItem[] = [
       {
         title: t`App settings`,
         icon: "gear",
         action: onEditAppSettings,
       },
-    ],
-    [dataApp, onEditAppSettings],
-  );
+    ];
+
+    if (hasManageContentAction) {
+      items.push({
+        title: t`Manage content`,
+        icon: "list",
+        link: Urls.dataApp(dataApp, { mode: "preview" }),
+      });
+    }
+
+    return items;
+  }, [dataApp, hasManageContentAction, onEditAppSettings]);
 
   return (
     <Root>
-      <Tooltip tooltip={t`Edit page`}>
-        <Button icon="pencil" onlyIcon onClick={onEditAppPage} />
-      </Tooltip>
+      {hasSelectedPage && (
+        <Tooltip tooltip={t`Edit page`}>
+          <Button icon="pencil" onlyIcon onClick={onEditAppPage} />
+        </Tooltip>
+      )}
       <EntityMenu
         items={menuItems}
         triggerIcon="ellipsis"
