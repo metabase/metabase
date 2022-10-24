@@ -306,37 +306,46 @@
     (:year :day)
     (hx/cast
      :integer
-     (hsql/call :date_part (hx/literal (name unit)) (hsql/call (case unit :year :age :day :-)
-                                                      (hsql/call :date_trunc (hsql/raw "'day'") (sql.qp/->honeysql driver y))
-                                                      (hsql/call :date_trunc (hsql/raw "'day'") (sql.qp/->honeysql driver x)))))
+     (hsql/call
+      :date_part
+      (hx/literal (name unit))
+      (hsql/call
+       (case unit :year :age :day :-)
+       (hsql/call :date_trunc (hsql/raw "'day'") (sql.qp/->honeysql driver y))
+       (hsql/call :date_trunc (hsql/raw "'day'") (sql.qp/->honeysql driver x)))))
 
     :week
-    (->> (hsql/call :/ (sql.qp/->honeysql driver [:datetimediff x y :day]) 7)
-         (hsql/call :floor)
-         (hx/cast :integer))
+    (hsql/call :/ (sql.qp/->honeysql driver [:datetimediff x y :day]) 7)
 
     :month
-    (hx/cast :integer
-     (hsql/call :+
-       (hsql/call :* 12 (sql.qp/->honeysql driver [:datetimediff x y :year]))
-       (hsql/call :floor
-         (hsql/call :date_part (hsql/raw (format "'%s'" (name unit)))
-           (hsql/call :age
-             (hsql/call :date_trunc (hsql/raw "'day'") (sql.qp/->honeysql driver y))
-             (hsql/call :date_trunc (hsql/raw "'day'") (sql.qp/->honeysql driver x)))))))
+    (hx/cast
+     :integer
+     (hsql/call
+      :+
+      (hsql/call :* 12 (sql.qp/->honeysql driver [:datetimediff x y :year]))
+      (hsql/call
+       :date_part
+       (hsql/raw (format "'%s'" (name unit)))
+       (hsql/call
+        :age
+        (hsql/call :date_trunc (hsql/raw "'day'") (sql.qp/->honeysql driver y))
+        (hsql/call :date_trunc (hsql/raw "'day'") (sql.qp/->honeysql driver x))))))
 
     (:hour :minute :second)
     (let [[from-unit-above unit-above] ({:hour [24 :day]
                                          :minute [60 :hour]
                                          :second [60 :minute]} unit)]
-      (hx/cast :integer
-       (hsql/call :+
+      (hx/cast
+        :integer
+        (hsql/call
+         :+
          (hsql/call :* from-unit-above (sql.qp/->honeysql driver [:datetimediff x y unit-above]))
-         (hsql/call :floor
-           (hsql/call :date_part (hsql/raw (format "'%s'" (name unit)))
-             (hsql/call :age
-               (sql.qp/->honeysql driver y)
-               (sql.qp/->honeysql driver x)))))))
+         (hsql/call
+          :date_part
+          (hsql/raw (format "'%s'" (name unit)))
+          (hsql/call :age
+                     (sql.qp/->honeysql driver y)
+                     (sql.qp/->honeysql driver x))))))
 
     ;; else
     (throw (ex-info (trs "Invalid datetimediff unit: {0}" unit)

@@ -797,6 +797,7 @@
                  (db/select-field->field :name :fingerprint Field
                    :table_id (db/select-one-id Table :db_id (u/the-id database))))))))))
 
+
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
 (deftest exception-test
