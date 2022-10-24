@@ -732,7 +732,7 @@ const helperTextStrings: HelpText[] = [
         description: t`The timezone you want to assign to your column.`,
       },
       {
-        name: t`from timezone`,
+        name: t`source`,
         description: t`(Optional) The current timezone of your column. The default timezone is your report timezone.`,
       },
     ],

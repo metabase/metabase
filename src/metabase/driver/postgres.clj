@@ -282,7 +282,7 @@
   (let [expr         (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? expr "timestamptz")]
     (when (and timestamptz? source-timezone)
-      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`"
+      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `source timezone`"
                       {:target-timezone target-timezone
                        :source-timezone source-timezone
                        :type            qp.error-type/invalid-parameter})))
@@ -298,8 +298,8 @@
                  expr)]
       (hx/with-convert-timezone-type-info
         expr
-        source-timezone
         target-timezone
+        source-timezone
         "timestamptz"))))
 
 (defn- zone->total-seconds-offset

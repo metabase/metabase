@@ -251,7 +251,7 @@
   (let [expr            (sql.qp/->honeysql driver arg)
         datetimeoffset? (hx/is-of-type? expr "datetimeoffset")]
     (when (and datetimeoffset? source-timezone)
-      (throw (ex-info (tru "`datetimeoffset` columns shouldn''t have a `from timezone`")
+      (throw (ex-info (tru "`datetimeoffset` columns shouldn''t have a `source timezone`")
                     {:type            qp.error-type/invalid-parameter
                      :target-timezone target-timezone
                      :source-timezone source-timezone})))

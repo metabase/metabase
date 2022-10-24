@@ -208,7 +208,7 @@
   (let [expr          (sql.qp/->honeysql driver arg)
         has-timezone? (hx/is-of-type? expr #"timestamp(\(\d\))? with time zone")]
     (when (and has-timezone? source-timezone)
-      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone`")
+      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone`")
                       {:target-timezone target-timezone
                        :source-timezone source-timezone
                        :type            qp.error-type/invalid-parameter})))
