@@ -578,20 +578,13 @@
         (hsql/call :datetime_diff y' x' (hsql/raw (name unit))))
 
       (:hour :minute :second)
-      (let [[bq-fn target-type] (cond
-                                  ;; bigquery doesn't support year and month timestamp_diff so drop back to datetime
-                                  (and (some #{:timestamp} types)
-                                       (#{:year :month} unit)) [:datetime_diff :datetime]
-                                  (some #{:timestamp} types)   [:timestamp_diff :timestamp]
-                                  (some #{:datetime} types)    [:datetime_diff :datetime]
-                                  (some #{:date} types)        [:date_diff :date])
-            maybe-cast          (fn [clause current]
-                                  (cond->> clause
-                                    (not= current target-type)
-                                    (hx/cast target-type)))]
-        ;; select one of datetime_diff, timestamp_diff, date_diff and ensure types are compatible.
-        (hsql/call bq-fn (maybe-cast y' (first types)) (maybe-cast x' (second types))
-          (hsql/raw (name unit))))
+      (let [maybe-cast (fn [clause current]
+                         (cond->> clause
+                           (not= current :timestamp)
+                           (hx/cast :timestamp)))
+            x' (maybe-cast x' (first types))
+            y' (maybe-cast y' (second types))]
+        (hsql/call :timestamp_diff y' x' (hsql/raw (name unit))))
       (throw (ex-info (tru "Unsupported datetimediff unit {0}" unit)
                       {:clause          clause
                        :supported-units [:year :month :week :day :hour :minute :second]})))))
