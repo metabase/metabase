@@ -3,7 +3,6 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.api.card-test :as api.card-test]
             [metabase.api.database :as api.database]
             [metabase.api.table :as api.table]
             [metabase.driver :as driver]
