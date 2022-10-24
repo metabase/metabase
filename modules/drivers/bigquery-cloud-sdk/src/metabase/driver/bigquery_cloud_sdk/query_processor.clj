@@ -533,26 +533,49 @@
                  :found   disallowed-types})))
     (case unit
       ;; the default week implementation gave incorrect results in tests
-      (:year :month :day)
+      (:year :month)
       (let [maybe-cast (fn [clause current]
                          (cond->> clause
                            (not= current :datetime)
                            (hx/cast :datetime)))
-            x'          (maybe-cast x' (first types))
-            y'          (maybe-cast y' (second types))
+            x' (maybe-cast x' (first types))
+            y' (maybe-cast y' (second types))
             unit'       (hsql/raw (name unit))
             positive-diff (fn [a b]
-                            (hsql/call :-
-                              (hsql/call :datetime_diff b a unit')
-                              (hx/cast :integer (hsql/call :>
-                                                  (hsql/call :datetime_diff a (hsql/call :date_trunc a unit') (hsql/raw "day"))
-                                                  (hsql/call :datetime_diff b (hsql/call :date_trunc b unit') (hsql/raw "day"))))))]
+                            (hsql/call
+                             :-
+                             (hsql/call :datetime_diff b a unit')
+                             (hx/cast
+                              :integer
+                              (hsql/call
+                               :>
+                               (hsql/call :datetime_diff a (hsql/call :date_trunc a unit') (hsql/raw "day"))
+                               (hsql/call :datetime_diff b (hsql/call :date_trunc b unit') (hsql/raw "day"))))))]
         (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hsql/call :* -1 (positive-diff y' x'))))
 
       :week
-      (->> (hsql/call :/ (sql.qp/->honeysql driver [:datetimediff x y :day]) 7)
-           (hsql/call :floor)
-           (hx/cast :integer))
+      (let [maybe-cast (fn [clause current]
+                         (cond->> clause
+                           (not= current :datetime)
+                           (hx/cast :datetime)))
+            x' (maybe-cast x' (first types))
+            y' (maybe-cast y' (second types))
+            positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hsql/call
+                              :floor
+                              (hsql/call :/ (hsql/call :datetime_diff b a (hsql/raw (name unit)))))))]
+        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hsql/call :* -1 (positive-diff y' x'))))
+
+      :day
+      (let [maybe-cast (fn [clause current]
+                         (cond->> clause
+                           (not= current :datetime)
+                           (hx/cast :datetime)))
+            x' (maybe-cast x' (first types))
+            y' (maybe-cast y' (second types))]
+        (hsql/call :datetime_diff y' x' (hsql/raw (name unit))))
 
       (:hour :minute :second)
       (let [[bq-fn target-type] (cond
