@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import Users from "metabase/entities/users";
 import AuthButton from "../AuthButton";
+import LoginForm from "../LoginForm";
 import { AuthProvider, LoginData } from "../../types";
 import { ActionListItem, ActionList } from "./PasswordPanel.styled";
 
@@ -25,12 +25,7 @@ const PasswordPanel = ({
 
   return (
     <div>
-      <Users.Form
-        form={Users.forms.login()}
-        submitTitle={t`Sign in`}
-        submitFullWidth
-        onSubmit={handleSubmit}
-      />
+      <LoginForm isLdapEnabled={false} onSubmit={handleSubmit} />
       <ActionList>
         <ActionListItem>
           <AuthButton link="/auth/forgot_password">

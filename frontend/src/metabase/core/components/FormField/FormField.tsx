@@ -12,21 +12,32 @@ export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;
   description?: string;
   error?: string;
+  touched?: boolean;
   children?: ReactNode;
 }
 
 const FormField = forwardRef(function FormField(
-  { name, title, description, error, children, ...props }: FormFieldProps,
+  {
+    name,
+    title,
+    description,
+    error,
+    touched,
+    children,
+    ...props
+  }: FormFieldProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const hasError = touched && Boolean(error);
+
   return (
-    <FieldRoot {...props} ref={ref} error={error}>
+    <FieldRoot {...props} ref={ref} hasError={hasError}>
       {(title || description) && (
         <FieldCaption>
           {title && (
             <FieldLabel>
               {title}
-              {error && <FieldLabelError>: ${error}</FieldLabelError>}
+              {hasError && <FieldLabelError>: {error}</FieldLabelError>}
             </FieldLabel>
           )}
           {description && <FieldDescription>{description}</FieldDescription>}

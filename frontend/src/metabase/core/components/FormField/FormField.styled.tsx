@@ -2,11 +2,12 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export interface FieldRootProps {
-  error?: string;
+  hasError?: boolean;
 }
 
 export const FieldRoot = styled.div<FieldRootProps>`
-  color: ${props => (props.error ? color("error") : color("text-medium"))};
+  color: ${props => (props.hasError ? color("error") : color("text-medium"))};
+  margin-bottom: 1.5em;
 `;
 
 export const FieldCaption = styled.div`
