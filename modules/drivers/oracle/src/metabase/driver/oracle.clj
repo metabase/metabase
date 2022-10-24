@@ -220,10 +220,10 @@
 
                             target-timezone
                             (hx/->AtTimeZone target-timezone))]
-      (hx/with-type-info expr
-        {::hx/convert-timezone {:source-timezone source-timezone
-                                :target-timezone target-timezone}
-         ::hx/database-type    "timestamp with time zone"}))))
+      (hx/with-convert-timezone-type-info expr
+        target-timezone
+        source-timezone
+        "timestamp with time zone"))))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 

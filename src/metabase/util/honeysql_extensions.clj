@@ -165,7 +165,7 @@
   [expr zone]
   hformat/ToSql
   (to-sql [_]
-    (clojure.core/format "%s AT TIME ZONE %s"
+    (clojure.core/format "(%s AT TIME ZONE %s)"
             (hformat/to-sql expr)
             (hformat/to-sql (literal zone)))))
 
