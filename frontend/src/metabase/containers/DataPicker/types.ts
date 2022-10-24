@@ -1,3 +1,5 @@
+import type { Collection } from "metabase-types/api";
+
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Table from "metabase-lib/lib/metadata/Table";
 import type Schema from "metabase-lib/lib/metadata/Schema";
@@ -8,6 +10,7 @@ export type DataPickerValue = {
   type?: DataPickerDataType;
   databaseId?: Database["id"];
   schemaId?: Schema["id"];
+  collectionId?: Collection["id"];
   tableIds: Table["id"][];
 };
 
@@ -35,6 +38,6 @@ export interface DataPickerProps {
 }
 
 export type DataPickerSelectedItem = {
-  type: "database" | "schema" | "table";
+  type: "database" | "schema" | "collection" | "table";
   id: string | number;
 };

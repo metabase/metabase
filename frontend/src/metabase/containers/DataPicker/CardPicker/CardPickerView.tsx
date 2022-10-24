@@ -78,7 +78,7 @@ function CardPickerView({
   onBack,
 }: CardPickerViewProps) {
   const { selectedCollectionId, selectedVirtualTableIds } = useMemo(() => {
-    const { schema: collections = [], table: tables = [] } = _.groupBy(
+    const { collection: collections = [], table: tables = [] } = _.groupBy(
       selectedItems,
       "type",
     );
