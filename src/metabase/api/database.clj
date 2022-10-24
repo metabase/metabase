@@ -545,7 +545,6 @@
   (try
     (->> (autocomplete-cards id query)
          (filter mi/can-read?)
-        ;;  ((fn [xs] (prn (map mi/can-read? xs)) xs))
          (map #(select-keys % [:id :name :dataset :collection_name])))
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))
