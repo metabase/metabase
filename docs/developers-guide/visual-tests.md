@@ -8,13 +8,14 @@ We use [Percy](https://percy.io/) via Github actions to run visual regression te
 
 ## How to run visual tests on CI
 
-Percy tests are intended to be run on CI since every run is attached to a pull request. Cypress tests will submit page snapshots to the Percy servers only when the Cypress run command is prefixed with `percy exec --` and a valid `PERCY_TOKEN` environment variable is set. Percy charges by the screenshot, so we do not do this by default.
+When your PR is ready for review, you can run visual tests (handled by Percy) in one of two ways:
 
-Instead, to reduce cost, we only trigger visual tests by manually adding the `visual` label to a pull request. If you plan to perform a lot of commits while the PR is a work-in-progress and you don't need to run tests on each commit, then just temporarily remove the label until you're ready since Percy will run every time you push a new commit to a PR with a `visual` label. Preventing unnecessary Percy runs saves money.
+- Add a `visual` label to the pull request.
+- Comment on the pull request with `@metabase-bot run visual tests`
 
-Alternatively, you can trigger visual tests manually by posting a PR comment with a `@metabase-bot run visual tests` command.
+**Only run these visual tests when your pull request is ready for review**. Percy charges by the screenshot, so running the visual tests on every commit gets expensive.
 
-If there is no `visual` label, the tests will run to ensure that the underlying Cypress tests are valid, but we will not submit screenshots to the Percy servers.
+By default, Cypress tests will run to ensure that the underlying tests are valid, but Cypress won't submit screenshots to the Percy servers. When the PR is labeled or commented to run the visual tests, the Cypress run command is prefixed by `percy exec --` and a valid `PERCY_TOKEN` environment variable, and Cypress will submit the screenshots to the Percy servers.
 
 To recap:
 
