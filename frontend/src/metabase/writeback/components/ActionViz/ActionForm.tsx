@@ -87,6 +87,7 @@ function ActionForm({
                 dashcard={dashcard}
                 missingParameters={missingParameters}
                 dashcardParamValues={dashcardParamValues}
+                onCancel={() => setShowModal(false)}
                 action={action}
               />
             </>
@@ -112,7 +113,7 @@ function ActionForm({
 }
 
 const ConfirmMessage = ({ message }: { message?: string | null }) => (
-  <div>{message ?? t`Are you sure?`}</div>
+  <div>{message ?? t`This action cannot be undone.`}</div>
 );
 
 export default ActionForm;

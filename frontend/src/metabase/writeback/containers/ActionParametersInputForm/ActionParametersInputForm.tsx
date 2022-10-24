@@ -36,6 +36,7 @@ interface Props {
   action: WritebackQueryAction;
   page?: DataAppPage;
   dashcard?: ActionDashboardCard;
+  onCancel?: () => void;
   submitButtonColor?: string;
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
@@ -47,6 +48,7 @@ function ActionParametersInputForm({
   action,
   page,
   dashcard,
+  onCancel,
   submitButtonColor,
   onSubmit,
   onSubmitSuccess,
@@ -142,6 +144,7 @@ function ActionParametersInputForm({
       form={form}
       initialValues={initialValues}
       overwriteOnInitialValuesChange
+      onClose={onCancel}
       onSubmit={handleSubmit}
       submitTitle={submitButtonLabel}
       submitButtonColor={getSubmitButtonColor(action)}

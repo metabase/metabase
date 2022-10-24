@@ -9,10 +9,13 @@ import type {
 } from "metabase-types/api";
 
 import validate from "metabase/lib/validate";
+import { humanize } from "metabase/lib/formatting";
+
 import type { Parameter } from "metabase-types/types/Parameter";
 import type { TemplateTag } from "metabase-types/types/Query";
 import type { Validator } from "metabase-types/forms";
-import { humanize } from "metabase/lib/formatting";
+
+import { shouldShowConfirmation } from "../../ActionViz/utils";
 
 export const getDefaultFormSettings = (
   overrides: Partial<ActionFormSettings> = {},
@@ -120,11 +123,19 @@ export const getFormFromParameters = (
   };
 };
 
-export const getFormTitle = (action: WritebackAction): string =>
-  action.visualization_settings?.name ||
-  action.name ||
-  humanize(action.slug ?? "") ||
-  "Action form";
+export const getFormTitle = (action: WritebackAction): string => {
+  let title =
+    action.visualization_settings?.name ||
+    action.name ||
+    humanize(action.slug ?? "") ||
+    "Action form";
+
+  if (shouldShowConfirmation(action)) {
+    title += "?";
+  }
+
+  return title;
+};
 
 export const getSubmitButtonColor = (action: WritebackAction): string => {
   if (action.slug === "delete") {
