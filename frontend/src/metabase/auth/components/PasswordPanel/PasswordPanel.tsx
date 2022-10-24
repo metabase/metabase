@@ -25,7 +25,11 @@ const PasswordPanel = ({
 
   return (
     <div>
-      <LoginForm isLdapEnabled={false} onSubmit={handleSubmit} />
+      <LoginForm
+        isLdapEnabled={false}
+        isCookieEnabled={true}
+        onSubmit={handleSubmit}
+      />
       <ActionList>
         <ActionListItem>
           <AuthButton link="/auth/forgot_password">

@@ -1,4 +1,5 @@
 import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
+import { FormFieldAlignment, FormFieldOrientation } from "./types";
 import {
   FieldCaption,
   FieldDescription,
@@ -8,21 +9,23 @@ import {
 } from "./FormField.styled";
 
 export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string;
   title?: string;
   description?: string;
   error?: string;
   touched?: boolean;
+  alignment?: FormFieldAlignment;
+  orientation?: FormFieldOrientation;
   children?: ReactNode;
 }
 
 const FormField = forwardRef(function FormField(
   {
-    name,
     title,
     description,
     error,
-    touched,
+    touched = false,
+    alignment = "end",
+    orientation = "vertical",
     children,
     ...props
   }: FormFieldProps,
@@ -31,9 +34,15 @@ const FormField = forwardRef(function FormField(
   const hasError = touched && Boolean(error);
 
   return (
-    <FieldRoot {...props} ref={ref} hasError={hasError}>
+    <FieldRoot
+      {...props}
+      ref={ref}
+      orientation={orientation}
+      hasError={hasError}
+    >
+      {alignment === "start" && children}
       {(title || description) && (
-        <FieldCaption>
+        <FieldCaption alignment={alignment} orientation={orientation}>
           {title && (
             <FieldLabel>
               {title}
@@ -43,7 +52,7 @@ const FormField = forwardRef(function FormField(
           {description && <FieldDescription>{description}</FieldDescription>}
         </FieldCaption>
       )}
-      {children}
+      {alignment === "end" && children}
     </FieldRoot>
   );
 });

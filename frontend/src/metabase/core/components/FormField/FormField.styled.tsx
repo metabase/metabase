@@ -1,18 +1,34 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import { FormFieldAlignment, FormFieldOrientation } from "./types";
 
 export interface FieldRootProps {
-  hasError?: boolean;
+  orientation: FormFieldOrientation;
+  hasError: boolean;
 }
 
 export const FieldRoot = styled.div<FieldRootProps>`
+  display: ${props => props.orientation === "horizontal" && "flex"};
   color: ${props => (props.hasError ? color("error") : color("text-medium"))};
   margin-bottom: 1.5em;
 `;
 
-export const FieldCaption = styled.div`
+export interface FormCaptionProps {
+  alignment: FormFieldAlignment;
+  orientation: FormFieldOrientation;
+}
+
+export const FieldCaption = styled.div<FormCaptionProps>`
   display: flex;
   align-items: center;
+  margin-left: ${props =>
+    props.orientation === "horizontal" &&
+    props.alignment === "start" &&
+    "0.5rem"};
+  margin-right: ${props =>
+    props.orientation === "horizontal" &&
+    props.alignment === "end" &&
+    "0.5rem"};
   margin-bottom: 0.5em;
 `;
 

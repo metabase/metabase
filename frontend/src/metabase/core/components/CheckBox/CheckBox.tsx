@@ -67,6 +67,8 @@ const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
         tooltipLabel={label}
       >
         <CheckBoxInput
+          id={name}
+          name={name}
           type="checkbox"
           checked={isControlledCheckBoxInput ? !!checked : undefined}
           defaultChecked={isControlledCheckBoxInput ? undefined : !!checked}
@@ -77,7 +79,6 @@ const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
           onChange={isControlledCheckBoxInput ? onChange : undefined}
           onFocus={onFocus}
           onBlur={onBlur}
-          id={name}
         />
         <CheckBoxContainer disabled={disabled}>
           <CheckBoxIconContainer
