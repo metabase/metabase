@@ -36,6 +36,7 @@ export const getDefaultFieldSettings = (
   overrides: Partial<FieldSettings> = {},
 ): FieldSettings => ({
   name: "",
+  title: "",
   order: 0,
   description: "",
   placeholder: "",

@@ -54,7 +54,7 @@ const getSelectInputs = (): InputOptionType[] => [
     name: t`dropdown`,
   },
   {
-    value: "inline-select",
+    value: "radio",
     name: t`inline select`,
   },
 ];

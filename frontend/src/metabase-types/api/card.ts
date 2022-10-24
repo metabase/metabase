@@ -1,4 +1,5 @@
-import { DatasetQuery } from "./query";
+import type { Field } from "../types/Field";
+import type { DatasetQuery } from "./query";
 
 export interface Card extends UnsavedCard {
   id: CardId;
@@ -8,6 +9,8 @@ export interface Card extends UnsavedCard {
   can_write: boolean;
   cache_ttl: number | null;
   last_query_start: string | null;
+  result_metadata?: Field[];
+
   archived: boolean;
 
   creator?: {
