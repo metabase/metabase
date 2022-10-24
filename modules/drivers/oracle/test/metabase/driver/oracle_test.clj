@@ -280,11 +280,12 @@
                              [(id "price" "number")
                               (hx/identifier :field-alias "price")]]
                             :from      [(hx/identifier :table oracle.tx/session-schema "test_data_venues")]
-                            :left-join [[(hx/identifier :table oracle.tx/session-schema "test_data_categories")
-                                         (hx/identifier :table-alias "test_data_categories__via__cat")]
-                                        [:=
-                                         (id "category_id" "number")
-                                         (id "test_data_categories__via__cat" "id" "number")]]
+                            :ordered-join [:left
+                                           [(hx/identifier :table oracle.tx/session-schema "test_data_categories")
+                                            (hx/identifier :table-alias "test_data_categories__via__cat")]
+                                           [:=
+                                            (id "category_id" "number")
+                                            (id "test_data_categories__via__cat" "id" "number")]]
                             :where     [:=
                                         (id "test_data_categories__via__cat" "name" "varchar2")
                                         "BBQ"]
