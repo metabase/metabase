@@ -4,7 +4,7 @@ import { useFormik } from "formik";
 import type { FormikErrors } from "formik";
 import Utils from "metabase/lib/utils";
 import Button from "metabase/core/components/Button";
-import Input from "metabase/core/components/Input";
+import FormInput from "metabase/core/components/FormInput";
 import FormField from "metabase/core/components/FormField";
 import { LoginData } from "../../types";
 
@@ -30,7 +30,7 @@ const LoginForm = ({
         {...getFieldMeta("username")}
         title={isLdapEnabled ? t`Username or email address` : t`Email address`}
       >
-        <Input
+        <FormInput
           {...getFieldProps("username")}
           {...getFieldMeta("username")}
           type={isLdapEnabled ? "input" : "email"}
@@ -40,7 +40,7 @@ const LoginForm = ({
         />
       </FormField>
       <FormField {...getFieldMeta("password")} title={t`Password`}>
-        <Input
+        <FormInput
           {...getFieldProps("password")}
           {...getFieldMeta("password")}
           type="password"
