@@ -1,12 +1,22 @@
 import React from "react";
 import { t } from "ttag";
 import { useFormik } from "formik";
-import type { FormikErrors } from "formik";
-import Utils from "metabase/lib/utils";
+import * as Yup from "yup";
 import Button from "metabase/core/components/Button";
 import FormInput from "metabase/core/components/FormInput";
 import FormField from "metabase/core/components/FormField";
 import { LoginData } from "../../types";
+
+const LdapSchema = Yup.object().shape({
+  username: Yup.string().required(t`required`),
+  password: Yup.string().required(t`required`),
+});
+
+const PasswordSchema = LdapSchema.shape({
+  username: Yup.string()
+    .required(t`required`)
+    .email(t`must be a valid email address`),
+});
 
 export interface LoginFormProps {
   isLdapEnabled: boolean;
@@ -20,7 +30,7 @@ const LoginForm = ({
   const { getFieldProps, getFieldMeta, handleSubmit, isValid, isSubmitting } =
     useFormik({
       initialValues: { username: "", password: "" },
-      validate: data => validateForm(data, isLdapEnabled),
+      validationSchema: isLdapEnabled ? LdapSchema : PasswordSchema,
       onSubmit,
     });
 
@@ -53,25 +63,6 @@ const LoginForm = ({
       </Button>
     </form>
   );
-};
-
-const validateForm = (
-  values: LoginData,
-  isLdapEnabled: boolean,
-): FormikErrors<LoginData> => {
-  const errors: FormikErrors<LoginData> = {};
-
-  if (!values.username) {
-    errors.username = t`required`;
-  } else if (!isLdapEnabled && !Utils.isEmail(values.username)) {
-    errors.username = t`must be a valid email address`;
-  }
-
-  if (!values.password) {
-    errors.password = t`required`;
-  }
-
-  return errors;
 };
 
 export default LoginForm;
