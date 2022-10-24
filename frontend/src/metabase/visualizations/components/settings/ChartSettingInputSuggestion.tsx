@@ -1,12 +1,5 @@
-import React, { useState, useRef } from "react";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import SelectList from "metabase/components/SelectList";
+import React, { useState } from "react";
 import AutocompleteInput from "metabase/core/components/AutocompleteInput";
-import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
-import {
-  SuggestionInput,
-  SuggestionContainer,
-} from "./ChartSettingInputSuggestion.styled";
 
 interface ChartSettingInputSuggestionProps {
   value: string;
@@ -20,17 +13,14 @@ const matchPattern = /.*{{([^{}]*)$/;
 const filterFn = (value: string | undefined, options: string[]) => {
   if (options && value) {
     const match = value.match(matchPattern);
-
     if (match) {
       const suggestionFilter = match[1];
-
       return options.filter(option =>
         option.toLowerCase().includes(suggestionFilter.toLowerCase()),
       );
-    } else {
-      return [];
     }
   }
+  return [];
 };
 
 const ChartSettingInputSuggestion = ({
@@ -52,11 +42,17 @@ const ChartSettingInputSuggestion = ({
     }
   };
 
+  const handleBlur = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value);
+  };
+
   return (
     <AutocompleteInput
+      {...props}
       options={options}
+      onChange={setValue}
       value={value}
-      onBlur={onChange}
+      onBlur={handleBlur}
       onOptionClick={handleSuggestionClick}
       filterFn={filterFn}
     />
