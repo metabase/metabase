@@ -9,7 +9,6 @@ export default {
 
 const Template: ComponentStory<typeof AutocompleteInput> = args => {
   const [value, setValue] = useState("");
-  console.log(args);
   return (
     <AutocompleteInput
       {...args}

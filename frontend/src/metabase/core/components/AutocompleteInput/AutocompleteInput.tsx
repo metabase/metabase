@@ -7,7 +7,7 @@ import { TextInputProps } from "metabase/components/TextInput/TextInput";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 
-import { OptionsList, OptionItem } from "./AutocompleteInput.styled";
+import { OptionsList } from "./AutocompleteInput.styled";
 
 interface AutocompleteInputProps extends TextInputProps {
   options?: string[];
@@ -94,7 +94,7 @@ const AutocompleteInput = ({
         return (
           <OptionsList ref={optionsListRef} onMouseDown={handleListMouseDown}>
             {filteredOptions.map((item, index) => (
-              <OptionItem
+              <SelectList.Item
                 isSelected={cursorIndex === index}
                 key={item}
                 id={item}
@@ -105,7 +105,7 @@ const AutocompleteInput = ({
                 }}
               >
                 {item}
-              </OptionItem>
+              </SelectList.Item>
             ))}
           </OptionsList>
         );
