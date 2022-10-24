@@ -12,6 +12,7 @@ import {
 import { UtilApi } from "metabase/services";
 
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
+import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
@@ -27,11 +28,15 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(sections, ["authentication", "settings"], settings => [
     ...settings,
     {
-      authName: t`SAML`,
-      authDescription: t`Allows users to login via a SAML Identity Provider.`,
-      authType: "saml",
-      authEnabled: settings => settings["saml-enabled"],
-      widget: AuthenticationOption,
+      key: "saml-enabled",
+      description: null,
+      widget: AuthenticationWidget,
+      getProps: (setting, settings) => ({
+        authName: t`SAML`,
+        authDescription: t`Allows users to login via a SAML Identity Provider.`,
+        authType: "saml",
+        authConfigured: settings => settings["saml-configured"],
+      }),
       getHidden: () => !hasPremiumFeature("sso"),
     },
     {

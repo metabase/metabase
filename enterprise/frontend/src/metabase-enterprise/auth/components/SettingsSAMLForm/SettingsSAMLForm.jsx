@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useRef } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -68,6 +69,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
       className="mx2"
       style={{ maxWidth: 520 }}
       initialValues={{ ...settingValues, ...attributeValues }}
+      disablePristineSubmit
       overwriteOnInitialValuesChange
       renderSubmit={({ canSubmit, handleSubmit }) => (
         <>
@@ -196,7 +198,7 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
               setting={{ key: "saml-group-sync", value }}
               onChange={onChange}
               settingValues={settingValues}
-              onChangeSetting={(key, value) => updateSettings({ [key]: value })}
+              onChangeSetting={(key, value) => onSubmit({ [key]: value })}
               mappingSetting="saml-group-mappings"
               groupHeading={t`Group Name`}
               groupPlaceholder={t`Group Name`}
@@ -239,4 +241,8 @@ const getDocsUrl = () => {
 
 SettingsSAMLForm.propTypes = propTypes;
 
-export default SettingsSAMLForm;
+const mapDispatchToProps = {
+  onSubmit: updateSettings,
+};
+
+export default connect(null, mapDispatchToProps)(SettingsSAMLForm);
