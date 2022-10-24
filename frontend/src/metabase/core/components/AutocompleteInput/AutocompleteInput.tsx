@@ -9,29 +9,40 @@ import { OptionsList } from "./AutocompleteInput.styled";
 
 interface AutocompleteInputProps extends TextInputProps {
   options?: string[];
+  filterFn?: (value: string | undefined, options: string[]) => string[];
+  onOptionClick?: (value: string) => void;
 }
+
+const DeafultFilterFn = (value: string | undefined, options: string[]) => {
+  if (!value || value.length === 0) {
+    return options;
+  }
+
+  return options.filter(option => {
+    const optionLowerCase = option.toLowerCase().trim();
+    const valueLowerCase = value.toLowerCase().trim();
+    return (
+      optionLowerCase.includes(valueLowerCase) &&
+      !(optionLowerCase === valueLowerCase)
+    );
+  });
+};
 
 const AutocompleteInput = ({
   value,
   onChange,
   options = [],
+  filterFn = DeafultFilterFn,
   onBlur,
+  onOptionClick,
   ...rest
 }: AutocompleteInputProps) => {
   const optionsListRef = useRef<HTMLUListElement>();
   const filteredOptions = useMemo(() => {
-    if (!value || value.length === 0) {
-      return options;
-    }
-
-    return options.filter(option => {
-      const optionLowerCase = option.toLowerCase().trim();
-      const valueLowerCase = value.toLowerCase().trim();
-      return (
-        optionLowerCase.includes(value) && !(optionLowerCase === valueLowerCase)
-      );
-    });
+    return filterFn(value, options);
   }, [value, options]);
+
+  console.log(onOptionClick);
 
   const handleListMouseDown = (event: React.MouseEvent<HTMLElement>) => {
     if (optionsListRef.current?.contains(event.target as Node)) {
@@ -74,7 +85,13 @@ const AutocompleteInput = ({
                 id={option}
                 name={option}
                 onSelect={option => {
-                  onChange(option);
+                  if (onOptionClick) {
+                    console.log("optionclick", onOptionClick);
+                    onOptionClick(option);
+                  } else {
+                    console.log("onChange", onChange);
+                    onChange(option);
+                  }
                   closePopover();
                 }}
               >
