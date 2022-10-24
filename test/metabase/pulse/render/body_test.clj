@@ -465,6 +465,22 @@
                (map #(Math/ceil (/ (:width %) (double first-rendered-width))) rendered-bars))
             "bar height ratios match the input row value ratios")))))
 
+(deftest render-gauge-chart-test
+  (testing "Render a gauge chart"
+    (let [render (-> [["A"] [12.34]]
+                     (render.tu/make-card-and-data :gauge)
+                     (assoc-in [:card :visualization_settings :gauge.segments] [{:min 0 :max 100 :color "green" :label ""}])
+                     render.tu/render-as-hiccup)]
+      (is (= 2 ;; 2 nodes because there is a second text element w/ large white stroke to improve legibility
+             (-> render
+                 (render.tu/nodes-with-text "12.34")
+                 count))
+          "Gauge value is rendered.")
+      (is (= 4 ;; 4 nodes because there are 2 for the arrow, 1 for the background of the gauge, and 1 for the gauge segment
+             (-> render
+                 (render.tu/nodes-with-tag :path)
+                 count))))))
+
 (defn- render-area-graph [results]
   (body/render :area :inline pacific-tz render.tu/test-card nil results))
 
