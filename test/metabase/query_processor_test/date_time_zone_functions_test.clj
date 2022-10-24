@@ -314,24 +314,24 @@
      {:field-name "description" :base-type :type/Text}
      {:field-name "start" :base-type :type/DateTime}
      {:field-name "end" :base-type :type/DateTime}]
-    [[1 "minute under an hour" #t "2022-10-02 08:30:00" #t "2022-10-02 09:29:00"]
-     [1 "minute under a day"  #t "2022-10-02 08:30:00" #t "2022-10-03 08:29:00"]
-     [1 "second under an hour" #t "2022-10-02 08:30:00" #t "2022-10-02 09:29:59"]
-     [1 "second under a day"  #t "2022-10-02 08:30:00" #t "2022-10-03 08:29:59"]
-     [1 "second under a minute"  #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:59"]
+    [[1 "millisecond under a minute" #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:59.999"]
+     [1 "millisecond under a second" #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:00.999"]
      [1 "millisecond under an hour"  #t "2022-10-02 08:30:00" #t "2022-10-02 09:29:59.999"]
-     [1 "millisecond under a minute"  #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:59.999"]
-     [1 "millisecond under a second"  #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:00.999"]
-     [1 "day under a year"        #t "2021-10-03 09:18:09" #t "2022-10-02 09:18:09"]
-     [1 "minute under a year"     #t "2021-10-03 09:19:09" #t "2022-10-03 09:18:09"]
-     [1 "day under a month"       #t "2022-10-03 09:18:09" #t "2022-11-02 09:18:09"]
-     [1 "minute under a month"    #t "2022-10-02 09:19:09" #t "2022-11-02 09:18:09"]
-     [1 "day under a week"        #t "2022-10-02 09:18:09" #t "2022-10-08 09:18:09"]
-     [1 "<7d across weeks"        #t "2022-10-01 09:18:09" #t "2022-10-04 09:18:09"]
-     [1 "minute under a week"     #t "2022-10-02 09:19:09" #t "2022-10-09 09:18:09"]
-     [1 "<24h same day"           #t "2022-10-02 00:00:00" #t "2022-10-02 23:59:59"]
-     [1 "millisecond under a day" #t "2022-10-02 00:00:00" #t "2022-10-02 23:59:59.999"]
-     [1 "<24h consecutive days"   #t "2022-10-02 09:19:09" #t "2022-10-03 09:18:09"]]]])
+     [1 "millisecond under a day"    #t "2022-10-02 00:00:00" #t "2022-10-02 23:59:59.999"]
+     [1 "second under a minute"      #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:59"]
+     [1 "second under an hour"       #t "2022-10-02 08:30:00" #t "2022-10-02 09:29:59"]
+     [1 "second under a day"         #t "2022-10-02 08:30:00" #t "2022-10-03 08:29:59"]
+     [1 "minute under an hour"       #t "2022-10-02 08:30:00" #t "2022-10-02 09:29:00"]
+     [1 "minute under a day"         #t "2022-10-02 08:30:00" #t "2022-10-03 08:29:00"]
+     [1 "day under a year"           #t "2021-10-03 09:18:09" #t "2022-10-02 09:18:09"]
+     [1 "day under a month"          #t "2022-10-03 09:18:09" #t "2022-11-02 09:18:09"]
+     [1 "day under a week"           #t "2022-10-02 09:18:09" #t "2022-10-08 09:18:09"]
+     [1 "minute under a year"        #t "2021-10-03 09:19:09" #t "2022-10-03 09:18:09"]
+     [1 "minute under a month"       #t "2022-10-02 09:19:09" #t "2022-11-02 09:18:09"]
+     [1 "<7d across weeks"           #t "2022-10-01 09:18:09" #t "2022-10-04 09:18:09"]
+     [1 "minute under a week"        #t "2022-10-02 09:19:09" #t "2022-10-09 09:18:09"]
+     [1 "<24h same day"              #t "2022-10-02 00:00:00" #t "2022-10-02 23:59:59"]
+     [1 "<24h consecutive days"      #t "2022-10-02 09:19:09" #t "2022-10-03 09:18:09"]]]])
 
 (deftest datetimediff-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
@@ -357,6 +357,20 @@
                                          :fields      [[:expression "d"]]
                                          :filter      (into [:= $description] descriptions)
                                          :order-by    [[:asc $description]]}))))))))]
+        (test-cases :year [["day under a year" 0]
+                           ["minute under a year" 1]])
+        (test-cases :month [["day under a month" 0]
+                            ["day under a year" 11]
+                            ["minute under a month" 1]
+                            ["minute under a year" 12]])
+        (test-cases :week [["day under a week" 0]
+                           ["<7d across weeks" 0]
+                           ["minute under a week" 1]
+                           ["minute under a month" 4]])
+        (test-cases :day [["<24h consecutive days" 1]
+                          ["<24h same day" 0]
+                          ["day under a month" 30]
+                          ["minute under a month" 31]])
         (test-cases :hour [["minute under an hour" 0]
                            ["minute under a day"   23]
                            ["second under an hour" 0]
@@ -370,20 +384,6 @@
         (test-cases :second [["millisecond under a minute" 59]
                              ["millisecond under a second" 0]
                              ["minute under an hour" 3540]])
-        (test-cases :day [["<24h consecutive days" 1]
-                          ["<24h same day" 0]
-                          ["day under a month" 30]
-                          ["minute under a month" 31]])
-        (test-cases :week [["day under a week" 0]
-                           ["<7d across weeks" 0]
-                           ["minute under a week" 1]
-                           ["minute under a month" 4]])
-        (test-cases :month [["day under a month" 0]
-                            ["day under a year" 11]
-                            ["minute under a month" 1]
-                            ["minute under a year" 12]])
-        (test-cases :year [["day under a year" 0]
-                           ["minute under a year" 1]])
         (testing "Types from nested functions are ok"
           (testing "Nested functions are ok"
             (is (= [[-3] [362]]
@@ -409,13 +409,6 @@
                      :order-by    [[:asc $description]]}))))))))
   (testing "Cannot datetimediff against time column"
     (mt/dataset with-time-column
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Only datetime, timestamp, or date types allowed. Found .*"
-           (mt/rows
-            (mt/run-mbql-query datediff-with-time
-              {:fields      [[:expression "diff-day"]]
-               :expressions {"diff-day" [:datetimediff $ts $t :day]}}))))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Only datetime, timestamp, or date types allowed. Found .*"
