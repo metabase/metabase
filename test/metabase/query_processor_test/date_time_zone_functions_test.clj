@@ -308,47 +308,70 @@
      {:field-name "t" :base-type :type/Time}]
     [[1 "simple comparing across types" #t "2021-08-03T08:09:10.582Z" #t "09:19:09"]]]])
 
-(mt/defdataset more-useful-dates3
+(mt/defdataset more-useful-dates4
   [["more-datediff-edgecases"
     [{:field-name "index" :base-type :type/Integer}
      {:field-name "description" :base-type :type/Text}
      {:field-name "start" :base-type :type/DateTime}
      {:field-name "end" :base-type :type/DateTime}]
-    [[1 "day under a year"      #t "2021-10-03 09:18:09" #t "2022-10-02 09:18:09"]
-     [1 "minute under a year"   #t "2021-10-03 09:19:09" #t "2022-10-03 09:18:09"]
-     [1 "day under a month"     #t "2022-10-03 09:18:09" #t "2022-11-02 09:18:09"]
-     [1 "minute under a month"  #t "2022-10-02 09:19:09" #t "2022-11-02 09:18:09"]
-     [1 "day under a week"      #t "2022-10-02 09:18:09" #t "2022-10-08 09:18:09"]
-     [1 "<7d across weeks"      #t "2022-10-01 09:18:09" #t "2022-10-04 09:18:09"]
-     [1 "minute under a week"   #t "2022-10-02 09:19:09" #t "2022-10-09 09:18:09"]
-     [1 "<24h same day"         #t "2022-10-02 00:00:00" #t "2022-10-02 23:59:59"]
-     [1 "<24h consecutive days" #t "2022-10-02 09:19:09" #t "2022-10-03 09:18:09"]]]])
+    [[1 "minute under an hour" #t "2022-10-02 08:30:00" #t "2022-10-02 09:29:00"]
+     [1 "minute under a day"  #t "2022-10-02 08:30:00" #t "2022-10-03 08:29:00"]
+     [1 "second under an hour" #t "2022-10-02 08:30:00" #t "2022-10-02 09:29:59"]
+     [1 "second under a day"  #t "2022-10-02 08:30:00" #t "2022-10-03 08:29:59"]
+     [1 "second under a minute"  #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:59"]
+     [1 "millisecond under an hour"  #t "2022-10-02 08:30:00" #t "2022-10-02 09:29:59.999"]
+     [1 "millisecond under a minute"  #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:59.999"]
+     [1 "millisecond under a second"  #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:00.999"]
+     [1 "day under a year"        #t "2021-10-03 09:18:09" #t "2022-10-02 09:18:09"]
+     [1 "minute under a year"     #t "2021-10-03 09:19:09" #t "2022-10-03 09:18:09"]
+     [1 "day under a month"       #t "2022-10-03 09:18:09" #t "2022-11-02 09:18:09"]
+     [1 "minute under a month"    #t "2022-10-02 09:19:09" #t "2022-11-02 09:18:09"]
+     [1 "day under a week"        #t "2022-10-02 09:18:09" #t "2022-10-08 09:18:09"]
+     [1 "<7d across weeks"        #t "2022-10-01 09:18:09" #t "2022-10-04 09:18:09"]
+     [1 "minute under a week"     #t "2022-10-02 09:19:09" #t "2022-10-09 09:18:09"]
+     [1 "<24h same day"           #t "2022-10-02 00:00:00" #t "2022-10-02 23:59:59"]
+     [1 "millisecond under a day" #t "2022-10-02 00:00:00" #t "2022-10-02 23:59:59.999"]
+     [1 "<24h consecutive days"   #t "2022-10-02 09:19:09" #t "2022-10-03 09:18:09"]]]])
 
 (deftest datetimediff-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
-    (mt/dataset more-useful-dates3
-      (testing "Edge cases at year and month boundary"
-        (let [test-cases (fn [unit cases]
-                           (testing unit
-                             (let [transpose (fn [m] (apply (partial mapv vector) m))
-                                   [descriptions expecteds] (transpose (sort-by first cases))]
-                               (is (= expecteds
-                                      (flatten
-                                       (mt/rows
-                                        (mt/run-mbql-query more-datediff-edgecases
-                                          {:expressions {"d" [:datetimediff $start $end unit]}
-                                           :fields      [[:expression "d"]]
-                                           :filter      (into [:= $description] descriptions)
-                                           :order-by    [[:asc $description]]})))))
+    (mt/dataset more-useful-dates4
+      (let [test-cases (fn [unit cases]
+                         (testing unit
+                           (let [transpose                (fn [m] (apply (partial mapv vector) m))
+                                 [descriptions expecteds] (transpose (sort-by first cases))]
+                             (is (= expecteds
+                                    (flatten
+                                     (mt/rows
+                                      (mt/run-mbql-query more-datediff-edgecases
+                                        {:expressions {"d" [:datetimediff $start $end unit]}
+                                         :fields      [[:expression "d"]]
+                                         :filter      (into [:= $description] descriptions)
+                                         :order-by    [[:asc $description]]})))))
                                ;; now with the arguments reversed
-                               (is (= (map - expecteds)
-                                      (flatten
-                                       (mt/rows
-                                        (mt/run-mbql-query more-datediff-edgecases
-                                          {:expressions {"d" [:datetimediff $end $start unit]}
-                                           :fields      [[:expression "d"]]
-                                           :filter      (into [:= $description] descriptions)
-                                           :order-by    [[:asc $description]]}))))))))]
+                             (is (= (map - expecteds)
+                                    (flatten
+                                     (mt/rows
+                                      (mt/run-mbql-query more-datediff-edgecases
+                                        {:expressions {"d" [:datetimediff $end $start unit]}
+                                         :fields      [[:expression "d"]]
+                                         :filter      (into [:= $description] descriptions)
+                                         :order-by    [[:asc $description]]}))))))))]
+        (testing "hour, minute, second"
+          (test-cases :hour   [["minute under an hour" 0]
+                               ["minute under a day"   23]
+                               ["second under an hour" 0]
+                               ["millisecond under an hour" 0]
+                               ["second under a day"   23]])
+          (test-cases :minute  [["minute under a day"  1439]
+                                ["minute under an hour" 59]
+                                ["second under an hour" 59]
+                                ["second under a minute" 0]
+                                ["millisecond under a minute" 0]])
+          (test-cases :second  [["millisecond under a minute" 59]
+                                ["millisecond under a second" 0]
+                                ["minute under an hour" 3540]]))
+        (testing "day, week, month, year"
           (test-cases :day [["<24h consecutive days" 1]
                             ["<24h same day" 0]
                             ["day under a month" 30]
@@ -362,34 +385,34 @@
                               ["minute under a month" 1]
                               ["minute under a year" 12]])
           (test-cases :year [["day under a year" 0]
-                             ["minute under a year" 1]]))
-        #_(testing "Types from nested functions are ok"
-          #_(testing "Nested functions are ok"
-            (is (= [[-3] [362]]
+                             ["minute under a year" 1]])
+          (testing "Types from nested functions are ok"
+            (testing "Nested functions are ok"
+              (is (= [[-3] [362]]
+                     (mt/rows
+                      (mt/run-mbql-query more-datediff-edgecases
+                        {:expressions {"diff-day" [:datetimediff
+                                                   [:date-add $start 3 "day"]
+                                                   $end
+                                                   :day]}
+                         :fields      [[:expression "diff-day"]]
+                         :filter      [:= $description "minute under a year" "<24h same day"]
+                         :order-by    [[:asc $description]]}))))))
+          (testing "Result works in arithmetic expressions"
+            (is (= [[0 5 0 5] [1 6 365 370]]
                    (mt/rows
                     (mt/run-mbql-query more-datediff-edgecases
-                      {:expressions {"diff-day" [:datetimediff
-                                                 [:date-add $start 3 "day"]
-                                                 $end
-                                                 :day]}
-                       :fields      [[:expression "diff-day"]]
+                      {:expressions {"datediff1"     [:datetimediff $start $end :year]
+                                     "datediff1-add" [:+ [:datetimediff $start $end :year] 5]
+                                     "datediff2"     [:datetimediff $start $end :day]
+                                     "datediff2-add" [:+ 5 [:datetimediff $start $end :day]]}
+                       :fields      [[:expression "datediff1"]
+                                     [:expression "datediff1-add"]
+                                     [:expression "datediff2"]
+                                     [:expression "datediff2-add"]]
                        :filter      [:= $description "minute under a year" "<24h same day"]
-                       :order-by    [[:asc $description]]}))))))
-        #_(testing "Result works in arithmetic expressions"
-          (is (= [[0 5 0 5] [1 6 365 370]]
-                 (mt/rows
-                  (mt/run-mbql-query more-datediff-edgecases
-                    {:expressions {"datediff1"     [:datetimediff $start $end :year]
-                                   "datediff1-add" [:+ [:datetimediff $start $end :year] 5]
-                                   "datediff2"     [:datetimediff $start $end :day]
-                                   "datediff2-add" [:+ 5 [:datetimediff $start $end :day]]}
-                     :fields      [[:expression "datediff1"]
-                                   [:expression "datediff1-add"]
-                                   [:expression "datediff2"]
-                                   [:expression "datediff2-add"]]
-                     :filter      [:= $description "minute under a year" "<24h same day"]
-                     :order-by    [[:asc $description]]})))))))
-    #_(testing "Cannot datetimediff against time column"
+                       :order-by    [[:asc $description]]})))))))))
+    (testing "Cannot datetimediff against time column"
       (mt/dataset with-time-column
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Only datetime, timestamp, or date types allowed. Found .*"
@@ -411,4 +434,4 @@
                                   :expressions {"diff-day" [:datetimediff
                                                             $ts
                                                             [:date-add $t 3 "hour"]
-                                                            :day]}}))))))))
+                                                            :day]}})))))))
