@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { t } from "ttag";
 
 import type {
   WritebackQueryAction,
@@ -13,6 +14,7 @@ import { getFormTitle } from "metabase/writeback/components/ActionCreator/FormCr
 import ActionParametersInputForm from "../../containers/ActionParametersInputForm";
 import ActionParametersInputModal from "../../containers/ActionParametersInputModal";
 import ActionButtonView from "./ActionButtonView";
+import { shouldShowConfirmation } from "./utils";
 
 import {
   DataAppPageFormWrapper,
@@ -41,8 +43,12 @@ function ActionForm({
   const [showModal, setShowModal] = useState(false);
   const title = getFormTitle(action);
 
+  // only show confirmation if there are no missing parameters
+  const showConfirmMessage =
+    shouldShowConfirmation(action) && !missingParameters.length;
+
   const onClick = () => {
-    if (missingParameters.length > 0) {
+    if (missingParameters.length > 0 || showConfirmMessage) {
       setShowModal(true);
     } else {
       onSubmit({});
@@ -69,14 +75,22 @@ function ActionForm({
             onClose={() => setShowModal(false)}
             title={title}
           >
-            <ActionParametersInputForm
-              onSubmit={onModalSubmit}
-              page={page}
-              dashcard={dashcard}
-              missingParameters={missingParameters}
-              dashcardParamValues={dashcardParamValues}
-              action={action}
-            />
+            <>
+              {showConfirmMessage && (
+                <ConfirmMessage
+                  message={action.visualization_settings?.confirmMessage}
+                />
+              )}
+              <ActionParametersInputForm
+                onSubmit={onModalSubmit}
+                page={page}
+                dashcard={dashcard}
+                missingParameters={missingParameters}
+                dashcardParamValues={dashcardParamValues}
+                onCancel={() => setShowModal(false)}
+                action={action}
+              />
+            </>
           </ActionParametersInputModal>
         )}
       </>
@@ -97,5 +111,9 @@ function ActionForm({
     </DataAppPageFormWrapper>
   );
 }
+
+const ConfirmMessage = ({ message }: { message?: string | null }) => (
+  <div>{message ?? t`This action cannot be undone.`}</div>
+);
 
 export default ActionForm;

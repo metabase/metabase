@@ -42,6 +42,7 @@ export interface ActionFormSettings {
   description?: string;
   fields: FieldSettingsMap;
   submitButtonLabel?: string;
+  submitButtonColor?: string;
   confirmMessage?: string;
   successMessage?: string;
   errorMessage?: string;

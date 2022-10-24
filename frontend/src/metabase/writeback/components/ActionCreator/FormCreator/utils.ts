@@ -9,9 +9,13 @@ import type {
 } from "metabase-types/api";
 
 import validate from "metabase/lib/validate";
+import { humanize } from "metabase/lib/formatting";
+
 import type { Parameter } from "metabase-types/types/Parameter";
 import type { TemplateTag } from "metabase-types/types/Query";
 import type { Validator } from "metabase-types/forms";
+
+import { shouldShowConfirmation } from "../../ActionViz/utils";
 
 export const getDefaultFormSettings = (
   overrides: Partial<ActionFormSettings> = {},
@@ -119,14 +123,42 @@ export const getFormFromParameters = (
   };
 };
 
-export const getFormTitle = (action: WritebackAction): string =>
-  action.visualization_settings?.name ||
-  action.name ||
-  action.slug ||
-  "Action form";
+export const getFormTitle = (action: WritebackAction): string => {
+  let title =
+    action.visualization_settings?.name ||
+    action.name ||
+    humanize(action.slug ?? "") ||
+    "Action form";
 
-export const getSubmitButtonLabel = (action: WritebackAction): string =>
-  action.visualization_settings?.submitButtonLabel || t`Save`;
+  if (shouldShowConfirmation(action)) {
+    title += "?";
+  }
+
+  return title;
+};
+
+export const getSubmitButtonColor = (action: WritebackAction): string => {
+  if (action.slug === "delete") {
+    return "danger";
+  }
+  return action.visualization_settings?.submitButtonColor ?? "primary";
+};
+
+export const getSubmitButtonLabel = (action: WritebackAction): string => {
+  if (action.visualization_settings?.submitButtonLabel) {
+    return action.visualization_settings.submitButtonLabel;
+  }
+
+  if (action.slug === "delete") {
+    return t`Delete`;
+  }
+
+  if (action.slug === "update") {
+    return t`Update`;
+  }
+
+  return t`Save`;
+};
 
 export const generateFieldSettingsFromParameters = (params: Parameter[]) => {
   const fieldSettings: Record<ParameterId, FieldSettings> = {};
