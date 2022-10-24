@@ -1,20 +1,26 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
-import { updateSettings } from "metabase/admin/settings/settings";
-import { settingToFormField } from "metabase/admin/settings/utils";
+import ActionButton from "metabase/components/ActionButton";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import CopyWidget from "metabase/components/CopyWidget";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Form, {
   FormField,
   FormSubmit,
   FormMessage,
   FormSection,
 } from "metabase/containers/FormikForm";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import CopyWidget from "metabase/components/CopyWidget";
-import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import MetabaseSettings from "metabase/lib/settings";
-import { SAMLFormSection } from "./SettingsSAMLForm.styled";
+import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
+import { updateSettings } from "metabase/admin/settings/settings";
+import { settingToFormField } from "metabase/admin/settings/utils";
+import {
+  SAMLFormCaption,
+  SAMLFormFooter,
+  SAMLFormSection,
+} from "./SettingsSAMLForm.styled";
 
 const propTypes = {
   elements: PropTypes.array,
@@ -23,6 +29,9 @@ const propTypes = {
 };
 
 const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
+  const isEnabled = Boolean(settingValues["saml-enabled"]);
+  const isEnabledRef = useRef(isEnabled);
+
   const settings = useMemo(() => {
     return _.indexBy(elements, "key");
   }, [elements]);
@@ -39,13 +48,47 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
     return getAttributeValues(settingValues, defaultValues);
   }, [settingValues, defaultValues]);
 
+  const handleSubmit = useCallback(
+    values => onSubmit({ ...values, "saml-enabled": isEnabledRef.current }),
+    [onSubmit],
+  );
+
+  const handleSaveAndEnableClick = useCallback(handleSubmit => {
+    isEnabledRef.current = true;
+    return handleSubmit();
+  }, []);
+
+  const handleSaveAndNotEnableClick = useCallback(handleSubmit => {
+    isEnabledRef.current = false;
+    return handleSubmit();
+  }, []);
+
   return (
     <Form
       className="mx2"
       style={{ maxWidth: 520 }}
       initialValues={{ ...settingValues, ...attributeValues }}
       overwriteOnInitialValuesChange
-      onSubmit={onSubmit}
+      renderSubmit={({ canSubmit, handleSubmit }) => (
+        <>
+          <ActionButton
+            actionFn={() => handleSaveAndEnableClick(handleSubmit)}
+            primary={canSubmit}
+            disabled={!canSubmit}
+            normalText={isEnabled ? t`Save changes` : t`Save and enable`}
+            successText={t`Changes saved!`}
+          />
+          {!isEnabled && (
+            <ActionButton
+              actionFn={() => handleSaveAndNotEnableClick(handleSubmit)}
+              disabled={!canSubmit}
+              normalText={t`Save but don't enable`}
+              successText={t`Changes saved!`}
+            />
+          )}
+        </>
+      )}
+      onSubmit={handleSubmit}
     >
       <Breadcrumbs
         className="mb3"
@@ -55,13 +98,11 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
         ]}
       />
       <h2 className="mb3">{t`Set up SAML-based SSO`}</h2>
-      <FormField
-        {...fields["saml-enabled"]}
-        name="saml-enabled"
-        title={t`SAML Authentication`}
-        type="boolean"
-        showEnabledLabel={false}
-      />
+      <SAMLFormCaption>
+        {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
+          <ExternalLink href={getDocsUrl()}>{t`documentation`}</ExternalLink>
+        )}.`}
+      </SAMLFormCaption>
       <SAMLFormSection>
         <h3 className="mb0">{t`Configure your identity provider (IdP)`}</h3>
         <p className="mb4 mt1 text-medium">{t`Your identity provider will need the following info about Metabase.`}</p>
@@ -171,9 +212,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
       <div>
         <FormMessage />
       </div>
-      <div>
+      <SAMLFormFooter>
         <FormSubmit>{t`Save changes`}</FormSubmit>
-      </div>
+      </SAMLFormFooter>
     </Form>
   );
 };
@@ -190,6 +231,10 @@ const getAttributeValues = (values, defaults) => {
 
 const getAcsCustomerUrl = () => {
   return `${MetabaseSettings.get("site-url")}/auth/sso`;
+};
+
+const getDocsUrl = () => {
+  return MetabaseSettings.docsUrl("people-and-groups/authenticating-with-saml");
 };
 
 SettingsSAMLForm.propTypes = propTypes;

@@ -1,9 +1,6 @@
-import React from "react";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import { updateIn } from "icepick";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
-
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import MetabaseSettings from "metabase/lib/settings";
 import {
@@ -83,17 +80,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     settings: [
       {
         key: "saml-enabled",
-        display_name: t`SAML Authentication`,
-        description: jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
-          <ExternalLink
-            href={MetabaseSettings.docsUrl(
-              "people-and-groups/authenticating-with-saml",
-            )}
-          >
-            {t`documentation`}
-          </ExternalLink>
-        )}.`,
-        type: "boolean",
+        getHidden: () => true,
       },
       {
         key: "saml-identity-provider-uri",
