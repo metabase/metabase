@@ -3,7 +3,9 @@ import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { GridItem } from "metabase/components/Grid";
+import { color } from "metabase/lib/colors";
 
 const getPercentage = (number: number): string => {
   return `${number * 100}%`;
@@ -11,6 +13,7 @@ const getPercentage = (number: number): string => {
 
 export const QueryOptionsRoot = styled.div`
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
 
@@ -21,6 +24,20 @@ export const QueryOptionsRoot = styled.div`
   ${breakpointMinSmall} {
     margin-left: 4rem;
     margin-right: 4rem;
+  }
+`;
+
+export const EducationalButton = styled(ExternalLink)`
+  background-color: ${color("bg-medium")};
+  border-radius: 0.5rem;
+  color: ${color("brand")};
+  font-weight: bold;
+  padding: 1em;
+  transition: all 0.3s;
+
+  &:hover {
+    color: ${color("white")};
+    background-color: ${color("brand")};
   }
 `;
 
