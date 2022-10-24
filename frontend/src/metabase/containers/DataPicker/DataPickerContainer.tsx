@@ -22,6 +22,7 @@ import type {
   DataPickerDataType,
 } from "./types";
 
+import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
 import { getDataTypes, DEFAULT_DATA_PICKER_FILTERS } from "./utils";
 
 import DataPickerView from "./DataPickerView";
@@ -54,6 +55,8 @@ function DataPicker({
   ...props
 }: DataPickerProps) {
   const { onChange } = props;
+
+  const { search } = useDataPicker();
 
   const filters = useMemo(
     () => ({
@@ -117,6 +120,7 @@ function DataPicker({
     <DataPickerView
       {...props}
       dataTypes={dataTypes}
+      searchQuery={search.query}
       hasDataAccess={hasDataAccess}
       onDataTypeChange={handleDataTypeChange}
       onBack={handleBack}
@@ -124,7 +128,7 @@ function DataPicker({
   );
 }
 
-export default _.compose(
+const DataPickerContainer = _.compose(
   // Required for `hasDataAccess` check
   Databases.loadList(),
 
@@ -139,3 +143,7 @@ export default _.compose(
 
   connect(mapStateToProps),
 )(DataPicker);
+
+export default Object.assign(DataPickerContainer, {
+  Provider: DataPickerContextProvider,
+});
