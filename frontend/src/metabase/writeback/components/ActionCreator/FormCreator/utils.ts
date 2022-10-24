@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import validate from "metabase/lib/validate";
 import { slugify } from "metabase/lib/formatting";
@@ -17,8 +18,8 @@ import type {
 
 import type { Parameter } from "metabase-types/types/Parameter";
 import type { TemplateTag } from "metabase-types/types/Query";
-import type { Field as FieldType } from "metabase-types/types/Field";
 
+import { isEditableField } from "metabase/writeback/utils";
 import Field from "metabase-lib/lib/metadata/Field";
 import { TYPE } from "metabase-lib/lib/types/constants";
 
@@ -72,7 +73,7 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
   password: "password",
   number: "integer", // this input type is badly named, it works for floats too
   boolean: "boolean",
-  category: "category",
+  category: "categoryPillOrSearch",
   dropdown: "select",
   radio: "radio",
 };
@@ -80,19 +81,24 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
 const inputTypeHasOptions = (fieldSettings: FieldSettings) =>
   ["dropdown", "radio"].includes(fieldSettings.inputType);
 
-const dontValidate = () => undefined;
-
 export const getFormField = (
   parameter: Parameter | TemplateTag,
   fieldSettings: FieldSettings,
 ) => {
+  if (
+    fieldSettings.fieldInstance &&
+    !isEditableField(fieldSettings.fieldInstance)
+  ) {
+    return undefined;
+  }
+
   const fieldProps: ActionFormFieldProps = {
     name: parameter.id,
     type: fieldPropsTypeMap[fieldSettings?.inputType] ?? "input",
     title: fieldSettings.title ?? fieldSettings.name,
     description: fieldSettings.description ?? "",
     placeholder: fieldSettings?.placeholder,
-    validate: fieldSettings.required ? validate.required() : dontValidate,
+    validate: fieldSettings.required ? validate.required() : _.noop,
     fieldInstance: fieldSettings.fieldInstance,
   };
 
@@ -114,9 +120,9 @@ export const getForm = (
   fieldSettings: Record<string, FieldSettings>,
 ): ActionFormProps => {
   return {
-    fields: parameters?.map(param =>
-      getFormField(param, fieldSettings[param.id] ?? {}),
-    ),
+    fields: parameters
+      ?.map(param => getFormField(param, fieldSettings[param.id] ?? {}))
+      .filter(Boolean) as ActionFormFieldProps[],
   };
 };
 
@@ -131,7 +137,7 @@ export const getSubmitButtonLabel = (action: WritebackAction): string =>
 
 export const generateFieldSettingsFromParameters = (
   params: Parameter[],
-  fields?: FieldType[],
+  fields?: Field[],
 ) => {
   const fieldSettings: Record<ParameterId, FieldSettings> = {};
 
@@ -162,12 +168,15 @@ export const generateFieldSettingsFromParameters = (
 };
 
 const getFieldType = (param: Parameter): "number" | "string" => {
-  return /integer|float/gi.test(param.type) ? "number" : "string";
+  return isNumericParameter(param) ? "number" : "string";
 };
 
-function getInputType(param: Parameter, field?: Field) {
+const isNumericParameter = (param: Parameter): boolean =>
+  /integer|float/gi.test(param.type);
+
+export const getInputType = (param: Parameter, field?: Field) => {
   if (!field) {
-    return /integer|float/gi.test(param.type) ? "number" : "string";
+    return isNumericParameter(param) ? "number" : "string";
   }
 
   if (field.isFK()) {
@@ -199,4 +208,4 @@ function getInputType(param: Parameter, field?: Field) {
     return "category";
   }
   return "string";
-}
+};

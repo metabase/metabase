@@ -42,7 +42,7 @@ const WIDGETS = {
   hidden: FormHiddenWidget,
   textFile: FormTextFileWidget,
   model: FormModelWidget,
-  category: CategoryFieldPicker,
+  categoryPillOrSearch: CategoryFieldPicker,
 };
 
 export function getWidgetComponent(formField) {
