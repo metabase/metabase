@@ -16,7 +16,7 @@ export default class NewQueryOption extends Component {
     return (
       <Link
         {...props}
-        className="block no-decoration bg-white px3 py4 align-center bordered rounded cursor-pointer transition-all full-height text-centered"
+        className="block no-decoration bg-white p4 align-center bordered rounded cursor-pointer transition-all full-height text-centered"
         style={{
           boxSizing: "border-box",
           boxShadow: hover
@@ -44,7 +44,9 @@ export default class NewQueryOption extends Component {
           <h2 className={cx("transition-all", { "text-brand": hover })}>
             {title}
           </h2>
-          <p className="text-medium text-small">{description}</p>
+          <p className="text-medium text-small" style={{ maxWidth: "360px" }}>
+            {description}
+          </p>
         </div>
       </Link>
     );

@@ -12,13 +12,17 @@ import Search from "metabase/entities/search";
 
 import type { State } from "metabase-types/store";
 
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/lib/metadata/utils/saved-questions";
+import {
+  getRootCollectionVirtualSchemaId,
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+} from "metabase-lib/lib/metadata/utils/saved-questions";
 
 import type {
   DataPickerProps as DataPickerOwnProps,
   DataPickerDataType,
 } from "./types";
 
+import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
 import { getDataTypes, DEFAULT_DATA_PICKER_FILTERS } from "./utils";
 
 import DataPickerView from "./DataPickerView";
@@ -52,6 +56,8 @@ function DataPicker({
 }: DataPickerProps) {
   const { onChange } = props;
 
+  const { search } = useDataPicker();
+
   const filters = useMemo(
     () => ({
       ...DEFAULT_DATA_PICKER_FILTERS,
@@ -71,13 +77,24 @@ function DataPicker({
 
   const handleDataTypeChange = useCallback(
     (type: DataPickerDataType) => {
-      const isUsingVirtualTables = type === "models" || type === "questions";
+      const isModels = type === "models";
+      const isUsingVirtualTables = isModels || type === "questions";
+
+      // When switching to models or questions,
+      // we want to automatically open Our analytics collection
+      const databaseId = isUsingVirtualTables
+        ? SAVED_QUESTIONS_VIRTUAL_DB_ID
+        : undefined;
+      const schemaId = isUsingVirtualTables
+        ? getRootCollectionVirtualSchemaId({ isModels })
+        : undefined;
+      const collectionId = isUsingVirtualTables ? "root" : undefined;
+
       onChange({
         type,
-        databaseId: isUsingVirtualTables
-          ? SAVED_QUESTIONS_VIRTUAL_DB_ID
-          : undefined,
-        schemaId: undefined,
+        databaseId,
+        schemaId,
+        collectionId,
         tableIds: [],
       });
     },
@@ -103,6 +120,7 @@ function DataPicker({
     <DataPickerView
       {...props}
       dataTypes={dataTypes}
+      searchQuery={search.query}
       hasDataAccess={hasDataAccess}
       onDataTypeChange={handleDataTypeChange}
       onBack={handleBack}
@@ -110,7 +128,7 @@ function DataPicker({
   );
 }
 
-export default _.compose(
+const DataPickerContainer = _.compose(
   // Required for `hasDataAccess` check
   Databases.loadList(),
 
@@ -125,3 +143,7 @@ export default _.compose(
 
   connect(mapStateToProps),
 )(DataPicker);
+
+export default Object.assign(DataPickerContainer, {
+  Provider: DataPickerContextProvider,
+});

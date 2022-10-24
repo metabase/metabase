@@ -10,7 +10,11 @@ import * as Urls from "metabase/lib/urls";
 
 import DataApps, { ScaffoldNewAppParams } from "metabase/entities/data-apps";
 
-import { useDataPickerValue } from "metabase/containers/DataPicker";
+import DataPicker, {
+  useDataPicker,
+  useDataPickerValue,
+  DataPickerValue,
+} from "metabase/containers/DataPicker";
 import DataAppScaffoldingDataPicker from "metabase/writeback/components/DataAppScaffoldingDataPicker";
 
 import type { DataApp } from "metabase-types/api";
@@ -22,6 +26,9 @@ import {
   ModalTitle,
   ModalBody,
   ModalFooter,
+  SearchInputContainer,
+  SearchInput,
+  SearchIcon,
 } from "./CreateDataAppModal.styled";
 
 interface OwnProps {
@@ -48,6 +55,31 @@ function mapDispatchToProps(dispatch: Dispatch) {
   };
 }
 
+function getSearchInputPlaceholder(value: DataPickerValue) {
+  if (value?.type === "models") {
+    return t`Search for a model…`;
+  }
+  if (value?.type === "raw-data") {
+    return t`Search for a table…`;
+  }
+  return t`Search for some data…`;
+}
+
+function DataPickerSearchInput({ value }: { value: DataPickerValue }) {
+  const { search } = useDataPicker();
+
+  return (
+    <SearchInputContainer>
+      <SearchIcon name="search" size={16} />
+      <SearchInput
+        value={search.query}
+        onChange={e => search.setQuery(e.target.value)}
+        placeholder={getSearchInputPlaceholder(value)}
+      />
+    </SearchInputContainer>
+  );
+}
+
 function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
   const [value, setValue] = useDataPickerValue();
 
@@ -65,22 +97,25 @@ function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
   const canSubmit = tableIds.length > 0;
 
   return (
-    <ModalRoot>
-      <ModalHeader>
-        <ModalTitle>{t`Pick your starting data`}</ModalTitle>
-      </ModalHeader>
-      <ModalBody>
-        <DataAppScaffoldingDataPicker value={value} onChange={setValue} />
-      </ModalBody>
-      <ModalFooter>
-        <Button onClick={onClose}>{t`Cancel`}</Button>
-        <Button
-          primary
-          disabled={!canSubmit}
-          onClick={handleCreate}
-        >{t`Create`}</Button>
-      </ModalFooter>
-    </ModalRoot>
+    <DataPicker.Provider>
+      <ModalRoot>
+        <ModalHeader>
+          <ModalTitle>{t`Pick your starting data`}</ModalTitle>
+          <DataPickerSearchInput value={value} />
+        </ModalHeader>
+        <ModalBody>
+          <DataAppScaffoldingDataPicker value={value} onChange={setValue} />
+        </ModalBody>
+        <ModalFooter>
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+          <Button
+            primary
+            disabled={!canSubmit}
+            onClick={handleCreate}
+          >{t`Create`}</Button>
+        </ModalFooter>
+      </ModalRoot>
+    </DataPicker.Provider>
   );
 }
 

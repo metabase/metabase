@@ -30,6 +30,12 @@
   model
   instance])
 
+(def ^:dynamic *deserializing?*
+  "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
+  deserialization. Most notably, we don't want to generate an `:entity_id`, as that would lead to duplicated entities
+  on a future deserialization."
+  false)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -249,7 +255,10 @@
   :update add-updated-at-timestamp)
 
 (defn- add-entity-id [obj & _]
-  (if (contains? obj :entity_id)
+  (if (or (contains? obj :entity_id)
+          *deserializing?*)
+    ;; Don't generate a new entity_id if either: (a) there's already one set; or (b) we're deserializing.
+    ;; Generating them at deserialization time can lead to duplicated entities if they're deserialized again.
     obj
     (assoc obj :entity_id (u/generate-nano-id))))
 
