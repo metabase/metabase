@@ -532,7 +532,6 @@
                 {:allowed #{:timestamp :datetime :date}
                  :found   disallowed-types})))
     (case unit
-      ;; the default week implementation gave incorrect results in tests
       (:year :month)
       (let [maybe-cast (fn [clause current]
                          (cond->> clause
@@ -541,7 +540,7 @@
             x' (maybe-cast x' (first types))
             y' (maybe-cast y' (second types))
             unit'       (hsql/raw (name unit))
-            positive-diff (fn [a b]
+            positive-diff (fn [a b] ;; (a - b) >= 0
                             (hsql/call
                              :-
                              (hsql/call :datetime_diff b a unit')
