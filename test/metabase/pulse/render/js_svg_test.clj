@@ -303,7 +303,7 @@
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/categorical-donut rows colors settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value (js/execute-fn-name context "categorical_donut" rows (seq colors)))]
+    (let [svg-string (.asString ^Value (js/execute-fn-name context "categorical_donut" rows (seq colors) (json/generate-string settings)))]
       (validate-svg-string :categorical/donut svg-string))))
 
 (deftest progress-test
