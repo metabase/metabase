@@ -33,7 +33,7 @@ describe("CategoricalDonutChart", () => {
       <CategoricalDonutChart
         data={data}
         colors={colors}
-        settings={{ show_labels: true }}
+        settings={{ show_values: true }}
       />,
     );
     screen.getByText("39.22 %");
