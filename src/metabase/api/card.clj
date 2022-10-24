@@ -115,6 +115,21 @@
   [_]
   (db/select Card, :archived true, {:order-by [[:%lower.name :asc]]}))
 
+;; Cards that are using a given model.
+(defmethod cards-for-filter-option* :using_model
+  [_ model-id]
+  (->> (db/query {:select [:c.*]
+                  :from [[:report_card :m]]
+                  :join [[:report_card :c] [:and
+                                            [:= :c.database_id :m.database_id]
+                                            [:or
+                                             [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+                                             [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
+                  :where [:= :m.id model-id]})
+       (db/do-post-select Card)
+       ;; now check if model-id really occurs as a card ID
+       (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
+
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
   (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
       (hydrate :creator :collection)))
@@ -127,18 +142,20 @@
 
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
-  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, and `archived`. See
-  corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
+  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
+  and `archived`. See corresponding implementation functions above for the specific behavior of each filter
+  option. :card_index:"
   [f model_id]
   {f        (s/maybe CardFilterOption)
    model_id (s/maybe su/IntGreaterThanZero)}
   (let [f (keyword f)]
-    (when (contains? #{:database :table} f)
+    (when (contains? #{:database :table :using_model} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                          (name f)))
       (case f
-        :database (api/read-check Database model_id)
-        :table    (api/read-check Database (db/select-one-field :db_id Table, :id model_id))))
+        :database    (api/read-check Database model_id)
+        :table       (api/read-check Database (db/select-one-field :db_id Table, :id model_id))
+        :using_model (api/read-check Card model_id)))
     (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
           last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
       (into []
