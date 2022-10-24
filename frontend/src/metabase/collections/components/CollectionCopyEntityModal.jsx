@@ -23,6 +23,16 @@ function mapStateToProps(state, props) {
   };
 }
 
+const getTitle = (entityObject, isShallowCopy) => {
+  if (entityObject.model !== "dashboard") {
+    return "";
+  } else if (isShallowCopy) {
+    return t`Duplicate "${entityObject.name}"`;
+  } else {
+    return t`Duplicate "${entityObject.name}" and its questions`;
+  }
+};
+
 function CollectionCopyEntityModal({
   entityObject,
   initialCollectionId,
@@ -31,18 +41,10 @@ function CollectionCopyEntityModal({
   triggerToast,
 }) {
   const [isShallowCopy, setIsShallowCopy] = useState(true);
+  const title = getTitle(entityObject, isShallowCopy);
+
   const handleValuesChange = ({ is_shallow_copy }) => {
     setIsShallowCopy(is_shallow_copy);
-  };
-
-  const getTitle = () => {
-    if (entityObject.model !== "dashboard") {
-      return "";
-    } else if (isShallowCopy) {
-      return t`Duplicate "${entityObject.name}"`;
-    } else {
-      return t`Duplicate "${entityObject.name}" and its questions`;
-    }
   };
 
   return (
@@ -54,7 +56,7 @@ function CollectionCopyEntityModal({
         collection_id: initialCollectionId,
       }}
       form={Dashboards.forms.duplicate}
-      title={getTitle()}
+      title={title}
       copy={async values => {
         return entityObject.copy(dissoc(values, "id"));
       }}
