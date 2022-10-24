@@ -64,6 +64,7 @@ const LoginForm = ({
       </FormField>
       {isCookieEnabled && (
         <FormField
+          {...getFieldMeta("remember")}
           title={t`Remember me`}
           alignment="start"
           orientation="horizontal"
