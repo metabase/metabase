@@ -152,8 +152,8 @@
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"
-  [rows colors]
-  (let [svg-string (.asString (js/execute-fn-name (context) "categorical_donut" rows (seq colors)))]
+  [rows colors settings]
+  (let [svg-string (.asString (js/execute-fn-name (context) "categorical_donut" rows (seq colors) (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn gauge

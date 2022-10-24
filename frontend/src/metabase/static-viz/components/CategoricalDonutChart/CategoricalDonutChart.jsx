@@ -4,9 +4,9 @@ import { t } from "ttag";
 import { Group } from "@visx/group";
 import { Pie } from "@visx/shape";
 import { Text } from "@visx/text";
+import { getTextColorForBackground } from "metabase/lib/colors";
 import { formatNumber, formatPercent } from "../../lib/numbers";
 import { DIMENSION_ACCESSORS } from "../../constants/accessors";
-import { getTextColorForBackground } from "metabase/lib/colors";
 
 const propTypes = {
   data: PropTypes.array,
@@ -17,7 +17,7 @@ const propTypes = {
   }),
   settings: PropTypes.shape({
     metric: PropTypes.object,
-    showDataLabels: PropTypes.bool,
+    show_labels: PropTypes.bool,
   }),
 };
 
@@ -59,7 +59,7 @@ const CategoricalDonutChart = ({
   const totalValue = data.map(accessors.metric).reduce((a, b) => a + b, 0);
   const totalLabel = t`Total`.toUpperCase();
 
-  const shouldShowLabels = settings?.showDataLabels;
+  const shouldShowLabels = settings?.show_labels;
 
   return (
     <svg width={layout.width} height={layout.height}>

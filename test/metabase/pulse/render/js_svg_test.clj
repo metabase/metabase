@@ -298,9 +298,10 @@
 (deftest categorical-donut-test
   (let [rows [["apples" 2]
               ["bananas" 3]]
-        colors {"apples" "red" "bananas" "yellow"}]
+        colors {"apples" "red" "bananas" "yellow"}
+        settings {:show_values true}]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/categorical-donut rows colors)]
+      (let [svg-bytes (js-svg/categorical-donut rows colors settings)]
         (is (bytes? svg-bytes))))
     (let [svg-string (.asString ^Value (js/execute-fn-name context "categorical_donut" rows (seq colors)))]
       (validate-svg-string :categorical/donut svg-string))))

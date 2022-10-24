@@ -603,7 +603,7 @@
                                     x))
                                 html-tree))]
     (testing "Renders without error"
-      (let [rendered-info (render [["Doohickey" 75] ["Widget" 25]])]
+      (let [rendered-info (render [["Doohickey" 75] ["Widget" 25] { :show_values true }])]
         (is (has-inline-image? rendered-info))))
     (testing "Includes percentages"
       (is (= [:div
