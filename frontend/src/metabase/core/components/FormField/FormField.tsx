@@ -11,8 +11,7 @@ import {
 export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;
   description?: string;
-  error?: string;
-  touched?: boolean;
+  error?: string | boolean;
   alignment?: FormFieldAlignment;
   orientation?: FormFieldOrientation;
   children?: ReactNode;
@@ -23,7 +22,6 @@ const FormField = forwardRef(function FormField(
     title,
     description,
     error,
-    touched = false,
     alignment = "end",
     orientation = "vertical",
     children,
@@ -31,7 +29,7 @@ const FormField = forwardRef(function FormField(
   }: FormFieldProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const hasError = touched && Boolean(error);
+  const hasError = Boolean(error);
 
   return (
     <FieldRoot

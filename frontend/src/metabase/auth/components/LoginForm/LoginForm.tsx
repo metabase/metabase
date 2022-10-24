@@ -31,45 +31,62 @@ const LoginForm = ({
   isCookieEnabled,
   onSubmit,
 }: LoginFormProps): JSX.Element => {
-  const { isValid, isSubmitting, getFieldProps, getFieldMeta, handleSubmit } =
-    useFormik({
-      initialValues: { username: "", password: "", remember: isCookieEnabled },
-      validationSchema: isLdapEnabled ? LdapSchema : PasswordSchema,
-      onSubmit,
-    });
+  const {
+    values,
+    errors,
+    touched,
+    isValid,
+    isSubmitting,
+    handleChange,
+    handleSubmit,
+  } = useFormik({
+    initialValues: { username: "", password: "", remember: isCookieEnabled },
+    validationSchema: isLdapEnabled ? LdapSchema : PasswordSchema,
+    onSubmit,
+  });
 
   return (
     <form onSubmit={handleSubmit}>
       <FormField
-        {...getFieldMeta("username")}
         title={isLdapEnabled ? t`Username or email address` : t`Email address`}
+        error={touched.username && errors.username}
       >
         <FormInput
-          {...getFieldProps("username")}
-          {...getFieldMeta("username")}
+          name="username"
+          value={values.username}
+          error={touched.username && errors.username}
           type={isLdapEnabled ? "input" : "email"}
           placeholder="nicetoseeyou@email.com"
           autoFocus
           fullWidth
+          onChange={handleChange}
         />
       </FormField>
-      <FormField {...getFieldMeta("password")} title={t`Password`}>
+      <FormField
+        title={t`Password`}
+        error={touched.password && errors.password}
+      >
         <FormInput
-          {...getFieldProps("password")}
-          {...getFieldMeta("password")}
+          name="password"
+          value={values.password}
+          error={touched.password && errors.password}
           type="password"
           placeholder={t`Shhh...`}
           fullWidth
+          onChange={handleChange}
         />
       </FormField>
       {isCookieEnabled && (
         <FormField
-          {...getFieldMeta("remember")}
           title={t`Remember me`}
           alignment="start"
           orientation="horizontal"
         >
-          <CheckBox {...getFieldProps("remember")} />
+          <CheckBox
+            name="remember"
+            checked={values.remember}
+            onChange={handleChange}
+          />
         </FormField>
       )}
       <Button primary fullWidth disabled={!isValid || isSubmitting}>
