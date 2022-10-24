@@ -5,7 +5,7 @@ import Form from "metabase/containers/FormikForm";
 import {
   getSubmitButtonLabel,
   generateFieldSettingsFromParameters,
-  getFormFromParameters,
+  getForm,
 } from "metabase/writeback/components/ActionCreator/FormCreator";
 import EmptyState from "metabase/components/EmptyState";
 
@@ -78,12 +78,16 @@ function ActionParametersInputForm({
   const fieldSettings = useMemo(
     () =>
       action.visualization_settings?.fields ??
-      generateFieldSettingsFromParameters(missingParameters),
-    [action, missingParameters],
+      // if there are no field settings, we generate them from the parameters and field metadata
+      generateFieldSettingsFromParameters(
+        missingParameters,
+        dashcard?.card?.result_metadata,
+      ),
+    [action, missingParameters, dashcard],
   );
 
   const form = useMemo(
-    () => getFormFromParameters(missingParameters, fieldSettings),
+    () => getForm(missingParameters, fieldSettings),
     [missingParameters, fieldSettings],
   );
 
