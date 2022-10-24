@@ -326,6 +326,69 @@
                (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
                  (select-keys card [:name]))))))))
 
+(deftest filter-by-using-model
+  (testing "list cards using a model"
+    (mt/with-temp* [Card [{model-id :id :as model} {:name "Model", :dataset true
+                                                    :dataset_query {:query {:source-table 1
+                                                                            :filter [:= [:field 1 nil] "1"]}}}]
+                    ;; matching question
+                    Card [card-1 {:name "Card 1"
+                                  :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                    Card [{other-card-id :id}]
+                    ;; source-table doesn't match
+                    Card [card-2 {:name "Card 2"
+                                  :dataset_query {:query {:source-table (str "card__" other-card-id)
+                                                          :filter [:= [:field 5 nil] (str "card__" model-id)]}}}]
+                    ;; matching join
+                    Card [card-3 {:name "Card 3"
+                                  :dataset_query (let [alias (str "Question " model-id)]
+                                                   {:type :query
+                                                    :query {:joins [{:fields [[:field 35 {:join-alias alias}]]
+                                                                     :source-table (str "card__" model-id)
+                                                                     :condition [:=
+                                                                                 [:field 5 nil]
+                                                                                 [:field 33 {:join-alias alias}]]
+                                                                     :alias alias
+                                                                     :strategy :inner-join}]
+                                                            :fields [[:field 9 nil]]}
+                                                    :database 1})}]
+                    ;; matching native query
+                    Card [card-4 {:name "Card 4"
+                                  :dataset_query {:type :native
+                                                  :native (let [model-ref (format "#%d-q1" model-id)]
+                                                            {:query (format "select o.id from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                            model-ref)
+                                                             :template-tags {model-ref
+                                                                             {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                              :name model-ref
+                                                                              :display-name model-ref
+                                                                              :type :card
+                                                                              :card-id model-id}}})
+                                                  :database 1}}]
+                    ;; native query reference doesn't match
+                    Card [card-5 {:name "Card 5"
+                                   :dataset_query {:type :native
+                                                   :native (let [model-ref (str "card__" model-id)
+                                                                 card-id other-card-id
+                                                                 card-ref (format "#%d-q1" card-id)]
+                                                             {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                             model-ref card-ref)
+                                                              :template-tags {card-ref
+                                                                              {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                               :name card-ref
+                                                                               :display-name card-ref
+                                                                               :type :card
+                                                                               :card-id card-id}}})
+                                                   :database 1}}]
+                    Database [{other-database-id :id}]
+                    ;; database doesn't quite match
+                    Card [card-6 {:name "Card 6", :database_id other-database-id
+                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]]
+      (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6]
+        (is (= #{"Card 1" "Card 3" "Card 4"}
+               (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
+                                                           :f :using_model :model_id model-id))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
