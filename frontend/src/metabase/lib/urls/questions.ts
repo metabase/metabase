@@ -79,9 +79,7 @@ export function question(
     path = appendSlug(path, slugg(name));
   }
 
-  if (isModel && isModelDetail) {
-    path = `${path}/detail`;
-  } else if (objectId) {
+  if (objectId) {
     path = `${path}/${objectId}`;
   }
 

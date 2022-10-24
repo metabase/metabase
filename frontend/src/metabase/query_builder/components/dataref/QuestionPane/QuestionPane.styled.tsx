@@ -3,7 +3,7 @@ import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
-export const ModelPaneDetail = styled.div`
+export const QuestionPaneDetail = styled.div`
   color: ${color("text-medium")};
   display: flex;
   align-items: center;
@@ -11,26 +11,26 @@ export const ModelPaneDetail = styled.div`
   font-weight: 700;
 `;
 
-export const ModelPaneDetailLinkText = styled.span`
+export const QuestionPaneDetailLinkText = styled.span`
   margin-left: ${space(1)};
 `;
 
-export const ModelPaneDetailLink = styled.a`
+export const QuestionPaneDetailLink = styled.a`
   display: flex;
   align-items: center;
   color: ${color("brand")};
 `;
 
-export const ModelPaneDetailText = styled.span`
+export const QuestionPaneDetailText = styled.span`
   margin-left: ${space(1)};
   font-weight: normal;
 `;
 
-export const ModelPaneDescription = styled.div`
+export const QuestionPaneDescription = styled.div`
   padding: 0 ${space(1)} ${space(2)} ${space(1)};
 `;
 
-export const ModelPaneIcon = styled(Icon)`
+export const QuestionPaneIcon = styled(Icon)`
   margin-top: 1px;
   width: 12px;
 `;

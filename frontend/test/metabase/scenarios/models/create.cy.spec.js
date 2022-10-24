@@ -1,4 +1,6 @@
-import { restore } from "__support__/e2e/helpers";
+import { restore, visitCollection } from "__support__/e2e/helpers";
+
+const modelName = "A name";
 
 describe("scenarios > models > create", () => {
   beforeEach(() => {
@@ -26,7 +28,7 @@ describe("scenarios > models > create", () => {
 
     cy.findByText("Save").click();
 
-    cy.findByPlaceholderText("What is the name of your model?").type("A name");
+    cy.findByPlaceholderText("What is the name of your model?").type(modelName);
 
     cy.findByText("Save").click();
 
@@ -34,6 +36,8 @@ describe("scenarios > models > create", () => {
 
     // After saving, we land on view mode for the model
     cy.findByText("Summarize");
+
+    checkIfPinned();
   });
 });
 
@@ -41,4 +45,15 @@ function goFromHomePageToNewNativeQueryModelPage() {
   cy.findByText("New").click();
   cy.findByText("Model").click();
   cy.findByText("Use a native query").click();
+}
+
+function checkIfPinned() {
+  visitCollection("root");
+
+  cy.findByText(modelName)
+    .closest("a")
+    .find(".Icon-ellipsis")
+    .click({ force: true });
+
+  cy.findByText("Unpin").should("be.visible");
 }
