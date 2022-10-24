@@ -308,7 +308,7 @@
      {:field-name "t" :base-type :type/Time}]
     [[1 "simple comparing across types" #t "2021-08-03T08:09:10.582Z" #t "09:19:09"]]]])
 
-(mt/defdataset more-useful-dates
+(mt/defdataset more-useful-dates2
   [["more-datediff-edgecases"
     [{:field-name "index" :base-type :type/Integer}
      {:field-name "description" :base-type :type/Text}
@@ -318,12 +318,14 @@
      [1 "minute under a year"   #t "2021-10-03 09:19:09" #t "2022-10-03 09:18:09"]
      [1 "day under a month"     #t "2022-10-03 09:18:09" #t "2022-11-02 09:18:09"]
      [1 "minute under a month"  #t "2022-10-02 09:19:09" #t "2022-11-02 09:18:09"]
+     [1 "day under a week"      #t "2022-10-02 09:18:09" #t "2022-10-08 09:18:09"]
+     [1 "minute under a week"   #t "2022-10-02 09:19:09" #t "2022-10-09 09:18:09"]
      [1 "<24h same day"         #t "2022-10-02 00:00:00" #t "2022-10-02 23:59:59"]
      [1 "<24h consecutive days" #t "2022-10-02 09:19:09" #t "2022-10-03 09:18:09"]]]])
 
 (deftest datetimediff-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
-    (mt/dataset more-useful-dates
+    (mt/dataset more-useful-dates2
       (testing "Edge cases at year and month boundary"
         (let [test-cases (fn [unit cases]
                            (testing unit
@@ -346,16 +348,19 @@
                                            :fields      [[:expression "d"]]
                                            :filter      (into [:= $description] descriptions)
                                            :order-by    [[:asc $description]]}))))))))]
+          (test-cases :day [["<24h consecutive days" 1]
+                            ["<24h same day" 0]
+                            ["day under a month" 30]
+                            ["minute under a month" 31]])
+          (test-cases :week [["day under a week" 0]
+                              ["minute under a week" 1]
+                              ["minute under a month" 4]])
           (test-cases :month [["day under a month" 0]
                               ["day under a year" 11]
                               ["minute under a month" 1]
                               ["minute under a year" 12]])
           (test-cases :year [["day under a year" 0]
-                             ["minute under a year" 1]])
-          (test-cases :day [["<24h consecutive days" 1]
-                            ["<24h same day" 0]
-                            ["day under a month" 30]
-                            ["minute under a month" 31]]))
+                             ["minute under a year" 1]]))
         (testing "Types from nested functions are ok"
           (testing "Nested functions are ok"
             (is (= [[-3] [362]]
