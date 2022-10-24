@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 import AuthButton from "../AuthButton";
-import LoginForm from "../LoginForm";
+import LoginForm from "../../containers/LoginForm";
 import { AuthProvider, LoginData } from "../../types";
 import { ActionListItem, ActionList } from "./PasswordPanel.styled";
 
@@ -25,11 +25,7 @@ const PasswordPanel = ({
 
   return (
     <div>
-      <LoginForm
-        isLdapEnabled={false}
-        isCookieEnabled={true}
-        onSubmit={handleSubmit}
-      />
+      <LoginForm onSubmit={handleSubmit} />
       <ActionList>
         <ActionListItem>
           <AuthButton link="/auth/forgot_password">
