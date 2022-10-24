@@ -349,10 +349,21 @@
 
 (defmethod sql.qp/->honeysql [:mysql :datetimediff]
   [driver [_ x y unit]]
-  (hsql/call :timestampdiff
-             (hsql/raw (name unit))
-             (sql.qp/->honeysql driver x)
-             (sql.qp/->honeysql driver y)))
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)]
+    (case unit
+      (:year :month)
+      (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))
+
+      :week
+      (let [positive-diff (fn [a b] (hsql/call :floor (hsql/call :/ (hsql/call :datediff b a) 7)))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hsql/call :* -1 (positive-diff y x))))
+
+      :day
+      (hsql/call :datediff y x)
+
+      ;; else
+      (hsql/call :timestampdiff (hsql/raw (name unit)) x y))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
