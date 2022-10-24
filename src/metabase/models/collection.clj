@@ -908,7 +908,9 @@
           :pre-delete     pre-delete}))
 
 (defmethod serdes.base/extract-query "Collection" [_ {:keys [collection-set]}]
-  (db/select-reducible Collection :id [:in collection-set]))
+  (if (seq collection-set)
+    (db/select-reducible Collection :id [:in collection-set])
+    (db/select-reducible Collection :personal_owner_id nil)))
 
 (defmethod serdes.base/extract-one "Collection"
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.

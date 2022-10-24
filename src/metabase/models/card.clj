@@ -332,7 +332,9 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 (defmethod serdes.base/extract-query "Card" [_ {:keys [collection-set]}]
-  (db/select-reducible Card :collection_id [:in collection-set]))
+  (if (seq collection-set)
+    (db/select-reducible Card :collection_id [:in collection-set])
+    (db/select-reducible Card)))
 
 (defmethod serdes.base/extract-one "Card"
   [_model-name _opts card]
