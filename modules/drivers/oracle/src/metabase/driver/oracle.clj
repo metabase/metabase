@@ -204,21 +204,26 @@
    (partial hsql/call (u/qualified-name ::mod))))
 
 (defmethod sql.qp/->honeysql [:oracle :convert-timezone]
-  [driver [_ arg to-tz from-tz]]
-  (let [clause       (sql.qp/->honeysql driver arg)
-        hsql-from-tz (partial hsql/call :from_tz)
-        has-timezone? (hx/is-of-type? clause #"timestamp(\(\d\))? with time zone")]
-    (when (and has-timezone? from-tz)
-      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone` argument")
-                    {:type    qp.error-type/invalid-parameter
-                     :to-tz   to-tz
-                     :from-tz from-tz})))
-    (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
-      (cond-> clause
-        (and (not has-timezone?) from-tz)
-        (hsql-from-tz from-tz)
-        to-tz
-        (hx/->AtTimeZone to-tz)))))
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr          (sql.qp/->honeysql driver arg)
+        has-timezone? (hx/is-of-type? expr #"timestamp(\(\d\))? with time zone")]
+    (when (and has-timezone? source-timezone)
+      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone`")
+                      {:target-timezone target-timezone
+                       :source-timezone source-timezone
+                       :type            qp.error-type/invalid-parameter})))
+    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
+          hsql-from-tz    (partial hsql/call :from_tz)
+          expr            (cond-> expr
+                            (and (not has-timezone?) source-timezone)
+                            (hsql-from-tz source-timezone)
+
+                            target-timezone
+                            (hx/->AtTimeZone target-timezone))]
+      (hx/with-type-info expr
+        {::hx/convert-timezone {:source-timezone source-timezone
+                                :target-timezone target-timezone}
+         ::hx/database-type    "timestamp with time zone"}))))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 

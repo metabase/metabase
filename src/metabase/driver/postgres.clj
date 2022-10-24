@@ -296,10 +296,11 @@
           expr (if-not timestamptz?
                  (hsql/call :timezone source-timezone expr)
                  expr)]
-      (hx/with-type-info expr
-        {::hx/convert-timezone {:source-timezone source-timezone
-                                :target-timezone target-timezone}
-         ::hx/database-type    "timestamptz"}))))
+      (hx/with-convert-timezone-type-info
+        expr
+        source-timezone
+        target-timezone
+        "timestamptz"))))
 
 (defn- zone->total-seconds-offset
   [zone]

@@ -251,6 +251,19 @@
     (with-type-info honeysql-form {::database-type database-type})
     (unwrap-typed-honeysql-form honeysql-form)))
 
+(s/defn with-convert-timezone-type-info
+  "Convenience for adding only database type information to a `honeysql-form`. Wraps `honeysql-form` and returns a
+  `TypedHoneySQLForm`. Passing `nil` as `database-type` will remove any existing type info.
+
+    (with-database-type-info :field \"text\")
+    ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
+  {:style/indent [:form]}
+  [honeysql-form target-timezone source-timezone timestamp-db-type]
+  (with-type-info honeysql-form
+    {::convert-timezone {:source-timezone source-timezone
+                         :target-timezone target-timezone}
+     ::database-type    timestamp-db-type}))
+
 (s/defn cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [database-type expr]

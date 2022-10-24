@@ -110,20 +110,24 @@
   (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
 
 (defmethod sql.qp/->honeysql [:vertica :convert-timezone]
-  [driver [_ arg to-tz from-tz]]
-  (let [clause  (sql.qp/->honeysql driver arg)
-        timestamptz? (hx/is-of-type? clause "timestamptz")]
-   (when (and timestamptz? from-tz)
-         (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone` argument")
-                    {:type    qp.error-type/invalid-parameter
-                     :to-tz   to-tz
-                     :from-tz from-tz})))
-   (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
-    (cond-> clause
-      (and (not timestamptz?) from-tz)
-      (hx/->AtTimeZone from-tz)
-      to-tz
-      (hx/->AtTimeZone to-tz)))))
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr         (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? expr "timestamptz")]
+   (when (and timestamptz? source-timezone)
+         (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone` argument")
+                    {:type            qp.error-type/invalid-parameter
+                     :target-timezone target-timezone
+                     :source-timezone source-timezone})))
+   (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
+         expr            (cond-> expr
+                           (and (not timestamptz?) source-timezone)
+                           (hx/->AtTimeZone source-timezone)
+                           target-timezone
+                           (hx/->AtTimeZone target-timezone))]
+     (hx/with-convert-timezone-type-info expr
+       target-timezone
+       source-timezone
+       "timestamptz"))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]

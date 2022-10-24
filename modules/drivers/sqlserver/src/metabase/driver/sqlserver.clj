@@ -247,20 +247,24 @@
                     (into {"UTC" "UTC"} (map (fn [zone-id] [zone-id (:other attr)]) zone-ids))))))
 
 (defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
-  [driver [_ arg to-tz from-tz]]
-  (let [clause          (sql.qp/->honeysql driver arg)
-        datetimeoffset? (hx/is-of-type? clause "datetimeoffset")]
-    (when (and datetimeoffset? from-tz)
-      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone` argument")
-                    {:type    qp.error-type/invalid-parameter
-                     :to-tz   to-tz
-                     :from-tz from-tz})))
-    (let [from-tz (or from-tz (qp.timezone/results-timezone-id))]
-      (cond-> clause
-        from-tz
-        (hx/->AtTimeZone (zone-id->windows-zone from-tz))
-        to-tz
-        (hx/->AtTimeZone (zone-id->windows-zone to-tz))))))
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr            (sql.qp/->honeysql driver arg)
+        datetimeoffset? (hx/is-of-type? expr "datetimeoffset")]
+    (when (and datetimeoffset? source-timezone)
+      (throw (ex-info (tru "`datetimeoffset` columns shouldn''t have a `from timezone`")
+                    {:type            qp.error-type/invalid-parameter
+                     :target-timezone target-timezone
+                     :source-timezone source-timezone})))
+    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
+          expr            (cond-> expr
+                            source-timezone
+                            (hx/->AtTimeZone (zone-id->windows-zone source-timezone))
+                            target-timezone
+                            (hx/->AtTimeZone (zone-id->windows-zone target-timezone)))]
+      (hx/with-convert-timezone-type-info expr
+        target-timezone
+        source-timezone
+        "datetimeoffset"))))
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]

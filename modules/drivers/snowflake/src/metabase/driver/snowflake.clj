@@ -250,7 +250,7 @@
   (let [clause       (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? clause #"^timestamptz*")]
     (when (and timestamptz? from-tz)
-      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `from timezone` argument")
+      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone` argument")
                     {:type    qp.error-type/invalid-parameter
                      :to-tz   to-tz
                      :from-tz from-tz})))

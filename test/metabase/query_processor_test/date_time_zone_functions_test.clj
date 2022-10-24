@@ -310,7 +310,6 @@
 
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-  ;(mt/test-drivers #{:oracle}
     (mt/dataset times-mixed
       (testing "timestamp without timezone columns"
         (with-results-and-report-timezone-id "UTC"
@@ -347,7 +346,7 @@
           (testing "timestamp with time zone columns shouldn't have `from_tz`"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #"`timestamp with time zone` columns shouldn't have a `from timezone`"
+                 #".* columns shouldn't have a `from timezone`"
                  (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
                                      (offset->zone "+09:00")
                                      (offset->zone "+00:00")])))))
@@ -374,14 +373,15 @@
                  #_())))
 
 (def ^:private driver->timezone-aware-base-type
-  {:postgres           :type/DateTimeWithLocalTZ
-   :red-shift          :type/DateTimeWithLocalTZ
-   :oracle             :type/DateTimeWithTZ
-   :mysql              :type/DateTimeWithLocalTZ
-   :bigquery-cloud-sdk :type/DateTimeWithTZ
-   :presto             :type/DateTimeWithTZ
-   :presto-jdbc        :type/DateTimeWithTZ
-   :veritca            :type/DateTimeWithLocalTZ
+  {:postgres           :type/DateTimeWithLocalTZ    ; x
+   :sqlserver          :type/DateTimeWithZoneOffset ; x
+   :redshift           :type/DateTimeWithLocalTZ    ; later
+   :oracle             :type/DateTimeWithTZ         ; has one problem when convert twice
+   :mysql              :type/DateTimeWithLocalTZ    ; x
+   :bigquery-cloud-sdk :type/DateTimeWithTZ         ; didn't support
+   :presto             :type/DateTimeWithTZ         ; x
+   :presto-jdbc        :type/DateTimeWithTZ         ; x
+   :vertica            :type/DateTimeWithLocalTZ
    :snowflake          :type/DateTimeWithTZ})
 
 (deftest output-of-convert-timezone-is-timezone-aware-column-test
@@ -402,27 +402,61 @@
         (is (= (repeat (count types) (driver->timezone-aware-base-type driver/*driver*))
                (map :base_type (:cols result))))))))
 
-#_(defn mbql-query->native-query
-    [mbql-query]
-    (let [compiled-query (mt/compile mbql-query)]
-      (cons (:query compiled-query) (:params compiled-query))))
+(defn mbql-query->native-query
+  [mbql-query]
+  (let [compiled-query (mt/compile mbql-query)]
+    (cons (:query compiled-query) (:params compiled-query))))
 
-#_(mt/with-driver :mysql
+#_(mt/with-driver :ora
    (mt/dataset times-mixed
      (dev/query-jdbc-db
        [driver/*driver* 'times-mixed]
-       #_["select * from times;"]
-       (mbql-query->native-query (mt/mbql-query times
-                                                {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt)] (offset->zone "+07:00")]}
-                                                 :fields      [[:expression "expr"]]})))))
+       ["select datepart(\"hour\", dt_tz), dt_tz from times;"]
+       #_(mbql-query->native-query (mt/mbql-query times
+                                                  {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt)] (offset->zone "+07:00")]}
+                                                   :fields      [[:expression "expr"]]})))))
+
+#_(mt/with-driver :vertica
+     (mt/dataset times-mixed
+       (dev/query-jdbc-db
+         [driver/*driver* 'times-mixed]
+         (mbql-query->native-query (mt/mbql-query times
+                                                  {:expressions {"to-07"       [:convert-timezone [:field (mt/id :times :dt) nil]  (offset->zone "+07:00")]
+                                                                 "to-07-to-09" [:convert-timezone [:expression "to-07"] (offset->zone "+09:00")]}
+                                                   :fields      [[:field (mt/id :times :dt_tz) nil]
+                                                                 [:expression "to-07"]
+                                                                 [:expression "to-07-to-09"]]})))))
+
+#_(mt/with-driver :vertica
+    (mt/dataset times-mixed
+      (->> (mt/mbql-query
+             times
+             {:expressions {"to-09"       [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]
+                            "hour"        [:get-hour [:field (mt/id :times :dt_tz) nil]]}
+              :fields      [[:field (mt/id :times :dt_tz) nil]
+                            [:expression "hour"]
+                            [:expression "to-09"]]})
+       mt/process-query mt/rows
+       ;mt/compile :query println
+       #_a)))
 
 #_(mt/with-driver :mysql
     (mt/dataset times-mixed
-     (dev/query-jdbc-db
-         [:mysql 'times-mixed]
-         "select * from times")))
+      (->> (mt/mbql-query
+             times
+             {:expressions {"to-07"       [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+07:00")]
+                            "to-07-to-09" [:convert-timezone [:expression "to-07"] (offset->zone "+09:00")]}
+              :fields      [[:field (mt/id :times :dt) nil]
+                            [:expression "to-07"]
+                            [:expression "to-07-to-09"]]})
+       mt/process-query mt/rows
+       ;mt/compile :query println
+       #_a)))
 
 
+#_(dev/query-jdbc-db
+    [:mysql 'times-mixed]
+    "select * from times")
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
@@ -462,22 +496,9 @@
                         times
                         {:expressions {"to-07"       [:convert-timezone [:field (mt/id :times :dt) nil]  (offset->zone "+07:00")]
                                        "to-07-to-09" [:convert-timezone [:expression "to-07"] (offset->zone "+09:00")]}
-                         :filter [:= [:field (mt/id :times :index)] 1]
-                         :fields  [[:expression "to-07"]
-                                   [:expression "to-07-to-09"]]})
+                         :filter      [:= [:field (mt/id :times :index)] 1]
+                         :fields      [[:expression "to-07"]
+                                       [:expression "to-07-to-09"]]})
                       mt/process-query
                       mt/rows
                       first))))))))
-
-#_(mt/with-driver :oracle
-    (mt/dataset times-mixed
-      (->> (mt/mbql-query
-             times
-             {:expressions {"to-07"       [:convert-timezone [:field (mt/id :times :dt) nil]  (offset->zone "+07:00")]
-                            "to-07-to-09" [:convert-timezone [:convert-timezone [:field (mt/id :times :dt) nil]  (offset->zone "+07:00")] (offset->zone "+09:00")]}
-              :filter [:= [:field (mt/id :times :index)] 1]
-              :fields  [[:expression "to-07"]
-                        [:expression "to-07-to-09"]]})
-           ;mt/process-query mt/rows first
-           mt/compile :query println
-           #_println)))
