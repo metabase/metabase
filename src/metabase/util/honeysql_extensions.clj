@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
+            [honeysql.helpers :as hh]
             honeysql.types
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -331,3 +332,14 @@
        (map hformat/to-sql)
        (hformat/comma-join)
        (str "RETURNING ")))
+
+;; honeysql 1 join ordering workaround (#15342)
+
+(hformat/register-clause! :ordered-join (clojure.core/dec (:join @hformat/clause-store)))
+
+(hh/defhelper ordered-join [m clauses]
+  (assoc m :ordered-join clauses))
+
+(defmethod hformat/format-clause :ordered-join [[_ join-groups] _]
+  (hformat/space-join (map #(apply hformat/format-join %)
+                           (partition 3 join-groups))))
