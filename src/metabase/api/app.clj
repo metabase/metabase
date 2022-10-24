@@ -212,7 +212,10 @@
           :pk-field-id (:id pk-field)
           :page-ident table-id
           :ident-type ident-type
-          :actions #{"insert" "update" "delete"}
+          :actions (if (= page-type "list")
+                     [["insert" (i18n/tru "New")]]
+                     [["update" (i18n/tru "Edit")]
+                      ["delete" (i18n/tru "Delete")]])
           :model-ref ["scaffold-target-id" "card" ident-type table-id "model"]
           :card-ref ["scaffold-target-id" "card" ident-type table-id "model" "card"]
           :page-name (format "%s %s"
@@ -225,7 +228,16 @@
   (when (seq model-ids)
     (let [models (db/select Card :id [:in model-ids])
           model-id->model (m/index-by :id models)
-          model-id->params (action/implicit-action-parameters models)]
+          model-id->params (action/implicit-action-parameters models)
+          model-actions (action/merged-model-action models :card_id [:in model-ids])
+          model-id->model-actions (group-by :model_id model-actions)
+          sorter {"update" 1 "delete" 2 "insert" 0}
+          action-mapper (fn [{:keys [slug name]}]
+                          [slug (or name
+                                    (get {"insert" (i18n/tru "New")
+                                          "update" (i18n/tru "Edit")
+                                          "delete" (i18n/tru "Delete")}
+                                         slug))])]
       (for [model-id model-ids
             :let [model (get model-id->model model-id)
                   params (get model-id->params model-id)
@@ -235,15 +247,25 @@
                                       {:status-code 400})))
                   pk-param (first pks)
                   pk-field-slug (:id pk-param)
+                  model-action (get model-id->model-actions model-id)
                   ident-type "model"]
-            page-type ["list" "detail"]]
+            page-type ["list" "detail"]
+            :let [actions (if (= page-type "list")
+                            (->> model-action
+                                 (remove :requires_pk)
+                                 (map action-mapper)
+                                 (sort-by (comp #(get sorter % 3) first)))
+                            (->> model-action
+                                 (filter :requires_pk)
+                                 (map action-mapper)
+                                 (sort-by (comp #(get sorter % 3) first))))]]
         {:page-type page-type
          :pk-field-slug pk-field-slug
          :pk-field-id (::action/field-id pk-param)
          :pk-field-name (:id pk-param)
          :page-ident model-id
          :ident-type ident-type
-         :actions #{"insert" "update" "delete"}
+         :actions actions
          :model-ref model-id
          :card-ref (str "card__" model-id)
          :page-name (format "%s %s"
@@ -303,12 +325,21 @@
                                                                                                      "id" (str "scaffold_" page-ident)},
                                                                                            "id" (str "scaffold_" page-ident)}}
                                                                       "targetId" ["scaffold-target-id" "page" ident-type page-ident "detail"]}}}]
-                                    (contains? actions "insert")
-                                    (conj {:size_y 1 :size_x 2 :row 0 :col 16
-                                           :card_id model-ref
-                                           :visualization_settings {"virtual_card" {"display" "action"}
-                                                                    "button.label" (i18n/tru "New"),
-                                                                    "action_slug" "insert"}}))
+                                    (seq actions)
+                                    (concat (loop [[[slug action-name] & actions] actions
+                                                   col (- 16 (* 2 (count actions)))
+                                                   dashcards []]
+                                              (if slug
+                                                (recur
+                                                  actions
+                                                  (+ col 2)
+                                                  (conj dashcards
+                                                        {:size_y 1 :size_x 2 :row 0 :col col
+                                                         :card_id model-ref
+                                                         :visualization_settings {"virtual_card" {"display" "action"}
+                                                                                  "button.label" action-name
+                                                                                  "action_slug" slug}}))
+                                                dashcards))))
                                   (cond-> [{:size_y 12 :size_x 18 :row 1 :col 0
                                             :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
                                                                   "card_id" ["scaffold-target-id" "card" ident-type page-ident "detail"]
@@ -320,24 +351,25 @@
                                                                      "button.label" (i18n/tru "← Back to list"),
                                                                      "click_behavior" {"type" "link" "linkType" "page" "targetId" ["scaffold-target-id" "page" ident-type page-ident "list"]}}}]
 
-                                    (contains? actions "delete")
-                                    (conj {:size_y 1 :size_x 2 :row 0 :col 16
-                                           :card_id model-ref
-                                           :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
-                                                                 "target" ["variable", ["template-tag", pk-field-slug]]}]
-                                           :visualization_settings {"virtual_card" {"display" "action"}
-                                                                    "button.label" (i18n/tru "Delete"),
-                                                                    "button.variant" "danger"
-                                                                    "action_slug" "delete"}})
-
-                                    (contains? actions "update")
-                                    (conj {:size_y 1 :size_x 2 :row 0 :col 14
-                                           :card_id model-ref
-                                           :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
-                                                                 "target" ["variable", ["template-tag", pk-field-slug]]}]
-                                           :visualization_settings {"virtual_card" {"display" "action"}
-                                                                    "button.label" (i18n/tru "Edit"),
-                                                                    "action_slug" "update"}})))}
+                                    (seq actions)
+                                    (concat (loop [[[slug action-name] & actions] actions
+                                                   col (- 16 (* 2 (count actions)))
+                                                   dashcards []]
+                                              (if slug
+                                                (recur
+                                                  actions
+                                                  (+ col 2)
+                                                  (conj dashcards
+                                                        {:size_y 1 :size_x 2 :row 0 :col col
+                                                         :card_id model-ref
+                                                         :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
+                                                                               "target" ["variable", ["template-tag", pk-field-slug]]}]
+                                                         :visualization_settings (cond-> {"virtual_card" {"display" "action"}
+                                                                                          "button.label" action-name
+                                                                                          "action_slug" slug}
+                                                                                   (= "delete" slug)
+                                                                                   (assoc "button.variant" "danger"))}))
+                                                dashcards)))))}
                 (= "detail" page-type) (assoc :parameters [{:name "ID",
                                                             :slug "id",
                                                             :id (str "scaffold_" page-ident),
