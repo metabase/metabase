@@ -346,7 +346,7 @@
           (testing "timestamp with time zone columns shouldn't have `from_tz`"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
-                 #".* columns shouldn't have a `from timezone`"
+                 #".* columns shouldn't have a `source timezone`"
                  (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil]
                                      (offset->zone "+09:00")
                                      (offset->zone "+00:00")])))))
