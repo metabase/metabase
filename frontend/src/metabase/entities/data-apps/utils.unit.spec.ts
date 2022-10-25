@@ -3,7 +3,11 @@ import {
   createMockDataApp,
   createMockDataAppPage,
 } from "metabase-types/api/mocks";
-import { getDataAppHomePageId, getParentDataAppPageId } from "./utils";
+import {
+  isTopLevelNavItem,
+  getDataAppHomePageId,
+  getParentDataAppPageId,
+} from "./utils";
 
 describe("data app utils", () => {
   const dataAppWithoutHomepage = createMockDataApp({ dashboard_id: null });
@@ -13,6 +17,36 @@ describe("data app utils", () => {
   const page2 = createMockDataAppPage({ id: 2, name: "B" });
   const page3 = createMockDataAppPage({ id: 3, name: "C" });
   const pages = [page1, page2, page3];
+
+  describe("isTopLevelNavItem", () => {
+    it("returns true for items without indent", () => {
+      expect(isTopLevelNavItem({ page_id: 1 })).toBe(true);
+    });
+
+    it("returns true for items with zero indent", () => {
+      expect(isTopLevelNavItem({ page_id: 1, indent: 0 })).toBe(true);
+    });
+
+    it("returns false for nested items", () => {
+      expect(isTopLevelNavItem({ page_id: 1, indent: 1 })).toBe(false);
+    });
+
+    it("returns false for nested hidden items", () => {
+      expect(isTopLevelNavItem({ page_id: 1, hidden: true, indent: 1 })).toBe(
+        false,
+      );
+    });
+
+    it("returns false for hidden items without indent", () => {
+      expect(isTopLevelNavItem({ page_id: 1, hidden: true })).toBe(false);
+    });
+
+    it("returns false for hidden items with zero indent", () => {
+      expect(isTopLevelNavItem({ page_id: 1, hidden: true, indent: 0 })).toBe(
+        false,
+      );
+    });
+  });
 
   describe("getDataAppHomePageId", () => {
     describe("with explicit homepage", () => {

@@ -23,6 +23,10 @@ export function getDataAppHomePageId(dataApp: DataApp, pages: Dashboard[]) {
   return firstPage?.id;
 }
 
+export function isTopLevelNavItem(navItem: DataAppNavItem) {
+  return (!navItem.indent || navItem.indent === 0) && !navItem.hidden;
+}
+
 function isParentPage(
   targetPageIndent: number,
   maybeParentNavItem: DataAppNavItem,
