@@ -1,4 +1,9 @@
-import { restore, visitQuestion } from "__support__/e2e/helpers";
+import {
+  openNativeEditor,
+  openQuestionActions,
+  restore,
+  visitQuestion,
+} from "__support__/e2e/helpers";
 
 describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
@@ -39,7 +44,7 @@ describe("scenarios > question > native subquery", () => {
           // typing a template tag id should open the editor
           cy.get(".ace_editor:not(.ace_autocomplete)")
             .type(" ")
-            .type(`{{#`, { parseSpecialCharSequences: false })
+            .type("{{#")
             .type(`{leftarrow}{leftarrow}${questionId2}`);
           cy.findByText("A People Model");
         });
@@ -47,70 +52,53 @@ describe("scenarios > question > native subquery", () => {
     });
   });
 
-  it("autocomplete should work for question slugs inside template tags", () => {
-    // Create two saved questions, the first will be referenced in the query when it is opened, and the second will be added to the query after it is opened.
+  it("autocomplete should complete question slugs inside template tags", () => {
+    // Create a question and a model.
     cy.createNativeQuestion({
       name: "A People Question",
       native: {
-        query: "SELECT id AS a_unique_column_name FROM PEOPLE",
+        query: "SELECT id FROM PEOPLE",
       },
     }).then(({ body: { id: questionId1 } }) => {
       cy.createNativeQuestion({
-        name: "A People Question 2",
+        name: "A People Model",
         native: {
-          query: "SELECT id AS another_unique_column_name FROM PEOPLE",
+          query: "SELECT id FROM PEOPLE",
         },
+        dataset: true,
       }).then(({ body: { id: questionId2 } }) => {
-        const tagID = `#${questionId1}`;
+        // Move question 2 to personal collection
+        cy.visit(`/question/${questionId2}`);
+        openQuestionActions();
+        cy.findByTestId("move-button").click();
+        cy.findByText("My personal collection").click();
+        cy.findByText("Move").click();
 
-        // create a question with a template tag
-        cy.createNativeQuestion({
-          name: "Count of People",
-          native: {
-            query: `select COUNT(*) from `,
-            "template-tags": {
-              [tagID]: {
-                id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
-                name: tagID,
-                "display-name": tagID,
-                type: "card",
-                "card-id": questionId1,
-              },
-            },
-          },
-        }).then(({ body: { id: questionId3 } }) => {
-          cy.wrap(questionId3).as("toplevelQuestionId");
-          cy.visit(`/question/${questionId3}`);
+        openNativeEditor();
+        cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
+        cy.get(".ace_editor").should("be.visible").type(" ").type("{{#people");
 
-          // Refresh the state, so previously created questions need to be loaded again.
-          cy.reload();
-          cy.findByText("Open Editor").click();
-          cy.get(".ace_editor").should("be.visible").type(" {{#");
-
-          // Can't use cy.type here as it doesn't consistently keep the autocomplete open
-          cy.realPress("p");
-          cy.realPress("e");
-          cy.realPress("o");
-          cy.realPress("p");
-          cy.realPress("l");
-          cy.realPress("e");
-
-          // Wait until another explicit autocomplete is triggered
-          // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
-          // See https://github.com/metabase/metabase/pull/20970
-          cy.wait(1000);
-          cy.get(".ace_autocomplete")
-            .should("be.visible")
-            .findByText(`${questionId1}-a-`);
-          cy.get(".ace_autocomplete")
-            .should("be.visible")
-            .findByText(`${questionId2}-a-`);
-        });
+        // Wait until another explicit autocomplete is triggered
+        // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
+        // See https://github.com/metabase/metabase/pull/20970
+        cy.wait(1000);
+        cy.get(".ace_autocomplete")
+          .should("be.visible")
+          .findByText(`${questionId2}-a-`);
+        cy.get(".ace_autocomplete")
+          .should("be.visible")
+          .findByText("Model in Bobby Tables's Personal Collection");
+        cy.get(".ace_autocomplete")
+          .should("be.visible")
+          .findByText(`${questionId1}-a-`);
+        cy.get(".ace_autocomplete")
+          .should("be.visible")
+          .findByText("Question in Our analytics");
       });
     });
   });
 
-  it("autocomplete should work for referencing saved questions", () => {
+  it("autocomplete should work for columns from referenced questions", () => {
     // Create two saved questions, the first will be referenced in the query when it is opened, and the second will be added to the query after it is opened.
     cy.createNativeQuestion({
       name: "A People Question 1",
@@ -147,9 +135,7 @@ describe("scenarios > question > native subquery", () => {
 
           // Refresh the state, so previously created questions need to be loaded again.
           cy.reload();
-
           cy.findByText("Open Editor").click();
-
           cy.get(".ace_editor").should("be.visible").type(" ").type("a_unique");
 
           // Wait until another explicit autocomplete is triggered
@@ -164,9 +150,7 @@ describe("scenarios > question > native subquery", () => {
           // For some reason, typing `{{#${questionId2}}}` in one go isn't deterministic,
           // so type it in two parts
           cy.get(".ace_editor:not(.ace_autocomplete)")
-            .type(` {{#`, {
-              parseSpecialCharSequences: false,
-            })
+            .type(` {{#`)
             .type(`{leftarrow}{leftarrow}${questionId2}`);
 
           // Wait until another explicit autocomplete is triggered
