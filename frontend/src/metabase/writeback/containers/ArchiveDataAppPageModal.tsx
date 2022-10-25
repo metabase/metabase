@@ -44,8 +44,8 @@ function ArchiveDataAppPageModal({
 
   return (
     <ArchiveModal
-      title={t`Are you sure you want to archive this page?`}
-      message={t`All of its sub-pages are going to be archived as well.`}
+      title={t`Archive this page?`}
+      message={t`All of its sub-pages will also to archived.`}
       onArchive={handleArchive}
       onClose={onClose}
     />
