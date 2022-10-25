@@ -1,9 +1,14 @@
 import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import type { DataApp, DataAppNavItem } from "metabase-types/api";
+import type {
+  DataApp,
+  DataAppNavItem,
+  DataAppPageId,
+} from "metabase-types/api";
 
-import { MainNavbarProps, SelectedItem } from "../types";
+import type { MainNavbarProps, SelectedItem } from "../types";
+import type { DataAppNavbarMode } from "./types";
 
 import NewButton from "./NewButton";
 import DataAppPageLink from "./DataAppPageLink";
@@ -15,6 +20,7 @@ interface Props extends Omit<MainNavbarProps, "location" | "params"> {
   dataApp: DataApp;
   pages: any[];
   selectedItems: SelectedItem[];
+  mode: DataAppNavbarMode;
   onEditAppPage: () => void;
   onEditAppSettings: () => void;
   onAddData: () => void;
@@ -25,6 +31,7 @@ function DataAppNavbarView({
   dataApp,
   pages,
   selectedItems,
+  mode,
   onEditAppPage,
   onEditAppSettings,
   onAddData,
@@ -79,6 +86,8 @@ function DataAppNavbarView({
       </NavItemsList>
       <DataAppActionPanel
         dataApp={dataApp}
+        selectedPageId={dataAppPage?.id as DataAppPageId}
+        hasManageContentAction={mode !== "manage-content"}
         onEditAppPage={onEditAppPage}
         onEditAppSettings={onEditAppSettings}
       />

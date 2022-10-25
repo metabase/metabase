@@ -14,17 +14,20 @@ import DataApps from "metabase/entities/data-apps";
 import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
-import {
-  setEditingDashboard as setEditingDataAppPage,
-  setPageTitleTemplate,
-} from "metabase/dashboard/actions";
+import { setEditingDashboard as setEditingDataAppPage } from "metabase/dashboard/actions";
 import ScaffoldDataAppPagesModal from "metabase/writeback/containers/ScaffoldDataAppPagesModal";
 
 import type { DataApp, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { MainNavbarProps, MainNavbarOwnProps, SelectedItem } from "../types";
+import type {
+  MainNavbarProps,
+  MainNavbarOwnProps,
+  SelectedItem,
+} from "../types";
 import NavbarLoadingView from "../NavbarLoadingView";
+
+import type { DataAppNavbarMode } from "./types";
 
 import getSelectedItems from "./getSelectedItems";
 import DataAppNavbarView from "./DataAppNavbarView";
@@ -80,6 +83,10 @@ function DataAppNavbarContainer({
   ...props
 }: DataAppNavbarContainerProps) {
   const [modal, setModal] = useState<NavbarModal>(null);
+
+  const mode: DataAppNavbarMode = Urls.isDataAppPreviewPath(location.pathname)
+    ? "manage-content"
+    : "running";
 
   const selectedItems: SelectedItem[] = useMemo(
     () => getSelectedItems({ dataApp, pages, location, params }),
@@ -171,6 +178,7 @@ function DataAppNavbarContainer({
         dataApp={dataApp}
         pages={pages}
         selectedItems={selectedItems}
+        mode={mode}
         onAddData={onAddData}
         onNewPage={onNewPage}
         onEditAppPage={handleEnablePageEditing}
