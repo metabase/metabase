@@ -258,33 +258,38 @@
         (testing title
           (is (= (set expected) (set (test-date-math query)))))))))
 
-(deftest datetimediff-test
+(deftest datetimediff-base-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
-    (tools.macro/macrolet [(datetimediff-of [unit]
-                             `(testing ~(name unit)
-                                (mt/mbql-query
-                                 datetimediff-demo
-                                 {:filter [:= ~'$description ~(name unit)]
-                                  :fields [[:expression ~(str "diff-" (name unit))]]
-                                  :expressions
-                                  {~(str "diff-" (name unit))
-                                   [:datetimediff ~'$start ~'$end ~unit]}})))]
-      (mt/dataset useful-dates
-        (testing "year"
-          (is (= (case driver/*driver*
-                   [[1] [2] [0]])
-                 (mt/rows (mt/process-query (datetimediff-of :year))))))
-        (testing "month"
-          (is (= [[1] [3] [0]]
-                 (mt/rows (mt/process-query (datetimediff-of :month))))))
-        (testing "day"
-          (is (= [[3] [368] [0]]
-                 (mt/rows (mt/process-query (datetimediff-of :day))))))
-        (testing "hour"
-          (is (= [[2] [0] [72] [8760]]
-                 (mt/rows (mt/process-query (datetimediff-of :hour))))))
-        (testing "minute"
-          (is (= [[120] [4] [525604]] (mt/rows (mt/process-query (datetimediff-of :minute))))))))
+    (mt/dataset sample-dataset
+      (letfn [(query [x y unit]
+                (->> (mt/run-mbql-query orders
+                                        {:limit 1
+                                         :expressions {"diff"
+                                                       [:datetimediff x y unit]
+                                                       "diff-rev"
+                                                       [:datetimediff y x unit]}
+                                         :fields [[:expression "diff"]
+                                                  [:expression "diff-rev"]]})
+                     mt/rows first))]
+        (doseq [[unit cases] [[:year [[1 #t "2017-06-10 08:30:00" #t "2018-07-10 08:30:00"]
+                                      [2 #t "2017-06-10 08:30:00" #t "2019-07-10 08:30:00"]
+                                      [0 #t "2017-06-10 08:30:00" #t "2018-05-10 08:30:00"]]]
+                              [:month [[1 #t "2022-06-10 08:30:00" #t "2022-07-15 08:30:00"]
+                                       [3 #t "2022-06-10 08:30:00" #t "2022-09-15 08:30:00"]
+                                       [0 #t "2022-06-10 08:30:00" #t "2022-06-15 08:30:00"]]]
+                              [:day [[3 #t "2022-10-02 08:30:00" #t "2022-10-05 10:30:00"]
+                                     [368 #t "2021-10-02 08:30:00" #t "2022-10-05 10:30:00"]
+                                     [0 #t "2022-10-02 08:30:00" #t "2022-10-02 10:30:00"]]]
+                              [:hour [[2 #t "2022-10-02 08:30:00" #t "2022-10-02 10:31:00"]
+                                      [0 #t "2022-10-02 08:30:00" #t "2022-10-02 08:34:00"]
+                                      [72 #t "2022-10-02 08:30:00" #t "2022-10-05 08:34:00"]
+                                      [8760 #t "2021-10-02 08:30:00" #t "2022-10-02 08:34:00"]]]
+                              [:minute [[120 #t "2022-10-02 08:30:00" #t "2022-10-02 10:30:00"]
+                                        [4 #t "2022-10-02 08:30:00" #t "2022-10-02 08:34:00"]
+                                        [525604 #t "2021-10-02 08:30:00" #t "2022-10-02 08:34:00"]]]]
+                [expected x y] cases]
+          (testing (name unit)
+            (is (= [expected (- expected)] (query x y unit)))))))
     (mt/dataset useful-dates
       (testing "Can compare across dates, datetimes, and with timezones"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
@@ -349,58 +354,86 @@
 
 (deftest datetimediff-test-tz
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
-    (mt/dataset more-useful-dates-tz20
-      (let [test-cases (fn [unit cases]
-                         (testing unit
-                           (let [transpose                (fn [m] (apply (partial mapv vector) m))
-                                 [descriptions expecteds] (transpose (sort-by first cases))]
-                             (is (= expecteds
-                                    (flatten
-                                     (mt/rows
-                                      (mt/run-mbql-query datetimediff-with-timezone
-                                        {:expressions {"d" [:datetimediff $start $end unit]}
-                                         :fields      [[:expression "d"]]
-                                         :filter      (into [:= $description] descriptions)
-                                         :order-by    [[:asc $description]]})))))
-                             ;; now with the arguments reversed
-                             (is (= (map - expecteds)
-                                    (flatten
-                                     (mt/rows
-                                      (mt/run-mbql-query datetimediff-with-timezone
-                                        {:expressions {"d" [:datetimediff $end $start unit]}
-                                         :fields      [[:expression "d"]]
-                                         :filter      (into [:= $description] descriptions)
-                                         :order-by    [[:asc $description]]}))))))))]
-        (test-cases :second [["a day tz" 86400]
-                             ["hour under a day tz" 82800]])
-        (test-cases :minute [["a day tz" 1440]
-                             ["hour under a day tz" 1380]])
-        (test-cases :hour [["a day tz" 24]
-                           ["hour under a day tz" 23]])
-        (test-cases :day [["a day tz" 1]
-                          ["hour under a day tz" 0]])
-        (test-cases :week [["a week tz" 1]
-                           ["hour under a week tz" 0]])
-        (test-cases :month [["a month tz" 1]
-                            ["hour under a month tz" 0]])
-        (mt/with-report-timezone-id "Atlantic/Cape_Verde" ; UTC-1
-          (test-cases :hour [["a day tz" 24]
-                             ["hour under a day tz" 23]])
-          (test-cases :day [["a day tz" 1]
-                            ["hour under a day tz" 1]])
-          (test-cases :week [["a week tz" 1]
-                             ["hour under a week tz" 1]])
-          (test-cases :month [["a month tz" 1]
-                              ["hour under a month tz" 1]]))
-        (mt/with-database-timezone-id "Atlantic/Cape_Verde"
-          (test-cases :hour [["a day tz" 24]
-                             ["hour under a day tz" 23]])
-          (test-cases :day [["a day tz" 1]
-                            ["hour under a day tz" 0]])
-          (test-cases :week [["a week tz" 1]
-                             ["hour under a week tz" 0]])
-          (test-cases :month [["a month tz" 1]
-                              ["hour under a month tz" 0]]))))))
+    (mt/dataset sample-dataset
+      (let [query (fn query [x y & units]
+                    (when-not (seq units)
+                      (throw (ex-info "Must provide units" {:x x :y y})))
+                    (->> (mt/run-mbql-query orders
+                                            {:limit 1
+                                             :expressions (into {}
+                                                                (for [unit units]
+                                                                  [(str "diff-" (name unit))
+                                                                   [:datetimediff x y unit]]))
+                                             :fields (into [] (for [unit units]
+                                                                [:expression (str "diff-" (name unit))]))})
+                         mt/rows first
+                         (zipmap units)))]
+        (testing "a day"
+          (mt/with-report-timezone-id nil
+            (is (= {:second 86400 :minute 1440 :hour 24 :day 1 :year 0}
+                   (query #t "2022-10-02T01:00:00Z[+01:00]"
+                          #t "2022-10-03T00:00:00Z[+00:00]"
+                          :second :minute :hour :day :year))))
+          (mt/with-report-timezone-id "Atlantic/Cape_Verde"
+            (is (= {:second 86400 :minute 1440 :hour 24 :day 1 :year 0}
+                   (query #t "2022-10-02T01:00:00Z[+01:00]"
+                          #t "2022-10-03T00:00:00Z[+00:00]"
+                          :second :minute :hour :day :year)))))
+        (testing "hour under a day"
+          (mt/with-report-timezone-id nil
+            (is (= {:second 82800 :minute 1380 :hour 23 :day 0 :year 0}
+                   (query #t "2022-10-02T00:00:00Z[+00:00]"
+                          #t "2022-10-03T00:00:00Z[+01:00]"
+                          :second :minute :hour :day :year))))
+          (mt/with-report-timezone-id "Atlantic/Cape_Verde"
+            (is (= {:second 82800 :minute 1380 :hour 23 :day 1 :year 0}
+                   (query #t "2022-10-02T00:00:00Z[+00:00]"
+                          #t "2022-10-03T00:00:00Z[+01:00]"
+                          :second :minute :hour :day :year)))))
+        (testing "Hour under a week"
+          (mt/with-report-timezone-id nil
+            (is (= {:second 601200 :minute 10020 :hour 167 :day 6 :year 0}
+                   (query #t "2022-10-02T00:00:00Z[+00:00]"
+                          #t "2022-10-09T00:00:00Z[+01:00]"
+                          :second :minute :hour :day :year))))
+          (mt/with-report-timezone-id "Atlantic/Cape_Verde"
+            (is (= {:second 601200 :minute 10020 :hour 167 :day 7 :year 0}
+                   (query #t "2022-10-02T00:00:00Z[+00:00]"
+                          #t "2022-10-09T00:00:00Z[+01:00]"
+                          :second :minute :hour :day :year)))))
+        (testing "Week"
+          (mt/with-report-timezone-id nil
+            (is (= {:hour 168 :day 7}
+                   (query #t "2022-10-02T01:00:00Z[+01:00]"
+                          #t "2022-10-09T00:00:00Z[+00:00]"
+                          :hour :day))))
+          (mt/with-report-timezone-id "Atlantic/Cape_Verde"
+            (is (= {:hour 168 :day 7}
+                   (query #t "2022-10-02T01:00:00Z[+01:00]"
+                          #t "2022-10-09T00:00:00Z[+00:00]"
+                          :hour :day)))))
+        (testing "Hour under a month"
+          (mt/with-report-timezone-id nil
+            (is (= {:hour 743 :day 30 :month 0}
+                   (query #t "2022-10-02T00:00:00Z[+00:00]"
+                          #t "2022-11-02T00:00:00Z[+01:00]"
+                          :hour :day :month))))
+          (mt/with-report-timezone-id "Atlantic/Cape_Verde"
+            (is (= {:hour 743 :day 31 :month 1}
+                   (query #t "2022-10-02T00:00:00Z[+00:00]"
+                          #t "2022-11-02T00:00:00Z[+01:00]"
+                          :hour :day :month)))))
+        (testing "Month"
+          (mt/with-report-timezone-id nil
+            (is (= {:hour 744 :day 31 :month 1}
+                   (query #t "2022-10-02T01:00:00Z[+01:00]"
+                          #t "2022-11-02T00:00:00Z[+00:00]"
+                          :hour :day :month))))
+          (mt/with-report-timezone-id "Atlantic/Cape_Verde"
+            (is (= {:hour 744 :day 31 :month 1}
+                   (query #t "2022-10-02T01:00:00Z[+01:00]"
+                          #t "2022-11-02T00:00:00Z[+00:00]"
+                          :hour :day :month)))))))))
 
 (deftest datetimediff-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
