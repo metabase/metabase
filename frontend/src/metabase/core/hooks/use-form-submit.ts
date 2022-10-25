@@ -7,6 +7,7 @@ interface FormError<T> {
 
 interface FormErrorData<T> {
   errors?: FormikErrors<T>;
+  message?: string;
 }
 
 const isFormError = <T>(error: unknown): error is FormError<T> => {
@@ -17,10 +18,16 @@ const useFormSubmit = <T>(onSubmit: (data: T) => void) => {
   return useCallback(
     async (data: T, helpers: FormikHelpers<T>) => {
       try {
+        helpers.setStatus({ status: "pending", message: undefined });
         await onSubmit(data);
+        helpers.setStatus({ status: "fulfilled" });
       } catch (error) {
         if (isFormError(error)) {
-          helpers.setErrors(error?.data?.errors ?? {});
+          const { data } = error;
+          helpers.setErrors(data?.errors ?? {});
+          helpers.setStatus({ status: "rejected", message: data?.message });
+        } else {
+          helpers.setStatus({ status: "rejected", message: undefined });
         }
       }
     },
