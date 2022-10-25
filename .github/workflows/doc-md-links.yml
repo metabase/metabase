@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - docs/**
+  pull_request:
+    paths:
+      - docs/**
 jobs:
   markdown-link-check:
     runs-on: ubuntu-20.04

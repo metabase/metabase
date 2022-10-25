@@ -24,7 +24,6 @@
                                      DashboardCardSeries
                                      Database
                                      Dimension
-                                     Emitter
                                      Field
                                      FieldValues
                                      LoginHistory
@@ -99,7 +98,6 @@
    Card
    CardBookmark
    DashboardBookmark
-   Emitter
    ModelAction
    CollectionBookmark
    BookmarkOrdering

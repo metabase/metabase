@@ -15,16 +15,11 @@
                                      Dashboard
                                      DashboardCard
                                      DashboardCardSeries
-                                     DashboardEmitter
                                      Database
-                                     Emitter
                                      Field
                                      FieldValues
                                      ModelAction
-                                     PermissionsGroup
-                                     PermissionsGroupMembership
                                      Pulse
-                                     QueryAction
                                      Revision
                                      Table
                                      User]]
@@ -35,8 +30,6 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor.streaming.test-util :as streaming.test-util]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
@@ -350,22 +343,6 @@
                                                                  :position         0}]]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
-
-(deftest fetch-dashboard-emitter-test
-  (testing "GET /api/dashboard/:id"
-    (testing "Fetch dashboard with an emitter"
-      (mt/with-temp* [Dashboard [dashboard {:name "Test Dashboard"}]
-                      Card [write-card {:is_write true :name "Test Write Card"}]
-                      Emitter [{emitter-id :id} {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))}]]
-        (db/insert! DashboardEmitter {:emitter_id emitter-id
-                                      :dashboard_id (u/the-id dashboard)})
-        (testing "admin sees emitters"
-          (is (partial=
-               {:emitters [{:action {:type "query" :card {:name "Test Write Card"}}}]}
-               (dashboard-response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id dashboard)))))))
-        (testing "non-admin does not see emitters"
-          (is (nil?
-               (:emitters (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" (u/the-id dashboard))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
@@ -1952,7 +1929,7 @@
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
                                        dashboard-id
                                        dashcard-id)]
-              (testing "Should be able to execute an emitter"
+              (testing "Should be able to execute an action"
                 (is (= {:the_parameter 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1}}))))
@@ -2062,70 +2039,8 @@
                 (is (= "Actions are not enabled."
                        (mt/user-http-request :crowberto :post 400 execute-path
                                              {:parameters {"id" 1}}))))
-              (testing "Without execute rights on the DB"
+              (testing "Without admin"
                 (actions.test-util/with-actions-enabled
                   (is (= "You don't have permissions to do that."
                          (mt/user-http-request :rasta :post 403 execute-path
-                                               {:parameters {"id" 1}})))))
-              (testing "With execute rights on the DB"
-                (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
-                (try
-                  (actions.test-util/with-actions-enabled
-                    (is (= {:rows-affected 1}
-                           (mt/user-http-request :rasta :post 200 execute-path
-                                                 {:parameters {"id" 1}}))))
-                  (finally
-                    (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))
-
-(defn- ee-features-enabled? []
-  (u/ignore-exceptions
-   (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-   (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
-
-(deftest dashcard-action-execution-granular-auth-test
-  (when (ee-features-enabled?)
-    (mt/with-temp-copy-of-db
-      (actions.test-util/with-actions-enabled
-        (actions.test-util/with-actions-test-data
-          (actions.test-util/with-action [{:keys [action-id]} {}]
-            (testing "Executing dashcard with action"
-              (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                              Card [{card-id :id} {:dataset true}]
-                              ModelAction [_ {:action_id action-id :card_id card-id :slug "custom"}]
-                              DashboardCard [{dashcard-id :id}
-                                             {:dashboard_id dashboard-id
-                                              :card_id card-id
-                                              :visualization_settings {:action_slug "custom"}}]]
-                (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
-                                           dashboard-id
-                                           dashcard-id)]
-                  (testing "with :advanced-permissions feature flag"
-                    (premium-features-test/with-premium-features #{:advanced-permissions}
-                      (testing "for non-magic group"
-                        (mt/with-temp* [PermissionsGroup [{group-id :id}]
-                                        PermissionsGroupMembership [_ {:user_id  (mt/user->id :rasta)
-                                                                       :group_id group-id}]]
-                          (is (= "You don't have permissions to do that."
-                                 (mt/user-http-request :rasta :post 403 execute-path
-                                                       {:parameters {"id" 1}}))
-                              "Execution permission should be required")
-
-                          (mt/user-http-request
-                           :crowberto :put 200 "permissions/execution/graph"
-                           (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
-                          (is (= :all
-                                 (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
-                              "Should be able to set execution permission")
-                          (is (= {:rows-affected 1}
-                                 (mt/user-http-request :rasta :post 200 execute-path
-                                                       {:parameters {"id" 1}}))
-                              "Execution and data permissions should be enough")
-
-                          (perms/update-data-perms-graph! [group-id (mt/id) :data]
-                                                          {:schemas :block})
-                          (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
-                                                          {:schemas :block})
-                          (is (= "You don't have permissions to do that."
-                                 (mt/user-http-request :rasta :post 403 execute-path
-                                                       {:parameters {"id" 1}}))
-                              "Data permissions should be required"))))))))))))))
+                                               {:parameters {"id" 1}}))))))))))))

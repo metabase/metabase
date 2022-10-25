@@ -34,6 +34,12 @@
                    (setting/set-value-of-type! :string :google-auth-client-id nil)
                    (setting/set-value-of-type! :boolean :google-auth-enabled false)))))
 
+(defsetting google-auth-configured
+  (deferred-tru "Is Google Sign-In configured?")
+  :type   :boolean
+  :setter :none
+  :getter (fn [] (boolean (google-auth-client-id))))
+
 (defsetting google-auth-enabled
   (deferred-tru "Is Google Sign-in currently enabled?")
   :visibility :public

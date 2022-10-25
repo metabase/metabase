@@ -117,15 +117,15 @@
              (fn [n] (str (i18n/deferred-trsn "{0} table" "{0} tables" n)))}]
       (testing message
         (testing "Should fall back to English if user locale & system locale are unset"
-          (mt/with-temporary-setting-values [site-locale nil])
-          (is (= "0 tables"
-                 (f 0)))
+          (mt/with-temporary-setting-values [site-locale nil]
+            (is (= "0 tables"
+                   (f 0)))
 
-          (is (= "1 table"
-                 (f 1)))
+            (is (= "1 table"
+                   (f 1)))
 
-          (is (= "2 tables"
-                 (f 2))))
+            (is (= "2 tables"
+                   (f 2)))))
 
 
         (testing "Should use system locale if set"

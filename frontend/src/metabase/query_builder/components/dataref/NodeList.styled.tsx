@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Icon from "metabase/components/Icon";
-
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
@@ -51,4 +50,10 @@ export const NodeListTitle = styled.div`
 
 export const NodeListTitleText = styled.span`
   margin-left: ${space(1)};
+`;
+
+export const QuestionId = styled.span`
+  font-size: 0.75rem;
+  color: ${color("text-medium")};
+  margin-left: ${space(0)};
 `;

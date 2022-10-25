@@ -29,7 +29,13 @@
   (cond
     (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path)) {:path path}))
     (seen path) ctx ; Already been done, just skip it.
-    :else (let [ingested (serdes.ingest/ingest-one ingestion path)
+    :else (let [ingested (try
+                           (serdes.ingest/ingest-one ingestion path)
+                           (catch Exception e
+                             (throw (ex-info (format "Failed to read file for %s" (pr-str path))
+                                             {:path       path
+                                              :deps-chain expanding}
+                                             e))))
                 deps     (serdes.base/serdes-dependencies ingested)
                 ctx      (-> ctx
                              (update :expanding conj path)
@@ -38,9 +44,15 @@
                              (update :expanding disj path))
                 ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.
                 rebuilt-path    (serdes.base/serdes-path ingested)
-                local-pk-or-nil (serdes.base/load-find-local rebuilt-path)
-                _               (serdes.base/load-one! ingested local-pk-or-nil)]
-            ctx)))
+                local-pk-or-nil (serdes.base/load-find-local rebuilt-path)]
+            (try
+              (serdes.base/load-one! ingested local-pk-or-nil)
+              ctx
+              (catch Exception e
+                (throw (ex-info (format "Failed to load into database for %s" (pr-str path))
+                                {:path       path
+                                 :deps-chain expanding}
+                                e)))))))
 
 (defn load-metabase
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
