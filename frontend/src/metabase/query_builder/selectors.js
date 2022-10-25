@@ -16,6 +16,7 @@ import { MetabaseApi } from "metabase/services";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getCardUiParameters } from "metabase/parameters/utils/cards";
 
+import Collections from "metabase/entities/collections";
 import Databases from "metabase/entities/databases";
 import Timelines from "metabase/entities/timelines";
 
@@ -337,6 +338,9 @@ export const getQuestionFromCard = createCachedSelector(
   [getMetadata, (_state, card) => card],
   (metadata, card) => new Question(card, metadata),
 )((_state, card) => card.id);
+
+export const getCollectionFromCard = (state, card) =>
+  Collections.selectors.getObject(state, { entityId: card.collection_id });
 
 function normalizeClause(clause) {
   return typeof clause?.raw === "function" ? clause.raw() : clause;

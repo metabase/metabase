@@ -10,8 +10,12 @@ import {
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
 import Questions from "metabase/entities/questions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { getQuestionFromCard } from "metabase/query_builder/selectors";
+import {
+  getCollectionFromCard,
+  getQuestionFromCard,
+} from "metabase/query_builder/selectors";
 import type { State } from "metabase-types/store";
+import type { Collection } from "metabase-types/api/collection";
 import Table from "metabase-lib/lib/metadata/Table";
 import Question from "metabase-lib/lib/Question";
 import FieldList from "../FieldList";
@@ -30,15 +34,18 @@ interface QuestionPaneProps {
   onBack: () => void;
   onClose: () => void;
   question: Question;
+  collection: Collection;
 }
 
 const mapStateToProps = (state: State, props: QuestionPaneProps) => ({
   question: getQuestionFromCard(state, props.question),
+  collection: getCollectionFromCard(state, props.question),
 });
 
 const QuestionPane = ({
   onItemClick,
   question,
+  collection,
   onBack,
   onClose,
 }: QuestionPaneProps) => {
@@ -75,7 +82,7 @@ const QuestionPane = ({
         <QuestionPaneDetail>
           <QuestionPaneIcon name="all" />
           <QuestionPaneDetailText>
-            {question.card().collection?.name || t`Our analytics`}
+            {collection?.name ?? t`Our analytics`}
           </QuestionPaneDetailText>
         </QuestionPaneDetail>
         <QuestionPaneDetail>
