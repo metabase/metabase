@@ -9,10 +9,10 @@ import {
   getIsLoadingComplete,
 } from "metabase/dashboard/selectors";
 
-import { CardId } from "metabase-types/types/Card";
-import { DashCard, DashCardId } from "metabase-types/types/Dashboard";
-import { Dataset } from "metabase-types/types/Dataset";
-import { State } from "metabase-types/store";
+import type { CardId } from "metabase-types/types/Card";
+import type { DashCard, DashCardId } from "metabase-types/types/Dashboard";
+import type { Dataset } from "metabase-types/types/Dataset";
+import type { State } from "metabase-types/store";
 
 import {
   DataAppContext,
