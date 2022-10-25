@@ -17,6 +17,7 @@ const FormInput = forwardRef(function FormInput(
     <Input
       {...props}
       ref={ref}
+      id={name}
       name={name}
       value={field.value}
       error={meta.touched && meta.error != null}

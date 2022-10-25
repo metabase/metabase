@@ -11,7 +11,7 @@ const FormSubmitButton = forwardRef(function FormSubmitButton(
     <Button
       {...props}
       ref={ref}
-      disabled={disabled || !isValid || !isSubmitting}
+      disabled={disabled || !isValid || isSubmitting}
     />
   );
 });
