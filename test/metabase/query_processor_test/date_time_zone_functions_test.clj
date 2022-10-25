@@ -90,7 +90,8 @@
     ;; need to have seperate tests for mongo because it doesn't have supports for casting yet
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with datetime columns"
-        (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
+        (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]
+                                     [:datetime_tz (mt/id :times :dt_tz)]]
                 op                  [:get-year :get-quarter :get-month :get-day
                                      :get-day-of-week :get-hour :get-minute :get-second]
                 {:keys [expected-fn query-fn]}
