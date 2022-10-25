@@ -1,11 +1,13 @@
 import type {
   ActionDashboardCard,
   BaseDashboardOrderedCard,
-  ClickBehavior,
+  Dashboard,
   Database as IDatabase,
   WritebackAction,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
+import type { DashCard } from "metabase-types/types/Dashboard";
+
 import { TYPE } from "metabase-lib/lib/types/constants";
 import type Database from "metabase-lib/lib/metadata/Database";
 import type Field from "metabase-lib/lib/metadata/Field";
@@ -103,3 +105,12 @@ export const shouldPrefetchValues = (action: WritebackAction) => {
   // for custom actions
   return action.slug === "update";
 };
+
+export const shouldHideDashcardHeader = (
+  dashboard: Dashboard,
+  dashcard: DashCard,
+): boolean =>
+  !!(
+    dashboard.is_app_page &&
+    ["list", "object"].includes(dashcard?.card?.display ?? "")
+  );
