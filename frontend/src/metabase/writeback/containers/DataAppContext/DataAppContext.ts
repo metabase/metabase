@@ -16,6 +16,7 @@ export type FormattedObjectDetail = Record<FieldName, ObjectDetailField>;
 export type DataContextType = Record<CardName, FormattedObjectDetail>;
 
 export type DataAppContextType = {
+  isDataApp: boolean;
   data: DataContextType;
   bulkActions: {
     cardId: number | null;
@@ -29,6 +30,7 @@ export type DataAppContextType = {
 };
 
 export const DataAppContext = createContext<DataAppContextType>({
+  isDataApp: true,
   data: {},
   bulkActions: {
     cardId: null,

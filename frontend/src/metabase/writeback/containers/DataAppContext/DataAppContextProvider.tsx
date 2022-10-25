@@ -4,11 +4,13 @@ import _ from "lodash";
 import { getIn } from "icepick";
 
 import {
+  getDashboard,
   getDashcards,
   getCardData,
   getIsLoadingComplete,
 } from "metabase/dashboard/selectors";
 
+import type { DataAppPage } from "metabase-types/api";
 import type { CardId } from "metabase-types/types/Card";
 import type { DashCard, DashCardId } from "metabase-types/types/Dashboard";
 import type { Dataset } from "metabase-types/types/Dataset";
@@ -26,6 +28,7 @@ interface DataAppContextProviderOwnProps {
 }
 
 interface DataAppContextProviderStateProps {
+  page?: DataAppPage;
   dashCards: Record<DashCardId, DashCard>;
   dashCardData: Record<DashCardId, Record<CardId, Dataset>>;
   isLoaded: boolean;
@@ -36,6 +39,7 @@ type DataAppContextProviderProps = DataAppContextProviderOwnProps &
 
 function mapStateToProps(state: State) {
   return {
+    page: getDashboard(state),
     dashCards: getDashcards(state),
     dashCardData: getCardData(state),
     isLoaded: getIsLoadingComplete(state),
@@ -43,6 +47,7 @@ function mapStateToProps(state: State) {
 }
 
 function DataAppContextProvider({
+  page,
   dashCards = [],
   dashCardData = {},
   isLoaded,
@@ -103,6 +108,7 @@ function DataAppContextProvider({
 
   const context: DataAppContextType = useMemo(() => {
     const value: DataAppContextType = {
+      isDataApp: !!page?.is_app_page,
       data: dataContext,
       isLoaded,
       bulkActions: {
@@ -119,6 +125,7 @@ function DataAppContextProvider({
 
     return value;
   }, [
+    page,
     dataContext,
     isLoaded,
     bulkActionCardId,
