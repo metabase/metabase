@@ -663,7 +663,7 @@
 
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-week
   date DateTimeExpressionArg
-  mode ExtractWeekModes)
+  mode (optional ExtractWeekModes))
 
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-day
   date DateTimeExpressionArg)

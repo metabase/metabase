@@ -181,7 +181,7 @@
 (deftest extract-week-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
     (mt/dataset times-mixed-2
-      ;; the navite get week of sqlite is not iso, and it's not easy
+      ;; the native get week of sqlite is not iso, and it's not easy
       ;; to implement in raw sql, so skips it for now
       (when-not (#{:sqlite} driver/*driver*)
         (testing "iso8601 week"
@@ -192,12 +192,12 @@
               (is (= [52 52 1 1 1 1 1 1 1 53]
                      (test-extract-week (mt/id :weeks :d) :iso)))))))
 
+      ;; check the (defmethod sql.qp/date [:snowflake :week-of-year-us]) for why we skip snowflake
       (when-not (#{:snowflake} driver/*driver*)
         (testing "us week"
           (is (= [1 2 2 2 2 2 2 2 3 1]
                  (test-extract-week (mt/id :weeks :d) :us)))
           (testing "shouldn't change if start-of-week settings change"
-            ;; check the (defmethod date [:sql :week-of-year-us]) for why we skisp snowflake
             (with-start-of-week :monday
               (is (= [1 2 2 2 2 2 2 2 3 1]
                      (test-extract-week (mt/id :weeks :d) :us)))))))

@@ -255,6 +255,8 @@
   {[:get-year        nil]       :year-of-era
    [:get-quarter     nil]       :quarter-of-year
    [:get-month       nil]       :month-of-year
+   ;; default get-week mode is iso
+   [:get-week        nil]       :week-of-year-iso
    [:get-week        :iso]      :week-of-year-iso
    [:get-week        :us]       :week-of-year-us
    [:get-week        :instance] :week-of-year-instance
