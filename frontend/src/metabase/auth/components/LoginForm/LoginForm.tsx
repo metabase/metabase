@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import Button from "metabase/core/components/Button";
-import CheckBox from "metabase/core/components/CheckBox";
 import FormInput from "metabase/core/components/FormInput";
 import FormField from "metabase/core/components/FormField";
+import FormCheckBox from "metabase/core/components/FormCheckBox";
 import { LoginData } from "../../types";
 
 const LdapSchema = Yup.object().shape({
@@ -66,7 +66,7 @@ const LoginForm = ({
           alignment="start"
           orientation="horizontal"
         >
-          <CheckBox name="remember" />
+          <FormCheckBox name="remember" />
         </FormField>
       )}
       <Button primary fullWidth disabled={!isValid || isSubmitting}>
