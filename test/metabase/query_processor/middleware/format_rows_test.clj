@@ -14,7 +14,7 @@
 (def ^:private dbs-exempt-from-format-rows-tests
   "DBs to skip the tests below for. TIMEZONE FIXME — why are so many databases not running these tests? Most of these
   should be able to pass with a few tweaks."
-  #{:oracle :mongo :redshift :presto :sparksql :snowflake})
+  #{:bigquery-cloud-sdk :oracle :mongo :redshift :presto :sparksql :snowflake})
 
 (deftest format-rows-test
   (mt/test-drivers (mt/normal-drivers-except dbs-exempt-from-format-rows-tests)
