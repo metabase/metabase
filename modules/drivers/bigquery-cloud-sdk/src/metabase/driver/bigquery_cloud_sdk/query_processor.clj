@@ -552,12 +552,21 @@
       (:year :month)
       (let [maybe-cast (fn [clause current]
                          (cond->> clause
-                           (not= current :datetime)
-                           (hx/cast :datetime)))
-            x' (maybe-cast x' (first types))
-            y' (maybe-cast y' (second types))
+                           (not= current :timestamp)
+                           (hx/cast :timestamp)))
+            truncate   (fn [temporal]
+                         (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
+                           (hsql/call
+                            :datetime
+                            (hsql/call :timestamp_trunc temporal (hsql/raw "day") report-zone)
+                            report-zone)
+                           (hsql/call
+                            :datetime
+                            (hsql/call :timestamp_trunc temporal (hsql/raw "day")))))
+            x' (truncate (maybe-cast x' (first types)))
+            y' (truncate (maybe-cast y' (second types)))
             unit'       (hsql/raw (name unit))
-            positive-diff (fn [a b] ;; (a - b) >= 0
+            positive-diff (fn [a b] ; precondition: a <= b
                             (hsql/call
                              :-
                              (hsql/call :datetime_diff b a unit')
@@ -570,28 +579,36 @@
         (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hsql/call :* -1 (positive-diff y' x'))))
 
       :week
-      (let [maybe-cast (fn [clause current]
-                         (cond->> clause
-                           (not= current :datetime)
-                           (hx/cast :datetime)))
-            x' (maybe-cast x' (first types))
-            y' (maybe-cast y' (second types))
+      (let [maybe-cast (fn [temporal current]
+                         (cond->> temporal
+                           (not= current :timestamp)
+                           (hx/cast :timestamp)))
+            truncate   (fn [temporal]
+                         (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
+                           (hsql/call :timestamp_trunc temporal (hsql/raw "day") report-zone)
+                           (hsql/call :timestamp_trunc temporal (hsql/raw "day"))))
+            x' (truncate (maybe-cast x' (first types)))
+            y' (truncate (maybe-cast y' (second types)))
             positive-diff (fn [a b]
                             (hx/cast
                              :integer
                              (hsql/call
                               :floor
-                              (hsql/call :/ (hsql/call :datetime_diff b a (hsql/raw "day")) 7))))]
+                              (hsql/call :/ (hsql/call :timestamp_diff b a (hsql/raw "day")) 7))))]
         (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hsql/call :* -1 (positive-diff y' x'))))
 
       :day
-      (let [maybe-cast (fn [clause current]
-                         (cond->> clause
-                           (not= current :datetime)
-                           (hx/cast :datetime)))
-            x' (maybe-cast x' (first types))
-            y' (maybe-cast y' (second types))]
-        (hsql/call :datetime_diff y' x' (hsql/raw (name unit))))
+      (let [maybe-cast (fn [temporal current]
+                         (cond->> temporal
+                           (not= current :timestamp)
+                           (hx/cast :timestamp)))
+            truncate   (fn [temporal]
+                         (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
+                           (hsql/call :timestamp_trunc temporal (hsql/raw "day") report-zone)
+                           (hsql/call :timestamp_trunc temporal (hsql/raw "day"))))
+            x' (truncate (maybe-cast x' (first types)))
+            y' (truncate (maybe-cast y' (second types)))]
+        (hsql/call :timestamp_diff y' x' (hsql/raw (name unit))))
 
       (:hour :minute :second)
       (let [maybe-cast (fn [clause current]
