@@ -6,9 +6,9 @@ import {
   FieldLabel,
   FieldLabelError,
   FieldRoot,
-} from "./Field.styled";
+} from "./InputField.styled";
 
-export interface FieldProps extends HTMLAttributes<HTMLDivElement> {
+export interface InputFieldProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;
   description?: ReactNode;
   error?: string;
@@ -18,7 +18,7 @@ export interface FieldProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
 }
 
-const Field = forwardRef(function Field(
+const InputField = forwardRef(function InputField(
   {
     title,
     description,
@@ -28,7 +28,7 @@ const Field = forwardRef(function Field(
     orientation = "vertical",
     children,
     ...props
-  }: FieldProps,
+  }: InputFieldProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const hasError = Boolean(error);
@@ -57,4 +57,4 @@ const Field = forwardRef(function Field(
   );
 });
 
-export default Field;
+export default InputField;

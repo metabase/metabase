@@ -1,8 +1,11 @@
 import React, { forwardRef, Ref } from "react";
 import { useField } from "formik";
-import Field, { FieldProps } from "metabase/core/components/Field";
+import InputField, {
+  InputFieldProps,
+} from "metabase/core/components/InputField";
 
-export interface FormFieldProps extends Omit<FieldProps, "error" | "htmlFor"> {
+export interface FormFieldProps
+  extends Omit<InputFieldProps, "error" | "htmlFor"> {
   name: string;
 }
 
@@ -14,7 +17,7 @@ const FormField = forwardRef(function FormField(
   const { error, touched } = meta;
 
   return (
-    <Field
+    <InputField
       {...props}
       ref={ref}
       htmlFor={name}
