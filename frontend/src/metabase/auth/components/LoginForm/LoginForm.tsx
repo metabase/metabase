@@ -6,7 +6,6 @@ import FormCheckBox from "metabase/core/components/FormCheckBox";
 import FormField from "metabase/core/components/FormField";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import useFormSubmit from "metabase/core/hooks/use-form-submit";
 import { LoginData } from "../../types";
 
@@ -82,7 +81,6 @@ const LoginForm = ({
         <FormSubmitButton primary fullWidth>
           {t`Sign in`}
         </FormSubmitButton>
-        <FormErrorMessage />
       </Form>
     </Formik>
   );
