@@ -6,7 +6,7 @@ import FormCheckBox from "metabase/core/components/FormCheckBox";
 import FormField from "metabase/core/components/FormField";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import useFormSubmit from "metabase/core/hooks/use-form-submit";
+import useForm from "metabase/core/hooks/use-form";
 import { LoginData } from "../../types";
 
 const LdapSchema = Yup.object().shape({
@@ -37,7 +37,7 @@ const LoginForm = ({
     password: "",
     remember: isCookieEnabled,
   };
-  const handleSubmit = useFormSubmit(onSubmit);
+  const handleSubmit = useForm(onSubmit);
 
   return (
     <Formik
@@ -78,9 +78,7 @@ const LoginForm = ({
             <FormCheckBox name="remember" />
           </FormField>
         )}
-        <FormSubmitButton primary fullWidth>
-          {t`Sign in`}
-        </FormSubmitButton>
+        <FormSubmitButton normalText={t`Sign in`} primary fullWidth />
       </Form>
     </Formik>
   );
