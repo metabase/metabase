@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import _ from "underscore";
 import {
-  GRAPH_AXIS_SETTINGS,
   GRAPH_DATA_SETTINGS,
   GRAPH_GOAL_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
@@ -65,6 +64,7 @@ import {
   getLabels,
   getXValueRange,
 } from "./utils/settings";
+import { ROW_CHART_AXIS_SETTINGS } from "./utils/settings-definitions";
 
 const RowChartRenderer = ExplicitSize({
   wrapped: true,
@@ -360,7 +360,7 @@ RowChartVisualization.settings = {
   },
   ...GRAPH_GOAL_SETTINGS,
   ...GRAPH_DATA_SETTINGS,
-  ...GRAPH_AXIS_SETTINGS,
+  ...ROW_CHART_AXIS_SETTINGS,
 };
 
 RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {

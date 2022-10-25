@@ -25,8 +25,8 @@ export const getLabelledSeries = <TDatum>(
 
 export const getAxesVisibility = (settings: VisualizationSettings) => {
   return {
-    hasXAxis: settings["graph.x_axis.axis_enabled"],
-    hasYAxis: settings["graph.y_axis.axis_enabled"],
+    hasXAxis: settings["graph.y_axis.axis_enabled"],
+    hasYAxis: settings["graph.x_axis.axis_enabled"],
   };
 };
 
