@@ -270,7 +270,7 @@
   (let [original-type-info (type-info expr)]
     (-> (hsql/call :cast expr (hsql/raw (name database-type)))
         (with-type-info (merge original-type-info
-                               {::database-type sql-type})))))
+                               {::database-type database-type})))))
 
 (s/defn quoted-cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS \"sql-type\")`.
