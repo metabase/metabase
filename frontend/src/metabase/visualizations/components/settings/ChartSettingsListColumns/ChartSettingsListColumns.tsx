@@ -19,6 +19,7 @@ import {
 type FieldIdOrFieldRef = FieldId | ConcreteField;
 
 type SettingValue = {
+  image: FieldIdOrFieldRef[];
   left: FieldIdOrFieldRef[];
   right: FieldIdOrFieldRef[];
 };
@@ -31,7 +32,7 @@ interface Props {
   onShowWidget: (config: unknown, targetElement: HTMLElement | null) => void;
 }
 
-type ListColumnSlot = "left" | "right";
+type ListColumnSlot = "left" | "right" | "image";
 
 function formatValueForSelect(value: FieldIdOrFieldRef): string | number {
   const isFieldReference = Array.isArray(value);
@@ -103,6 +104,24 @@ function ChartSettingsListColumns({
 
   return (
     <div>
+      <GroupName>{t`Image`}</GroupName>
+      {(value.image ?? [null]).map((fieldIdOrFieldRef, index) => (
+        <ColumnItemContainer key={index}>
+          <StyledSelect
+            value={formatValueForSelect(fieldIdOrFieldRef)}
+            options={options}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+              onChangeColumn("image", index, parseSelectValue(e));
+            }}
+          />
+          <Button
+            icon="gear"
+            onlyIcon
+            disabled={fieldIdOrFieldRef === null}
+            onClick={e => onColumnSettingsClick(fieldIdOrFieldRef, e.target)}
+          />
+        </ColumnItemContainer>
+      ))}
       <GroupName>{t`Left`}</GroupName>
       {value.left.map((fieldIdOrFieldRef, index) => (
         <ColumnItemContainer key={index}>

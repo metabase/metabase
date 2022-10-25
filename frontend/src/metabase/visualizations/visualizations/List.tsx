@@ -86,6 +86,7 @@ export default Object.assign(ListViz, {
         const firstThreeColumns = columns.slice(0, 3).filter(Boolean);
         const fourthColumn = columns.slice(3, 4).filter(Boolean);
         return {
+          image: [null],
           left: firstThreeColumns.map(col => col.id || col.field_ref),
           right: fourthColumn.map(col => col.id || col.field_ref),
         };
