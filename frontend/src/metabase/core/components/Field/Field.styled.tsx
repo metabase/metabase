@@ -10,7 +10,7 @@ export interface FieldRootProps {
 export const FieldRoot = styled.div<FieldRootProps>`
   display: ${props => props.orientation === "horizontal" && "flex"};
   color: ${props => (props.hasError ? color("error") : color("text-medium"))};
-  margin-bottom: 1.5em;
+  margin-bottom: 1.25rem;
 `;
 
 export interface FormCaptionProps {
@@ -29,12 +29,12 @@ export const FieldCaption = styled.div<FormCaptionProps>`
     props.orientation === "horizontal" &&
     props.alignment === "end" &&
     "0.5rem"};
-  margin-bottom: 0.5em;
+  margin-bottom: 0.5rem;
 `;
 
 export const FieldLabel = styled.label`
   display: block;
-  font-size: 0.88em;
+  font-size: 0.77rem;
   font-weight: 900;
 `;
 
