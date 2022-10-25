@@ -351,7 +351,6 @@
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]
-  (println "UNPREPARE" t (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
 
 (defmethod unprepare/unprepare-value [:snowflake ZonedDateTime]
