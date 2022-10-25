@@ -619,6 +619,11 @@
               (= driver/*driver* :vertica)
               "2018-04-17T00:00:00-07:00"
 
+              ;; TIMEZONE FIXME - bigquery doesn't support SET TIMEZONE, so the CAST to date below is going to make a UTC date,
+              ;; and then get converted back to reporting TZ (TODO: where?). But it's not clear if this behavior is actually relevant/an issue.
+              (= driver/*driver* :bigquery-cloud-sdk)
+              "2018-04-17T17:00:00-07:00"
+
               (qp.test/supports-report-timezone? driver/*driver*)
               "2018-04-18T00:00:00-07:00"
 

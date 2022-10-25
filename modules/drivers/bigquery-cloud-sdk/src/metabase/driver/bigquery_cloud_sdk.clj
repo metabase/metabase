@@ -316,6 +316,11 @@
 
 (defmethod driver/supports? [:bigquery-cloud-sdk :foreign-keys] [_ _] true)
 
+;; BigQuery uses timezone operators and arguments on calls like extract() and timezone_trunc() rather than literally
+;; using SET TIMEZONE, but we need to flag it as supporting set-timezone anyway so that reporting timezones are
+;; returned and used, and tests expect the converted values.
+(defmethod driver/supports? [:bigquery-cloud-sdk :set-timezone] [_ _] true)
+
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery-cloud-sdk [_ _]
   "UTC")

@@ -163,7 +163,7 @@
                                                   [(nth formatters remapped-index)
                                                    (nth row remapped-index)])
                                                 [fmt-fn maybe-remapped-row-cell])]]
-                  (fmt-fn row-cell))})))
+              (fmt-fn row-cell))})))
 
 (s/defn ^:private prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
@@ -345,8 +345,8 @@
   (let [stacked     (if (contains? viz-settings :stackable.stack_type)
                       (= (:stackable.stack_type viz-settings) "stacked")
                       (and
-                        (= (:display card) :area)
-                        (> (count (:graph.metrics viz-settings)) 1)))]
+                       (= (:display card) :area)
+                       (> (count (:graph.metrics viz-settings)) 1)))]
     (if stacked
       (assoc viz-settings :stackable.stack_type "stacked")
       viz-settings)))
@@ -439,7 +439,7 @@
                                                    :top         "-4px"})} "•"]]
                      [:td {:style (style/style {:padding-right "30px"})}
                       label]
-                   [:td percentage]])))]
+                     [:td percentage]])))]
     (if (< (count legend-entries) 8)
       (table-fn legend-entries)
       [:table (into [:tr]
@@ -460,9 +460,10 @@
         {:keys [rows percentages]}  (donut-info slice-threshold rows)
         legend-colors               (merge (zipmap (map first rows) (cycle colors))
                                            (update-keys (:pie.colors viz-settings) name))
+        settings                    {:show_values (:pie.show_data_labels viz-settings)}
         image-bundle                (image-bundle/make-image-bundle
                                      render-type
-                                     (js-svg/categorical-donut rows legend-colors))
+                                     (js-svg/categorical-donut rows legend-colors settings))
         {label-viz-settings :x}     (->js-viz (x-axis-rowfn cols) (y-axis-rowfn cols) viz-settings)]
     {:attachments
      (when image-bundle
@@ -495,8 +496,8 @@
         ;; See issue #19248 on GH for why it's the second color
         color        (or (:progress.color viz-settings) (second colors))
         settings     (assoc
-                       (->js-viz (first cols) (first cols) viz-settings)
-                       :color color)
+                      (->js-viz (first cols) (first cols) viz-settings)
+                      :color color)
         ;; ->js-viz fills in our :x but we actually want that under :format key
         settings     (assoc settings :format (:x settings))
         image-bundle (image-bundle/make-image-bundle
@@ -538,14 +539,14 @@
 (defn- attach-image-bundle
   [image-bundle]
   {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
+   (when image-bundle
+     (image-bundle/image-bundle->attachment image-bundle))
 
-     :content
-     [:div
-      [:img {:style (style/style {:display :block
-                                  :width   :100%})
-             :src   (:image-src image-bundle)}]]})
+   :content
+   [:div
+    [:img {:style (style/style {:display :block
+                                :width   :100%})
+           :src   (:image-src image-bundle)}]]})
 
 (defn- render-multiple-lab-chart
   "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
@@ -571,7 +572,7 @@
         settings      (->ts-viz x-col y-col labels viz-settings)
         y-pos         (take (count names) (default-y-pos viz-settings))
         series        (join-series names colors types row-seqs y-pos)]
-     (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
+    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
 
 (defn- multiple-scalar-series
   [joined-rows _x-cols _y-cols _viz-settings]
@@ -847,13 +848,13 @@
                                 :measure {:format (:y jsviz-settings)}))
         svg            (js-svg/funnel rows settings)
         image-bundle   (image-bundle/make-image-bundle render-type svg)]
-   {:attachments
-    (image-bundle/image-bundle->attachment image-bundle)
+    {:attachments
+     (image-bundle/image-bundle->attachment image-bundle)
 
-    :content
-    [:div
-     [:img {:style (style/style {:display :block :width :100%})
-            :src   (:image-src image-bundle)}]]}))
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
 
 
 (s/defmethod render :empty :- common/RenderedPulseCard
