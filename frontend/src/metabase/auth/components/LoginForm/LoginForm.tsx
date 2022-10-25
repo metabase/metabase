@@ -4,6 +4,7 @@ import { Form, Formik } from "formik";
 import * as Yup from "yup";
 import useForm from "metabase/core/hooks/use-form";
 import FormCheckBox from "metabase/core/components/FormCheckBox";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormField from "metabase/core/components/FormField";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
@@ -79,6 +80,7 @@ const LoginForm = ({
           </FormField>
         )}
         <FormSubmitButton normalText={t`Sign in`} primary fullWidth />
+        <FormErrorMessage />
       </Form>
     </Formik>
   );
