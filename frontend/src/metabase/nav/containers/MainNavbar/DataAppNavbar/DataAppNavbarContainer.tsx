@@ -163,7 +163,9 @@ function DataAppNavbarContainer({
     (pageId: DataAppPage["id"]) => {
       const navItemToOpen =
         getPreviousNavItem(dataApp.nav_items, pageId) ||
-        dataApp.nav_items.find(isTopLevelNavItem);
+        dataApp.nav_items.find(
+          navItem => isTopLevelNavItem(navItem) && navItem.page_id !== pageId,
+        );
 
       const nextUrl = navItemToOpen
         ? Urls.dataAppPage(dataApp, navItemToOpen)
