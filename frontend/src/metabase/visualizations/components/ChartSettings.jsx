@@ -183,38 +183,35 @@ class ChartSettings extends Component {
       currentWidget && widgets.find(w => w.id === "series_settings");
 
     //We don'ty want to show series settings widget for waterfall charts
-    if (series?.[0]?.card?.display === "waterfall") {
+    if (series?.[0]?.card?.display === "waterfall" || !seriesSettingsWidget) {
       return null;
     }
 
-    if (seriesSettingsWidget) {
-      if (currentWidget.props?.seriesKey) {
+    if (currentWidget.props?.seriesKey) {
+      return {
+        ...seriesSettingsWidget,
+        props: {
+          ...seriesSettingsWidget.props,
+          initialKey: currentWidget.props.seriesKey,
+        },
+      };
+    } else if (currentWidget.props?.initialKey) {
+      const settings = this._getSettings();
+      const singleSeriesForColumn = series.find(
+        single =>
+          getColumnKey(single.data.cols[1]) === currentWidget.props.initialKey,
+      );
+
+      const isBreakout = settings["graph.dimensions"]?.length > 1;
+
+      if (singleSeriesForColumn && !isBreakout) {
         return {
           ...seriesSettingsWidget,
           props: {
             ...seriesSettingsWidget.props,
-            initialKey: currentWidget.props.seriesKey,
+            initialKey: keyForSingleSeries(singleSeriesForColumn),
           },
         };
-      } else if (currentWidget.props?.initialKey) {
-        const settings = this._getSettings();
-        const singleSeriesForColumn = series.find(
-          single =>
-            getColumnKey(single.data.cols[1]) ===
-            currentWidget.props.initialKey,
-        );
-
-        const isBreakout = settings["graph.dimensions"]?.length > 1;
-
-        if (singleSeriesForColumn && !isBreakout) {
-          return {
-            ...seriesSettingsWidget,
-            props: {
-              ...seriesSettingsWidget.props,
-              initialKey: keyForSingleSeries(singleSeriesForColumn),
-            },
-          };
-        }
       }
     }
 
