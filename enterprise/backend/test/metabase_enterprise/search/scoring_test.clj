@@ -49,14 +49,17 @@
         (is (> (ee-score search-string (assoc item :collection_authority_level "official"))
                (ee-score search-string item))
             (str "Item not greater for item: " item)))
-      (is (= ["d" "b" "c" "a"]
-             (map :id (sort-by #(oss-score search-string %) (shuffle [a b c d])))))
-      (is (= ["c" "b" "d" "a"]
-             (map :id (sort-by #(ee-score search-string %)
-                               [a b c (assoc d :collection_authority_level "official")]))))
-      (is (= ["d" "b" "c" "a"]
-             (map :id (sort-by #(oss-score search-string %)
-                               [a b c (assoc d :collection_authority_level "official")]))))))
+      (is (= ["customer examples of bad sorting"
+              "examples of custom expressions"
+              "customer success stories"
+              "custom expression examples"]
+             (mapv :name (sort-by #(oss-score search-string %) (shuffle [a b c d])))))
+      (is (= ["customer examples of bad sorting"
+              "customer success stories"
+              "examples of custom expressions"
+              "custom expression examples"]
+             (mapv :name (sort-by #(ee-score search-string %)
+                                 [a b c (assoc d :collection_authority_level "official")]))))))
   (testing "It should bump up the value of verified items"
     (let [ss "foo"
           a  {:name                "foobar"

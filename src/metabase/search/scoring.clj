@@ -276,26 +276,35 @@
    (weights-and-scores result))
 
 (defn- compute-normalized-score [scores]
-  (let [weighted-total (reduce + (map (fn [{:keys [weight score]}] ((fnil * 0) weight score)) scores))]
-    (if (zero? weighted-total)
+  (let [weight-sum (reduce + (map #(or (:weight %) 0) scores))
+        score-sum (reduce
+                   (fn [acc {:keys [weight score] :or {weight 0 score 0}}] (+ acc (* score weight)))
+                   0
+                   scores)]
+    (if (zero? weight-sum)
       0
-      (double (/ weighted-total (reduce + (map :weight scores)))))))
+      (/ score-sum weight-sum))))
+
+(defn force-weight [scores total]
+  (let [total-found (reduce + (map :weight scores))
+        normalize-weight (fn [n] (double (* total (/ n total-found))))]
+    (mapv #(update % :weight normalize-weight) scores)))
 
 (defn score-and-result
   "Returns a map with the normalized, combined score from relevant-scores as `:score` and `:result`."
-  ([raw-search-string result]
-   (let [text-matches     (text-scores-with-match raw-search-string result)
-         text-match-score (reduce + (map :score text-matches))
-         all-scores       (vec (concat (score-result result) text-matches))
-         relevant-scores  (remove #(= 0 (:score %)) all-scores)
-         total-score      (compute-normalized-score all-scores)]
-     ;; Searches with a blank search string mean "show me everything, ranked";
-     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
-     ;; If the search string is non-blank, results with no text match have a score of zero.
-     (if (or (str/blank? raw-search-string) (pos? text-match-score))
-       {:score total-score
-        :result (serialize result all-scores relevant-scores)}
-       {:score 0}))))
+  [raw-search-string result]
+  (let [text-matches     (force-weight (text-scores-with-match raw-search-string result) 10)
+        all-scores       (vec (concat (score-result result) text-matches))
+        relevant-scores  (remove #(= 0 (:score %)) all-scores)
+        total-score      (compute-normalized-score all-scores)]
+    ;; Searches with a blank search string mean "show me everything, ranked";
+    ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
+    ;; If the search string is non-blank, results with no text match have a score of zero.
+    (if (or (str/blank? raw-search-string)
+            (pos? (reduce + (map :score text-matches))))
+      {:score total-score
+       :result (serialize result all-scores relevant-scores)}
+      {:score 0})))
 
 (defn compare-score
   "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
