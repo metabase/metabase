@@ -130,7 +130,7 @@ const RowChartView = ({
             y += innerBarScale?.(seriesIndex) ?? 0;
 
             const x = xScale(xStartValue);
-            const width = xScale(xEndValue) - x;
+            const width = Math.abs(xScale(xEndValue) - x);
 
             const hasSeriesHover = hoveredData != null;
             const isSeriesHovered = hoveredData?.seriesIndex === seriesIndex;
@@ -156,12 +156,18 @@ const RowChartView = ({
 
             const height = innerBarScale?.bandwidth() ?? yScale.bandwidth();
             const value = isNegative ? xStartValue : xEndValue;
+            const barKey = `${seriesIndex}:${datumIndex}`;
+            const ariaLabelledBy = `bar-${barKey}-value`;
 
             return (
-              <>
+              <React.Fragment key={barKey}>
                 <Bar
+                  aria-label={String(value)}
+                  role="graphics-symbol"
+                  aria-roledescription="bar"
+                  aria-labelledby={label != null ? ariaLabelledBy : undefined}
                   style={{ transition: "opacity 300ms", cursor: "pointer" }}
-                  key={`${seriesIndex}:${datumIndex}`}
+                  key={barKey}
                   x={x}
                   y={y}
                   width={width}
@@ -176,6 +182,8 @@ const RowChartView = ({
                 />
                 {label != null && (
                   <Text
+                    data-testid="data-label"
+                    id={ariaLabelledBy}
                     textAnchor={isNegative ? "end" : "start"}
                     fontSize={theme.dataLabels.size}
                     fill={theme.dataLabels.color}
@@ -188,7 +196,7 @@ const RowChartView = ({
                     {labelsFormatter(value)}
                   </Text>
                 )}
-              </>
+              </React.Fragment>
             );
           });
         })}

@@ -2,15 +2,8 @@ import React, { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import _ from "underscore";
-import {
-  GRAPH_DATA_SETTINGS,
-  GRAPH_GOAL_SETTINGS,
-} from "metabase/visualizations/lib/settings/graph";
-import {
-  Dataset,
-  DatasetData,
-  VisualizationSettings,
-} from "metabase-types/api";
+import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
+import { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
   getChartColumns,
@@ -32,10 +25,6 @@ import {
 import { getChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
-  ChartSettingsError,
-  MinRowsError,
-} from "metabase/visualizations/lib/errors";
-import {
   RowChart,
   RowChartProps,
 } from "metabase/visualizations/shared/components/RowChart";
@@ -49,6 +38,11 @@ import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/uti
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { GroupedDatum } from "metabase/visualizations/shared/types/data";
 import { IconProps } from "metabase/components/Icon";
+import {
+  validateChartDataSettings,
+  validateDatasetRows,
+  validateStacking,
+} from "metabase/visualizations/lib/settings/validation";
 import { isDimension, isMetric } from "metabase-lib/lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -64,7 +58,7 @@ import {
   getLabels,
   getXValueRange,
 } from "./utils/settings";
-import { ROW_CHART_AXIS_SETTINGS } from "./utils/settings-definitions";
+import { ROW_CHART_SETTINGS } from "./utils/settings-definitions";
 
 const RowChartRenderer = ExplicitSize({
   wrapped: true,
@@ -314,51 +308,9 @@ RowChartVisualization.noun = t`row chart`;
 RowChartVisualization.noHeader = true;
 RowChartVisualization.minSize = { width: 5, height: 4 };
 
-const stackingSettings = {
-  "stackable.stack_type": {
-    section: t`Display`,
-    title: t`Stacking`,
-    widget: "radio",
-    default: null,
-    props: {
-      options: [
-        { name: t`Don't stack`, value: null },
-        { name: t`Stack`, value: "stacked" },
-        { name: t`Stack - 100%`, value: "normalized" },
-      ],
-    },
-  },
-};
-
 RowChartVisualization.settings = {
-  ...stackingSettings,
-  "graph.show_values": {
-    section: t`Display`,
-    title: t`Show values on data points`,
-    widget: "toggle",
-    getHidden: (_series: any[], vizSettings: VisualizationSettings) =>
-      vizSettings["stackable.stack_type"] === "normalized",
-    default: false,
-  },
-  "graph.label_value_formatting": {
-    section: t`Display`,
-    title: t`Value labels formatting`,
-    widget: "segmentedControl",
-    getHidden: (_series: any, vizSettings: any) =>
-      vizSettings["graph.show_values"] !== true ||
-      vizSettings["stackable.stack_type"] === "normalized",
-    props: {
-      options: [
-        { name: t`Compact`, value: "compact" },
-        { name: t`Full`, value: "full" },
-      ],
-    },
-    default: "full",
-    readDependencies: ["graph.show_values"],
-  },
-  ...GRAPH_GOAL_SETTINGS,
+  ...ROW_CHART_SETTINGS,
   ...GRAPH_DATA_SETTINGS,
-  ...ROW_CHART_AXIS_SETTINGS,
 };
 
 RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {
@@ -418,28 +370,9 @@ RowChartVisualization.checkRenderable = (
   series: any[],
   settings: VisualizationSettings,
 ) => {
-  if (!hasValidColumnsSelected(settings, series[0].data)) {
-    throw new ChartSettingsError(
-      t`Which fields do you want to use for the Y and X axes?`,
-      { section: t`Data` },
-      t`Choose fields`,
-    );
-  }
-
-  if (
-    settings["stackable.stack_type"] === "normalized" &&
-    settings["graph.y_axis.scale"] === "log"
-  ) {
-    throw new Error(
-      t`It is not possible to use the Log scale with a stacked percentage scale`,
-    );
-  }
-
-  const singleSeriesHasNoRows = ({ data: { rows } }: Dataset) =>
-    rows.length < 1;
-  if (_.every(series, singleSeriesHasNoRows)) {
-    throw new MinRowsError(1, 0);
-  }
+  validateDatasetRows(series);
+  validateChartDataSettings(settings);
+  validateStacking(settings);
 };
 
 RowChartVisualization.placeholderSeries = [

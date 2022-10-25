@@ -1,6 +1,7 @@
 import { VisualizationSettings } from "metabase-types/api";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { Series } from "metabase/visualizations/shared/components/RowChart/types";
+import { Range } from "metabase/visualizations/shared/types/scale";
 
 export const getLabelledSeries = <TDatum>(
   settings: VisualizationSettings,
@@ -25,19 +26,24 @@ export const getLabelledSeries = <TDatum>(
 
 export const getAxesVisibility = (settings: VisualizationSettings) => {
   return {
-    hasXAxis: settings["graph.y_axis.axis_enabled"],
-    hasYAxis: settings["graph.x_axis.axis_enabled"],
+    hasXAxis: !!(settings["graph.y_axis.axis_enabled"] ?? true),
+    hasYAxis: !!(settings["graph.x_axis.axis_enabled"] ?? true),
   };
 };
 
-export const getXValueRange = (settings: VisualizationSettings) => {
-  const isAutoRange = settings["graph.y_axis.auto_range"];
+export const getXValueRange = (
+  settings: VisualizationSettings,
+): Range | undefined => {
+  const isAutoRange = settings["graph.y_axis.auto_range"] ?? true;
 
   if (isAutoRange) {
     return undefined;
   }
 
-  return [settings["graph.y_axis.min"], settings["graph.y_axis.max"]];
+  return [
+    parseInt(settings["graph.y_axis.min"], 10),
+    parseInt(settings["graph.y_axis.max"], 10),
+  ];
 };
 
 export const getLabels = (settings: VisualizationSettings) => {

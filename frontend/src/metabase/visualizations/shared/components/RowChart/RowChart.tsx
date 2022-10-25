@@ -33,7 +33,7 @@ export interface RowChartProps<TDatum> {
 
   trimData?: (data: TDatum[], maxLength: number) => TDatum[];
 
-  goal: ChartGoal | null;
+  goal?: ChartGoal | null;
   theme: RowChartTheme;
   stackOffset: StackOffset;
   labelledSeries?: string[] | null;

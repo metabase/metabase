@@ -345,33 +345,6 @@ export const STACKABLE_SETTINGS = {
   },
 };
 
-export const GRAPH_GOAL_SETTINGS = {
-  "graph.show_goal": {
-    section: t`Display`,
-    title: t`Goal line`,
-    widget: "toggle",
-    default: false,
-    inline: true,
-    marginBottom: "1rem",
-  },
-  "graph.goal_value": {
-    section: t`Display`,
-    title: t`Goal value`,
-    widget: "number",
-    default: 0,
-    getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
-    readDependencies: ["graph.show_goal"],
-  },
-  "graph.goal_label": {
-    section: t`Display`,
-    title: t`Goal label`,
-    widget: "input",
-    default: t`Goal`,
-    getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
-    readDependencies: ["graph.show_goal"],
-  },
-};
-
 export const GRAPH_TREND_SETTINGS = {
   "graph.show_trendline": {
     section: t`Display`,

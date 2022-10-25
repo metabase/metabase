@@ -2,11 +2,10 @@ import { t } from "ttag";
 import { assocIn } from "icepick";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { barRenderer } from "../lib/LineAreaBarRenderer";
-
+import { GRAPH_GOAL_SETTINGS } from "../lib/settings/goal";
 import {
   GRAPH_DATA_SETTINGS,
   STACKABLE_SETTINGS,
-  GRAPH_GOAL_SETTINGS,
   GRAPH_TREND_SETTINGS,
   GRAPH_COLORS_SETTINGS,
   GRAPH_AXIS_SETTINGS,

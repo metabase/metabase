@@ -1,7 +1,23 @@
 import { t } from "ttag";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { GRAPH_GOAL_SETTINGS } from "../../../lib/settings/goal";
 
-export const ROW_CHART_AXIS_SETTINGS = {
+export const ROW_CHART_SETTINGS = {
+  "stackable.stack_type": {
+    section: t`Display`,
+    title: t`Stacking`,
+    index: 1,
+    widget: "radio",
+    default: null,
+    props: {
+      options: [
+        { name: t`Don't stack`, value: null },
+        { name: t`Stack`, value: "stacked" },
+        { name: t`Stack - 100%`, value: "normalized" },
+      ],
+    },
+  },
+  ...GRAPH_GOAL_SETTINGS,
   "graph.x_axis.scale": {
     section: t`Axes`,
     group: t`Y-axis`,
@@ -82,7 +98,7 @@ export const ROW_CHART_AXIS_SETTINGS = {
     title: t`Max`,
     widget: "number",
     default: 100,
-    getHidden: (series, vizSettings) =>
+    getHidden: (_series, vizSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
   "graph.x_axis.labels_enabled": {
@@ -141,5 +157,30 @@ export const ROW_CHART_AXIS_SETTINGS = {
       return metricNames.length === 1 ? metricNames[0] : null;
     },
     readDependencies: ["series", "graph.metrics"],
+  },
+  "graph.show_values": {
+    section: t`Display`,
+    title: t`Show values on data points`,
+    widget: "toggle",
+    inline: true,
+    getHidden: (_series, vizSettings) =>
+      vizSettings["stackable.stack_type"] === "normalized",
+    default: false,
+  },
+  "graph.label_value_formatting": {
+    section: t`Display`,
+    title: t`Value labels formatting`,
+    widget: "segmentedControl",
+    getHidden: (_series, vizSettings) =>
+      vizSettings["graph.show_values"] !== true ||
+      vizSettings["stackable.stack_type"] === "normalized",
+    props: {
+      options: [
+        { name: t`Compact`, value: "compact" },
+        { name: t`Full`, value: "full" },
+      ],
+    },
+    default: "full",
+    readDependencies: ["graph.show_values"],
   },
 };
