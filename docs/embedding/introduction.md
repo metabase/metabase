@@ -22,14 +22,14 @@ You'll need to put an iframe on your website to act as a window to your Metabase
 
 ## Comparison of embedding types
 
-|                                                                                                            | [Public](../questions/sharing/public-links.md) | [Signed](./signed-embedding.md) | [Full-app](./full-app-embedding.md) |
-| -----------------------------------------------------------------------------------------------------------| -----------------------------------------------| ------------------------------- | ----------------------------------- |
-| Display charts and dashboards                                                                              | ✅                                             | ✅                               | ✅                                  |
-| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                      | ✅                                             | ✅                               | ✅                                  |
-| Restrict data with [locked filters](./signed-embedding-parameters.md#pre-filtering-data-in-a-signed-embed) | ❌                                             | ✅                               | ❌                                  |
-| Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                           | ❌                                             | ❌                               | ✅                                  |
-| Drill-down using the [action menu](https://www.metabase.com/learn/questions/drill-through)                 | ❌                                             | ❌                               | ✅                                  |
-| Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                            | ❌                                             | ❌                               | ✅                                  |
+|                                                                                                          | [Public](../questions/sharing/public-links.md) | [Signed](./signed-embedding.md) | [Full-app](./full-app-embedding.md) |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------- | ----------------------------------- |
+| Display charts and dashboards                                                                            | ✅                                             | ✅                              | ✅                                  |
+| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                    | ✅                                             | ✅                              | ✅                                  |
+| Restrict data with [locked filters](./signed-embedding-parameters.md#restricting-data-in-a-signed-embed) | ❌                                             | ✅                              | ❌                                  |
+| Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                         | ❌                                             | ❌                              | ✅                                  |
+| Drill-down using the [action menu](https://www.metabase.com/learn/questions/drill-through)               | ❌                                             | ❌                              | ✅                                  |
+| Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                          | ❌                                             | ❌                              | ✅                                  |
 
 ## Further reading
 

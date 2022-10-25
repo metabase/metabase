@@ -34,6 +34,15 @@ import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import {
+  isFieldReference,
+  isExpressionReference,
+  isAggregationReference,
+  isTemplateTagReference,
+  normalizeReferenceOptions,
+  getBaseDimensionReference,
+  BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
+} from "metabase-lib/lib/references";
 
 /**
  * A dimension option returned by the query_metadata API
@@ -85,23 +94,6 @@ export default class Dimension {
     this._metadata = metadata || (parent && parent._metadata);
     this._query = query || (parent && parent._query);
     this._options = options;
-  }
-
-  /**
-   * Canonically the field clause should use `null` instead of empty options. Keys with null values should get removed.
-   */
-  static normalizeOptions(options: any): any {
-    if (!options) {
-      return null;
-    }
-
-    // recursively normalize maps inside options.
-    options = _.mapObject(options, val =>
-      typeof val === "object" ? this.normalizeOptions(val) : val,
-    );
-    // remove null/undefined options from map.
-    options = _.omit(options, value => value == null);
-    return _.isEmpty(options) ? null : options;
   }
 
   /**
@@ -219,7 +211,7 @@ export default class Dimension {
    */
   _dimensionForOption(option: DimensionOption) {
     // fill in the parent field ref
-    const fieldRef = this.baseDimension().mbql();
+    const fieldRef = getBaseDimensionReference(this.mbql());
     let mbql = option.mbql;
 
     if (mbql) {
@@ -565,13 +557,6 @@ export default class Dimension {
     return this.withoutOptions("temporal-unit");
   }
 
-  /**
-   * Return a copy of this Dimension with any binning options removed.
-   */
-  withoutBinning(): Dimension {
-    return this.withoutOptions("binning");
-  }
-
   withoutJoinAlias(): Dimension {
     return this.withoutOptions("join-alias");
   }
@@ -580,7 +565,7 @@ export default class Dimension {
    * Return a copy of this Dimension with any temporal bucketing or binning options removed.
    */
   baseDimension(): Dimension {
-    return this.withoutTemporalBucketing().withoutBinning();
+    return this.withoutOptions(...BASE_DIMENSION_REFERENCE_OMIT_OPTIONS);
   }
 
   isValidFKRemappingTarget() {
@@ -675,21 +660,12 @@ export default class Dimension {
  */
 
 export class FieldDimension extends Dimension {
-  /**
-   * Whether `clause` is an array, and a valid `:field` clause
-   */
-  static isFieldClause(clause): boolean {
-    return (
-      Array.isArray(clause) && clause.length === 3 && clause[0] === "field"
-    );
-  }
-
   static parseMBQL(
     mbql,
     metadata = null,
     query = null,
   ): FieldDimension | null | undefined {
-    if (FieldDimension.isFieldClause(mbql)) {
+    if (isFieldReference(mbql)) {
       return Object.freeze(
         new FieldDimension(mbql[1], mbql[2], metadata, query),
       );
@@ -742,7 +718,7 @@ export class FieldDimension extends Dimension {
       [fieldIdOrName, options],
       metadata,
       query,
-      Object.freeze(Dimension.normalizeOptions(options)),
+      Object.freeze(normalizeReferenceOptions(options)),
     );
     this._fieldIdOrName = fieldIdOrName;
 
@@ -764,7 +740,7 @@ export class FieldDimension extends Dimension {
     }
 
     // this should be considered equivalent to an equivalent MBQL clause
-    if (FieldDimension.isFieldClause(somethingElse)) {
+    if (isFieldReference(somethingElse)) {
       const dimension = FieldDimension.parseMBQL(
         somethingElse,
         this._metadata,
@@ -1142,21 +1118,12 @@ const isFieldDimension = dimension => dimension instanceof FieldDimension;
 export class ExpressionDimension extends Dimension {
   _expressionName: ExpressionName;
 
-  /**
-   * Whether `clause` is an array, and a valid `:expression` clause
-   */
-  static isExpressionClause(clause): boolean {
-    return (
-      Array.isArray(clause) && clause.length >= 2 && clause[0] === "expression"
-    );
-  }
-
   static parseMBQL(
     mbql: any,
     metadata?: Metadata | null | undefined,
     query?: StructuredQuery | null | undefined,
   ): Dimension | null | undefined {
-    if (ExpressionDimension.isExpressionClause(mbql)) {
+    if (isExpressionReference(mbql)) {
       const [expressionName, options] = mbql.slice(1);
       return new ExpressionDimension(expressionName, options, metadata, query);
     }
@@ -1174,7 +1141,7 @@ export class ExpressionDimension extends Dimension {
       [expressionName, options],
       metadata,
       query,
-      Object.freeze(Dimension.normalizeOptions(options)),
+      Object.freeze(normalizeReferenceOptions(options)),
     );
     this._expressionName = expressionName;
 
@@ -1195,7 +1162,7 @@ export class ExpressionDimension extends Dimension {
       );
     }
 
-    if (ExpressionDimension.isExpressionClause(somethingElse)) {
+    if (isExpressionReference(somethingElse)) {
       const dimension = ExpressionDimension.parseMBQL(
         somethingElse,
         this._metadata,
@@ -1411,7 +1378,7 @@ export class AggregationDimension extends Dimension {
     metadata?: Metadata | null | undefined,
     query?: StructuredQuery | null | undefined,
   ): Dimension | null | undefined {
-    if (Array.isArray(mbql) && mbql[0] === "aggregation") {
+    if (isAggregationReference(mbql)) {
       const [aggregationIndex, options] = mbql.slice(1);
       return new AggregationDimension(
         aggregationIndex,
@@ -1434,7 +1401,7 @@ export class AggregationDimension extends Dimension {
       [aggregationIndex, options],
       metadata,
       query,
-      Object.freeze(Dimension.normalizeOptions(options)),
+      Object.freeze(normalizeReferenceOptions(options)),
     );
     this._aggregationIndex = aggregationIndex;
 
@@ -1542,13 +1509,9 @@ export class TemplateTagDimension extends FieldDimension {
     metadata: Metadata = null,
     query: NativeQuery = null,
   ): FieldDimension | null | undefined {
-    return TemplateTagDimension.isTemplateTagClause(mbql)
+    return isTemplateTagReference(mbql)
       ? Object.freeze(new TemplateTagDimension(mbql[1], metadata, query))
       : null;
-  }
-
-  static isTemplateTagClause(clause) {
-    return Array.isArray(clause) && clause[0] === "template-tag";
   }
 
   validateTemplateTag(): ValidationError | null {

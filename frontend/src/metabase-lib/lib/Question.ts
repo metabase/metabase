@@ -22,21 +22,12 @@ import {
   AggregationDimension,
   FieldDimension,
 } from "metabase-lib/lib/Dimension";
-import Mode from "metabase-lib/lib/Mode";
-import { isStandard } from "metabase-lib/lib/queries/utils/filter";
 import { isFK } from "metabase-lib/lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
-import {
-  getCardUiParameters,
-  remapParameterValuesToTemplateTags,
-} from "metabase/parameters/utils/cards";
-import {
-  normalizeParameterValue,
-  getParameterValuesBySlug,
-} from "metabase/parameters/utils/parameter-values";
+import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import {
   DashboardApi,
   CardApi,
@@ -60,6 +51,11 @@ import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
+import {
+  normalizeParameterValue,
+  getParameterValuesBySlug,
+} from "metabase-lib/lib/parameters/utils/parameter-values";
+import { remapParameterValuesToTemplateTags } from "metabase-lib/lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/lib/metadata/utils/saved-questions";
 import {
@@ -81,6 +77,7 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
+import { getBaseDimensionReference } from "metabase-lib/lib/references";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -713,7 +710,7 @@ class QuestionInner {
             const dimension = query.columnDimensionWithName(name);
             return {
               name: name,
-              field_ref: dimension.baseDimension().mbql(),
+              field_ref: getBaseDimensionReference(dimension.mbql()),
               enabled: true,
             };
           }),

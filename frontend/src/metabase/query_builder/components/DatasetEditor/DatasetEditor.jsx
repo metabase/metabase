@@ -52,7 +52,7 @@ const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
-  hasResultsMetadata: PropTypes.bool.isRequired,
+  resultsMetadata: PropTypes.shape({ columns: PropTypes.array }),
   isMetadataDirty: PropTypes.bool.isRequired,
   result: PropTypes.object,
   height: PropTypes.number,
@@ -84,7 +84,7 @@ function mapStateToProps(state) {
   return {
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
-    hasResultsMetadata: Boolean(getResultsMetadata(state)),
+    resultsMetadata: getResultsMetadata(state),
   };
 }
 
@@ -173,7 +173,7 @@ function DatasetEditor(props) {
     question: dataset,
     datasetEditorTab,
     result,
-    hasResultsMetadata,
+    resultsMetadata,
     metadata,
     isMetadataDirty,
     height,
@@ -197,12 +197,13 @@ function DatasetEditor(props) {
     const virtualCardColumns = (virtualCardTable?.fields ?? []).map(field =>
       field.column(),
     );
-    // Columns in results_metadata contain all the necessary metadata
+    // Columns in resultsMetadata contain all the necessary metadata
     // orderedColumns contain properly sorted columns, but they only contain field names and refs.
-    // Normally, columns in results_metadata are ordered too,
+    // Normally, columns in resultsMetadata are ordered too,
     // but they only get updated after running a query (which is not triggered after reordering columns).
     // This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
-    const columns = result?.data?.results_metadata?.columns;
+    const columns = resultsMetadata?.columns;
+
     if (!Array.isArray(columns)) {
       return [];
     }
@@ -216,7 +217,7 @@ function DatasetEditor(props) {
           virtualCardColumns.find(c => isSameField(c.field_ref, col.fieldRef)),
       )
       .filter(Boolean);
-  }, [dataset, orderedColumns, result?.data?.results_metadata?.columns]);
+  }, [dataset, orderedColumns, resultsMetadata]);
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
@@ -433,7 +434,7 @@ function DatasetEditor(props) {
                 id: "metadata",
                 name: t`Metadata`,
                 icon: "label",
-                disabled: !hasResultsMetadata,
+                disabled: !resultsMetadata,
               },
             ]}
           />

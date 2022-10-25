@@ -12993,6 +12993,213 @@ databaseChangeLog:
             tableName: metabase_database
             columnName: details
 
+  - changeSet:
+      id: v45.00-044
+      author: metamben
+      comment: Added 0.45.0 -- create app permission graph revision table
+      changes:
+        - createTable:
+            tableName: app_permission_graph_revision
+            remarks: 'Used to keep track of changes made to app permissions.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: before
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the apps graph before the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: after
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the apps graph after the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the admin who made this set of changes.'
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_permission_graph_revision_user_id
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: 'The timestamp of when these changes were made.'
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: remark
+                  type: ${text.type}
+                  remarks: 'Optional remarks explaining why these changes were made.'
+
+  - changeSet:
+      id: v45.00-045
+      author: snoe
+      comment: Added 0.45.0 - writeback drop card_emitter
+      changes:
+        - dropTable:
+            tableName: card_emitter
+
+  - changeSet:
+      id: v45.00-046
+      author: snoe
+      comment: Added 0.45.0 - writeback drop dashboard_emitter
+      changes:
+        - dropTable:
+            tableName: dashboard_emitter
+
+  - changeSet:
+      id: v45.00-047
+      author: snoe
+      comment: Added 0.45.0 - writeback drop emitter
+      changes:
+        - dropTable:
+            tableName: emitter
+
+  # Add created_at to Collection
+  - changeSet:
+      id: v45.00-048
+      author: camsaul
+      comment: Added 0.45.0 -- add created_at to Collection
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of when this Collection was created.
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+
+  # Seed Collection created_at for Personal Collections with the date_joined of the User that owns them.
+  - changeSet:
+      id: v45.00-049
+      author: camsaul
+      comment: Added 0.45.0 -- set Collection.created_at to User.date_joined for Personal Collections
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE collection c
+              SET created_at = u.date_joined
+              FROM core_user u
+              WHERE c.personal_owner_id = u.id;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE collection c
+              INNER JOIN core_user u
+              ON c.personal_owner_id = u.id
+              SET c.created_at = u.date_joined;
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE collection c
+              SET created_at = (
+                SELECT u.date_joined
+                FROM core_user u
+                WHERE c.personal_owner_id = u.id
+              )
+              WHERE c.personal_owner_id IS NOT NULL;
+
+  # seed Collection created_at based on the max created at of child objects
+  #
+  # At the time of this writing, the following Models can appear in a Collection:
+  #
+  # - App
+  # - Card
+  # - Dashboard
+  # - Pulse
+  # - Timeline
+  # - NativeQuerySnippet
+  - changeSet:
+      id: v45.00-050
+      author: camsaul
+      validCheckSum: ANY
+      comment: Added 0.45.0 -- seed Collection.created_at with value of oldest item for non-Personal Collections
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE collection c
+              SET created_at = created_ats.created_at
+              FROM (
+                SELECT min(created_at) AS created_at, collection_id
+                FROM (
+                  SELECT created_at, collection_id FROM app                  UNION ALL
+                  SELECT created_at, collection_id FROM report_card          UNION ALL
+                  SELECT created_at, collection_id FROM report_dashboard     UNION ALL
+                  SELECT created_at, collection_id FROM pulse                UNION ALL
+                  SELECT created_at, collection_id FROM timeline             UNION ALL
+                  SELECT created_at, collection_id FROM native_query_snippet
+                ) created_ats
+                GROUP BY collection_id
+              ) created_ats
+              WHERE c.id = created_ats.collection_id
+                AND c.personal_owner_id IS NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE collection c
+              LEFT JOIN (
+                SELECT min(created_at) AS created_at, collection_id
+                FROM (
+                  SELECT created_at, collection_id FROM app                  UNION ALL
+                  SELECT created_at, collection_id FROM report_card          UNION ALL
+                  SELECT created_at, collection_id FROM report_dashboard     UNION ALL
+                  SELECT created_at, collection_id FROM pulse                UNION ALL
+                  SELECT created_at, collection_id FROM timeline             UNION ALL
+                  SELECT created_at, collection_id FROM native_query_snippet
+                ) created_ats
+                GROUP BY collection_id
+              ) created_ats
+              ON c.id = created_ats.collection_id
+              SET c.created_at = created_ats.created_at
+              WHERE c.personal_owner_id IS NULL
+                AND created_ats.created_at IS NOT NULL;
+        - sql:
+            dbms: h2
+            # I would have preferred using MERGE ... USING instead of WHERE EXISTS ... but it's broken in 1.4.197
+            # because of https://github.com/h2database/h2database/issues/1034, which is fixed in 1.4.198. So this will
+            # have to do for now, even if it's a little ugly.
+            sql: >-
+              WITH created_ats AS (
+                SELECT min(created_at) AS created_at, collection_id
+                FROM (
+                  SELECT created_at, collection_id FROM app                  UNION ALL
+                  SELECT created_at, collection_id FROM report_card          UNION ALL
+                  SELECT created_at, collection_id FROM report_dashboard     UNION ALL
+                  SELECT created_at, collection_id FROM pulse                UNION ALL
+                  SELECT created_at, collection_id FROM timeline             UNION ALL
+                  SELECT created_at, collection_id FROM native_query_snippet
+                ) created_ats
+                GROUP BY collection_id
+              )
+              UPDATE collection c
+              SET created_at = (
+                SELECT created_ats.created_at
+                FROM created_ats
+                WHERE created_ats.collection_id = c.id
+              )
+              WHERE EXISTS (
+                SELECT created_ats.collection_id
+                FROM created_ats
+                WHERE c.id = created_ats.collection_id
+                  AND c.personal_owner_id IS NULL
+              );
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
