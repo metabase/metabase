@@ -3,7 +3,10 @@ import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3-shape";
 import type { Series as D3Series } from "d3-shape";
 import d3 from "d3";
 
-import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
+import {
+  ContinuousScaleType,
+  Range,
+} from "metabase/visualizations/shared/types/scale";
 import { isNotEmpty } from "metabase/core/utils/is-not-empty";
 import { BarData, Series, SeriesData, StackOffset } from "../types";
 import { createXScale, createYScale } from "./scale";
@@ -23,6 +26,7 @@ type CalculatedStackedChartInput<TDatum> = {
   innerHeight: number;
   seriesColors: Record<string, string>;
   xScaleType: ContinuousScaleType;
+  xValueRange?: Range;
 };
 
 export const calculateStackedBars = <TDatum>({
@@ -34,6 +38,7 @@ export const calculateStackedBars = <TDatum>({
   innerHeight,
   seriesColors,
   xScaleType,
+  xValueRange,
 }: CalculatedStackedChartInput<TDatum>) => {
   const seriesByKey = multipleSeries.reduce<Record<string, Series<TDatum>>>(
     (acc, series) => {
@@ -60,12 +65,15 @@ export const calculateStackedBars = <TDatum>({
 
   const yScale = createYScale(data, multipleSeries, innerHeight);
 
-  const xDomain = createStackedXDomain(
-    stackedSeries,
-    additionalXValues,
+  const xDomain =
+    xValueRange ??
+    createStackedXDomain(stackedSeries, additionalXValues, xScaleType);
+  const xScale = createXScale(
+    xDomain,
+    [0, innerWidth],
     xScaleType,
+    !!xValueRange,
   );
-  const xScale = createXScale(xDomain, [0, innerWidth], xScaleType);
 
   const getDatumExtent = _.memoize(
     (stackedSeries: D3Series<TDatum, string>[], datumIndex: number) => {
@@ -123,6 +131,7 @@ type CalculatedNonStackedChartInput<TDatum> = {
   innerHeight: number;
   seriesColors: Record<string, string>;
   xScaleType: ContinuousScaleType;
+  xValueRange?: Range;
 };
 
 export const calculateNonStackedBars = <TDatum>({
@@ -133,15 +142,18 @@ export const calculateNonStackedBars = <TDatum>({
   innerHeight,
   seriesColors,
   xScaleType,
+  xValueRange,
 }: CalculatedNonStackedChartInput<TDatum>) => {
   const yScale = createYScale(data, multipleSeries, innerHeight);
-  const xDomain = createXDomain(
-    data,
-    multipleSeries,
-    additionalXValues,
+  const xDomain =
+    xValueRange ??
+    createXDomain(data, multipleSeries, additionalXValues, xScaleType);
+  const xScale = createXScale(
+    xDomain,
+    [0, innerWidth],
     xScaleType,
+    !!xValueRange,
   );
-  const xScale = createXScale(xDomain, [0, innerWidth], xScaleType);
 
   const seriesData: SeriesData<TDatum>[] = multipleSeries.map(series => {
     const bars = data

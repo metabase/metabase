@@ -1,6 +1,6 @@
 import React from "react";
 import { Group } from "@visx/group";
-import { AxisBottom, AxisLeft } from "@visx/axis";
+import { AxisBottom, AxisLeft, AxisScale } from "@visx/axis";
 import { Bar } from "@visx/shape";
 import type { NumberValue, ScaleBand, ScaleContinuousNumeric } from "d3-scale";
 import { Text } from "@visx/text";
@@ -11,6 +11,7 @@ import { Margin } from "metabase/visualizations/shared/types/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
 import { RowChartTheme, SeriesData, YValue } from "../RowChart/types";
 import { DATA_LABEL_OFFSET } from "./constants";
+import { getDataLabel } from "./utils/data-labels";
 
 export interface RowChartViewProps {
   width: number;
@@ -19,8 +20,9 @@ export interface RowChartViewProps {
   xScale: ScaleContinuousNumeric<number, number, never>;
   seriesData: SeriesData<unknown>[];
   labelsFormatter: (value: NumberValue) => string;
-  yTickFormatter: (value: string | number) => string;
+  yTickFormatter: (value: YValue) => string;
   xTickFormatter: (value: NumberValue) => string;
+  xTicks: number[];
   goal: {
     label: string;
     value: number;
@@ -30,10 +32,11 @@ export interface RowChartViewProps {
   margin: Margin;
   innerWidth: number;
   innerHeight: number;
-  xTicks: number[];
-  shouldShowDataLabels?: boolean;
+  labelledSeries?: string[] | null;
   xLabel?: string | null;
   yLabel?: string | null;
+  hasXAxis?: boolean;
+  hasYAxis?: boolean;
   isStacked?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
@@ -49,7 +52,7 @@ export interface RowChartViewProps {
   ) => void;
 }
 
-export const RowChartView = ({
+const RowChartView = ({
   width,
   height,
   innerHeight,
@@ -63,9 +66,11 @@ export const RowChartView = ({
   yTickFormatter,
   xTickFormatter,
   xTicks,
-  shouldShowDataLabels,
+  labelledSeries,
   yLabel,
   xLabel,
+  hasXAxis = true,
+  hasYAxis = true,
   isStacked,
   style,
   hoveredData,
@@ -105,7 +110,7 @@ export const RowChartView = ({
     <svg width={width} height={height} style={style}>
       <Group top={margin.top} left={margin.left}>
         <GridColumns
-          scale={xScale}
+          scale={xScale as AxisScale<number>}
           height={innerHeight}
           stroke={theme.grid.color}
           tickValues={xTicks}
@@ -113,14 +118,8 @@ export const RowChartView = ({
 
         {seriesData.map((series, seriesIndex) => {
           return series.bars.map(bar => {
-            const {
-              xStartValue,
-              xEndValue,
-              isNegative,
-              yValue,
-              datumIndex,
-              isBorderValue,
-            } = bar;
+            const { xStartValue, xEndValue, isNegative, yValue, datumIndex } =
+              bar;
 
             let y = yScale(yValue);
 
@@ -147,8 +146,13 @@ export const RowChartView = ({
                 ? 1
                 : 0.4;
 
-            const isLabelVisible =
-              shouldShowDataLabels && (!isStacked || isBorderValue);
+            const label = getDataLabel(
+              bar,
+              xScale,
+              series.key,
+              isStacked,
+              labelledSeries,
+            );
 
             const height = innerBarScale?.bandwidth() ?? yScale.bandwidth();
             const value = isNegative ? xStartValue : xEndValue;
@@ -170,7 +174,7 @@ export const RowChartView = ({
                   }
                   onMouseLeave={handleBarMouseLeave}
                 />
-                {isLabelVisible && (
+                {label != null && (
                   <Text
                     textAnchor={isNegative ? "end" : "start"}
                     fontSize={theme.dataLabels.size}
@@ -210,7 +214,9 @@ export const RowChartView = ({
           }}
           labelOffset={margin.left - theme.axis.label.size}
           tickFormat={yTickFormatter}
+          hideAxisLine={!hasYAxis}
           hideTicks
+          tickValues={hasYAxis ? undefined : []}
           numTicks={Infinity}
           scale={yScale}
           stroke={theme.axis.color}
@@ -229,14 +235,15 @@ export const RowChartView = ({
             fill: theme.axis.label.color,
             fontSize: theme.axis.label.size,
             fontWeight: theme.axis.label.weight,
-            verticalAnchor: "end",
             textAnchor: "middle",
+            dy: hasXAxis ? undefined : "-1em",
           }}
+          hideAxisLine={!hasXAxis}
           hideTicks
-          tickValues={xTicks}
+          tickValues={hasXAxis ? xTicks : []}
           tickFormat={xTickFormatter}
           top={innerHeight}
-          scale={xScale}
+          scale={xScale as AxisScale<number>}
           stroke={theme.axis.color}
           tickStroke={theme.axis.color}
           tickLabelProps={() => ({
@@ -250,3 +257,5 @@ export const RowChartView = ({
     </svg>
   );
 };
+
+export default RowChartView;

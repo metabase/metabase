@@ -1,3 +1,4 @@
+import _ from "underscore";
 import type { ScaleContinuousNumeric } from "d3-scale";
 import { ValueFormatter } from "metabase/visualizations/shared/types/format";
 import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
@@ -79,17 +80,12 @@ const getEvenlySpacedTicks = (
   ticksInterval: number,
   ticksCount: number,
 ) => {
-  const ticks: number[] = [];
-
   const [startCoordinate] = scale.range();
 
-  for (let i = 0; i < ticksCount; i++) {
+  return _.range(ticksCount).map(i => {
     const tickCoordinate = startCoordinate + i * ticksInterval;
-    const tickValue = scale.invert(tickCoordinate);
-    ticks.push(tickValue);
-  }
-
-  return ticks;
+    return scale.invert(tickCoordinate);
+  });
 };
 
 export const getXTicks = (

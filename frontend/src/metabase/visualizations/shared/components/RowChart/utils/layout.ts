@@ -44,26 +44,30 @@ export const getChartMargin = <TDatum>(
   measureText: TextMeasurer,
   xLabel?: string | null,
   yLabel?: string | null,
+  hasXAxis?: boolean,
+  hasYAxis?: boolean,
 ): Margin => {
-  const yTicksWidth = getMaxWidth(
-    data.flatMap(datum =>
-      series.map(series => yTickFormatter(series.yAccessor(datum))),
-    ),
-    ticksFont,
-    measureText,
-  );
+  const yAxisOffset = hasYAxis
+    ? getMaxWidth(
+        data.flatMap(datum =>
+          series.map(series => yTickFormatter(series.yAccessor(datum))),
+        ),
+        ticksFont,
+        measureText,
+      ) + TICKS_OFFSET
+    : 0;
+
+  const xAxisOffset = hasXAxis ? TICKS_OFFSET + ticksFont.size : 0;
 
   const margin: Margin = {
     top: hasGoalLine ? GOAL_LINE_PADDING : CHART_PADDING,
     left:
-      yTicksWidth +
-      TICKS_OFFSET +
+      yAxisOffset +
       CHART_PADDING +
       (yLabel != null ? LABEL_PADDING + labelFont.size : 0),
     bottom:
       CHART_PADDING +
-      TICKS_OFFSET +
-      ticksFont.size +
+      xAxisOffset +
       (xLabel != null ? LABEL_PADDING + labelFont.size : 0),
     right: CHART_PADDING,
   };

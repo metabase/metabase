@@ -33,25 +33,29 @@ export const createXScale = (
   domain: ContinuousDomain,
   range: Range,
   type: ContinuousScaleType = "linear",
-) => {
+  isExactRange: boolean,
+): ScaleContinuousNumeric<number, number, never> => {
   switch (type) {
     case "pow":
       return scalePower({
         range,
         domain,
         exponent: 2,
+        clamp: true,
       });
     case "log":
       return scaleLog({
         range,
         domain,
         base: 10,
+        clamp: true,
       });
     default:
       return scaleLinear({
         range,
         domain,
-        nice: true,
+        nice: !isExactRange,
+        clamp: true,
       });
   }
 };

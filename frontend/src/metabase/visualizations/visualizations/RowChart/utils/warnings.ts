@@ -6,16 +6,14 @@ export const getChartWarnings = (
   chartColumns: ChartColumns,
   rows: RowValues[],
 ) => {
-  const chartValuesKeys = rows.reduce((acc, currentRow) => {
-    const dimensionValue = currentRow[chartColumns.dimension.index];
-    const valueKey =
-      "breakout" in chartColumns
-        ? `${currentRow[chartColumns.breakout.index]}:${dimensionValue}`
+  const chartValuesKeys = new Set(
+    rows.map(row => {
+      const dimensionValue = row[chartColumns.dimension.index];
+      return "breakout" in chartColumns
+        ? `${row[chartColumns.breakout.index]}:${dimensionValue}`
         : String(dimensionValue);
-
-    acc.add(valueKey);
-    return acc;
-  }, new Set<string>());
+    }),
+  );
 
   const hasUngroupedData = chartValuesKeys.size < rows.length;
 

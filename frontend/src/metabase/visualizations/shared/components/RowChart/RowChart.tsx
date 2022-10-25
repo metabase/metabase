@@ -6,9 +6,9 @@ import type { NumberValue } from "d3-scale";
 import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
-import { RowChartView, RowChartViewProps } from "../RowChartView/RowChartView";
+import RowChartView, { RowChartViewProps } from "../RowChartView/RowChartView";
 import { ChartGoal } from "../../types/settings";
-import { ContinuousScaleType } from "../../types/scale";
+import { ContinuousScaleType, Range } from "../../types/scale";
 import {
   getMaxYValuesCount,
   getChartMargin,
@@ -36,10 +36,15 @@ export interface RowChartProps<TDatum> {
   goal: ChartGoal | null;
   theme: RowChartTheme;
   stackOffset: StackOffset;
-  shouldShowDataLabels?: boolean;
+  labelledSeries?: string[] | null;
+
+  xValueRange?: Range;
 
   yLabel?: string;
   xLabel?: string;
+
+  hasXAxis?: boolean;
+  hasYAxis?: boolean;
 
   tickFormatters?: ChartTicksFormatters;
   labelsFormatter?: (value: NumberValue) => string;
@@ -66,10 +71,15 @@ export const RowChart = <TDatum,>({
   goal,
   theme,
   stackOffset,
-  shouldShowDataLabels,
+  labelledSeries,
 
   xLabel,
   yLabel,
+
+  hasXAxis = true,
+  hasYAxis = true,
+
+  xValueRange,
 
   tickFormatters = {
     xTickFormatter: defaultFormatter,
@@ -114,6 +124,8 @@ export const RowChart = <TDatum,>({
         measureText,
         xLabel,
         yLabel,
+        hasXAxis,
+        hasYAxis,
       ),
     [
       trimmedData,
@@ -125,6 +137,8 @@ export const RowChart = <TDatum,>({
       measureText,
       xLabel,
       yLabel,
+      hasXAxis,
+      hasYAxis,
     ],
   );
 
@@ -148,6 +162,7 @@ export const RowChart = <TDatum,>({
             innerHeight,
             seriesColors,
             xScaleType,
+            xValueRange,
           })
         : calculateNonStackedBars<TDatum>({
             data: trimmedData,
@@ -157,6 +172,7 @@ export const RowChart = <TDatum,>({
             innerHeight,
             seriesColors,
             xScaleType,
+            xValueRange,
           }),
     [
       additionalXValues,
@@ -167,30 +183,34 @@ export const RowChart = <TDatum,>({
       stackOffset,
       trimmedData,
       xScaleType,
+      xValueRange,
     ],
   );
 
   const paddedXScale = useMemo(
     () =>
-      addSideSpacingForTicksAndLabels(
-        xScale,
-        xDomain,
-        measureText,
-        theme.axis.ticks,
-        xTickFormatter,
-        theme.dataLabels,
-        labelsFormatter,
-        shouldShowDataLabels,
-      ),
+      xValueRange
+        ? xScale
+        : addSideSpacingForTicksAndLabels(
+            xScale,
+            xDomain,
+            measureText,
+            theme.axis.ticks,
+            xTickFormatter,
+            theme.dataLabels,
+            labelsFormatter,
+            (labelledSeries ?? []).length > 0,
+          ),
     [
       labelsFormatter,
       measureText,
-      shouldShowDataLabels,
+      labelledSeries,
       theme.axis.ticks,
       theme.dataLabels,
       xDomain,
       xScale,
       xTickFormatter,
+      xValueRange,
     ],
   );
 
@@ -237,12 +257,14 @@ export const RowChart = <TDatum,>({
       yTickFormatter={yTickFormatter}
       xTickFormatter={xTickFormatter}
       labelsFormatter={labelsFormatter}
-      onClick={onClick}
-      onHover={onHover}
       xTicks={xTicks}
-      shouldShowDataLabels={shouldShowDataLabels}
+      labelledSeries={labelledSeries}
       yLabel={yLabel}
       xLabel={xLabel}
+      hasXAxis={hasXAxis}
+      hasYAxis={hasYAxis}
+      onClick={onClick}
+      onHover={onHover}
     />
   );
 };

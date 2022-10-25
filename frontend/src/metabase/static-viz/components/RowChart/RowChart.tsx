@@ -55,8 +55,6 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   const goal = getChartGoal(settings);
   const theme = getStaticChartTheme(getColor);
   const stackOffset = getStackOffset(settings);
-  const shouldShowDataLabels =
-    settings["graph.show_values"] && stackOffset !== "expand";
 
   const tickFormatters = getStaticFormatters(chartColumns, settings);
 
@@ -74,7 +72,6 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
         goal={goal}
         theme={theme}
         stackOffset={stackOffset}
-        shouldShowDataLabels={shouldShowDataLabels}
         tickFormatters={tickFormatters}
         labelsFormatter={labelsFormatter}
         measureText={staticTextMeasurer}

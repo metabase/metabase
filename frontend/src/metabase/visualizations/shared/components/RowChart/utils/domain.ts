@@ -1,4 +1,4 @@
-import d3 from "d3";
+import { extent } from "d3-array";
 import type { Series as D3Series } from "d3-shape";
 import { isNotEmpty } from "metabase/core/utils/is-not-empty";
 import {
@@ -6,6 +6,11 @@ import {
   ContinuousScaleType,
 } from "metabase/visualizations/shared/types/scale";
 import { Series } from "../types";
+
+const getExtent = (values: number[]) => {
+  const [min, max] = extent(values);
+  return [min ?? 0, max ?? 0];
+};
 
 export const createYDomain = <TDatum>(
   data: TDatum[],
@@ -24,7 +29,7 @@ export const createXDomain = <TDatum>(
   const allXValues = series.flatMap(series =>
     data.map(datum => series.xAccessor(datum)).filter(isNotEmpty),
   );
-  const [min, max] = d3.extent([...allXValues, ...additionalValues]);
+  const [min, max] = getExtent([...allXValues, ...additionalValues]);
 
   if (xScaleType === "log") {
     return [1, Math.max(max, 1)];
@@ -38,7 +43,7 @@ export const createStackedXDomain = <TDatum>(
   additionalValues: number[],
   xScaleType: ContinuousScaleType,
 ): ContinuousDomain => {
-  const [min, max] = d3.extent([...stackedSeries.flat(2), ...additionalValues]);
+  const [min, max] = getExtent([...stackedSeries.flat(2), ...additionalValues]);
 
   if (xScaleType === "log") {
     return [1, Math.max(max, 1)];

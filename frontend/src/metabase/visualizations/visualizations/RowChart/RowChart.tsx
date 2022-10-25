@@ -49,6 +49,7 @@ import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { GroupedDatum } from "metabase/visualizations/shared/types/data";
+import { IconProps } from "metabase/components/Icon";
 import { isDimension, isMetric } from "metabase-lib/lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -58,6 +59,12 @@ import {
   RowLegendCaption,
 } from "./RowChart.styled";
 import { getLegendItems } from "./utils/legend";
+import {
+  getAxesVisibility,
+  getLabelledSeries,
+  getLabels,
+  getXValueRange,
+} from "./utils/settings";
 
 const RowChartRenderer = ExplicitSize({
   wrapped: true,
@@ -80,8 +87,8 @@ interface RowChartVisualizationProps {
   card: any;
   series: any;
   hovered: any;
-  headerIcon: any;
-  actionButtons: any;
+  headerIcon: IconProps;
+  actionButtons: React.ReactNode;
   isFullscreen: boolean;
   isQueryBuilder: boolean;
   showTitle: boolean;
@@ -120,8 +127,6 @@ const RowChartVisualization = ({
   const goal = useMemo(() => getChartGoal(settings), [settings]);
   const theme = useMemo(getChartTheme, []);
   const stackOffset = getStackOffset(settings);
-  const shouldShowDataLabels =
-    settings["graph.show_values"] && stackOffset !== "expand";
 
   const chartWarnings = useMemo(
     () => getChartWarnings(chartColumns, data.rows),
@@ -227,17 +232,6 @@ const RowChartVisualization = ({
         }
       : null;
 
-  const yLabel =
-    settings["graph.x_axis.labels_enabled"] &&
-    (settings["graph.x_axis.title_text"]?.length ?? 0) > 0
-      ? settings["graph.x_axis.title_text"]
-      : undefined;
-  const xLabel =
-    settings["graph.y_axis.labels_enabled"] &&
-    (settings["graph.y_axis.title_text"]?.length ?? 0) > 0
-      ? settings["graph.y_axis.title_text"]
-      : undefined;
-
   const hasTitle = showTitle && settings["card.title"];
   const title = settings["card.title"] || card.name;
   const description = settings["card.description"];
@@ -248,6 +242,20 @@ const RowChartVisualization = ({
     seriesColors,
     settings,
     rawSeries,
+  );
+
+  const { xLabel, yLabel } = useMemo(() => getLabels(settings), [settings]);
+
+  const xValueRange = useMemo(() => getXValueRange(settings), [settings]);
+
+  const labelledSeries = useMemo(
+    () => getLabelledSeries(settings, series),
+    [series, settings],
+  );
+
+  const { hasXAxis, hasYAxis } = useMemo(
+    () => getAxesVisibility(settings),
+    [settings],
   );
 
   return (
@@ -281,7 +289,6 @@ const RowChartVisualization = ({
           goal={goal}
           theme={theme}
           stackOffset={stackOffset}
-          shouldShowDataLabels={shouldShowDataLabels}
           tickFormatters={tickFormatters}
           labelsFormatter={labelsFormatter}
           measureText={measureText}
@@ -291,6 +298,10 @@ const RowChartVisualization = ({
           xLabel={xLabel}
           yLabel={yLabel}
           xScaleType={settings["graph.y_axis.scale"]}
+          xValueRange={xValueRange}
+          labelledSeries={labelledSeries}
+          hasXAxis={hasXAxis}
+          hasYAxis={hasYAxis}
         />
       </RowChartLegendLayout>
     </RowVisualizationRoot>
