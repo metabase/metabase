@@ -1,11 +1,14 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import EntityMenu from "metabase/components/EntityMenu";
+import Modal from "metabase/components/Modal";
 import Tooltip from "metabase/components/Tooltip";
 
 import * as Urls from "metabase/lib/urls";
+
+import ArchiveDataAppPageModal from "metabase/writeback/containers/ArchiveDataAppPageModal";
 
 import type { DataApp, DataAppPage } from "metabase-types/api";
 
@@ -17,6 +20,7 @@ interface Props {
   hasManageContentAction?: boolean;
   onEditAppPage: () => void;
   onEditAppSettings: () => void;
+  onPageArchived: (pageId: DataAppPage["id"]) => void;
 }
 
 type MenuItem = {
@@ -32,7 +36,10 @@ function DataAppActionPanel({
   hasManageContentAction = true,
   onEditAppPage,
   onEditAppSettings,
+  onPageArchived,
 }: Props) {
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+
   const hasSelectedPage = typeof selectedPageId === "number";
 
   const menuItems = useMemo(() => {
@@ -52,8 +59,26 @@ function DataAppActionPanel({
       });
     }
 
+    if (hasSelectedPage) {
+      items.push({
+        title: t`Archive this page`,
+        icon: "archive",
+        action: () => setIsArchiveModalOpen(true),
+      });
+    }
+
     return items;
-  }, [dataApp, hasManageContentAction, onEditAppSettings]);
+  }, [dataApp, hasSelectedPage, hasManageContentAction, onEditAppSettings]);
+
+  const handleCloseArchiveModal = useCallback(() => {
+    setIsArchiveModalOpen(false);
+  }, []);
+
+  const handleArchive = useCallback(() => {
+    if (selectedPageId) {
+      onPageArchived(selectedPageId);
+    }
+  }, [selectedPageId, onPageArchived]);
 
   return (
     <Root>
@@ -67,6 +92,16 @@ function DataAppActionPanel({
         triggerIcon="ellipsis"
         tooltip={t`Manage content, settings and more…`}
       />
+      {hasSelectedPage && isArchiveModalOpen && (
+        <Modal onClose={handleCloseArchiveModal}>
+          <ArchiveDataAppPageModal
+            appId={dataApp.id}
+            pageId={selectedPageId}
+            onArchive={handleArchive}
+            onClose={handleCloseArchiveModal}
+          />
+        </Modal>
+      )}
     </Root>
   );
 }

@@ -25,6 +25,7 @@ interface Props extends Omit<MainNavbarProps, "location" | "params"> {
   onEditAppSettings: () => void;
   onAddData: () => void;
   onNewPage: () => void;
+  onPageArchived: (pageId: DataAppPageId) => void;
 }
 
 function DataAppNavbarView({
@@ -36,6 +37,7 @@ function DataAppNavbarView({
   onEditAppSettings,
   onAddData,
   onNewPage,
+  onPageArchived,
 }: Props) {
   const { "data-app-page": dataAppPage } = _.indexBy(
     selectedItems,
@@ -90,6 +92,7 @@ function DataAppNavbarView({
         hasManageContentAction={mode !== "manage-content"}
         onEditAppPage={onEditAppPage}
         onEditAppSettings={onEditAppSettings}
+        onPageArchived={onPageArchived}
       />
     </Root>
   );
