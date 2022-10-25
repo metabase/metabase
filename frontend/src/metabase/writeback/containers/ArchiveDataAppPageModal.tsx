@@ -20,9 +20,7 @@ interface OwnProps {
 }
 
 interface DispatchProps {
-  archiveDataAppPage: (
-    payload: ArchiveDataAppPagePayload,
-  ) => Promise<{ dataApp: DataApp }>;
+  archiveDataAppPage: (payload: ArchiveDataAppPagePayload) => Promise<void>;
 }
 
 type Props = OwnProps & DispatchProps;
