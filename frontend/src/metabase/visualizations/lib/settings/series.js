@@ -154,8 +154,9 @@ export function seriesSetting({
 
   return {
     ...nestedSettings(settingId, {
-      hidden: true,
-      section: t`Style`,
+      getHidden: (series, settings, { isDashboard }) => !isDashboard,
+      getSection: (series, settings, { isDashboard }) =>
+        isDashboard ? t`Display` : t`Style`,
       objectName: "series",
       getObjects: (series, settings) => series,
       getObjectKey: keyForSingleSeries,

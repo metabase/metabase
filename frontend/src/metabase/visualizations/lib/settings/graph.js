@@ -148,7 +148,7 @@ export const GRAPH_DATA_SETTINGS = {
     },
     readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
     writeDependencies: ["graph.metrics"],
-    dashboardReadOnly: true,
+    dashboard: false,
     useRawSeries: true,
   },
   "graph.series_order": {
@@ -186,7 +186,7 @@ export const GRAPH_DATA_SETTINGS = {
     getHidden: (series, settings) => {
       return settings["graph.dimensions"]?.length < 2 || series.length > 20;
     },
-    dashboardReadOnly: true,
+    dashboard: false,
   },
   "graph.metrics": {
     section: t`Data`,
@@ -234,7 +234,7 @@ export const GRAPH_DATA_SETTINGS = {
     },
     readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
     writeDependencies: ["graph.dimensions"],
-    dashboardReadOnly: true,
+    dashboard: false,
     useRawSeries: true,
   },
   ...seriesSetting(),
