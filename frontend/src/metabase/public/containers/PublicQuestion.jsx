@@ -3,22 +3,16 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
+import { updateIn } from "icepick";
 import Visualization from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import EmbedFrame from "../components/EmbedFrame";
 import title from "metabase/hoc/Title";
 
-import {
-  getParameterValuesBySlug,
-  getParameterValuesByIdFromQueryParams,
-} from "metabase/parameters/utils/parameter-values";
-import { applyParameters } from "metabase/meta/Card";
-import {
-  getParametersFromCard,
-  getCardUiParameters,
-} from "metabase/parameters/utils/cards";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
+
+import { getCardUiParameters } from "metabase/parameters/utils/cards";
 
 import {
   PublicApi,
@@ -33,8 +27,10 @@ import { addParamValues, addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import PublicMode from "metabase/modes/components/modes/PublicMode";
-
-import { updateIn } from "icepick";
+import { getParameterValuesBySlug } from "metabase-lib/lib/parameters/utils/parameter-values";
+import { getParametersFromCard } from "metabase-lib/lib/parameters/utils/template-tags";
+import { applyParameters } from "metabase-lib/lib/queries/utils/card";
+import EmbedFrame from "../components/EmbedFrame";
 
 const mapStateToProps = state => ({
   metadata: getMetadata(state),

@@ -37,6 +37,8 @@
 ;;; |                                                TOKEN VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(declare premium-embedding-token)
+
 (defn- active-user-count []
   ;; NOTE: models.user imports public settings, which imports this namespace,
   ;; so we can't import the User model here.
@@ -118,6 +120,12 @@
   (memoize/ttl valid-token->features*
     :ttl/threshold valid-token-recheck-interval-ms))
 
+(defsetting token-status
+  (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
+  :visibility :admin
+  :type       :json
+  :setter     :none
+  :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |
@@ -228,6 +236,10 @@
   "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking,
   etc.)?"
   :content-management)
+
+(define-premium-feature ^{:added "0.45.0"} enable-serialization?
+  "Enable the v2 SerDes functionality"
+  :serialization)
 
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"

@@ -1,33 +1,35 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { t } from "ttag";
-
-import Database from "metabase-lib/lib/metadata/Database";
-import Table from "metabase-lib/lib/metadata/Table";
-import { countLines } from "metabase/lib/string";
+import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
+import _ from "underscore";
+import slugg from "slugg";
 import { humanize } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
 import {
-  getEngineNativeAceMode,
-  getEngineNativeType,
-  getEngineNativeRequiresTable,
-} from "metabase/lib/engine";
-import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
-import _ from "underscore";
-import Question from "metabase-lib/lib/Question";
-import { DatasetQuery, NativeDatasetQuery } from "metabase-types/types/Card";
+  Card,
+  DatasetQuery,
+  NativeDatasetQuery,
+} from "metabase-types/types/Card";
 import {
   DependentMetadataItem,
-  TemplateTags,
   TemplateTag,
+  TemplateTags,
 } from "metabase-types/types/Query";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
+import Question from "metabase-lib/lib/Question";
+import Table from "metabase-lib/lib/metadata/Table";
+import Database from "metabase-lib/lib/metadata/Database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
-import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
-import Variable, { TemplateTagVariable } from "../Variable";
+import Variable from "metabase-lib/lib/variables/Variable";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
 import { createTemplateTag } from "metabase-lib/lib/queries/TemplateTag";
-import DimensionOptions from "../DimensionOptions";
 import ValidationError from "metabase-lib/lib/ValidationError";
+import { isFieldReference } from "metabase-lib/lib/references";
+import Dimension, { FieldDimension, TemplateTagDimension } from "../Dimension";
+import DimensionOptions from "../DimensionOptions";
+
+import { getNativeQueryTable } from "./utils/native-query-table";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
@@ -39,30 +41,88 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     "template-tags": {},
   },
 };
-// This regex needs to match logic in replaceCardId and _getUpdatedTemplateTags.
-const CARD_TAG_REGEX = /^#([0-9]*)$/;
 
-function cardTagCardId(name) {
-  const match = name.match(CARD_TAG_REGEX);
+///////////////////////////
+// QUERY TEXT TAG UTILS
 
-  if (match && match[1].length > 0) {
-    return parseInt(match[1]);
-  }
+const VARIABLE_TAG_REGEX: RegExp = /\{\{\s*([A-Za-z0-9_\.]+)\s*\}\}/g;
+const SNIPPET_TAG_REGEX: RegExp = /\{\{\s*(snippet:\s*[^}]+)\s*\}\}/g;
+export const CARD_TAG_REGEX: RegExp =
+  /\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}/g;
+const TAG_REGEXES: RegExp[] = [
+  VARIABLE_TAG_REGEX,
+  SNIPPET_TAG_REGEX,
+  CARD_TAG_REGEX,
+];
 
-  return null;
+// look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
+// a variable name can optionally end with :start or :end which is not considered part of the actual variable name
+// expected pattern is like mustache templates, so we are looking for something like {{category}}
+// anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
+// See unit tests for examples
+export function recognizeTemplateTags(queryText: string): string[] {
+  const tagNames = TAG_REGEXES.flatMap(r =>
+    Array.from(queryText.matchAll(r)),
+  ).map(m => m[1]);
+  return _.uniq(tagNames);
 }
 
-function isCardQueryName(name) {
-  return CARD_TAG_REGEX.test(name);
+// matches '#123-foo-bar' and '#123' but not '#123foo'
+const CARD_TAG_NAME_REGEX: RegExp = /^#([0-9]*)(-[a-z0-9-]*)?$/;
+
+function tagRegex(tagName: string): RegExp {
+  return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
 }
 
-function snippetNameFromTagName(name) {
+function replaceTagName(
+  query: NativeQuery,
+  oldTagName: string,
+  newTagName: string,
+): NativeQuery {
+  const queryText = query
+    .queryText()
+    .replace(tagRegex(oldTagName), `{{${newTagName}}}`);
+  return query.setQueryText(queryText);
+}
+
+export function cardIdFromTagName(name: string): number | null {
+  const match = name.match(CARD_TAG_NAME_REGEX);
+  return parseInt(match?.[1]) || null;
+}
+
+function isCardTagName(tagName: string): boolean {
+  return CARD_TAG_NAME_REGEX.test(tagName);
+}
+
+function snippetNameFromTagName(name: string): string {
   return name.slice("snippet:".length).trim();
 }
 
-function isSnippetName(name) {
+function isSnippetTagName(name: string): boolean {
   return name.startsWith("snippet:");
 }
+
+export function updateCardTemplateTagNames(
+  query: NativeQuery,
+  cards: Card[],
+): NativeQuery {
+  const cardById = _.indexBy(cards, "id");
+  const tags = query
+    .templateTags()
+    // only tags for cards
+    .filter(tag => tag.type === "card")
+    // only tags for given cards
+    .filter(tag => cardById[tag["card-id"]]);
+  // reduce over each tag, updating query text with the new tag name
+  return tags.reduce((query, tag) => {
+    const card = cardById[tag["card-id"]];
+    const newTagName = `#${card.id}-${slugg(card.name)}`;
+    return replaceTagName(query, tag.name, newTagName);
+  }, query);
+}
+
+// QUERY TEXT TAG UTILS END
+///////////////////////////
 
 export default class NativeQuery extends AtomicQuery {
   // For Flow type completion
@@ -189,19 +249,14 @@ export default class NativeQuery extends AtomicQuery {
     );
   }
 
-  table(): Table | null | undefined {
-    const database = this.database();
-    const collection = this.collection();
+  table(): Table | null {
+    return getNativeQueryTable(this);
+  }
 
-    if (!database || !collection) {
-      return null;
-    }
-
-    return (
-      _.findWhere(database.tables, {
-        name: collection,
-      }) || null
-    );
+  sourceTable(): null {
+    // Source tables are only available in structured queries,
+    // this method exists to keep query API consistent
+    return null;
   }
 
   queryText(): string {
@@ -254,32 +309,28 @@ export default class NativeQuery extends AtomicQuery {
 
   lineCount(): number {
     const queryText = this.queryText();
-    return queryText ? countLines(queryText) : 0;
-  }
-
-  /**
-   * The ACE Editor mode name, e.g. 'ace/mode/json'
-   */
-  aceMode(): string {
-    return getEngineNativeAceMode(this.engine());
-  }
-
-  /**
-   * Name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
-   */
-  nativeQueryLanguage() {
-    return getEngineNativeType(this.engine()).toUpperCase();
+    return queryText ? queryText.split(/\n/g).length : 0;
   }
 
   /**
    * Whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
    */
   requiresTable() {
-    return getEngineNativeRequiresTable(this.engine());
+    return this.engine() === "mongo";
+  }
+
+  templateTagsMap(): TemplateTags {
+    return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
 
   templateTags(): TemplateTag[] {
     return Object.values(this.templateTagsMap());
+  }
+
+  variableTemplateTags(): TemplateTag[] {
+    return this.templateTags().filter(t =>
+      ["dimension", "text", "number", "date"].includes(t.type),
+    );
   }
 
   hasSnippets() {
@@ -290,8 +341,14 @@ export default class NativeQuery extends AtomicQuery {
     return this.templateTags().filter(t => t.type !== "snippet");
   }
 
-  templateTagsMap(): TemplateTags {
-    return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
+  hasReferencedQuestions() {
+    return this.templateTags().some(t => t.type === "card");
+  }
+
+  referencedQuestionIds(): number[] {
+    return this.templateTags()
+      .filter(tag => tag.type === "card")
+      .map(tag => tag["card-id"]);
   }
 
   validate() {
@@ -326,7 +383,7 @@ export default class NativeQuery extends AtomicQuery {
     return tagErrors.length === 0;
   }
 
-  setTemplateTag(name, tag) {
+  setTemplateTag(name: string, tag: TemplateTag) {
     return this.setDatasetQuery(
       assocIn(this.datasetQuery(), ["native", "template-tags", name], tag),
     );
@@ -334,14 +391,6 @@ export default class NativeQuery extends AtomicQuery {
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
     return new NativeQuery(this._originalQuestion, datasetQuery);
-  }
-
-  // `replaceCardId` updates the query text to reference a different card.
-  // Template tags are updated as a result of calling `setQueryText`.
-  replaceCardId(oldId, newId) {
-    const re = new RegExp(`{{\\s*#${oldId}\\s*}}`, "g");
-    const newQueryText = this.queryText().replace(re, () => `{{#${newId}}}`);
-    return this.setQueryText(newQueryText);
   }
 
   dimensionOptions(
@@ -390,7 +439,7 @@ export default class NativeQuery extends AtomicQuery {
     return query;
   }
 
-  updateQueryTextWithNewSnippetNames(snippets): NativeQuery {
+  updateSnippetNames(snippets): NativeQuery {
     const tagsBySnippetId = _.chain(this.templateTags())
       .filter(tag => tag.type === "snippet")
       .groupBy(tag => tag["snippet-id"])
@@ -407,7 +456,7 @@ export default class NativeQuery extends AtomicQuery {
       for (const tag of tagsBySnippetId[snippet.id] || []) {
         if (tag["snippet-name"] !== snippet.name) {
           queryText = queryText.replace(
-            new RegExp(`{{\\s*${tag.name}\\s*}}`, "g"),
+            tagRegex(tag.name),
             `{{snippet: ${snippet.name}}}`,
           );
         }
@@ -448,10 +497,10 @@ export default class NativeQuery extends AtomicQuery {
 
           newTag.name = newTags[0];
 
-          if (isCardQueryName(newTag.name)) {
+          if (isCardTagName(newTag.name)) {
             newTag.type = "card";
-            newTag["card-id"] = cardTagCardId(newTag.name);
-          } else if (isSnippetName(newTag.name)) {
+            newTag["card-id"] = cardIdFromTagName(newTag.name);
+          } else if (isSnippetTagName(newTag.name)) {
             newTag.type = "snippet";
             newTag["snippet-name"] = snippetNameFromTagName(newTag.name);
           }
@@ -469,12 +518,12 @@ export default class NativeQuery extends AtomicQuery {
             templateTags[tagName] = createTemplateTag(tagName);
 
             // parse card ID from tag name for card query template tags
-            if (isCardQueryName(tagName)) {
+            if (isCardTagName(tagName)) {
               templateTags[tagName] = Object.assign(templateTags[tagName], {
                 type: "card",
-                "card-id": cardTagCardId(tagName),
+                "card-id": cardIdFromTagName(tagName),
               });
-            } else if (isSnippetName(tagName)) {
+            } else if (isSnippetTagName(tagName)) {
               // extract snippet name from snippet tag
               templateTags[tagName] = Object.assign(templateTags[tagName], {
                 type: "snippet",
@@ -502,9 +551,7 @@ export default class NativeQuery extends AtomicQuery {
     const templateTags = this.templateTags();
     return templateTags
       .filter(
-        tag =>
-          tag.type === "dimension" &&
-          FieldDimension.isFieldClause(tag.dimension),
+        tag => tag.type === "dimension" && isFieldReference(tag.dimension),
       )
       .map(tag => {
         const dimension = FieldDimension.parseMBQL(
@@ -517,22 +564,4 @@ export default class NativeQuery extends AtomicQuery {
         };
       });
   }
-}
-
-// look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
-// a variable name can optionally end with :start or :end which is not considered part of the actual variable name
-// expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
-// anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
-// variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
-export function recognizeTemplateTags(queryText: string): string[] {
-  const tagNames = [];
-  let match;
-  const re = /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_\.]+?|#[0-9]*)\s*\}\}/g;
-
-  while ((match = re.exec(queryText)) != null) {
-    tagNames.push(match[1]);
-  }
-
-  // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
-  return _.uniq(tagNames);
 }

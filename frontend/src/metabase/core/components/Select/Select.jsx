@@ -1,14 +1,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import _ from "underscore";
+import cx from "classnames";
+import { createSelector } from "reselect";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
-
-import _ from "underscore";
-import cx from "classnames";
-
-import { createSelector } from "reselect";
 
 import { color } from "metabase/lib/colors";
 
@@ -61,6 +59,8 @@ class Select extends Component {
     optionIconFn: PropTypes.func,
     optionClassNameFn: PropTypes.func,
     optionStylesFn: PropTypes.func,
+
+    footer: PropTypes.node,
   };
 
   static defaultProps = {
@@ -205,6 +205,7 @@ class Select extends Component {
       onClose,
       disabled,
       width,
+      footer,
     } = this.props;
 
     const sections = this._getSections();
@@ -270,6 +271,7 @@ class Select extends Component {
           searchPlaceholder={searchPlaceholder}
           hideEmptySectionsInSearch={hideEmptySectionsInSearch}
         />
+        {footer}
       </PopoverWithTrigger>
     );
   }

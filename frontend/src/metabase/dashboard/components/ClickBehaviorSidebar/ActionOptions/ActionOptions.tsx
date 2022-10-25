@@ -1,110 +1,91 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
-import { t } from "ttag";
+import { connect } from "react-redux";
 
-import Actions from "metabase/entities/actions";
+import { updateButtonActionMapping } from "metabase/dashboard/actions";
 
-import ClickMappings from "metabase/dashboard/components/ClickMappings";
+import ActionPicker from "metabase/containers/ActionPicker";
 
 import type {
-  DashboardOrderedCard,
-  ClickBehavior,
+  ActionDashboardCard,
+  ActionParametersMapping,
   WritebackAction,
-  WritebackActionClickBehavior,
 } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+import type { UiParameter } from "metabase-lib/lib/parameters/types";
 
-import { SidebarItem } from "../SidebarItem";
-import { Heading, SidebarContent } from "../ClickBehaviorSidebar.styled";
-import {
-  ActionSidebarItem,
-  ActionSidebarItemIcon,
-  ActionDescription,
-} from "./ActionOptions.styled";
+import { SidebarContent } from "../ClickBehaviorSidebar.styled";
 
-interface ActionOptionProps {
-  name: string;
-  description?: string | null;
-  isSelected: boolean;
-  onClick: () => void;
+import ActionClickMappings from "./ActionClickMappings";
+import { ClickMappingsContainer } from "./ActionOptions.styled";
+
+import { ensureParamsHaveNames } from "./utils";
+
+interface ActionOptionsOwnProps {
+  dashcard: ActionDashboardCard;
+  parameters: UiParameter[];
 }
 
-const ActionOption = ({
-  name,
-  description,
-  isSelected,
-  onClick,
-}: ActionOptionProps) => {
-  return (
-    <ActionSidebarItem
-      onClick={onClick}
-      isSelected={isSelected}
-      hasDescription={!!description}
-    >
-      <ActionSidebarItemIcon name="bolt" isSelected={isSelected} />
-      <div>
-        <SidebarItem.Name>{name}</SidebarItem.Name>
-        {description && <ActionDescription>{description}</ActionDescription>}
-      </div>
-    </ActionSidebarItem>
-  );
+interface ActionOptionsDispatchProps {
+  onUpdateButtonActionMapping: (
+    dashCardId: number,
+    settings: {
+      card_id?: number | null;
+      action?: WritebackAction | null;
+      parameter_mappings?: ActionParametersMapping[] | null;
+      visualization_settings?: ActionDashboardCard["visualization_settings"];
+    },
+  ) => void;
+}
+
+type ActionOptionsProps = ActionOptionsOwnProps & ActionOptionsDispatchProps;
+
+const mapDispatchToProps = {
+  onUpdateButtonActionMapping: updateButtonActionMapping,
 };
-
-interface ActionOptionsProps {
-  dashcard: DashboardOrderedCard;
-  clickBehavior: WritebackActionClickBehavior;
-  updateSettings: (settings: ClickBehavior) => void;
-}
 
 function ActionOptions({
   dashcard,
-  clickBehavior,
-  updateSettings,
+  parameters,
+  onUpdateButtonActionMapping,
 }: ActionOptionsProps) {
-  const handleActionSelected = useCallback(
-    action => {
-      updateSettings({
-        type: clickBehavior.type,
-        emitter_id: clickBehavior.emitter_id,
-        action: action.id,
+  const selectedAction = dashcard.action;
+
+  const handleParameterMappingChange = useCallback(
+    (parameter_mappings: ActionParametersMapping[] | null) => {
+      onUpdateButtonActionMapping(dashcard.id, {
+        parameter_mappings,
       });
     },
-    [clickBehavior, updateSettings],
+    [dashcard, onUpdateButtonActionMapping],
   );
+
+  if (!selectedAction) {
+    return null;
+  }
 
   return (
     <SidebarContent>
-      <Heading className="text-medium">{t`Pick an action`}</Heading>
-      <Actions.ListLoader>
-        {({ actions }: { actions: WritebackAction[] }) => {
-          const selectedAction = actions.find(
-            action => action.id === clickBehavior.action,
-          );
-          return (
-            <>
-              {actions.map(action => (
-                <ActionOption
-                  key={action.id}
-                  name={action.name}
-                  description={action.description}
-                  isSelected={clickBehavior.action === action.id}
-                  onClick={() => handleActionSelected(action)}
-                />
-              ))}
-              {selectedAction && (
-                <ClickMappings
-                  isAction
-                  object={selectedAction}
-                  dashcard={dashcard}
-                  clickBehavior={clickBehavior}
-                  updateSettings={updateSettings}
-                />
-              )}
-            </>
-          );
-        }}
-      </Actions.ListLoader>
+      <ClickMappingsContainer>
+        <ActionClickMappings
+          action={{
+            ...selectedAction,
+            parameters: ensureParamsHaveNames(selectedAction?.parameters ?? []),
+          }}
+          dashcard={dashcard}
+          parameters={parameters}
+          onChange={handleParameterMappingChange}
+        />
+      </ClickMappingsContainer>
     </SidebarContent>
   );
 }
 
-export default ActionOptions;
+export default connect<
+  unknown,
+  ActionOptionsDispatchProps,
+  ActionOptionsOwnProps,
+  State
+>(
+  null,
+  mapDispatchToProps,
+)(ActionOptions);

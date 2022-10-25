@@ -518,7 +518,7 @@
                        []
                        [[expected-count]])
                      (mt/formatted-rows [int]
-                                        (qp/process-query query)))))))))
+                       (qp/process-query query)))))))))
 
     (testing "Make sure we're not being too aggressive and encoding percent signs (e.g. SQL `LIKE`)"
       (is (= [[1]]

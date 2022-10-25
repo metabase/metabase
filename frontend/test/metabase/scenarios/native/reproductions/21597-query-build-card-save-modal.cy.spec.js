@@ -15,7 +15,7 @@ const secondDatabaseId = SAMPLE_DB_ID + 1;
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
-describe("issue 21597", () => {
+describe("issue 21597", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -65,7 +65,7 @@ describe("issue 21597", () => {
     // Try to save the native query
     cy.findByTestId("qb-header-action-panel").findByText("Save").click();
     modal().within(() => {
-      cy.findByPlaceholderText("What is the name of your card?").type("Q");
+      cy.findByPlaceholderText("What is the name of your question?").type("Q");
       cy.findByText("Save").click();
       cy.wait("@saveNativeQuestion");
       cy.findByText(

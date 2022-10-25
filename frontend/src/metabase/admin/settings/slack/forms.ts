@@ -17,7 +17,7 @@ export const getSlackForm = (
     {
       name: "slack-files-channel",
       type: "input",
-      title: t`Slack channel name`,
+      title: t`Public channel to store image files`,
       placeholder: "metabase_files",
       readOnly,
       validate: (value: string) => !value && t`required`,

@@ -7,7 +7,7 @@ import { t } from "ttag";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import { updateSettings } from "metabase/visualizations/lib/settings";
-import { keyForColumn } from "metabase/lib/dataset";
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 
 export default ({ question, clicked }) => {
   if (
@@ -28,6 +28,10 @@ export default ({ question, clicked }) => {
       buttonType: "formatting",
       icon: "gear",
       tooltip: t`Column formatting`,
+      popoverProps: {
+        placement: "right-end",
+        offset: [0, 20],
+      },
       popover: function FormatPopover({ series, onChange }) {
         const handleChangeSettings = changedSettings => {
           onChange(
@@ -52,7 +56,7 @@ export default ({ question, clicked }) => {
                 ...columnSettingsWidget,
                 props: {
                   ...columnSettingsWidget.props,
-                  initialKey: keyForColumn(column),
+                  initialKey: getColumnKey(column),
                 },
               }}
               hidden={false}
@@ -65,5 +69,7 @@ export default ({ question, clicked }) => {
 };
 
 const PopoverRoot = styled.div`
-  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  max-height: 600px;
+  overflow-y: auto;
 `;

@@ -15,11 +15,6 @@
 (def ^:private ^{:arglists '([group-mappings])} validate-group-mappings
   (s/validator GroupMappings))
 
-(defsetting saml-enabled
-  (deferred-tru "Enable SAML authentication.")
-  :type    :boolean
-  :default false)
-
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
 using, this usually looks like https://your-org-name.example.com or https://example.com/app/my_saml_app/abc123/sso/saml"))
@@ -91,17 +86,22 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :default {}
   :setter (comp (partial setting/set-value-of-type! :json :saml-group-mappings) validate-group-mappings))
 
-(defn saml-configured?
-  "Check if SAML is enabled and that the mandatory settings are configured."
-  []
-  (boolean (and (saml-enabled)
-                (saml-identity-provider-uri)
-                (saml-identity-provider-certificate))))
+(defsetting saml-configured
+  (deferred-tru "Are the mandatory SAML settings configured?")
+  :type   :boolean
+  :setter :none
+  :getter (fn [] (boolean
+                  (and (saml-identity-provider-uri)
+                       (saml-identity-provider-certificate)))))
 
-(defsetting jwt-enabled
-  (deferred-tru "Enable JWT based authentication")
+(defsetting saml-enabled
+  (deferred-tru "Is SAML authentication configured and enabled?")
   :type    :boolean
-  :default false)
+  :default false
+  :getter  (fn []
+             (if (saml-configured)
+               (setting/get-value-of-type :boolean :saml-enabled)
+               false)))
 
 (defsetting jwt-identity-provider-uri
   (deferred-tru "URL of JWT based login page"))
@@ -140,23 +140,31 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :default {}
   :setter  (comp (partial setting/set-value-of-type! :json :jwt-group-mappings) validate-group-mappings))
 
-(defn jwt-configured?
-  "Check if JWT is enabled and that the mandatory settings are configured."
-  []
-  (boolean (and (jwt-enabled)
-                (jwt-identity-provider-uri)
-                (jwt-shared-secret))))
+(defsetting jwt-configured
+  (deferred-tru "Are the mandatory JWT settings configured?")
+  :type   :boolean
+  :setter :none
+  :getter (fn [] (boolean
+                  (and (jwt-identity-provider-uri)
+                       (jwt-shared-secret)))))
+
+(defsetting jwt-enabled
+  (deferred-tru "Is JWT authentication configured and enabled?")
+  :type    :boolean
+  :default false
+  :getter  (fn []
+             (if (jwt-configured)
+               (setting/get-value-of-type :boolean :jwt-enabled)
+               false)))
 
 (defsetting send-new-sso-user-admin-email?
   (deferred-tru "Should new email notifications be sent to admins, for all new SSO users?")
   :type :boolean
   :default true)
 
-(defsetting other-sso-configured?
+(defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for
   authorization rather than the normal login form or Google Auth button."
   :visibility :public
   :setter     :none
-  :getter     (fn [] (or
-                      (saml-configured?)
-                      (jwt-configured?))))
+  :getter     (fn [] (or (saml-enabled) (jwt-enabled))))

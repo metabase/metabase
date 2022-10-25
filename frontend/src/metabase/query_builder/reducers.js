@@ -1,11 +1,13 @@
-import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
 import { assoc, dissoc, merge } from "icepick";
 import _ from "underscore";
+import Utils from "metabase/lib/utils";
 
 import {
   RESET_QB,
   INITIALIZE_QB,
+  SET_DATA_REFERENCE_STACK,
+  OPEN_DATA_REFERENCE_AT_QUESTION,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   TOGGLE_SNIPPET_SIDEBAR,
@@ -63,6 +65,7 @@ import {
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
+  dataReferenceStack: null,
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
@@ -156,6 +159,23 @@ export const uiControls = handleActions(
         ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingDataReference: !state.isShowingDataReference,
       }),
+    },
+    [SET_DATA_REFERENCE_STACK]: {
+      next: (state, { payload }) => ({
+        ...state,
+        dataReferenceStack: payload,
+      }),
+    },
+    [OPEN_DATA_REFERENCE_AT_QUESTION]: {
+      next: (state, { payload }) => {
+        return payload
+          ? {
+              ...state,
+              dataReferenceStack: payload,
+              isShowingDataReference: true,
+            }
+          : state;
+      },
     },
     [TOGGLE_TEMPLATE_TAGS_EDITOR]: {
       next: (state, { payload }) => ({
@@ -338,10 +358,12 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card } }) => ({
+      next: (state, { payload: { card, modelMetadata } }) => ({
         ...state,
         display: card.display,
-        result_metadata: card.result_metadata,
+        result_metadata: modelMetadata
+          ? modelMetadata.columns
+          : card.result_metadata,
         visualization_settings: card.visualization_settings,
       }),
     },
@@ -411,39 +433,45 @@ export const lastRunCard = handleActions(
     [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: { next: (state, { payload }) => payload.card },
     [QUERY_ERRORED]: { next: (state, { payload }) => null },
-    [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
 );
+
+function mergeMetadatWithQueryResults(queryResults, metadata) {
+  const [result] = queryResults;
+  const { columns } = metadata;
+  return [
+    {
+      ...result,
+      data: {
+        ...result.data,
+        cols: columns,
+        results_metadata: metadata,
+      },
+    },
+  ];
+}
 
 // The results of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResults = handleActions(
   {
     [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: {
-      next: (state, { payload }) => payload.queryResults,
+      next: (state, { payload: { queryResults, modelMetadata } }) => {
+        return modelMetadata
+          ? mergeMetadatWithQueryResults(queryResults, modelMetadata)
+          : queryResults;
+      },
     },
     [QUERY_ERRORED]: {
       next: (state, { payload }) => (payload ? [payload] : state),
     },
     [SET_RESULTS_METADATA]: {
       next: (state, { payload: results_metadata }) => {
-        const [result] = state;
-        const { columns } = results_metadata;
-        return [
-          {
-            ...result,
-            data: {
-              ...result.data,
-              cols: columns,
-              results_metadata,
-            },
-          },
-        ];
+        return mergeMetadatWithQueryResults(state, results_metadata);
       },
     },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
-    [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
 );

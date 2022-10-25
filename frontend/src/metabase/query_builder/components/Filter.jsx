@@ -1,19 +1,17 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Value from "metabase/components/Value";
-
-import Dimension from "metabase-lib/lib/Dimension";
-
-import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
-import { hasFilterOptions } from "metabase/lib/query/filter";
-import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
-
 import { t, ngettext, msgid } from "ttag";
+
+import Value from "metabase/components/Value";
 
 import { color } from "metabase/lib/colors";
 
 import ViewPill from "metabase/query_builder/components/view/ViewPill";
+import { getFilterArgumentFormatOptions } from "metabase-lib/lib/operators/utils";
+import { generateTimeFilterValuesDescriptions } from "metabase-lib/lib/queries/utils/query-time";
+import { hasFilterOptions } from "metabase-lib/lib/queries/utils/filter";
+import Dimension from "metabase-lib/lib/Dimension";
 
 const DEFAULT_FILTER_RENDERER = ({ field, operator, values }) => {
   const items = [field, operator, ...values];

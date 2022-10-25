@@ -303,9 +303,9 @@
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
 
         (testing "the serialized form is as desired"
-          (is (= {:type "query"
+          (is (= {:type  :query
                   :query {:source-table ["my-db" nil "customers"]
-                          :filter       [">=" [:field ["my-db" nil "customers" "age"] nil] 18]
+                          :filter       [:>= [:field ["my-db" nil "customers" "age"] nil] 18]
                           :aggregation  [[:count]]}
                   :database "my-db"}
                  (->> (by-model @serialized "Card")
@@ -385,7 +385,7 @@
         (testing "exported form is properly converted"
           (is (= {:source-table ["my-db" nil "customers"]
                   :aggregation [[:count]]
-                  :filter ["<" [:field ["my-db" nil "customers" "age"] nil] 18]}
+                  :filter [:< [:field ["my-db" nil "customers" "age"] nil] 18]}
                  (-> @serialized
                      (by-model "Segment")
                      first
@@ -598,16 +598,16 @@
                                 :table.cell_column "sum"
                                 :table.columns
                                 [{:name "SOME_FIELD"
-                                  :fieldRef ["field" ["my-db" nil "orders" "subtotal"] nil]
+                                  :fieldRef [:field ["my-db" nil "orders" "subtotal"] nil]
                                   :enabled true}
                                  {:name "sum"
-                                  :fieldRef ["field" "sum" {:base-type "type/Float"}]
+                                  :fieldRef [:field "sum" {:base-type :type/Float}]
                                   :enabled true}
                                  {:name "count"
-                                  :fieldRef ["field" "count" {:base-type "type/BigInteger"}]
+                                  :fieldRef [:field "count" {:base-type :type/BigInteger}]
                                   :enabled true}
                                  {:name "Average order total"
-                                  :fieldRef ["field" "Average order total" {:base-type "type/Float"}]
+                                  :fieldRef [:field "Average order total" {:base-type :type/Float}]
                                   :enabled true}]
                                 :column_settings
                                 {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]" {:column_title "Locus"}}}]
@@ -659,6 +659,64 @@
                        :card_id      (:id @card1d)
                        :target       [:dimension [:field (:id @field1d) {:source-field (:id @field2d)}]]}]
                      (:parameter_mappings @dashcard1d))))))))))
+
+(deftest users-test
+  ;; Users are serialized as their email address. If a corresponding user is found during deserialization, its ID is
+  ;; used. However, if no such user exists, a new one is created with mostly blank fields.
+  (testing "existing users are found and used; missing users are created on the fly"
+    (let [serialized (atom nil)
+          metric1s   (atom nil)
+          metric2s   (atom nil)
+          user1s     (atom nil)
+          user2s     (atom nil)
+          user1d     (atom nil)
+          metric1d   (atom nil)
+          metric2d   (atom nil)]
+
+      (ts/with-source-and-dest-dbs
+        (testing "serializing the original entities"
+          (ts/with-source-db
+            (reset! user1s    (ts/create! User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+            (reset! user2s    (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
+            (reset! metric1s  (ts/create! Metric :name "Large Users"       :creator_id (:id @user1s) :definition {:aggregation [[:count]]}))
+            (reset! metric2s  (ts/create! Metric :name "Support Headaches" :creator_id (:id @user2s) :definition {:aggregation [[:count]]}))
+            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
+
+        (testing "exported form is properly converted"
+          (is (= "tom@bost.on"
+                 (-> @serialized
+                     (by-model "Metric")
+                     first
+                     :creator_id))))
+
+        (testing "deserializing finds the matching user and synthesizes the missing one"
+          (ts/with-dest-db
+            ;; Create another random user to change the user IDs.
+            (ts/create! User   :first_name "Gideon" :last_name "Nav" :email "griddle@ninth.tomb")
+            ;; Likewise, create some other metrics.
+            (ts/create! Metric :name "Other metric A")
+            (ts/create! Metric :name "Other metric B")
+            (ts/create! Metric :name "Other metric C")
+            (reset! user1d  (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+
+            ;; Load the serialized content.
+            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+
+            ;; Fetch the relevant bits
+            (reset! metric1d (db/select-one Metric :name "Large Users"))
+            (reset! metric2d (db/select-one Metric :name "Support Headaches"))
+
+            (testing "the Metrics and Users have different IDs now"
+              (is (not= (:id @metric1s) (:id @metric1d)))
+              (is (not= (:id @metric2s) (:id @metric2d)))
+              (is (not= (:id @user1s)   (:id @user1d))))
+
+            (testing "both existing User and the new one are set up properly"
+              (is (= (:id @user1d) (:creator_id @metric1d)))
+              (let [user2d-id (:creator_id @metric2d)
+                    user2d    (db/select-one User :id user2d-id)]
+                (is (any? user2d))
+                (is (= (:email @user2s) (:email user2d)))))))))))
 
 (deftest field-values-test
   ;; FieldValues are a bit special - they map 1-1 with Fields but are a separate table serialized separately.
@@ -761,5 +819,5 @@
           (testing "existing FieldValues are properly found and updated"
             (is (= (:values @fv1s) (:values @fv1d))))
           (testing "new FieldValues are properly added"
-            (is (= (dissoc @fv2s :id :field_id)
-                   (dissoc @fv2d :id :field_id)))))))))
+            (is (= (dissoc @fv2s :id :field_id :created_at :updated_at)
+                   (dissoc @fv2d :id :field_id :created_at :updated_at)))))))))

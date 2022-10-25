@@ -4,8 +4,8 @@ import SelectList from "metabase/components/SelectList";
 import TextInput from "metabase/components/TextInput";
 import { TextInputProps } from "metabase/components/TextInput/TextInput";
 
-import { OptionsList } from "./AutocompleteInput.styled";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+import { OptionsList } from "./AutocompleteInput.styled";
 
 interface AutocompleteInputProps extends TextInputProps {
   options?: string[];

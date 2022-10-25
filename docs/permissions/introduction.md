@@ -1,10 +1,10 @@
 ---
-title: Permissions overview
+title: Permissions introduction
 redirect_from:
   - /docs/latest/administration-guide/05-setting-permissions
 ---
 
-# Permissions overview
+# Permissions introduction
 
 There are always going to be sensitive bits of information in your data, and thankfully Metabase provides a rich set of tools to ensure that people on your team only see the data they’re supposed to.
 

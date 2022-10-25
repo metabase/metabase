@@ -3,26 +3,21 @@ import PropTypes from "prop-types";
 
 import _ from "underscore";
 
-import { isStructured } from "metabase/lib/query";
-
 import TimeGroupingPopover from "metabase/query_builder/components/TimeGroupingPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
-
-// set the display automatically then run
-function updateAndRun(query) {
-  query.question().setDefaultDisplay().update(null, { run: true });
-}
+import { isStructured } from "metabase-lib/lib/queries/utils";
 
 export default class TimeseriesGroupingWidget extends Component {
   static propTypes = {
     query: PropTypes.object.isRequired,
+    onChange: PropTypes.func.isRequired,
   };
 
   _popover;
 
   render() {
-    const { query } = this.props;
+    const { query, onChange } = this.props;
 
     if (isStructured(query.datasetQuery())) {
       const breakouts = query.breakouts();
@@ -49,9 +44,20 @@ export default class TimeseriesGroupingWidget extends Component {
                 d.isSameBaseDimension(dimension),
               );
               if (index >= 0) {
-                updateAndRun(query.updateBreakout(index, dimension.mbql()));
+                const newQuestion = query
+                  .updateBreakout(index, dimension.mbql())
+                  .question()
+                  .setDefaultDisplay();
+
+                onChange(newQuestion);
               } else {
-                updateAndRun(query.clearBreakouts().breakout(dimension.mbql()));
+                const newQuestion = query
+                  .clearBreakouts()
+                  .breakout(dimension.mbql())
+                  .question()
+                  .setDefaultDisplay();
+
+                onChange(newQuestion);
               }
               if (this._popover) {
                 this._popover.close();

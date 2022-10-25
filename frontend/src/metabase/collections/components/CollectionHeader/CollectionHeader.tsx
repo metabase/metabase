@@ -2,8 +2,6 @@ import React from "react";
 import { withRouter } from "react-router";
 import type { Location } from "history";
 
-import * as Urls from "metabase/lib/urls";
-
 import { isDataAppCollection } from "metabase/entities/data-apps";
 
 import { Collection } from "metabase-types/api";
@@ -37,6 +35,8 @@ const CollectionHeader = ({
   onCreateBookmark,
   onDeleteBookmark,
 }: CollectionHeaderProps): JSX.Element => {
+  const isDataApp = isDataAppCollection(collection);
+
   return (
     <HeaderRoot>
       <CollectionCaption
@@ -44,10 +44,7 @@ const CollectionHeader = ({
         onUpdateCollection={onUpdateCollection}
       />
       <HeaderActions data-testid="collection-menu">
-        {isDataAppCollection(collection) &&
-          Urls.isDataAppPreviewPath(location.pathname) && (
-            <LaunchDataAppButton collection={collection} />
-          )}
+        {isDataApp && <LaunchDataAppButton collection={collection} />}
         <CollectionTimeline collection={collection} />
         <CollectionBookmark
           collection={collection}
@@ -58,6 +55,7 @@ const CollectionHeader = ({
         <CollectionMenu
           collection={collection}
           isAdmin={isAdmin}
+          isDataApp={isDataApp}
           isPersonalCollectionChild={isPersonalCollectionChild}
           onUpdateCollection={onUpdateCollection}
         />

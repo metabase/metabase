@@ -51,6 +51,9 @@ jobs:
       MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
+      RECORDING_ENABLED: ${{ secrets.CURRENTS_KEY }}
+      CYPRESS_DEPLOYSENTINEL_KEY: ${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}
+      ELECTRON_EXTRA_LAUNCH_ARGS: '--remote-debugging-port=40500' # deploysentinel
     strategy:
       fail-fast: false
       matrix:
@@ -82,6 +85,13 @@ jobs:
         ports:
           - "80:80"
           - "25:25"
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      openldap:
+        image: osixia/openldap:1.5.0
+        ports:
+          - "389:389"
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -130,7 +140,7 @@ jobs:
         mv version.properties resources/
 
     - name: Run Cypress tests on ${{ matrix.folder }} - Master Branch
-      if: ${{ github.ref == 'refs/heads/master' }}
+      if: github.ref == 'refs/heads/master' && env.RECORDING_ENABLED != null
       run: |
         yarn run test-cypress-run \
           --folder ${{ matrix.folder }} \

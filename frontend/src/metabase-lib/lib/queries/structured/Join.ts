@@ -1,16 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { MBQLObjectClause } from "./MBQLClause";
 import { t } from "ttag";
-import StructuredQuery from "../StructuredQuery";
-import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
-import DimensionOptions from "metabase-lib/lib/DimensionOptions";
+import _ from "underscore";
 import { pluralize } from "metabase/lib/formatting";
-import {
-  getDatetimeUnit,
-  isDateTimeField,
-  isFieldLiteral,
-} from "metabase/lib/query/field_ref";
 import { TableId } from "metabase-types/types/Table";
 import {
   Join as JoinObject,
@@ -22,7 +14,15 @@ import {
   StructuredQuery as StructuredQueryObject,
   ConcreteField,
 } from "metabase-types/types/Query";
-import _ from "underscore";
+import {
+  getDatetimeUnit,
+  isDateTimeField,
+  isFieldLiteral,
+} from "metabase-lib/lib/queries/utils/field-ref";
+import DimensionOptions from "metabase-lib/lib/DimensionOptions";
+import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
+import StructuredQuery from "../StructuredQuery";
+import { MBQLObjectClause } from "./MBQLClause";
 
 const JOIN_OPERATORS = ["=", ">", "<", ">=", "<=", "!="];
 
@@ -559,14 +559,14 @@ export default class Join extends MBQLObjectClause {
     const sourceTable = this.joinSourceTableId();
     const sourceQuery = this.joinSourceQuery();
     return sourceTable
-      ? new StructuredQuery(this.query().question(), {
+      ? new StructuredQuery(this.query().question().setDataset(false), {
           type: "query",
           query: {
             "source-table": sourceTable,
           },
         })
       : sourceQuery
-      ? new StructuredQuery(this.query().question(), {
+      ? new StructuredQuery(this.query().question().setDataset(false), {
           type: "query",
           query: sourceQuery,
         })

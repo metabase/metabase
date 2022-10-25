@@ -1,9 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { generateSchemaId } from "metabase-lib/lib/metadata/utils/schema";
+import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import Question from "../Question";
 import Base from "./Base";
-import { generateSchemaId } from "metabase/lib/schema";
-import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import Table from "./Table";
 import Schema from "./Schema";
 import Metadata from "./Metadata";

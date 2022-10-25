@@ -1,4 +1,3 @@
-import Question from "metabase-lib/lib/Question";
 import ObjectDetailDrill from "metabase/modes/components/drill/ObjectDetailDrill";
 import { ZOOM_IN_ROW } from "metabase/query_builder/actions";
 import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
@@ -8,6 +7,7 @@ import {
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
+import Question from "metabase-lib/lib/Question";
 
 const DEFAULT_CELL_VALUE = 1;
 
@@ -200,7 +200,7 @@ describe("ObjectDetailDrill", () => {
         it("should return correct URL to object detail", () => {
           const [action] = actions;
           expect(action.question().getUrl()).toBe(
-            `/question/${SAVED_QUESTION.id()}-${SAVED_QUESTION.displayName()}`,
+            `/question/${SAVED_QUESTION.slug()}`,
           );
         });
       });

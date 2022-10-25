@@ -6,18 +6,18 @@ import { t } from "ttag";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 
-import { CHANNEL_NOUN_PLURAL } from "./constants";
 import Icon from "metabase/components/Icon";
-import Heading from "./Heading";
 import Toggle from "metabase/core/components/Toggle";
-import CaveatMessage from "./CaveatMessage";
 import SchedulePicker from "metabase/components/SchedulePicker";
-import DefaultParametersSection from "./DefaultParametersSection";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
-import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
+import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
+import DefaultParametersSection from "./DefaultParametersSection";
+import CaveatMessage from "./CaveatMessage";
+import Heading from "./Heading";
+import { CHANNEL_NOUN_PLURAL } from "./constants";
 
 function _AddEditEmailSidebar({
   pulse,

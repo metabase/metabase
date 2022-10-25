@@ -2,18 +2,15 @@
 import React, { Component } from "react";
 import { t } from "ttag";
 
+import cx from "classnames";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
+import Utils from "metabase/lib/utils";
+import { HARD_ROW_LIMIT } from "metabase-lib/lib/queries/utils";
 import VisualizationError from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
-
-import Utils from "metabase/lib/utils";
-
-import cx from "classnames";
-
-import { HARD_ROW_LIMIT } from "metabase/lib/query";
 
 export default class QueryVisualization extends Component {
   constructor(props, context) {
@@ -84,11 +81,10 @@ export default class QueryVisualization extends Component {
         )}
         <div
           className={cx("spread Visualization z1", {
-            "Visualization--errors": result && result.error,
             "Visualization--loading": isRunning,
           })}
         >
-          {result && result.error ? (
+          {result?.error ? (
             <VisualizationError
               className="spread"
               error={result.error}
@@ -96,7 +92,7 @@ export default class QueryVisualization extends Component {
               card={question.card()}
               duration={result.duration}
             />
-          ) : result && result.data ? (
+          ) : result?.data ? (
             <VisualizationResult
               {...this.props}
               className="spread"

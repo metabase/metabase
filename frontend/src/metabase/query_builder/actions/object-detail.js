@@ -2,9 +2,8 @@ import _ from "underscore";
 
 import { startNewCard } from "metabase/lib/card";
 import { createThunkAction } from "metabase/lib/redux";
-import * as Q_DEPRECATED from "metabase/lib/query";
-
 import { MetabaseApi } from "metabase/services";
+import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 

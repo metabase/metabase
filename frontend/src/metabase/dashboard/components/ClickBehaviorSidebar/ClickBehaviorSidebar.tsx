@@ -1,18 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getIn } from "icepick";
 
-import {
-  isTableDisplay,
-  clickBehaviorIsValid,
-} from "metabase/lib/click-behavior";
-import { keyForColumn } from "metabase/lib/dataset";
-
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePrevious } from "metabase/hooks/use-previous";
 
 import Sidebar from "metabase/dashboard/components/Sidebar";
 
-import type { UiParameter } from "metabase/parameters/types";
+import { isMappedExplicitActionButton } from "metabase/writeback/utils";
+
 import type {
   Dashboard,
   DashboardOrderedCard,
@@ -20,9 +15,13 @@ import type {
   CardId,
   ClickBehavior,
   DatasetData,
+  DatasetColumn,
 } from "metabase-types/api";
-import type { Column } from "metabase-types/types/Dataset";
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { UiParameter } from "metabase-lib/lib/parameters/types";
+import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
 
+import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";
 import ClickBehaviorSidebarHeader from "./ClickBehaviorSidebarHeader";
@@ -68,7 +67,9 @@ function ClickBehaviorSidebar({
     boolean | null
   >(null);
 
-  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [selectedColumn, setSelectedColumn] = useState<DatasetColumn | null>(
+    null,
+  );
 
   const [originalVizSettings, setOriginalVizSettings] = useState<
     VizSettings | undefined | null
@@ -106,7 +107,7 @@ function ClickBehaviorSidebar({
           click_behavior: nextClickBehavior,
         });
       } else {
-        onUpdateDashCardColumnSettings(id, keyForColumn(selectedColumn), {
+        onUpdateDashCardColumnSettings(id, getColumnKey(selectedColumn), {
           click_behavior: nextClickBehavior,
         });
       }
@@ -157,7 +158,10 @@ function ClickBehaviorSidebar({
   ]);
 
   useOnMount(() => {
-    if (shouldShowTypeSelector(clickBehavior)) {
+    if (
+      !isMappedExplicitActionButton(dashcard) &&
+      shouldShowTypeSelector(clickBehavior)
+    ) {
       setTypeSelectorVisible(true);
     }
     if (dashcard) {
@@ -187,7 +191,9 @@ function ClickBehaviorSidebar({
     <Sidebar
       onClose={hideClickBehaviorSidebar}
       onCancel={handleCancel}
-      closeIsDisabled={!isValidClickBehavior}
+      closeIsDisabled={
+        !isValidClickBehavior && !isMappedExplicitActionButton(dashcard)
+      }
     >
       <ClickBehaviorSidebarHeader
         dashcard={dashcard}

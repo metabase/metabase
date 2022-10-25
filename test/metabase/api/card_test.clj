@@ -15,18 +15,15 @@
             [metabase.http-client :as client]
             [metabase.models :refer [Card
                                      CardBookmark
-                                     CardEmitter
                                      Collection
                                      Dashboard
                                      Database
-                                     Emitter
                                      ModerationReview
                                      PersistedInfo
                                      Pulse
                                      PulseCard
                                      PulseChannel
                                      PulseChannelRecipient
-                                     QueryAction
                                      Table
                                      Timeline
                                      TimelineEvent
@@ -408,17 +405,17 @@
                                        :query_type    "native"
                                        :dataset_query (:dataset_query card)})))))
       (testing "You can create a card with a saved question CTE as a model"
-        (let [card-reference (str "#" (u/the-id card))]
+        (let [card-tag-name (str "#" (u/the-id card))]
           (mt/user-http-request :rasta :post 200 "card"
                                 (merge
                                  (mt/with-temp-defaults Card)
                                  {:dataset_query {:database (u/the-id db)
                                                   :type     :native
-                                                  :native   {:query         (format "SELECT * FROM {{%s}};" card-reference)
-                                                             :template-tags {card-reference {:card-id      (u/the-id card),
-                                                                                             :display-name card-reference,
+                                                  :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
+                                                             :template-tags {card-tag-name {:card-id      (u/the-id card),
+                                                                                             :display-name card-tag-name,
                                                                                              :id           (str (random-uuid))
-                                                                                             :name         card-reference,
+                                                                                             :name         card-tag-name,
                                                                                              :type         :card}}}}})))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
@@ -774,22 +771,6 @@
                           :moderation_reviews
                           (map clean)))))))))))
 
-(deftest fetch-card-emitter-test
-  (testing "GET /api/card/:id"
-    (testing "Fetch card with an emitter"
-      (mt/with-temp* [Card [read-card {:name "Test Read Card"}]
-                      Card [write-card {:is_write true :name "Test Write Card"}]
-                      Emitter [{emitter-id :id} {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))}]]
-        (db/insert! CardEmitter {:emitter_id emitter-id
-                                 :card_id (u/the-id read-card)})
-        (testing "admin sees emitters"
-          (is (partial=
-               {:emitters [{:action {:type "query" :card {:name "Test Write Card"}}}]}
-               (mt/user-http-request :crowberto :get 200 (format "card/%d" (u/the-id read-card))))))
-        (testing "non-admin does not see emitters"
-          (is (nil?
-               (:emitters (mt/user-http-request :rasta :get 200 (format "card/%d" (u/the-id read-card)))))))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       UPDATING A CARD (PUT /api/card/:id)
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -964,7 +945,7 @@
 
 (deftest update-card-validation-test
   (testing "PUT /api/card"
-    (with-temp-native-card-with-params [db card]
+    (with-temp-native-card-with-params [_db card]
       (testing  "You cannot update a model to have variables"
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
@@ -987,6 +968,7 @@
 
 (defmacro with-ordered-items
   "Macro for creating many sequetial collection_position model instances, putting each in `collection`"
+  {:style/indent :defn}
   [collection model-and-name-syms & body]
   `(mt/with-temp* ~(vec (mapcat (fn [idx [model-instance name-sym]]
                                   [model-instance [name-sym {:name                (name name-sym)

@@ -1,7 +1,5 @@
 import _ from "underscore";
 
-import { cardIsEquivalent } from "metabase/meta/Card";
-
 import { DashboardApi } from "metabase/services";
 
 import { setErrorPage } from "metabase/redux/app";
@@ -11,12 +9,15 @@ import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-
 import { Dispatch, GetState } from "metabase-types/store";
 
 import { Card, SavedCard } from "metabase-types/types/Card";
 import { Parameter } from "metabase-types/types/Parameter";
+import {
+  cardIsEquivalent,
+  cardParametersAreEquivalent,
+} from "metabase-lib/lib/queries/utils/card";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 type BlankQueryOptions = {
   db?: string;
@@ -30,33 +31,27 @@ type QueryParams = BlankQueryOptions & {
   objectId?: string;
 };
 
-function checkShouldPropagateDashboardParameters({
+function shouldPropagateDashboardParameters({
   cardId,
   deserializedCard,
   originalCard,
 }: {
   cardId?: number;
-  deserializedCard?: Card;
+  deserializedCard: Card;
   originalCard?: Card;
-}) {
-  if (!deserializedCard) {
-    return false;
-  }
+}): boolean {
   if (cardId && deserializedCard.parameters) {
     return true;
-  }
-  if (!originalCard) {
+  } else if (!originalCard) {
     return false;
+  } else {
+    const equivalentCards = cardIsEquivalent(deserializedCard, originalCard);
+    const differentParameters = !cardParametersAreEquivalent(
+      deserializedCard,
+      originalCard,
+    );
+    return equivalentCards && differentParameters;
   }
-  const equalCards = cardIsEquivalent(deserializedCard, originalCard, {
-    checkParameters: false,
-  });
-  const differentParameters = !cardIsEquivalent(
-    deserializedCard,
-    originalCard,
-    { checkParameters: true },
-  );
-  return equalCards && differentParameters;
 }
 
 async function verifyMatchingDashcardAndParameters({
@@ -65,14 +60,12 @@ async function verifyMatchingDashcardAndParameters({
   dashcardId,
   cardId,
   parameters,
-  metadata,
 }: {
   dispatch: Dispatch;
   dashboardId: number;
   dashcardId: number;
   cardId: number;
   parameters: Parameter[];
-  metadata: Metadata;
 }) {
   try {
     const dashboard = await DashboardApi.get({ dashId: dashboardId });
@@ -108,41 +101,44 @@ export function getParameterValuesForQuestion({
   );
 }
 
-export async function handleDashboardParameters(
-  card: Card,
-  {
-    deserializedCard,
-    originalCard,
-    dispatch,
-    getState,
-  }: {
-    cardId?: number;
-    deserializedCard?: Card;
-    originalCard?: Card;
-    dispatch: Dispatch;
-    getState: GetState;
-  },
-) {
+/**
+ * Merges .parameters, .dashboardId, and .dashcardId props from deserializedCard into card.
+ * Sets an error page if there have been permissions or data changes to a dashboard such that:
+ *  - If the user loses permissions to view the dashboard, the user will be navigated to an unauthed screen.
+ *  - If the card is removed from the dashboard or some of the parameters mapped to it have been removed,
+ *    the user will be navigated to an unauthed screen.
+ * See https://github.com/metabase/metabase/pull/19300 for the origin of the error handling.
+ */
+export async function propagateDashboardParameters({
+  card,
+  deserializedCard,
+  originalCard,
+  dispatch,
+}: {
+  card: Card;
+  deserializedCard: Card; // DashCard (has dashboardId and dashcardId)
+  originalCard?: Card;
+  dispatch: Dispatch;
+}) {
   const cardId = (card as SavedCard).id;
-  const shouldPropagateParameters = checkShouldPropagateDashboardParameters({
-    cardId,
-    deserializedCard,
-    originalCard,
-  });
-  if (shouldPropagateParameters && deserializedCard) {
+  if (
+    shouldPropagateDashboardParameters({
+      cardId,
+      deserializedCard,
+      originalCard,
+    })
+  ) {
     const { dashboardId, dashcardId, parameters } = deserializedCard;
-    const metadata = getMetadata(getState());
     await verifyMatchingDashcardAndParameters({
       dispatch,
       cardId,
-      metadata,
       dashboardId: dashboardId as number,
       dashcardId: dashcardId as number,
       parameters: parameters as Parameter[],
     });
-
     card.parameters = parameters;
     card.dashboardId = dashboardId;
     card.dashcardId = dashcardId;
   }
+  return card;
 }

@@ -4,7 +4,8 @@ import { t } from "ttag";
 import { Group } from "@visx/group";
 import { Pie } from "@visx/shape";
 import { Text } from "@visx/text";
-import { formatNumber } from "../../lib/numbers";
+import { getTextColorForBackground } from "metabase/lib/colors";
+import { formatNumber, formatPercent } from "../../lib/numbers";
 import { DIMENSION_ACCESSORS } from "../../constants/accessors";
 
 const propTypes = {
@@ -16,6 +17,7 @@ const propTypes = {
   }),
   settings: PropTypes.shape({
     metric: PropTypes.object,
+    show_values: PropTypes.bool,
   }),
 };
 
@@ -36,6 +38,7 @@ const layout = {
   padAngle: 0.02,
   valueFontSize: 22,
   labelFontSize: 14,
+  arcLabelFontSize: 18,
 };
 
 const CategoricalDonutChart = ({
@@ -56,6 +59,8 @@ const CategoricalDonutChart = ({
   const totalValue = data.map(accessors.metric).reduce((a, b) => a + b, 0);
   const totalLabel = t`Total`.toUpperCase();
 
+  const shouldShowLabels = settings?.show_values;
+
   return (
     <svg width={layout.width} height={layout.height}>
       <Group top={centerY} left={centerX}>
@@ -74,9 +79,27 @@ const CategoricalDonutChart = ({
               const dimension = arc.data[0];
               const fill = colors[dimension];
 
+              const hasSpaceForLabel = arc.endAngle - arc.startAngle >= 0.32;
+              const [centroidX, centroidY] = pie.path.centroid(arc);
+              const percent = arc.value / totalValue;
+              const labelColor = getTextColorForBackground(fill);
+
               return (
                 <g key={`arc-${index}`}>
                   <path d={path} fill={fill} />
+                  {shouldShowLabels && hasSpaceForLabel && (
+                    <text
+                      fontFamily={layout.font.family}
+                      x={centroidX}
+                      y={centroidY}
+                      dy=".33em"
+                      fill={labelColor}
+                      fontSize={layout.arcLabelFontSize}
+                      textAnchor="middle"
+                    >
+                      {formatPercent(percent)}
+                    </text>
+                  )}
                 </g>
               );
             })

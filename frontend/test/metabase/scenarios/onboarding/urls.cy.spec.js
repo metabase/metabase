@@ -6,7 +6,7 @@ import {
 } from "__support__/e2e/helpers";
 import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/lib/metadata/utils/saved-questions";
 
 const { admin, normal } = USERS;
 

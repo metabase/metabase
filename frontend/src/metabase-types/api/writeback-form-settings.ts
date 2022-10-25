@@ -1,15 +1,18 @@
-export type FormType = "inline" | "modal";
-export type FieldType = "text" | "number" | "date" | "category";
+import type { ParameterId } from "./parameters";
+
+export type ActionDisplayType = "form" | "button";
+export type FieldType = "string" | "number" | "date" | "category";
+
+export type DateInputType = "date" | "datetime" | "monthyear" | "quarteryear";
+
 export type InputType =
+  | DateInputType
   | "string"
   | "text"
   | "number"
-  | "date"
-  | "datetime"
-  | "monthyear"
-  | "quarteryear"
   | "dropdown"
   | "inline-select";
+
 export type Size = "small" | "medium" | "large";
 
 export type DateRange = [string, string];
@@ -23,6 +26,7 @@ export interface FieldSettings {
   fieldType: FieldType;
   inputType: InputType;
   required: boolean;
+  defaultValue?: string | number;
   hidden: boolean;
   range?: DateRange | NumberRange;
   valueOptions?: (string | number)[];
@@ -31,13 +35,13 @@ export interface FieldSettings {
   hasSearch?: boolean;
 }
 
+export type FieldSettingsMap = Record<ParameterId, FieldSettings>;
 export interface ActionFormSettings {
   name?: string;
-  type: FormType;
+  type: ActionDisplayType;
   description?: string;
-  fields: {
-    [tagId: string]: FieldSettings;
-  };
+  fields: FieldSettingsMap;
+  submitButtonLabel?: string;
   confirmMessage?: string;
   successMessage?: string;
   errorMessage?: string;

@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import ChartSettingsWidget from "../ChartSettingsWidget";
-
 import _ from "underscore";
 
 import { updateSettings } from "metabase/visualizations/lib/settings";
+import ChartSettingsWidget from "../ChartSettingsWidget";
 
 const chartSettingNestedSettings =
   ({ getObjectKey, getSettingsWidgetsForObject }) =>

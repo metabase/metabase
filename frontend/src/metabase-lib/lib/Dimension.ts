@@ -2,17 +2,8 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
-import { merge } from "icepick";
+import { isa } from "cljs/metabase.types";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
-import { TYPE } from "metabase/lib/types";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
-import Field from "metabase-lib/lib/metadata/Field";
-import {
-  AggregationOperator,
-  FilterOperator,
-  Metadata,
-  Query,
-} from "metabase-lib/lib/metadata/Metadata";
 import {
   Field as AbstractField,
   ConcreteField,
@@ -21,18 +12,37 @@ import {
   DatetimeUnit,
 } from "metabase-types/types/Query";
 import { VariableTarget } from "metabase-types/types/Parameter";
+import { IconName } from "metabase-types/types";
+import { infer, MONOTYPE } from "metabase-lib/lib/expressions/typeinferencer";
+import { TYPE } from "metabase-lib/lib/types/constants";
+import {
+  DATETIME_UNITS,
+  formatBucketing,
+} from "metabase-lib/lib/queries/utils/query-time";
+import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
+import Field from "metabase-lib/lib/metadata/Field";
+import {
+  AggregationOperator,
+  FilterOperator,
+  Metadata,
+  Query,
+} from "metabase-lib/lib/metadata/Metadata";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/lib/ValidationError";
-import { IconName } from "metabase-types/types";
-import { getFieldValues, getRemappings } from "metabase/lib/query/field";
-import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
-import { getQuestionIdFromVirtualTableId } from "metabase/lib/saved-questions";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
-import { isa } from "cljs/metabase.types";
+import {
+  isFieldReference,
+  isExpressionReference,
+  isAggregationReference,
+  isTemplateTagReference,
+  normalizeReferenceOptions,
+  getBaseDimensionReference,
+  BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
+} from "metabase-lib/lib/references";
 
 /**
  * A dimension option returned by the query_metadata API
@@ -84,23 +94,6 @@ export default class Dimension {
     this._metadata = metadata || (parent && parent._metadata);
     this._query = query || (parent && parent._query);
     this._options = options;
-  }
-
-  /**
-   * Canonically the field clause should use `null` instead of empty options. Keys with null values should get removed.
-   */
-  static normalizeOptions(options: any): any {
-    if (!options) {
-      return null;
-    }
-
-    // recursively normalize maps inside options.
-    options = _.mapObject(options, val =>
-      typeof val === "object" ? this.normalizeOptions(val) : val,
-    );
-    // remove null/undefined options from map.
-    options = _.omit(options, value => value == null);
-    return _.isEmpty(options) ? null : options;
   }
 
   /**
@@ -218,7 +211,7 @@ export default class Dimension {
    */
   _dimensionForOption(option: DimensionOption) {
     // fill in the parent field ref
-    const fieldRef = this.baseDimension().mbql();
+    const fieldRef = getBaseDimensionReference(this.mbql());
     let mbql = option.mbql;
 
     if (mbql) {
@@ -326,6 +319,12 @@ export default class Dimension {
     // let the DatePicker choose the default operator, otherwise use the first one
     // TODO: replace with a defaultFilter()- or similar which includes arguments
     return this.field().isDate() ? null : this.filterOperators()[0];
+  }
+
+  defaultFilterForDimension() {
+    return new Filter([], null, this.query()).setDimension(this.mbql(), {
+      useDefaultOperator: true,
+    });
   }
 
   // AGGREGATIONS
@@ -558,13 +557,6 @@ export default class Dimension {
     return this.withoutOptions("temporal-unit");
   }
 
-  /**
-   * Return a copy of this Dimension with any binning options removed.
-   */
-  withoutBinning(): Dimension {
-    return this.withoutOptions("binning");
-  }
-
   withoutJoinAlias(): Dimension {
     return this.withoutOptions("join-alias");
   }
@@ -573,7 +565,13 @@ export default class Dimension {
    * Return a copy of this Dimension with any temporal bucketing or binning options removed.
    */
   baseDimension(): Dimension {
-    return this.withoutTemporalBucketing().withoutBinning();
+    return this.withoutOptions(...BASE_DIMENSION_REFERENCE_OMIT_OPTIONS);
+  }
+
+  isValidFKRemappingTarget() {
+    return !(
+      this.defaultDimension() instanceof FieldDimension && this.temporalUnit()
+    );
   }
 
   /**
@@ -662,21 +660,12 @@ export default class Dimension {
  */
 
 export class FieldDimension extends Dimension {
-  /**
-   * Whether `clause` is an array, and a valid `:field` clause
-   */
-  static isFieldClause(clause): boolean {
-    return (
-      Array.isArray(clause) && clause.length === 3 && clause[0] === "field"
-    );
-  }
-
   static parseMBQL(
     mbql,
     metadata = null,
     query = null,
   ): FieldDimension | null | undefined {
-    if (FieldDimension.isFieldClause(mbql)) {
+    if (isFieldReference(mbql)) {
       return Object.freeze(
         new FieldDimension(mbql[1], mbql[2], metadata, query),
       );
@@ -729,7 +718,7 @@ export class FieldDimension extends Dimension {
       [fieldIdOrName, options],
       metadata,
       query,
-      Object.freeze(Dimension.normalizeOptions(options)),
+      Object.freeze(normalizeReferenceOptions(options)),
     );
     this._fieldIdOrName = fieldIdOrName;
 
@@ -751,7 +740,7 @@ export class FieldDimension extends Dimension {
     }
 
     // this should be considered equivalent to an equivalent MBQL clause
-    if (FieldDimension.isFieldClause(somethingElse)) {
+    if (isFieldReference(somethingElse)) {
       const dimension = FieldDimension.parseMBQL(
         somethingElse,
         this._metadata,
@@ -789,35 +778,12 @@ export class FieldDimension extends Dimension {
     return typeof this._fieldIdOrName === "string";
   }
 
-  _createField(fieldInfo, { hydrate = false } = {}): Field {
+  _createField(fieldInfo): Field {
     const field = new Field({
       ...fieldInfo,
       metadata: this._metadata,
       query: this._query,
     });
-
-    // This is normally done when calculating metadata,
-    // but since we're merging plain objects without these fields,
-    // we need to repeat the hydration again.
-    // We should definitely move it out of there
-    if (hydrate) {
-      field.table =
-        this.query()?.table() ?? this._metadata.table(field.table_id);
-      field.table_id = field.table?.id;
-
-      if (field.isFK()) {
-        field.target = this._metadata.field(field.fk_target_field_id);
-      }
-
-      if (field.name_field != null) {
-        field.field_name = this._metadata.field(field.name_field);
-      } else if (field.table && field.isPK()) {
-        field.field_name = _.find(field.table.fields, f => f.isEntityName());
-      }
-
-      field.values = getFieldValues(field);
-      field.remappings = new Map(getRemappings(field));
-    }
 
     return field;
   }
@@ -835,120 +801,55 @@ export class FieldDimension extends Dimension {
     }
   }
 
-  _getFieldMetadataFromSavedDataset() {
+  _findMatchingQueryField() {
     const identifierProp = this._getIdentifierProp();
-    const questionAssociatedWithDimension = this.query()?.question();
-    if (
-      questionAssociatedWithDimension?.isSaved() &&
-      questionAssociatedWithDimension.isDataset()
-    ) {
-      const fieldMetadata = _.findWhere(
-        questionAssociatedWithDimension.getResultMetadata(),
-        {
-          [identifierProp]: this.fieldIdOrName(),
-        },
-      );
-
-      return fieldMetadata;
+    const fieldIdentifier = this.fieldIdOrName();
+    if (this._query) {
+      const queryTableFields = this._query.table()?.fields;
+      return _.findWhere(queryTableFields, {
+        [identifierProp]: fieldIdentifier,
+      });
     }
   }
 
-  _getFieldMetadataFromNestedDataset() {
-    const identifierProp = this._getIdentifierProp();
-    const virtualTableCardId = getQuestionIdFromVirtualTableId(
-      this.query()?.sourceTableId?.(),
-    );
-    if (virtualTableCardId != null) {
-      const question = this._metadata?.question(virtualTableCardId);
-      const fieldMetadata = question?.isDataset()
-        ? _.findWhere(question.getResultMetadata(), {
-            [identifierProp]: this.fieldIdOrName(),
-          })
-        : undefined;
-
-      return fieldMetadata;
-    }
-  }
-
-  _getFieldMetadataFromQueryTable() {
-    const identifierProp = this._getIdentifierProp();
-    const table = this.query()?.table();
-    return _.findWhere(table?.fields, {
-      [identifierProp]: this.fieldIdOrName(),
+  _createFallbackField(): Field {
+    return this._createField({
+      id: this.isIntegerFieldId() ? this.fieldIdOrName() : this.mbql(),
+      field_ref: this.mbql(),
+      name: this.isStringFieldName() && this.fieldIdOrName(),
+      display_name: this.fieldIdOrName(),
+      base_type: this.getOption("base-type"),
     });
-  }
-
-  _combineFieldWithExtraMetadata(field: Field | undefined, fieldMetadata) {
-    if (field) {
-      if (!fieldMetadata || field === fieldMetadata) {
-        return field;
-      }
-
-      const fieldObject = merge(
-        field instanceof Field ? field.getPlainObject() : field,
-        fieldMetadata instanceof Field
-          ? fieldMetadata.getPlainObject()
-          : fieldMetadata,
-      );
-      return this._createField(fieldObject, { hydrate: true });
-    }
-
-    if (fieldMetadata) {
-      if (fieldMetadata instanceof Field) {
-        return fieldMetadata;
-      }
-
-      return this._createField(fieldMetadata);
-    }
   }
 
   field(): Field {
     // If a Field is cached on the FieldDimension instance, we can shortwire this method and
     // return the cached Field.
-    const cachedField = this._getTrustedFieldCachedOnInstance();
-    if (cachedField) {
-      return cachedField;
+    const locallyCachedField = this._getTrustedFieldCachedOnInstance();
+    if (locallyCachedField) {
+      return locallyCachedField;
     }
 
-    let fieldMetadata;
-
-    // Models contain custom metadata for fields, but when these fields have integer ids,
-    // they are clobbered by the metadata from the real table that the card is based on,
-    // so we need to check the result_metadata of the nested card and merge it with the
-    // Field that exists in the Metadata object.
-    if (this.isIntegerFieldId()) {
-      fieldMetadata =
-        this._getFieldMetadataFromSavedDataset() ||
-        this._getFieldMetadataFromNestedDataset();
+    // Prioritize pulling a `field` from the Dimenion's associated query (if one exists)
+    // because it might have locally overriding metadata on it.
+    const fieldFromQuery = this._findMatchingQueryField();
+    if (fieldFromQuery) {
+      return fieldFromQuery;
     }
 
-    // In scenarios where the Field id is not an integer, we need to grab the Field from the
-    // query's table, because the Field won't exist in the Metadata object (and string Field ids
-    // are not sufficiently unique to be stored properly in the Metadata object).
-    fieldMetadata = fieldMetadata || this._getFieldMetadataFromQueryTable();
-
-    // The `fieldMetadata` object may have metadata that overrides the regular field object
-    // (e.g. a custom field display name or description on a model)
-    const field = this._metadata?.field(this.fieldIdOrName());
-    const combinedField = this._combineFieldWithExtraMetadata(
-      field,
-      fieldMetadata,
-    );
-
-    if (combinedField) {
-      return combinedField;
+    const maybeTableId = this._query?.table()?.id;
+    const fieldFromGlobalState =
+      this._metadata?.field(this.fieldIdOrName(), maybeTableId) ||
+      this._metadata?.field(this.fieldIdOrName());
+    if (fieldFromGlobalState) {
+      return fieldFromGlobalState;
     }
 
+    // Hitting this return statement means that there is a bug.
+    // This primarily serves as a way to guarantee that this function returns a Field to avoid errors in dependent code.
     // Despite being unable to find a field, we _might_ still have enough data to know a few things about it.
     // For example, if we have an mbql field reference, it might contain a `base-type`
-    return this._createField({
-      id: this.isIntegerFieldId() ? this.fieldIdOrName() : this.mbql(),
-      name: this.isStringFieldName() && this.fieldIdOrName(),
-      // NOTE: this display_name will likely be incorrect
-      // if a `FieldDimension` isn't associated with a query then we don't know which table it belongs to
-      display_name: this._fieldIdOrName,
-      base_type: this.getOption("base-type"),
-    });
+    return this._createFallbackField();
   }
 
   tableId() {
@@ -1217,21 +1118,12 @@ const isFieldDimension = dimension => dimension instanceof FieldDimension;
 export class ExpressionDimension extends Dimension {
   _expressionName: ExpressionName;
 
-  /**
-   * Whether `clause` is an array, and a valid `:expression` clause
-   */
-  static isExpressionClause(clause): boolean {
-    return (
-      Array.isArray(clause) && clause.length >= 2 && clause[0] === "expression"
-    );
-  }
-
   static parseMBQL(
     mbql: any,
     metadata?: Metadata | null | undefined,
     query?: StructuredQuery | null | undefined,
   ): Dimension | null | undefined {
-    if (ExpressionDimension.isExpressionClause(mbql)) {
+    if (isExpressionReference(mbql)) {
       const [expressionName, options] = mbql.slice(1);
       return new ExpressionDimension(expressionName, options, metadata, query);
     }
@@ -1249,7 +1141,7 @@ export class ExpressionDimension extends Dimension {
       [expressionName, options],
       metadata,
       query,
-      Object.freeze(Dimension.normalizeOptions(options)),
+      Object.freeze(normalizeReferenceOptions(options)),
     );
     this._expressionName = expressionName;
 
@@ -1270,7 +1162,7 @@ export class ExpressionDimension extends Dimension {
       );
     }
 
-    if (ExpressionDimension.isExpressionClause(somethingElse)) {
+    if (isExpressionReference(somethingElse)) {
       const dimension = ExpressionDimension.parseMBQL(
         somethingElse,
         this._metadata,
@@ -1486,7 +1378,7 @@ export class AggregationDimension extends Dimension {
     metadata?: Metadata | null | undefined,
     query?: StructuredQuery | null | undefined,
   ): Dimension | null | undefined {
-    if (Array.isArray(mbql) && mbql[0] === "aggregation") {
+    if (isAggregationReference(mbql)) {
       const [aggregationIndex, options] = mbql.slice(1);
       return new AggregationDimension(
         aggregationIndex,
@@ -1509,7 +1401,7 @@ export class AggregationDimension extends Dimension {
       [aggregationIndex, options],
       metadata,
       query,
-      Object.freeze(Dimension.normalizeOptions(options)),
+      Object.freeze(normalizeReferenceOptions(options)),
     );
     this._aggregationIndex = aggregationIndex;
 
@@ -1617,13 +1509,9 @@ export class TemplateTagDimension extends FieldDimension {
     metadata: Metadata = null,
     query: NativeQuery = null,
   ): FieldDimension | null | undefined {
-    return TemplateTagDimension.isTemplateTagClause(mbql)
+    return isTemplateTagReference(mbql)
       ? Object.freeze(new TemplateTagDimension(mbql[1], metadata, query))
       : null;
-  }
-
-  static isTemplateTagClause(clause) {
-    return Array.isArray(clause) && clause[0] === "template-tag";
   }
 
   validateTemplateTag(): ValidationError | null {

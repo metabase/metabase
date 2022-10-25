@@ -11,10 +11,10 @@
 
 (defmacro ^:private chain-filter [field field->value & options]
   `(chain-filter/chain-filter
-     (mt/$ids nil ~(symbol (str \% (name field))))
-     (mt/$ids nil ~(into {} (for [[k v] field->value]
-                              [(symbol (str \% k)) v])))
-     ~@options))
+    (mt/$ids nil ~(symbol (str \% (name field))))
+    (mt/$ids nil ~(into {} (for [[k v] field->value]
+                             [(symbol (str \% k)) v])))
+    ~@options))
 
 (defmacro ^:private chain-filter-search [field field->value query & options]
   `(chain-filter/chain-filter-search

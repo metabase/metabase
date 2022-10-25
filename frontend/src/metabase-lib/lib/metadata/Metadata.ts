@@ -1,11 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import Base from "./Base";
+import Metric from "metabase-lib/lib/metadata/Metric";
 import type Question from "../Question";
+import Base from "./Base";
 import type Database from "./Database";
 import type Table from "./Table";
 import type Schema from "./Schema";
+import type Field from "./Field";
+import { getUniqueFieldId } from "./utils/fields";
 
 /**
  * @typedef { import("./metadata").DatabaseId } DatabaseId
@@ -73,7 +76,7 @@ export default class Metadata extends Base {
    * @param {MetricId} metricId
    * @returns {?Metric}
    */
-  metric(metricId) {
+  metric(metricId): Metric | null {
     return (metricId != null && this.metrics[metricId]) || null;
   }
 
@@ -102,12 +105,20 @@ export default class Metadata extends Base {
     return (tableId != null && this.tables[tableId]) || null;
   }
 
-  /**
-   * @param {FieldId} fieldId
-   * @returns {?Field}
-   */
-  field(fieldId): Field | null {
-    return (fieldId != null && this.fields[fieldId]) || null;
+  field(
+    fieldId: Field["id"] | Field["name"] | undefined | null,
+    tableId?: Table["id"] | undefined | null,
+  ): Field | null {
+    if (fieldId == null) {
+      return null;
+    }
+
+    const uniqueId = getUniqueFieldId({
+      id: fieldId,
+      table_id: tableId,
+    } as Field);
+
+    return this.fields[uniqueId] || null;
   }
 
   question(cardId): Question | null {

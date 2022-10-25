@@ -3,6 +3,8 @@ import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
+import type { Field } from "metabase-types/api/field";
+import type { Table } from "metabase-types/api/table";
 import DataSelectorLoading from "../DataSelectorLoading";
 
 import {
@@ -11,16 +13,13 @@ import {
   HeaderName,
 } from "./DataSelectorFieldPicker.styled";
 
-import type { Field } from "metabase-types/api/field";
-import type { Table } from "metabase-types/api/table";
-
 type DataSelectorFieldPickerProps = {
   fields: Field[];
-  hasFiltering: boolean;
-  hasInitialFocus: boolean;
-  isLoading: boolean;
-  selectedField: Field;
-  selectedTable: Table;
+  hasFiltering?: boolean;
+  hasInitialFocus?: boolean;
+  isLoading?: boolean;
+  selectedField?: Field;
+  selectedTable?: Table;
   onBack: () => void;
   onChangeField: (field: Field) => void;
 };

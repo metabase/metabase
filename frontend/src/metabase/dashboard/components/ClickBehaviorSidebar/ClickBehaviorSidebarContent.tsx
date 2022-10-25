@@ -1,9 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { getIn } from "icepick";
 
-import { isTableDisplay } from "metabase/lib/click-behavior";
+import { isMappedExplicitActionButton } from "metabase/writeback/utils";
 
-import type { UiParameter } from "metabase/parameters/types";
 import type {
   Dashboard,
   DashboardOrderedCard,
@@ -11,9 +10,11 @@ import type {
   CardId,
   ClickBehavior,
   DatasetData,
+  DatasetColumn,
 } from "metabase-types/api";
-import type { Column } from "metabase-types/types/Dataset";
 
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { UiParameter } from "metabase-lib/lib/parameters/types";
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarMainView from "./ClickBehaviorSidebarMainView";
 import TableClickBehaviorView from "./TableClickBehaviorView";
@@ -28,7 +29,7 @@ interface Props {
   clickBehavior?: ClickBehavior;
   isTypeSelectorVisible: boolean | null;
   hasSelectedColumn: boolean;
-  onColumnSelected: (column: Column) => void;
+  onColumnSelected: (column: DatasetColumn) => void;
   onSettingsChange: (clickBehavior?: Partial<ClickBehavior>) => void;
   onTypeSelectorVisibilityChange: (isVisible: boolean) => void;
 }
@@ -45,7 +46,15 @@ function ClickBehaviorSidebar({
   onSettingsChange,
   onTypeSelectorVisibilityChange,
 }: Props) {
-  const finalClickBehavior = clickBehavior || { type: "actionMenu" };
+  const finalClickBehavior = useMemo<ClickBehavior>(() => {
+    if (clickBehavior) {
+      return clickBehavior;
+    }
+    if (isMappedExplicitActionButton(dashcard)) {
+      return { type: "action" };
+    }
+    return { type: "actionMenu" };
+  }, [clickBehavior, dashcard]);
 
   if (isTableDisplay(dashcard) && !hasSelectedColumn) {
     const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
@@ -53,7 +62,7 @@ function ClickBehaviorSidebar({
       <TableClickBehaviorView
         columns={columns}
         dashcard={dashcard}
-        getClickBehaviorForColumn={(column: Column) =>
+        getClickBehaviorForColumn={(column: DatasetColumn) =>
           getClickBehaviorForColumn(dashcard, column)
         }
         onColumnClick={onColumnSelected}

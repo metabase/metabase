@@ -101,7 +101,6 @@
                ~dashcard-binding  (add-card-to-dashboard! card# dash#)]
            ~@body)))))
 
-
 ;;; ------------------------------------------- GET /api/public/card/:uuid -------------------------------------------
 
 (deftest fetch-card-test
@@ -792,7 +791,6 @@
   `(do-with-sharing-enabled-and-temp-card-referencing ~table-kw ~field-kw
      (fn [~card-binding]
        ~@body)))
-
 
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
   (is (= {:values          [["20th Century Cafe"]

@@ -11,8 +11,8 @@ import {
   openCollectionMenu,
   visitCollection,
 } from "__support__/e2e/helpers";
-import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
+import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
@@ -197,6 +197,17 @@ describe("scenarios > collection defaults", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+    });
+
+    it.skip("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
+      const questionDetails = {
+        native: { query: "select 1 --[[]]", "template-tags": {} },
+      };
+
+      cy.createNativeQuestion(questionDetails);
+
+      visitRootCollection();
+      cy.findByText("Orders in a dashboard");
     });
 
     it("should be able to drag an item to the root collection (metabase#16498)", () => {

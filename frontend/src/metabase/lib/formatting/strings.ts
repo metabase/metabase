@@ -1,6 +1,6 @@
 import inflection from "inflection";
 
-import { getDataFromClicked } from "metabase/lib/click-behavior";
+import { getDataFromClicked } from "metabase-lib/lib/parameters/utils/click-behavior";
 import { formatUrl } from "./url";
 import { renderLinkTextForClick } from "./link";
 import { formatValue, getRemappedValue } from "./value";
@@ -29,8 +29,8 @@ export function capitalize(str: string, { lowercase = true } = {}) {
 export function inflect(
   str: string,
   count: number,
-  singular: string | undefined,
-  plural: string | undefined,
+  singular?: string,
+  plural?: string,
 ) {
   return inflection.inflect(str, count, singular, plural);
 }

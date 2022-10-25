@@ -2,6 +2,10 @@
 import React from "react";
 import { connect } from "react-redux";
 
+import { t, jt } from "ttag";
+import { assoc } from "icepick";
+import _ from "underscore";
+import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
@@ -9,7 +13,6 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { t, jt } from "ttag";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -22,8 +25,8 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import { getFont } from "metabase/styled-components/selectors";
 
+import { getMode } from "metabase/modes/lib/modes";
 import Utils from "metabase/lib/utils";
-import { datasetContainsNoResults } from "metabase/lib/dataset";
 
 import {
   MinRowsError,
@@ -31,10 +34,7 @@ import {
 } from "metabase/visualizations/lib/errors";
 
 import NoResults from "assets/img/no_results.svg";
-
-import { assoc } from "icepick";
-import _ from "underscore";
-import cx from "classnames";
+import { datasetContainsNoResults } from "metabase-lib/lib/queries/utils/dataset";
 
 export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart.`;
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
@@ -214,6 +214,20 @@ class Visualization extends React.PureComponent {
       : question;
   }
 
+  getMode(maybeModeOrQueryMode, question) {
+    if (maybeModeOrQueryMode instanceof Mode) {
+      return maybeModeOrQueryMode;
+    }
+
+    if (question && maybeModeOrQueryMode) {
+      return new Mode(question, maybeModeOrQueryMode);
+    }
+
+    if (question) {
+      return getMode(question);
+    }
+  }
+
   getClickActions(clicked) {
     if (!clicked) {
       return [];
@@ -223,9 +237,7 @@ class Visualization extends React.PureComponent {
     const seriesIndex = clicked.seriesIndex || 0;
     const card = this.state.series[seriesIndex].card;
     const question = this._getQuestionForCardCached(metadata, card);
-    const mode = this.props.mode
-      ? question && new Mode(question, this.props.mode)
-      : question && question.mode();
+    const mode = this.getMode(this.props.mode, question);
 
     return mode
       ? mode.actionsForClick(

@@ -1,22 +1,26 @@
 (ns metabase.models.database
-  (:require [cheshire.generate :refer [add-encoder encode-map]]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.db.util :as mdb.u]
-            [metabase.driver :as driver]
-            [metabase.driver.impl :as driver.impl]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.secret :as secret :refer [Secret]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.generate :refer [add-encoder encode-map]]
+   [clojure.spec.alpha :as s]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.config.file :as config.file]
+   [metabase.db.util :as mdb.u]
+   [metabase.driver :as driver]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.secret :as secret :refer [Secret]]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -183,8 +187,9 @@
                       :metadata_sync_schedule      new-metadata-schedule
                       :cache_field_values_schedule new-fieldvalues-schedule)))))))))
 
-(defn- pre-insert [database]
-  (-> database
+(defn- pre-insert [{:keys [details], :as database}]
+  (-> (cond-> database
+        (not details) (assoc :details {}))
       handle-secrets-changes
       (assoc :initial_sync_status "incomplete")))
 
@@ -205,15 +210,15 @@
                                        :cache_field_values_schedule :cron-string
                                        :start_of_week               :keyword
                                        :settings                    :encrypted-json})
-          :properties     (constantly {:timestamped? true})
           :post-insert    post-insert
           :post-select    post-select
           :pre-insert     pre-insert
           :pre-update     pre-update
-          :pre-delete     pre-delete})
+          :pre-delete     pre-delete}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name :engine])})
+(defmethod serdes.hash/identity-hash-fields Database
+  [_database]
+  [:name :engine])
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
@@ -287,7 +292,8 @@
   ;; TODO Support alternative encryption of secret database details.
   ;; There's one optional foreign key: creator_id. Resolve it as an email.
   (cond-> (serdes.base/extract-one-basics "Database" entity)
-    (:creator_id entity) (assoc :creator_id (db/select-one-field :email 'User :id (:creator_id entity)))
+    true                 (update :creator_id serdes.util/export-user)
+    true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
     (= :exclude secrets) (dissoc :details)))
 
 (defmethod serdes.base/serdes-entity-id "Database"
@@ -302,6 +308,48 @@
   [[{:keys [id]}]]
   (db/select-one-field :id Database :name id))
 
-(defmethod serdes.base/load-xform "Database" [{:keys [creator_id] :as entity}]
-  (cond-> (serdes.base/load-xform-basics entity)
-    creator_id (assoc :creator_id (db/select-one-field :id 'User :email creator_id))))
+(defmethod serdes.base/load-xform "Database"
+  [database]
+  (-> (cond-> database
+        (not (:details database)) (assoc :details "{}"))
+      serdes.base/load-xform-basics
+      (update :creator_id serdes.util/import-user)))
+
+
+;;;; initialization from files
+
+(s/def :metabase.models.database.config-file-spec/name
+  string?)
+
+(s/def :metabase.models.database.config-file-spec/engine
+  string?)
+
+(s/def :metabase.models.database.config-file-spec/details
+  map?)
+
+(s/def ::config-file-spec
+  (s/keys :req-un [:metabase.models.database.config-file-spec/engine
+                   :metabase.models.database.config-file-spec/name
+                   :metabase.models.database.config-file-spec/details]))
+
+(defmethod config.file/section-spec :databases
+  [_section]
+  (s/spec (s/* ::config-file-spec)))
+
+(defn- init-from-config-file!
+  [database]
+  ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
+  (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)
+  (if-let [existing-database-id (db/select-one-id Database :engine (:engine database), :name (:name database))]
+    (do
+      (log/info (u/colorize :blue (trs "Updating Database {0} {1}" (:engine database) (pr-str (:name database)))))
+      (db/update! Database existing-database-id database))
+    (do
+      (log/info (u/colorize :green (trs "Creating new {0} Database {1}" (:engine database) (pr-str (:name database)))))
+      (let [db (db/insert! Database database)]
+        ((requiring-resolve 'metabase.sync/sync-database!) db)))))
+
+(defmethod config.file/initialize-section! :databases
+  [_section-name databases]
+  (doseq [database databases]
+    (init-from-config-file! database)))

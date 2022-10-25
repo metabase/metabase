@@ -161,9 +161,8 @@
                           :last_query_start
                           :collection [:moderation_reviews :moderator_details])
                  (cond-> ;; card
-                   api/*is-superuser?* (hydrate [:emitters [:action :card]])
                    (:dataset raw-card) (hydrate :persisted)
-                   (:is_write raw-card) (hydrate :card/emitter-usages :card/action-id))
+                   (:is_write raw-card) (hydrate :card/action-id))
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
@@ -322,7 +321,7 @@ saved later when it is ready."
                   (log/info (trs "Not updating metadata asynchronously for card {0} because query has changed"
                                  id)))))))))
 
-(defn- create-card!
+(defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
   the card will be saved without metadata and it will be saved to the card in the future when it is ready."
   [{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data}]
@@ -598,7 +597,7 @@ saved later when it is ready."
                  :collection [:moderation_reviews :moderator_details])
         (cond-> ;; card
           (:dataset card) (hydrate :persisted)
-          (:is_write card) (hydrate :card/emitter-usages :card/action-id))
+          (:is_write card) (hydrate :card/action-id))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 (api/defendpoint PUT "/:id"

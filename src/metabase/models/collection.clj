@@ -16,6 +16,7 @@
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -160,7 +161,7 @@
       (let [msg (tru "Invalid Collection location: path is invalid.")]
         (throw (ex-info msg {:status-code 400, :errors {:location msg}}))))
     ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
-    (when (contains? collection :personal_owner_id)
+    (when (:personal_owner_id collection)
       (when-not (= location "/")
         (let [msg (tru "You cannot move a Personal Collection.")]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))
@@ -350,7 +351,7 @@
   highest-level (e.g. most distant) ancestor."
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
-    (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:%lower.name]})))
+    (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:location]})))
 
 (s/defn effective-ancestors :- [(s/cond-pre RootCollection (mi/InstanceOf Collection))]
   "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
@@ -442,7 +443,7 @@
         ;; key
         :children)))
 
-(s/defn ^:private descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
+(s/defn descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
   "Return a set of IDs of all descendant Collections of a `collection`."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (db/select-ids Collection :location [:like (str (children-location collection) \%)]))
@@ -890,6 +891,10 @@
      (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
      "ROOT")))
 
+(defmethod serdes.hash/identity-hash-fields Collection
+  [_collection]
+  [:name :namespace parent-identity-hash])
+
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Collection)
   models/IModel
   (merge models/IModelDefaults
@@ -900,25 +905,10 @@
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update
-          :pre-delete     pre-delete})
+          :pre-delete     pre-delete}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name :namespace parent-identity-hash])})
-
-(defn- collection-query [maybe-user]
-  (serdes.base/raw-reducible-query
-    "Collection"
-    {:where [:and
-             [:= :archived false]
-             (if (nil? maybe-user)
-               [:is :personal_owner_id nil]
-               [:= :personal_owner_id maybe-user])]}))
-
-(defmethod serdes.base/extract-query "Collection" [_ {:keys [user]}]
-  (let [unowned (collection-query nil)]
-    (if user
-      (eduction cat [unowned (collection-query user)])
-      unowned)))
+(defmethod serdes.base/extract-query "Collection" [_ {:keys [collection-set]}]
+  (db/select-reducible Collection :id [:in collection-set]))
 
 (defmethod serdes.base/extract-one "Collection"
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
@@ -942,17 +932,16 @@
         (assoc :parent_id parent-id :personal_owner_id owner-email)
         (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
 
-(defmethod serdes.base/load-xform "Collection" [{:keys [parent_id personal_owner_id] :as contents}]
+(defmethod serdes.base/load-xform "Collection" [{:keys [parent_id] :as contents}]
   (let [loc        (if parent_id
                      (let [{:keys [id location]} (serdes.base/lookup-by-id Collection parent_id)]
                        (str location id "/"))
-                     "/")
-        user-id    (when personal_owner_id
-                     (db/select-one-field :id 'User :email personal_owner_id))]
+                     "/")]
     (-> contents
         serdes.base/load-xform-basics
         (dissoc :parent_id)
-        (assoc :location loc :personal_owner_id user-id))))
+        (assoc :location loc)
+        (update :personal_owner_id serdes.util/import-user))))
 
 (defmethod serdes.base/serdes-dependencies "Collection"
   [{:keys [parent_id]}]

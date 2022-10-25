@@ -1,11 +1,10 @@
-import _ from "underscore";
 import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 import { UserApi } from "metabase/services";
 
-import { runQuestionQuery, cancelQuery } from "./querying";
+import { cancelQuery } from "./querying";
 import { updateUrl } from "./navigation";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
@@ -32,9 +31,6 @@ export const setQueryBuilderMode =
     }
     if (queryBuilderMode === "notebook") {
       dispatch(cancelQuery());
-    }
-    if (queryBuilderMode === "dataset") {
-      dispatch(runQuestionQuery());
     }
   };
 
