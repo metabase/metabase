@@ -7,6 +7,7 @@ import {
   isTopLevelNavItem,
   getDataAppHomePageId,
   getParentDataAppPageId,
+  getChildNavItems,
 } from "./utils";
 
 describe("data app utils", () => {
@@ -123,6 +124,51 @@ describe("data app utils", () => {
 
     it("skips hidden pages when looking for a parent", () => {
       expect(getParentDataAppPageId(6, navItems)).toBe(4);
+    });
+  });
+
+  describe("getChildNavItems", () => {
+    it("returns child nav items for a given nav item", () => {
+      const children = [
+        { page_id: 4, indent: 1 },
+        { page_id: 5, indent: 1 },
+        { page_id: 6, indent: 2 },
+      ];
+
+      const navItems = [
+        { page_id: 1 },
+        { page_id: 2 },
+        { page_id: 3 },
+        ...children,
+        { page_id: 7 },
+        { page_id: 8 },
+      ];
+
+      expect(getChildNavItems(navItems, 3)).toEqual(children);
+    });
+
+    it("returns child nav items for a nested nav item", () => {
+      const navItems = [
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 3, indent: 2 },
+      ];
+
+      expect(getChildNavItems(navItems, 2)).toEqual([
+        { page_id: 3, indent: 2 },
+      ]);
+    });
+
+    it("returns an empty list if can't find nav item", () => {
+      expect(getChildNavItems([{ page_id: 1 }, { page_id: 2 }], 3)).toEqual([]);
+    });
+
+    it("returns an empty list when there are no child pages", () => {
+      const navItems = [{ page_id: 1 }, { page_id: 2 }, { page_id: 3 }];
+
+      expect(getChildNavItems(navItems, 1)).toEqual([]);
+      expect(getChildNavItems(navItems, 2)).toEqual([]);
+      expect(getChildNavItems(navItems, 3)).toEqual([]);
     });
   });
 });

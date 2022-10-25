@@ -68,3 +68,29 @@ export function getParentDataAppPageId(
 
   return pagesBeforeTarget[parentPageIndex]?.page_id || null;
 }
+
+export function getChildNavItems(
+  navItems: DataAppNavItem[],
+  pageId: DataAppPageId,
+) {
+  const targetIndex = navItems.findIndex(navItem => navItem.page_id === pageId);
+  if (targetIndex === -1) {
+    return [];
+  }
+
+  const targetNavItem = navItems[targetIndex];
+  const targetIndent = targetNavItem.indent || 0;
+
+  const navItemsAfterTarget = navItems.slice(targetIndex + 1);
+
+  const nextNavItemWithSameIndentIndex = navItemsAfterTarget.findIndex(
+    navItem => (navItem.indent || 0) === targetIndent,
+  );
+
+  const endIndex =
+    nextNavItemWithSameIndentIndex === -1
+      ? undefined
+      : nextNavItemWithSameIndentIndex;
+
+  return navItemsAfterTarget.slice(0, endIndex);
+}
