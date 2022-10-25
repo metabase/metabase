@@ -66,6 +66,14 @@ describe("data app utils", () => {
     });
 
     describe("without explicit homepage", () => {
+      it("returns first top-level nav item page ID", () => {
+        const dataApp = createMockDataApp({
+          ...dataAppWithoutHomepage,
+          nav_items: [{ page_id: 1, hidden: true }, { page_id: 8 }],
+        });
+        expect(getDataAppHomePageId(dataApp, pages)).toEqual(8);
+      });
+
       it("returns fist page in alphabetical order", () => {
         expect(getDataAppHomePageId(dataAppWithoutHomepage, pages)).toEqual(
           page1.id,

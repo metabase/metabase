@@ -15,16 +15,20 @@ export function isDataAppCollection(collection: Collection) {
   return typeof collection.app_id === "number";
 }
 
+export function isTopLevelNavItem(navItem: DataAppNavItem) {
+  return (!navItem.indent || navItem.indent === 0) && !navItem.hidden;
+}
+
 export function getDataAppHomePageId(dataApp: DataApp, pages: Dashboard[]) {
   if (dataApp.dashboard_id) {
     return dataApp.dashboard_id;
   }
+  const navItem = dataApp.nav_items.find(isTopLevelNavItem);
+  if (navItem) {
+    return navItem.page_id;
+  }
   const [firstPage] = _.sortBy(pages, "name");
   return firstPage?.id;
-}
-
-export function isTopLevelNavItem(navItem: DataAppNavItem) {
-  return (!navItem.indent || navItem.indent === 0) && !navItem.hidden;
 }
 
 function isParentPage(
