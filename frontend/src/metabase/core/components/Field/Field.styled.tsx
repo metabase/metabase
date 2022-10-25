@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { FormFieldAlignment, FormFieldOrientation } from "./types";
+import { FieldAlignment, FieldOrientation } from "./types";
 
 export interface FieldRootProps {
-  orientation: FormFieldOrientation;
+  orientation: FieldOrientation;
   hasError: boolean;
 }
 
@@ -14,8 +14,8 @@ export const FieldRoot = styled.div<FieldRootProps>`
 `;
 
 export interface FormCaptionProps {
-  alignment: FormFieldAlignment;
-  orientation: FormFieldOrientation;
+  alignment: FieldAlignment;
+  orientation: FieldOrientation;
 }
 
 export const FieldCaption = styled.div<FormCaptionProps>`

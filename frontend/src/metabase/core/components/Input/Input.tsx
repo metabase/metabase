@@ -24,7 +24,7 @@ export type InputAttributes = Omit<
 export interface InputProps extends InputAttributes {
   inputRef?: Ref<HTMLInputElement>;
   size?: InputSize;
-  error?: string | boolean;
+  error?: boolean;
   fullWidth?: boolean;
   leftIcon?: string;
   leftIconTooltip?: ReactNode;
@@ -67,7 +67,7 @@ const Input = forwardRef(function Input(
         {...props}
         ref={inputRef}
         fieldSize={size}
-        hasError={Boolean(error)}
+        hasError={error}
         fullWidth={fullWidth}
         hasRightIcon={Boolean(rightIcon)}
         subtitle={subtitle}

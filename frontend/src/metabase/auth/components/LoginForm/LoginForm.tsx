@@ -31,15 +31,7 @@ const LoginForm = ({
   isCookieEnabled,
   onSubmit,
 }: LoginFormProps): JSX.Element => {
-  const {
-    values,
-    errors,
-    touched,
-    isValid,
-    isSubmitting,
-    handleChange,
-    handleSubmit,
-  } = useFormik({
+  const { isValid, isSubmitting, handleSubmit } = useFormik({
     initialValues: { username: "", password: "", remember: isCookieEnabled },
     validationSchema: isLdapEnabled ? LdapSchema : PasswordSchema,
     onSubmit,
@@ -48,45 +40,33 @@ const LoginForm = ({
   return (
     <form onSubmit={handleSubmit}>
       <FormField
+        name="username"
         title={isLdapEnabled ? t`Username or email address` : t`Email address`}
-        error={touched.username && errors.username}
       >
         <FormInput
           name="username"
-          value={values.username}
-          error={touched.username && errors.username}
           type={isLdapEnabled ? "input" : "email"}
           placeholder="nicetoseeyou@email.com"
           autoFocus
           fullWidth
-          onChange={handleChange}
         />
       </FormField>
-      <FormField
-        title={t`Password`}
-        error={touched.password && errors.password}
-      >
+      <FormField name="password" title={t`Password`}>
         <FormInput
           name="password"
-          value={values.password}
-          error={touched.password && errors.password}
           type="password"
           placeholder={t`Shhh...`}
           fullWidth
-          onChange={handleChange}
         />
       </FormField>
       {isCookieEnabled && (
         <FormField
+          name="remember"
           title={t`Remember me`}
           alignment="start"
           orientation="horizontal"
         >
-          <CheckBox
-            name="remember"
-            checked={values.remember}
-            onChange={handleChange}
-          />
+          <CheckBox name="remember" />
         </FormField>
       )}
       <Button primary fullWidth disabled={!isValid || isSubmitting}>
