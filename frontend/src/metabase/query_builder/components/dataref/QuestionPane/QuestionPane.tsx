@@ -8,14 +8,13 @@ import {
   Description,
   EmptyDescription,
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
+import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import {
-  getCollectionFromCard,
-  getQuestionFromCard,
-} from "metabase/query_builder/selectors";
-import type { State } from "metabase-types/store";
+import { getQuestionFromCard } from "metabase/query_builder/selectors";
+import type { Card } from "metabase-types/api/card";
 import type { Collection } from "metabase-types/api/collection";
+import type { State } from "metabase-types/store";
 import Table from "metabase-lib/lib/metadata/Table";
 import Question from "metabase-lib/lib/Question";
 import FieldList from "../FieldList";
@@ -33,14 +32,18 @@ interface QuestionPaneProps {
   onItemClick: (type: string, item: unknown) => void;
   onBack: () => void;
   onClose: () => void;
+  card: Card;
   question: Question;
   collection: Collection;
 }
 
-const mapStateToProps = (state: State, props: QuestionPaneProps) => ({
-  question: getQuestionFromCard(state, props.question),
-  collection: getCollectionFromCard(state, props.question),
-});
+const mapStateToProps = (state: State, { card }: QuestionPaneProps) => {
+  const question = getQuestionFromCard(state, card);
+  const collection = Collections.selectors.getObject(state, {
+    entityId: question.collectionId(),
+  });
+  return { question, collection };
+};
 
 const QuestionPane = ({
   onItemClick,
@@ -111,6 +114,7 @@ const QuestionPane = ({
 export default _.compose(
   Questions.load({
     id: (_state: State, props: QuestionPaneProps) => props.question.id,
+    entityAlias: "card",
   }),
   connect(mapStateToProps),
 )(QuestionPane);
