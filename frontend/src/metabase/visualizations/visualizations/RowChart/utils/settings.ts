@@ -17,7 +17,7 @@ export const getLabelledSeries = <TDatum>(
   return series
     .filter(
       series =>
-        settings?.series_settings?.[series.seriesName]?.show_series_values !==
+        settings?.series_settings?.[series.seriesKey]?.show_series_values !==
         false,
     )
     .map(series => series.seriesKey);

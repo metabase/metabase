@@ -5,24 +5,10 @@ export const getLegendItems = <TDatum>(
   multipleSeries: Series<TDatum, unknown>[],
   seriesColors: Record<string, string>,
   settings: VisualizationSettings,
-  rawSeries: any[],
 ) => {
-  const colors = multipleSeries.map(single => seriesColors[single.seriesKey]);
-  const seriesSettings =
-    settings.series && rawSeries.map((single: any) => settings.series(single));
-
-  if (!seriesSettings) {
-    return {
-      colors,
-      labels: multipleSeries.map(single => single.seriesName),
-    };
-  }
-
-  const orderedRawSeries = multipleSeries.map(series =>
-    rawSeries.find(rawSeries => rawSeries.card.name === series.seriesName),
-  );
-  const orderedTitles = orderedRawSeries.map(
-    series => settings.series(series)?.title,
+  const orderedTitles = multipleSeries.map(
+    series =>
+      settings?.series_settings?.[series.seriesKey]?.title ?? series.seriesName,
   );
 
   return {

@@ -85,7 +85,7 @@ interface RowChartVisualizationProps {
   visualizationIsClickable: (data: Record<string, unknown>) => boolean;
   onVisualizationClick: (data: Record<string, unknown>) => void;
   card: any;
-  series: any;
+  isPlaceholder?: boolean;
   hovered: any;
   headerIcon: IconProps;
   actionButtons: React.ReactNode;
@@ -104,7 +104,7 @@ const RowChartVisualization = ({
   data,
   visualizationIsClickable,
   onVisualizationClick,
-  series: rawSeries,
+  isPlaceholder,
   hovered,
   headerIcon,
   actionButtons,
@@ -135,9 +135,9 @@ const RowChartVisualization = ({
 
   useEffect(
     function warnOnRendered() {
-      onRender({ warnings: chartWarnings });
+      !isPlaceholder && onRender({ warnings: chartWarnings });
     },
-    [chartWarnings, onRender],
+    [chartWarnings, isPlaceholder, onRender],
   );
 
   const tickFormatters = useMemo(
@@ -237,11 +237,9 @@ const RowChartVisualization = ({
   const description = settings["card.description"];
   const canSelectTitle = !!onChangeCardAndRun;
 
-  const { labels, colors } = getLegendItems(
-    series,
-    seriesColors,
-    settings,
-    rawSeries,
+  const { labels, colors } = useMemo(
+    () => getLegendItems(series, seriesColors, settings),
+    [series, seriesColors, settings],
   );
 
   const { xLabel, yLabel } = useMemo(() => getLabels(settings), [settings]);
@@ -314,7 +312,7 @@ RowChartVisualization.iconName = "horizontal_bar";
 RowChartVisualization.noun = t`row chart`;
 
 RowChartVisualization.noHeader = true;
-RowChartVisualization.minSize = { width: 4, height: 3 };
+RowChartVisualization.minSize = { width: 5, height: 4 };
 
 const stackingSettings = {
   "stackable.stack_type": {
@@ -421,7 +419,11 @@ RowChartVisualization.checkRenderable = (
   settings: VisualizationSettings,
 ) => {
   if (!hasValidColumnsSelected(settings, series[0].data)) {
-    throw new MinRowsError(1, 0);
+    throw new ChartSettingsError(
+      t`Which fields do you want to use for the Y and X axes?`,
+      { section: t`Data` },
+      t`Choose fields`,
+    );
   }
 
   const singleSeriesHasNoRows = ({ data: { rows } }: Dataset) =>
@@ -429,31 +431,16 @@ RowChartVisualization.checkRenderable = (
   if (_.every(series, singleSeriesHasNoRows)) {
     throw new MinRowsError(1, 0);
   }
-
-  const dimensions = (settings["graph.dimensions"] || []).filter(Boolean);
-  const metrics = (settings["graph.metrics"] || []).filter(name => name);
-  if (dimensions.length < 1 || metrics.length < 1) {
-    throw new ChartSettingsError(
-      t`Which fields do you want to use for the X and Y axes?`,
-      { section: t`Data` },
-      t`Choose fields`,
-    );
-  }
-  const seriesOrder = (settings["graph.series_order"] || []).filter(
-    series => series.enabled,
-  );
-  if (dimensions.length > 1 && seriesOrder.length === 0) {
-    throw new ChartSettingsError(t`No breakouts are enabled`, {
-      section: t`Data`,
-    });
-  }
 };
 
 RowChartVisualization.placeholderSeries = [
   {
     card: {
       display: "row",
-      visualization_settings: {},
+      visualization_settings: {
+        "graph.metrics": ["x"],
+        "graph.dimensions": ["y"],
+      },
       dataset_query: { type: "null" },
     },
     data: {

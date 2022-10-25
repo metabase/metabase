@@ -7,7 +7,7 @@ import { ChartFont } from "metabase/visualizations/shared/types/style";
 
 const TICK_SPACING = 4;
 
-const getWidthBasedTickInterval = (innerWidth: number) => innerWidth / 8;
+const getWidthBasedTickInterval = (innerWidth: number) => innerWidth / 12;
 
 const omitOverlappingTicks = (
   ticks: number[],
@@ -88,6 +88,24 @@ const getEvenlySpacedTicks = (
   });
 };
 
+const getLimitedCountAutoTicks = (
+  scale: ScaleContinuousNumeric<number, number, never>,
+  countLimit: number,
+) => {
+  let suggestedCount = countLimit;
+  while (suggestedCount > 0) {
+    const ticks = scale.ticks(suggestedCount);
+
+    if (ticks.length <= countLimit) {
+      return ticks;
+    }
+
+    suggestedCount--;
+  }
+
+  return [];
+};
+
 export const getXTicks = (
   tickFont: ChartFont,
   innerWidth: number,
@@ -109,7 +127,7 @@ export const getXTicks = (
   const ticks =
     scaleType === "log"
       ? getEvenlySpacedTicks(xScale, ticksInterval, ticksCount)
-      : xScale.ticks(ticksCount);
+      : getLimitedCountAutoTicks(xScale, ticksCount);
 
   return omitOverlappingTicks(
     ticks,
