@@ -232,19 +232,26 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
 
-(defonce ^:private zone-id->windows-zone
+(defonce
+  ^{:private true
+    :doc     "A map of all zone-id to the corresponding window-zone.
+             I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
+  zone-id->windows-zone
   (let [data (-> (io/resource "timezones/windowsZones.xml")
-              io/reader
-              xml/parse
-              :content
-              second
-              :content
-              first
-              :content)]
-    (apply merge (for [mapZone data
-                        :let [attr     (:attrs mapZone)
-                              zone-ids (str/split (:type attr) #" ")]]
-                    (into {"UTC" "UTC"} (map (fn [zone-id] [zone-id (:other attr)]) zone-ids))))))
+                 io/reader
+                 xml/parse
+                 :content
+                 second
+                 :content
+                 first
+                 :content)]
+    (->> (for [mapZone data
+               :let [attrs       (:attrs mapZone)
+                     window-zone (:other attrs)
+                     zone-ids    (str/split (:type attrs) #" ")]]
+           (zipmap zone-ids (repeat window-zone)))
+         (cons {"UTC""UTC"})
+         (apply merge))))
 
 (defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]

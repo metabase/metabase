@@ -28,7 +28,7 @@
               #(str/replace % #"\s+" " ")
               ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
                "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
-                \"last_login\" TIMESTAMP_NTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
+                \"last_login\" TIMESTAMP_LTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
                "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
                "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
                 PRIMARY KEY (\"id\")) ;"

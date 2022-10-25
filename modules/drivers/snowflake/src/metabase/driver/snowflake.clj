@@ -33,7 +33,7 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:convert-timezone true}]
+(doseq [[feature supported?] {:convert-timezone false}]
   (defmethod driver/database-supports? [:snowflake feature]
     [_driver _feature _database]
     supported?))
@@ -137,7 +137,7 @@
     :DATETIME                   :type/DateTime
     :TIME                       :type/Time
     :TIMESTAMP                  :type/DateTime
-    :TIMESTAMPLTZ               :type/DateTimeWithLocalTZ
+    :TIMESTAMPLTZ               :type/DateTime
     :TIMESTAMPNTZ               :type/DateTime
     :TIMESTAMPTZ                :type/DateTimeWithTZ
     :VARIANT                    :type/*
@@ -244,23 +244,6 @@
 (defmethod sql.qp/->honeysql [:snowflake :time]
   [driver [_ value _unit]]
   (hx/->time (sql.qp/->honeysql driver value)))
-
-(defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
-  (let [clause       (sql.qp/->honeysql driver arg)
-        timestamptz? (hx/is-of-type? clause #"^timestamptz*")]
-    (when (and timestamptz? source-timezone)
-      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone` argument")
-                    {:type            qp.error-type/invalid-parameter
-                     :target-timezone target-timezone
-                     :source-timezone source-timezone})))
-    (let [source-timezone (or source-timezone
-                              (:target-timezone (hx/type-info->convert-timezone-info (hx/type-info clause)))
-                              (qp.timezone/results-timezone-id))
-          expr            (if timestamptz?
-                            (hsql/call :convert_timezone target-timezone clause)
-                            clause)]
-      (hx/with-convert-timezone-type-info expr target-timezone source-timezone "timestamptz"))))
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]

@@ -885,8 +885,7 @@ workflows:
       - test-driver:
           name: be-tests-snowflake-ee
           requires:
-            - be-deps
-              #- be-tests-java-11-ee
+            - be-tests-java-11-ee
           driver: snowflake
           timeout: 115m
 
