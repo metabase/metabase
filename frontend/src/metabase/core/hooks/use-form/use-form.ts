@@ -1,5 +1,6 @@
 import { useCallback } from "react";
-import type { FormikErrors, FormikHelpers } from "formik";
+import type { FormikHelpers } from "formik";
+import { FormError } from "./types";
 
 const useForm = <T>(onSubmit: (data: T) => void) => {
   return useCallback(
@@ -21,15 +22,6 @@ const useForm = <T>(onSubmit: (data: T) => void) => {
     [onSubmit],
   );
 };
-
-interface FormError<T> {
-  data?: FormErrorData<T>;
-}
-
-interface FormErrorData<T> {
-  errors?: FormikErrors<T>;
-  message?: string;
-}
 
 const isFormError = <T>(error: unknown): error is FormError<T> => {
   return error != null && typeof error === "object";

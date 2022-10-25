@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from "react";
-import { FormStatus, useFormState } from "./use-form-state";
+import useFormState, { FormStatus } from "../use-form-state";
 
 const STATUS_TIMEOUT = 5000;
 
