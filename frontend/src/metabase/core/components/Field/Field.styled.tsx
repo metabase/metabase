@@ -2,6 +2,10 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { FieldAlignment, FieldOrientation } from "./types";
 
+export const FieldLabelError = styled.span`
+  color: ${color("error")};
+`;
+
 export interface FieldRootProps {
   orientation: FieldOrientation;
   hasError: boolean;
@@ -11,6 +15,14 @@ export const FieldRoot = styled.div<FieldRootProps>`
   display: ${props => props.orientation === "horizontal" && "flex"};
   color: ${props => (props.hasError ? color("error") : color("text-medium"))};
   margin-bottom: 1.25rem;
+
+  &:focus-within {
+    color: ${color("text-medium")};
+
+    ${FieldLabelError} {
+      display: none;
+    }
+  }
 `;
 
 export interface FormCaptionProps {
@@ -36,10 +48,6 @@ export const FieldLabel = styled.label`
   display: block;
   font-size: 0.77rem;
   font-weight: 900;
-`;
-
-export const FieldLabelError = styled.span`
-  color: ${color("error")};
 `;
 
 export const FieldDescription = styled.div`
