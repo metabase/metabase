@@ -182,6 +182,11 @@ class ChartSettings extends Component {
     const seriesSettingsWidget =
       currentWidget && widgets.find(w => w.id === "series_settings");
 
+    //We don'ty want to show series settings widget for waterfall charts
+    if (series?.[0]?.card?.display === "waterfall") {
+      return null;
+    }
+
     if (seriesSettingsWidget) {
       if (currentWidget.props?.seriesKey) {
         return {

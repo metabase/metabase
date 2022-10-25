@@ -154,7 +154,8 @@ export function seriesSetting({
 
   return {
     ...nestedSettings(settingId, {
-      getHidden: (series, settings, { isDashboard }) => !isDashboard,
+      getHidden: ([{ card }], settings, { isDashboard }) =>
+        !isDashboard || card?.display === "waterfall",
       getSection: (series, settings, { isDashboard }) =>
         isDashboard ? t`Display` : t`Style`,
       objectName: "series",
