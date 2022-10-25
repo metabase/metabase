@@ -4,6 +4,7 @@
  */
 
 import { VisualizationSettings } from "metabase-types/api/card";
+import { Collection } from "metabase-types/api/collection";
 import { DatabaseId } from "./Database";
 import { StructuredQuery, NativeQuery } from "./Query";
 import { Parameter, ParameterQueryObject } from "./Parameter";
@@ -27,6 +28,7 @@ export type UnsavedCard<Query = DatasetQuery> = {
 export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   id: CardId;
   name: string;
+  collection?: Collection;
   description?: string | null;
   dataset?: boolean;
   can_write: boolean;

@@ -12,6 +12,7 @@ import Questions from "metabase/entities/questions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { getQuestionFromCard } from "metabase/query_builder/selectors";
 import type { State } from "metabase-types/store";
+import type { SavedCard } from "metabase-types/types/Card";
 import Table from "metabase-lib/lib/metadata/Table";
 import Question from "metabase-lib/lib/Question";
 import FieldList from "../FieldList";
@@ -75,7 +76,8 @@ const QuestionPane = ({
         <QuestionPaneDetail>
           <QuestionPaneIcon name="all" />
           <QuestionPaneDetailText>
-            {question.card().collection?.name || t`Our analytics`}
+            {(question.card() as SavedCard).collection?.name ||
+              t`Our analytics`}
           </QuestionPaneDetailText>
         </QuestionPaneDetail>
         <QuestionPaneDetail>
