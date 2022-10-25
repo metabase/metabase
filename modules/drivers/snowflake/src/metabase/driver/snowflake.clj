@@ -137,7 +137,7 @@
     :DATETIME                   :type/DateTime
     :TIME                       :type/Time
     :TIMESTAMP                  :type/DateTime
-    :TIMESTAMPLTZ               :type/DateTime
+    :TIMESTAMPLTZ               :type/DateTimeWithLocalTZ
     :TIMESTAMPNTZ               :type/DateTime
     :TIMESTAMPTZ                :type/DateTimeWithTZ
     :VARIANT                    :type/*
@@ -246,17 +246,21 @@
   (hx/->time (sql.qp/->honeysql driver value)))
 
 (defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
-  [driver [_ arg to-tz from-tz]]
+  [driver [_ arg target-timezone source-timezone]]
   (let [clause       (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? clause #"^timestamptz*")]
-    (when (and timestamptz? from-tz)
+    (when (and timestamptz? source-timezone)
       (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone` argument")
-                    {:type    qp.error-type/invalid-parameter
-                     :to-tz   to-tz
-                     :from-tz from-tz})))
-   (if timestamptz?
-    (hsql/call :convert_timezone to-tz (sql.qp/->honeysql driver arg))
-    (hsql/call :convert_timezone (or from-tz (qp.timezone/results-timezone-id)) to-tz (sql.qp/->honeysql driver arg)))))
+                    {:type            qp.error-type/invalid-parameter
+                     :target-timezone target-timezone
+                     :source-timezone source-timezone})))
+    (let [source-timezone (or source-timezone
+                              (:target-timezone (hx/type-info->convert-timezone-info (hx/type-info clause)))
+                              (qp.timezone/results-timezone-id))
+          expr            (if timestamptz?
+                            (hsql/call :convert_timezone target-timezone clause)
+                            clause)]
+      (hx/with-convert-timezone-type-info expr target-timezone source-timezone "timestamptz"))))
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
@@ -347,6 +351,7 @@
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]
+  (println "UNPREPARE" t (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
 
 (defmethod unprepare/unprepare-value [:snowflake ZonedDateTime]

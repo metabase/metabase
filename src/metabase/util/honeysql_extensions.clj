@@ -233,7 +233,7 @@
 
     (is-of-type? expr \"datetime\") ; -> true"
   [honeysql-form database-type]
-  (let [form-type (some-> honeysql-form type-info type-info->db-type str/lower-case)]
+  (when-let [form-type (some-> honeysql-form type-info type-info->db-type str/lower-case)]
     (if (instance? java.util.regex.Pattern database-type)
       (some? (re-find database-type form-type))
       (= form-type
@@ -267,8 +267,10 @@
 (s/defn cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [database-type expr]
-  (-> (hsql/call :cast expr (hsql/raw (name database-type)))
-      (with-type-info {::database-type database-type})))
+  (let [original-type-info (type-info expr)]
+    (-> (hsql/call :cast expr (hsql/raw (name database-type)))
+        (with-type-info (merge original-type-info
+                               {::database-type sql-type})))))
 
 (s/defn quoted-cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS \"sql-type\")`.
@@ -278,8 +280,10 @@
 
   Returns a typed HoneySQL form."
   [sql-type expr]
-  (-> (hsql/call :cast expr (keyword sql-type))
-      (with-type-info {::database-type sql-type})))
+  (let [original-type-info (type-info expr)]
+    (-> (hsql/call :cast expr (keyword sql-type))
+        (with-type-info (merge original-type-info
+                               {::database-type sql-type})))))
 
 (s/defn maybe-cast :- TypedHoneySQLForm
   "Cast `expr` to `sql-type`, unless `expr` is typed and already of that type. Returns a typed HoneySQL form."
