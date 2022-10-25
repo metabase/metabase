@@ -105,6 +105,30 @@ export const deleteManyRows = (payload: BulkDeletePayload) => {
   );
 };
 
+export type ArchiveDataAppPayload = {
+  id: DataApp["id"];
+};
+
+export const archiveDataApp = ({ id }: ArchiveDataAppPayload) => {
+  return async (dispatch: Dispatch, getState: GetState) => {
+    const state = getState();
+
+    const dataApp: DataApp = DataApps.selectors.getObject(state, {
+      entityId: id,
+    });
+
+    await dispatch(
+      DataApps.actions.update({
+        id,
+        collection_id: dataApp.collection_id,
+        collection: {
+          archived: true,
+        },
+      }),
+    );
+  };
+};
+
 export type ArchiveDataAppPagePayload = {
   appId: DataApp["id"];
   pageId: DataAppPage["id"];
