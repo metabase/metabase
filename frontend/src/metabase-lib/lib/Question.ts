@@ -1020,13 +1020,6 @@ class QuestionInner {
       });
     }
 
-    if (this.isSaved()) {
-      dependencies.push({
-        type: "collection",
-        id: this.collectionId(),
-      });
-    }
-
     this.getResultMetadata().forEach(field => {
       if (isFK(field) && field.fk_target_field_id) {
         dependencies.push({

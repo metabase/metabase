@@ -322,12 +322,4 @@ export type DependentField = {
   type: "field";
 };
 
-export type DependentCollection = {
-  id: number;
-  type: "collection";
-};
-
-export type DependentMetadataItem =
-  | DependentTable
-  | DependentField
-  | DependentCollection;
+export type DependentMetadataItem = DependentTable | DependentField;
