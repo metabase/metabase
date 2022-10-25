@@ -34,7 +34,7 @@ interface QuestionPaneProps {
   onClose: () => void;
   card: Card;
   question: Question;
-  collection: Collection;
+  collection: Collection | null;
 }
 
 const mapStateToProps = (state: State, { card }: QuestionPaneProps) => ({
