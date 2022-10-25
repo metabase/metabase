@@ -1,26 +1,24 @@
 import { useEffect, useLayoutEffect, useState } from "react";
-import { useFormikContext } from "formik";
-
-export type FormStatus = "normal" | "active" | "success" | "failed";
+import { FormStatus, useFormState } from "./use-form-state";
 
 const STATUS_TIMEOUT = 5000;
 
-const useFormStatus = (): FormStatus => {
-  const { status, isSubmitting } = useFormikContext();
-  const isRecent = useIsRecent(status?.status, STATUS_TIMEOUT);
+const useFormStatus = (): FormStatus | undefined => {
+  const { status } = useFormState();
+  const isRecent = useIsRecent(status, STATUS_TIMEOUT);
 
-  if (isSubmitting) {
-    return "active";
-  } else if (status?.status === "fulfilled" && isRecent) {
-    return "success";
-  } else if (status?.status === "rejected" && isRecent) {
-    return "failed";
-  } else {
-    return "normal";
+  switch (status) {
+    case "pending":
+      return status;
+    case "fulfilled":
+    case "rejected":
+      return isRecent ? status : undefined;
+    default:
+      return undefined;
   }
 };
 
-const useIsRecent = (value: unknown, timeout: number) => {
+function useIsRecent(value: unknown, timeout: number) {
   const [isRecent, setIsRecent] = useState(true);
 
   useEffect(() => {
@@ -33,6 +31,6 @@ const useIsRecent = (value: unknown, timeout: number) => {
   }, [value]);
 
   return isRecent;
-};
+}
 
 export default useFormStatus;

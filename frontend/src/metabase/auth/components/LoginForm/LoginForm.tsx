@@ -2,11 +2,11 @@ import React from "react";
 import { t } from "ttag";
 import { Form, Formik } from "formik";
 import * as Yup from "yup";
+import useForm from "metabase/core/hooks/use-form";
 import FormCheckBox from "metabase/core/components/FormCheckBox";
 import FormField from "metabase/core/components/FormField";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import useForm from "metabase/core/hooks/use-form";
 import { LoginData } from "../../types";
 
 const LdapSchema = Yup.object().shape({

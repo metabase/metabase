@@ -2,7 +2,8 @@ import React, { forwardRef, Ref } from "react";
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 import Button, { ButtonProps } from "metabase/core/components/Button";
-import useFormStatus, { FormStatus } from "metabase/core/hooks/use-form-status";
+import { FormStatus } from "metabase/core/hooks/use-form-state";
+import useFormStatus from "metabase/core/hooks/use-form-status";
 
 export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   normalText?: string;
@@ -24,8 +25,8 @@ const FormSubmitButton = forwardRef(function FormSubmitButton(
       {...props}
       ref={ref}
       type="submit"
-      success={status === "success"}
-      danger={status === "failed"}
+      success={status === "fulfilled"}
+      danger={status === "rejected"}
       disabled={disabled || !isValid || isSubmitting}
     >
       {submitText}
@@ -34,7 +35,7 @@ const FormSubmitButton = forwardRef(function FormSubmitButton(
 });
 
 const getSubmitButtonText = (
-  status: FormStatus,
+  status: FormStatus | undefined,
   {
     normalText = t`Submit`,
     activeText = normalText,
@@ -43,14 +44,14 @@ const getSubmitButtonText = (
   }: FormSubmitButtonProps,
 ) => {
   switch (status) {
-    case "normal":
-      return normalText;
-    case "active":
+    case "pending":
       return activeText;
-    case "success":
+    case "fulfilled":
       return successText;
-    case "failed":
+    case "rejected":
       return failedText;
+    default:
+      return normalText;
   }
 };
 
