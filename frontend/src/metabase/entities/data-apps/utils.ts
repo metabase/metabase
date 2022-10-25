@@ -94,3 +94,24 @@ export function getChildNavItems(
 
   return navItemsAfterTarget.slice(0, endIndex);
 }
+
+export function getPreviousNavItem(
+  navItems: DataAppNavItem[],
+  pageId: DataAppPageId,
+): DataAppNavItem | null {
+  const navItemIndex = navItems.findIndex(
+    navItem => navItem.page_id === pageId,
+  );
+
+  if (navItemIndex === -1) {
+    return navItems[navItems.length - 1] || null;
+  }
+
+  const navItemsBeforeTarget = navItems.slice(0, navItemIndex);
+  const previousNavItem = _.findLastIndex(
+    navItemsBeforeTarget,
+    isTopLevelNavItem,
+  );
+
+  return navItemsBeforeTarget[previousNavItem] || null;
+}

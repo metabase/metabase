@@ -7,6 +7,7 @@ import {
   isTopLevelNavItem,
   getDataAppHomePageId,
   getParentDataAppPageId,
+  getPreviousNavItem,
   getChildNavItems,
 } from "./utils";
 
@@ -169,6 +170,39 @@ describe("data app utils", () => {
       expect(getChildNavItems(navItems, 1)).toEqual([]);
       expect(getChildNavItems(navItems, 2)).toEqual([]);
       expect(getChildNavItems(navItems, 3)).toEqual([]);
+    });
+  });
+
+  describe("getPreviousNavItem", () => {
+    it("should return previous nav item", () => {
+      const navItems: DataAppNavItem[] = [
+        { page_id: 1 },
+        { page_id: 2 },
+        { page_id: 3 },
+      ];
+
+      expect(getPreviousNavItem(navItems, 3)).toEqual(navItems[1]);
+    });
+
+    it("should return null if there are no nav items", () => {
+      expect(getPreviousNavItem([], 1)).toBeNull();
+    });
+
+    it("should return last nav item if unknown page ID was provided", () => {
+      const navItems: DataAppNavItem[] = [{ page_id: 1 }, { page_id: 2 }];
+
+      expect(getPreviousNavItem(navItems, 3)).toEqual(navItems[1]);
+    });
+
+    it("should return previous top-level nav item", () => {
+      const navItems: DataAppNavItem[] = [
+        { page_id: 1 },
+        { page_id: 2, indent: 1 },
+        { page_id: 3, indent: 1 },
+        { page_id: 4 },
+      ];
+
+      expect(getPreviousNavItem(navItems, 3)).toEqual(navItems[0]);
     });
   });
 });
