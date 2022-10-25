@@ -37,13 +37,9 @@ interface QuestionPaneProps {
   collection: Collection;
 }
 
-const mapStateToProps = (state: State, { card }: QuestionPaneProps) => {
-  const question = getQuestionFromCard(state, card);
-  const collection = Collections.selectors.getObject(state, {
-    entityId: question.collectionId(),
-  });
-  return { question, collection };
-};
+const mapStateToProps = (state: State, { card }: QuestionPaneProps) => ({
+  question: getQuestionFromCard(state, card),
+});
 
 const QuestionPane = ({
   onItemClick,
@@ -115,6 +111,10 @@ export default _.compose(
   Questions.load({
     id: (_state: State, props: QuestionPaneProps) => props.question.id,
     entityAlias: "card",
+  }),
+  Collections.load({
+    id: (_state: State, props: QuestionPaneProps) => props.card.collection_id,
+    loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps),
 )(QuestionPane);
