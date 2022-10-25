@@ -1,11 +1,11 @@
 import React from "react";
 import { t } from "ttag";
-import { useFormik } from "formik";
+import { Formik } from "formik";
 import * as Yup from "yup";
-import Button from "metabase/core/components/Button";
-import FormInput from "metabase/core/components/FormInput";
-import FormField from "metabase/core/components/FormField";
 import FormCheckBox from "metabase/core/components/FormCheckBox";
+import FormField from "metabase/core/components/FormField";
+import FormInput from "metabase/core/components/FormInput";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { LoginData } from "../../types";
 
 const LdapSchema = Yup.object().shape({
@@ -31,14 +31,18 @@ const LoginForm = ({
   isCookieEnabled,
   onSubmit,
 }: LoginFormProps): JSX.Element => {
-  const { isValid, isSubmitting, handleSubmit } = useFormik({
-    initialValues: { username: "", password: "", remember: isCookieEnabled },
-    validationSchema: isLdapEnabled ? LdapSchema : PasswordSchema,
-    onSubmit,
-  });
+  const initialValues = {
+    username: "",
+    password: "",
+    remember: isCookieEnabled,
+  };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <Formik
+      initialValues={initialValues}
+      validationSchema={isLdapEnabled ? LdapSchema : PasswordSchema}
+      onSubmit={onSubmit}
+    >
       <FormField
         name="username"
         title={isLdapEnabled ? t`Username or email address` : t`Email address`}
@@ -69,10 +73,10 @@ const LoginForm = ({
           <FormCheckBox name="remember" />
         </FormField>
       )}
-      <Button primary fullWidth disabled={!isValid || isSubmitting}>
+      <FormSubmitButton primary fullWidth>
         {t`Sign in`}
-      </Button>
-    </form>
+      </FormSubmitButton>
+    </Formik>
   );
 };
 
