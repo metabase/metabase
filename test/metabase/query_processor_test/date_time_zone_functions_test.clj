@@ -90,8 +90,7 @@
     ;; need to have seperate tests for mongo because it doesn't have supports for casting yet
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with datetime columns"
-        (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]
-                                     [:datetime_tz (mt/id :times :dt_tz)]]
+        (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
                 op                  [:get-year :get-quarter :get-month :get-day
                                      :get-day-of-week :get-hour :get-minute :get-second]
                 {:keys [expected-fn query-fn]}
@@ -359,20 +358,6 @@
                      "2004-03-19T11:19:09+09:00")
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")])))))))))
 
-#_(mt/with-driver :postgres
-    (mt/dataset times-mixed
-                (->> (mt/mbql-query times {:expressions {"convert" [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]
-                                                         "hour-convert"    [:get-hour [:expression "convert"]]
-                                                         "hour-dt-tz"      [:get-hour [:field (mt/id :times :dt_tz) nil]]}
-
-                                           :fields      [[:expression "convert"]
-                                                         [:expression "hour-convert"]
-                                                         [:field (mt/id :times :dt_tz) nil]
-                                                         [:expression "hour-dt-tz"]]})
-                     mt/process-query mt/rows
-                     ;mt/compile :query println
-                 #_())))
-
 (def ^:private driver->timezone-aware-base-type
   {:postgres           :type/DateTimeWithLocalTZ    ; x
    :sqlserver          :type/DateTimeWithZoneOffset ; x
@@ -403,60 +388,10 @@
           (is (= (repeat (count types) (driver->timezone-aware-base-type driver/*driver*))
                  (map :base_type (:cols result))))))))
 
-(defn mbql-query->native-query
+(defn- mbql-query->native-query
   [mbql-query]
   (let [compiled-query (mt/compile mbql-query)]
     (cons (:query compiled-query) (:params compiled-query))))
-
-#_(mt/with-driver :ora
-   (mt/dataset times-mixed
-     (dev/query-jdbc-db
-       [driver/*driver* 'times-mixed]
-       ["select datepart(\"hour\", dt_tz), dt_tz from times;"]
-       #_(mbql-query->native-query (mt/mbql-query times
-                                                  {:expressions {"expr" [:convert-timezone [:field (mt/id :times :dt)] (offset->zone "+07:00")]}
-                                                   :fields      [[:expression "expr"]]})))))
-
-#_(mt/with-driver :vertica
-     (mt/dataset times-mixed
-       (dev/query-jdbc-db
-         [driver/*driver* 'times-mixed]
-         (mbql-query->native-query (mt/mbql-query times
-                                                  {:expressions {"to-07"       [:convert-timezone [:field (mt/id :times :dt) nil]  (offset->zone "+07:00")]
-                                                                 "to-07-to-09" [:convert-timezone [:expression "to-07"] (offset->zone "+09:00")]}
-                                                   :fields      [[:field (mt/id :times :dt_tz) nil]
-                                                                 [:expression "to-07"]
-                                                                 [:expression "to-07-to-09"]]})))))
-
-#_(mt/with-driver :vertica
-    (mt/dataset times-mixed
-      (->> (mt/mbql-query
-             times
-             {:expressions {"to-09"       [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]
-                            "hour"        [:get-hour [:field (mt/id :times :dt_tz) nil]]}
-              :fields      [[:field (mt/id :times :dt_tz) nil]
-                            [:expression "hour"]
-                            [:expression "to-09"]]})
-       mt/process-query mt/rows
-       ;mt/compile :query println
-       #_a)))
-
-#_(mt/with-driver :oracle
-    (mt/dataset times-mixed
-      (->> (mt/mbql-query
-             times
-             {:expressions {"to-07"       [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+07:00")]
-                            "to-07-to-09" [:convert-timezone [:expression "to-07"] (offset->zone "+09:00")]}
-              :fields      [[:field (mt/id :times :dt) nil]
-                            [:expression "to-07"]
-                            [:expression "to-07-to-09"]]})
-       ;mt/process-query mt/rows
-       mt/compile :query println
-       #_a)))
-
-
-;; from_tz will convert datetime=>timestamp
-;; timestamp at timezone => timestamp
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
