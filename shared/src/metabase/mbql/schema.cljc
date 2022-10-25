@@ -698,8 +698,8 @@
 (def ^:private DatetimeExpression*
   (one-of temporal-extract date-add date-subtract
           ;; SUGAR drivers do not need to implement
-          get-year get-quarter get-month get-week get-day get-day-of-week get-hour
-          get-minute get-second))
+          get-year get-quarter get-month get-week get-day get-day-of-week
+          get-hour get-minute get-second))
 
 (def DatetimeExpression
   "Schema for the definition of a date function expression."

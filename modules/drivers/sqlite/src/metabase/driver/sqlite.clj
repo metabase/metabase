@@ -292,10 +292,10 @@
 (defmethod sql.qp/->honeysql [:sqlite :ceil]
   [_driver [_ arg]]
   (hsql/call :case
-    ;; check if we're ceiling a whole number, it should return itself
+    ;; if we're ceiling a whole number, just cast it to an integer
     ;; [:ceil 1.0] should returns 1
-    (hsql/call := (hsql/call :round arg) arg) arg
-    :else (hsql/call :round (hsql/call :+ arg 0.5))))
+    (hsql/call := (hsql/call :round arg) arg) (hx/->integer arg)
+    :else                                     (hsql/call :round (hsql/call :+ arg 0.5))))
 
 ;; See https://sqlite.org/lang_datefunc.html
 

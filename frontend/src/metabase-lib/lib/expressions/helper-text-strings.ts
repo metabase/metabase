@@ -611,16 +611,20 @@ const helperTextStrings: HelpText[] = [
   {
     name: "get-week",
     structure: "week(" + t`column` + ", " + t`mode` + ")",
-    description: t`Takes a datetime and returns an integer (1-52) with the number of the week in the year.`,
+    description: t`Extracts the week of the year as an integer..`,
     example: "week([" + t`Created At` + '], "iso")',
     args: [
       {
         name: t`column`,
-        description: t`The datetime column.`,
+        description: t`The name of the column with your date or datetime value..`,
       },
       {
         name: t`mode`,
-        description: t`iso8601 or US or instance. Default is iso8601.`,
+        description: t`Optional. The default is "ISO".
+- ISO: Week 1 starts on the Sunday before the first Thursday of January.
+- US: Week 1 starts on Jan 1. All other weeks start on Sunday.
+- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your database settings.
+`,
       },
     ],
   },

@@ -232,7 +232,6 @@
 
 (defmethod sql.qp/->integer :mysql
   [_ value]
-  ;; no-op as MySQL doesn't support cast to float
   (hx/maybe-cast :signed value))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]

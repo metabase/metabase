@@ -171,7 +171,7 @@
 
 (defn test-extract-week
   [field-id method]
-  (->> (mt/mbql-query weeks {:expressions {"expr" [:get-week [:field field-id nil ] method]}
+  (->> (mt/mbql-query weeks {:expressions {"expr" [:get-week [:field field-id nil] method]}
                              :order-by    [[:asc [:field (mt/id :weeks :index)]]]
                              :fields      [[:expression "expr"]]})
       mt/process-query
