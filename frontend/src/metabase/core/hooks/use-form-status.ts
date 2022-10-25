@@ -13,8 +13,6 @@ const useFormStatus = (): FormStatus | undefined => {
     case "fulfilled":
     case "rejected":
       return isRecent ? status : undefined;
-    default:
-      return undefined;
   }
 };
 
