@@ -1,6 +1,9 @@
 import { ActionsApi } from "metabase/services";
 
-import DataApps, { getChildNavItems } from "metabase/entities/data-apps";
+import DataApps, {
+  getChildNavItems,
+  isTopLevelNavItem,
+} from "metabase/entities/data-apps";
 import Dashboards from "metabase/entities/dashboards";
 
 import type { DataApp, DataAppPage } from "metabase-types/api";
@@ -158,10 +161,14 @@ export const archiveDataAppPage = ({
       ),
     );
 
+    const isHomepageArchived =
+      dataApp.dashboard_id && archivedPageIds.includes(dataApp.dashboard_id);
+
     await dispatch(
       DataApps.actions.update({
         id: appId,
         nav_items: nextNavItems,
+        dashboard_id: isHomepageArchived ? null : dataApp.dashboard_id,
       }),
     );
   };
