@@ -1,15 +1,11 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import EntityMenu from "metabase/components/EntityMenu";
-import Modal from "metabase/components/Modal";
 import Tooltip from "metabase/components/Tooltip";
 
 import * as Urls from "metabase/lib/urls";
-
-import ArchiveDataAppModal from "metabase/writeback/containers/ArchiveDataAppModal";
-import ArchiveDataAppPageModal from "metabase/writeback/containers/ArchiveDataAppPageModal";
 
 import type { DataApp, DataAppPage } from "metabase-types/api";
 
@@ -22,8 +18,8 @@ interface Props {
   hasManageContentAction?: boolean;
   onEditAppPage: () => void;
   onEditAppSettings: () => void;
-  onAppArchived: () => void;
-  onPageArchived: (pageId: DataAppPage["id"]) => void;
+  onArchiveApp: () => void;
+  onArchivePage: () => void;
 }
 
 type MenuItem = {
@@ -40,11 +36,9 @@ function DataAppActionPanel({
   hasManageContentAction = true,
   onEditAppPage,
   onEditAppSettings,
-  onAppArchived,
-  onPageArchived,
+  onArchiveApp,
+  onArchivePage,
 }: Props) {
-  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
-
   const hasSelectedPage = typeof selectedPageId === "number";
 
   const menuItems = useMemo(() => {
@@ -65,13 +59,11 @@ function DataAppActionPanel({
     }
 
     if (hasSelectedPage) {
+      const isArchiveApp = archiveActionTarget === "app";
       items.push({
-        title:
-          archiveActionTarget === "app"
-            ? t`Archive this app`
-            : t`Archive this page`,
+        title: isArchiveApp ? t`Archive this app` : t`Archive this page`,
         icon: "archive",
-        action: () => setIsArchiveModalOpen(true),
+        action: isArchiveApp ? onArchiveApp : onArchivePage,
       });
     }
 
@@ -82,17 +74,9 @@ function DataAppActionPanel({
     hasSelectedPage,
     hasManageContentAction,
     onEditAppSettings,
+    onArchiveApp,
+    onArchivePage,
   ]);
-
-  const handleCloseArchiveModal = useCallback(() => {
-    setIsArchiveModalOpen(false);
-  }, []);
-
-  const handleArchive = useCallback(() => {
-    if (selectedPageId) {
-      onPageArchived(selectedPageId);
-    }
-  }, [selectedPageId, onPageArchived]);
 
   return (
     <Root>
@@ -106,24 +90,6 @@ function DataAppActionPanel({
         triggerIcon="ellipsis"
         tooltip={t`Manage content, settings and more…`}
       />
-      {hasSelectedPage && isArchiveModalOpen && (
-        <Modal onClose={handleCloseArchiveModal}>
-          {archiveActionTarget === "app" ? (
-            <ArchiveDataAppModal
-              appId={dataApp.id}
-              onArchive={onAppArchived}
-              onClose={handleCloseArchiveModal}
-            />
-          ) : (
-            <ArchiveDataAppPageModal
-              appId={dataApp.id}
-              pageId={selectedPageId}
-              onArchive={handleArchive}
-              onClose={handleCloseArchiveModal}
-            />
-          )}
-        </Modal>
-      )}
     </Root>
   );
 }

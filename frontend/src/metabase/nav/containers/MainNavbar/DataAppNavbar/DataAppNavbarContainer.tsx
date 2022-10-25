@@ -18,6 +18,9 @@ import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
 import { setEditingDashboard as setEditingDataAppPage } from "metabase/dashboard/actions";
+
+import ArchiveDataAppModal from "metabase/writeback/containers/ArchiveDataAppModal";
+import ArchiveDataAppPageModal from "metabase/writeback/containers/ArchiveDataAppPageModal";
 import ScaffoldDataAppPagesModal from "metabase/writeback/containers/ScaffoldDataAppPagesModal";
 
 import type { DataApp, DataAppPage } from "metabase-types/api";
@@ -42,6 +45,8 @@ type NavbarModal =
   | "MODAL_ADD_DATA"
   | "MODAL_APP_SETTINGS"
   | "MODAL_NEW_PAGE"
+  | "MODAL_ARCHIVE_PAGE"
+  | "MODAL_ARCHIVE_APP"
   | null;
 
 interface DataAppNavbarContainerOwnProps extends MainNavbarProps {
@@ -101,6 +106,11 @@ function DataAppNavbarContainer({
     [dataApp, pages, location, params],
   );
 
+  const selectedPageId = useMemo(() => {
+    const pageItem = selectedItems.find(item => item.type === "data-app-page");
+    return (pageItem?.id as DataAppPage["id"]) || null;
+  }, [selectedItems]);
+
   const handleEnablePageEditing = useCallback(() => {
     setEditingDataAppPage(true);
   }, [setEditingDataAppPage]);
@@ -135,6 +145,14 @@ function DataAppNavbarContainer({
 
   const onNewPage = useCallback(() => {
     setModal("MODAL_NEW_PAGE");
+  }, []);
+
+  const onArchiveApp = useCallback(() => {
+    setModal("MODAL_ARCHIVE_APP");
+  }, []);
+
+  const onArchivePage = useCallback(() => {
+    setModal("MODAL_ARCHIVE_PAGE");
   }, []);
 
   const handleAppArchive = useCallback(() => {
@@ -196,8 +214,43 @@ function DataAppNavbarContainer({
         />
       );
     }
+
+    if (!selectedPageId) {
+      return null;
+    }
+
+    if (modal === "MODAL_ARCHIVE_APP") {
+      return (
+        <ArchiveDataAppModal
+          appId={dataApp.id}
+          onArchive={handleAppArchive}
+          onClose={closeModal}
+        />
+      );
+    }
+
+    if (modal === "MODAL_ARCHIVE_PAGE") {
+      return (
+        <ArchiveDataAppPageModal
+          appId={dataApp.id}
+          pageId={selectedPageId}
+          onArchive={() => handlePageArchive(selectedPageId)}
+          onClose={closeModal}
+        />
+      );
+    }
+
     return null;
-  }, [dataApp, modal, handleNewDataAdded, closeModal, onChangeLocation]);
+  }, [
+    dataApp,
+    selectedPageId,
+    modal,
+    handleNewDataAdded,
+    handleAppArchive,
+    handlePageArchive,
+    closeModal,
+    onChangeLocation,
+  ]);
 
   return (
     <>
@@ -211,8 +264,8 @@ function DataAppNavbarContainer({
         onNewPage={onNewPage}
         onEditAppPage={handleEnablePageEditing}
         onEditAppSettings={onEditAppSettings}
-        onAppArchived={handleAppArchive}
-        onPageArchived={handlePageArchive}
+        onArchiveApp={onArchiveApp}
+        onArchivePage={onArchivePage}
       />
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
     </>
