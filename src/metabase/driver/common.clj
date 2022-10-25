@@ -410,9 +410,10 @@
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
 (def ^:dynamic *start-of-week*
-  "Used to override start-of-week settings."
+  "Used to override the [[metabase.public-settings/start-of-week]] settings.
+  Primarily being used to calculate week-of-year in US modes where the start-of-week is always Sunday.
+  More in (defmethod date [:sql :week-of-year-us])."
   nil)
-
 
 (s/defn start-of-week->int :- (s/pred (fn [n] (and (integer? n) (<= 0 n 6)))
                                       "Start of week integer")
