@@ -190,7 +190,7 @@
         total-full-weeks                   (->honeysql driver [:ceil (hx// total-full-week-days 7.0)])]
     (->integer driver (hx/+ 1 total-full-weeks))))
 
-;; ISO8501 consider the first week of the year is the week that contains the 1st Thursday and week starts on Sunday.
+;; ISO8501 consider the first week of the year is the week that contains the 1st Thursday and week starts on Monday.
 ;; - If 1st Jan is Friday, then 1st Jan is the last week of previous year.
 ;; - If 1st Jan is Wednesday, then 1st Jan is in the 1st week.
 (defmethod date

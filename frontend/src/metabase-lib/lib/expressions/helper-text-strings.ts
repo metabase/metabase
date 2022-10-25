@@ -621,7 +621,7 @@ const helperTextStrings: HelpText[] = [
       {
         name: t`mode`,
         description: t`Optional. The default is "ISO".
-- ISO: Week 1 starts on the Sunday before the first Thursday of January.
+- ISO: Week 1 starts on the Monday before the first Thursday of January.
 - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
 - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined by "first day of the week" settings.
 `,
