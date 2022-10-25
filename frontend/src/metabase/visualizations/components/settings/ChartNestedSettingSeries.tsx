@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import ChartNestedSettingSeriesMultiple from "./ChartNestedSettingSeriesMultiple";
 import ChartNestedSettingSeriesSingle from "./ChartNestedSettingSeriesSingle";
@@ -11,7 +10,6 @@ const ChartNestedSettingSeries = ({
   isDashboard,
   ...props
 }: ChartNestedSettingSeriesProps) => {
-  console.log(props);
   return isDashboard ? (
     <ChartNestedSettingSeriesMultiple {...props} />
   ) : (
