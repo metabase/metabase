@@ -426,6 +426,15 @@ RowChartVisualization.checkRenderable = (
     );
   }
 
+  if (
+    settings["stackable.stack_type"] === "normalized" &&
+    settings["graph.y_axis.scale"] === "log"
+  ) {
+    throw new Error(
+      t`It is not possible to use the Log scale with a stacked percentage scale`,
+    );
+  }
+
   const singleSeriesHasNoRows = ({ data: { rows } }: Dataset) =>
     rows.length < 1;
   if (_.every(series, singleSeriesHasNoRows)) {
