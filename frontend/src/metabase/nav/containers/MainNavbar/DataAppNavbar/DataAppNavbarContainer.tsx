@@ -137,6 +137,10 @@ function DataAppNavbarContainer({
     setModal("MODAL_NEW_PAGE");
   }, []);
 
+  const handleAppArchive = useCallback(() => {
+    onChangeLocation("/");
+  }, [onChangeLocation]);
+
   const handlePageArchive = useCallback(
     (pageId: DataAppPage["id"]) => {
       const navItemToOpen =
@@ -207,6 +211,7 @@ function DataAppNavbarContainer({
         onNewPage={onNewPage}
         onEditAppPage={handleEnablePageEditing}
         onEditAppSettings={onEditAppSettings}
+        onAppArchived={handleAppArchive}
         onPageArchived={handlePageArchive}
       />
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
