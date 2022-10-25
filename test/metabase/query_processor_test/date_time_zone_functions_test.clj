@@ -27,7 +27,7 @@
          (mt/formatted-rows [int])
          (map first))))
 
-(mt/defdataset times-mixed-2
+(mt/defdataset times-mixed
   [["times" [{:field-name "index"
               :base-type :type/Integer}
              {:field-name "dt"
@@ -91,7 +91,7 @@
                                     :breakout    [[:expression "expr"]]})}])
 
 (deftest extraction-function-tests
-  (mt/dataset times-mixed-2
+  (mt/dataset times-mixed
     ;; need to have seperate tests for mongo because it doesn't have supports for casting yet
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with datetime columns"
@@ -132,7 +132,7 @@
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
-    (mt/dataset times-mixed-2
+    (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested expression"
                 :expected [2004]
@@ -180,7 +180,7 @@
 
 (deftest extract-week-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
-    (mt/dataset times-mixed-2
+    (mt/dataset times-mixed
       ;; the native get week of sqlite is not iso, and it's not easy
       ;; to implement in raw sql, so skips it for now
       (when-not (#{:sqlite} driver/*driver*)
@@ -257,7 +257,7 @@
          (map first))))
 
 (deftest date-math-tests
-  (mt/dataset times-mixed-2
+  (mt/dataset times-mixed
     ;; mongo doesn't supports coercion yet so we exclude it here, Tests for it are in [[metabase.driver.mongo.query-processor-test]]
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
       (testing "date arithmetic with datetime columns"
@@ -301,7 +301,7 @@
 
 (deftest date-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
-    (mt/dataset times-mixed-2
+    (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested date math then extract"
                 :expected [2006 2010 2014]
