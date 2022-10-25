@@ -20,7 +20,6 @@ const ChartSettingFieldPicker = ({
   showColumnSetting,
   showDragHandle,
   columnHasSettings,
-  readOnly = false,
 }) => {
   let columnKey;
   if (value && showColumnSetting && columns) {
@@ -32,9 +31,7 @@ const ChartSettingFieldPicker = ({
   return (
     <ChartSettingFieldPickerRoot
       className={className}
-      disabled={
-        (options.length === 1 && options[0].value === value) || readOnly
-      }
+      disabled={options.length === 1 && options[0].value === value}
     >
       {showDragHandle && (
         <SettingsIcon name="grabber2" size={12} noPointer noMargin />
@@ -47,7 +44,6 @@ const ChartSettingFieldPicker = ({
         placeholderNoOptions={t`No valid fields`}
         isInitiallyOpen={value === undefined}
         hiddenIcons
-        disabled={readOnly}
       />
       {columnKey && (
         <SettingsIcon
@@ -65,7 +61,7 @@ const ChartSettingFieldPicker = ({
           }}
         />
       )}
-      {onRemove && !readOnly && (
+      {onRemove && (
         <SettingsIcon
           data-testid={`remove-${value}`}
           name="close"

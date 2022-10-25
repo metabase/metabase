@@ -100,17 +100,8 @@ export function getSettingsWidgetsForSeries(
     series,
     onChangeSettings,
     { isDashboard },
-  )
-    .filter(
-      widget =>
-        widget.dashboard === undefined || widget.dashboard === isDashboard,
-    )
-    .map(widget => ({
-      ...widget,
-      props: {
-        ...widget.props,
-        readOnly:
-          widget.props?.readOnly || (isDashboard && widget.dashboardReadOnly),
-      },
-    }));
+  ).filter(
+    widget =>
+      widget.dashboard === undefined || widget.dashboard === isDashboard,
+  );
 }
