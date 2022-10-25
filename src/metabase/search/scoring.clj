@@ -189,7 +189,7 @@
     (text-scores-with match-based-scorers
                       (tokenize (normalize raw-search-string))
                       result)
-    [{:score 0 :match ""}]))
+    [{:score 0 :weight 1 :match ""}]))
 
 (defn- pinned-score
   [{:keys [model collection_position]}]
@@ -286,9 +286,11 @@
       (/ score-sum weight-sum))))
 
 (defn force-weight [scores total]
-  (let [total-found (reduce + (map :weight scores))
-        normalize-weight (fn [n] (double (* total (/ n total-found))))]
-    (mapv #(update % :weight normalize-weight) scores)))
+  (let [total-found (reduce + (map :weight scores))]
+    (mapv #(update % :weight (fn [weight]
+                               (if (zero? total-found)
+                                 0
+                                 (* total (/ weight total-found))))) scores)))
 
 (defn score-and-result
   "Returns a map with the normalized, combined score from relevant-scores as `:score` and `:result`."
