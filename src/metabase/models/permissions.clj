@@ -1196,7 +1196,8 @@
   ([new-graph :- StrictPermissionsGraph]
    (let [old-graph (data-perms-graph)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
-         old       (or old {})]
+         old       (or old {})
+         new       (or new {})]
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
