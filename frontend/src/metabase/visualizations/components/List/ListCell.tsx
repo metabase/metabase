@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import cx from "classnames";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import Tooltip from "metabase/components/Tooltip";
+import { Avatar } from "metabase/components/UserAvatar/UserAvatar.styled";
 
 import { formatValue } from "metabase/lib/formatting";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
@@ -10,12 +12,13 @@ import { Column, Row, Value } from "metabase-types/types/Dataset";
 import { VisualizationProps } from "metabase-types/types/Visualization";
 
 import MiniBar from "../MiniBar";
-import { CellRoot, CellContent } from "./ListCell.styled";
+import { CellContent } from "./ListCell.styled";
 
 export interface ListCellProps
   extends Pick<VisualizationProps, "data" | "settings"> {
   value: Value;
   columnIndex: number;
+  columnTitle?: string;
 }
 
 interface CellDataProps {
@@ -58,6 +61,7 @@ function ListCellContent({
   data,
   settings,
   columnIndex,
+  columnTitle,
 }: ListCellProps) {
   const { rows, cols } = data;
   const column = cols[columnIndex];
@@ -82,26 +86,23 @@ function ListCellContent({
   });
 
   return (
-    <CellContent
-      className={classNames}
-      isClickable={isLink}
-      data-testid="cell-data"
-    >
-      {cellData}
-    </CellContent>
+    <Tooltip tooltip={columnTitle}>
+      <CellContent
+        className={classNames}
+        isClickable={isLink}
+        data-testid="cell-data"
+      >
+        {cellData}
+      </CellContent>
+    </Tooltip>
   );
 }
 
 function ListCell(props: ListCellProps) {
-  return (
-    <CellRoot>
-      <ListCellContent {...props} />
-    </CellRoot>
-  );
+  return <ListCellContent {...props} />;
 }
 
 export default Object.assign(ListCell, {
-  Root: CellRoot,
+  Root: ListCellContent,
   ContentStyled: CellContent,
-  Content: ListCellContent,
 });
