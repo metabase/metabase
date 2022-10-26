@@ -145,7 +145,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Dashboard
   [_dashboard]
-  [:name (serdes.hash/hydrated-hash :collection)])
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
