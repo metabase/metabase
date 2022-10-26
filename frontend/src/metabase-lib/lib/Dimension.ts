@@ -410,6 +410,10 @@ export default class Dimension {
     return this._query;
   }
 
+  setQuery(query: StructuredQuery): Dimension {
+    return this;
+  }
+
   sourceDimension() {
     return this._query && this._query.dimensionForSourceQuery(this);
   }
@@ -729,6 +733,15 @@ export class FieldDimension extends Dimension {
     }
 
     Object.freeze(this);
+  }
+
+  setQuery(query: StructuredQuery): FieldDimension {
+    return new FieldDimension(
+      this._fieldIdOrName,
+      this._options,
+      this._metadata,
+      query,
+    );
   }
 
   isEqual(somethingElse) {
