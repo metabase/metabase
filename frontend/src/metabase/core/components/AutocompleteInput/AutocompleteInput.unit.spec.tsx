@@ -1,31 +1,17 @@
 import React from "react";
-import { fireEvent, render } from "@testing-library/react";
+import { render } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import AutocompleteInput from "./AutocompleteInput";
+import AutocompleteInput, { AutocompleteInputProps } from "./AutocompleteInput";
 
 const OPTIONS = ["Banana", "Orange", "Mango"];
 
-interface setupProps {
-  value?: string;
-  onChange?: (value: string) => void;
-  filterFn?: (value: string | undefined, options: string[]) => string[];
-  onOptionClick?: (value: string) => void;
-}
-
 const setup = ({
-  value = "",
   onChange = jest.fn(),
-  filterFn,
-  onOptionClick,
-}: setupProps = {}) => {
+  ...props
+}: Partial<AutocompleteInputProps> = {}) => {
   const { getByRole, rerender, findAllByRole } = render(
-    <AutocompleteInput
-      value={value}
-      options={OPTIONS}
-      onChange={onChange}
-      filterFn={filterFn}
-      onOptionClick={onOptionClick}
-    />,
+    <AutocompleteInput {...props} options={OPTIONS} onChange={onChange} />,
   );
 
   const input = getByRole("combobox");
@@ -38,7 +24,7 @@ describe("AutocompleteInput", () => {
   it("shows all options on focus", async () => {
     const { input, getOptions } = setup();
 
-    fireEvent.focus(input);
+    userEvent.click(input);
 
     const options = await getOptions();
 
@@ -52,7 +38,7 @@ describe("AutocompleteInput", () => {
       value: "or",
     });
 
-    fireEvent.click(input);
+    userEvent.click(input);
 
     const options = await getOptions();
     expect(options).toHaveLength(1);
@@ -67,17 +53,17 @@ describe("AutocompleteInput", () => {
       onChange,
     });
 
-    fireEvent.click(input);
+    userEvent.click(input);
 
     const options = await getOptions();
 
-    fireEvent.click(options[0]);
+    userEvent.click(options[0]);
 
     expect(onChange).toHaveBeenCalledWith("Orange");
   });
 
   it("supports custom filtering functions", async () => {
-    const filterFn = (value: string | undefined, options: string[]) => {
+    const filterOptions = (value: string | undefined, options: string[]) => {
       if (value && options) {
         return options.filter(
           option =>
@@ -89,10 +75,10 @@ describe("AutocompleteInput", () => {
 
     const { input, getOptions } = setup({
       value: "or",
-      filterFn,
+      filterOptions,
     });
 
-    fireEvent.click(input);
+    userEvent.click(input);
 
     const options = await getOptions();
     expect(options).toHaveLength(2);
@@ -103,21 +89,21 @@ describe("AutocompleteInput", () => {
 
   it("supports independent option click handler", async () => {
     const onChange = jest.fn();
-    const onOptionClick = jest.fn();
+    const onOptionSelect = jest.fn();
 
     const { input, getOptions } = setup({
       value: "or",
       onChange,
-      onOptionClick,
+      onOptionSelect,
     });
 
-    fireEvent.click(input);
+    userEvent.click(input);
 
     const options = await getOptions();
 
-    fireEvent.click(options[0]);
+    userEvent.click(options[0]);
 
-    expect(onOptionClick).toHaveBeenCalledWith("Orange");
+    expect(onOptionSelect).toHaveBeenCalledWith("Orange");
     expect(onChange).not.toHaveBeenCalled();
   });
 });

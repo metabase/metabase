@@ -6,7 +6,7 @@ import { formatColumn } from "metabase/lib/formatting";
 
 import List from "metabase/visualizations/components/List/List";
 import ChartSettingsListColumns from "metabase/visualizations/components/settings/ChartSettingsListColumns";
-import ChartSettingInputSuggestion from "metabase/visualizations/components/settings/ChartSettingInputSuggestion";
+import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { VisualizationSettings } from "metabase-types/api/card";
@@ -174,7 +174,7 @@ export default Object.assign(ListViz, {
 
     settings["link_text"] = {
       title: t`Link text`,
-      widget: ChartSettingInputSuggestion,
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_: unknown, settings: VisualizationSettings) =>
@@ -201,7 +201,7 @@ export default Object.assign(ListViz, {
 
     settings["link_url"] = {
       title: t`Link URL`,
-      widget: ChartSettingInputSuggestion,
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_: unknown, settings: VisualizationSettings) =>

@@ -9,13 +9,13 @@ import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navi
 
 import { OptionsList } from "./AutocompleteInput.styled";
 
-interface AutocompleteInputProps extends TextInputProps {
+export interface AutocompleteInputProps extends TextInputProps {
   options?: string[];
-  filterFn?: (value: string | undefined, options: string[]) => string[];
-  onOptionClick?: (value: string) => void;
+  filterOptions?: (value: string | undefined, options: string[]) => string[];
+  onOptionSelect?: (value: string) => void;
 }
 
-const DeafultFilterFn = (value: string | undefined, options: string[]) => {
+const filterOptionsByValue = (value: string | undefined, options: string[]) => {
   if (!value || value.length === 0) {
     return options;
   }
@@ -34,16 +34,16 @@ const AutocompleteInput = ({
   value,
   onChange,
   options = [],
-  filterFn = DeafultFilterFn,
+  filterOptions = filterOptionsByValue,
   onBlur,
-  onOptionClick,
+  onOptionSelect,
   ...rest
 }: AutocompleteInputProps) => {
   const optionsListRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
   const filteredOptions = useMemo(() => {
-    return filterFn(value, options);
-  }, [value, options, filterFn]);
+    return filterOptions(value, options);
+  }, [value, options, filterOptions]);
 
   const { cursorIndex } = useListKeyboardNavigation({
     list: filteredOptions,
@@ -59,8 +59,8 @@ const AutocompleteInput = ({
   };
 
   const handleOptionSelect = (option: string) => {
-    if (onOptionClick) {
-      onOptionClick(option);
+    if (onOptionSelect) {
+      onOptionSelect(option);
     } else {
       onChange(option);
     }

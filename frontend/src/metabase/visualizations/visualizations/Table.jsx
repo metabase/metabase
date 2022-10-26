@@ -11,7 +11,7 @@ import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
-import ChartSettingInputSuggestion from "metabase/visualizations/components/settings/ChartSettingInputSuggestion";
+import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import ChartSettingsTableFormatting, {
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
@@ -287,7 +287,7 @@ export default class Table extends Component {
 
     settings["link_text"] = {
       title: t`Link text`,
-      widget: ChartSettingInputSuggestion,
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_, settings) =>
@@ -314,7 +314,7 @@ export default class Table extends Component {
 
     settings["link_url"] = {
       title: t`Link URL`,
-      widget: ChartSettingInputSuggestion,
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_, settings) => settings["view_as"] !== "link",

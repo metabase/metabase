@@ -14,7 +14,7 @@ const Template: ComponentStory<typeof AutocompleteInput> = args => {
       {...args}
       value={value}
       onChange={setValue}
-      onOptionClick={undefined}
+      onOptionSelect={undefined}
       placeholder="Fuits"
       options={[
         "Apple",
@@ -34,7 +34,7 @@ export const Default = Template.bind({});
 
 export const CustomFilter = Template.bind({});
 CustomFilter.args = {
-  filterFn: (value: string | undefined, options: string[]) => {
+  filterOptions: (value: string | undefined, options: string[]) => {
     if (!value) {
       return [];
     } else {
@@ -48,7 +48,7 @@ const CustomOptionClickTemplate: ComponentStory<
 > = args => {
   const [value, setValue] = useState("");
 
-  const optionSelectHandler = (option: string) => {
+  const handleOptionSelect = (option: string) => {
     setValue(v => `${v}${option}`);
   };
   return (
@@ -56,7 +56,7 @@ const CustomOptionClickTemplate: ComponentStory<
       {...args}
       value={value}
       onChange={setValue}
-      onOptionClick={optionSelectHandler}
+      onOptionSelect={handleOptionSelect}
       placeholder="Fuits"
       options={[
         "Apple",
