@@ -391,10 +391,10 @@
                           (diffs #t "2022-10-02T00:00:00Z[+00:00]"          ; 2022-10-01T23:00:00Z[-01:00]
                                  #t "2023-10-02T00:00:00Z[+01:00]"))))))))) ; 2023-10-01T22:00:00Z[-01:00]
 
-(deftest datetimediff-test
+(deftest datetimediff-nesting-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
     (mt/dataset sample-dataset
-      (testing "Types from nested functions are ok"
+      (testing "Args can be expressions that return datetime values"
         (let [diffs (fn [x y]
                       (let [units [:second :minute :hour :day :week :month :year]]
                         (->> (mt/run-mbql-query orders
@@ -406,7 +406,7 @@
                              mt/rows first
                              (zipmap units))))]
           (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :year 1}
-                 (diffs #t "2022-10-03T00:00:00" [:date-add #t "2023-10-03T00:00:00" 3 "day"])))))
+                 (diffs [:date-add #t "2022-10-03T00:00:00" 1 "day"] [:date-add #t "2023-10-03T00:00:00" 4 "day"])))))
       (testing "Result works in arithmetic expressions"
         (let [start #t "2021-10-03 09:19:09"
               end   #t "2022-10-03 09:18:09"]
