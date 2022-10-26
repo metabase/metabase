@@ -136,24 +136,27 @@
                   (result-row "Crowberto the toucan"))))))
 
 (deftest ^:parallel top-results-test
-  (let [xf (map identity)]
+  (let [xf (map identity)
+        small 10
+        medium 20
+        large 200]
     (testing "a non-full queue behaves normally"
-      (let [items (->> (range 10)
+      (let [items (->> (range small)
                        reverse ;; descending order
                        (map (fn [i]
                               {:score  [2 2 i]
                                :result (str "item " i)})))]
         (is (= (map :result items)
-               (scoring/top-results items 200 xf)))))
+               (scoring/top-results items large xf)))))
     (testing "a full queue only saves the top items"
-      (let [sorted-items (->> (+ 10 search-config/max-filtered-results)
+      (let [sorted-items (->> (+ small search-config/max-filtered-results)
                               range
                               reverse ;; descending order
                               (map (fn [i]
                                      {:score  [1 2 3 i]
                                       :result (str "item " i)})))]
         (is (= (->> sorted-items
-                    (take 20)
+                    (take medium)
                     (map :result))
                (scoring/top-results (shuffle sorted-items) 20 xf)))))))
 
