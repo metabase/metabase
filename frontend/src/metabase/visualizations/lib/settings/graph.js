@@ -28,7 +28,7 @@ import {
   isMetric,
   isNumeric,
   isAny,
-} from "metabase-lib/lib/types/utils/isa";
+} from "metabase-lib/types/utils/isa";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
 const HISTOGRAM_DATE_EXTRACTS = new Set([

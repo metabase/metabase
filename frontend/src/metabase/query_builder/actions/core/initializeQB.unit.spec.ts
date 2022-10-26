@@ -29,9 +29,9 @@ import {
   getStructuredModel,
   getNativeModel,
 } from "metabase-lib/mocks";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import Question from "metabase-lib/lib/Question";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Question from "metabase-lib/Question";
 
 import * as navigation from "../navigation";
 import * as querying from "../querying";

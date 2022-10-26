@@ -48,7 +48,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Segment
   [_segment]
-  [:name (serdes.hash/hydrated-hash :table)])
+  [:name (serdes.hash/hydrated-hash :table) :created_at])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------

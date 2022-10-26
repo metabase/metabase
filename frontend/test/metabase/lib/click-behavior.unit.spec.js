@@ -5,7 +5,7 @@ import {
   getDataFromClicked,
   getTargetsWithSourceFilters,
   formatSourceForTarget,
-} from "metabase-lib/lib/parameters/utils/click-behavior";
+} from "metabase-lib/parameters/utils/click-behavior";
 
 describe("metabase/lib/click-behavior", () => {
   describe("getDataFromClicked", () => {

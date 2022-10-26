@@ -5,7 +5,6 @@ import { DashboardApi } from "metabase/services";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 
@@ -13,11 +12,12 @@ import { Dispatch, GetState } from "metabase-types/store";
 
 import { Card, SavedCard } from "metabase-types/types/Card";
 import { Parameter } from "metabase-types/types/Parameter";
+import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
   cardIsEquivalent,
   cardParametersAreEquivalent,
-} from "metabase-lib/lib/queries/utils/card";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
+} from "metabase-lib/queries/utils/card";
+import Metadata from "metabase-lib/metadata/Metadata";
 
 type BlankQueryOptions = {
   db?: string;

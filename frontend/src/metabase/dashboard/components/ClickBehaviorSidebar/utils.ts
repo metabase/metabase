@@ -7,7 +7,7 @@ import type {
   DatasetColumn,
 } from "metabase-types/api";
 import { hasActionsMenu } from "metabase/lib/click-behavior";
-import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 type ClickBehaviorOption = {
   value: ClickBehaviorType | "menu";

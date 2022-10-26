@@ -10,7 +10,7 @@ import {
   UpdateButton,
 } from "metabase/parameters/components/widgets/Widget.styled";
 
-import { dateParameterValueToMBQL } from "metabase-lib/lib/parameters/utils/mbql";
+import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;

@@ -1,8 +1,8 @@
 import React from "react";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { formatBucketing } from "metabase-lib/lib/queries/utils/query-time";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import { formatBucketing } from "metabase-lib/queries/utils/query-time";
+import Filter from "metabase-lib/queries/structured/Filter";
 import { DATE_PERIODS } from "../RelativeDatePicker";
 import {
   CurrentButton,

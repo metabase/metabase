@@ -7,7 +7,7 @@ import Schemas from "metabase/entities/schemas";
 import EmptyState from "metabase/components/EmptyState";
 
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-import { getCollectionVirtualSchemaId } from "metabase-lib/lib/metadata/utils/saved-questions";
+import { getCollectionVirtualSchemaId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   SavedQuestionListRoot,
   SavedQuestionListItem,

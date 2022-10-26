@@ -47,7 +47,7 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
   getDefaultAlert,
-} from "metabase-lib/lib/Alert";
+} from "metabase-lib/Alert";
 import { AlertModalFooter, DangerZone } from "./AlertModals.styled";
 
 const getScheduleFromChannel = channel =>

@@ -11,7 +11,7 @@ import IconBorder from "metabase/components/IconBorder";
 import { color } from "metabase/lib/colors";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { isNumeric } from "metabase-lib/lib/types/utils/isa";
+import { isNumeric } from "metabase-lib/types/utils/isa";
 
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
