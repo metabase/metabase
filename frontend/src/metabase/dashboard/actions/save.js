@@ -191,7 +191,7 @@ export const saveDashboardAndCards = createThunkAction(
 
 function updateDataAppPageTitle(dataApp, pageId, titleTemplate) {
   const nextNavItems = [...dataApp.nav_items];
-  const targetIndex = nextNavItems.findIndex(item => item.id === pageId);
+  const targetIndex = nextNavItems.findIndex(item => item.page_id === pageId);
 
   if (targetIndex !== -1) {
     nextNavItems[targetIndex] = {
