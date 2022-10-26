@@ -54,17 +54,7 @@
           (t/zoned-date-time t)                                  ;; dt_tz
           (t/local-date t)                                       ;; d
           (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as _dt
-          (t/format "yyyy-MM-dd" (t/local-date-time t))])]
-    ;; daylight saving times
-   ["dst-times"
-    [{:field-name "index"
-      :base-type :type/Integer}
-     {:field-name "description"
-      :base-type :type/Text}
-     {:field-name "dt"
-      :base-type :type/DateTime}]
-    [[1 "During daylight saving" #t "2000-09-01 10:00:00"]
-     [2 "After daylight saving"  #t "2000-11-01 10:00:00"]]]])
+          (t/format "yyyy-MM-dd" (t/local-date-time t))])]])
 
 (def ^:private temporal-extraction-op->unit
   {:get-second      :second-of-minute
@@ -366,15 +356,18 @@
                                                 2 :hour]]))))
 
         (testing "extract hour should respect daylight savings times"
-          (is (= [3 2]
-                 (->> (mt/mbql-query dst-times
-                                     {:expressions {"expr" [:get-hour [:convert-timezone [:field (mt/id :dst-times :dt) nil]
+          (is (= [["2004-03-19T09:19:09Z" 1]  ;; Before DST -- UTC-8
+                  ["2008-06-20T10:20:10Z" 3]] ;; During DST -- UTC-7
+                 (->> (mt/mbql-query times
+                                     {:expressions {"expr" [:get-hour [:convert-timezone [:field (mt/id :times :dt) nil]
                                                                        "US/Pacific"
                                                                        "UTC"]]}
-                                      :fields      [[:expression "expr"]]})
+                                      :filter      [:< [:field (mt/id :times :index) nil] 3]
+                                      :fields      [[:field (mt/id :times :dt) nil]
+                                                    [:expression "expr"]]})
                       mt/process-query
-                      mt/rows
-                      (map first)))))
+                      mt/rows))))
+
        (testing "filter a converted-timezone column"
          (is (= [1]
                 (->> (mt/mbql-query times
