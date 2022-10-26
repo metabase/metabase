@@ -12,7 +12,7 @@ import {
 import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
 
 import type { State } from "metabase-types/store";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Table from "metabase-lib/metadata/Table";
 
 interface OwnProps {
   isOpen: boolean;

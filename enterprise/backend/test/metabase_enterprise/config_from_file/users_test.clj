@@ -25,19 +25,31 @@
         (is (= 1
                (db/count User :email "cam+config-file-test@metabase.com"))))
       (testing "upsert if User already exists"
-        (binding [config-from-file/*config* {:version 1
-                                             :config  {:users [{:first_name "Cam"
-                                                                :last_name  "Saul"
-                                                                :email      "cam+config-file-test@metabase.com"
-                                                                :password   "2cans"}]}}]
-          (is (= :ok
-                 (config-from-file/initialize!)))
-          (is (= 1
-                 (db/count User :email "cam+config-file-test@metabase.com")))
-          (is (partial= {:first_name "Cam"
-                         :last_name  "Saul"
-                         :email      "cam+config-file-test@metabase.com"}
-                        (db/select-one User :email "cam+config-file-test@metabase.com"))))))
+        (let [hashed-password          (fn [] (db/select-one-field :password User :email "cam+config-file-test@metabase.com"))
+              salt                     (fn [] (db/select-one-field :password_salt User :email "cam+config-file-test@metabase.com"))
+              original-hashed-password (hashed-password)]
+          (binding [config-from-file/*config* {:version 1
+                                               :config  {:users [{:first_name "Cam"
+                                                                  :last_name  "Saul"
+                                                                  :email      "cam+config-file-test@metabase.com"
+                                                                  :password   "2cans"}]}}]
+            (is (= :ok
+                   (config-from-file/initialize!)))
+            (is (= 1
+                   (db/count User :email "cam+config-file-test@metabase.com")))
+            (is (partial= {:first_name "Cam"
+                           :last_name  "Saul"
+                           :email      "cam+config-file-test@metabase.com"}
+                          (db/select-one User :email "cam+config-file-test@metabase.com")))
+            (testing "Password should be hashed, but it should be a NEW HASH"
+              (let [new-hashed-password (hashed-password)]
+                (is (not= original-hashed-password
+                          new-hashed-password))
+                (testing "Password should not be saved as plaintext"
+                  (is (not= "2cans"
+                            new-hashed-password)))
+                (testing "Password should work correctly"
+                  (is (u.password/verify-password "2cans" (salt) new-hashed-password)))))))))
     (finally
       (db/delete! User :email "cam+config-file-test@metabase.com"))))
 

@@ -6,9 +6,9 @@ import { connect } from "react-redux";
 import PersistedModels from "metabase/entities/persisted-models";
 
 import { ModelCacheRefreshStatus } from "metabase-types/api";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
-import { checkCanRefreshModelCache } from "metabase-lib/lib/metadata/utils/models";
+import { checkCanRefreshModelCache } from "metabase-lib/metadata/utils/models";
 import {
   Row,
   StatusContainer,

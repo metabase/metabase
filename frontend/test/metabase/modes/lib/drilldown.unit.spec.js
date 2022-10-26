@@ -1,6 +1,6 @@
 import { metadata, ORDERS, PEOPLE } from "__support__/sample_database_fixture";
 
-import { drillDownForDimensions } from "metabase-lib/lib/queries/utils/drilldown";
+import { drillDownForDimensions } from "metabase-lib/queries/utils/drilldown";
 
 describe("drilldown", () => {
   describe("drillDownForDimensions", () => {

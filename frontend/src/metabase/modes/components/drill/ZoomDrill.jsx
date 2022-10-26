@@ -2,7 +2,7 @@ import { t } from "ttag";
 import {
   zoomDrill,
   zoomDrillQuestion,
-} from "metabase-lib/lib/queries/drills/zoom-drill";
+} from "metabase-lib/queries/drills/zoom-drill";
 
 export default ({ question, clicked }) => {
   if (!zoomDrill({ question, clicked })) {

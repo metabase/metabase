@@ -1,7 +1,7 @@
 import { PRODUCTS, ORDERS } from "__support__/sample_database_fixture";
-import { createMockUiParameter } from "metabase-lib/lib/parameters/mock";
+import { createMockUiParameter } from "metabase-lib/parameters/mock";
 
-import Field from "metabase-lib/lib/metadata/Field";
+import Field from "metabase-lib/metadata/Field";
 import { formatParameterValue } from "./formatting";
 
 const numberField = ORDERS.TOTAL;
