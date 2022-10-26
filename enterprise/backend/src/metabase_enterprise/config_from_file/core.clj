@@ -101,6 +101,7 @@
    [environ.core :as env]
    [metabase-enterprise.config-from-file.databases]
    [metabase-enterprise.config-from-file.interface :as config-from-file.i]
+   [metabase-enterprise.config-from-file.settings]
    [metabase-enterprise.config-from-file.users]
    [metabase.driver.common.parameters]
    [metabase.driver.common.parameters.parse :as params.parse]
@@ -112,7 +113,9 @@
 (comment
   ;; for parameter parsing
   metabase.driver.common.parameters/keep-me
-  ;; for `:databases:` section code
+  ;; for `settings:` section code
+  metabase-enterprise.config-from-file.settings/keep-me
+  ;; for `databases:` section code
   metabase-enterprise.config-from-file.databases/keep-me
   ;; for `users:` section code
   metabase-enterprise.config-from-file.users/keep-me)
