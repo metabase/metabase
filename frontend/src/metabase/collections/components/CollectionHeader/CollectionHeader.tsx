@@ -25,7 +25,6 @@ export interface CollectionHeaderProps {
 
 const CollectionHeader = ({
   collection,
-  location,
   isAdmin,
   isBookmarked,
   isPersonalCollectionChild,
@@ -49,13 +48,14 @@ const CollectionHeader = ({
           onCreateBookmark={onCreateBookmark}
           onDeleteBookmark={onDeleteBookmark}
         />
-        <CollectionMenu
-          collection={collection}
-          isAdmin={isAdmin}
-          isDataApp={isDataApp}
-          isPersonalCollectionChild={isPersonalCollectionChild}
-          onUpdateCollection={onUpdateCollection}
-        />
+        {!isDataApp && (
+          <CollectionMenu
+            collection={collection}
+            isAdmin={isAdmin}
+            isPersonalCollectionChild={isPersonalCollectionChild}
+            onUpdateCollection={onUpdateCollection}
+          />
+        )}
       </HeaderActions>
     </HeaderRoot>
   );
