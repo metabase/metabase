@@ -314,12 +314,12 @@
       (testing "timestamp without timezone columns"
         (with-results-and-report-timezone-id "UTC"
           (testing "convert from +05:00 to +09:00"
-           (is (= "2004-03-19T13:19:09+09:00"
-                  (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil]
-                                                        (offset->zone "+09:00")
-                                                        (offset->zone "+05:00")]))))
+            (is (= ["2004-03-19T13:19:09+09:00"]
+                   (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil]
+                                                         (offset->zone "+09:00")
+                                                         (offset->zone "+05:00")]))))
           (testing "convert to +09:00, from_tz should have default is system-tz (UTC)"
-            (is (= "2004-03-19T18:19:09+09:00"
+            (is (= ["2004-03-19T18:19:09+09:00"]
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt) nil] (offset->zone "+09:00")])))))
 
         (with-results-and-report-timezone-id "Europe/Rome"
@@ -339,8 +339,8 @@
             ;; for some reasons the dt_tz column for redshift and snowflake is inserted in UTC, not Asia/Ho_Chi_Minh.
             ;; so the tests result is a bit different
             (is (= (case driver/*driver*
-                     (:redshift :snowflake) "2004-03-19T18:19:09+09:00"
-                     "2004-03-19T11:19:09+09:00")
+                     (:redshift :snowflake) ["2004-03-19T18:19:09+09:00"]
+                     ["2004-03-19T11:19:09+09:00"])
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")]))))
 
           (testing "timestamp with time zone columns shouldn't have `from_tz`"
@@ -354,8 +354,8 @@
         (with-results-and-report-timezone-id "Europe/Rome"
           (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
             (is (= (case driver/*driver*
-                     (:redshift :snowflake) "2004-03-19T18:19:09+09:00"
-                     "2004-03-19T11:19:09+09:00")
+                     (:redshift :snowflake) ["2004-03-19T18:19:09+09:00"]
+                     ["2004-03-19T11:19:09+09:00"])
                    (test-date-convert [:convert-timezone [:field (mt/id :times :dt_tz) nil] (offset->zone "+09:00")])))))))))
 
 (def ^:private driver->timezone-aware-base-type
@@ -416,7 +416,7 @@
                   ["2008-06-20T10:20:10Z" 3]] ;; During DST -- UTC-7
                  (->> (mt/run-mbql-query times
                                          {:expressions {"expr" [:get-hour [:convert-timezone [:field (mt/id :times :dt) nil]
-                                                                           "US/Pacific"
+                                                                           "America/Los_Angeles"
                                                                            "UTC"]]}
                                           :filter      [:< [:field (mt/id :times :index) nil] 3]
                                           :fields      [[:field (mt/id :times :dt) nil]
