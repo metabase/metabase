@@ -7,14 +7,14 @@ import Tooltip from "metabase/components/Tooltip";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { DataApp, DataAppPage } from "metabase-types/api";
+import type { DataApp } from "metabase-types/api";
 
 import { Root } from "./DataAppActionPanel.styled";
 
 interface Props {
   dataApp: DataApp;
-  selectedPageId?: DataAppPage["id"];
-  archiveActionTarget: "app" | "page";
+  hasEditPageAction?: boolean;
+  hasArchivePageAction?: boolean;
   hasManageContentAction?: boolean;
   onEditAppPage: () => void;
   onEditAppSettings: () => void;
@@ -31,16 +31,14 @@ type MenuItem = {
 
 function DataAppActionPanel({
   dataApp,
-  selectedPageId,
-  archiveActionTarget,
+  hasEditPageAction = true,
+  hasArchivePageAction = true,
   hasManageContentAction = true,
   onEditAppPage,
   onEditAppSettings,
   onArchiveApp,
   onArchivePage,
 }: Props) {
-  const hasSelectedPage = typeof selectedPageId === "number";
-
   const menuItems = useMemo(() => {
     const items: MenuItem[] = [
       {
@@ -58,20 +56,24 @@ function DataAppActionPanel({
       });
     }
 
-    if (hasSelectedPage) {
-      const isArchiveApp = archiveActionTarget === "app";
+    if (hasArchivePageAction) {
       items.push({
-        title: isArchiveApp ? t`Archive this app` : t`Archive this page`,
+        title: t`Archive this page`,
         icon: "archive",
-        action: isArchiveApp ? onArchiveApp : onArchivePage,
+        action: onArchivePage,
       });
     }
+
+    items.push({
+      title: t`Archive this app`,
+      icon: "archive",
+      action: onArchiveApp,
+    });
 
     return items;
   }, [
     dataApp,
-    archiveActionTarget,
-    hasSelectedPage,
+    hasArchivePageAction,
     hasManageContentAction,
     onEditAppSettings,
     onArchiveApp,
@@ -80,7 +82,7 @@ function DataAppActionPanel({
 
   return (
     <Root>
-      {hasSelectedPage && (
+      {hasEditPageAction && (
         <Tooltip tooltip={t`Edit page`}>
           <Button icon="pencil" onlyIcon onClick={onEditAppPage} />
         </Tooltip>

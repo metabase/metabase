@@ -80,6 +80,13 @@ function DataAppNavbarView({
     [dataApp, pageMap, dataAppPage],
   );
 
+  const hasSelectedPage = !!dataAppPage?.id;
+
+  // Archiving last app page would lead a user into a weird app state
+  // For now we'd just hide the action when there's only one top-level page left
+  // and only let people archive the whole app instead
+  const hasArchivePageAction = hasSelectedPage && navItems.length > 1;
+
   return (
     <Root>
       <NavItemsList>
@@ -90,9 +97,9 @@ function DataAppNavbarView({
       </NavItemsList>
       <DataAppActionPanel
         dataApp={dataApp}
-        selectedPageId={dataAppPage?.id as DataAppPageId}
-        archiveActionTarget={navItems.length > 1 ? "page" : "app"}
+        hasEditPageAction={hasSelectedPage}
         hasManageContentAction={mode !== "manage-content"}
+        hasArchivePageAction={hasArchivePageAction}
         onEditAppPage={onEditAppPage}
         onEditAppSettings={onEditAppSettings}
         onArchiveApp={onArchiveApp}
