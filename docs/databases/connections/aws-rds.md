@@ -21,3 +21,16 @@ Here's how to get connection information for databases on Amazon's RDS:
    - **Username**. Find this under Configuration Details.
    - **Database Name**. Find this under Configuration Details.
    - **Password**. Ask your database administrator for the password.
+
+## Amazon Aurora MySQL
+
+Your database connection string will need to include the parameters:
+
+- `usePipelineAuth=false`
+- `useBatchMultiSend=false`
+
+For example:
+
+```
+MB_DB_CONNECTION_URI=jdbc:mysql://HOSTNAME:PORT/DB_NAME?user=USERNAME&password=PASSWORD&trustServerCertificate=true&usePipelineAuth=false&useBatchMultiSend=false
+```
