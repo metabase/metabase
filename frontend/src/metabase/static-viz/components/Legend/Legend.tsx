@@ -1,0 +1,50 @@
+import React from "react";
+import { Group } from "@visx/group";
+import { Text } from "metabase/static-viz/components/Text";
+import { PositionedLegendItem } from "./types";
+
+import { LEGEND_CIRCLE_MARGIN_RIGHT, LEGEND_CIRCLE_SIZE } from "./constants";
+
+type LegendProps = {
+  top: number;
+  left: number;
+  lineHeight: number;
+  fontSize: number;
+  fontWeight: number;
+  items: PositionedLegendItem[];
+};
+
+export const Legend = ({
+  top,
+  left,
+  lineHeight,
+  fontSize,
+  fontWeight,
+  items,
+}: LegendProps) => {
+  return (
+    <Group left={left} top={top}>
+      {items.map((item, index) => {
+        const { name, color, left, top } = item;
+        const radius = LEGEND_CIRCLE_SIZE / 2;
+        const textX = LEGEND_CIRCLE_SIZE + LEGEND_CIRCLE_MARGIN_RIGHT;
+
+        return (
+          <Group left={left} top={top} key={name}>
+            <circle fill={color} r={radius} cx={radius} cy={radius} />
+            <Text
+              textAnchor="start"
+              verticalAnchor="start"
+              x={textX}
+              fontWeight={fontWeight}
+              lineHeight={lineHeight}
+              fontSize={fontSize}
+            >
+              {name}
+            </Text>
+          </Group>
+        );
+      })}
+    </Group>
+  );
+};

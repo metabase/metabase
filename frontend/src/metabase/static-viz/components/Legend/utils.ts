@@ -24,7 +24,7 @@ export const calculateLegendItems = (
   lineHeight: number,
   fontSize: number,
   fontWeight: number,
-): PositionedLegendItem[] => {
+): PositionedLegendItem[][] => {
   if (items.length <= 1) {
     return [];
   }
@@ -73,5 +73,5 @@ export const calculateLegendItems = (
     }
   }
 
-  return rows.flat();
+  return rows;
 };

@@ -9,7 +9,7 @@ import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
 import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
 import { AreaSeries } from "metabase/static-viz/components/XYChart/shapes/AreaSeries";
-import { Legend } from "metabase/static-viz/components/XYChart/Legend";
+import { Legend } from "metabase/static-viz/components/Legend";
 import {
   CHART_PADDING,
   LABEL_PADDING,
@@ -39,7 +39,7 @@ import type {
   HydratedSeries,
 } from "metabase/static-viz/components/XYChart/types";
 import Values from "../Values";
-import { calculateLegendItems } from "./Legend/utils";
+import { calculateLegendItems } from "../Legend/utils";
 
 export interface XYChartProps {
   width: number;
@@ -124,9 +124,11 @@ export const XYChart = ({
     width - CHART_PADDING * 2,
     style.legend.lineHeight,
     style.legend.fontSize,
-    700,
+    style.legend.fontWeight,
   );
-  const legendHeight = legendItems.length * style.legend.lineHeight;
+  const legendItemsHeight = legendItems.length * style.legend.lineHeight;
+  const legendHeight =
+    legendItemsHeight > 0 ? legendItemsHeight + CHART_PADDING : 0;
 
   const xTickWidthLimit = getXTickWidthLimit(
     settings.x,
@@ -169,15 +171,16 @@ export const XYChart = ({
     xScale.scale,
     xTickCount,
   );
+
   return (
     <svg width={width} height={height + legendHeight}>
       <Legend
-        items={legendItems}
+        top={CHART_PADDING}
         left={CHART_PADDING}
-        top={0}
-        width={width}
+        items={legendItems.flat()}
         lineHeight={style.legend.lineHeight}
         fontSize={style.legend.fontSize}
+        fontWeight={style.legend.fontWeight}
       />
       <Group top={legendHeight}>
         {yScaleLeft && (
