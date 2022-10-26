@@ -63,33 +63,13 @@ export default Object.assign(ListViz, {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     ...columnSettings({ hidden: true }),
-    "buttons.edit": {
-      section: t`Actions`,
-      title: t`Edit button`,
-      widget: "toggle",
-      default: true,
-    },
-    "buttons.delete": {
-      section: t`Actions`,
-      title: t`Delete button`,
-      widget: "toggle",
-      default: true,
-    },
-    "actions.bulk_enabled": {
-      section: t`Actions`,
-      title: t`Bulk actions`,
-      widget: "toggle",
-      default: true,
-    },
     "list.variant": {
       section: t`Options`,
       title: t`Variant`,
       widget: "radio",
-      options: [
-        { name: t`Basic`, value: "basic" },
-        { name: t`Info`, value: "info" },
-      ],
-      default: "basic",
+      options: [{ name: t`Info`, value: "info" }],
+      default: "info",
+      hidden: true,
     },
     "list.columns": {
       section: t`Options`,
@@ -104,10 +84,10 @@ export default Object.assign(ListViz, {
           col => col.visibility_type !== "details-only",
         );
         const firstThreeColumns = columns.slice(0, 3).filter(Boolean);
-        const nextThreeColumns = columns.slice(3, 6).filter(Boolean);
+        const fourthColumn = columns.slice(3, 4).filter(Boolean);
         return {
           left: firstThreeColumns.map(col => col.id || col.field_ref),
-          right: nextThreeColumns.map(col => col.id || col.field_ref),
+          right: fourthColumn.map(col => col.id || col.field_ref),
         };
       },
       getProps: ([
