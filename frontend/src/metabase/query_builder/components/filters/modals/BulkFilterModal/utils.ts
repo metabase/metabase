@@ -11,7 +11,9 @@ import type Dimension from "metabase-lib/lib/Dimension";
 export function fixBetweens(query: StructuredQuery): StructuredQuery {
   const betweenFilters = query
     .filters()
-    .filter(filter => filter.operatorName() === "between");
+    .filter(
+      filter => filter.isStandard() && filter.operatorName() === "between",
+    );
 
   // find the first invalid filter (if any), and fix it recursively
   for (const filter of betweenFilters) {
