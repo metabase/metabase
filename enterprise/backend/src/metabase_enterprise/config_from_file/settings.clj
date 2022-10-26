@@ -8,11 +8,11 @@
 
 (defmethod config-from-file.i/section-spec :settings
   [_section-name]
-  (s/map-of string? any?))
+  (s/map-of keyword? any?))
 
 (defmethod config-from-file.i/initialize-section! :settings
   [_section-name settings]
   (log/info (trs "Setting setting values from config file"))
   (doseq [[setting-name setting-value] settings]
     (log/info (trs "Setting value for Setting {0}" setting-name))
-    (setting/set! (keyword setting-name) setting-value)))
+    (setting/set! setting-name setting-value)))
