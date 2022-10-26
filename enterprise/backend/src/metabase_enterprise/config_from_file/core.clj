@@ -1,5 +1,5 @@
 (ns ^{:added "0.45.0"}
- metabase.config.file
+ metabase-enterprise.config-from-file.core
   "Support for initializing Metabase with configuration from a `config.yml` file located in the current working
   directory. See https://github.com/metabase/metabase/issues/2052 for more information.
 
@@ -99,6 +99,9 @@
    [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [environ.core :as env]
+   [metabase-enterprise.config-from-file.databases]
+   [metabase-enterprise.config-from-file.interface :as config-from-file.i]
+   [metabase-enterprise.config-from-file.users]
    [metabase.driver.common.parameters]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.util :as u]
@@ -106,32 +109,22 @@
    [metabase.util.i18n :refer [trs]]
    [yaml.core :as yaml]))
 
-(comment metabase.driver.common.parameters/keep-me)
+(comment
+  ;; for parameter parsing
+  metabase.driver.common.parameters/keep-me
+  ;; for `:databases:` section code
+  metabase-enterprise.config-from-file.databases/keep-me
+  ;; for `users:` section code
+  metabase-enterprise.config-from-file.users/keep-me)
 
 (set! *warn-on-reflection* true)
-
-(defmulti section-spec
-  "Spec that should be used to validate the config section with `section-name`, e.g. `:users`. Default spec
-  is [[any?]].
-
-  Sections are validated BEFORE template expansion, so as to avoid leaking any sensitive values in spec errors. Write
-  your specs accordingly!
-
-  Implementations of this method live in other namespaces. For example, the section spec for the `:users` section
-  lives in [[metabase.models.user]]."
-  {:arglists '([section-name])}
-  keyword)
-
-(defmethod section-spec :default
-  [_section-name]
-  any?)
 
 (s/def :metabase.config.file.config/config
   (s/and
    map?
    (fn validate-section-configs [m]
      (doseq [[section-name section-config] m
-             :let [spec (section-spec section-name)]]
+             :let [spec (config-from-file.i/section-spec section-name)]]
        (s/assert* spec section-config))
      true)))
 
@@ -241,28 +234,14 @@
     (s/assert* ::config m)
     (expand-templates m)))
 
-(defmulti initialize-section!
-  "Execute initialization code for the section of the init config file with the key `section-name` and value
-  `section-config`.
-
-  Implementations of this method live in other namespaces, for example the method for the `:users` section (to
-  initialize Users) lives in [[metabase.models.user]]."
-  {:arglists '([section-name section-config])}
-  (fn [section-name _section-config]
-    (keyword section-name)))
-
-;;; if we don't know how to initialize a particular section, just log a warning and proceed. This way we can be
-;;; forward-compatible and handle sections that might be unknown in a particular version of Metabase.
-(defmethod initialize-section! :default
-  [section-name _section-config]
-  (log/warn (u/colorize :yellow (trs "Ignoring unknown config section {0}." (pr-str section-name)))))
-
 (defn ^{:added "0.45.0"} initialize!
   "Initialize Metabase according to the directives in the config file, if it exists."
   []
+  ;; TODO -- this should only do anything if we have an appropriate token (we should get a token for testing this before
+  ;; enabling that check tho)
   (when-let [m (config)]
     (doseq [[section-name section-config] (:config m)]
       (log/info (u/colorize :magenta (trs "Initializing {0} from config file..." section-name)) (u/emoji "🗄️"))
-      (initialize-section! section-name section-config))
+      (config-from-file.i/initialize-section! section-name section-config))
     (log/info (u/colorize :magenta (trs "Done initializing from file.")) (u/emoji "🗄️")))
   :ok)
