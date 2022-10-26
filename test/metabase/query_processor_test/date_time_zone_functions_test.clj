@@ -313,31 +313,6 @@
                                      "tz,d"  [:datetimediff $tz $d :day]
                                      "d,dt"  [:datetimediff $d $dt :day]}}))))))))
 
-(mt/defdataset more-useful-dates4
-  [["more-datediff-edgecases"
-    [{:field-name "index" :base-type :type/Integer}
-     {:field-name "description" :base-type :type/Text}
-     {:field-name "start" :base-type :type/DateTime}
-     {:field-name "end" :base-type :type/DateTime}]
-    [[1 "millisecond under a minute" #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:59.999"]
-     [1 "millisecond under a second" #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:00.999"]
-     [1 "millisecond under an hour"  #t "2022-10-02 08:30:00" #t "2022-10-02 09:29:59.999"]
-     [1 "millisecond under a day"    #t "2022-10-02 00:00:00" #t "2022-10-02 23:59:59.999"]
-     [1 "second under a minute"      #t "2022-10-02 08:30:00" #t "2022-10-02 08:30:59"]
-     [1 "second under an hour"       #t "2022-10-02 08:30:00" #t "2022-10-02 09:29:59"]
-     [1 "second under a day"         #t "2022-10-02 08:30:00" #t "2022-10-03 08:29:59"]
-     [1 "minute under an hour"       #t "2022-10-02 08:30:00" #t "2022-10-02 09:29:00"]
-     [1 "minute under a day"         #t "2022-10-02 08:30:00" #t "2022-10-03 08:29:00"]
-     [1 "day under a year"           #t "2021-10-03 09:18:09" #t "2022-10-02 09:18:09"]
-     [1 "day under a month"          #t "2022-10-03 09:18:09" #t "2022-11-02 09:18:09"]
-     [1 "day under a week"           #t "2022-10-02 09:18:09" #t "2022-10-08 09:18:09"]
-     [1 "minute under a year"        #t "2021-10-03 09:19:09" #t "2022-10-03 09:18:09"]
-     [1 "minute under a month"       #t "2022-10-02 09:19:09" #t "2022-11-02 09:18:09"]
-     [1 "<7d across weeks"           #t "2022-10-01 09:18:09" #t "2022-10-04 09:18:09"]
-     [1 "minute under a week"        #t "2022-10-02 09:19:09" #t "2022-10-09 09:18:09"]
-     [1 "<24h same day"              #t "2022-10-02 00:00:00" #t "2022-10-02 23:59:59"]
-     [1 "<24h consecutive days"      #t "2022-10-02 09:19:09" #t "2022-10-03 09:18:09"]]]])
-
 (deftest datetimediff-test-tz
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
     (mt/dataset sample-dataset
@@ -408,30 +383,35 @@
 
 (deftest datetimediff-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
-    (mt/dataset more-useful-dates4
+    (mt/dataset sample-dataset
       (testing "Types from nested functions are ok"
-        (testing "Nested functions are ok"
-          (is (= [[-3] [362]]
-                 (mt/rows
-                  (mt/run-mbql-query more-datediff-edgecases
-                    {:expressions {"diff-day" [:datetimediff [:date-add $start 3 "day"] $end :day]}
-                     :fields      [[:expression "diff-day"]]
-                     :filter      [:= $description "minute under a year" "<24h same day"]
-                     :order-by    [[:asc $description]]}))))))
+        (let [diffs (fn [x y]
+                      (let [units [:second :minute :hour :day :week :month :year]]
+                        (->> (mt/run-mbql-query orders
+                               {:limit 1
+                                :expressions (into {} (for [unit units]
+                                                        [(name unit) [:datetimediff x y unit]]))
+                                :fields (into [] (for [unit units]
+                                                   [:expression (name unit)]))})
+                             mt/rows first
+                             (zipmap units))))]
+          (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :year 1}
+                 (diffs #t "2022-10-03T00:00:00" [:date-add #t "2023-10-03T00:00:00" 3 "day"])))))
       (testing "Result works in arithmetic expressions"
-        (is (= [[0 5 0 5] [1 6 365 370]]
-               (mt/rows
-                (mt/run-mbql-query more-datediff-edgecases
-                  {:expressions {"datediff1"     [:datetimediff $start $end :year]
-                                 "datediff1-add" [:+ [:datetimediff $start $end :year] 5]
-                                 "datediff2"     [:datetimediff $start $end :day]
-                                 "datediff2-add" [:+ 5 [:datetimediff $start $end :day]]}
-                   :fields      [[:expression "datediff1"]
-                                 [:expression "datediff1-add"]
-                                 [:expression "datediff2"]
-                                 [:expression "datediff2-add"]]
-                   :filter      [:= $description "minute under a year" "<24h same day"]
-                   :order-by    [[:asc $description]]}))))))))
+        (let [start #t "2021-10-03 09:19:09"
+              end   #t "2022-10-03 09:18:09"]
+          (is (= [[1 6 365 370]]
+                 (mt/rows
+                  (mt/run-mbql-query orders
+                    {:limit       1
+                     :expressions {"datediff1"     [:datetimediff start end :year]
+                                   "datediff1-add" [:+ [:datetimediff start end :year] 5]
+                                   "datediff2"     [:datetimediff start end :day]
+                                   "datediff2-add" [:+ 5 [:datetimediff start end :day]]}
+                     :fields      [[:expression "datediff1"]
+                                   [:expression "datediff1-add"]
+                                   [:expression "datediff2"]
+                                   [:expression "datediff2-add"]]})))))))))
 
 (deftest datetimediff-type-test
   (mt/test-drivers #{:bigquery-cloud-sdk}
