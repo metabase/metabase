@@ -528,7 +528,7 @@
     (s/recursive #'DatetimeExpression)
 
     :else
-    Field))
+    (s/cond-pre DatetimeLiteral Field)))
 
 (def ^:private ExpressionArg
   (s/conditional
@@ -638,9 +638,8 @@
   (s/recursive #'ArithmeticExpression*))
 
 (defclause ^{:requires-features #{:datetimediff}} datetimediff
-  ;; can (should?) the literal go into the expression schema?
-  datetime-x (s/cond-pre DatetimeLiteral DateTimeExpressionArg)
-  datetime-y (s/cond-pre DatetimeLiteral DateTimeExpressionArg)
+  datetime-x DateTimeExpressionArg
+  datetime-y DateTimeExpressionArg
   unit       DatetimeDiffUnits)
 
 (defclause ^{:requires-features #{:temporal-extract}} temporal-extract
