@@ -73,7 +73,7 @@
                                                          ;; ordered map so this more closely matches the behavior when
                                                          ;; using a file
                                                          (ordered-map/ordered-map
-                                                          :settings  {"config-from-file-sync-databases" false}
+                                                          :settings  {:config-from-file-sync-databases false}
                                                           :databases [{:name    test-db-name
                                                                        :engine  "h2"
                                                                        :details (:details (mt/db))}])}]
