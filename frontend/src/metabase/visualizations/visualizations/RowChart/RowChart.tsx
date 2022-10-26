@@ -43,7 +43,7 @@ import {
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
-import { isDimension, isMetric } from "metabase-lib/lib/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
   RowVisualizationRoot,
