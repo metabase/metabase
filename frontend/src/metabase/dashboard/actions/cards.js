@@ -5,9 +5,13 @@ import { createAction } from "metabase/lib/redux";
 
 import Questions from "metabase/entities/questions";
 
-import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import {
+  getPositionForNewDashCard,
+  DEFAULT_CARD_SIZE,
+} from "metabase/lib/dashboard_grid";
 import { createCard } from "metabase/lib/card";
 
+import { getVisualizationRaw } from "metabase/visualizations";
 import { ADD_CARD_TO_DASH } from "./core";
 import { fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
@@ -31,13 +35,19 @@ export const addCardToDashboard =
     const existingCards = dashboard.ordered_cards
       .map(id => dashcards[id])
       .filter(dc => !dc.isRemoved);
+    const { visualization } = getVisualizationRaw([{ card }]);
+    const createdCardSize = visualization.minSize || DEFAULT_CARD_SIZE;
     const dashcard = {
       id: generateTemporaryDashcardId(),
       dashboard_id: dashId,
       card_id: card.id,
       card: card,
       series: [],
-      ...getPositionForNewDashCard(existingCards),
+      ...getPositionForNewDashCard(
+        existingCards,
+        createdCardSize.width,
+        createdCardSize.height,
+      ),
       parameter_mappings: [],
       visualization_settings: {},
     };
