@@ -16,7 +16,7 @@ import {
   computeMinimalBounds,
   getCanonicalRowKey,
 } from "metabase/visualizations/lib/mapping";
-import { isMetric, isString } from "metabase-lib/lib/types/utils/isa";
+import { isMetric, isString } from "metabase-lib/types/utils/isa";
 import ChartWithLegend from "./ChartWithLegend";
 import LegacyChoropleth from "./LegacyChoropleth";
 import LeafletChoropleth from "./LeafletChoropleth";

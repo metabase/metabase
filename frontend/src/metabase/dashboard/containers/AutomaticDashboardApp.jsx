@@ -29,9 +29,9 @@ import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
-import * as Q from "metabase-lib/lib/queries/utils/query";
-import { getFilterDimension } from "metabase-lib/lib/queries/utils/dimension";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import * as Q from "metabase-lib/queries/utils/query";
+import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
 
 import {
   ItemContent,

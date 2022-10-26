@@ -12,12 +12,12 @@ import { Dispatch, GetState } from "metabase-types/store";
 
 import { Card, SavedCard } from "metabase-types/types/Card";
 import { Parameter } from "metabase-types/types/Parameter";
-import { getCardUiParameters } from "metabase-lib/lib/parameters/utils/cards";
+import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
   cardIsEquivalent,
   cardParametersAreEquivalent,
-} from "metabase-lib/lib/queries/utils/card";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
+} from "metabase-lib/queries/utils/card";
+import Metadata from "metabase-lib/metadata/Metadata";
 
 type BlankQueryOptions = {
   db?: string;

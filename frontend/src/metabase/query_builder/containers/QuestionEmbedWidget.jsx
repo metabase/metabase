@@ -12,7 +12,7 @@ import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getCardUiParameters } from "metabase-lib/lib/parameters/utils/cards";
+import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 
 import {
   createPublicLink,

@@ -7,8 +7,8 @@ import Button from "metabase/core/components/Button";
 import { FieldId } from "metabase-types/types/Field";
 import { ConcreteField } from "metabase-types/types/Query";
 import { DatasetColumn } from "metabase-types/api";
-import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
-import Question from "metabase-lib/lib/Question";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import Question from "metabase-lib/Question";
 
 import {
   ColumnItemContainer,

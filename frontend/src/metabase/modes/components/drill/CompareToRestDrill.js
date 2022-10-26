@@ -4,7 +4,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   compareToRestDrill,
   compareToRestDrillUrl,
-} from "metabase-lib/lib/queries/drills/compare-to-rest-drill";
+} from "metabase-lib/queries/drills/compare-to-rest-drill";
 
 export default ({ question, clicked }) => {
   const enableXrays = MetabaseSettings.get("enable-xrays");

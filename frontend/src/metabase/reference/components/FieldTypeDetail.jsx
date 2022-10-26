@@ -8,7 +8,7 @@ import * as MetabaseCore from "metabase/lib/core";
 import Select from "metabase/core/components/Select";
 
 import D from "metabase/reference/components/Detail.css";
-import { isTypeFK, isNumericBaseType } from "metabase-lib/lib/types/utils/isa";
+import { isTypeFK, isNumericBaseType } from "metabase-lib/types/utils/isa";
 
 const FieldTypeDetail = ({
   field,

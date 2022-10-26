@@ -18,7 +18,7 @@ import {
   isEmail,
   isImageURL,
   isAvatarURL,
-} from "metabase-lib/lib/types/utils/isa";
+} from "metabase-lib/types/utils/isa";
 
 function ListViz(props: VisualizationProps) {
   const { data, settings } = props;

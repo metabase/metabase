@@ -13,7 +13,7 @@ import {
   hasDefaultParameterValue,
   hasParameterValue,
   normalizeParameterValue,
-} from "metabase-lib/lib/parameters/utils/parameter-values";
+} from "metabase-lib/parameters/utils/parameter-values";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,
