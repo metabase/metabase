@@ -1,7 +1,7 @@
 import React from "react";
 
 import { isEmpty } from "metabase/lib/validate";
-import { Avatar } from "metabase/components/UserAvatar/UserAvatar.styled";
+import { Avatar } from "metabase/components/UserAvatar";
 
 import { isImageURL } from "metabase-lib/lib/types/utils/isa";
 
@@ -52,9 +52,7 @@ export const VariantInfo = ({
           />
         )}
         {image && !imageColIsImage && (
-          <Avatar>
-            {String(row?.[imageIndex])?.slice(0, 1)?.toUpperCase()}
-          </Avatar>
+          <Avatar>{String(row?.[imageIndex])}</Avatar>
         )}
         <div>
           <ListItemTitle>

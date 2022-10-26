@@ -34,7 +34,9 @@ interface Props {
 
 type ListColumnSlot = "left" | "right" | "image";
 
-function formatValueForSelect(value: FieldIdOrFieldRef): string | number {
+function formatValueForSelect(
+  value: FieldIdOrFieldRef,
+): string | number | null {
   const isFieldReference = Array.isArray(value);
   return isFieldReference ? JSON.stringify(value) : value;
 }
@@ -102,10 +104,13 @@ function ChartSettingsListColumns({
     ...columnOptions,
   ];
 
+  const nullIfEmpty = (value: FieldIdOrFieldRef[]) =>
+    value?.length ? value : [null];
+
   return (
     <div>
       <GroupName>{t`Image`}</GroupName>
-      {(value.image ?? [null]).map((fieldIdOrFieldRef, index) => (
+      {nullIfEmpty(value.image).map((fieldIdOrFieldRef, index) => (
         <ColumnItemContainer key={index}>
           <StyledSelect
             value={formatValueForSelect(fieldIdOrFieldRef)}
@@ -123,7 +128,7 @@ function ChartSettingsListColumns({
         </ColumnItemContainer>
       ))}
       <GroupName>{t`Left`}</GroupName>
-      {value.left.map((fieldIdOrFieldRef, index) => (
+      {nullIfEmpty(value.left).map((fieldIdOrFieldRef, index) => (
         <ColumnItemContainer key={index}>
           <StyledSelect
             value={formatValueForSelect(fieldIdOrFieldRef)}
@@ -141,7 +146,7 @@ function ChartSettingsListColumns({
         </ColumnItemContainer>
       ))}
       <GroupName>{t`Right`}</GroupName>
-      {value.right.map((fieldIdOrFieldRef, index) => (
+      {nullIfEmpty(value.right).map((fieldIdOrFieldRef, index) => (
         <ColumnItemContainer key={index}>
           <StyledSelect
             key={index}
