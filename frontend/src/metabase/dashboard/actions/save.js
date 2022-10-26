@@ -190,14 +190,20 @@ export const saveDashboardAndCards = createThunkAction(
 );
 
 function updateDataAppPageTitle(dataApp, pageId, titleTemplate) {
-  const navItems = dataApp.nav_items.map(navItem => {
-    if (navItem.page_id === pageId) {
-      return {
-        ...navItem,
-        title_template: titleTemplate,
-      };
-    }
-    return navItem;
-  });
-  return DataApps.actions.update({ id: dataApp.id, nav_items: navItems });
+  const nextNavItems = [...dataApp.nav_items];
+  const targetIndex = nextNavItems.findIndex(item => item.page_id === pageId);
+
+  if (targetIndex !== -1) {
+    nextNavItems[targetIndex] = {
+      ...nextNavItems[targetIndex],
+      title_template: titleTemplate,
+    };
+  } else {
+    nextNavItems.push({
+      page_id: pageId,
+      title_template: titleTemplate,
+    });
+  }
+
+  return DataApps.actions.update({ id: dataApp.id, nav_items: nextNavItems });
 }

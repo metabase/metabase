@@ -14,13 +14,13 @@ import DataApps, {
   getPreviousNavItem,
   isTopLevelNavItem,
 } from "metabase/entities/data-apps";
-import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
 import { setEditingDashboard as setEditingDataAppPage } from "metabase/dashboard/actions";
 
 import ArchiveDataAppModal from "metabase/writeback/containers/ArchiveDataAppModal";
 import ArchiveDataAppPageModal from "metabase/writeback/containers/ArchiveDataAppPageModal";
+import CreateDataAppPageModalForm from "metabase/writeback/containers/CreateDataAppPageModalForm";
 import ScaffoldDataAppPagesModal from "metabase/writeback/containers/ScaffoldDataAppPagesModal";
 
 import type { DataApp, DataAppPage } from "metabase-types/api";
@@ -202,14 +202,10 @@ function DataAppNavbarContainer({
     }
     if (modal === "MODAL_NEW_PAGE") {
       return (
-        <Dashboards.ModalForm
-          form={Dashboards.forms.dataAppPage}
-          title={t`New page`}
-          dashboard={{
-            collection_id: dataApp.collection_id,
-          }}
+        <CreateDataAppPageModalForm
+          dataApp={dataApp}
           onClose={closeModal}
-          onSaved={(page: DataAppPage) => {
+          onSave={(page: DataAppPage) => {
             closeModal();
             onChangeLocation(Urls.dataAppPage(dataApp, page));
           }}
