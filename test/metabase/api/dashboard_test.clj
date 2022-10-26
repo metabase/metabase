@@ -1912,12 +1912,12 @@
                                                                           Integer/MAX_VALUE)
                                              {}))))
               (testing "Missing parameter should fail gracefully"
-                (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
+                (is (partial= {:message "Error executing action."}
                               (mt/user-http-request :crowberto :post 500 execute-path
                                                     {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
 
-                (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": Unparseable number: \"BAD\""}
+                (is (partial= {:message "Error executing action."}
                               (mt/user-http-request :crowberto :post 500 execute-path
                                                     {:parameters {"id" "BAD"}})))))))))))
 
@@ -1947,13 +1947,13 @@
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"extra" 1}}))))
               (testing "Missing parameter should fail gracefully"
-                (is (partial= {:message "Problem building request: Cannot call the service: missing required parameters: #{\"id\"}"}
+                (is (partial= {:message "Error executing action."}
                               (mt/user-http-request :crowberto :post 500 execute-path
                                                     {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
-                (is (str/starts-with? (:message (mt/user-http-request :crowberto :post 500 execute-path
-                                                                      {:parameters {"id" "BAD"}}))
-                                      "Problem building request:"))))))))))
+                (is (= "Error executing action."
+                       (:message (mt/user-http-request :crowberto :post 500 execute-path
+                                                       {:parameters {"id" "BAD"}}))))))))))))
 
 (deftest dashcard-implicit-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)

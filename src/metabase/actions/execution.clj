@@ -73,8 +73,11 @@
         :http
         (http-action/execute-http-action! action request-parameters))
       (catch Exception e
-        (log/error e (tru "Error executing action."))
-        {:body {:message (tru "Error executing action.")} :status 500}))))
+        (if (:status-code (ex-data e))
+          (throw e)
+          (do
+            (log/error e (tru "Error executing action."))
+            {:body {:message (tru "Error executing action.")} :status 500}))))))
 
 (defn- implicit-action-table
   [card_id]
