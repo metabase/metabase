@@ -2781,10 +2781,10 @@
     debug "^3.1.0"
     lodash.once "^4.1.1"
 
-"@deploysentinel/cypress-debugger@^0.5.1":
-  version "0.5.1"
-  resolved "https://registry.yarnpkg.com/@deploysentinel/cypress-debugger/-/cypress-debugger-0.5.1.tgz#1bc8cc5d1c41b8dea1c5c50b398f4c4297737997"
-  integrity sha512-PODd3tvfLKKMC0dPD5T3S05+dMkLu74aBWM4uQ5rK7LU47GXTNouSXJRHRvv2oOQkXvabogLIfO4xpSuHcx7iQ==
+"@deploysentinel/cypress-debugger@^0.5.3":
+  version "0.5.3"
+  resolved "https://registry.yarnpkg.com/@deploysentinel/cypress-debugger/-/cypress-debugger-0.5.3.tgz#ecf70adef8fc2bf3502d63f0ba0519e55056a341"
+  integrity sha512-TDlaecTw2UY/hlEdqKJoqTCvcUkE+3it3zy61FIk7N9LeAfONUiherTj2saxXB7JIS+mHYGWP0ZICO5Ox06jjw==
   dependencies:
     "@cypress/commit-info" "^2.2.0"
     "@deploysentinel/cypress-runner" "^1.0.0"

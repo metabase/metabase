@@ -1,7 +1,9 @@
+// Cypress analytics and the alternative to Cypress dashboard
+// Needs to sit at the top of this file to catch all exceptions!
+import "@deploysentinel/cypress-debugger/support";
 require("cypress-grep")();
 
 import addContext from "mochawesome/addContext";
-import "@deploysentinel/cypress-debugger/support";
 import "@testing-library/cypress/add-commands";
 import "cypress-real-events/support";
 import "@cypress/skip-test/support";

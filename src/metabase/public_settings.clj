@@ -29,7 +29,7 @@
 (defn- ee-sso-configured? []
   (u/ignore-exceptions
     (classloader/require 'metabase-enterprise.sso.integrations.sso-settings))
-  (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-configured?)]
+  (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-enabled?)]
     (varr)))
 
 (defn sso-enabled?

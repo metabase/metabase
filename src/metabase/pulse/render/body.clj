@@ -1,6 +1,5 @@
 (ns metabase.pulse.render.body
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [hiccup.core :refer [h]]
             [medley.core :as m]
             [metabase.public-settings :as public-settings]
@@ -84,7 +83,7 @@
     ;; for numbers, return a format function that has already computed the differences.
     ;; todo: do the same for temporal strings
     (types/temporal-field? col)
-    #(datetime/format-temporal-str timezone-id % col)
+    #(datetime/format-temporal-str timezone-id % col visualization-settings)
 
     ;; todo integer columns with a unit
     (or (isa? (:effective_type col) :type/Number)
@@ -112,11 +111,14 @@
 (defn- column-name
   "Returns first column name from a hierarchy of possible column names"
   [card col]
-  (let [column-settings (some->> (get-in card [:visualization_settings :column_settings])
-                                 (m/map-keys (comp vec json/parse-string name)))]
-    (name (or (when-let [fr (:field_ref col)]
-                (get-in column-settings [["ref" (mapv #(if (keyword? %) (name %) %) fr)] :column_title]))
-              (get-in column-settings [["name" (:name col)] :column_title])
+  (let [col-settings (-> (mb.viz/db->norm (:visualization_settings card))
+                         ::mb.viz/column-settings
+                         ;; field-ref keys can come in with additional stuff like :meta-data or unit maps,
+                         ;; so we select only those keys we CAN use to match with by using select-keys
+                         (update-keys #(select-keys % [::mb.viz/column-name ::mb.viz/field-id])))]
+    (name (or (when-let [[_ id] (:field_ref col)]
+                (get-in col-settings [{::mb.viz/field-id id} ::mb.viz/column-title]))
+              (get-in col-settings [{::mb.viz/column-name (:name col)} ::mb.viz/column-title])
               (:display_name col)
               (:name col)))))
 
@@ -161,7 +163,7 @@
                                                   [(nth formatters remapped-index)
                                                    (nth row remapped-index)])
                                                 [fmt-fn maybe-remapped-row-cell])]]
-              (fmt-fn row-cell))})))
+                  (fmt-fn row-cell))})))
 
 (s/defn ^:private prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
@@ -256,9 +258,12 @@
     (cond-> (or (get-in override-date-styles [date-style unit])
                 (get-in default-date-styles [unit])
                 date-style)
-      (not= date-separator "/") (str/replace #"/" date-separator)
-      date-abbreviate (-> (str/replace #"MMMM" "MMM")
-                          (str/replace #"EEEE" "E")))))
+      date-separator
+      (str/replace #"/" date-separator)
+
+      date-abbreviate
+      (-> (str/replace #"MMMM" "MMM")
+          (str/replace #"EEEE" "E")))))
 
 (defn- backfill-currency
   [{:keys [number_style currency] :as settings}]
@@ -266,16 +271,17 @@
     (and (= number_style "currency") (nil? currency))
     (assoc :currency "USD")))
 
-(defn- settings-from-column
-  [col column-settings]
-  (or (get column-settings {::mb.viz/field-id (:id col)})
-      (get column-settings {::mb.viz/column-name (:name col)})))
-
 (defn- update-col-for-js
   [col-settings col]
   (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
       (backfill-currency)
       (u/update-if-exists :date_style update-date-style (:unit col) col-settings)))
+
+(defn- settings-from-column
+  [col column-settings]
+  (-> (or (get column-settings {::mb.viz/field-id (:id col)})
+          (get column-settings {::mb.viz/column-name (:name col)}))
+      (update-col-for-js col)))
 
 (defn- ->js-viz
   "Include viz settings for js.
@@ -288,9 +294,9 @@
         y-col-settings (settings-from-column y-col column-settings)]
     (cond-> {:colors (public-settings/application-colors)}
       x-col-settings
-      (assoc :x (update-col-for-js x-col-settings x-col))
+      (assoc :x x-col-settings)
       y-col-settings
-      (assoc :y (update-col-for-js y-col-settings y-col)))))
+      (assoc :y y-col-settings))))
 
 (defn- ->ts-viz
   "Include viz settings for the typed settings, initially in XY charts.
@@ -355,17 +361,23 @@
    :left   (or (:graph.y_axis.title_text viz-settings)
                (:display_name y-col))})
 
+(defn- labels-enabled?
+  "Returns `true` if `:graph.x_axis.labels_enabled` (or y_axis) is `true`, not present, or nil.
+  The only time labels are not enabled is when the key is explicitly set to false."
+  [viz-settings axis-key]
+  (boolean (get viz-settings axis-key true)))
+
 (defn- combo-label-info
   "X and Y axis labels passed into the `labels` argument needs to be different
   for combos specifically (as opposed to multiples)"
   [x-cols y-cols viz-settings]
-  {:bottom (when (:graph.x_axis.labels_enabled viz-settings)
+  {:bottom (when (labels-enabled? viz-settings :graph.x_axis.labels_enabled)
              (or (:graph.x_axis.title_text viz-settings)
                  (:display_name (first x-cols))))
-   :left   (when (:graph.y_axis.labels_enabled viz-settings)
+   :left   (when (labels-enabled? viz-settings :graph.y_axis.labels_enabled)
              (or (:graph.y_axis.title_text viz-settings)
                  (:display_name (first y-cols))))
-   :right  (when (:graph.y_axis.labels_enabled viz-settings)
+   :right  (when (labels-enabled? viz-settings :graph.y_axis.labels_enabled)
              (or (:graph.y_axis.title_text viz-settings)
                  (:display_name (second y-cols))))})
 
@@ -449,8 +461,8 @@
         legend-colors               (merge (zipmap (map first rows) (cycle colors))
                                            (update-keys (:pie.colors viz-settings) name))
         image-bundle                (image-bundle/make-image-bundle
-                                      render-type
-                                      (js-svg/categorical-donut rows legend-colors))
+                                     render-type
+                                     (js-svg/categorical-donut rows legend-colors))
         {label-viz-settings :x}     (->js-viz (x-axis-rowfn cols) (y-axis-rowfn cols) viz-settings)]
     {:attachments
      (when image-bundle
@@ -461,19 +473,19 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]
       (donut-legend
-        (mapv (fn [row]
-                (let [label (first row)]
-                  {:percentage (percentages (first row))
-                   :color      (legend-colors (first row))
-                   :label      (if (or (datetime/temporal-string? label)
-                                       (boolean (parse-long label)))
-                                 (datetime/format-temporal-str
-                                   timezone-id
-                                   (first row)
-                                   (x-axis-rowfn cols)
-                                   label-viz-settings)
-                                 label)}))
-              rows))]}))
+       (mapv (fn [row]
+               (let [label (first row)]
+                 {:percentage (percentages (first row))
+                  :color      (legend-colors (first row))
+                  :label      (if (and (contains? label-viz-settings :date_style)
+                                       (datetime/temporal-string? label))
+                                (datetime/format-temporal-str
+                                 timezone-id
+                                 (first row)
+                                 (x-axis-rowfn cols)
+                                 viz-settings)
+                                label)}))
+             rows))]}))
 
 (s/defmethod render :progress :- common/RenderedPulseCard
   [_ render-type _timezone-id _card dashcard {:keys [cols rows viz-settings] :as _data}]
@@ -781,7 +793,8 @@
                                                  :font-weight   700
                                                  :padding-right :16px})}
                         (trs "Nothing to compare to.")]]
-         :render/text (str last-value "\n" (trs "Nothing to compare to."))}))))
+         :render/text (str (format-cell timezone-id last-value metric-col viz-settings)
+                           "\n" (trs "Nothing to compare to."))}))))
 
 (s/defmethod render :waterfall :- common/RenderedPulseCard
   [_ render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]
