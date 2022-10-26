@@ -2069,7 +2069,9 @@
                 (testing (str "Attempting to implicitly insert " field-name)
                   (mt/user-http-request :crowberto :post 200  (format "dashboard/%s/dashcard/%s/execute/insert" dashboard-id dashcard-id)
                                         {:parameters {field-name value}})
-                  (let [{{:keys [rows cols]} :data} (qp/process-query (mt/mbql-query types))]
+                  (let [{{:keys [rows cols]} :data} (qp/process-query
+                                                      (assoc-in (mt/mbql-query types)
+                                                                [:query :order_by] [["asc", ["field", (mt/id :types :id) nil]]]))]
                     (is (partial= {field-name value}
                                   (zipmap (map (comp str/lower-case :name) cols)
                                           (last rows))))))
@@ -2082,7 +2084,9 @@
                       (mt/user-http-request :crowberto :post 200
                                             (format "dashboard/%s/dashcard/%s/execute/custom" dashboard-id custom-dashcard-id)
                                             {:parameters {field-name value}})
-                      (let [{{:keys [rows cols]} :data} (qp/process-query (mt/mbql-query types))]
+                      (let [{{:keys [rows cols]} :data} (qp/process-query
+                                                          (assoc-in (mt/mbql-query types)
+                                                                    [:query :order_by] [["asc", ["field", (mt/id :types :id) nil]]]))]
                         (is (partial= {field-name value}
                                       (zipmap (map (comp str/lower-case :name) cols)
                                               (last rows))))))))))
