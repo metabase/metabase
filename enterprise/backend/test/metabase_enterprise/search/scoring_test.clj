@@ -50,16 +50,17 @@
                (ee-score search-string item))
             (str "Item not greater for item: " item)))
       (is (= ["customer examples of bad sorting"
-              "examples of custom expressions"
               "customer success stories"
+              "examples of custom expressions"
               "custom expression examples"]
-             (mapv :name (sort-by #(oss-score search-string %) (shuffle [a b c d])))))
+             (mapv :name (sort-by #(oss-score search-string %)
+                                  (shuffle [a b c d])))))
       (is (= ["customer examples of bad sorting"
               "customer success stories"
               "examples of custom expressions"
               "custom expression examples"]
              (mapv :name (sort-by #(ee-score search-string %)
-                                 [a b c (assoc d :collection_authority_level "official")]))))))
+                                  (shuffle [a b c (assoc d :collection_authority_level "official")])))))))
   (testing "It should bump up the value of verified items"
     (let [ss "foo"
           a  {:name                "foobar"
@@ -81,14 +82,14 @@
       (let [items (shuffle [a b c])]
         (is (= (sort-by #(oss-score ss %) items)
                (sort-by #(ee-score ss %) items))))
-      (is (= [:a :c :b] (map :id (sort-by #(ee-score ss %) [a b c]))))
-      ;; a is verified and is now last or highest score
-      (is (= [:c :b :a]
+      (is (= [:c :b :a] (map :id (sort-by #(ee-score ss %) [a b c]))))
+      ;; c is verified and is now last or highest score
+      (is (= [:b :a :c]
              (map :id
                   (sort-by #(ee-score ss %)
-                           [(assoc a :moderated_status "verified")
+                           [a
                             b
-                            c])))))))
+                            (assoc c :moderated_status "verified")])))))))
 
 (defn- all-permutations-all-orders
   "(all-permutations-all-orders [1]) ;; => [[] [1]]
