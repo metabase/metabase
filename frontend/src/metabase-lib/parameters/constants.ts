@@ -155,12 +155,15 @@ export const TYPE_SUPPORTS_LINKED_FILTERS = [
   "location",
 ];
 
-export const SINGLE_OR_MULTI_SELECTABLE_TYPES = [
-  "string",
-  "category",
-  "id",
-  "location",
-];
+export const SINGLE_OR_MULTI_SELECTABLE_TYPES: Record<
+  string,
+  string | string[]
+> = {
+  string: ["=", "!="],
+  category: ["=", "!="],
+  id: "any",
+  location: ["=", "!="],
+};
 
 export const FIELD_FILTER_PARAMETER_TYPES = [
   "date",

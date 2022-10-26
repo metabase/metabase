@@ -5,7 +5,10 @@ import {
   FIELD_FILTER_PARAMETER_TYPES,
   SINGLE_OR_MULTI_SELECTABLE_TYPES,
 } from "metabase-lib/lib/parameters/constants";
-import { getParameterType } from "metabase-lib/lib/parameters/utils/parameter-type";
+import {
+  getParameterType,
+  getParameterSubType,
+} from "metabase-lib/lib/parameters/utils/parameter-type";
 
 export function isFieldFilterParameter(
   parameter: Parameter,
@@ -14,8 +17,15 @@ export function isFieldFilterParameter(
   return FIELD_FILTER_PARAMETER_TYPES.includes(type);
 }
 
-// TODO: maybe move to the dashboard component?
 export function isSingleOrMultiSelectable(parameter: Parameter): boolean {
-  const type = getParameterType(parameter);
-  return SINGLE_OR_MULTI_SELECTABLE_TYPES.includes(type);
+  const type: string = getParameterType(parameter);
+  const subType: string = getParameterSubType(parameter);
+
+  if (!SINGLE_OR_MULTI_SELECTABLE_TYPES[type]) {
+    return false;
+  }
+  if (SINGLE_OR_MULTI_SELECTABLE_TYPES[type] === "any") {
+    return true;
+  }
+  return SINGLE_OR_MULTI_SELECTABLE_TYPES[type].includes(subType);
 }
