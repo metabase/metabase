@@ -5,8 +5,9 @@ import _ from "lodash";
 import { formatColumn } from "metabase/lib/formatting";
 
 import List from "metabase/visualizations/components/List/List";
-import ChartSettingsListColumns from "metabase/visualizations/components/settings/ChartSettingsListColumns";
-import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
+import ChartSettingsListColumns, {
+  getDefaultColumns,
+} from "metabase/visualizations/components/settings/ChartSettingsListColumns";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { VisualizationSettings } from "metabase-types/api/card";
@@ -84,13 +85,7 @@ export default Object.assign(ListViz, {
         const columns = cols.filter(
           col => col.visibility_type !== "details-only",
         );
-        const firstThreeColumns = columns.slice(0, 3).filter(Boolean);
-        const fourthColumn = columns.slice(3, 4).filter(Boolean);
-        return {
-          image: [null],
-          left: firstThreeColumns.map(col => col.id || col.field_ref),
-          right: fourthColumn.map(col => col.id || col.field_ref),
-        };
+        return getDefaultColumns(columns);
       },
       getProps: ([
         {
