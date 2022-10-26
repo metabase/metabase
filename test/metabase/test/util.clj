@@ -48,14 +48,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-;; these are imported because these functions originally lived in this namespace, and some tests might still be
-;; referencing them from here. We can remove the imports once everyone is using `metabase.test` instead of using this
-;; namespace directly.
-(p/import-vars
- [tu.log
-  with-log-level
-  with-log-messages-for-level])
-
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))
 
