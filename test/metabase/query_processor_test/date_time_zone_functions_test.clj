@@ -262,13 +262,13 @@
     (mt/dataset sample-dataset
       (letfn [(query [x y unit]
                 (->> (mt/run-mbql-query orders
-                                        {:limit 1
-                                         :expressions {"diff"
-                                                       [:datetimediff x y unit]
-                                                       "diff-rev"
-                                                       [:datetimediff y x unit]}
-                                         :fields [[:expression "diff"]
-                                                  [:expression "diff-rev"]]})
+                       {:limit 1
+                        :expressions {"diff"
+                                      [:datetimediff x y unit]
+                                      "diff-rev"
+                                      [:datetimediff y x unit]}
+                        :fields [[:expression "diff"]
+                                 [:expression "diff-rev"]]})
                      mt/rows first))]
         (doseq [[unit cases] [[:year [[#t "2021-10-03 09:18:09" #t "2022-10-02 09:18:09" 0]      ; day under a year
                                       [#t "2021-10-03 09:19:09" #t "2022-10-03 09:18:09" 1]      ; ignores time
@@ -312,14 +312,6 @@
                                     {"tz,dt" [:datetimediff $tz $dt :day]
                                      "tz,d"  [:datetimediff $tz $d :day]
                                      "d,dt"  [:datetimediff $d $dt :day]}}))))))))
-
-(mt/defdataset with-time-column
-  [["datediff-with-time"
-    [{:field-name "index" :base-type :type/Integer}
-     {:field-name "description" :base-type :type/Text}
-     {:field-name "ts" :base-type :type/DateTimeWithTZ}
-     {:field-name "t" :base-type :type/Time}]
-    [[1 "simple comparing across types" #t "2021-08-03T08:09:10.582Z" #t "09:19:09"]]]])
 
 (mt/defdataset more-useful-dates4
   [["more-datediff-edgecases"
@@ -444,18 +436,20 @@
 (deftest datetimediff-type-test
   (mt/test-drivers #{:bigquery-cloud-sdk}
     (testing "Cannot datetimediff against time column"
-      (mt/dataset with-time-column
+      (mt/dataset sample-dataset
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Only datetime, timestamp, or date types allowed. Found .*"
              (mt/rows
-              (mt/run-mbql-query datediff-with-time
-                {:fields      [[:expression "diff-day"]]
-                 :expressions {"diff-day" [:datetimediff $ts $t :day]}}))))
+              (mt/run-mbql-query orders
+                {:limit 1
+                 :fields      [[:expression "diff-day"]]
+                 :expressions {"diff-day" [:datetimediff #t "2022-01-01 00:00:00" #t "00:00:01" :day]}}))))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Only datetime, timestamp, or date types allowed. Found .*"
              (mt/rows
-              (mt/run-mbql-query datediff-with-time
-                {:fields      [[:expression "diff-day"]]
-                 :expressions {"diff-day" [:datetimediff $ts [:date-add $t 3 "hour"] :day]}}))))))))
+              (mt/run-mbql-query orders
+                {:limit 1
+                 :fields      [[:expression "diff-day"]]
+                 :expressions {"diff-day" [:datetimediff #t "2021-01-01" [:date-add #t "00:00:01" 3 "hour"] :day]}}))))))))
