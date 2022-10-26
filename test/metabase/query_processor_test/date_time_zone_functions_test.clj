@@ -257,6 +257,15 @@
         (testing title
           (is (= (set expected) (set (test-date-math query)))))))))
 
+(mt/defdataset useful-dates
+  [["datediff-mixed-types"
+    [{:field-name "index" :base-type :type/Integer}
+     {:field-name "description" :base-type :type/Text}
+     {:field-name "tz" :base-type :type/DateTimeWithTZ}
+     {:field-name "d" :base-type :type/Date}
+     {:field-name "dt" :base-type :type/DateTime}]
+    [[1 "simple comparing across types" #t "2021-08-03T08:09:10.582Z" #t "2022-09-04" #t "2022-10-05 09:19:09"]]]])
+
 (deftest datetimediff-base-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
     (mt/dataset sample-dataset
