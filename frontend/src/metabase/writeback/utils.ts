@@ -6,9 +6,9 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
-import { TYPE } from "metabase-lib/lib/types/constants";
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Field from "metabase-lib/lib/metadata/Field";
+import { TYPE } from "metabase-lib/types/constants";
+import type Database from "metabase-lib/metadata/Database";
+import type Field from "metabase-lib/metadata/Field";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";

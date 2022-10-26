@@ -6,7 +6,7 @@ import { loadMetadataForCard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Questions from "metabase/entities/questions";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 // type annotations
 

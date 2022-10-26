@@ -2,7 +2,7 @@ import { t } from "ttag";
 import {
   sortDrill,
   sortDrillQuestion,
-} from "metabase-lib/lib/queries/drills/sort-drill";
+} from "metabase-lib/queries/drills/sort-drill";
 
 const ACTIONS = {
   asc: {

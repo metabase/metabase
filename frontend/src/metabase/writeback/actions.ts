@@ -1,7 +1,7 @@
 import { ActionsApi } from "metabase/services";
 
 import type { Value } from "metabase-types/types/Dataset";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Table from "metabase-lib/metadata/Table";
 
 export type InsertRowPayload = {
   table: Table;

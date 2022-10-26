@@ -60,7 +60,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Timeline
   [_timeline]
-  [:name (serdes.hash/hydrated-hash :collection)])
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 ;;;; serialization
 (defmethod serdes.base/extract-one "Timeline"

@@ -7,7 +7,7 @@ import {
   createMockDashboardActionButton,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
-import type { UiParameter } from "metabase-lib/lib/parameters/types";
+import type { UiParameter } from "metabase-lib/parameters/types";
 
 import {
   turnClickBehaviorParameterMappingsIntoDashCardMappings,

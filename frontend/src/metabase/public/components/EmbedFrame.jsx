@@ -10,7 +10,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import LogoBadge from "./LogoBadge";
 import "./EmbedFrame.css";

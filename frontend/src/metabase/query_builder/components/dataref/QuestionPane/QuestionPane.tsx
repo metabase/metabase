@@ -15,8 +15,8 @@ import { getQuestionFromCard } from "metabase/query_builder/selectors";
 import type { Card } from "metabase-types/api/card";
 import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
-import Table from "metabase-lib/lib/metadata/Table";
-import Question from "metabase-lib/lib/Question";
+import Table from "metabase-lib/metadata/Table";
+import Question from "metabase-lib/Question";
 import FieldList from "../FieldList";
 import { PaneContent } from "../Pane.styled";
 import {

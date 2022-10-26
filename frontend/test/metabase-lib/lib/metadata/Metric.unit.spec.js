@@ -1,7 +1,7 @@
 import { metadata, makeMetadata } from "__support__/sample_database_fixture";
 
-import Metric from "metabase-lib/lib/metadata/Metric";
-import Table from "metabase-lib/lib/metadata/Table";
+import Metric from "metabase-lib/metadata/Metric";
+import Table from "metabase-lib/metadata/Table";
 
 describe("Metric", () => {
   describe("Standard database", () => {
