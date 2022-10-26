@@ -11,6 +11,7 @@ import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
+import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import ChartSettingsTableFormatting, {
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
@@ -286,26 +287,54 @@ export default class Table extends Component {
 
     settings["link_text"] = {
       title: t`Link text`,
-      widget: "input",
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_, settings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
-      props: {
-        placeholder: t`Link to {{bird_id}}`,
+      getProps: (
+        col,
+        settings,
+        onChange,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        },
+      ) => {
+        return {
+          options: cols.map(column => column.name),
+          placeholder: t`Link to {{bird_id}}`,
+        };
       },
     };
 
     settings["link_url"] = {
       title: t`Link URL`,
-      widget: "input",
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_, settings) => settings["view_as"] !== "link",
       readDependencies: ["view_as"],
-      props: {
-        placeholder: t`http://toucan.example/{{bird_id}}`,
+      getProps: (
+        col,
+        settings,
+        onChange,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        },
+      ) => {
+        return {
+          options: cols.map(column => column.name),
+          placeholder: t`http://toucan.example/{{bird_id}}`,
+        };
       },
     };
 
