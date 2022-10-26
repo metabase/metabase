@@ -35,7 +35,7 @@ import {
 
 import Utils from "metabase/lib/utils";
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
-import { getParameterValuesBySlug } from "metabase-lib/lib/parameters/utils/parameter-values";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import DashCardParameterMapper from "./DashCardParameterMapper";
 import { DashCardRoot } from "./DashCard.styled";
 

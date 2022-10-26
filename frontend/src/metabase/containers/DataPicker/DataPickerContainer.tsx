@@ -15,7 +15,7 @@ import type { State } from "metabase-types/store";
 import {
   getRootCollectionVirtualSchemaId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/lib/metadata/utils/saved-questions";
+} from "metabase-lib/metadata/utils/saved-questions";
 
 import type {
   DataPickerProps as DataPickerOwnProps,

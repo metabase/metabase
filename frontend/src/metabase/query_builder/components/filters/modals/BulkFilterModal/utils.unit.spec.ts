@@ -4,8 +4,8 @@ import StructuredQuery, {
   isDimensionOption,
   DimensionOption,
   SegmentOption,
-} from "metabase-lib/lib/queries/StructuredQuery";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+} from "metabase-lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 import {
   fixBetweens,

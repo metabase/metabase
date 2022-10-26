@@ -8,7 +8,7 @@ import { getMainElement } from "metabase/lib/dom";
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";

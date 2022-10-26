@@ -1,7 +1,7 @@
 import React from "react";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-import type Field from "metabase-lib/lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 
 import {
   OptionListContainer,

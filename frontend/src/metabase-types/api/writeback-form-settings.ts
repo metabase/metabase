@@ -1,5 +1,5 @@
 import type { Validator, FormFieldDefinition } from "metabase-types/forms";
-import type Field from "metabase-lib/lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 import type { ParameterId } from "./parameters";
 
 export type ActionDisplayType = "form" | "button";

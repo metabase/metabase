@@ -9,7 +9,7 @@ import Dashboards from "metabase/entities/dashboards";
 import type { DataApp, DataAppPage } from "metabase-types/api";
 import type { Value } from "metabase-types/types/Dataset";
 import type { Dispatch, GetState } from "metabase-types/store";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Table from "metabase-lib/metadata/Table";
 
 export type InsertRowPayload = {
   table: Table;

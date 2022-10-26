@@ -2,7 +2,7 @@ import { t } from "ttag";
 import {
   distributionDrill,
   distributionDrillQuestion,
-} from "metabase-lib/lib/queries/drills/distribution-drill";
+} from "metabase-lib/queries/drills/distribution-drill";
 
 export default ({ question, clicked }) => {
   if (!distributionDrill({ question, clicked })) {

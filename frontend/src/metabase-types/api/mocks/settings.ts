@@ -72,6 +72,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "ldap-enabled": false,
   "loading-message": "doing-science",
   "deprecation-notice-version": undefined,
+  "session-cookies": null,
   "site-locale": "en",
   "show-database-syncing-modal": false,
   "show-homepage-data": false,

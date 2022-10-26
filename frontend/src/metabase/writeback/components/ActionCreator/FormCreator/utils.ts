@@ -20,8 +20,8 @@ import type { Parameter } from "metabase-types/types/Parameter";
 import type { TemplateTag } from "metabase-types/types/Query";
 
 import { isEditableField } from "metabase/writeback/utils";
-import Field from "metabase-lib/lib/metadata/Field";
-import { TYPE } from "metabase-lib/lib/types/constants";
+import Field from "metabase-lib/metadata/Field";
+import { TYPE } from "metabase-lib/types/constants";
 
 import { shouldShowConfirmation } from "../../ActionViz/utils";
 

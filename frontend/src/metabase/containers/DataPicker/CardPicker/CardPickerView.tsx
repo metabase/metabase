@@ -7,7 +7,7 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 import type { Collection } from "metabase-types/api";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Table from "metabase-lib/metadata/Table";
 
 import type { DataPickerSelectedItem, VirtualTable } from "../types";
 import PanePicker from "../PanePicker";

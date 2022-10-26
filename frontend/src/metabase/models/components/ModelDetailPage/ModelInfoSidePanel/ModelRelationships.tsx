@@ -4,8 +4,8 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 
-import type Question from "metabase-lib/lib/Question";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
 
 import { ModelInfoTitle, ModelInfoSection } from "./ModelInfoSidePanel.styled";
 import { List, ListItemLink, ListItemName } from "./ModelRelationships.styled";

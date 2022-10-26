@@ -19,7 +19,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
-import { getIconForField } from "metabase-lib/lib/metadata/utils/fields";
+import { getIconForField } from "metabase-lib/metadata/utils/fields";
 import {
   getError,
   getFieldsBySegment,

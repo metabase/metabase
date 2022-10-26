@@ -10,7 +10,7 @@ import type {
 import { BehaviorOption } from "metabase/dashboard/components/ClickBehaviorSidebar/TypeSelector/TypeSelector";
 import LinkOptions from "metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions";
 import Icon from "metabase/components/Icon";
-import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
+import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
 import {
   ClickBehaviorPickerText,

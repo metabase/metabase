@@ -52,6 +52,7 @@ export interface Settings {
   "deprecation-notice-version": string | undefined;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
+  "session-cookies": boolean | null;
   "site-locale": string;
   "show-database-syncing-modal": boolean;
   "show-homepage-data": boolean;
@@ -59,10 +60,10 @@ export interface Settings {
   "show-homepage-pin-message": boolean;
   "show-lighthouse-illustration": boolean;
   "show-metabot": boolean;
-  "token-status": TokenStatus | undefined;
   "slack-token": string | undefined;
   "slack-token-valid?": boolean;
   "slack-app-token": string | undefined;
   "slack-files-channel": string | undefined;
+  "token-status": TokenStatus | undefined;
   version: Version;
 }

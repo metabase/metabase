@@ -1,4 +1,4 @@
-import type Field from "metabase-lib/lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 import type { DatasetQuery } from "./query";
 
 export interface Card extends UnsavedCard {

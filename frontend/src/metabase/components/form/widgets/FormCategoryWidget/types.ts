@@ -1,4 +1,4 @@
-import Field from "metabase-lib/lib/metadata/Field";
+import Field from "metabase-lib/metadata/Field";
 
 export interface CategoryWidgetProps {
   field: {

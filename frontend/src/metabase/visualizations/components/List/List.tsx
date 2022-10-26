@@ -9,9 +9,10 @@ import { getIn } from "icepick";
 import _ from "lodash";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import { DashboardWithCards } from "metabase-types/types/Dashboard";
-import { VisualizationProps } from "metabase-types/types/Visualization";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
+
+import type { DashboardWithCards } from "metabase-types/types/Dashboard";
+import type { VisualizationProps } from "metabase-types/types/Visualization";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
 import {
   Root,

@@ -5,15 +5,15 @@ import EmptyState from "metabase/components/EmptyState";
 
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/Dimension";
 import StructuredQuery, {
   DimensionOption,
   SegmentOption,
   isDimensionOption,
   isSegmentOption,
-} from "metabase-lib/lib/queries/StructuredQuery";
+} from "metabase-lib/queries/StructuredQuery";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
 import { BulkFilterItem } from "../BulkFilterItem";
 import { SegmentFilterSelect } from "../BulkFilterSelect";
 import { InlineOperatorSelector } from "../InlineOperatorSelector";

@@ -1,5 +1,5 @@
-import { getParameterType } from "metabase-lib/lib/parameters/utils/parameter-type";
-import { hasParameterValue } from "metabase-lib/lib/parameters/utils/parameter-values";
+import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
+import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
 export function getParameterValueFromQueryParams(
   parameter,

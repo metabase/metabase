@@ -7,7 +7,7 @@ import Dashboards from "metabase/entities/dashboards";
 import DataApps from "metabase/entities/data-apps";
 
 import { DashboardApi, CardApi } from "metabase/services";
-import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
+import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
 import {
   getDashboardBeforeEditing,

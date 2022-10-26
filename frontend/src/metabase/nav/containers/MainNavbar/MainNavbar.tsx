@@ -10,7 +10,7 @@ import { getDashboard } from "metabase/dashboard/selectors";
 
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Question from "metabase-lib/lib/Question";
+import type Question from "metabase-lib/Question";
 
 import MainNavbarContainer from "./MainNavbarContainer";
 

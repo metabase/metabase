@@ -11,7 +11,7 @@ import {
   getDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
 import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
-import Field from "metabase-lib/lib/metadata/Field";
+import Field from "metabase-lib/metadata/Field";
 
 describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
