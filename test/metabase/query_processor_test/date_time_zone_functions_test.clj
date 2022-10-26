@@ -372,13 +372,13 @@
                           (diffs #t "2022-10-02T00:00:00Z[+00:00]"      ; 2022-10-01T23:00:00Z[-01:00]
                                  #t "2022-11-02T00:00:00Z[+01:00]"))))) ; 2022-11-01T22:00:00Z[-01:00]
         (testing "month"
-          (mt/with-report-timezone-id nil
-            (is (partial= {:hour 744 :day 31 :month 1 :year 0}
-                          (diffs #t "2022-10-02T01:00:00Z[+01:00]"      ; 2022-10-02T00:00:00Z[+00:00]
-                                 #t "2022-11-02T00:00:00Z[+00:00]"))))  ; 2022-11-02T00:00:00Z[+00:00]
           (mt/with-report-timezone-id "Atlantic/Cape_Verde"
             (is (partial= {:hour 744 :day 31 :month 1 :year 0}
                           (diffs #t "2022-10-02T01:00:00Z[+01:00]"          ; 2022-10-01T23:00:00Z[-01:00]
+                                 #t "2022-11-02T00:00:00Z[+00:00]"))))  ; 2022-11-02T00:00:00Z[+00:00]
+          (mt/with-report-timezone-id nil
+            (is (partial= {:hour 744 :day 31 :month 1 :year 0}
+                          (diffs #t "2022-10-02T01:00:00Z[+01:00]"      ; 2022-10-02T00:00:00Z[+00:00]
                                  #t "2022-11-02T00:00:00Z[+00:00]"))))))))) ; 2022-11-01T23:00:00Z[-01:00]
 
 (deftest datetimediff-test
