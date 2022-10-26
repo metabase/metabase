@@ -129,3 +129,11 @@ export function getDatetimeUnit(fieldClause) {
 export function isDateTimeField(fieldClause) {
   return Boolean(getDatetimeUnit(fieldClause));
 }
+
+export function hasSourceField(fieldClause) {
+  return (
+    isLocalField(fieldClause) &&
+    fieldClause[2] &&
+    fieldClause[2]["source-field"]
+  );
+}
