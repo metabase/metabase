@@ -299,7 +299,7 @@
           (testing (name unit)
             (is (= [expected (- expected)] (query x y unit)))))))
     (mt/dataset useful-dates
-      (testing "Can compare across dates, datetimes, and with timezones"
+      (testing "Can compare across dates, datetimes, and with timezones from a table"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
         (is (= [[428 397 31]]
                (mt/rows
@@ -313,7 +313,7 @@
                                      "tz,d"  [:datetimediff $tz $d :day]
                                      "d,dt"  [:datetimediff $d $dt :day]}}))))))))
 
-(deftest datetimediff-test-tz
+(deftest datetimediff-time-zones-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
     (mt/dataset sample-dataset
       (let [diffs (fn [x y]
@@ -391,7 +391,7 @@
                           (diffs #t "2022-10-02T00:00:00Z[+00:00]"          ; 2022-10-01T23:00:00Z[-01:00]
                                  #t "2023-10-02T00:00:00Z[+01:00]"))))))))) ; 2023-10-01T22:00:00Z[-01:00]
 
-(deftest datetimediff-nesting-test
+(deftest datetimediff-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
     (mt/dataset sample-dataset
       (testing "Args can be expressions that return datetime values"
