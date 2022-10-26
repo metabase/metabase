@@ -288,7 +288,7 @@
 (defn force-weight [scores total]
   (let [total-found (reduce + (map :weight scores))]
     (mapv #(update % :weight (fn [weight]
-                               (if (zero? total-found)
+                               (if (contains? #{nil 0} total-found)
                                  0
                                  (* total (/ weight total-found))))) scores)))
 
