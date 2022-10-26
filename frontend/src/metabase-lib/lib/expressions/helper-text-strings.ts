@@ -397,15 +397,15 @@ const helperTextStrings: HelpText[] = [
     args: [
       {
         name: t`start`,
-        description: t`The start date, datetime, or timestamp in the calculation.`,
+        description: t`The start date or timestamp.`,
       },
       {
         name: t`end`,
-        description: t`The end date, datetime or timestamp in the calculation.`,
+        description: t`The end date or timestamp.`,
       },
       {
         name: t`unit`,
-        description: t`The unit of time to return the difference in. Accepted values are: "year", "month", "week", "day", "hour", "minute", "second".`,
+        description: t`"year", "month", "week", "day", "hour", "minute", or "second".`,
       },
     ],
   },
