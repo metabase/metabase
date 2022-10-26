@@ -62,12 +62,12 @@ export const getChartColumns = (
   visualizationSettings: VisualizationSettings,
 ): ChartColumns => {
   const [dimension, breakout] = getColumnDescriptors(
-    visualizationSettings["graph.dimensions"] ?? [],
+    (visualizationSettings["graph.dimensions"] ?? []).filter(isNotNull),
     data.cols,
   );
 
   const metrics = getColumnDescriptors(
-    visualizationSettings["graph.metrics"] ?? [],
+    (visualizationSettings["graph.metrics"] ?? []).filter(isNotNull),
     data.cols,
   );
 
