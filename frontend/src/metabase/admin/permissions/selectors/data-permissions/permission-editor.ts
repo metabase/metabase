@@ -11,7 +11,7 @@ import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { Group, GroupsPermissions } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import Schema from "metabase-lib/lib/metadata/Schema";
+import Schema from "metabase-lib/metadata/Schema";
 import {
   getTableEntityId,
   getSchemaEntityId,

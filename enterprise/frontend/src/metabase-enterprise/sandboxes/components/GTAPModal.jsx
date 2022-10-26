@@ -20,7 +20,6 @@ import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader"
 import QuestionLoader from "metabase/containers/QuestionLoader";
 
 import { getParentPath } from "metabase/hoc/ModalRoute";
-import Dimension from "metabase-lib/lib/Dimension";
 
 import QuestionParameterTargetWidget from "../containers/QuestionParameterTargetWidget";
 import { updateTableSandboxingPermission } from "../actions";
@@ -399,6 +398,8 @@ const TargetName = ({ gtap, target }) => {
         </span>
       );
     } else if (target[0] === "dimension") {
+      const fieldRef = target[1];
+
       return (
         <QuestionLoader
           questionId={gtap.card_id}
@@ -406,16 +407,18 @@ const TargetName = ({ gtap, target }) => {
             gtap.card_id == null ? rawDataQuestionForTable(gtap.table_id) : null
           }
         >
-          {({ question }) =>
-            question && (
+          {({ question }) => {
+            if (!question) {
+              return null;
+            }
+
+            const dimension = question.query().parseFieldReference(fieldRef);
+            return (
               <span>
-                <strong>
-                  {Dimension.parseMBQL(target[1], question.metadata()).render()}
-                </strong>{" "}
-                field
+                <strong>{dimension.render()}</strong> field
               </span>
-            )
-          }
+            );
+          }}
         </QuestionLoader>
       );
     }

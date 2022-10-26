@@ -4409,14 +4409,14 @@ msgstr "Posledných 7 dní"
 msgid "Past 30 days"
 msgstr "Posledných 30 dní"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1719
+#: frontend/src/metabase-lib/Dimension.ts:1719
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:35
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:40
 #: metabase/api/table.clj:142
 msgid "Week"
 msgstr "Týždeň"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1725
+#: frontend/src/metabase-lib/Dimension.ts:1725
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:94
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:36
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:41
@@ -4424,7 +4424,7 @@ msgstr "Týždeň"
 msgid "Month"
 msgstr "Mesiac"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1737
+#: frontend/src/metabase-lib/Dimension.ts:1737
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:37
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:42
 #: metabase/api/table.clj:145
@@ -7531,7 +7531,7 @@ msgstr "Vpravo"
 msgid "Show background"
 msgstr "Zobraziť pozadie"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:463
+#: frontend/src/metabase-lib/Dimension.ts:463
 msgid "{0} bin"
 msgid_plural "{0} bins"
 msgstr[0] "{0} kôš"
@@ -7539,7 +7539,7 @@ msgstr[1] "{0} koše"
 msgstr[2] "{0} košov"
 msgstr[3] "{0} košov"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:471
+#: frontend/src/metabase-lib/Dimension.ts:471
 msgid "Auto binned"
 msgstr "Automaticky ukladať do koša"
 
@@ -7807,7 +7807,7 @@ msgstr "Vytvorte zovšeobecnené sady filtrov, ktoré môže ktokoľvek použiť
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "Tabuľka ''{0}'' je teraz viditeľná. Opakujte synchronizáciu."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1659 metabase/api/table.clj:124
+#: frontend/src/metabase-lib/Dimension.ts:1659 metabase/api/table.clj:124
 msgid "Auto bin"
 msgstr "Automatickyy presunúť do zoskupenia"
 
@@ -7815,83 +7815,83 @@ msgstr "Automatickyy presunúť do zoskupenia"
 msgid "Don''t bin"
 msgstr "Nepresúvať do zoskupenia"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1713 metabase/api/table.clj:128
+#: frontend/src/metabase-lib/Dimension.ts:1713 metabase/api/table.clj:128
 msgid "Day"
 msgstr "Deň"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1701 metabase/api/table.clj:126
+#: frontend/src/metabase-lib/Dimension.ts:1701 metabase/api/table.clj:126
 msgid "Minute"
 msgstr "Minúta"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1707
+#: frontend/src/metabase-lib/Dimension.ts:1707
 #: frontend/src/metabase/admin/settings/selectors.js:544
 #: metabase/api/table.clj:127
 msgid "Hour"
 msgstr "Hodina"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1731 metabase/api/table.clj:144
+#: frontend/src/metabase-lib/Dimension.ts:1731 metabase/api/table.clj:144
 msgid "Quarter"
 msgstr "Štvrtina"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1743 metabase/api/table.clj:146
+#: frontend/src/metabase-lib/Dimension.ts:1743 metabase/api/table.clj:146
 #: metabase/api/table.clj:160
 msgid "Minute of Hour"
 msgstr "Minúta hodiny"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1749 metabase/api/table.clj:147
+#: frontend/src/metabase-lib/Dimension.ts:1749 metabase/api/table.clj:147
 msgid "Hour of Day"
 msgstr "Hodina dňa"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1755 metabase/api/table.clj:148
+#: frontend/src/metabase-lib/Dimension.ts:1755 metabase/api/table.clj:148
 msgid "Day of Week"
 msgstr "Deň v týždni"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1761 metabase/api/table.clj:149
+#: frontend/src/metabase-lib/Dimension.ts:1761 metabase/api/table.clj:149
 msgid "Day of Month"
 msgstr "Deň v mesiaci"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1767 metabase/api/table.clj:150
+#: frontend/src/metabase-lib/Dimension.ts:1767 metabase/api/table.clj:150
 msgid "Day of Year"
 msgstr "Deň v roku"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1773 metabase/api/table.clj:151
+#: frontend/src/metabase-lib/Dimension.ts:1773 metabase/api/table.clj:151
 msgid "Week of Year"
 msgstr "Týždeň v roku"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1779 metabase/api/table.clj:152
+#: frontend/src/metabase-lib/Dimension.ts:1779 metabase/api/table.clj:152
 msgid "Month of Year"
 msgstr "Mesiac v roku"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1785 metabase/api/table.clj:153
+#: frontend/src/metabase-lib/Dimension.ts:1785 metabase/api/table.clj:153
 msgid "Quarter of Year"
 msgstr "Štvrťrok"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1667 metabase/api/table.clj:169
+#: frontend/src/metabase-lib/Dimension.ts:1667 metabase/api/table.clj:169
 msgid "10 bins"
 msgstr "10 zásobníkov"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1676 metabase/api/table.clj:170
+#: frontend/src/metabase-lib/Dimension.ts:1676 metabase/api/table.clj:170
 msgid "50 bins"
 msgstr "50 zásobníkov"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1685 metabase/api/table.clj:171
+#: frontend/src/metabase-lib/Dimension.ts:1685 metabase/api/table.clj:171
 msgid "100 bins"
 msgstr "100 zásobníkov"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1794 metabase/api/table.clj:183
+#: frontend/src/metabase-lib/Dimension.ts:1794 metabase/api/table.clj:183
 msgid "Bin every 0.1 degrees"
 msgstr "Zásobník každých 0,1 stupňa"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1803 metabase/api/table.clj:184
+#: frontend/src/metabase-lib/Dimension.ts:1803 metabase/api/table.clj:184
 msgid "Bin every 1 degree"
 msgstr "Zásobník každých 1 stupeň"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1812 metabase/api/table.clj:185
+#: frontend/src/metabase-lib/Dimension.ts:1812 metabase/api/table.clj:185
 msgid "Bin every 10 degrees"
 msgstr "Zásobník každých 10 stupňov"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1821 metabase/api/table.clj:186
+#: frontend/src/metabase-lib/Dimension.ts:1821 metabase/api/table.clj:186
 msgid "Bin every 20 degrees"
 msgstr "Zásobník každých 20 stupňov"
 
@@ -7968,7 +7968,7 @@ msgstr "kumulatívna suma"
 msgid "{0} and {1}"
 msgstr "{0} a {1}"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Aggregation.ts:74
+#: frontend/src/metabase-lib/queries/structured/Aggregation.ts:74
 #: metabase/automagic_dashboards/core.clj:128
 #: metabase/automagic_dashboards/core.clj:1153
 msgid "{0} of {1}"
@@ -11915,7 +11915,7 @@ msgstr[1] "Kvartály z roku"
 msgstr[2] "Kvartálov z roku"
 msgstr[3] "Kvartálov z roku"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:323
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:323
 #: frontend/src/metabase/parameters/utils/formatting.ts:67
 #: frontend/src/metabase/query_builder/components/Filter.jsx:62
 msgid "{0} selection"
@@ -11947,7 +11947,7 @@ msgstr "Pridať čas"
 msgid "Nothing to compare for the previous {0}."
 msgstr "Nič pre porovnanie z predchádzajúcich {0}."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:611
+#: frontend/src/metabase-lib/Dimension.ts:611
 msgid "by {0}"
 msgstr "do {0}"
 
@@ -13129,31 +13129,31 @@ msgstr "Riadok"
 msgid "Trend"
 msgstr "Trend"
 
-#: frontend/src/metabase-lib/lib/DimensionOptions.js:129
+#: frontend/src/metabase-lib/DimensionOptions.js:129
 msgid "Boolean"
 msgstr "Boolovská hodnota"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:68
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:68
 msgid "Unknown Segment"
 msgstr "Neznámy segment"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:81
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:81
 msgid "Unknown Filter"
 msgstr "Neznámy filter"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:32
+#: frontend/src/metabase-lib/queries/structured/Join.ts:32
 msgid "Left outer join"
 msgstr "Left outer join"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:37
+#: frontend/src/metabase-lib/queries/structured/Join.ts:37
 msgid "Right outer join"
 msgstr "Right outer join"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:42
+#: frontend/src/metabase-lib/queries/structured/Join.ts:42
 msgid "Inner join"
 msgstr "Inner join"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:47
+#: frontend/src/metabase-lib/queries/structured/Join.ts:47
 msgid "Full outer join"
 msgstr "Full outer join"
 
@@ -13539,7 +13539,7 @@ msgstr "Nepodarilo sa naplánovať úlohy pre databázu {0}"
 msgid "All elements must be distinct."
 msgstr "Všetky prvky musia byť jednoznačné."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Vyberte stĺpce, ktoré chcete zahrnúť"
@@ -17992,12 +17992,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Impulzy sa postupne rušia"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Teraz môžete namiesto toho nastaviť {0}. V budúcom vydaní Pulses odstránime a pomôžeme vám migrovať všetky, ktoré ešte máte."
@@ -18006,7 +18006,7 @@ msgstr "Teraz môžete namiesto toho nastaviť {0}. V budúcom vydaní Pulses od
 msgid "dashboard subscriptions"
 msgstr "predplatné na palubnej doske"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "Grafy {0} vo vašom odbere nebudú vyzerať rovnako ako na vašom hlavnom paneli. {1}"
 
@@ -18155,7 +18155,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Nastaviť zdrojovú databázu {0} a spustiť migrácie ..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."
@@ -21967,24 +21967,24 @@ msgstr "Môžete si stiahnuť až 10 000 riadkov."
 msgid "Manage database"
 msgstr "Správa databázy"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:616
+#: frontend/src/metabase-lib/Dimension.ts:616
 msgid "Unbinned"
 msgstr "Neobalené"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1564
+#: frontend/src/metabase-lib/Dimension.ts:1564
 msgid "Invalid template tag \"{0}\""
 msgstr "Neplatná značka šablóny \"{0}\""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1569
+#: frontend/src/metabase-lib/Dimension.ts:1569
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "Premennú \"{0}\" je potrebné namapovať na pole."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1694
-#: frontend/src/metabase-lib/lib/Dimension.ts:1830
+#: frontend/src/metabase-lib/Dimension.ts:1694
+#: frontend/src/metabase-lib/Dimension.ts:1830
 msgid "Don't bin"
 msgstr "Nevyhadzujte do koša"
 
-#: frontend/src/metabase-lib/lib/queries/NativeQuery.ts:311
+#: frontend/src/metabase-lib/queries/NativeQuery.ts:311
 msgid "Invalid template tag: {0}"
 msgstr "Neplatná značka šablóny: {0}"
 
@@ -23704,7 +23704,7 @@ msgstr "Spustený dopyt..."
 msgid "Loading results..."
 msgstr "Načítavajú sa výsledky..."
 
-#: frontend/src/metabase-lib/lib/queries/StructuredQuery.ts:907
+#: frontend/src/metabase-lib/queries/StructuredQuery.ts:907
 msgid "Summaries"
 msgstr "Súhrny"
 

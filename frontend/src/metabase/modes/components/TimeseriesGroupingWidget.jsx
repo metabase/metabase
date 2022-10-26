@@ -6,7 +6,7 @@ import _ from "underscore";
 import TimeGroupingPopover from "metabase/query_builder/components/TimeGroupingPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
-import { isStructured } from "metabase-lib/lib/queries/utils";
+import { isStructured } from "metabase-lib/queries/utils";
 
 export default class TimeseriesGroupingWidget extends Component {
   static propTypes = {

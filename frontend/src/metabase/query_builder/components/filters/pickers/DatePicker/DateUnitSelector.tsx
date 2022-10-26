@@ -1,7 +1,7 @@
 import React from "react";
 
 import Select, { Option } from "metabase/core/components/Select";
-import { formatBucketing } from "metabase-lib/lib/queries/utils/query-time";
+import { formatBucketing } from "metabase-lib/queries/utils/query-time";
 
 const defaultDisplayName = (period: string, intervals: number) =>
   formatBucketing(period, intervals).toLowerCase();

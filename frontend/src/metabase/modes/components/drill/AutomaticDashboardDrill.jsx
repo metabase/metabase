@@ -3,7 +3,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import {
   automaticDashboardDrill,
   automaticDashboardDrillUrl,
-} from "metabase-lib/lib/queries/drills/automatic-dashboard-drill";
+} from "metabase-lib/queries/drills/automatic-dashboard-drill";
 
 export default ({ question, clicked }) => {
   const enableXrays = MetabaseSettings.get("enable-xrays");

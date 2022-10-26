@@ -3,7 +3,7 @@ import {
   fieldRefForColumn,
   syncTableColumnsToQuery,
   findColumnForColumnSetting,
-} from "metabase-lib/lib/queries/utils/dataset";
+} from "metabase-lib/queries/utils/dataset";
 
 describe("metabase/util/dataset", () => {
   describe("fieldRefForColumn", () => {

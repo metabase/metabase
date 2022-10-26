@@ -4393,14 +4393,14 @@ msgstr " Geçmiş 7 gün "
 msgid "Past 30 days"
 msgstr "Geçmiş 30 gün "
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1719
+#: frontend/src/metabase-lib/Dimension.ts:1719
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:35
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:40
 #: metabase/api/table.clj:142
 msgid "Week"
 msgstr "Hafta"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1725
+#: frontend/src/metabase-lib/Dimension.ts:1725
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:94
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:36
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:41
@@ -4408,7 +4408,7 @@ msgstr "Hafta"
 msgid "Month"
 msgstr "Ay"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1737
+#: frontend/src/metabase-lib/Dimension.ts:1737
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:37
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:42
 #: metabase/api/table.clj:145
@@ -7506,13 +7506,13 @@ msgstr "Sağ"
 msgid "Show background"
 msgstr "Arka planı göster"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:463
+#: frontend/src/metabase-lib/Dimension.ts:463
 msgid "{0} bin"
 msgid_plural "{0} bins"
 msgstr[0] "{0} bölme"
 msgstr[1] "{0} bölmeler"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:471
+#: frontend/src/metabase-lib/Dimension.ts:471
 msgid "Auto binned"
 msgstr "Otomatik olarak gruplandı"
 
@@ -7780,7 +7780,7 @@ msgstr "Kanonik filtre grupları oluşturarak herkesin aynı sayfaya yerleştiri
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "'' {0} '' tablosu artık görünür durumda. Yeniden senkronize yapıyor"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1659 metabase/api/table.clj:124
+#: frontend/src/metabase-lib/Dimension.ts:1659 metabase/api/table.clj:124
 msgid "Auto bin"
 msgstr "Otomatik bölme"
 
@@ -7788,83 +7788,83 @@ msgstr "Otomatik bölme"
 msgid "Don''t bin"
 msgstr "Bölme yapma"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1713 metabase/api/table.clj:128
+#: frontend/src/metabase-lib/Dimension.ts:1713 metabase/api/table.clj:128
 msgid "Day"
 msgstr "Gün"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1701 metabase/api/table.clj:126
+#: frontend/src/metabase-lib/Dimension.ts:1701 metabase/api/table.clj:126
 msgid "Minute"
 msgstr "Dakika"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1707
+#: frontend/src/metabase-lib/Dimension.ts:1707
 #: frontend/src/metabase/admin/settings/selectors.js:544
 #: metabase/api/table.clj:127
 msgid "Hour"
 msgstr "Saat"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1731 metabase/api/table.clj:144
+#: frontend/src/metabase-lib/Dimension.ts:1731 metabase/api/table.clj:144
 msgid "Quarter"
 msgstr "Çeyrek"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1743 metabase/api/table.clj:146
+#: frontend/src/metabase-lib/Dimension.ts:1743 metabase/api/table.clj:146
 #: metabase/api/table.clj:160
 msgid "Minute of Hour"
 msgstr "Saat'in Dakikası"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1749 metabase/api/table.clj:147
+#: frontend/src/metabase-lib/Dimension.ts:1749 metabase/api/table.clj:147
 msgid "Hour of Day"
 msgstr "Günün saati"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1755 metabase/api/table.clj:148
+#: frontend/src/metabase-lib/Dimension.ts:1755 metabase/api/table.clj:148
 msgid "Day of Week"
 msgstr "Haftanın günü"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1761 metabase/api/table.clj:149
+#: frontend/src/metabase-lib/Dimension.ts:1761 metabase/api/table.clj:149
 msgid "Day of Month"
 msgstr "Ayın günü"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1767 metabase/api/table.clj:150
+#: frontend/src/metabase-lib/Dimension.ts:1767 metabase/api/table.clj:150
 msgid "Day of Year"
 msgstr "Yilin günü"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1773 metabase/api/table.clj:151
+#: frontend/src/metabase-lib/Dimension.ts:1773 metabase/api/table.clj:151
 msgid "Week of Year"
 msgstr "Yılın haftası"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1779 metabase/api/table.clj:152
+#: frontend/src/metabase-lib/Dimension.ts:1779 metabase/api/table.clj:152
 msgid "Month of Year"
 msgstr "Yılın ayı"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1785 metabase/api/table.clj:153
+#: frontend/src/metabase-lib/Dimension.ts:1785 metabase/api/table.clj:153
 msgid "Quarter of Year"
 msgstr "Yilin çeyreği"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1667 metabase/api/table.clj:169
+#: frontend/src/metabase-lib/Dimension.ts:1667 metabase/api/table.clj:169
 msgid "10 bins"
 msgstr "10'lu bölme"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1676 metabase/api/table.clj:170
+#: frontend/src/metabase-lib/Dimension.ts:1676 metabase/api/table.clj:170
 msgid "50 bins"
 msgstr "50'li bölme"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1685 metabase/api/table.clj:171
+#: frontend/src/metabase-lib/Dimension.ts:1685 metabase/api/table.clj:171
 msgid "100 bins"
 msgstr "100'lü bölme"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1794 metabase/api/table.clj:183
+#: frontend/src/metabase-lib/Dimension.ts:1794 metabase/api/table.clj:183
 msgid "Bin every 0.1 degrees"
 msgstr "Her 0.1 derecede böl"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1803 metabase/api/table.clj:184
+#: frontend/src/metabase-lib/Dimension.ts:1803 metabase/api/table.clj:184
 msgid "Bin every 1 degree"
 msgstr "Her 1 derecede böl"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1812 metabase/api/table.clj:185
+#: frontend/src/metabase-lib/Dimension.ts:1812 metabase/api/table.clj:185
 msgid "Bin every 10 degrees"
 msgstr "Her 10 derecede böl"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1821 metabase/api/table.clj:186
+#: frontend/src/metabase-lib/Dimension.ts:1821 metabase/api/table.clj:186
 msgid "Bin every 20 degrees"
 msgstr "Her 20 derecede böl"
 
@@ -7941,7 +7941,7 @@ msgstr "kümülatif toplam"
 msgid "{0} and {1}"
 msgstr "{0} ve {1}"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Aggregation.ts:74
+#: frontend/src/metabase-lib/queries/structured/Aggregation.ts:74
 #: metabase/automagic_dashboards/core.clj:128
 #: metabase/automagic_dashboards/core.clj:1153
 msgid "{0} of {1}"
@@ -11872,7 +11872,7 @@ msgid_plural "Quarters of year"
 msgstr[0] "Yılın çeyreği"
 msgstr[1] "Yılın çeyrekleri"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:323
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:323
 #: frontend/src/metabase/parameters/utils/formatting.ts:67
 #: frontend/src/metabase/query_builder/components/Filter.jsx:62
 msgid "{0} selection"
@@ -11902,7 +11902,7 @@ msgstr "Bir zaman ekleyin"
 msgid "Nothing to compare for the previous {0}."
 msgstr "Önceki {0} ile karşılaştırılacak bir şey yok."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:611
+#: frontend/src/metabase-lib/Dimension.ts:611
 msgid "by {0}"
 msgstr "{0} bazında"
 
@@ -13080,31 +13080,31 @@ msgstr "Satır"
 msgid "Trend"
 msgstr "Trend"
 
-#: frontend/src/metabase-lib/lib/DimensionOptions.js:129
+#: frontend/src/metabase-lib/DimensionOptions.js:129
 msgid "Boolean"
 msgstr "Doğru/Yanlış "
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:68
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:68
 msgid "Unknown Segment"
 msgstr "Bilinmeyen Segment"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:81
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:81
 msgid "Unknown Filter"
 msgstr "Bilinmeyen Filtre"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:32
+#: frontend/src/metabase-lib/queries/structured/Join.ts:32
 msgid "Left outer join"
 msgstr "Soldan bağla "
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:37
+#: frontend/src/metabase-lib/queries/structured/Join.ts:37
 msgid "Right outer join"
 msgstr "Sağdan bağla "
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:42
+#: frontend/src/metabase-lib/queries/structured/Join.ts:42
 msgid "Inner join"
 msgstr "Eşleşmeleri bağla "
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:47
+#: frontend/src/metabase-lib/queries/structured/Join.ts:47
 msgid "Full outer join"
 msgstr "Tümünü bağla "
 
@@ -13490,7 +13490,7 @@ msgstr "{0} Veritabanı için görevler zamanlanamadı"
 msgid "All elements must be distinct."
 msgstr "Tüm unsurlar farklı olmalıdır"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Eklemek istediğiniz sütunları seçin"
@@ -17932,12 +17932,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulses aşamalı olarak kaldırılıyor"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Artık bunun yerine {0} kurabilirsiniz. Pulses gelecekteki bir sürümde kaldıracağız ve hala sahip olduklarınızı taşımanıza yardımcı olacağız."
@@ -17946,7 +17946,7 @@ msgstr "Artık bunun yerine {0} kurabilirsiniz. Pulses gelecekteki bir sürümde
 msgid "dashboard subscriptions"
 msgstr "kontrol paneli abonelikleri"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "Aboneliğinizdeki {0} grafikleri, kontrol panelinizdekilerle aynı görünmeyecek. {1}"
 
@@ -18096,7 +18096,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "{0} kaynak veritabanını kurun ve taşıma işlemleri çalıştırın ..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."
@@ -21885,24 +21885,24 @@ msgstr "En fazla 10.000 satır indirebilirsiniz."
 msgid "Manage database"
 msgstr "Veritabanını yönet"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:616
+#: frontend/src/metabase-lib/Dimension.ts:616
 msgid "Unbinned"
 msgstr "Gruplanmamış"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1564
+#: frontend/src/metabase-lib/Dimension.ts:1564
 msgid "Invalid template tag \"{0}\""
 msgstr "Geçersiz şablon etiketi \"{0}\""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1569
+#: frontend/src/metabase-lib/Dimension.ts:1569
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "\"{0}\" değişkeninin bir alanla eşlenmesi gerekiyor."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1694
-#: frontend/src/metabase-lib/lib/Dimension.ts:1830
+#: frontend/src/metabase-lib/Dimension.ts:1694
+#: frontend/src/metabase-lib/Dimension.ts:1830
 msgid "Don't bin"
 msgstr "Gruplama"
 
-#: frontend/src/metabase-lib/lib/queries/NativeQuery.ts:311
+#: frontend/src/metabase-lib/queries/NativeQuery.ts:311
 msgid "Invalid template tag: {0}"
 msgstr "Geçersiz şablon etiketi: {0}"
 
@@ -23574,7 +23574,7 @@ msgstr "Sorgu çalıştırılıyor..."
 msgid "Loading results..."
 msgstr "Sonuçlar Yükleniyor..."
 
-#: frontend/src/metabase-lib/lib/queries/StructuredQuery.ts:907
+#: frontend/src/metabase-lib/queries/StructuredQuery.ts:907
 msgid "Summaries"
 msgstr "özetler"
 

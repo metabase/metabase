@@ -8,8 +8,8 @@ import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import type { Database } from "metabase-types/api/database";
-import type Schema from "metabase-lib/lib/metadata/Schema";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Schema from "metabase-lib/metadata/Schema";
+import type Table from "metabase-lib/metadata/Table";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
 import { DataSelectorSection as Section } from "../DataSelector.styled";

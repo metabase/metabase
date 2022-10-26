@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import { metadata } from "__support__/sample_database_fixture";
 
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 import SavedQuestionHeaderButton from "./SavedQuestionHeaderButton";
 

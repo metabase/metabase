@@ -16,9 +16,9 @@ import {
   isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
-import { isDateParameter } from "metabase-lib/lib/parameters/utils/parameter-type";
-import { isVariableTarget } from "metabase-lib/lib/parameters/utils/targets";
-import Question from "metabase-lib/lib/Question";
+import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
+import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
+import Question from "metabase-lib/Question";
 
 import {
   getEditingParameter,

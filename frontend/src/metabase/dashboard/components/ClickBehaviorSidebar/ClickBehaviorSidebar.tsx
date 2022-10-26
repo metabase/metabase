@@ -18,10 +18,10 @@ import type {
   DatasetColumn,
 } from "metabase-types/api";
 import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { UiParameter } from "metabase-lib/lib/parameters/types";
-import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
+import type { UiParameter } from "metabase-lib/parameters/types";
+import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
-import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";
 import ClickBehaviorSidebarHeader from "./ClickBehaviorSidebarHeader";
