@@ -44,6 +44,7 @@ const LoginForm = ({
     <Formik
       initialValues={initialValues}
       validationSchema={isLdapEnabled ? LdapSchema : PasswordSchema}
+      isInitialValid={false}
       onSubmit={handleSubmit}
     >
       <Form>

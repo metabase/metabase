@@ -19,15 +19,17 @@ const FormSubmitButton = forwardRef(function FormSubmitButton(
   const { isValid, isSubmitting } = useFormikContext();
   const status = useFormStatus();
   const submitText = getSubmitButtonText(status, props);
+  const isEnabled = isValid && !isSubmitting && !disabled;
 
   return (
     <Button
       {...props}
       ref={ref}
       type="submit"
+      primary={isEnabled}
       success={status === "fulfilled"}
       danger={status === "rejected"}
-      disabled={disabled || !isValid || isSubmitting}
+      disabled={!isEnabled}
     >
       {submitText}
     </Button>
