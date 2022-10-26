@@ -355,85 +355,70 @@
 (deftest datetimediff-test-tz
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
     (mt/dataset sample-dataset
-      (let [query (fn query [x y & units]
-                    (when-not (seq units)
-                      (throw (ex-info "Must provide units" {:x x :y y})))
-                    (->> (mt/run-mbql-query orders
-                                            {:limit 1
-                                             :expressions (into {}
-                                                                (for [unit units]
-                                                                  [(str "diff-" (name unit))
-                                                                   [:datetimediff x y unit]]))
-                                             :fields (into [] (for [unit units]
-                                                                [:expression (str "diff-" (name unit))]))})
-                         mt/rows first
-                         (zipmap units)))]
+      (let [diffs (fn [x y]
+                    (let [units [:second :minute :hour :day :week :month :year]]
+                      (->> (mt/run-mbql-query orders
+                             {:limit 1
+                              :expressions (into {} (for [unit units]
+                                                      [(name unit) [:datetimediff x y unit]]))
+                              :fields (into [] (for [unit units]
+                                                 [:expression (name unit)]))})
+                           mt/rows first
+                           (zipmap units))))]
         (testing "a day"
           (mt/with-report-timezone-id nil
-            (is (= {:second 86400 :minute 1440 :hour 24 :day 1 :year 0}
-                   (query #t "2022-10-02T01:00:00Z[+01:00]"
-                          #t "2022-10-03T00:00:00Z[+00:00]"
-                          :second :minute :hour :day :year))))
+            (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
+                          (diffs #t "2022-10-02T01:00:00Z[+01:00]"      ; 2022-10-02T00:00:00Z[+00:00]
+                                 #t "2022-10-03T00:00:00Z[+00:00]"))))  ; 2022-10-03T00:00:00Z[+00:00]
           (mt/with-report-timezone-id "Atlantic/Cape_Verde"
-            (is (= {:second 86400 :minute 1440 :hour 24 :day 1 :year 0}
-                   (query #t "2022-10-02T01:00:00Z[+01:00]"
-                          #t "2022-10-03T00:00:00Z[+00:00]"
-                          :second :minute :hour :day :year)))))
+            (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
+                          (diffs #t "2022-10-02T01:00:00Z[+01:00]"      ; 2022-10-01T23:00:00Z[-01:00]
+                                 #t "2022-10-03T00:00:00Z[+00:00]"))))) ; 2022-10-02T23:00:00Z[-01:00]
         (testing "hour under a day"
           (mt/with-report-timezone-id nil
-            (is (= {:second 82800 :minute 1380 :hour 23 :day 0 :year 0}
-                   (query #t "2022-10-02T00:00:00Z[+00:00]"
-                          #t "2022-10-03T00:00:00Z[+01:00]"
-                          :second :minute :hour :day :year))))
+            (is (partial= {:second 82800 :minute 1380 :hour 23 :day 0}
+                          (diffs #t "2022-10-02T00:00:00Z[+00:00]"      ; 2022-10-02T00:00:00Z[+00:00]
+                                 #t "2022-10-03T00:00:00Z[+01:00]"))))  ; 2022-10-02T23:00:00Z[+00:00]
           (mt/with-report-timezone-id "Atlantic/Cape_Verde"
-            (is (= {:second 82800 :minute 1380 :hour 23 :day 1 :year 0}
-                   (query #t "2022-10-02T00:00:00Z[+00:00]"
-                          #t "2022-10-03T00:00:00Z[+01:00]"
-                          :second :minute :hour :day :year)))))
-        (testing "Hour under a week"
+            (is (partial= {:second 82800 :minute 1380 :hour 23 :day 1}
+                          (diffs #t "2022-10-02T00:00:00Z[+00:00]"      ; 2022-10-01T23:00:00Z[-01:00]
+                                 #t "2022-10-03T00:00:00Z[+01:00]"))))) ; 2022-10-02T22:00:00Z[-01:00]
+        (testing "hour under a week"
           (mt/with-report-timezone-id nil
-            (is (= {:second 601200 :minute 10020 :hour 167 :day 6 :year 0}
-                   (query #t "2022-10-02T00:00:00Z[+00:00]"
-                          #t "2022-10-09T00:00:00Z[+01:00]"
-                          :second :minute :hour :day :year))))
+            (is (partial= {:hour 167 :day 6 :week 0}
+                          (diffs #t "2022-10-02T00:00:00Z[+00:00]"      ; 2022-10-02T00:00:00Z[+00:00]
+                                 #t "2022-10-09T00:00:00Z[+01:00]"))))  ; 2022-10-08T23:00:00Z[+00:00]
           (mt/with-report-timezone-id "Atlantic/Cape_Verde"
-            (is (= {:second 601200 :minute 10020 :hour 167 :day 7 :year 0}
-                   (query #t "2022-10-02T00:00:00Z[+00:00]"
-                          #t "2022-10-09T00:00:00Z[+01:00]"
-                          :second :minute :hour :day :year)))))
-        (testing "Week"
+            (is (partial= {:hour 167 :day 7 :week 1}
+                          (diffs #t "2022-10-02T00:00:00Z[+00:00]"      ; 2022-10-01T23:00:00Z[-01:00]
+                                 #t "2022-10-09T00:00:00Z[+01:00]"))))) ; 2022-10-08T22:00:00Z[-01:00]
+        (testing "week"
           (mt/with-report-timezone-id nil
-            (is (= {:hour 168 :day 7}
-                   (query #t "2022-10-02T01:00:00Z[+01:00]"
-                          #t "2022-10-09T00:00:00Z[+00:00]"
-                          :hour :day))))
+            (is (partial= {:hour 168 :day 7 :week 1}
+                          (diffs #t "2022-10-02T01:00:00Z[+01:00]"      ; 2022-10-02T00:00:00Z[+00:00]
+                                 #t "2022-10-09T00:00:00Z[+00:00]"))))  ; 2022-10-09T00:00:00Z[+00:00]
           (mt/with-report-timezone-id "Atlantic/Cape_Verde"
-            (is (= {:hour 168 :day 7}
-                   (query #t "2022-10-02T01:00:00Z[+01:00]"
-                          #t "2022-10-09T00:00:00Z[+00:00]"
-                          :hour :day)))))
-        (testing "Hour under a month"
+            (is (partial= {:hour 168 :day 7 :week 1}
+                          (diffs #t "2022-10-02T01:00:00Z[+01:00]"      ; 2022-10-01T23:00:00Z[-01:00]
+                                 #t "2022-10-09T00:00:00Z[+00:00]"))))) ; 2022-10-08T23:00:00Z[-01:00]
+        (testing "hour under a month"
           (mt/with-report-timezone-id nil
-            (is (= {:hour 743 :day 30 :month 0}
-                   (query #t "2022-10-02T00:00:00Z[+00:00]"
-                          #t "2022-11-02T00:00:00Z[+01:00]"
-                          :hour :day :month))))
+            (is (partial= {:hour 743 :day 30 :week 4 :month 0}
+                          (diffs #t "2022-10-02T00:00:00Z[+00:00]"      ; 2022-10-02T00:00:00Z[+00:00]
+                                 #t "2022-11-02T00:00:00Z[+01:00]"))))  ; 2022-11-01T23:00:00Z[+00:00]
           (mt/with-report-timezone-id "Atlantic/Cape_Verde"
-            (is (= {:hour 743 :day 31 :month 1}
-                   (query #t "2022-10-02T00:00:00Z[+00:00]"
-                          #t "2022-11-02T00:00:00Z[+01:00]"
-                          :hour :day :month)))))
-        (testing "Month"
+            (is (partial= {:hour 743 :day 31 :week 4 :month 1}
+                          (diffs #t "2022-10-02T00:00:00Z[+00:00]"      ; 2022-10-01T23:00:00Z[-01:00]
+                                 #t "2022-11-02T00:00:00Z[+01:00]"))))) ; 2022-11-01T22:00:00Z[-01:00]
+        (testing "month"
           (mt/with-report-timezone-id nil
-            (is (= {:hour 744 :day 31 :month 1}
-                   (query #t "2022-10-02T01:00:00Z[+01:00]"
-                          #t "2022-11-02T00:00:00Z[+00:00]"
-                          :hour :day :month))))
+            (is (partial= {:hour 744 :day 31 :month 1 :year 0}
+                          (diffs #t "2022-10-02T01:00:00Z[+01:00]"      ; 2022-10-02T00:00:00Z[+00:00]
+                                 #t "2022-11-02T00:00:00Z[+00:00]"))))  ; 2022-11-02T00:00:00Z[+00:00]
           (mt/with-report-timezone-id "Atlantic/Cape_Verde"
-            (is (= {:hour 744 :day 31 :month 1}
-                   (query #t "2022-10-02T01:00:00Z[+01:00]"
-                          #t "2022-11-02T00:00:00Z[+00:00]"
-                          :hour :day :month)))))))))
+            (is (partial= {:hour 744 :day 31 :month 1 :year 0}
+                          (diffs #t "2022-10-02T01:00:00Z[+01:00]"          ; 2022-10-01T23:00:00Z[-01:00]
+                                 #t "2022-11-02T00:00:00Z[+00:00]"))))))))) ; 2022-11-01T23:00:00Z[-01:00]
 
 (deftest datetimediff-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
