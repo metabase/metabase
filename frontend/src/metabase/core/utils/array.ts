@@ -1,5 +1,3 @@
-export const isNotEmpty = <TValue>(
+export const isNotNull = <TValue>(
   value: TValue | null | undefined,
-): value is TValue => {
-  return value !== null && value !== undefined;
-};
+): value is TValue => value != null;

@@ -8,19 +8,22 @@ export const getLabelledSeries = <TDatum>(
   series: Series<TDatum>[],
 ) => {
   const stackOffset = getStackOffset(settings);
-  const canShowLabels =
-    settings["graph.show_values"] && stackOffset !== "expand";
 
-  if (!canShowLabels) {
+  if (stackOffset === "expand") {
     return null;
   }
 
   return series
-    .filter(
-      series =>
-        settings?.series_settings?.[series.seriesKey]?.show_series_values !==
-        false,
-    )
+    .filter(series => {
+      const showSeriesValuesSetting =
+        settings?.series_settings?.[series.seriesKey]?.show_series_values;
+
+      return (
+        showSeriesValuesSetting ||
+        (typeof showSeriesValuesSetting === "undefined" &&
+          settings["graph.show_values"] === true)
+      );
+    })
     .map(series => series.seriesKey);
 };
 
