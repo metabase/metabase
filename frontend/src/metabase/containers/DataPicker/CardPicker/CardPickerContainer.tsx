@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -36,6 +35,7 @@ interface CardPickerStateProps {
 }
 
 interface CollectionsLoaderProps {
+  collectionTree: Collection[];
   collections: Collection[];
   rootCollection: Collection;
 }
@@ -58,6 +58,7 @@ function mapStateToProps(state: State) {
 function CardPickerContainer({
   value,
   collections,
+  collectionTree,
   rootCollection,
   schema: selectedSchema,
   currentUser,
@@ -77,15 +78,15 @@ function CardPickerContainer({
     [collections],
   );
 
-  const collectionTree = useMemo(
+  const tree = useMemo(
     () =>
       buildCollectionTree({
-        collections,
+        collections: collectionTree,
         rootCollection,
         currentUser,
         targetModel,
       }),
-    [collections, rootCollection, currentUser, targetModel],
+    [collectionTree, rootCollection, currentUser, targetModel],
   );
 
   const selectedItems = useMemo(() => {
@@ -128,7 +129,7 @@ function CardPickerContainer({
 
   return (
     <CardPickerView
-      collectionTree={collectionTree}
+      collectionTree={tree}
       virtualTables={selectedSchema?.tables}
       selectedItems={selectedItems}
       targetModel={targetModel}
@@ -147,6 +148,10 @@ export default _.compose(
   }),
   Collections.loadList({
     query: () => ({ tree: true }),
+    listName: "collectionTree",
+  }),
+  Collections.loadList({
+    listName: "collections",
   }),
   Schemas.load({
     id: (state: State, props: CardPickerOwnProps) => props.value.schemaId,
