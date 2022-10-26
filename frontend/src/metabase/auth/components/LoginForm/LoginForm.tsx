@@ -80,7 +80,7 @@ const LoginForm = ({
             <FormCheckBox name="remember" />
           </FormField>
         )}
-        <FormSubmitButton normalText={t`Sign in`} primary fullWidth />
+        <FormSubmitButton normalText={t`Sign in`} fullWidth />
         <FormErrorMessage />
       </Form>
     </Formik>
