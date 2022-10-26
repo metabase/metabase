@@ -1,5 +1,6 @@
 (ns metabase.models.app
-  (:require [metabase.models.collection :as collection :refer [Collection]]
+  (:require [metabase.models.card :as card :refer [Card]]
+            [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.interface :as mi]
             [metabase.models.query :as query]
             [metabase.models.serialization.hash :as serdes.hash]
@@ -59,24 +60,22 @@
   (->> (db/query {:union
                   [{:select [:c.*]
                     :from [[:report_card :c]]
-                    :where [:and
-                            [:= :c.collection_id (:collection_id app)]]}
+                    :where [:= :c.collection_id (:collection_id app)]}
                    {:select [:c.*]
                     :from [[:report_card :c]]
                     :join [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]
                            [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-                    :where [:and
-                            [:= :d.collection_id (:collection_id app)]]}]})
-       (db/do-post-select 'Card)))
+                    :where [:= :d.collection_id (:collection_id app)]}]})
+       (db/do-post-select Card)))
 
 (defn- referenced-models [cards]
   (when-let [model-ids
              (->> cards
                   (into #{} (mapcat (comp query/collect-card-ids :dataset_query)))
                   not-empty)]
-    (db/select 'Card {:where [:and
-                              [:in :id model-ids]
-                              :dataset]})))
+    (db/select Card {:where [:and
+                             [:in :id model-ids]
+                             :dataset]})))
 
 (defn add-models
   "Add the fully hydrated models used by the app."
