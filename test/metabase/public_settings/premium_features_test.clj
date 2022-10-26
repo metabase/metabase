@@ -1,16 +1,18 @@
 (ns metabase.public-settings.premium-features-test
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clj-http.fake :as http-fake]
-            [clojure.test :refer :all]
-            [metabase.config :as config]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise defenterprise-schema]]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [schema.core :as s]
-            [toucan.util.test :as tt]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clj-http.fake :as http-fake]
+   [clojure.test :refer :all]
+   [metabase.config :as config]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise defenterprise-schema]]
+   [metabase.test :as mt]
+   [schema.core :as s]
+   [toucan.util.test :as tt]))
 
 (defn do-with-premium-features [features f]
   (let [features (set (map name features))]
@@ -99,7 +101,7 @@
           (is (contains? (set (:features result)) "test")))))))
 
 (deftest not-found-test
-  (tu/with-log-level :fatal
+  (mt/with-log-level :fatal
     ;; `partial=` here in case the Cloud API starts including extra keys... this is a "dangerous" test since changes
     ;; upstream in Cloud could break this. We probably want to catch that stuff anyway tho in tests rather than waiting
     ;; for bug reports to come in
