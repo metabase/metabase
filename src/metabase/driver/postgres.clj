@@ -58,6 +58,24 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
+(defmethod driver/database-supports? [:postgres :persist-models]
+  [_driver _feat _db]
+  true)
+
+(defmethod driver/database-supports? [:postgres :persist-models-enabled]
+  [_driver _feat db]
+  (-> db :options :persist-models-enabled))
+
+(defmethod driver/database-supports? [:postgres :convert-timezone]
+  [_driver _feat _db]
+  true)
+
+(doseq [feature [:actions :actions/custom]]
+  (defmethod driver/database-supports? [:postgres feature]
+    [driver _feat _db]
+    ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
+    (= driver :postgres)))
+
 (doseq [[feature supported?] {:persist-models         (constantly true)
                               :convert-timezone       (fn [driver _db] (= driver :postgres))
                               :persist-models-enabled (fn [_driver db] (-> db :options :persist-models-enabled))
