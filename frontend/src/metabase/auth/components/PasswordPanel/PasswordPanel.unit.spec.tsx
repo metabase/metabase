@@ -30,7 +30,7 @@ describe("PasswordPanel", () => {
 const getProps = (opts?: Partial<PasswordPanelProps>): PasswordPanelProps => ({
   providers: [],
   isLdapEnabled: false,
-  isCookieEnabled: false,
+  hasSessionCookies: false,
   onLogin: jest.fn(),
   ...opts,
 });
