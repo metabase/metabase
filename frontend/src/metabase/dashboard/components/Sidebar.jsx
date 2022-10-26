@@ -1,11 +1,16 @@
 import React from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
 import { t } from "ttag";
+
 import Button from "metabase/core/components/Button";
+
+import { useDataAppContext } from "metabase/writeback/containers/DataAppContext";
 
 const WIDTH = 384;
 
 const propTypes = {
+  isDataApp: PropTypes.bool,
   closeIsDisabled: PropTypes.bool,
   children: PropTypes.node,
   onClose: PropTypes.func,
@@ -13,12 +18,24 @@ const propTypes = {
 };
 
 function Sidebar({ closeIsDisabled, children, onClose, onCancel }) {
+  const { isDataApp } = useDataAppContext();
+
   return (
     <aside
-      style={{ width: WIDTH, minWidth: WIDTH }}
-      className="flex flex-column border-left bg-white"
+      style={{
+        width: WIDTH,
+        minWidth: WIDTH,
+        padding: isDataApp ? "20px 20px 20px 0" : 0,
+      }}
+      className={cx("flex flex-column", {
+        "border-left bg-white": !isDataApp,
+      })}
     >
-      <div className="flex flex-column flex-auto overflow-y-auto">
+      <div
+        className={cx("flex flex-column flex-auto overflow-y-auto", {
+          "bordered rounded bg-white": isDataApp,
+        })}
+      >
         {children}
       </div>
       {(onClose || onCancel) && (
