@@ -48,10 +48,10 @@
           (map-indexed vector [#t "2004-03-19 09:19:09+07:00[Asia/Ho_Chi_Minh]"
                                #t "2008-06-20 10:20:10+07:00[Asia/Ho_Chi_Minh]"
                                #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"
-                               #t "2012-11-21 13:21:11+09:00[Asia/Tokyo]"])]
+                               #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"])]
       [(inc idx)
        (t/local-date-time t)                                  ;; dt
-       (t/zoned-date-time t)                                  ;; dt_tz
+       (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")        ;; dt_tz
        (t/local-date t)                                       ;; d
        (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as _dt
        (t/format "yyyy-MM-dd" (t/local-date-time t))])]])
