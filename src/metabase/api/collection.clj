@@ -297,7 +297,7 @@
   [_ collection options]
   (card-query false collection options))
 
-(defn- bit->boolean
+(defn bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
   [v]
   (if (number? v)

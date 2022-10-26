@@ -7,6 +7,7 @@
             [honeysql.helpers :as hh]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.api.collection :as api.collection]
             [metabase.db :as mdb]
             [metabase.models :refer [App Database]]
             [metabase.models.bookmark :refer [CardBookmark CollectionBookmark DashboardBookmark]]
@@ -440,33 +441,32 @@
                              query)} sql-alias]]
        :order-by order-clause})))
 
-(letfn [(bit->boolean [v] (case v 1 true 0 false v))]
-  (defn ^:private search
-    "Builds a search query that includes all of the searchable entities and runs it"
-    [search-ctx]
-    (let [search-query      (full-search-query search-ctx)
-          _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          reducible-results (db/reducible-query search-query :max-rows search-config/*db-max-results*)
-          xf                (comp
-                             (filter check-permissions-for-model)
-                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
-                             (map #(update % :bookmark bit->boolean))
-                             (map #(update % :archived bit->boolean))
-                             (map (partial scoring/score-and-result (:search-string search-ctx)))
-                             (filter #(pos? (:score %))))
-          total-results     (scoring/top-results reducible-results search-config/max-filtered-results xf)]
-      ;; We get to do this slicing and dicing with the result data because
-      ;; the pagination of search is for UI improvement, not for performance.
-      ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-      {:total            (count total-results)
-       :data             (cond->> total-results
-                           (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                           (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
-       :available_models (query-model-set search-ctx)
-       :limit            (:limit-int search-ctx)
-       :offset           (:offset-int search-ctx)
-       :table_db_id      (:table-db-id search-ctx)
-       :models           (:models search-ctx)})))
+(defn ^:private search
+  "Builds a search query that includes all of the searchable entities and runs it"
+  [search-ctx]
+  (let [search-query      (full-search-query search-ctx)
+        _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
+        reducible-results (db/reducible-query search-query :max-rows search-config/*db-max-results*)
+        xf                (comp
+                           (filter check-permissions-for-model)
+                           ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
+                           (map #(update % :bookmark api.collection/bit->boolean))
+                           (map #(update % :archived api.collection/bit->boolean))
+                           (map (partial scoring/score-and-result (:search-string search-ctx)))
+                           (filter #(pos? (:score %))))
+        total-results     (scoring/top-results reducible-results search-config/max-filtered-results xf)]
+    ;; We get to do this slicing and dicing with the result data because
+    ;; the pagination of search is for UI improvement, not for performance.
+    ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
+    {:total            (count total-results)
+     :data             (cond->> total-results
+                         (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                         (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
+     :available_models (query-model-set search-ctx)
+     :limit            (:limit-int search-ctx)
+     :offset           (:offset-int search-ctx)
+     :table_db_id      (:table-db-id search-ctx)
+     :models           (:models search-ctx)}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
