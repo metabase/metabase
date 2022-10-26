@@ -274,7 +274,7 @@
     (find-joins my-database-id <airport> <country>)
     ;; ->
     ;; 3 joins needed: airport -> municipality; municipality -> region; region -> country
-    [{:lhs {:table <airport>, :field <airport.municipality-id>}
+    [{:lhs {:table <airport>, :field <airport.municipality_id>}
       :rhs {:table <municipality>, :field <municipality.id>}}
      {:lhs {:table <municipality>, :field <region.id>}
       :rhs {:table <region>, :field <country.id>}}

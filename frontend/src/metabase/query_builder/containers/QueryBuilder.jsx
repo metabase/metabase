@@ -40,6 +40,7 @@ import View from "../components/view/View";
 import {
   getCard,
   getDatabasesList,
+  getDataReferenceStack,
   getOriginalCard,
   getLastRunCard,
   getFirstQueryResult,
@@ -139,6 +140,7 @@ const mapStateToProps = (state, props) => {
 
     uiControls: getUiControls(state),
     ...state.qb.uiControls,
+    dataReferenceStack: getDataReferenceStack(state),
     isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isBookmarked: getIsBookmarked(state, props),
@@ -267,8 +269,14 @@ function QueryBuilder(props) {
 
   const handleCreate = useCallback(
     async card => {
-      const questionWithUpdatedCard = question.setCard(card).setPinned(false);
+      const shouldBePinned = Boolean(card.dataset);
+
+      const questionWithUpdatedCard = question
+        .setCard(card)
+        .setPinned(shouldBePinned);
+
       await apiCreateQuestion(questionWithUpdatedCard);
+
       setRecentlySaved("created");
     },
     [question, apiCreateQuestion, setRecentlySaved],

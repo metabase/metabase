@@ -13,9 +13,21 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
-   [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table User]]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            Database
+            Field
+            Permissions
+            PermissionsGroup
+            Pulse
+            Setting
+            Table
+            User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -23,8 +35,9 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.db :as db])
-  (:import java.sql.Connection
-           java.util.UUID))
+  (:import
+   (java.sql Connection)
+   (java.util UUID)))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -680,3 +693,57 @@
         (migrate!)
         (is (partial= {:details {}}
                       (db/select-one Database :id database-id)))))))
+
+(deftest populate-collection-created-at-test
+  (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
+    (impl/test-migrations ["v45.00-048" "v45.00-050"] [migrate!]
+      (let [database-id              (db/simple-insert! Database {:details   "{}"
+                                                                  :engine    "h2"
+                                                                  :is_sample false
+                                                                  :name      "populate-collection-created-at-test-db"})
+            user-id                  (db/simple-insert! User {:first_name  "Cam"
+                                                              :last_name   "Era"
+                                                              :email       "cam@example.com"
+                                                              :password    "123456"
+                                                              :date_joined #t "2022-10-20T02:09Z"})
+            personal-collection-id   (db/simple-insert! Collection {:name              "Cam Era's Collection"
+                                                                    :personal_owner_id user-id
+                                                                    :color             "#ff0000"
+                                                                    :slug              "personal_collection"})
+            impersonal-collection-id (db/simple-insert! Collection {:name  "Regular Collection"
+                                                                    :color "#ff0000"
+                                                                    :slug  "regular_collection"})
+            empty-collection-id      (db/simple-insert! Collection {:name  "Empty Collection"
+                                                                    :color "#ff0000"
+                                                                    :slug  "empty_collection"})
+            _                        (db/simple-insert! Card {:collection_id          impersonal-collection-id
+                                                              :name                   "Card 1"
+                                                              :display                "table"
+                                                              :dataset_query          "{}"
+                                                              :visualization_settings "{}"
+                                                              :creator_id             user-id
+                                                              :database_id            database-id
+                                                              :created_at             #t "2022-10-20T02:09Z"
+                                                              :updated_at             #t "2022-10-20T02:09Z"})
+            _                        (db/simple-insert! Card {:collection_id          impersonal-collection-id
+                                                              :name                   "Card 2"
+                                                              :display                "table"
+                                                              :dataset_query          "{}"
+                                                              :visualization_settings "{}"
+                                                              :creator_id             user-id
+                                                              :database_id            database-id
+                                                              :created_at             #t "2021-10-20T02:09Z"
+                                                              :updated_at             #t "2022-10-20T02:09Z"})]
+        (migrate!)
+        (testing "A personal Collection should get created_at set by to the date_joined from its owner"
+          (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
+                 (t/offset-date-time (db/select-one-field :created_at Collection :id personal-collection-id)))))
+        (testing "A non-personal Collection should get created_at set to its oldest object"
+          (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
+                 (t/offset-date-time (db/select-one-field :created_at Collection :id impersonal-collection-id)))))
+        (testing "Empty Collection should not have been updated"
+          (let [empty-collection-created-at (t/offset-date-time (db/select-one-field :created_at Collection :id empty-collection-id))]
+            (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
+                      empty-collection-created-at))
+            (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
+                      empty-collection-created-at))))))))

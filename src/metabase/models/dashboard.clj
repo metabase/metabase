@@ -409,16 +409,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-(defmethod serdes.base/extract-query "Dashboard" [_ {:keys [user]}]
-  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
-  (serdes.base/raw-reducible-query
-    "Dashboard"
-    {:select     [:dash.*]
-     :from       [[:report_dashboard :dash]]
-     :left-join  [[:collection :coll] [:= :coll.id :dash.collection_id]]
-     :where      (if user
-                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                   [:is :coll.personal_owner_id nil])}))
+(defmethod serdes.base/extract-query "Dashboard" [_ {:keys [collection-set]}]
+  (db/select-reducible Dashboard :collection_id [:in collection-set]))
 
 ;; TODO Maybe nest collections -> dashboards -> dashcards?
 (defmethod serdes.base/extract-one "Dashboard"

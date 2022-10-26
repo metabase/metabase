@@ -231,7 +231,10 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const resultsMetadata = getResultsMetadata(getState());
     const questionToUpdate = questionWithVizSettings
-      .setQuery(question.query().clean())
+      // Before we clean the query, we make sure question is not treated as a dataset
+      // as calling table() method down the line would bring unwanted consequences
+      // such as dropping joins (as joins are treated differently between pure questions and datasets)
+      .setQuery(question.setDataset(false).query().clean())
       .setResultsMetadata(resultsMetadata);
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table

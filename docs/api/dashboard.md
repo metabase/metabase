@@ -46,6 +46,18 @@ Get `Dashboards`. With filter option `f` (default `all`), restrict results as fo
 
 *  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `mine`.
 
+## `GET /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute/:slug`
+
+Fetches the values for filling in execution parameters.
+
+### PARAMS:
+
+*  **`dashboard-id`** value must be an integer greater than zero.
+
+*  **`dashcard-id`** value must be an integer greater than zero.
+
+*  **`slug`** value must be a non-blank string.
+
 ## `GET /api/dashboard/:id`
 
 Get Dashboard with ID.
@@ -168,25 +180,6 @@ Create a new Dashboard.
 
 *  **`_dashboard`**
 
-## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/action/execute`
-
-Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
-
-   `parameters` should be the mapped dashboard parameters with values.
-   `extra_parameters` should be the extra, user entered parameter values.
-
-### PARAMS:
-
-*  **`dashboard-id`** 
-
-*  **`dashcard-id`** 
-
-*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a parameter map with an 'id' key
-
-*  **`extra_parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a parameter map with a 'target' key
-
-*  **`_body`**
-
 ## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`
 
 Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it.
@@ -222,6 +215,27 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
 *  **`request-parameters`**
+
+## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute/:slug`
+
+Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values.
+
+### PARAMS:
+
+*  **`dashboard-id`** value must be an integer greater than zero.
+
+*  **`dashcard-id`** value must be an integer greater than zero.
+
+*  **`slug`** value must be a non-blank string.
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a map with schema: (
+   : 
+)
+
+*  **`_body`**
 
 ## `POST /api/dashboard/:dashboard-id/public_link`
 

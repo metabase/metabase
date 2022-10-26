@@ -4,15 +4,14 @@
     [clojure.walk :as walk]
     [compojure.core :refer [POST PUT]]
     [medley.core :as m]
+    [metabase.actions :as actions]
     [metabase.api.card :as api.card]
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.mbql.schema :as mbql.s]
     [metabase.models :refer [App Collection Dashboard ModelAction Table]]
-    [metabase.models.app.graph :as app.graph]
     [metabase.models.collection :as collection]
     [metabase.models.dashboard :as dashboard]
-    [metabase.plugins.classloader :as classloader]
     [metabase.util :as u]
     [metabase.util.i18n :as i18n]
     [metabase.util.schema :as su]
@@ -32,7 +31,6 @@
                         (select-keys [:dashboard_id :options :nav_items])
                         (assoc :collection_id (:id collection-instance)))
          app (db/insert! App app-params)]
-     (app.graph/set-default-permissions! app)
      (hydrate-details app))))
 
 (api/defendpoint POST "/"
@@ -299,78 +297,4 @@
       (create-scaffold-dashcards! scaffold-target->id pages)
       (hydrate-details (db/select-one App :id app-id)))))
 
-
-;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
-
-(api/defendpoint GET "/global-graph"
-  "Fetch the global graph of all App Permissions."
-  []
-  (api/check-superuser)
-  (app.graph/global-graph))
-
-(defn- resolve-advanced-app-permission-function
-  "Resolve `fn-name` in the advanced app permission namespace. `fn-name` can be
-  a string or an instance of clojure.lang.Named.
-  Throws an exception if `fn-name` cannot be resolved."
-  [fn-name]
-  (or (u/ignore-exceptions
-       (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.app-permissions)
-       (resolve (symbol "metabase-enterprise.advanced-permissions.models.permissions.app-permissions"
-                        (name fn-name))))
-      (ex-info
-       (i18n/tru "The granular app permission functionality is only enabled if you have a premium token with the advanced-permissions feature.")
-       {:status-code 402})))
-
-(api/defendpoint GET "/graph"
-  "Fetch the graph of all App Permissions."
-  []
-  (api/check-superuser)
-  (let [graph (resolve-advanced-app-permission-function 'graph)]
-    (graph)))
-
-(defn- ->int [id] (Integer/parseInt (name id)))
-
-(defn- dejsonify-with [f m]
-  (into {}
-        (map (fn [[k v]]
-               [(->int k) (f v)]))
-        m))
-
-(defn- dejsonify-id->permission-map [m]
-  (dejsonify-with keyword m))
-
-(defn- dejsonify-groups-map [m]
-  (dejsonify-with dejsonify-id->permission-map m))
-
-(defn- dejsonify-global-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
-  parsing object keys as integers."
-  [graph]
-  (update graph :groups dejsonify-id->permission-map))
-
-(defn- dejsonify-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
-  parsing object keys as integers."
-  [graph]
-  (update graph :groups dejsonify-groups-map))
-
-(api/defendpoint PUT "/global-graph"
-  "Do a batch update of the global App Permissions by passing in a modified graph."
-  [:as {body :body}]
-  {body su/Map}
-  (api/check-superuser)
-  (-> body
-      dejsonify-global-graph
-      app.graph/update-global-graph!))
-
-(api/defendpoint PUT "/graph"
-  "Do a batch update of the advanced App Permissions by passing in a modified graph."
-  [:as {body :body}]
-  {body su/Map}
-  (api/check-superuser)
-  (let [update-graph! (resolve-advanced-app-permission-function 'update-graph!)]
-    (-> body
-        dejsonify-graph
-        update-graph!)))
-
-(api/define-routes)
+(api/define-routes actions/+check-data-apps-enabled)

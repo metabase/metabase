@@ -95,17 +95,15 @@ describe("scenarios > admin > databases > edit", () => {
         cy.wait("@databaseUpdate").then(({ request, response }) => {
           expect(request.body.cache_ttl).to.equal(32);
           expect(response.body.cache_ttl).to.equal(32);
+        });
 
-          cy.visit("/admin/databases");
-          cy.findByTextEnsureVisible("Sample Database").click();
+        cy.findByTextEnsureVisible("Custom").click();
+        popover().findByText("Use instance default (TTL)").click();
 
-          cy.findByTextEnsureVisible("Custom").click();
-          popover().findByText("Use instance default (TTL)").click();
-
-          cy.button("Save changes").click();
-          cy.wait("@databaseUpdate").then(({ request }) => {
-            expect(request.body.cache_ttl).to.equal(null);
-          });
+        // We need to wait until "Success" button state is gone first
+        cy.button("Save changes", { timeout: 10000 }).click();
+        cy.wait("@databaseUpdate").then(({ request }) => {
+          expect(request.body.cache_ttl).to.equal(null);
         });
       });
     });
