@@ -1,9 +1,9 @@
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
-import Question from "metabase-lib/lib/Question";
-import { getPivotColumnSplit } from "metabase-lib/lib/queries/utils/pivot";
-import { injectTableMetadata } from "metabase-lib/lib/metadata/utils/tables";
+import Question from "metabase-lib/Question";
+import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
+import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";

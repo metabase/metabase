@@ -11,7 +11,7 @@ import {
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
 } from "metabase/entities/actions/utils";
-import type Question from "metabase-lib/lib/Question";
+import type Question from "metabase-lib/Question";
 import { saveForm, updateForm } from "./forms";
 
 type ActionParams = {

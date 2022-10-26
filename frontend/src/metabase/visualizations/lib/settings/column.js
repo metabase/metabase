@@ -49,8 +49,8 @@ import {
   isCoordinate,
   isCurrency,
   isDateWithoutTime,
-} from "metabase-lib/lib/types/utils/isa";
-import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
+} from "metabase-lib/types/utils/isa";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {

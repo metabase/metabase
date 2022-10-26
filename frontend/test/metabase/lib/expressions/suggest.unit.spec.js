@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { ORDERS, REVIEWS } from "__support__/sample_database_fixture";
-import { suggest as suggest_ } from "metabase-lib/lib/expressions/suggest";
+import { suggest as suggest_ } from "metabase-lib/expressions/suggest";
 
 import { aggregationOpts, expressionOpts } from "./__support__/expressions";
 

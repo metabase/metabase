@@ -5,37 +5,64 @@ import TextInput from "metabase/components/TextInput";
 import { TextInputProps } from "metabase/components/TextInput/TextInput";
 
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
+import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
+
 import { OptionsList } from "./AutocompleteInput.styled";
 
-interface AutocompleteInputProps extends TextInputProps {
+export interface AutocompleteInputProps extends TextInputProps {
   options?: string[];
+  filterOptions?: (value: string | undefined, options: string[]) => string[];
+  onOptionSelect?: (value: string) => void;
 }
+
+const filterOptionsByValue = (value: string | undefined, options: string[]) => {
+  if (!value || value.length === 0) {
+    return options;
+  }
+
+  return options.filter(option => {
+    const optionLowerCase = option.toLowerCase().trim();
+    const valueLowerCase = value.toLowerCase().trim();
+    return (
+      optionLowerCase.includes(valueLowerCase) &&
+      !(optionLowerCase === valueLowerCase)
+    );
+  });
+};
 
 const AutocompleteInput = ({
   value,
   onChange,
   options = [],
+  filterOptions = filterOptionsByValue,
   onBlur,
+  onOptionSelect,
   ...rest
 }: AutocompleteInputProps) => {
-  const optionsListRef = useRef<HTMLUListElement>();
+  const optionsListRef = useRef<HTMLUListElement>(null);
+  const inputRef = useRef<HTMLDivElement>(null);
   const filteredOptions = useMemo(() => {
-    if (!value || value.length === 0) {
-      return options;
-    }
+    return filterOptions(value, options);
+  }, [value, options, filterOptions]);
 
-    return options.filter(option => {
-      const optionLowerCase = option.toLowerCase().trim();
-      const valueLowerCase = value.toLowerCase().trim();
-      return (
-        optionLowerCase.includes(value) && !(optionLowerCase === valueLowerCase)
-      );
-    });
-  }, [value, options]);
+  const { cursorIndex } = useListKeyboardNavigation({
+    list: filteredOptions,
+    onEnter: (item: string) => handleOptionSelect(item),
+    resetOnListChange: true,
+    ref: inputRef,
+  });
 
   const handleListMouseDown = (event: React.MouseEvent<HTMLElement>) => {
     if (optionsListRef.current?.contains(event.target as Node)) {
       event.preventDefault();
+    }
+  };
+
+  const handleOptionSelect = (option: string) => {
+    if (onOptionSelect) {
+      onOptionSelect(option);
+    } else {
+      onChange(option);
     }
   };
 
@@ -44,6 +71,7 @@ const AutocompleteInput = ({
       sizeToFit
       renderTrigger={({ onClick: handleShowPopover, closePopover }) => (
         <TextInput
+          ref={inputRef}
           role="combobox"
           aria-autocomplete="list"
           {...rest}
@@ -64,21 +92,19 @@ const AutocompleteInput = ({
         }
 
         return (
-          <OptionsList
-            ref={optionsListRef as any}
-            onMouseDown={handleListMouseDown}
-          >
-            {filteredOptions.map(option => (
+          <OptionsList ref={optionsListRef} onMouseDown={handleListMouseDown}>
+            {filteredOptions.map((item, index) => (
               <SelectList.Item
-                key={option}
-                id={option}
-                name={option}
-                onSelect={option => {
-                  onChange(option);
+                isSelected={cursorIndex === index}
+                key={item}
+                id={item}
+                name={item}
+                onSelect={item => {
+                  handleOptionSelect(item);
                   closePopover();
                 }}
               >
-                {option}
+                {item}
               </SelectList.Item>
             ))}
           </OptionsList>

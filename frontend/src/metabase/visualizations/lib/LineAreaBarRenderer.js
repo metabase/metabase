@@ -11,9 +11,9 @@ import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series"
 import {
   updateDateTimeFilter,
   updateNumericFilter,
-} from "metabase-lib/lib/queries/utils/actions";
-import { isStructured } from "metabase-lib/lib/queries/utils/card";
-import Question from "metabase-lib/lib/Question";
+} from "metabase-lib/queries/utils/actions";
+import { isStructured } from "metabase-lib/queries/utils/card";
+import Question from "metabase-lib/Question";
 
 import {
   computeSplit,

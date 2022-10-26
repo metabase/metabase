@@ -9,7 +9,7 @@ import ParametersList from "metabase/parameters/components/ParametersList";
 import Select, { Option } from "metabase/core/components/Select";
 
 import { color } from "metabase/lib/colors";
-import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import DisplayOptionsPane from "./DisplayOptionsPane";
 

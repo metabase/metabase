@@ -48,7 +48,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Metric
   [_metric]
-  [:name (serdes.hash/hydrated-hash :table "<none>")])
+  [:name (serdes.hash/hydrated-hash :table "<none>") :created_at])
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------

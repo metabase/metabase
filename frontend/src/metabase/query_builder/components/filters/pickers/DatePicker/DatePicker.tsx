@@ -4,7 +4,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
-import { isStartingFrom } from "metabase-lib/lib/queries/utils/query-time";
+import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
 import {
   getAfterDateFilter,
   getBeforeDateFilter,
@@ -22,8 +22,8 @@ import {
   isNextDateFilter,
   isOnDateFilter,
   isPreviousDateFilter,
-} from "metabase-lib/lib/queries/utils/date-filters";
-import type Filter from "metabase-lib/lib/queries/structured/Filter";
+} from "metabase-lib/queries/utils/date-filters";
+import type Filter from "metabase-lib/queries/structured/Filter";
 
 import DatePickerFooter from "./DatePickerFooter";
 import DatePickerHeader from "./DatePickerHeader";

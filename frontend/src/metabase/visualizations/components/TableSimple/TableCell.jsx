@@ -11,7 +11,7 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import { isID, isFK } from "metabase-lib/lib/types/utils/isa";
+import { isID, isFK } from "metabase-lib/types/utils/isa";
 
 import MiniBar from "../MiniBar";
 import { CellRoot, CellContent } from "./TableCell.styled";

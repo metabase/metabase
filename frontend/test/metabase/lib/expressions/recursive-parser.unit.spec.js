@@ -1,7 +1,7 @@
-import { parse } from "metabase-lib/lib/expressions/recursive-parser";
-import { resolve } from "metabase-lib/lib/expressions/resolver";
+import { parse } from "metabase-lib/expressions/recursive-parser";
+import { resolve } from "metabase-lib/expressions/resolver";
 
-describe("metabase-lib/lib/expressions/recursive-parser", () => {
+describe("metabase-lib/expressions/recursive-parser", () => {
   const mockResolve = (kind, name) => [kind, name];
   const process = (source, type) => resolve(parse(source), type, mockResolve);
   const filter = expr => process(expr, "boolean");

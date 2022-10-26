@@ -18,10 +18,10 @@ import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
-} from "metabase-lib/lib/queries/utils/card";
-import Query from "metabase-lib/lib/queries/Query";
+} from "metabase-lib/queries/utils/card";
+import Query from "metabase-lib/queries/Query";
 
-import { isAdHocModelQuestion } from "metabase-lib/lib/metadata/utils/models";
+import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
