@@ -30,34 +30,41 @@
 
 (models/defmodel User :core_user)
 
+(def ^:private insert-default-values
+  {:date_joined  :%now
+   :last_login   nil
+   :is_active    true
+   :is_superuser false})
+
+(defn- hashed-password-values
+  "When User `:password` is specified for an `INSERT` or `UPDATE`, add a new `:password_salt`, and hash the password."
+  [{:keys [password], :as user}]
+  (when password
+    (assert (not (:password_salt user))
+            ;; this is dev-facing so it doesn't need to be i18n'ed
+            "Don't try to pass an encrypted password to insert! or update!. Password encryption is handled by pre- methods.")
+    (let [salt (str (random-uuid))]
+      {:password_salt salt
+       :password      (u.password/hash-bcrypt (str salt password))})))
+
 (defn- pre-insert [{:keys [email password reset_token locale], :as user}]
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
-  (assert (not (:password_salt user))
-          "Don't try to pass an encrypted password to (insert! User). Password encryption is handled by pre-insert.")
   (when locale
     (assert (i18n/available-locale? locale)))
-  (let [salt     (str (UUID/randomUUID))
-        defaults {:date_joined  :%now
-                  :last_login   nil
-                  :is_active    true
-                  :is_superuser false}]
-    ;; always salt + encrypt the password before putting new User in the DB
-    ;; TODO - we should do password encryption in pre-update too instead of in the session code
-    (merge
-     defaults
-     user
-     {:password_salt salt
-      :password      (u.password/hash-bcrypt (str salt password))}
-     ;; lower-case the email before saving
-     {:email (u/lower-case-en email)}
-     ;; if there's a reset token encrypt that as well
-     (when reset_token
-       {:reset_token (u.password/hash-bcrypt reset_token)})
-     ;; normalize the locale
-     (when locale
-       {:locale (i18n/normalized-locale-string locale)}))))
+  (merge
+   insert-default-values
+   user
+   (hashed-password-values user)
+   ;; lower-case the email before saving
+   {:email (u/lower-case-en email)}
+   ;; if there's a reset token encrypt that as well
+   (when reset_token
+     {:reset_token (u.password/hash-bcrypt reset_token)})
+   ;; normalize the locale
+   (when locale
+     {:locale (i18n/normalized-locale-string locale)})))
 
 (defn- post-insert [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
@@ -86,9 +93,8 @@
         (db/insert! PermissionsGroupMembership
           :group_id (u/the-id (perms-group/admin))
           :user_id  id)
-        ;; don't use `delete!` here because that does the opposite and tries to update this user
-        ;; which leads to a stack overflow of calls between the two
-        ;; TODO - could we fix this issue by using `post-delete!`?
+        ;; don't use [[db/delete!]] here because that does the opposite and tries to update this user which leads to a
+        ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              membership-exists?)
         (db/simple-delete! PermissionsGroupMembership
@@ -104,6 +110,7 @@
     (db/delete! 'PulseChannelRecipient :user_id id))
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
+    true        (merge (hashed-password-values user))
     reset-token (update :reset_token u.password/hash-bcrypt)
     locale      (update :locale i18n/normalized-locale-string)
     email       (update :email u/lower-case-en)))
@@ -320,19 +327,21 @@
        (dissoc :password)
        (assoc :ldap_auth true))))
 
+;;; TODO -- it seems like maybe this should just be part of the [[pre-update]] logic whenever `:password` changes; then
+;;; we can remove this function altogether.
 (defn set-password!
-  "Updates the stored password for a specified `User` by hashing the password with a random salt."
+  "Update the stored password for a specified `User`; kill any existing Sessions and wipe any password reset tokens.
+
+  The password is automatically hashed with a random salt; this happens in [[hashed-password-values]] which is called
+  by [[pre-insert]] or [[pre-update]])"
   [user-id password]
-  (let [salt     (str (UUID/randomUUID))
-        password (u.password/hash-bcrypt (str salt password))]
-    ;; when changing/resetting the password, kill any existing sessions
-    (db/simple-delete! Session :user_id user-id)
-    ;; NOTE: any password change expires the password reset token
-    (db/update! User user-id
-      :password_salt   salt
-      :password        password
-      :reset_token     nil
-      :reset_triggered nil)))
+  ;; when changing/resetting the password, kill any existing sessions
+  (db/simple-delete! Session :user_id user-id)
+  ;; NOTE: any password change expires the password reset token
+  (db/update! User user-id
+    :password        password
+    :reset_token     nil
+    :reset_triggered nil))
 
 (defn set-password-reset-token!
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
@@ -402,8 +411,8 @@
 
 (defn- init-from-config-file!
   [user]
-  ;; TODO -- if this is the FIRST user, we should probably make them a superuser, right?
   (if-let [existing-user-id (db/select-one-id User :email (:email user))]
+    ;; upsert existing user
     (do
       (log/info (u/colorize :blue (trs "Updating User with email {0}" (pr-str (:email user)))))
       (db/update! User existing-user-id user))
