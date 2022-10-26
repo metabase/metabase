@@ -24,14 +24,6 @@
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(defmethod driver/database-supports? [:redshift :datetimediff]
-  [_driver _feat _db]
-  ;; postgres uses `date_part` on an interval or a call to `age` to get datetimediffs. It seems redshift does not have
-  ;; this and errors with:
-  ;; > ERROR: function pg_catalog.pgdate_part("unknown", interval) does not exist
-  ;; It offers a datetimediff function that tracks number of boundaries crossed which is not what we want
-  false)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
