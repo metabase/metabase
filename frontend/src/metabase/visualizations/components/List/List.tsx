@@ -14,6 +14,8 @@ import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
+import type { ListColumnIndexes } from "./types";
+
 import {
   Root,
   Footer,
@@ -97,7 +99,7 @@ function List({
     [rowIndexes, start, end],
   );
 
-  const listColumnIndexes = useMemo<{ left: number[]; right: number[] }>(() => {
+  const listColumnIndexes = useMemo<ListColumnIndexes>(() => {
     function getColumnIndex(idOrFieldRef: any) {
       if (idOrFieldRef === null) {
         return null;
@@ -108,9 +110,10 @@ function List({
       );
     }
 
-    const left = settings["list.columns"].left.map(getColumnIndex);
-    const right = settings["list.columns"].right.map(getColumnIndex);
-    return { left, right };
+    const image = settings["list.columns"].image?.map(getColumnIndex) ?? [];
+    const left = settings["list.columns"].left?.map(getColumnIndex) ?? [];
+    const right = settings["list.columns"].right?.map(getColumnIndex) ?? [];
+    return { image, left, right };
   }, [cols, settings]);
 
   const renderListItem = useCallback(

@@ -2,7 +2,7 @@
 import React from "react";
 
 import MetabaseUtils from "metabase/lib/utils";
-import { Avatar, AvatarProps } from "./UserAvatar.styled";
+import { Avatar as StlyedAvatar, AvatarProps } from "./UserAvatar.styled";
 
 interface UserAvatarProps extends AvatarProps {
   user: User;
@@ -27,7 +27,11 @@ export default function UserAvatar({
   user,
   ...props
 }: UserAvatarProps | GroupProps) {
-  return <Avatar {...props}>{userInitials(user) || "?"}</Avatar>;
+  return <StlyedAvatar {...props}>{userInitials(user) || "?"}</StlyedAvatar>;
+}
+
+export function Avatar({ children, ...props }: { children: string }) {
+  return <StlyedAvatar {...props}>{initial(children) ?? "?"}</StlyedAvatar>;
 }
 
 function initial(name?: string | null) {

@@ -31,7 +31,7 @@ export const ListBody = styled.ul`
 `;
 
 export const ListItemRow = styled.li<{ isClickable?: boolean }>`
-  padding: 1rem 2rem;
+  padding: 1rem 1.5rem;
   cursor: ${props => (props?.isClickable ? "pointer" : "default")};
   width: 100%;
   border-bottom: 1px solid ${color("border")};

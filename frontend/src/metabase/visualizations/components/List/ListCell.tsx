@@ -3,7 +3,6 @@ import cx from "classnames";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/components/Tooltip";
-import { Avatar } from "metabase/components/UserAvatar/UserAvatar.styled";
 
 import { formatValue } from "metabase/lib/formatting";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";

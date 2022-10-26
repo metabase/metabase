@@ -26,6 +26,9 @@ export const ListItemSubtitle = styled.div`
 `;
 
 export const InfoLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   min-width: 0;
   font-size: 0.75rem;
   font-weight: bold;
