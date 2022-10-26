@@ -956,7 +956,7 @@
 
 (defn- joins-for-mbql
   "Generate content for `:joins` clause of mbql query used in [[join-ordering-test]].
-   
+
    Input is one `join-seq` eg. `[:left-join :full-join]`. See [[join-seqs]]."
   [join-seq]
   (map (fn [strategy data]
@@ -974,16 +974,16 @@
 
 (defn- expected-join-data
   "Generate data used to verify that `:joins` in mbql match joins in honeysql in [[join-ordering-test]]
-   
+
    Structure of data returned is as follows:
    `[[<type of join>
-      <table> 
-      <last component of left `=` operand> 
+      <table>
+      <last component of left `=` operand>
       <last component of righ `=` operand>]
      ...]`
-   
+
    Eg. `([:left :checkins :id :venue_id]
-         [:right :users :user_id :id] 
+         [:right :users :user_id :id]
          [:full :categories :category_id :id])`
 
    Data are matched against output of [[actual-join-data]]."
@@ -1001,7 +1001,7 @@
   [join-triplet]
   (let [join-type (-> join-triplet first)
         table (->> join-triplet
-                   ;; get table name 
+                   ;; get table name
                    second first :components last str/lower-case
                     ;; remove db qualifier for table
                    (re-find #"\p{Alnum}+$")
@@ -1025,7 +1025,7 @@
 
 (defn- actual-join-data
   "Extract test data from honeysql generated with [[sql.qp/mbql->honeysql]] in [[join-ordering-test]]
-   
+
    Return value is matched against output of [[expected-join-data]]"
   [hsql-form]
   (actual-join-data--extract driver/*driver* hsql-form))
