@@ -103,7 +103,7 @@
                         :column              column})]
     (if (seq scores)
       (vec scores)
-      [{:score 0}])))
+      [{:score 0 :weight 0}])))
 
 (defn- consecutivity-scorer
   [query-tokens match-tokens]
@@ -285,7 +285,9 @@
       0
       (/ score-sum weight-sum))))
 
-(defn force-weight [scores total]
+(defn force-weight
+  "Reweight `scores` such that the sum of their weights equals `total`, and their proportions do not change."
+  [scores total]
   (let [total-found (reduce + (map :weight scores))]
     (mapv #(update % :weight (fn [weight]
                                (if (contains? #{nil 0} total-found)
