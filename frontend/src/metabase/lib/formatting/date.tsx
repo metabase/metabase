@@ -3,7 +3,7 @@ import moment, { Moment } from "moment-timezone";
 
 import { parseTimestamp } from "metabase/lib/time";
 import type { DatetimeUnit } from "metabase-types/api/query";
-import { isDateWithoutTime } from "metabase-lib/lib/types/utils/isa";
+import { isDateWithoutTime } from "metabase-lib/types/utils/isa";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,

@@ -3,7 +3,7 @@ import { pluralize, singularize } from "metabase/lib/formatting/strings";
 import {
   foreignKeyDrill,
   foreignKeyDrillQuestion,
-} from "metabase-lib/lib/queries/drills/foreign-key-drill";
+} from "metabase-lib/queries/drills/foreign-key-drill";
 
 export default function ForeignKeyDrill({ question, clicked }) {
   const drill = foreignKeyDrill({ question, clicked });

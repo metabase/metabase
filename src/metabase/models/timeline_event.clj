@@ -102,7 +102,7 @@
 
 (defmethod serdes.hash/identity-hash-fields TimelineEvent
   [_timeline-event]
-  [:name :timestamp (serdes.hash/hydrated-hash :timeline)])
+  [:name :timestamp (serdes.hash/hydrated-hash :timeline) :created_at])
 
 ;;;; serialization
 (defmethod serdes.base/serdes-entity-id "TimelineEvent" [_model-name {:keys [timestamp]}]

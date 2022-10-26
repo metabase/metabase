@@ -4,7 +4,7 @@ import { getStore } from "__support__/entities-store";
 
 import Schemas from "metabase/entities/schemas";
 import Questions from "metabase/entities/questions";
-import { ROOT_COLLECTION_VIRTUAL_SCHEMA } from "metabase-lib/lib/metadata/utils/saved-questions";
+import { ROOT_COLLECTION_VIRTUAL_SCHEMA } from "metabase-lib/metadata/utils/saved-questions";
 
 describe("schema entity", () => {
   let store;

@@ -31,7 +31,7 @@ import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
 import Questions from "metabase/entities/questions";
-import { CARD_TAG_REGEX } from "metabase-lib/lib/queries/NativeQuery";
+import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
@@ -403,16 +403,21 @@ class NativeQueryEditor extends Component {
     // Note we need to drop the leading `#` from the card tag name because the prefix only includes alphanumerics
     if (prefix !== this.getCardTagNameAtCursor(pos).substring(1)) {
       callback(null, null);
-      return null;
     }
     const apiResults = await this.props.cardAutocompleteResultsFn(prefix);
-    // Convert to format ace expects
-    const resultsForAce = apiResults.map(({ id, name, dataset }) => ({
-      name: `${id}-${slugg(name)}`,
-      value: `${id}-${slugg(name)}`,
-      meta: dataset ? t`Model` : t`Question`,
-      score: dataset ? 100000 : 0, // prioritize models above questions
-    }));
+    const resultsForAce = apiResults.map(
+      ({ id, name, dataset, collection_name }) => {
+        const collectionName = collection_name || t`Our analytics`;
+        return {
+          name: `${id}-${slugg(name)}`,
+          value: `${id}-${slugg(name)}`,
+          meta: dataset
+            ? t`Model in ${collectionName}`
+            : t`Question in ${collectionName}`,
+          score: dataset ? 100000 : 0, // prioritize models above questions
+        };
+      },
+    );
     callback(null, resultsForAce);
   };
 

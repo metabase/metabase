@@ -3,7 +3,6 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.api.card-test :as api.card-test]
             [metabase.api.database :as api.database]
             [metabase.api.table :as api.table]
             [metabase.driver :as driver]
@@ -410,27 +409,28 @@
                                                      :substring "a")))))))))))
 
 (deftest card-autocomplete-suggestions-test
-  (let [result (fn [card] (select-keys card [:id :name :dataset]))]
-    (testing "GET /api/database/:id/card_autocomplete_suggestions"
-      (mt/with-temp* [Card [card-1 (card-with-native-query "Kanye West Quote Views Per Month")]
-                      Card [card-2 (card-with-native-query "Kanye West Quote Views Per Day")]]
+  (testing "GET /api/database/:id/card_autocomplete_suggestions"
+    (mt/with-temp* [Collection [collection {:name "Kanye West Analytics"}]
+                    Card       [card-1 (card-with-native-query "Kanye West Quote Views Per Month")]
+                    Card       [card-2 (card-with-native-query "Kanye West Quote Views Per Day" :collection_id (:id collection))]]
+      (let [card->result {card-1 (assoc (select-keys card-1 [:id :name :dataset]) :collection_name nil)
+                          card-2 (assoc (select-keys card-2 [:id :name :dataset]) :collection_name (:name collection))}]
         (testing "exclude cards without perms"
           (mt/with-non-admin-groups-no-root-collection-perms
-            (api.card-test/with-cards-in-readable-collection [card-1]
-              (is (= [(result card-1)]
-                     (mt/user-http-request :rasta :get 200
-                                           (format "database/%d/card_autocomplete_suggestions" (mt/id))
-                                           :query "kanye")))))
-        (testing "cards should match the query"
-          (doseq [[query expected-cards] {"QUOTE-views"               [card-2 card-1]
-                                          "per-day"                   [card-2]
-                                          (str (:id card-1))          [card-1]
-                                          (str (:id card-2) "-kanye") [card-2]
-                                          (str (:id card-2) "-west")  []}]
-            (is (= (map result expected-cards)
+            (is (= [(card->result card-2)]
                    (mt/user-http-request :rasta :get 200
                                          (format "database/%d/card_autocomplete_suggestions" (mt/id))
-                                         :query query))))))
+                                         :query "kanye"))))
+          (testing "cards should match the query"
+            (doseq [[query expected-cards] {"QUOTE-views"               [card-2 card-1]
+                                            "per-day"                   [card-2]
+                                            (str (:id card-1))          [card-1]
+                                            (str (:id card-2) "-kanye") [card-2]
+                                            (str (:id card-2) "-west")  []}]
+              (is (= (map card->result expected-cards)
+                     (mt/user-http-request :rasta :get 200
+                                           (format "database/%d/card_autocomplete_suggestions" (mt/id))
+                                           :query query)))))))
       (testing "should reject requests for databases for which the user has no perms"
         (mt/with-temp* [Database [{database-id :id}]
                         Card     [_ (card-with-native-query "Kanye West Quote Views Per Month" :database_id database-id)]]
@@ -438,7 +438,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403
                                        (format "database/%d/card_autocomplete_suggestions" database-id)
-                                       :query "kanye")))))))))
+                                       :query "kanye"))))))))
 
 (driver/register! ::no-nested-query-support
                   :parent :sql-jdbc

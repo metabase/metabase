@@ -10,7 +10,7 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
 import { Group, GroupsPermissions } from "metabase-types/api";
-import Database from "metabase-lib/lib/metadata/Database";
+import Database from "metabase-lib/metadata/Database";
 import {
   getPermissionWarning,
   getPermissionWarningModal,

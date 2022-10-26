@@ -23,11 +23,11 @@ import {
   field_semantic_types,
   has_field_values_options,
 } from "metabase/lib/core";
-import { TYPE } from "metabase-lib/lib/types/constants";
+import { TYPE } from "metabase-lib/types/constants";
 import {
   getFieldValues,
   getRemappings,
-} from "metabase-lib/lib/queries/utils/field";
+} from "metabase-lib/queries/utils/field";
 
 // ADDITIONAL OBJECT ACTIONS
 

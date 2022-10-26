@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 
 import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
 import testDataset from "__support__/testDataset";
-import { TYPE } from "metabase-lib/lib/types/constants";
+import { TYPE } from "metabase-lib/types/constants";
 
 const objectDetailCard = {
   card: {

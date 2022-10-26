@@ -893,7 +893,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Collection
   [_collection]
-  [:name :namespace parent-identity-hash])
+  [:name :namespace parent-identity-hash :created_at])
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Collection)
   models/IModel
@@ -908,7 +908,9 @@
           :pre-delete     pre-delete}))
 
 (defmethod serdes.base/extract-query "Collection" [_ {:keys [collection-set]}]
-  (db/select-reducible Collection :id [:in collection-set]))
+  (if (seq collection-set)
+    (db/select-reducible Collection :id [:in collection-set])
+    (db/select-reducible Collection :personal_owner_id nil)))
 
 (defmethod serdes.base/extract-one "Collection"
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.

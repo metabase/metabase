@@ -11,7 +11,7 @@ import {
 } from "metabase/components/MetadataInfo/MetadataInfo.styled";
 import ConnectedTableList from "metabase/query_builder/components/dataref/ConnectedTableList";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Table from "metabase-lib/metadata/Table";
 import TableInfoLoader from "./TableInfoLoader";
 import FieldList from "./FieldList";
 import { PaneContent } from "./Pane.styled";

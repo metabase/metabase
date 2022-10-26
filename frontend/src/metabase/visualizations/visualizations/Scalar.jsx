@@ -12,7 +12,7 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
-import { TYPE } from "metabase-lib/lib/types/constants";
+import { TYPE } from "metabase-lib/types/constants";
 import { ScalarContainer } from "./Scalar.styled";
 
 // convert legacy `scalar.*` visualization settings to format options

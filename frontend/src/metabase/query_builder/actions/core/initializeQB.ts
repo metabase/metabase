@@ -19,13 +19,13 @@ import {
   QueryBuilderUIControls,
 } from "metabase-types/store";
 import { Card, SavedCard } from "metabase-types/types/Card";
-import { cardIsEquivalent } from "metabase-lib/lib/queries/utils/card";
-import { normalize } from "metabase-lib/lib/queries/utils/normalize";
-import Question from "metabase-lib/lib/Question";
+import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
+import { normalize } from "metabase-lib/queries/utils/normalize";
+import Question from "metabase-lib/Question";
 import NativeQuery, {
   updateCardTemplateTagNames,
-} from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+} from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";

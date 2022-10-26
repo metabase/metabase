@@ -17,7 +17,8 @@
   "The following drivers are broken to some extent -- details listed in the Google Doc, or can be see here:
   https://circleci.com/workflow-run/856f6dd0-3d95-4732-a56e-1af59e3ae4ba. The goal is to gradually remove these
   one-by-one as they are fixed."
-  #{:oracle
+  #{:bigquery-cloud-sdk
+    :oracle
     :presto
     :redshift
     :snowflake

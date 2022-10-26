@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import Schemas from "metabase/entities/schemas";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { State } from "metabase-types/store";
-import Schema from "metabase-lib/lib/metadata/Schema";
+import Schema from "metabase-lib/metadata/Schema";
 import {
   NodeListItemLink,
   NodeListItemName,

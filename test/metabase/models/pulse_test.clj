@@ -14,7 +14,8 @@
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.time.LocalDateTime))
 
 (defn- user-details
   [username]
@@ -459,8 +460,9 @@
 
 (deftest identity-hash-test
   (testing "Pulse hashes are composed of the name and the collection hash"
-    (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/"}]
-                    Pulse       [pulse {:name "my pulse" :collection_id (:id coll)}]]
-      (is (= "6432d0a9"
-             (serdes.hash/raw-hash ["my pulse" (serdes.hash/identity-hash coll)])
-             (serdes.hash/identity-hash pulse))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/" :created_at now}]
+                      Pulse       [pulse {:name "my pulse" :collection_id (:id coll) :created_at now}]]
+        (is (= "82553101"
+               (serdes.hash/raw-hash ["my pulse" (serdes.hash/identity-hash coll) now])
+               (serdes.hash/identity-hash pulse)))))))

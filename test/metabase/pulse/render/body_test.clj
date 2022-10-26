@@ -591,11 +591,11 @@
                   :display_name  "NumPurchased",
                   :base_type     :type/Integer
                   :semantic_type nil}]
-        render  (fn [rows]
+        render  (fn [rows & [viz-settings]]
                   (body/render :categorical/donut :inline pacific-tz
                                render.tu/test-card
                                nil
-                               {:cols columns :rows rows}))
+                               {:cols columns :rows rows :viz-settings viz-settings}))
         prune   (fn prune [html-tree]
                   (walk/prewalk (fn no-maps [x]
                                   (if (vector? x)
@@ -603,7 +603,7 @@
                                     x))
                                 html-tree))]
     (testing "Renders without error"
-      (let [rendered-info (render [["Doohickey" 75] ["Widget" 25]])]
+      (let [rendered-info (render [["Doohickey" 75] ["Widget" 25]] {:show_values true})]
         (is (has-inline-image? rendered-info))))
     (testing "Includes percentages"
       (is (= [:div
