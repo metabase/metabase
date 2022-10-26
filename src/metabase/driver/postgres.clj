@@ -76,16 +76,6 @@
     ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
     (= driver :postgres)))
 
-(doseq [[feature supported?] {:persist-models         (constantly true)
-                              :convert-timezone       (fn [driver _db] (= driver :postgres))
-                              :persist-models-enabled (fn [_driver db] (-> db :options :persist-models-enabled))
-                              ;; actions only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
-                              :actions                (fn [driver _db] (= driver :postgres))
-                              :actions/custom         (fn [driver _db] (= driver :postgres))}]
-  (defmethod driver/database-supports? [:postgres feature]
-    [driver _feature database]
-    (supported? driver database)))
-
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
 
