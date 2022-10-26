@@ -412,7 +412,7 @@ const TargetName = ({ gtap, target }) => {
               return null;
             }
 
-            const dimension = question.query().parseDimension(fieldRef);
+            const dimension = question.query().parseFieldReference(fieldRef);
             return (
               <span>
                 <strong>{dimension.render()}</strong> field

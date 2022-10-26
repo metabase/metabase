@@ -1439,11 +1439,6 @@ class StructuredQueryInner extends AtomicQuery {
     return fieldRefForColumn(column);
   }
 
-  // TODO: better name may be parseDimension?
-  parseFieldReference(fieldRef, query = this): Dimension | null | undefined {
-    return Dimension.parseMBQL(fieldRef, this._metadata, query);
-  }
-
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
     return new StructuredQuery(this._originalQuestion, datasetQuery);
   }

@@ -659,7 +659,7 @@ class TableInteractive extends Component {
       return undefined;
     }
 
-    return query.parseDimension(column.field_ref);
+    return query.parseFieldReference(column.field_ref);
   }
 
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)

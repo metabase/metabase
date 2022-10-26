@@ -118,8 +118,8 @@ class QueryInner {
     return this;
   }
 
-  parseDimension(fieldRef: Field) {
-    return Dimension.parseMBQL(fieldRef, this.metadata(), this);
+  parseFieldReference(fieldRef, query = this): Dimension | null | undefined {
+    return Dimension.parseMBQL(fieldRef, this._metadata, query);
   }
 }
 
