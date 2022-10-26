@@ -14,7 +14,7 @@ import {
 } from "metabase-types/api";
 import { AdminPathKey, State } from "metabase-types/store";
 import { User } from "metabase-types/types/User";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 import { PluginGroupManagersType } from "./types";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.

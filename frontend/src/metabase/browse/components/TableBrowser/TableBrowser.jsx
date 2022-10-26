@@ -11,7 +11,7 @@ import { Grid } from "metabase/components/Grid";
 import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/lib/metadata/utils/saved-questions";
+} from "metabase-lib/metadata/utils/saved-questions";
 
 import { ANALYTICS_CONTEXT } from "../../constants";
 import BrowseHeader from "../BrowseHeader";

@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import Table from "metabase-lib/lib/metadata/Table";
+import Table from "metabase-lib/metadata/Table";
 
 import {
   NodeListContainer,

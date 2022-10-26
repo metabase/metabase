@@ -26,9 +26,9 @@ import {
   isEmail,
   isImageURL,
   isAvatarURL,
-} from "metabase-lib/lib/types/utils/isa";
-import { findColumnIndexForColumnSetting } from "metabase-lib/lib/queries/utils/dataset";
-import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
+} from "metabase-lib/types/utils/isa";
+import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 import TableSimple from "../components/TableSimple";
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";

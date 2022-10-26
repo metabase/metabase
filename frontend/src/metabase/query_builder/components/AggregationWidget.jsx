@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
-import { isRows } from "metabase-lib/lib/queries/utils/aggregation";
+import { isRows } from "metabase-lib/queries/utils/aggregation";
 import Clearable from "./Clearable";
 import AggregationPopover from "./AggregationPopover";
 import { AggregationLabel } from "./AggregationWidget.styled";

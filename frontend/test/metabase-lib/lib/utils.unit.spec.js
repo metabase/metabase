@@ -1,4 +1,4 @@
-import { sortObject, memoizeClass } from "metabase-lib/lib/utils";
+import { sortObject, memoizeClass } from "metabase-lib/utils";
 
 describe("sortObject", () => {
   it("should serialize identically regardless of property creation order", () => {

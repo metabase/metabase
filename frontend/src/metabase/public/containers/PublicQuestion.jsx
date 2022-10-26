@@ -25,10 +25,10 @@ import { addParamValues, addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import PublicMode from "metabase/modes/components/modes/PublicMode";
-import { getCardUiParameters } from "metabase-lib/lib/parameters/utils/cards";
-import { getParameterValuesBySlug } from "metabase-lib/lib/parameters/utils/parameter-values";
-import { getParametersFromCard } from "metabase-lib/lib/parameters/utils/template-tags";
-import { applyParameters } from "metabase-lib/lib/queries/utils/card";
+import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+import { getParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
+import { applyParameters } from "metabase-lib/queries/utils/card";
 import EmbedFrame from "../components/EmbedFrame";
 
 const mapStateToProps = state => ({

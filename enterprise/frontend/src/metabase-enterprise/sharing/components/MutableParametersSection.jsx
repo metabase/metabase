@@ -14,7 +14,7 @@ import {
   getPulseParameters,
   getActivePulseParameters,
 } from "metabase/lib/pulse";
-import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 function MutableParametersSection({
   className,

@@ -11,11 +11,11 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import { isEntityName, isFK } from "metabase-lib/lib/types/utils/isa";
+import { isEntityName, isFK } from "metabase-lib/types/utils/isa";
 import {
   hasSourceField,
   getFieldTargetId,
-} from "metabase-lib/lib/queries/utils/field-ref";
+} from "metabase-lib/queries/utils/field-ref";
 import SelectSeparator from "../components/SelectSeparator";
 import {
   FieldMappingContainer,

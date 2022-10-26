@@ -13,9 +13,9 @@ import {
   setRelativeDatetimeValue,
   setStartingFrom,
   toTimeInterval,
-} from "metabase-lib/lib/queries/utils/query-time";
+} from "metabase-lib/queries/utils/query-time";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
 import {
   GridContainer,
   GridText,

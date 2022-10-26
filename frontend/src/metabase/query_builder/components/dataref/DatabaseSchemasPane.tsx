@@ -5,7 +5,7 @@ import Search from "metabase/entities/search";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Database from "metabase-lib/lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 import {
   NodeListItemLink,
   NodeListItemName,

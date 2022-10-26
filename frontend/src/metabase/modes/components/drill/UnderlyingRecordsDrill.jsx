@@ -3,7 +3,7 @@ import { inflect } from "metabase/lib/formatting/strings";
 import {
   underlyingRecordsDrill,
   underlyingRecordsDrillQuestion,
-} from "metabase-lib/lib/queries/drills/underlying-records-drill";
+} from "metabase-lib/queries/drills/underlying-records-drill";
 
 export default ({ question, clicked }) => {
   const drill = underlyingRecordsDrill({ question, clicked });

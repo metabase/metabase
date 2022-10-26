@@ -8,7 +8,7 @@ import { loadMetadataForQueries } from "metabase/redux/metadata";
 import Questions from "metabase/entities/questions";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { isSameField } from "metabase-lib/lib/queries/utils/field-ref";
+import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
 import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";

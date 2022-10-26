@@ -4405,14 +4405,14 @@ msgstr "Минулі 7 днів"
 msgid "Past 30 days"
 msgstr "Минулі 30 днів"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1719
+#: frontend/src/metabase-lib/Dimension.ts:1719
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:35
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:40
 #: metabase/api/table.clj:142
 msgid "Week"
 msgstr "тиждень"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1725
+#: frontend/src/metabase-lib/Dimension.ts:1725
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:94
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:36
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:41
@@ -4420,7 +4420,7 @@ msgstr "тиждень"
 msgid "Month"
 msgstr "місяць"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1737
+#: frontend/src/metabase-lib/Dimension.ts:1737
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:37
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:42
 #: metabase/api/table.clj:145
@@ -7527,7 +7527,7 @@ msgstr "право"
 msgid "Show background"
 msgstr "Показати фон"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:463
+#: frontend/src/metabase-lib/Dimension.ts:463
 msgid "{0} bin"
 msgid_plural "{0} bins"
 msgstr[0] "контейнер"
@@ -7535,7 +7535,7 @@ msgstr[1] "контейнеров"
 msgstr[2] "контейнеры"
 msgstr[3] "контейнер"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:471
+#: frontend/src/metabase-lib/Dimension.ts:471
 msgid "Auto binned"
 msgstr "Авт. скомпоновано"
 
@@ -7803,7 +7803,7 @@ msgstr "Тримайте всіх на одній сторінці, створю
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "Таблиця '' {0} '' тепер видима. Ресинхронізація."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1659 metabase/api/table.clj:124
+#: frontend/src/metabase-lib/Dimension.ts:1659 metabase/api/table.clj:124
 msgid "Auto bin"
 msgstr "авто компоновка"
 
@@ -7811,83 +7811,83 @@ msgstr "авто компоновка"
 msgid "Don''t bin"
 msgstr "Не компонувати"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1713 metabase/api/table.clj:128
+#: frontend/src/metabase-lib/Dimension.ts:1713 metabase/api/table.clj:128
 msgid "Day"
 msgstr "день"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1701 metabase/api/table.clj:126
+#: frontend/src/metabase-lib/Dimension.ts:1701 metabase/api/table.clj:126
 msgid "Minute"
 msgstr "хвилина"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1707
+#: frontend/src/metabase-lib/Dimension.ts:1707
 #: frontend/src/metabase/admin/settings/selectors.js:544
 #: metabase/api/table.clj:127
 msgid "Hour"
 msgstr "Година"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1731 metabase/api/table.clj:144
+#: frontend/src/metabase-lib/Dimension.ts:1731 metabase/api/table.clj:144
 msgid "Quarter"
 msgstr "квартал"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1743 metabase/api/table.clj:146
+#: frontend/src/metabase-lib/Dimension.ts:1743 metabase/api/table.clj:146
 #: metabase/api/table.clj:160
 msgid "Minute of Hour"
 msgstr "хвилина години"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1749 metabase/api/table.clj:147
+#: frontend/src/metabase-lib/Dimension.ts:1749 metabase/api/table.clj:147
 msgid "Hour of Day"
 msgstr "Час Дня"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1755 metabase/api/table.clj:148
+#: frontend/src/metabase-lib/Dimension.ts:1755 metabase/api/table.clj:148
 msgid "Day of Week"
 msgstr "День тижня"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1761 metabase/api/table.clj:149
+#: frontend/src/metabase-lib/Dimension.ts:1761 metabase/api/table.clj:149
 msgid "Day of Month"
 msgstr "день місяця"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1767 metabase/api/table.clj:150
+#: frontend/src/metabase-lib/Dimension.ts:1767 metabase/api/table.clj:150
 msgid "Day of Year"
 msgstr "день року"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1773 metabase/api/table.clj:151
+#: frontend/src/metabase-lib/Dimension.ts:1773 metabase/api/table.clj:151
 msgid "Week of Year"
 msgstr "тиждень року"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1779 metabase/api/table.clj:152
+#: frontend/src/metabase-lib/Dimension.ts:1779 metabase/api/table.clj:152
 msgid "Month of Year"
 msgstr "місяць року"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1785 metabase/api/table.clj:153
+#: frontend/src/metabase-lib/Dimension.ts:1785 metabase/api/table.clj:153
 msgid "Quarter of Year"
 msgstr "Квартал року"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1667 metabase/api/table.clj:169
+#: frontend/src/metabase-lib/Dimension.ts:1667 metabase/api/table.clj:169
 msgid "10 bins"
 msgstr "10 контейнерів"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1676 metabase/api/table.clj:170
+#: frontend/src/metabase-lib/Dimension.ts:1676 metabase/api/table.clj:170
 msgid "50 bins"
 msgstr "50 контейнерів"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1685 metabase/api/table.clj:171
+#: frontend/src/metabase-lib/Dimension.ts:1685 metabase/api/table.clj:171
 msgid "100 bins"
 msgstr "100 контейнерів"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1794 metabase/api/table.clj:183
+#: frontend/src/metabase-lib/Dimension.ts:1794 metabase/api/table.clj:183
 msgid "Bin every 0.1 degrees"
 msgstr "Конт. кожен 0.1 градус"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1803 metabase/api/table.clj:184
+#: frontend/src/metabase-lib/Dimension.ts:1803 metabase/api/table.clj:184
 msgid "Bin every 1 degree"
 msgstr "Конт. кожен 1 градус"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1812 metabase/api/table.clj:185
+#: frontend/src/metabase-lib/Dimension.ts:1812 metabase/api/table.clj:185
 msgid "Bin every 10 degrees"
 msgstr "Конт. кожні 10 градусів"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1821 metabase/api/table.clj:186
+#: frontend/src/metabase-lib/Dimension.ts:1821 metabase/api/table.clj:186
 msgid "Bin every 20 degrees"
 msgstr "Конт. кожні 20 градусів"
 
@@ -7964,7 +7964,7 @@ msgstr "накопичувальна сума"
 msgid "{0} and {1}"
 msgstr "{0} і {1}"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Aggregation.ts:74
+#: frontend/src/metabase-lib/queries/structured/Aggregation.ts:74
 #: metabase/automagic_dashboards/core.clj:128
 #: metabase/automagic_dashboards/core.clj:1153
 msgid "{0} of {1}"
@@ -11912,7 +11912,7 @@ msgstr[1] "чверть року"
 msgstr[2] "чверть року"
 msgstr[3] "чверть року"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:323
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:323
 #: frontend/src/metabase/parameters/utils/formatting.ts:67
 #: frontend/src/metabase/query_builder/components/Filter.jsx:62
 msgid "{0} selection"
@@ -11944,7 +11944,7 @@ msgstr "Додати час"
 msgid "Nothing to compare for the previous {0}."
 msgstr "Ніщо не порівняти для попередньої {0}."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:611
+#: frontend/src/metabase-lib/Dimension.ts:611
 msgid "by {0}"
 msgstr "{0}"
 
@@ -13126,31 +13126,31 @@ msgstr "Стрічка"
 msgid "Trend"
 msgstr "Тренд"
 
-#: frontend/src/metabase-lib/lib/DimensionOptions.js:129
+#: frontend/src/metabase-lib/DimensionOptions.js:129
 msgid "Boolean"
 msgstr "Логічне"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:68
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:68
 msgid "Unknown Segment"
 msgstr "Невідомий сегмент"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:81
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:81
 msgid "Unknown Filter"
 msgstr "Невідомий фільтр"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:32
+#: frontend/src/metabase-lib/queries/structured/Join.ts:32
 msgid "Left outer join"
 msgstr "Left outer join"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:37
+#: frontend/src/metabase-lib/queries/structured/Join.ts:37
 msgid "Right outer join"
 msgstr "Right outer join"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:42
+#: frontend/src/metabase-lib/queries/structured/Join.ts:42
 msgid "Inner join"
 msgstr "Inner join"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:47
+#: frontend/src/metabase-lib/queries/structured/Join.ts:47
 msgid "Full outer join"
 msgstr "Full outer join"
 
@@ -13536,7 +13536,7 @@ msgstr "Помилка планування завдання для бази д�
 msgid "All elements must be distinct."
 msgstr "Усі елементи повинні бути відмінними"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Оберіть стовпчики які хочеше залучити"
@@ -17980,12 +17980,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Пульсування поступово стихає"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Тепер мжона настроїти {0} замість цього. Ми плануємо позбутись пульсів у наступних версіях але допоможемо вам не втратити вашу виконану роботу."
@@ -17994,7 +17994,7 @@ msgstr "Тепер мжона настроїти {0} замість цього. 
 msgid "dashboard subscriptions"
 msgstr "підписка на дашборд"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "{0} діаграми на вашій дошці не виглядатимуть так само як й у підписці. {1}"
 
@@ -18143,7 +18143,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Налаштуйте базу даних та виконайте міграції..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."
@@ -21953,24 +21953,24 @@ msgstr "Вам дозволено завантажувати до 10 000 ряд�
 msgid "Manage database"
 msgstr "Керувати базою даних"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:616
+#: frontend/src/metabase-lib/Dimension.ts:616
 msgid "Unbinned"
 msgstr "Unbinned"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1564
+#: frontend/src/metabase-lib/Dimension.ts:1564
 msgid "Invalid template tag \"{0}\""
 msgstr "Недійсний тег шаблону \"{0}\""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1569
+#: frontend/src/metabase-lib/Dimension.ts:1569
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "Змінну \"{0}\" потрібно зіставити з полем."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1694
-#: frontend/src/metabase-lib/lib/Dimension.ts:1830
+#: frontend/src/metabase-lib/Dimension.ts:1694
+#: frontend/src/metabase-lib/Dimension.ts:1830
 msgid "Don't bin"
 msgstr "Не смітник"
 
-#: frontend/src/metabase-lib/lib/queries/NativeQuery.ts:311
+#: frontend/src/metabase-lib/queries/NativeQuery.ts:311
 msgid "Invalid template tag: {0}"
 msgstr "Недійсний тег шаблону: {0}"
 
@@ -23686,7 +23686,7 @@ msgstr "Виконується запит..."
 msgid "Loading results..."
 msgstr "Завантажуємо результати..."
 
-#: frontend/src/metabase-lib/lib/queries/StructuredQuery.ts:907
+#: frontend/src/metabase-lib/queries/StructuredQuery.ts:907
 msgid "Summaries"
 msgstr "Групування"
 
