@@ -24,13 +24,14 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
             [metabase.models.secret :as secret]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [potemkin :as p]
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
@@ -281,13 +282,14 @@
   (let [expr         (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? expr "timestamptz")]
     (when (and timestamptz? source-timezone)
-      (throw (ex-info "`timestamp with time zone` columns shouldn't have a `from timezone`" {:target-timezone target-timezone
-                                                                                             :source-timezone source-timezone})))
+      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone`")
+                      {:type            qp.error-type/invalid-query
+                       :target-timezone target-timezone
+                       :source-timezone source-timezone})))
     (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
           ;; If a column doesn't have a timezone, calling `timezone(source-timezone, column)` will cast it
           ;; to `timestamp with time zone` with time zone is the `source-timezone`.
-          ;; For `timestamp with time zone` columns, Postgres will retuns all values in the report-tz regardless of
-          ;; what time zone column is in.
+          ;; For `timestamp with time zone` columns, Postgres will shift the hours back to report-tz beforing returning it.
           ;; So what we care is to just make sure the output of `convert-timezone` is a `timestammp with time zone`.
           ;; And the actual conversion will be done in `format-rows` middleware.
           expr (if-not timestamptz?
@@ -298,15 +300,6 @@
                                 :target-timezone target-timezone}
          ::hx/database-type    "timestamptz"}))))
 
-(defn- zone->total-seconds-offset
-  [zone]
-  (.. (t/zone-id zone) getRules (getOffset (t/instant)) getTotalSeconds))
-
-(defn- source-timezone->target-timezone-offset
-  [source-timezone target-timezone]
-  (- (zone->total-seconds-offset target-timezone)
-     (zone->total-seconds-offset source-timezone)))
-
 (defn- shift-time-if-needed
   "If the expr was converted to a timezone, shift the hours so that the result of extract time on this column return the time
   in the timezone that it was converted to.
@@ -315,15 +308,17 @@
   I.e: select extract(hour, timestamp with time zone '2000/01/01 07:00:00+07:00') => 0 (assuming report-tz = UTC)
 
   This is unintuive and our users will expect [:temporal-extract '2000/01/01 07:00:00+07:00' :hour] to returns 7 instead."
-  [driver expr]
-  (if-let [{:keys [source-timezone target-timezone]} (hx/type-info->convert-timezone-info (hx/type-info expr))]
-    (sql.qp/->honeysql driver [:date-add expr (source-timezone->target-timezone-offset source-timezone target-timezone) :second])
-    expr))
+  [expr]
+  (let [{:keys [target-timezone]} (hx/type-info->convert-timezone-info (hx/type-info expr))]
+    (if (and (hx/is-of-type? expr "timestamptz")
+             target-timezone)
+      (hsql/call :timezone target-timezone expr)
+      expr)))
 
 (defmethod sql.qp/->honeysql [:postgres :temporal-extract]
   [driver [_ arg unit]]
   (->> (sql.qp/->honeysql driver arg)
-       (shift-time-if-needed driver)
+       shift-time-if-needed
        (sql.qp/date driver (sql.qp/temporal-extract-unit->date-unit unit))))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
@@ -524,8 +519,8 @@
    (keyword "time without time zone")     :type/Time
    ;; TODO postgres also supports `timestamp(p) with time zone` where p is the precision
    ;; maybe we should switch this to use `sql-jdbc.sync/pattern-based-database-type->base-type`
-   (keyword "timestamp with timezone")    :type/DateTimeWithTZ
-   (keyword "timestamp without timezone") :type/DateTime})
+   (keyword "timestamp with time zone")    :type/DateTimeWithTZ
+   (keyword "timestamp without time zone") :type/DateTime})
 
 (doseq [[base-type db-type] {:type/BigInteger          "BIGINT"
                              :type/Boolean             "BOOL"
