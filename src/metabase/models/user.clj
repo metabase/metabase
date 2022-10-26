@@ -1,10 +1,8 @@
 (ns metabase.models.user
   (:require
    [clojure.data :as data]
-   [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [metabase.config.file :as config.file]
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -367,56 +365,3 @@
        (doseq [group-id to-add]
          (db/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))
-
-
-;;;; initialization from files
-
-(s/def :metabase.models.user.config-file-spec/first_name
-  string?)
-
-(s/def :metabase.models.user.config-file-spec/last_name
-  string?)
-
-(s/def :metabase.models.user.config-file-spec/password
-  string?)
-
-(s/def :metabase.models.user.config-file-spec/email
-  string?)
-
-(s/def ::config-file-spec
-  (s/keys :req-un [:metabase.models.user.config-file-spec/first_name
-                   :metabase.models.user.config-file-spec/last_name
-                   :metabase.models.user.config-file-spec/password
-                   :metabase.models.user.config-file-spec/email]))
-
-(defmethod config.file/section-spec :users
-  [_section]
-  (s/spec (s/* ::config-file-spec)))
-
-(defn- init-from-config-file-is-first-user?
-  "For [[init-from-config-file!]]: `true` if this the first User being created for this instance. If so, we will ALWAYS
-  create that User as a superuser, regardless of what is specified in the config file. (It doesn't make sense to
-  create the first User as anything other than a superuser)."
-  []
-  (zero? (db/count User)))
-
-(defn- init-from-config-file!
-  [user]
-  ;; TODO -- if this is the FIRST user, we should probably make them a superuser, right?
-  (if-let [existing-user-id (db/select-one-id User :email (:email user))]
-    (do
-      (log/info (u/colorize :blue (trs "Updating User with email {0}" (pr-str (:email user)))))
-      (db/update! User existing-user-id user))
-    ;; create a new user. If they are the first User, force them to be an admin.
-    (let [user (cond-> user
-                 (init-from-config-file-is-first-user?) (assoc :is_superuser true))]
-      (log/info (u/colorize :green (trs "Creating the first User for this instance. The first user is always created as an admin.")))
-      (log/info (u/colorize :green (trs "Creating new User {0} with email {1}"
-                                        (pr-str (str (:first_name user) \space (:last_name user)))
-                                        (pr-str (:email user)))))
-      (db/insert! User user))))
-
-(defmethod config.file/initialize-section! :users
-  [_section-name users]
-  (doseq [user users]
-    (init-from-config-file! user)))
