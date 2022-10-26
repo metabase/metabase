@@ -27,7 +27,7 @@ import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
-import { getCardUiParameters } from "metabase/parameters/utils/cards";
+import { getCardUiParameters } from "metabase-lib/lib/parameters/utils/cards";
 import {
   DashboardApi,
   CardApi,

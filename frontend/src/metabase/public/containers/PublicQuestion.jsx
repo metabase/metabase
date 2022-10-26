@@ -12,8 +12,6 @@ import title from "metabase/hoc/Title";
 
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 
-import { getCardUiParameters } from "metabase/parameters/utils/cards";
-
 import {
   PublicApi,
   EmbedApi,
@@ -27,6 +25,7 @@ import { addParamValues, addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import PublicMode from "metabase/modes/components/modes/PublicMode";
+import { getCardUiParameters } from "metabase-lib/lib/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/lib/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/lib/parameters/utils/template-tags";
 import { applyParameters } from "metabase-lib/lib/queries/utils/card";
