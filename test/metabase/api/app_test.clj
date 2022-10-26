@@ -123,27 +123,98 @@
           (mt/with-all-users-permission (perms/app-root-collection-permission :write)
             (mt/with-temp* [Collection [collection-1 {:name "Collection 1", :namespace :apps}]
                             Collection [collection-2 {:name "Collection 2", :namespace :apps, :archived true}]
-                            Dashboard [{dashboard_id :id}]
-                            App [{app-1-id :id} (assoc app-data :collection_id (:id collection-1) :dashboard_id dashboard_id)]
-                            App [{app-2-id :id} (assoc app-data :collection_id (:id collection-2) :dashboard_id dashboard_id)]]
+                            Collection [collection-3 {:name "Collection 3", :namespace :apps}]
+                            Collection [collection-4 {:name "Collection 4", :namespace :apps, :archived true}]
+                            Card [{model-id :id} {:name "Model", :dataset true
+                                                  :dataset_query {:query {:source-table 1
+                                                                          :filter [:= [:field 1 nil] "1"]}}
+                                                  :creator_id (mt/user->id :rasta)}]
+                            ;; matching question
+                            Card [_ {:name "Card 1"
+                                     :dataset_query {:query {:source-table (str "card__" model-id)}}
+                                     :collection_id (:id collection-2)}]
+                            Card [{other-card-id :id}]
+                            ;; source-table doesn't match
+                            Card [_ {:name "Card 2"
+                                     :dataset_query {:query {:source-table (str "card__" other-card-id)
+                                                             :filter [:= [:field 5 nil] (str "card__" model-id)]}}
+                                     :collection_id (:id collection-1)}]
+                            ;; matching join
+                            Card [card-3 {:name "Card 3"
+                                          :dataset_query (let [alias (str "Question " model-id)]
+                                                           {:type :query
+                                                            :query {:joins [{:fields [[:field 35 {:join-alias alias}]]
+                                                                             :source-table (str "card__" model-id)
+                                                                             :condition [:=
+                                                                                         [:field 5 nil]
+                                                                                         [:field 33 {:join-alias alias}]]
+                                                                             :alias alias
+                                                                             :strategy :inner-join}]
+                                                                    :fields [[:field 9 nil]]}})}]
+                            ;; native query reference doesn't match
+                            Card [card-4 {:name "Card 4"
+                                          :dataset_query {:type :native
+                                                          :native (let [model-ref (str "card__" model-id)
+                                                                        card-id other-card-id
+                                                                        card-ref (format "#%d-q1" card-id)]
+                                                                    {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                                    model-ref card-ref)
+                                                                     :template-tags {card-ref
+                                                                                     {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                                      :name card-ref
+                                                                                      :display-name card-ref
+                                                                                      :type :card
+                                                                                      :card-id card-id}}})}}]
+                            Dashboard [{dashboard-3-id :id} {:collection_id (:id collection-3)}]
+                            Dashboard [{dashboard-4-id :id} {:collection_id (:id collection-4)}]
+                            DashboardCard [_ {:dashboard_id dashboard-3-id, :card_id (:id card-3)}]
+                            DashboardCard [_ {:dashboard_id dashboard-4-id, :card_id (:id card-4)}]
+                            App [{app-1-id :id} (assoc app-data :collection_id (:id collection-1))]
+                            App [{app-2-id :id} (assoc app-data :collection_id (:id collection-2))]
+                            App [{app-3-id :id} (assoc app-data
+                                                       :collection_id (:id collection-3)
+                                                       :dashboard_id dashboard-3-id)]
+                            App [{app-4-id :id} (assoc app-data :collection_id (:id collection-4))]]
               (testing "listing normal apps"
-                (let [expected (merge app-data {:id app-1-id
+                (is (partial= [(merge app-data {:id app-1-id
                                                 :collection_id (:id collection-1)
-                                                :dashboard_id dashboard_id
                                                 :collection (-> collection-1
                                                                 (assoc :can_write true)
+                                                                (update :namespace name))})
+                               (merge app-data {:id app-3-id
+                                                :collection_id (:id collection-3)
+                                                :dashboard_id dashboard-3-id
+                                                :collection (-> collection-3
+                                                                (assoc :can_write true)
                                                                 (update :namespace name))})]
-                  (is (partial= [expected]
-                                (mt/user-http-request :rasta :get 200 "app")))))
+                              (mt/user-http-request :rasta :get 200 "app"))))
+              (testing "listing normal apps using model"
+                (is (partial= [(merge app-data {:id app-3-id
+                                                :collection_id (:id collection-3)
+                                                :dashboard_id dashboard-3-id
+                                                :collection (-> collection-3
+                                                                (assoc :can_write true)
+                                                                (update :namespace name))})]
+                              (mt/user-http-request :rasta :get 200 (str "app?using_model=" model-id)))))
               (testing "listing archived"
-                (let [expected (merge app-data {:id app-2-id
+                (is (partial= [(merge app-data {:id app-2-id
                                                 :collection_id (:id collection-2)
-                                                :dashboard_id dashboard_id
+                                                :collection (-> collection-2
+                                                                (assoc :can_write true)
+                                                                (update :namespace name))})
+                               (merge app-data {:id app-4-id
+                                                :collection_id (:id collection-4)
+                                                :collection (-> collection-4
+                                                                (assoc :can_write true)
+                                                                (update :namespace name))})]
+                              (mt/user-http-request :rasta :get 200 "app?archived=true"))))
+              (testing "listing archived using model"
+                (is (partial= [(merge app-data {:id app-2-id
+                                                :collection_id (:id collection-2)
                                                 :collection (-> collection-2
                                                                 (assoc :can_write true)
                                                                 (update :namespace name))})]
-                  (is (partial= [expected]
-                                (mt/user-http-request :rasta :get 200 "app/?archived=true"))))))))))))
+                              (mt/user-http-request :rasta :get 200 (str "app?archived=true&using_model=" model-id))))))))))))
 
 (deftest fetch-app-test
   (let [app-data {:nav_items [{:options {:item "stuff"}}]
