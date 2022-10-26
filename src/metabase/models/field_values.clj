@@ -440,9 +440,19 @@
                     ;; It's too short, so no schema. Shift them over and add a nil schema.
                     [db nil schema table])]
     (-> (serdes.base/load-xform-basics fv)
-        (assoc :field_id (serdes.util/import-field-fk field-ref)))))
+        (assoc :field_id (serdes.util/import-field-fk field-ref))
+        (update :type keyword))))
 
 (defmethod serdes.base/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field-id (serdes.base/load-find-local (pop path))]
     (db/select-one-id FieldValues :field_id field-id)))
+
+(defmethod serdes.base/load-update! "FieldValues" [_ ingested local]
+  ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
+  ;; This drops those keys from the incoming FieldValues iff they match the local one. If they are actually different,
+  ;; this preserves the new value so the normal error is produced.
+  (let [ingested (cond-> ingested
+                   (= (:type ingested)     (:type local))     (dissoc :type)
+                   (= (:hash_key ingested) (:hash_key local)) (dissoc :hash_key))]
+    ((get-method serdes.base/load-update! "") "FieldValues" ingested local)))

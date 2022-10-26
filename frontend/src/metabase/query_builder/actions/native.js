@@ -13,6 +13,7 @@ import {
   getTemplateTagParameters,
 } from "metabase-lib/lib/parameters/utils/template-tags";
 import {
+  getDataReferenceStack,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getQuestion,
@@ -27,12 +28,27 @@ export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
   MetabaseAnalytics.trackStructEvent("QueryBuilder", "Toggle Data Reference");
 });
 
+export const SET_DATA_REFERENCE_STACK = "metabase/qb/SET_DATA_REFERENCE_STACK";
+export const setDataReferenceStack = createAction(SET_DATA_REFERENCE_STACK);
+
 export const POP_DATA_REFERENCE_STACK = "metabase/qb/POP_DATA_REFERENCE_STACK";
-export const popDataReferenceStack = createAction(POP_DATA_REFERENCE_STACK);
+export const popDataReferenceStack = createThunkAction(
+  POP_DATA_REFERENCE_STACK,
+  () => (dispatch, getState) => {
+    const stack = getDataReferenceStack(getState());
+    dispatch(setDataReferenceStack(stack.slice(0, -1)));
+  },
+);
 
 export const PUSH_DATA_REFERENCE_STACK =
   "metabase/qb/PUSH_DATA_REFERENCE_STACK";
-export const pushDataReferenceStack = createAction(PUSH_DATA_REFERENCE_STACK);
+export const pushDataReferenceStack = createThunkAction(
+  PUSH_DATA_REFERENCE_STACK,
+  item => (dispatch, getState) => {
+    const stack = getDataReferenceStack(getState());
+    dispatch(setDataReferenceStack(stack.concat([item])));
+  },
+);
 
 export const OPEN_DATA_REFERENCE_AT_QUESTION =
   "metabase/qb/OPEN_DATA_REFERENCE_AT_QUESTION";

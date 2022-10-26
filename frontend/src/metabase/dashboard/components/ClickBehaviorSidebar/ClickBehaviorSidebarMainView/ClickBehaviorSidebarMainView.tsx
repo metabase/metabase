@@ -1,12 +1,12 @@
 import React from "react";
 
-import type { UiParameter } from "metabase/parameters/types";
 import type {
   ActionDashboardCard,
   Dashboard,
   DashboardOrderedCard,
   ClickBehavior,
 } from "metabase-types/api";
+import type { UiParameter } from "metabase-lib/lib/parameters/types";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 import ActionOptions from "../ActionOptions";

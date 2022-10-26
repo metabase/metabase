@@ -1,23 +1,26 @@
 (ns metabase.models.database
-  (:require [cheshire.generate :refer [add-encoder encode-map]]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.db.util :as mdb.u]
-            [metabase.driver :as driver]
-            [metabase.driver.impl :as driver.impl]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.secret :as secret :refer [Secret]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [cheshire.generate :refer [add-encoder encode-map]]
+   [clojure.spec.alpha :as s]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.config.file :as config.file]
+   [metabase.db.util :as mdb.u]
+   [metabase.driver :as driver]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.secret :as secret :refer [Secret]]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -290,6 +293,7 @@
   ;; There's one optional foreign key: creator_id. Resolve it as an email.
   (cond-> (serdes.base/extract-one-basics "Database" entity)
     true                 (update :creator_id serdes.util/export-user)
+    true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
     (= :exclude secrets) (dissoc :details)))
 
 (defmethod serdes.base/serdes-entity-id "Database"
@@ -310,3 +314,42 @@
         (not (:details database)) (assoc :details "{}"))
       serdes.base/load-xform-basics
       (update :creator_id serdes.util/import-user)))
+
+
+;;;; initialization from files
+
+(s/def :metabase.models.database.config-file-spec/name
+  string?)
+
+(s/def :metabase.models.database.config-file-spec/engine
+  string?)
+
+(s/def :metabase.models.database.config-file-spec/details
+  map?)
+
+(s/def ::config-file-spec
+  (s/keys :req-un [:metabase.models.database.config-file-spec/engine
+                   :metabase.models.database.config-file-spec/name
+                   :metabase.models.database.config-file-spec/details]))
+
+(defmethod config.file/section-spec :databases
+  [_section]
+  (s/spec (s/* ::config-file-spec)))
+
+(defn- init-from-config-file!
+  [database]
+  ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
+  (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)
+  (if-let [existing-database-id (db/select-one-id Database :engine (:engine database), :name (:name database))]
+    (do
+      (log/info (u/colorize :blue (trs "Updating Database {0} {1}" (:engine database) (pr-str (:name database)))))
+      (db/update! Database existing-database-id database))
+    (do
+      (log/info (u/colorize :green (trs "Creating new {0} Database {1}" (:engine database) (pr-str (:name database)))))
+      (let [db (db/insert! Database database)]
+        ((requiring-resolve 'metabase.sync/sync-database!) db)))))
+
+(defmethod config.file/initialize-section! :databases
+  [_section-name databases]
+  (doseq [database databases]
+    (init-from-config-file! database)))

@@ -6,8 +6,7 @@ import Utils from "metabase/lib/utils";
 import {
   RESET_QB,
   INITIALIZE_QB,
-  POP_DATA_REFERENCE_STACK,
-  PUSH_DATA_REFERENCE_STACK,
+  SET_DATA_REFERENCE_STACK,
   OPEN_DATA_REFERENCE_AT_QUESTION,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
@@ -161,16 +160,10 @@ export const uiControls = handleActions(
         isShowingDataReference: !state.isShowingDataReference,
       }),
     },
-    [POP_DATA_REFERENCE_STACK]: {
+    [SET_DATA_REFERENCE_STACK]: {
       next: (state, { payload }) => ({
         ...state,
-        dataReferenceStack: state.dataReferenceStack.slice(0, -1),
-      }),
-    },
-    [PUSH_DATA_REFERENCE_STACK]: {
-      next: (state, { payload }) => ({
-        ...state,
-        dataReferenceStack: (state.dataReferenceStack || []).concat([payload]),
+        dataReferenceStack: payload,
       }),
     },
     [OPEN_DATA_REFERENCE_AT_QUESTION]: {

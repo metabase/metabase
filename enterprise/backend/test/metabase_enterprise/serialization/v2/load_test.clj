@@ -303,9 +303,9 @@
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
 
         (testing "the serialized form is as desired"
-          (is (= {:type "query"
+          (is (= {:type  :query
                   :query {:source-table ["my-db" nil "customers"]
-                          :filter       [">=" [:field ["my-db" nil "customers" "age"] nil] 18]
+                          :filter       [:>= [:field ["my-db" nil "customers" "age"] nil] 18]
                           :aggregation  [[:count]]}
                   :database "my-db"}
                  (->> (by-model @serialized "Card")
@@ -385,7 +385,7 @@
         (testing "exported form is properly converted"
           (is (= {:source-table ["my-db" nil "customers"]
                   :aggregation [[:count]]
-                  :filter ["<" [:field ["my-db" nil "customers" "age"] nil] 18]}
+                  :filter [:< [:field ["my-db" nil "customers" "age"] nil] 18]}
                  (-> @serialized
                      (by-model "Segment")
                      first
@@ -598,16 +598,16 @@
                                 :table.cell_column "sum"
                                 :table.columns
                                 [{:name "SOME_FIELD"
-                                  :fieldRef ["field" ["my-db" nil "orders" "subtotal"] nil]
+                                  :fieldRef [:field ["my-db" nil "orders" "subtotal"] nil]
                                   :enabled true}
                                  {:name "sum"
-                                  :fieldRef ["field" "sum" {:base-type "type/Float"}]
+                                  :fieldRef [:field "sum" {:base-type :type/Float}]
                                   :enabled true}
                                  {:name "count"
-                                  :fieldRef ["field" "count" {:base-type "type/BigInteger"}]
+                                  :fieldRef [:field "count" {:base-type :type/BigInteger}]
                                   :enabled true}
                                  {:name "Average order total"
-                                  :fieldRef ["field" "Average order total" {:base-type "type/Float"}]
+                                  :fieldRef [:field "Average order total" {:base-type :type/Float}]
                                   :enabled true}]
                                 :column_settings
                                 {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]" {:column_title "Locus"}}}]
@@ -678,8 +678,8 @@
           (ts/with-source-db
             (reset! user1s    (ts/create! User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! user2s    (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! metric1s  (ts/create! Metric :name "Large Users"       :creator_id (:id @user1s)))
-            (reset! metric2s  (ts/create! Metric :name "Support Headaches" :creator_id (:id @user2s)))
+            (reset! metric1s  (ts/create! Metric :name "Large Users"       :creator_id (:id @user1s) :definition {:aggregation [[:count]]}))
+            (reset! metric2s  (ts/create! Metric :name "Support Headaches" :creator_id (:id @user2s) :definition {:aggregation [[:count]]}))
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
 
         (testing "exported form is properly converted"

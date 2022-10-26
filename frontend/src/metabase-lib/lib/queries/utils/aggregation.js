@@ -146,3 +146,7 @@ export function setField(aggregation, fieldRef) {
     return aggregation;
   }
 }
+
+export function isRows(aggregation) {
+  return aggregation && aggregation[0] === "rows";
+}
