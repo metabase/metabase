@@ -1,7 +1,6 @@
 (ns metabase.query-processor-test.date-time-zone-functions-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
-            [clojure.tools.macro :as tools.macro]
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.test :as mt]
@@ -370,7 +369,7 @@
             (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
                           (diffs #t "2022-10-02T01:00:00Z[+01:00]"      ; 2022-10-02T00:00:00Z[+00:00]
                                  #t "2022-10-03T00:00:00Z[+00:00]"))))  ; 2022-10-03T00:00:00Z[+00:00]
-          (mt/with-report-timezone-id "Atlantic/Cape_Verde"
+          (mt/with-report-timezone-id "Atlantic/Cape_Verde" ; UTC-1 all year
             (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
                           (diffs #t "2022-10-02T01:00:00Z[+01:00]"      ; 2022-10-01T23:00:00Z[-01:00]
                                  #t "2022-10-03T00:00:00Z[+00:00]"))))) ; 2022-10-02T23:00:00Z[-01:00]
