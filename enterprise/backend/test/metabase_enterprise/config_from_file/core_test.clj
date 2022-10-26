@@ -169,7 +169,7 @@
 (deftest initialize-section-test
   (testing "Ignore unknown sections"
     (binding [config-from-file/*config* {:version 1.0, :config {:unknown-section {}}}]
-      (let [log-messages (mt/with-log-messages-for-level [metabase-enterprise.config-from-file.core :warn]
+      (let [log-messages (mt/with-log-messages-for-level [metabase-enterprise.config-from-file.interface :warn]
                            (is (= :ok
                                   (config-from-file/initialize!))))]
         (is (= [[:warn nil (u/colorize :yellow "Ignoring unknown config section :unknown-section.")]]
