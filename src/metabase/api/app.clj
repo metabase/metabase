@@ -3,6 +3,7 @@
     [clojure.string :as str]
     [clojure.walk :as walk]
     [compojure.core :refer [POST PUT]]
+    [honeysql.helpers :as hh]
     [medley.core :as m]
     [metabase.actions :as actions]
     [metabase.api.card :as api.card]
@@ -62,22 +63,53 @@
   (db/update! App app-id (select-keys body [:dashboard_id :options :nav_items]))
   (hydrate-details (db/select-one App :id app-id)))
 
+(defn- using-model-condition [model-id]
+  (let [model-ref-condition
+        [:or
+         [:= :c.id model-id]
+         [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+         [:like :c.dataset_query (format "%%#%s%%" model-id)]]]
+    [:exists
+     {:union-all [;; the model or a question (possibly) with the model in the app collection
+                  {:select [0]
+                   :from [[:report_card :c]]
+                   :where [:and
+                           [:= :c.collection_id :app.collection_id]
+                           model-ref-condition]}
+                  ;; the model or a question (possibly) with the model on a dashboard in the app collection
+                  {:select [0]
+                   :from [[:report_card :c]]
+                   :join [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]
+                          [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
+                   :where [:and
+                           [:= :d.collection_id :app.collection_id]
+                           model-ref-condition]}]}]))
+
 (api/defendpoint GET "/"
   "Fetch a list of all Apps that the current user has read permissions for.
 
   By default, this returns Apps with non-archived Collections, but instead you can show archived ones by passing
-  `?archived=true`."
-  [archived]
-  {archived (s/maybe su/BooleanString)}
-  (let [archived? (Boolean/parseBoolean archived)]
-    (hydrate-details
-     (db/select [App :app.*]
-       {:left-join [:collection [:= :collection.id :app.collection_id]]
-        :where    [:and
-                   [:= :collection.archived archived?]
-                   (collection/visible-collection-ids->honeysql-filter-clause
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-        :order-by [[:%lower.collection.name :asc]]}))))
+  `archived=true`. By specifying `using_model=<model-id>` the list can be restricted to the apps using the given
+  model."
+  [archived using_model]
+  {archived    (s/maybe su/BooleanString)
+   using_model (s/maybe su/IntStringGreaterThanZero)}
+  (let [archived? (Boolean/parseBoolean archived)
+        using-model (some-> using_model parse-long)
+        candidates (db/select [App :app.*]
+                     (cond-> {:left-join [:collection [:= :collection.id :app.collection_id]]
+                              :where [:and
+                                      [:= :collection.archived archived?]
+                                      (-> @api/*current-user-permissions-set*
+                                          collection/permissions-set->visible-collection-ids
+                                          collection/visible-collection-ids->honeysql-filter-clause)]
+                              :order-by [[:%lower.collection.name :asc]]}
+                       using-model (hh/merge-where (using-model-condition using-model))))]
+    (if using-model
+      ;; make sure the returned apps really use the specified model
+      (filter (fn [{:keys [models]}] (some #{using-model} (map :id models)))
+              (hydrate-details candidates :models))
+      (hydrate-details candidates))))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific App"
