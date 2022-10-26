@@ -8,13 +8,13 @@ import AceEditor from "react-ace";
 
 import * as ace from "ace-builds/src-noconflict/ace";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import { format } from "metabase-lib/lib/expressions/format";
-import { suggest } from "metabase-lib/lib/expressions/suggest";
-import { processSource } from "metabase-lib/lib/expressions/process";
-import { diagnose } from "metabase-lib/lib/expressions/diagnostics";
-import { tokenize } from "metabase-lib/lib/expressions/tokenizer";
+import { format } from "metabase-lib/expressions/format";
+import { suggest } from "metabase-lib/expressions/suggest";
+import { processSource } from "metabase-lib/expressions/process";
+import { diagnose } from "metabase-lib/expressions/diagnostics";
+import { tokenize } from "metabase-lib/expressions/tokenizer";
 
-import { isExpression } from "metabase-lib/lib/expressions";
+import { isExpression } from "metabase-lib/expressions";
 
 import HelpText from "./ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";

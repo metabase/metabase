@@ -8,9 +8,9 @@ import Utils from "metabase/lib/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { isEqualCard } from "metabase/lib/card";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
-import { isAdHocModelQuestion } from "metabase-lib/lib/metadata/utils/models";
+import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import {
   getCard,
   getDatasetEditorTab,

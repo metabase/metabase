@@ -12,7 +12,7 @@ import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover"
 import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
-} from "metabase-lib/lib/metadata/utils/saved-questions";
+} from "metabase-lib/metadata/utils/saved-questions";
 
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";

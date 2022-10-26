@@ -2,7 +2,7 @@ import React from "react";
 import styled from "@emotion/styled";
 
 import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/Dimension";
 
 import DimensionSemanticTypeLabel from "./DimensionSemanticTypeLabel";
 

@@ -197,7 +197,7 @@
             (extract-query model opts)))
 
 (defmethod extract-query :default [model-name _]
-  (db/select (symbol model-name)))
+  (db/select-reducible (symbol model-name)))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:

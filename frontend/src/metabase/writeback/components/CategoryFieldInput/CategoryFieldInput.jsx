@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-import Field from "metabase-lib/lib/metadata/Field";
+import Field from "metabase-lib/metadata/Field";
 
 import {
   OptionListContainer,

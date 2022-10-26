@@ -25,7 +25,7 @@ import {
   isDate,
   isDimension,
   isMetric,
-} from "metabase-lib/lib/types/utils/isa";
+} from "metabase-lib/types/utils/isa";
 
 import {
   LineAreaBarChartRoot,

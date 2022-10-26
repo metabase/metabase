@@ -2,7 +2,7 @@ import moment from "moment-timezone";
 import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time";
-import { isDate } from "metabase-lib/lib/types/utils/isa";
+import { isDate } from "metabase-lib/types/utils/isa";
 
 import { unexpectedTimezoneWarning, multipleTimezoneWarning } from "./warnings";
 

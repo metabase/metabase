@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { getVisualizationRaw } from "metabase/visualizations";
-import { normalizeFieldRef } from "metabase-lib/lib/queries/utils/dataset";
+import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
 import {
   getComputedSettings,
   getSettingsWidgets,

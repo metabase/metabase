@@ -2205,159 +2205,159 @@ msgstr ""
 msgid "{0} events"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:460
+#: frontend/src/metabase-lib/Dimension.ts:460
 msgid "{0} bin"
 msgid_plural "{0} bins"
 msgstr[0] ""
 msgstr[1] ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:468
+#: frontend/src/metabase-lib/Dimension.ts:468
 msgid "Auto binned"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:608
+#: frontend/src/metabase-lib/Dimension.ts:608
 #, javascript-format
 msgid "by {0}"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:613
+#: frontend/src/metabase-lib/Dimension.ts:613
 msgid "Unbinned"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1566
+#: frontend/src/metabase-lib/Dimension.ts:1566
 #, javascript-format
 msgid "Invalid template tag \"{0}\""
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1571
+#: frontend/src/metabase-lib/Dimension.ts:1571
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1661 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1661 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Auto bin"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1669 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1669 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "10 bins"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1678 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1678 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "50 bins"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1687 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1687 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "100 bins"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1696
-#: frontend/src/metabase-lib/lib/Dimension.ts:1832
+#: frontend/src/metabase-lib/Dimension.ts:1696
+#: frontend/src/metabase-lib/Dimension.ts:1832
 msgid "Don't bin"
 msgstr ""
 
 #. #-#-#-#-#  metabase-backend.pot (metabase)  #-#-#-#-#
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1703 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1703 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1709
+#: frontend/src/metabase-lib/Dimension.ts:1709
 #: frontend/src/metabase/admin/settings/selectors.js:442
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Hour"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1715 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1715 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1721
+#: frontend/src/metabase-lib/Dimension.ts:1721
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Week"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1727
+#: frontend/src/metabase-lib/Dimension.ts:1727
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Month"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1733 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1733 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Quarter"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1739
+#: frontend/src/metabase-lib/Dimension.ts:1739
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:27
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:32
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Year"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1745 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1745 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute of Hour"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1751 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1751 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Hour of Day"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1757 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1757 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Week"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1763 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1763 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Month"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1769 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1769 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Year"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1775 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1775 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Week of Year"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1781 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1781 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Month of Year"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1787 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1787 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Quarter of Year"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1796 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1796 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 0.1 degrees"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1805 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1805 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 1 degree"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1814 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1814 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 10 degrees"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1823 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/Dimension.ts:1823 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 20 degrees"
 msgstr ""
@@ -2537,18 +2537,18 @@ msgstr ""
 msgid "Pulse"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/queries/NativeQuery.ts:306
+#: frontend/src/metabase-lib/queries/NativeQuery.ts:306
 #, javascript-format
 msgid "Invalid template tag: {0}"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/queries/structured/Aggregation.ts:76
+#: frontend/src/metabase-lib/queries/structured/Aggregation.ts:76
 #: src/metabase/automagic_dashboards/core.clj
 #: target/classes/metabase/automagic_dashboards/core.clj
 msgid "{0} of {1}"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/queries/StructuredQuery.ts:874
+#: frontend/src/metabase-lib/queries/StructuredQuery.ts:874
 #: frontend/src/metabase/admin/datamodel/components/revisions/RevisionHistory.jsx:41
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:64
 #: frontend/src/metabase/home/containers/SearchApp.jsx:67
@@ -2692,15 +2692,15 @@ msgstr ""
 msgid "Unknown"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:61
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:61
 msgid "Unknown Segment"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:73
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:73
 msgid "Unknown Filter"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:304
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:304
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue.jsx:9
 #: frontend/src/metabase/query_builder/components/Filter.jsx:62
 #, javascript-format
@@ -2723,19 +2723,19 @@ msgstr ""
 msgid "Search for a table"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:29
+#: frontend/src/metabase-lib/queries/structured/Join.ts:29
 msgid "Left outer join"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:34
+#: frontend/src/metabase-lib/queries/structured/Join.ts:34
 msgid "Right outer join"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:39
+#: frontend/src/metabase-lib/queries/structured/Join.ts:39
 msgid "Inner join"
 msgstr ""
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:44
+#: frontend/src/metabase-lib/queries/structured/Join.ts:44
 msgid "Full outer join"
 msgstr ""
 
