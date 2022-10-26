@@ -1,59 +1,34 @@
 import React from "react";
 import { Group } from "@visx/group";
 import { Text } from "metabase/static-viz/components/Text";
-import {
-  LEGEND_CIRCLE_SIZE,
-  LEGEND_COLUMNS_MARGIN,
-  LEGEND_TEXT_MARGIN,
-} from "metabase/static-viz/components/XYChart/constants";
-import { truncateText } from "metabase/static-viz/lib/text";
+import { LEGEND_CIRCLE_MARGIN_RIGHT, LEGEND_CIRCLE_SIZE } from "./constants";
+import { PositionedLegendItem } from "./types";
 
 const FONT_WEIGHT = 700;
 
 type LegendItemProps = {
-  label: string;
-  color: string;
-  top?: number;
-  left?: number;
-  width: number;
-  align?: "left" | "right";
+  item: PositionedLegendItem;
   fontSize: number;
   lineHeight: number;
 };
 
-export const LegendItem = ({
-  label,
-  color,
-  left,
-  top,
-  width,
-  fontSize,
-  lineHeight,
-  align = "left",
-}: LegendItemProps) => {
+export const LegendItem = ({ item, fontSize, lineHeight }: LegendItemProps) => {
+  const { name, color, left, top } = item;
   const radius = LEGEND_CIRCLE_SIZE / 2;
-  const textAnchor = align === "left" ? "start" : "end";
-  const textX = align === "left" ? LEGEND_TEXT_MARGIN : -LEGEND_TEXT_MARGIN;
-  const circleCX = align === "left" ? radius : -radius;
-  const truncatedLabel = truncateText(
-    label,
-    width - LEGEND_TEXT_MARGIN - LEGEND_COLUMNS_MARGIN,
-    fontSize,
-    FONT_WEIGHT,
-  );
+  const textX = LEGEND_CIRCLE_SIZE + LEGEND_CIRCLE_MARGIN_RIGHT;
 
   return (
-    <Group left={left} top={top} width={width}>
-      <circle fill={color} r={radius} cx={circleCX} cy={radius} />
+    <Group left={left} top={top}>
+      <circle fill={color} r={radius} cx={radius} cy={radius} />
       <Text
-        textAnchor={textAnchor}
+        textAnchor="start"
         verticalAnchor="start"
         x={textX}
         fontWeight={FONT_WEIGHT}
         lineHeight={lineHeight}
         fontSize={fontSize}
       >
-        {truncatedLabel}
+        {name}
       </Text>
     </Group>
   );
