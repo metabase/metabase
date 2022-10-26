@@ -3,6 +3,7 @@ import type { DatasetQuery } from "./query";
 
 export interface Card extends UnsavedCard {
   id: CardId;
+  collection_id: number | null;
   name: string;
   description: string | null;
   dataset: boolean;

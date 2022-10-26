@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { DatasetQuery } from "metabase-types/types/Card";
-import { DependentMetadataItem } from "metabase-types/types/Query";
+import { DependentMetadataItem, Field } from "metabase-types/types/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 import Dimension from "metabase-lib/lib/Dimension";
@@ -116,6 +116,10 @@ class QueryInner {
 
   setDefaultQuery(): QueryInner {
     return this;
+  }
+
+  parseFieldReference(fieldRef, query = this): Dimension | null | undefined {
+    return Dimension.parseMBQL(fieldRef, this._metadata, query);
   }
 }
 
