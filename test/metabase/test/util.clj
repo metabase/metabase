@@ -1,41 +1,63 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
-  (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [clojurewerkz.quartzite.scheduler :as qs]
-            [colorize.core :as colorize]
-            [environ.core :as env]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
-                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup PermissionsGroupMembership
-                                     PersistedInfo Pulse PulseCard PulseChannel Revision Segment Setting
-                                     Table TaskHistory Timeline TimelineEvent User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.setting :as setting]
-            [metabase.models.setting.cache :as setting.cache]
-            [metabase.models.timeline :as timeline]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.task :as task]
-            [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
-            [metabase.test-runner.parallel :as test-runner.parallel]
-            [metabase.test.data :as data]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.initialize :as initialize]
-            [metabase.test.util.log :as tu.log]
-            [metabase.util :as u]
-            [metabase.util.files :as u.files]
-            [potemkin :as p]
-            [toucan.db :as db]
-            [toucan.models :as models]
-            [toucan.util.test :as tt])
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.io :as io]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [colorize.core :as colorize]
+   [environ.core :as env]
+   [java-time :as t]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCardSeries
+            Database
+            Dimension
+            Field
+            FieldValues
+            LoginHistory
+            Metric
+            NativeQuerySnippet
+            Permissions
+            PermissionsGroup
+            PermissionsGroupMembership
+            PersistedInfo
+            Pulse
+            PulseCard
+            PulseChannel
+            Revision
+            Segment
+            Setting
+            Table
+            TaskHistory
+            Timeline
+            TimelineEvent
+            User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting]
+   [metabase.models.setting.cache :as setting.cache]
+   [metabase.models.timeline :as timeline]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.task :as task]
+   [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
+   [metabase.test-runner.parallel :as test-runner.parallel]
+   [metabase.test.data :as data]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.initialize :as initialize]
+   [metabase.test.util.log :as tu.log]
+   [metabase.util :as u]
+   [metabase.util.files :as u.files]
+   [toucan.db :as db]
+   [toucan.models :as models]
+   [toucan.util.test :as tt])
   (:import
    (java.io File FileInputStream)
    (java.net ServerSocket)
@@ -48,14 +70,6 @@
          test-runner.assert-exprs/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
-
-;; these are imported because these functions originally lived in this namespace, and some tests might still be
-;; referencing them from here. We can remove the imports once everyone is using `metabase.test` instead of using this
-;; namespace directly.
-(p/import-vars
- [tu.log
-  with-log-level
-  with-log-messages-for-level])
 
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))
@@ -458,7 +472,8 @@
            ~@body)))))
 
 (defmacro with-temporary-raw-setting-values
-  "Like `with-temporary-setting-values` but works with raw value and it allows settings that are not defined using `defsetting`."
+  "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
+  using [[metabase.models.setting/defsetting]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (test-runner.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
@@ -489,9 +504,8 @@
   [settings & body]
   `(do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
 
-
 (defn do-with-temp-vals-in-db
-  "Implementation function for `with-temp-vals-in-db` macro. Prefer that to using this directly."
+  "Implementation function for [[with-temp-vals-in-db]] macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
   (test-runner.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
@@ -526,57 +540,10 @@
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
 (defn is-uuid-string?
-  "Is string S a valid UUID string?"
+  "Is string `s` a valid UUID string?"
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))
-
-(defn- update-in-if-present
-  "If the path `KS` is found in `M`, call update-in with the original
-  arguments to this function, otherwise, return `M`"
-  [m ks f & args]
-  (if (= ::not-found (get-in m ks ::not-found))
-    m
-    (apply update-in m ks f args)))
-
-(defn- ^:deprecated round-fingerprint-fields [fprint-type-map decimal-places fields]
-  (reduce (fn [fprint field]
-            (update-in-if-present fprint [field] (fn [num]
-                                                   (if (integer? num)
-                                                     num
-                                                     (u/round-to-decimals decimal-places num)))))
-          fprint-type-map fields))
-
-(defn ^:deprecated round-fingerprint
-  "Rounds the numerical fields of a fingerprint to 2 decimal places
-
-  DEPRECATED -- this should no longer be needed; use `metabase.query-processor-test/col` to get the actual real-life
-  fingerprint of the column instead."
-  [field]
-  (-> field
-      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 2 [:min :max :avg :sd])
-      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more
-      ;; aggressive trimming
-      (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 0 [:q1 :q3])
-      (update-in-if-present [:fingerprint :type :type/Text]
-                            round-fingerprint-fields 2
-                            [:percent-json :percent-url :percent-email :average-length])))
-
-(defn ^:deprecated round-fingerprint-cols
-  "Round fingerprints to a few digits, so it can be included directly in 'expected' parts of tests.
-
-  DEPRECATED -- this should no longer be needed; use `qp.tt/col` to get the actual real-life fingerprint of the
-  column instead."
-  ([query-results]
-   (if (map? query-results)
-     (let [maybe-data-cols (if (contains? query-results :data)
-                             [:data :cols]
-                             [:cols])]
-       (round-fingerprint-cols maybe-data-cols query-results))
-     (map round-fingerprint query-results)))
-
-  ([k query-results]
-   (update-in query-results k #(map round-fingerprint %))))
 
 (defn postwalk-pred
   "Transform `form` by applying `f` to each node where `pred` returns true"
@@ -588,7 +555,7 @@
                  form))
 
 (defn round-all-decimals
-  "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
+  "Uses [[postwalk-pred]] to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
   (postwalk-pred (some-fn double? decimal?)
                  #(u/round-to-decimals decimal-place %)
@@ -667,25 +634,6 @@
                                 (when (instance? CronTrigger trigger)
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)
                                    :data          (into {} (.getJobDataMap trigger))}))))}))))))
-
-(defn ^:deprecated db-timezone-id
-  "Return the timezone id from the test database. Must be called with `*driver*` bound,such as via `driver/with-driver`.
-  DEPRECATED — just call `metabase.driver/db-default-timezone` instead directly."
-  []
-  (assert driver/*driver*)
-  (let [db (data/db)]
-    ;; clear the connection pool for SQL JDBC drivers. It's possible that a previous test ran and set the session's
-    ;; timezone to something, then returned the session to the pool. Sometimes that connection's session can remain
-    ;; intact and subsequent queries will continue in that timezone. That causes problems for tests that we can
-    ;; determine the database's timezone.
-    (driver/notify-database-updated driver/*driver* db)
-    (data/dataset test-data
-      (or
-       (driver/db-default-timezone driver/*driver* db)
-       (-> (driver/current-db-time driver/*driver* db)
-           .getChronology
-           .getZone
-           .getID)))))
 
 (defmulti with-model-cleanup-additional-conditions
   "Additional conditions that should be used to restrict which instances automatically get deleted by
@@ -860,7 +808,7 @@
   admin has removed them.
 
   Only affects the Root Collection for the default namespace. Use
-  `with-non-admin-groups-no-root-collection-for-namespace-perms` to do the same thing for the Root Collection of other
+  [[with-non-admin-groups-no-root-collection-for-namespace-perms]] to do the same thing for the Root Collection of other
   namespaces."
   [& body]
   `(do-with-non-admin-groups-no-collection-perms collection/root-collection (fn [] ~@body)))
@@ -1054,10 +1002,12 @@
         (io/delete-file (io/file filename) :silently)))))
 
 (defmacro with-temp-file
-  "Execute `body` with newly created temporary file(s) in the system temporary directory. You may optionally specify the
+  "Execute `body` with a path for temporary file(s) in the system temporary directory. You may optionally specify the
   `filename` (without directory components) to be created in the temp directory; if `filename` is nil, a random
   filename will be used. The file will be deleted if it already exists, but will not be touched; use `spit` to load
   something in to it.
+
+  DOES NOT CREATE A FILE!
 
     ;; create a random temp filename. File is deleted if it already exists.
     (with-temp-file [filename]
@@ -1117,6 +1067,24 @@
                  (macroexpand form))
       `(with-temp-file [])
       `(with-temp-file (+ 1 2)))))
+
+(defn do-with-temp-dir
+  "Impl for [[with-temp-dir]] macro."
+  [temp-dir-name f]
+  (do-with-temp-file
+   temp-dir-name
+   (^:once fn* [path]
+    (let [file (io/file path)]
+      (when (.exists file)
+        (org.apache.commons.io.FileUtils/deleteDirectory file)))
+    (u.files/create-dir-if-not-exists! (u.files/get-path path))
+    (f path))))
+
+(defmacro with-temp-dir
+  "Like [[with-temp-file]], but creates a new temporary directory in the system temp dir. Deletes existing directory if
+  it already exists."
+  [[directory-binding dir-name] & body]
+  `(do-with-temp-dir ~dir-name (^:once fn* [~directory-binding] ~@body)))
 
 (defn do-with-user-in-groups
   ([f groups-or-ids]

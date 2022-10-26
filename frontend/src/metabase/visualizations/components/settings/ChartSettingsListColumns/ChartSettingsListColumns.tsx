@@ -4,13 +4,11 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 
-import { keyForColumn } from "metabase/lib/dataset";
-
-import Question from "metabase-lib/lib/Question";
-
-import { Column } from "metabase-types/types/Dataset";
 import { FieldId } from "metabase-types/types/Field";
 import { ConcreteField } from "metabase-types/types/Query";
+import { DatasetColumn } from "metabase-types/api";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import Question from "metabase-lib/Question";
 
 import {
   ColumnItemContainer,
@@ -27,7 +25,7 @@ type SettingValue = {
 
 interface Props {
   value: SettingValue;
-  columns: Column[];
+  columns: DatasetColumn[];
   question: Question;
   onChange: (value: SettingValue) => void;
   onShowWidget: (config: unknown, targetElement: HTMLElement | null) => void;
@@ -80,7 +78,7 @@ function ChartSettingsListColumns({
           {
             id: "column_settings",
             props: {
-              initialKey: keyForColumn(column),
+              initialKey: getColumnKey(column),
             },
           },
           targetElement,

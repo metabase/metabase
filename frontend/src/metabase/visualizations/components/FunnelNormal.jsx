@@ -2,13 +2,13 @@
 import React, { Component } from "react";
 
 import cx from "classnames";
-import styles from "./FunnelNormal.css";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import { color } from "metabase/lib/colors";
+import styles from "./FunnelNormal.css";
 
 export default class FunnelNormal extends Component {
   render() {
@@ -130,7 +130,10 @@ export default class FunnelNormal extends Component {
         <div
           className={cx(styles.FunnelStep, styles.Initial, "flex flex-column")}
         >
-          <Ellipsified className={styles.Head}>
+          <Ellipsified
+            className={styles.Head}
+            data-testid="funnel-chart-header"
+          >
             {formatDimension(rows[0][dimensionIndex])}
           </Ellipsified>
           <div className={styles.Start}>
@@ -156,7 +159,10 @@ export default class FunnelNormal extends Component {
               key={index}
               className={cx(styles.FunnelStep, "flex flex-column")}
             >
-              <Ellipsified className={styles.Head}>
+              <Ellipsified
+                className={styles.Head}
+                data-testid="funnel-chart-header"
+              >
                 {formatDimension(rows[index + 1][dimensionIndex])}
               </Ellipsified>
               <GraphSection

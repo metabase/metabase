@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { Provider } from "react-redux";
-import { getStore } from "metabase/store";
 import { normalize } from "normalizr";
 import { chain } from "icepick";
+import { getStore } from "metabase/store";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { FieldSchema } from "metabase/schema";
@@ -82,6 +82,7 @@ export function makeMetadata(metadata) {
     },
     metrics: {
       1: { name: "metric" },
+      2: { name: "metric" },
     },
     segments: {
       1: { name: "segment" },

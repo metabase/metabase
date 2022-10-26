@@ -1,4 +1,9 @@
-import type { ActionButtonDashboardCard, Dashboard } from "metabase-types/api";
+import type {
+  ActionDashboardCard,
+  Dashboard,
+  ParametersForActionExecution,
+  WritebackParameter,
+} from "metabase-types/api";
 import type { Column } from "metabase-types/types/Dataset";
 import type {
   ParameterId,
@@ -8,7 +13,7 @@ import type { ClickObject } from "metabase-types/types/Visualization";
 
 type ActionClickExtraData = {
   dashboard: Dashboard;
-  dashcard: ActionButtonDashboardCard;
+  dashcard: ActionDashboardCard;
   parameterValuesBySlug: Record<string, { value: ParameterValueOrArray }>;
   userAttributes: unknown[];
 };
@@ -16,6 +21,10 @@ type ActionClickExtraData = {
 export type ActionClickObject = Omit<ClickObject, "extraData"> & {
   data: any;
   extraData: ActionClickExtraData;
+  onSubmit: () => (
+    parameters: ParametersForActionExecution,
+  ) => Promise<boolean>;
+  missingParameters: WritebackParameter[];
 };
 
 export type ActionClickBehaviorData = {

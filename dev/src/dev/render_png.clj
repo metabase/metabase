@@ -3,18 +3,15 @@
   pulses and subscriptions and open those images without needing to send them to slack or email."
   (:require [clojure.java.io :as io]
             [clojure.java.shell :as sh]
-            [clojure.string :as str]
             [hiccup.core :as hiccup]
             [metabase.models.card :as card]
             [metabase.models.user :as user]
             [metabase.pulse :as pulse]
             [metabase.pulse.render :as render]
-            [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.pulse.render.png :as png]
+            [metabase.pulse.render.test-util :as render.tu]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
-            [toucan.db :as db])
-  (:import org.fit.cssbox.misc.Base64Coder))
+            [toucan.db :as db]))
 
 ;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
 (defn- os
@@ -68,87 +65,31 @@
     (.deleteOnExit tmp-file)
     (open tmp-file)))
 
-(defn open-png-bytes [bytes]
-  (let [tmp-file (java.io.File/createTempFile "card-png" ".png")]
-    (with-open [w (java.io.FileOutputStream. tmp-file)]
-      (.write w ^bytes bytes))
+(defn open-hiccup-as-html [hiccup]
+  (let [html-str (hiccup/html hiccup)
+        tmp-file (java.io.File/createTempFile "card-html" ".html")]
+    (with-open [w (clojure.java.io/writer tmp-file)]
+      (.write w html-str))
     (.deleteOnExit tmp-file)
     (open tmp-file)))
-
-(defn render-img-data-uri
-  "Takes a PNG byte array and returns a Base64 encoded URI"
-  [img-bytes]
-  (str "data:image/png;base64," (String. (Base64Coder/encode img-bytes))))
-
-(defn svg-image [kind]
-  (let [line|bar-data [["2015-02-01T00:00:00-08:00" 443]
-                       ["2015-03-01T00:00:00-08:00" 875]
-                       ["2015-04-01T00:00:00-07:00" 483]
-                       ["2015-05-01T00:00:00-07:00" 421]]
-        donut-data    [["alpha" 32]
-                       ["beta" 49]
-                       ["gamma" 23]
-                       ["delta" 67]]
-        donut-colors {"alpha" "red"
-                      "beta" "green"
-                      "gamma" "blue"
-                      "delta" "yellow"}]
-    (case kind
-      :line  (js-svg/timelineseries-line line|bar-data)
-      :bar   (js-svg/timelineseries-bar line|bar-data)
-      :donut (js-svg/categorical-donut donut-data donut-colors)
-      (throw (ex-info (str "Invalid chart type: " kind "\n Valid choices are :line, :bar, :donut")
-                      {})))))
-
-(defn preview-html
-  "Chart type is one of :line, :bar, :donut. Html is a string with a placeholder {{chart}} which will be replaced with
-  the [:img {:src chart-placeholder}] and the resulting html will be opened."
-  [{:keys [chart html-file html-inline]}]
-  (let [chart-image (render-img-data-uri (svg-image chart))
-        chart-html (hiccup/html [:img {:src chart-image :style "display: block; width: 100%"}])
-        html (cond html-file
-                   (slurp html-file)
-                   html-inline
-                   (str "<html><body style=\"margin: 0; padding: 0; background-color: white;\">"
-                        html-inline
-                        "</body></html>"))
-        html (hiccup/html (str/replace html #"\{\{chart\}\}" chart-html))]
-    (with-open [os (java.io.ByteArrayOutputStream.)]
-      (let [image-bytes (do (-> (#'png/render-to-png html 1000)
-                                (#'png/write-image! "png" os))
-                            (.toByteArray os))]
-        (open-png-bytes image-bytes)))))
-
-(defn help []
-  (println
-   "
-To render some html, call the function `preview-html`. This takes one argument, a map.
-The keys in the map are `:chart` and either `:html-file` or `:html-inline`.
-(preview-html {:chart :donut :html-inline some-html-to-render})
-or
-(preview-html {:chart :donut :html-file some-file-with-html})
-
-This function will render the html and open an image.
-Valid charts are `:donut`, `:line`, and `:bar`.
-
-You can use {{chart}} in your html to indicate where the image of the chart should be embedded.
-It will be <img src=data-uri-of-chart style=\"display: block; width: 100%\">
-
-For instance
-(preview-html {:chart :donut
-               :html-inline \"<div><h1>behold the donut</h1>{{chart}}</div>\"})
-"))
-
+    
 (comment
-  (preview-html {:chart :donut :html-inline "
-<div>
-  {{chart}}
-  <table>
-    <tr><td style=\"color: #509EE3; font-size: 24px; font-weight: 700; padding-right: 16px;\">500</td>
-        <td style=\"color: #7C8381; font-size: 24px; font-weight: 700;\">600</td>
-    </tr>
-    <tr><td style=\"color: #509EE3; font-size: 16px; font-weight: 700; padding-right: 16px;\">March</td>
-        <td style=\"color: #7C8381; font-size: 16px;\">April</td>
-    </tr>
-  </table>
-</div>"}))
+  (render-card-to-png 1) 
+  ;; open viz in your browser
+  (-> [["A" "B"]
+       [1 2]
+       [30 20]]
+      (render.tu/make-viz-data :line {:goal-line {:graph.goal_label "Target"
+                                                  :graph.goal_value 20}})
+      :viz-tree
+      open-hiccup-as-html)
+
+  (-> [["As" "Bs" "Cs" "Ds" "Es"]
+       ["aa" "bb" "cc" "dd" "ee"]
+       ["aaa" "bbb" "ccc" "ddd" "eee"]]
+      (render.tu/make-viz-data :table {:reordered-columns   {:order [2 3 1 0 4]}
+                                       :custom-column-names {:names ["-A-" "-B-" "-C-" "-D-"]}
+                                       :hidden-columns      {:hide [0 2]}})
+      :viz-tree
+      open-hiccup-as-html)
+  )

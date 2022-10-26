@@ -1,13 +1,6 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 
-import { isTableDisplay } from "metabase/lib/click-behavior";
-
-import CustomLinkText from "./CustomLinkText";
-import QuestionDashboardPicker from "./QuestionDashboardPicker";
-import { SidebarContent } from "../ClickBehaviorSidebar.styled";
-
-import type { UiParameter } from "metabase/parameters/types";
 import type {
   DashboardOrderedCard,
   ArbitraryCustomDestinationClickBehavior,
@@ -15,6 +8,11 @@ import type {
   CustomDestinationClickBehavior,
   CustomDestinationClickBehaviorLinkType,
 } from "metabase-types/api";
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { UiParameter } from "metabase-lib/parameters/types";
+import { SidebarContent } from "../ClickBehaviorSidebar.styled";
+import CustomLinkText from "./CustomLinkText";
+import LinkedEntityPicker from "./LinkedEntityPicker";
 
 import CustomURLPicker from "./CustomURLPicker";
 import LinkOption from "./LinkOption";
@@ -88,7 +86,7 @@ function LinkOptions({
       <div className="mt1">
         {hasSelectedLinkType && clickBehavior.linkType !== "url" && (
           <div>
-            <QuestionDashboardPicker
+            <LinkedEntityPicker
               dashcard={dashcard}
               clickBehavior={clickBehavior}
               updateSettings={updateSettings}

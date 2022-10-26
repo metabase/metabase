@@ -7,7 +7,13 @@ import { assocIn, updateIn } from "icepick";
 import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
-import Question from "metabase-lib/lib/Question";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import {
+  updateDateTimeFilter,
+  updateNumericFilter,
+} from "metabase-lib/queries/utils/actions";
+import { isStructured } from "metabase-lib/queries/utils/card";
+import Question from "metabase-lib/Question";
 
 import {
   computeSplit,
@@ -29,8 +35,6 @@ import { getTrendDataPointsFromInsight } from "./trends";
 
 import fillMissingValuesInDatas from "./fill_data";
 import { NULL_DIMENSION_WARNING, unaggregatedDataWarning } from "./warnings";
-
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 
 import {
   forceSortedGroupsOfGroups,
@@ -58,13 +62,6 @@ import {
 } from "./renderer_utils";
 
 import lineAndBarOnRender from "./LineAreaBarPostRender";
-
-import { isStructured } from "metabase/meta/Card";
-
-import {
-  updateDateTimeFilter,
-  updateNumericFilter,
-} from "metabase/modes/lib/actions";
 
 import { lineAddons } from "./graph/addons";
 import { initBrush } from "./graph/brush";

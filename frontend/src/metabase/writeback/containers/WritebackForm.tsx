@@ -2,10 +2,10 @@ import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import validate from "metabase/lib/validate";
-import { TYPE } from "metabase/lib/types";
 
-import Field from "metabase-lib/lib/metadata/Field";
-import Table from "metabase-lib/lib/metadata/Table";
+import { TYPE } from "metabase-lib/types/constants";
+import Field from "metabase-lib/metadata/Field";
+import Table from "metabase-lib/metadata/Table";
 
 import { StyledForm } from "../components/WritebackForm.styled";
 

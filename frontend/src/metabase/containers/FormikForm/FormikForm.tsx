@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { assocIn, getIn, merge } from "icepick";
 
 // eslint-disable-next-line import/named
-import { Formik, FormikProps, FormikErrors, FormikHelpers } from "formik";
+import { Formik, FormikErrors, FormikHelpers } from "formik";
 
 import {
   BaseFieldValues,
@@ -14,16 +14,13 @@ import {
   PopulatedFormObject,
 } from "metabase-types/forms";
 
+import { OptionalFormViewProps } from "metabase/components/form/FormikCustomForm/types";
+import { makeFormObject, cleanObject, isNestedFieldName } from "../formUtils";
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
 import useInlineFields from "./useInlineFields";
-import {
-  makeFormObject,
-  cleanObject,
-  isNestedFieldName,
-  getMaybeNestedValue,
-} from "../formUtils";
 
-interface FormContainerProps<Values extends BaseFieldValues> {
+interface FormContainerProps<Values extends BaseFieldValues>
+  extends OptionalFormViewProps {
   form?: FormObject<Values>;
 
   fields?: FormFieldDefinition[];
@@ -36,7 +33,10 @@ interface FormContainerProps<Values extends BaseFieldValues> {
   initial?: () => void;
   normalize?: () => void;
 
-  onSubmit: (values: Values) => void | Promise<void>;
+  onSubmit: (
+    values: Values,
+    formikHelpers?: FormikHelpers<Values>,
+  ) => void | Promise<void>;
   onSubmitSuccess?: (action: unknown) => void;
 
   // various props
@@ -44,7 +44,8 @@ interface FormContainerProps<Values extends BaseFieldValues> {
   submitTitle?: string;
   onClose?: () => void;
   footerExtraButtons?: any;
-  children?: (opts: any) => any;
+  disablePristineSubmit?: boolean;
+  children?: ReactNode | ((opts: any) => any);
 }
 
 type ServerErrorResponse = {
@@ -218,8 +219,9 @@ function Form<Values extends BaseFieldValues>({
     async (values: Values, formikHelpers: FormikHelpers<Values>) => {
       try {
         const normalized = formObject.normalize(values);
-        const result = await onSubmit(normalized);
+        const result = await onSubmit(normalized, formikHelpers);
         onSubmitSuccess?.(result);
+        setError(null); // clear any previous errors
         return result;
       } catch (e) {
         const error = handleError(e as ServerErrorResponse, formikHelpers);

@@ -143,14 +143,15 @@
   models/IModel
   (merge models/IModelDefaults
          {:types       (constantly {:value :encrypted-text})
-          :primary-key (constantly :key)})
+          :primary-key (constantly :key)}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:key])})
+(defmethod serdes.hash/identity-hash-fields Setting
+  [_setting]
+  [:key])
 
 (defmethod serdes.base/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
-                              :getter (partial get-value-of-type :string))]
+                             :getter (partial get-value-of-type :string))]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))
@@ -605,8 +606,7 @@
          :as setting}                     (resolve-setting setting-definition-or-name)
         obfuscated?                       (and sensitive? (obfuscated-value? new-value))
         setting-name                      (setting-name setting)]
-    ;; if someone attempts to set a sensitive setting to an obfuscated value (probably via a misuse of the `set-many!`
-    ;; function, setting values that have not changed), ignore the change. Log a message that we are ignoring it.
+    ;; if someone attempts to set a sensitive setting to an obfuscated value (probably via a misuse of the `set-many!` function, setting values that have not changed), ignore the change. Log a message that we are ignoring it.
     (if obfuscated?
       (log/info (trs "Attempted to set Setting {0} to obfuscated value. Ignoring change." setting-name))
       (do

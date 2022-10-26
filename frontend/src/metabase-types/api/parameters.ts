@@ -25,3 +25,7 @@ export type ParameterType =
   | StringParameterType
   | NumberParameterType
   | DateParameterType;
+
+export type ParameterId = string;
+
+export type ActionParameterValue = string | number;

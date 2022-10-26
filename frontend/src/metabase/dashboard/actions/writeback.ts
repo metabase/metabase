@@ -20,32 +20,29 @@ import { ActionsApi } from "metabase/services";
 
 import type {
   Dashboard,
-  ActionButtonDashboardCard,
-  ParameterMappedForActionExecution,
+  DashboardOrderedCard,
+  ActionDashboardCard,
+  ParametersForActionExecution,
+  ActionFormSubmitResult,
+  WritebackAction,
+  ActionParametersMapping,
 } from "metabase-types/api";
-import type { DashCard } from "metabase-types/types/Dashboard";
 import type { Dispatch } from "metabase-types/store";
 
 import { getCardData } from "../selectors";
-import { isVirtualDashCard } from "../utils";
 import { setDashCardAttributes } from "./core";
-import { fetchCardData } from "./data-fetching";
+import { reloadDashboardCards } from "./data-fetching";
 
-export const OPEN_ACTION_PARAMETERS_MODAL =
-  "metabase/data-app/OPEN_ACTION_PARAMETERS_MODAL";
-export const openActionParametersModal = createAction(
-  OPEN_ACTION_PARAMETERS_MODAL,
-);
-
-export const CLOSE_ACTION_PARAMETERS_MODAL =
-  "metabase/data-app/CLOSE_ACTION_PARAMETERS_MODAL";
-export const closeActionParametersModal = createAction(
-  CLOSE_ACTION_PARAMETERS_MODAL,
-);
+interface DashboardAttributes {
+  card_id?: number | null;
+  action?: WritebackAction | null;
+  parameter_mappings?: ActionParametersMapping[] | null;
+  visualization_settings?: ActionDashboardCard["visualization_settings"];
+}
 
 export function updateButtonActionMapping(
   dashCardId: number,
-  attributes: { action_id?: number | null; parameter_mappings?: any },
+  attributes: DashboardAttributes,
 ) {
   return (dispatch: Dispatch) => {
     dispatch(
@@ -57,25 +54,16 @@ export function updateButtonActionMapping(
   };
 }
 
-export type InsertRowFromDataAppPayload = InsertRowPayload & {
-  dashCard: DashCard;
-};
+export type InsertRowFromDataAppPayload = InsertRowPayload;
 
 export const createRowFromDataApp = (payload: InsertRowFromDataAppPayload) => {
   return async (dispatch: any) => {
     const result = await createRow(payload);
     const { table } = payload;
     if (result?.["created-row"]?.id) {
-      const { dashCard } = payload;
-      dispatch(
-        fetchCardData(dashCard.card, dashCard, {
-          reload: true,
-          ignoreCache: true,
-        }),
-      );
       dispatch(
         addUndo({
-          message: t`Successfully inserted a row into the ${table.displayName()} table`,
+          message: t`Successfully created a new ${table.objectName()}`,
           toastColor: "success",
         }),
       );
@@ -83,41 +71,25 @@ export const createRowFromDataApp = (payload: InsertRowFromDataAppPayload) => {
   };
 };
 
-export type UpdateRowFromDataAppPayload = UpdateRowPayload & {
-  dashCard: DashCard;
-};
+export type UpdateRowFromDataAppPayload = UpdateRowPayload;
 
 export const updateRowFromDataApp = (payload: UpdateRowFromDataAppPayload) => {
   return async (dispatch: any) => {
     const result = await updateRow(payload);
     if (result?.["rows-updated"]?.length > 0) {
-      const { dashCard } = payload;
-      dispatch(
-        fetchCardData(dashCard.card, dashCard, {
-          reload: true,
-          ignoreCache: true,
-        }),
-      );
+      dispatch(reloadDashboardCards());
     }
   };
 };
 
-export type DeleteRowFromDataAppPayload = DeleteRowPayload & {
-  dashCard: DashCard;
-};
+export type DeleteRowFromDataAppPayload = DeleteRowPayload;
 
 export const deleteRowFromDataApp = (payload: DeleteRowFromDataAppPayload) => {
   return async (dispatch: any) => {
     try {
       const result = await deleteRow(payload);
       if (result?.["rows-deleted"]?.length > 0) {
-        const { dashCard } = payload;
-        dispatch(
-          fetchCardData(dashCard.card, dashCard, {
-            reload: true,
-            ignoreCache: true,
-          }),
-        );
+        dispatch(reloadDashboardCards());
       }
     } catch (err) {
       console.error(err);
@@ -136,7 +108,7 @@ export type BulkUpdateFromDataAppPayload = Omit<
   BulkUpdatePayload,
   "records"
 > & {
-  dashCard: DashCard;
+  dashCard: DashboardOrderedCard;
   rowIndexes: number[];
   changes: Record<string, unknown>;
 };
@@ -180,12 +152,7 @@ export const updateManyRowsFromDataApp = (
 
       const result = await updateManyRows({ records, table });
       if (result?.["rows-updated"] > 0) {
-        dispatch(
-          fetchCardData(dashCard.card, dashCard, {
-            reload: true,
-            ignoreCache: true,
-          }),
-        );
+        dispatch(reloadDashboardCards());
         dispatch(
           addUndo({
             message: t`Successfully updated ${rowIndexes.length} records`,
@@ -203,7 +170,7 @@ export const updateManyRowsFromDataApp = (
 };
 
 export type BulkDeleteFromDataAppPayload = Omit<BulkDeletePayload, "ids"> & {
-  dashCard: DashCard;
+  dashCard: DashboardOrderedCard;
   rowIndexes: number[];
 };
 
@@ -243,12 +210,7 @@ export const deleteManyRowsFromDataApp = (
 
       const result = await deleteManyRows({ ids, table });
       if (result?.["success"]) {
-        dispatch(
-          fetchCardData(dashCard.card, dashCard, {
-            reload: true,
-            ignoreCache: true,
-          }),
-        );
+        dispatch(reloadDashboardCards());
         dispatch(
           addUndo({
             message: t`Successfully deleted ${rowIndexes.length} records`,
@@ -267,55 +229,53 @@ export const deleteManyRowsFromDataApp = (
 
 export type ExecuteRowActionPayload = {
   dashboard: Dashboard;
-  dashcard: ActionButtonDashboardCard;
-  parameters: ParameterMappedForActionExecution[];
-  extra_parameters: ParameterMappedForActionExecution[];
+  dashcard: ActionDashboardCard;
+  parameters: ParametersForActionExecution;
+  dispatch: Dispatch;
+  shouldToast?: boolean;
 };
 
-export const executeRowAction = ({
+export const executeRowAction = async ({
   dashboard,
   dashcard,
   parameters,
-  extra_parameters,
-}: ExecuteRowActionPayload) => {
-  return async function (dispatch: any) {
-    try {
-      const result = await ActionsApi.execute({
-        dashboardId: dashboard.id,
-        dashcardId: dashcard.id,
-        parameters,
-        extra_parameters,
-      });
-      if (result["rows-affected"] > 0) {
-        dashboard.ordered_cards
-          .filter(dashCard => !isVirtualDashCard(dashCard))
-          .forEach(dashCard =>
-            dispatch(
-              fetchCardData(dashCard.card, dashCard, {
-                reload: true,
-                ignoreCache: true,
-              }),
-            ),
-          );
-        dispatch(
-          addUndo({
-            toastColor: "success",
-            message: t`Successfully executed the action`,
-          }),
-        );
-      } else {
-        dispatch(
-          addUndo({
-            toastColor: "success",
-            message: t`Success! The action returned: ${JSON.stringify(result)}`,
-          }),
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      const message =
-        (<any>err)?.data?.message ||
-        t`Something went wrong while executing the action`;
+  dispatch,
+  shouldToast = true,
+}: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
+  let message = "";
+  try {
+    const result = await ActionsApi.execute({
+      dashboardId: dashboard.id,
+      dashcardId: dashcard.id,
+      modelId: dashcard.card_id,
+      slug: dashcard.action?.slug,
+      parameters,
+    });
+
+    if (result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0) {
+      message = t`Successfully executed the action`;
+    } else if (result["created-row"]) {
+      message = t`Successfully saved`;
+    } else if (result["rows-deleted"]?.[0] > 0) {
+      message = t`Successfully deleted`;
+    } else {
+      message = t`Success! The action returned: ${JSON.stringify(result)}`;
+    }
+    dispatch(reloadDashboardCards());
+    if (shouldToast) {
+      dispatch(
+        addUndo({
+          toastColor: "success",
+          message,
+        }),
+      );
+    }
+    return { success: true, message };
+  } catch (err) {
+    const message =
+      (<any>err)?.data?.message ||
+      t`Something went wrong while executing the action`;
+    if (shouldToast) {
       dispatch(
         addUndo({
           icon: "warning",
@@ -324,5 +284,6 @@ export const executeRowAction = ({
         }),
       );
     }
-  };
+    return { success: false, error: message, message };
+  }
 };

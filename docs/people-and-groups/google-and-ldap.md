@@ -6,13 +6,18 @@ redirect_from:
 
 # Google Sign-In or LDAP
 
-Enabling [Google Sign-In](#enabling-google-sign-in) or [LDAP](#enabling-ldap-authentication) for single sign-on (SSO) lets your team log in with a click instead of using email and password. It can also be used to let people sign up for Metabase accounts without an admin having to create them first. You can find these options in the **Settings** section of the **Admin Panel**, under **Authentication**.
+Enabling [Google Sign-In](https://developers.google.com/identity/sign-in/web/sign-in) or [LDAP](https://www.metabase.com/glossary/ldap) for single sign-on (SSO) lets your team log in with a click instead of using email and password. SSO can also be used to let people create Metabase accounts without asking an admin to add each person manually. You can find SSO options under **Settings** > **Admin settings** > **Authentication**.
 
 If you'd like to have people authenticate with [SAML][saml-docs] or [JWT][jwt-docs], Metabase's [paid plans](https://www.metabase.com/pricing) let you do just that.
 
 As time goes on we may add other auth providers. If you have a service you’d like to see work with Metabase, please let us know by [filing an issue](http://github.com/metabase/metabase/issues/new).
 
 ## Enabling Google Sign-In
+
+Google Sign-In is a good option for SSO if: 
+
+- Your team is already using Google Workspace, or
+- You'd like to use Google's 2-step or multi-factor authentication (2FA or MFA) to secure your Metabase.
 
 ### Working in the Google developer console
 
@@ -96,12 +101,6 @@ As you can see below, if you have an **Accounting** group in both your LDAP serv
 
 Group membership lookup filter. The placeholders {dn} and {uid} will be replaced by the user's Distinguished Name and UID, respectively.
 
-## Further reading
-
-- [Using LDAP for authentication and access control](https://www.metabase.com/learn/permissions/ldap-auth-access-control)
-- [LDAP troubleshooting guide](../troubleshooting-guide/ldap.md)
-- [Permissions overview](../permissions/start.md)
-
 ## Syncing user attributes at login
 
 {% include plans-blockquote.html feature="Advanced authentication features" %}
@@ -125,7 +124,13 @@ Note that you must have at least one account with email and password login. This
 
 ## Troubleshooting login issues
 
- - [Troubleshooting logins](../troubleshooting-guide/cant-log-in.md).
+ - [Can't log in](../troubleshooting-guide/cant-log-in.md).
+ - [Troubleshooting LDAP](../troubleshooting-guide/ldap.md)
+
+## Further reading
+
+- [Using LDAP for authentication and access control](https://www.metabase.com/learn/permissions/ldap-auth-access-control).
+- [Permissions overview](../permissions/start.md).
 
 [data-sandboxing-docs]: ../permissions/data-sandboxes.md
 [google-saml-docs]: ./saml-google.md

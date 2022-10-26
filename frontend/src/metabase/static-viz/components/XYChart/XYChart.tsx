@@ -31,7 +31,6 @@ import {
   fixTimeseriesTicksExceedXTickCount,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
-import Values from "./Values";
 import { measureText } from "metabase/static-viz/lib/text";
 
 import type {
@@ -39,10 +38,8 @@ import type {
   ChartSettings,
   ChartStyle,
   HydratedSeries,
-  XScale,
-  XAxisType,
 } from "metabase/static-viz/components/XYChart/types";
-import type { TimeInterval } from "d3-time";
+import Values from "../Values";
 
 export interface XYChartProps {
   width: number;

@@ -70,11 +70,10 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defn serialize-instance
-  "Serialize a `Card` for use in a `Revision`."
+(defmethod revision/serialize-instance Card
   ([instance]
-   (serialize-instance nil nil instance))
-  ([_ _ instance]
+   (revision/serialize-instance Card nil instance))
+  ([_model _id instance]
    (cond-> (dissoc instance :created_at :updated_at)
      ;; datasets should preserve edits to metadata
      (not (:dataset instance))
@@ -325,25 +324,17 @@
           :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
           :post-insert    post-insert
           :pre-delete     pre-delete
-          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
-  revision/IRevisioned
-  (assoc revision/IRevisionedDefaults
-         :serialize-instance serialize-instance)
-
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields Card
+  [_card]
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
-(defmethod serdes.base/extract-query "Card" [_ {:keys [user]}]
-  (serdes.base/raw-reducible-query
-    "Card"
-    {:select     [:card.*]
-     :from       [[:report_card :card]]
-     :left-join  [[:collection :coll] [:= :coll.id :card.collection_id]]
-     :where      (if user
-                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                   [:is :coll.personal_owner_id nil])}))
+(defmethod serdes.base/extract-query "Card" [_ {:keys [collection-set]}]
+  (if (seq collection-set)
+    (db/select-reducible Card :collection_id [:in collection-set])
+    (db/select-reducible Card)))
 
 (defmethod serdes.base/extract-one "Card"
   [_model-name _opts card]
@@ -355,8 +346,9 @@
       (update :database_id            serdes.util/export-fk-keyed 'Database :name)
       (update :table_id               serdes.util/export-table-fk)
       (update :collection_id          serdes.util/export-fk 'Collection)
-      (update :creator_id             serdes.util/export-fk-keyed 'User :email)
-      (update :dataset_query          serdes.util/export-json-mbql)
+      (update :creator_id             serdes.util/export-user)
+      (update :made_public_by_id      serdes.util/export-user)
+      (update :dataset_query          serdes.util/export-mbql)
       (update :parameter_mappings     serdes.util/export-parameter-mappings)
       (update :visualization_settings serdes.util/export-visualization-settings)
       (dissoc :result_metadata))) ; Not portable, and can be rebuilt on the other side.
@@ -367,26 +359,33 @@
       serdes.base/load-xform-basics
       (update :database_id            serdes.util/import-fk-keyed 'Database :name)
       (update :table_id               serdes.util/import-table-fk)
-      (update :creator_id             serdes.util/import-fk-keyed 'User :email)
+      (update :creator_id             serdes.util/import-user)
+      (update :made_public_by_id      serdes.util/import-user)
       (update :collection_id          serdes.util/import-fk 'Collection)
-      (update :dataset_query          serdes.util/import-json-mbql)
+      (update :dataset_query          serdes.util/import-mbql)
       (update :parameter_mappings     serdes.util/import-parameter-mappings)
       (update :visualization_settings serdes.util/import-visualization-settings)))
 
 (defmethod serdes.base/serdes-dependencies "Card"
-  [{:keys [collection_id dataset_query parameter_mappings table_id visualization_settings]}]
-  ;; The Table implicitly depends on the Database.
+  [{:keys [collection_id database_id dataset_query parameter_mappings table_id visualization_settings]}]
   (->> (map serdes.util/mbql-deps parameter_mappings)
        (reduce set/union)
-       (set/union #{(serdes.util/table->path table_id)
-                    [{:model "Collection" :id collection_id}]})
+       (set/union #{[{:model "Database" :id database_id}]})
+       ; table_id and collection_id are nullable.
+       (set/union (when table_id #{(serdes.util/table->path table_id)}))
+       (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes.util/mbql-deps dataset_query))
        (set/union (serdes.util/visualization-settings-deps visualization_settings))
        vec))
 
 (defmethod serdes.base/serdes-descendants "Card" [_model-name id]
-  (let [card (db/select-one Card :id id)
-        source-table (some-> card :dataset_query :query :source-table)]
-    (when (and (string? source-table)
-               (.startsWith ^String source-table "card__"))
-      #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})))
+  (let [card          (db/select-one Card :id id)
+        source-table  (some->  card :dataset_query :query :source-table)
+        template-tags (some->> card :dataset_query :native :template-tags vals (filter :card-id))]
+    (set/union
+      (when (and (string? source-table)
+                 (.startsWith ^String source-table "card__"))
+        #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})
+      (when (seq template-tags)
+        (set (for [{:keys [card-id]} template-tags]
+               ["Card" card-id]))))))

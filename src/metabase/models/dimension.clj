@@ -20,11 +20,13 @@
   (merge models/IModelDefaults
          {:types      (constantly {:type :keyword})
           :properties (constantly {:timestamped? true
-                                   :entity_id    true})})
+                                   :entity_id    true})}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :field)
-                                      (serdes.hash/hydrated-hash :human_readable_field)])})
+(defmethod serdes.hash/identity-hash-fields Dimension
+  [_dimension]
+  [(serdes.hash/hydrated-hash :field "<none>")
+   (serdes.hash/hydrated-hash :human_readable_field "<none>")
+   :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 (defmethod serdes.base/extract-one "Dimension"

@@ -1,33 +1,33 @@
 (ns metabase.models.user-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.http-client :as client]
-            [metabase.models
-             :refer
-             [Collection
-              Database
-              PermissionsGroup
-              PermissionsGroupMembership
-              Pulse
-              PulseChannel
-              PulseChannelRecipient
-              Session
-              Table
-              User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.collection-test :as collection-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.user :as user]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.integrations.ldap :as ldap.test]
-            [metabase.util :as u]
-            [metabase.util.password :as u.password]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.http-client :as client]
+   [metabase.models
+    :refer [Collection
+            Database
+            PermissionsGroup
+            PermissionsGroupMembership
+            Pulse
+            PulseChannel
+            PulseChannelRecipient
+            Session
+            Table
+            User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.collection-test :as collection-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.user :as user]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.integrations.ldap :as ldap.test]
+   [metabase.util :as u]
+   [metabase.util.password :as u.password]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;;; Tests for permissions-set
 
@@ -330,14 +330,14 @@
                (user-group-names :lucky)))))
 
     (testing "should be able to remove a User from groups"
-      (with-groups [group-1 {:name "Group 1"} #{:lucky}
-                    group-2 {:name "Group 2"} #{:lucky}]
+      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
+                    _group-2 {:name "Group 2"} #{:lucky}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users)})
         (is (= #{"All Users"}
                (user-group-names :lucky)))))
 
     (testing "should be able to add & remove groups at the same time! :wow:"
-      (with-groups [group-1 {:name "Group 1"} #{:lucky}
+      (with-groups [_group-1 {:name "Group 1"} #{:lucky}
                     group-2 {:name "Group 2"} #{}]
         (user/set-permissions-groups! (mt/user->id :lucky) #{(perms-group/all-users) group-2})
         (is (= #{"All Users" "Group 2"}

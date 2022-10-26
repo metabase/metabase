@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
+import Dimension from "metabase-lib/Dimension";
+import DimensionOptions from "metabase-lib/DimensionOptions";
 import DimensionList from "./DimensionList";
-
-import Dimension from "metabase-lib/lib/Dimension";
-import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 // DEPRECATED: use DimensionList directly
 export default class FieldList extends Component {

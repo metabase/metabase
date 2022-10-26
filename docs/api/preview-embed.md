@@ -24,13 +24,6 @@ Endpoints for previewing how Cards and Dashboards will look when embedding them.
 
    Refer to the documentation for those endpoints for further details.
 
-  - [GET /api/preview-embed/card/:token](#get-apipreview-embedcardtoken)
-  - [GET /api/preview-embed/card/:token/query](#get-apipreview-embedcardtokenquery)
-  - [GET /api/preview-embed/dashboard/:token](#get-apipreview-embeddashboardtoken)
-  - [GET /api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id](#get-apipreview-embeddashboardtokendashcarddashcard-idcardcard-id)
-  - [GET /api/preview-embed/pivot/card/:token/query](#get-apipreview-embedpivotcardtokenquery)
-  - [GET /api/preview-embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id](#get-apipreview-embedpivotdashboardtokendashcarddashcard-idcardcard-id)
-
 ## `GET /api/preview-embed/card/:token`
 
 Fetch a Card you're considering embedding by passing a JWT `token`.

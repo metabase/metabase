@@ -5,7 +5,6 @@
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.test-util :as render.tu]
-            [metabase.test :as mt]
             [schema.core :as s]))
 
 (use-fixtures :each
@@ -116,8 +115,8 @@
 (deftest prefers-col-visualization-settings-for-header
   (testing "Users can give columns custom names. Use those if they exist."
     (let [card    {:visualization_settings
-                   {:column_settings {(keyword "[\"ref\",[\"field-id\",321]]") {:column_title "Custom Last Login"}
-                                      (keyword "[\"name\",\"name\"]")          {:column_title "Custom Name"}}}}
+                   {:column_settings {"[\"ref\",[\"field\",321,null]]" {:column_title "Custom Last Login"}
+                                      "[\"name\",\"name\"]"            {:column_title "Custom Name"}}}}
           cols    [{:name            "last_login"
                     :display_name    "Last Login"
                     :base_type       :type/DateTime
@@ -130,19 +129,19 @@
                     :semantic_type    nil
                     :visibility_type :normal}]]
 
-      ;; card contains custom column names
-      (is (= {:row       ["Custom Last Login" "Custom Name"]
-              :bar-width nil}
-             (first (#'body/prep-for-html-rendering pacific-tz
-                                                    card
-                                                    {:cols cols :rows []}))))
+      (testing "card contains custom column names"
+        (is (= {:row       ["Custom Last Login" "Custom Name"]
+                :bar-width nil}
+               (first (#'body/prep-for-html-rendering pacific-tz
+                                                      card
+                                                      {:cols cols :rows []})))))
 
-      ;; card does not contain custom column names
-      (is (= {:row       ["Last Login" "Name"]
-              :bar-width nil}
-             (first (#'body/prep-for-html-rendering pacific-tz
-                                                    {}
-                                                    {:cols cols :rows []})))))))
+      (testing "card does not contain custom column names"
+        (is (= {:row       ["Last Login" "Name"]
+                :bar-width nil}
+               (first (#'body/prep-for-html-rendering pacific-tz
+                                                      {}
+                                                      {:cols cols :rows []}))))))))
 
 ;; When including a bar column, bar-width is 99%
 (deftest bar-width
@@ -158,14 +157,14 @@
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
+  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
-  (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
+  (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data}
@@ -208,12 +207,12 @@
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1") (number "34.10") "Bad" "Apr 1, 2014" "Stout Burgers & Beers"]
+  (is (= [[(number "1") (number "34.1") "Bad" "Apr 1, 2014" "Stout Burgers & Beers"]
           [(number "2") (number "34.04") "Ok" "Dec 5, 2014" "The Apple Pan"]
           [(number "3") (number "34.05") "Good" "Aug 1, 2014" "The Gorbals"]]
-         (map :row (rest (#'body/prep-for-html-rendering pacific-tz
-                                                         {}
-                                                         {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
+         (map :row (rest (#'body/prep-for-html-rendering  pacific-tz
+                                                          {}
+                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
 (deftest no-truncation-warnig
@@ -232,7 +231,7 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
+  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
@@ -330,15 +329,15 @@
                                  :last-change nil
                                  :col "value"
                                  :last-value 20.0}]}]
-        (is (= "40.00\nUp 133.33%. Was 30.00 last month"
+        (is (= "40\nUp 133.33%. Was 30 last month"
                (:render/text (body/render :smartscalar nil pacific-tz nil nil results))))
-        (is (= "40.00\nNo change. Was 40.00 last month"
+        (is (= "40\nNo change. Was 40 last month"
                (:render/text (body/render :smartscalar nil pacific-tz nil nil sameres))))
-        (is (= "20.0\nNothing to compare to."
+        (is (= "20\nNothing to compare to."
                (:render/text (body/render :smartscalar nil pacific-tz nil nil dumbres))))
         (is (schema= {:attachments (s/eq nil)
                       :content     (s/pred vector? "hiccup vector")
-                      :render/text (s/eq "40.00\nUp 133.33%. Was 30.00 last month")}
+                      :render/text (s/eq "40\nUp 133.33%. Was 30 last month")}
                      (body/render :smartscalar nil pacific-tz nil nil results)))))))
 
 (defn- replace-style-maps [hiccup-map]
@@ -563,42 +562,6 @@
           (render-combo {:cols default-multi-columns
                          :rows [[nil 1 1 23453] [10.0 1 nil nil] [5.0 10 22 1337] [2.50 nil 22 1231] [1.25 nil nil 1231232]]})))))
 
-;; Test rendering a sparkline
-;;
-;; Sparklines are a binary image either in-line or as an attachment, so there's not much introspection that we can do
-;; with the result. The tests below just check that we can render a sparkline (without eceptions) and that the
-;; attachment is included
-
-(defn- render-sparkline [results]
-  (body/render :sparkline :inline pacific-tz render.tu/test-card nil results))
-
-(deftest render-sparkline-test
-  (testing "Test that we can render a sparkline with all valid values"
-    (is (has-inline-image?
-         (render-sparkline
-          {:cols default-columns
-           :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
-  (testing "Tex that we can have a nil value in the middle"
-    (is (has-inline-image?
-         (render-sparkline
-          {:cols default-columns
-           :rows [[10.0 1] [11.0 2] [5.0 nil] [2.50 20] [1.25 30]]}))))
-  (testing "Test that we can have a nil value for the y-axis at the end of the results"
-    (is (has-inline-image?
-         (render-sparkline
-          {:cols default-columns
-           :rows [[10.0 1] [11.0 2] [2.50 20] [1.25 nil]]}))))
-  (testing "Test that we can have a nil value for the x-axis at the end of the results"
-    (is (has-inline-image?
-         (render-sparkline
-          {:cols default-columns
-           :rows [[10.0 1] [11.0 2] [nil 20] [1.25 30]]}))))
-  (testing "Test that we can have a nil value for both x and y axis for different rows"
-    (is (has-inline-image?
-         (render-sparkline
-          {:cols default-columns
-           :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]})))))
-
 (defn- render-funnel [results]
   (body/render :funnel :inline pacific-tz render.tu/test-card nil results))
 
@@ -628,11 +591,11 @@
                   :display_name  "NumPurchased",
                   :base_type     :type/Integer
                   :semantic_type nil}]
-        render  (fn [rows]
+        render  (fn [rows & [viz-settings]]
                   (body/render :categorical/donut :inline pacific-tz
                                render.tu/test-card
                                nil
-                               {:cols columns :rows rows}))
+                               {:cols columns :rows rows :viz-settings viz-settings}))
         prune   (fn prune [html-tree]
                   (walk/prewalk (fn no-maps [x]
                                   (if (vector? x)
@@ -640,7 +603,7 @@
                                     x))
                                 html-tree))]
     (testing "Renders without error"
-      (let [rendered-info (render [["Doohickey" 75] ["Widget" 25]])]
+      (let [rendered-info (render [["Doohickey" 75] ["Widget" 25]] {:show_values true})]
         (is (has-inline-image? rendered-info))))
     (testing "Includes percentages"
       (is (= [:div
@@ -685,8 +648,8 @@
                (:percentages (donut-info 5 rows))))))))
 
 (deftest ^:parallel format-percentage-test
-  (mt/are+ [value expected] (= expected
-                               (body/format-percentage 12345.4321 value))
+  (are [value expected] (= expected
+                           (body/format-percentage 12345.4321 value))
     ".," "1,234,543.21%"
     "^&" "1&234&543^21%"
     " "  "1,234,543 21%"

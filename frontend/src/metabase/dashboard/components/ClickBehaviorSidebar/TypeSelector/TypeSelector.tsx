@@ -3,10 +3,10 @@ import React, { useCallback, useMemo } from "react";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
-import { isActionButtonDashCard } from "metabase/writeback/utils";
+import { isActionDashCard } from "metabase/writeback/utils";
 
-import type { UiParameter } from "metabase/parameters/types";
 import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";
+import type { UiParameter } from "metabase-lib/parameters/types";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 import { SidebarItem } from "../SidebarItem";
@@ -22,7 +22,7 @@ interface BehaviorOptionProps {
   onClick: () => void;
 }
 
-const BehaviorOption = ({
+export const BehaviorOption = ({
   option,
   icon,
   onClick,
@@ -67,7 +67,7 @@ function TypeSelector({
   moveToNextPage,
 }: TypeSelectorProps) {
   const options = useMemo(() => {
-    if (isActionButtonDashCard(dashcard)) {
+    if (isActionDashCard(dashcard)) {
       return clickBehaviorOptions;
     }
     return clickBehaviorOptions.filter(option => option.value !== "action");

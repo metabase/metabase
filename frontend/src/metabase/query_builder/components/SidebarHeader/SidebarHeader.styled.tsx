@@ -50,7 +50,7 @@ export const HeaderTitleContainer = styled.span<{
   align-items: center;
 
   font-size: 1.17em;
-  font-weight: 900;
+  font-weight: bold;
 
   margin-top: 0;
   margin-bottom: 0;
@@ -59,7 +59,7 @@ export const HeaderTitleContainer = styled.span<{
 `;
 
 export const CloseButton = styled.a`
-  color: ${color("text-medium")};
+  color: ${color("text-dark")};
   text-decoration: none;
 
   margin-left: auto;

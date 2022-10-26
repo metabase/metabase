@@ -1,5 +1,4 @@
 import { LocationDescriptorObject } from "history";
-import _ from "underscore";
 import xhrMock from "xhr-mock";
 
 import * as CardLib from "metabase/lib/card";
@@ -9,18 +8,6 @@ import * as alert from "metabase/alert/alert";
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import { setErrorPage } from "metabase/redux/app";
-
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import {
-  getAdHocQuestion,
-  getSavedStructuredQuestion,
-  getSavedNativeQuestion,
-  getUnsavedNativeQuestion,
-  getStructuredModel,
-  getNativeModel,
-} from "metabase-lib/mocks";
 
 import { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -34,6 +21,17 @@ import {
   state as entitiesState,
   metadata,
 } from "__support__/sample_database_fixture";
+import {
+  getAdHocQuestion,
+  getSavedStructuredQuestion,
+  getSavedNativeQuestion,
+  getUnsavedNativeQuestion,
+  getStructuredModel,
+  getNativeModel,
+} from "metabase-lib/mocks";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Question from "metabase-lib/Question";
 
 import * as navigation from "../navigation";
 import * as querying from "../querying";
@@ -95,10 +93,8 @@ function getQueryParamsForQuestion(
   if (!question.isSaved()) {
     return extra;
   }
-  const id = question.id();
-  const name = question.displayName();
   return {
-    slug: `${id}-${name}`,
+    slug: question.slug(),
     ...extra,
   };
 }
@@ -249,12 +245,6 @@ describe("QB Actions > initializeQB", () => {
           expect(loadMetadataForCardSpy).toHaveBeenCalledWith(
             expect.objectContaining(question.card()),
           );
-        });
-
-        it("runs question query in view mode", async () => {
-          const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
-          await setup({ question });
-          expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
         });
 
         it("does not run non-runnable question queries", async () => {
@@ -408,6 +398,12 @@ describe("QB Actions > initializeQB", () => {
             ),
           );
         });
+
+        it("runs question query in view mode", async () => {
+          const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+          await setup({ question });
+          expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
+        });
       });
     });
   });
@@ -510,6 +506,26 @@ describe("QB Actions > initializeQB", () => {
           expect(dispatch).toHaveBeenCalledWith(setErrorPage(error));
         });
       });
+    });
+  });
+
+  describe("unsaved structured questions", () => {
+    const { question } = TEST_CASE.SAVED_STRUCTURED_QUESTION;
+
+    it("runs question query in view mode", async () => {
+      const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+      await setup({ question });
+      expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("unsaved native questions", () => {
+    const { question } = TEST_CASE.UNSAVED_NATIVE_QUESTION;
+
+    it("doesn't run an ad-hoc native question in view mode automatically", async () => {
+      const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+      await setup({ question });
+      expect(runQuestionQuerySpy).not.toHaveBeenCalled();
     });
   });
 

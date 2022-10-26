@@ -2,16 +2,12 @@ import { getIn } from "icepick";
 
 import { t } from "ttag";
 
+import { normalize, schema } from "normalizr";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { defer } from "metabase/lib/promise";
-import { normalize, schema } from "normalizr";
 
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
-import { applyParameters } from "metabase/meta/Card";
-import {
-  getParameterValuesBySlug,
-  getParameterValuesByIdFromQueryParams,
-} from "metabase/parameters/utils/parameter-values";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 
 import Utils from "metabase/lib/utils";
 
@@ -27,12 +23,14 @@ import {
   maybeUsePivotEndpoint,
 } from "metabase/services";
 
+import { getMetadata } from "metabase/selectors/metadata";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+import { applyParameters } from "metabase-lib/queries/utils/card";
 import {
   getDashboardComplete,
   getParameterValues,
   getLoadingDashCards,
 } from "../selectors";
-import { getMetadata } from "metabase/selectors/metadata";
 
 import {
   expandInlineDashboard,
@@ -399,6 +397,20 @@ export const fetchDashboardCardData = createThunkAction(
     });
   },
 );
+
+export const reloadDashboardCards = () => async (dispatch, getState) => {
+  const dashboard = getDashboardComplete(getState());
+
+  const reloads = getAllDashboardCards(dashboard)
+    .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
+    .map(({ card, dashcard }) =>
+      dispatch(
+        fetchCardData(card, dashcard, { reload: true, ignoreCache: true }),
+      ),
+    );
+
+  await Promise.all(reloads);
+};
 
 export const cancelFetchDashboardCardData = createThunkAction(
   CANCEL_FETCH_DASHBOARD_CARD_DATA,

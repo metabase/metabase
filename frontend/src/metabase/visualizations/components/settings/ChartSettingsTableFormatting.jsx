@@ -3,6 +3,8 @@ import React from "react";
 
 import { t, jt } from "ttag";
 
+import _ from "underscore";
+import cx from "classnames";
 import {
   getAccentColors,
   getStatusColorRanges,
@@ -24,10 +26,7 @@ import {
 } from "metabase/components/sortable";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { isNumeric, isString } from "metabase/lib/schema_metadata";
-
-import _ from "underscore";
-import cx from "classnames";
+import { isNumeric, isString } from "metabase-lib/types/utils/isa";
 
 const NUMBER_OPERATOR_NAMES = {
   "<": t`is less than`,
@@ -377,6 +376,7 @@ const RuleEditor = ({
               type="number"
               value={rule.value}
               onChange={value => onChange({ ...rule, value })}
+              placeholder="0"
             />
           ) : hasOperand ? (
             <input
@@ -384,6 +384,7 @@ const RuleEditor = ({
               className={INPUT_CLASSNAME}
               value={rule.value}
               onChange={e => onChange({ ...rule, value: e.target.value })}
+              placeholder={t`Column value`}
             />
           ) : null}
           <h3 className="mt3 mb1">{t`…turn its background this color:`}</h3>

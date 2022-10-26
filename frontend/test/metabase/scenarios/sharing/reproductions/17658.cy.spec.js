@@ -9,7 +9,7 @@ import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
 
-describe("issue 17658", () => {
+describe("issue 17658", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("PUT", "/api/pulse/*").as("deletePulse");
     restore();

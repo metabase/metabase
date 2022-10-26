@@ -14,6 +14,8 @@ import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import SelectList from "metabase/components/SelectList";
 import { QuestionList } from "./QuestionList";
 
 import {
@@ -21,8 +23,6 @@ import {
   QuestionPickerRoot,
   SearchInput,
 } from "./QuestionPicker.styled";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import SelectList from "metabase/components/SelectList";
 
 QuestionPicker.propTypes = {
   onSelect: PropTypes.func.isRequired,

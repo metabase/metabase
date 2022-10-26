@@ -472,8 +472,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         },
       ],
     });
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     visitDashboard(1);
     // Product ID in the first row (query fails for User ID as well)

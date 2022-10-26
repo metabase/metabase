@@ -280,22 +280,21 @@
     (testing "Field values should be created when not present"
       ;; this will print an error message because it will try to fetch the FieldValues, but the Field doesn't
       ;; exist; we can ignore that
-      (mt/suppress-output
-       (mt/with-temp Field [{field-id :id} list-field]
-         (is (= {:values [], :field_id true, :has_more_values false}
-                (mt/boolean-ids-and-timestamps
-                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))
+      (mt/with-temp Field [{field-id :id} list-field]
+        (is (= {:values [], :field_id true, :has_more_values false}
+               (mt/boolean-ids-and-timestamps
+                (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))
 
-         (is (= {:status "success"}
-                (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
-                 {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))
+        (is (= {:status "success"}
+               (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
+                                     {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))
 
-         (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"], :has_more_values false}
-                (into {} (db/select-one [FieldValues :values :human_readable_values, :has_more_values] :field_id field-id))))
+        (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"], :has_more_values false}
+               (into {} (db/select-one [FieldValues :values :human_readable_values, :has_more_values] :field_id field-id))))
 
-         (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
-                (mt/boolean-ids-and-timestamps
-                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id))))))))))
+        (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
+               (mt/boolean-ids-and-timestamps
+                (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))))))
 
 (deftest remove-field-values-test
   (testing "POST /api/field/:id/values"

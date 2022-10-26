@@ -10,12 +10,13 @@ import {
   getX,
   getY,
 } from "metabase/static-viz/components/XYChart/utils/series";
-
+import type {
+  ContinuousDomain,
+  Range,
+} from "metabase/visualizations/shared/types/scale";
 import type {
   SeriesDatum,
   XAxisType,
-  ContinuousDomain,
-  Range,
   Series,
   YAxisType,
   HydratedSeries,
@@ -42,7 +43,7 @@ export const createXScale = (
     const xScale = scaleBand({
       domain,
       range,
-      padding: 0.1,
+      padding: 0.2,
     });
 
     return {

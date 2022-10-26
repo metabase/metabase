@@ -2,7 +2,6 @@
 import React from "react";
 import cx from "classnames";
 
-import StaticParameterWidget from "./ParameterWidget";
 import Icon from "metabase/components/Icon";
 import {
   SortableContainer,
@@ -10,6 +9,7 @@ import {
   SortableHandle,
 } from "metabase/components/sortable";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import StaticParameterWidget from "./ParameterWidget";
 
 const StaticParameterWidgetList = ({
   children,

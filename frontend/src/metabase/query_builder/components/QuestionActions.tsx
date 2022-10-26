@@ -15,18 +15,18 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { State } from "metabase-types/store";
 import { color } from "metabase/lib/colors";
+
+import BookmarkToggle from "metabase/core/components/BookmarkToggle";
+import Question from "metabase-lib/Question";
+
 import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
-} from "metabase/lib/data-modeling/utils";
-
-import Question from "metabase-lib/lib/Question";
-
+} from "metabase-lib/metadata/utils/models";
 import {
   QuestionActionsDivider,
   StrengthIndicator,
 } from "./QuestionActions.styled";
-import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { ViewHeaderIconButtonContainer } from "./view/ViewHeader.styled";
 
 const HEADER_ICON_SIZE = 16;

@@ -1,5 +1,6 @@
 /*global ace*/
 /* eslint-disable react/prop-types */
+import { t } from "ttag";
 import React, { Component } from "react";
 import cx from "classnames";
 import "ace/ace";
@@ -19,8 +20,10 @@ import "ace/snippets/json";
 import _ from "underscore";
 import { ResizableBox } from "react-resizable";
 import { connect } from "react-redux";
+import slugg from "slugg";
 
 import { isEventOverElement } from "metabase/lib/dom";
+import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
@@ -28,6 +31,7 @@ import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
 import Questions from "metabase/entities/questions";
+import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
@@ -140,7 +144,7 @@ class NativeQueryEditor extends Component {
       editorElement.classList.add("read-only");
     }
 
-    const aceMode = query.aceMode();
+    const aceMode = getEngineNativeAceMode(query.engine());
     const session = this._editor.getSession();
 
     if (session.$modeId !== aceMode) {
@@ -174,13 +178,26 @@ class NativeQueryEditor extends Component {
     document.removeEventListener("contextmenu", this.handleRightClick);
   }
 
-  // this is overwritten when the editor is set up
-  swapInCorrectCompletors = () => undefined;
+  // this is overwritten when the editor mounts
+  nextCompleters = undefined;
+
+  cardTagIdAtCursor = ({ row, column }) => {
+    const line = this._editor.getValue().split("\n")[row];
+    const matches = Array.from(line.matchAll(CARD_TAG_REGEX));
+    const match = matches.find(
+      m => column > m.index && column < m.index + m[0].length,
+    );
+    return parseInt(match?.[2]) || null;
+  };
 
   handleCursorChange = _.debounce((e, { cursor }) => {
-    this.swapInCorrectCompletors(cursor);
+    this._editor.completers = this.nextCompleters(cursor);
     if (this.props.setNativeEditorSelectedRange) {
       this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
+    }
+    const cardTagId = this.cardTagIdAtCursor(cursor);
+    if (cardTagId) {
+      this.props.openDataReferenceAtQuestion(cardTagId);
     }
   }, 100);
 
@@ -321,10 +338,10 @@ class NativeQueryEditor extends Component {
           }
 
           // transform results into what ACE expects
-          const resultsForAce = results.map(result => ({
-            name: result[0],
-            value: result[0],
-            meta: result[1],
+          const resultsForAce = results.map(([name, meta]) => ({
+            name: name,
+            value: name,
+            meta: meta,
           }));
           callback(null, resultsForAce);
         } catch (error) {
@@ -334,12 +351,17 @@ class NativeQueryEditor extends Component {
       },
     });
 
-    const allCompleters = [...this._editor.completers];
-    const snippetCompleter = [{ getCompletions: this.getSnippetCompletions }];
+    // the completers when the editor mounts are the standard ones
+    const standardCompleters = [...this._editor.completers];
 
-    this.swapInCorrectCompletors = pos => {
-      const isInSnippet = this.getSnippetNameAtCursor(pos) !== null;
-      this._editor.completers = isInSnippet ? snippetCompleter : allCompleters;
+    this.nextCompleters = pos => {
+      if (this.getSnippetNameAtCursor(pos)) {
+        return [{ getCompletions: this.getSnippetCompletions }];
+      } else if (this.getCardTagNameAtCursor(pos)) {
+        return [{ getCompletions: this.getCardTagCompletions }];
+      } else {
+        return standardCompleters;
+      }
     };
   }
 
@@ -347,7 +369,14 @@ class NativeQueryEditor extends Component {
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
-    return match ? match[1] : null;
+    return match?.[1] || null;
+  };
+
+  getCardTagNameAtCursor = ({ row, column }) => {
+    const lines = this._editor.getValue().split("\n");
+    const linePrefix = lines[row].slice(0, column);
+    const match = linePrefix.match(/\{\{\s*(#[^\}]*)$/);
+    return match?.[1] || null;
   };
 
   getSnippetCompletions = (editor, session, pos, prefix, callback) => {
@@ -363,6 +392,33 @@ class NativeQueryEditor extends Component {
         value: name,
       })),
     );
+  };
+
+  getCardTagCompletions = async (editor, session, pos, prefix, callback) => {
+    // This ensures the user is only typing the first "word" considered by the autocompleter
+    // inside the {{#...}} tag.
+    // e.g. if `|` is the cursor position and the user is typing:
+    //   - {{#123-foo|}} will fetch completions for the word "123-foo"
+    //   - {{#123 foo|}} will not fetch completions because the word "foo" is not the first word in the tag.
+    // Note we need to drop the leading `#` from the card tag name because the prefix only includes alphanumerics
+    if (prefix !== this.getCardTagNameAtCursor(pos).substring(1)) {
+      callback(null, null);
+    }
+    const apiResults = await this.props.cardAutocompleteResultsFn(prefix);
+    const resultsForAce = apiResults.map(
+      ({ id, name, dataset, collection_name }) => {
+        const collectionName = collection_name || t`Our analytics`;
+        return {
+          name: `${id}-${slugg(name)}`,
+          value: `${id}-${slugg(name)}`,
+          meta: dataset
+            ? t`Model in ${collectionName}`
+            : t`Question in ${collectionName}`,
+          score: dataset ? 100000 : 0, // prioritize models above questions
+        };
+      },
+    );
+    callback(null, resultsForAce);
   };
 
   _updateSize() {
@@ -389,14 +445,15 @@ class NativeQueryEditor extends Component {
   }, AUTOCOMPLETE_DEBOUNCE_DURATION);
 
   onChange() {
-    const { query } = this.props;
+    const { query, setDatasetQuery } = this.props;
     if (this._editor && !this._localUpdate) {
       this._updateSize();
       if (query.queryText() !== this._editor.getValue()) {
-        query
-          .setQueryText(this._editor.getValue())
-          .updateSnippetsWithIds(this.props.snippets)
-          .update(this.props.setDatasetQuery);
+        setDatasetQuery(
+          query
+            .setQueryText(this._editor.getValue())
+            .updateSnippetsWithIds(this.props.snippets),
+        );
       }
     }
 
@@ -409,12 +466,9 @@ class NativeQueryEditor extends Component {
 
   /// Change the Database we're currently editing a query for.
   setDatabaseId = databaseId => {
-    const { query } = this.props;
+    const { query, setDatasetQuery } = this.props;
     if (query.databaseId() !== databaseId) {
-      query
-        .setDatabaseId(databaseId)
-        .setDefaultCollection()
-        .update(this.props.setDatasetQuery);
+      setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
       if (this._editor && !this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
         setTimeout(() => this._editor.focus(), 50);
@@ -424,18 +478,16 @@ class NativeQueryEditor extends Component {
 
   setTableId = tableId => {
     // TODO: push more of this into metabase-lib?
-    const { query } = this.props;
+    const { query, setDatasetQuery } = this.props;
     const table = query.metadata().table(tableId);
     if (table?.name !== query.collection()) {
-      query.setCollectionName(table.name).update(this.props.setDatasetQuery);
+      setDatasetQuery(query.setCollectionName(table.name));
     }
   };
 
   setParameterIndex = (parameterId, parameterIndex) => {
     const { query, setDatasetQuery } = this.props;
-    query
-      .setParameterIndex(parameterId, parameterIndex)
-      .update(setDatasetQuery);
+    setDatasetQuery(query.setParameterIndex(parameterId, parameterIndex));
   };
 
   handleFilterButtonClick = () => {
@@ -458,6 +510,7 @@ class NativeQueryEditor extends Component {
       snippetCollections = [],
       resizable,
       requireWriteback = false,
+      setDatasetQuery,
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -534,9 +587,7 @@ class NativeQueryEditor extends Component {
             <SnippetModal
               onSnippetUpdate={(newSnippet, oldSnippet) => {
                 if (newSnippet.name !== oldSnippet.name) {
-                  query
-                    .updateQueryTextWithNewSnippetNames([newSnippet])
-                    .update(this.props.setDatasetQuery);
+                  setDatasetQuery(query.updateSnippetNames([newSnippet]));
                 }
               }}
               snippet={this.props.modalSnippet}
@@ -556,24 +607,21 @@ class NativeQueryEditor extends Component {
   }
 }
 
-const mapStateToProps = () => ({});
-const mapDispatchToProps = dispatch => {
-  return {
-    fetchQuestion: async id => {
-      const action = await dispatch(
-        Questions.actions.fetch(
-          { id },
-          { noEvent: true, useCachedForbiddenError: true },
-        ),
-      );
-      return Questions.HACK_getObjectFromAction(action);
-    },
-  };
-};
+const mapDispatchToProps = dispatch => ({
+  fetchQuestion: async id => {
+    const action = await dispatch(
+      Questions.actions.fetch(
+        { id },
+        { noEvent: true, useCachedForbiddenError: true },
+      ),
+    );
+    return Questions.HACK_getObjectFromAction(action);
+  },
+});
 
 export default _.compose(
   ExplicitSize(),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(null, mapDispatchToProps),
 )(NativeQueryEditor);

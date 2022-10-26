@@ -19,24 +19,24 @@
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.premium-features/keep-me)
 
-(defn- google-auth-configured? []
-  (boolean (setting/get :google-auth-client-id)))
+(defn- google-auth-enabled? []
+  (boolean (setting/get :google-auth-enabled)))
 
-(defn- ldap-configured? []
-  (classloader/require 'metabase.integrations.ldap)
-  ((resolve 'metabase.integrations.ldap/ldap-configured?)))
+(defn- ldap-enabled? []
+  (classloader/require 'metabase.api.ldap)
+  ((resolve 'metabase.api.ldap/ldap-enabled)))
 
 (defn- ee-sso-configured? []
   (u/ignore-exceptions
     (classloader/require 'metabase-enterprise.sso.integrations.sso-settings))
-  (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-configured?)]
+  (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-enabled?)]
     (varr)))
 
-(defn sso-configured?
-  "Any SSO provider is configured"
+(defn sso-enabled?
+  "Any SSO provider is configured and enabled"
   []
-  (or (google-auth-configured?)
-      (ldap-configured?)
+  (or (google-auth-enabled?)
+      (ldap-enabled?)
       (ee-sso-configured?)))
 
 (defsetting check-for-updates
@@ -97,6 +97,13 @@
   in [[metabase.public-settings.premium-features/fetch-token-status]]. (`site-uuid` is used for anonymous
   analytics/stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
+  :visibility :internal
+  :setter     :none
+  :type       ::uuid-nonce)
+
+(defsetting site-uuid-for-version-info-fetching
+  "A *different* site-wide UUID that we use for the version info fetching API calls. Do not use this for any other
+  applications. (See [[site-uuid-for-premium-features-token-checks]] for more reasoning.)"
   :visibility :internal
   :setter     :none
   :type       ::uuid-nonce)
@@ -364,7 +371,7 @@
                 ;; otherwise this always returns true.
                 (let [v (setting/get-value-of-type :boolean :enable-password-login)]
                   (if (and (some? v)
-                           (sso-configured?))
+                           (sso-enabled?))
                     v
                     true))))
 

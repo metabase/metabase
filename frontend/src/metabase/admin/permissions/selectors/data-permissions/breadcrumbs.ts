@@ -1,8 +1,7 @@
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type Schema from "metabase-lib/lib/metadata/Schema";
-import type Table from "metabase-lib/lib/metadata/Table";
 import { Group } from "metabase-types/api";
-import _ from "underscore";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type Schema from "metabase-lib/metadata/Schema";
+import type Table from "metabase-lib/metadata/Table";
 
 import {
   getSchemaEntityId,

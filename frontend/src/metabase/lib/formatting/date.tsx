@@ -2,7 +2,8 @@ import React from "react";
 import moment, { Moment } from "moment-timezone";
 
 import { parseTimestamp } from "metabase/lib/time";
-import { isDateWithoutTime } from "metabase/lib/schema_metadata";
+import type { DatetimeUnit } from "metabase-types/api/query";
+import { isDateWithoutTime } from "metabase-lib/types/utils/isa";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
@@ -10,7 +11,6 @@ import {
   hasHour,
 } from "./datetime-utils";
 
-import type { DatetimeUnit } from "metabase-types/api/query";
 import type { OptionsType } from "./types";
 
 const RANGE_SEPARATOR = ` – `;

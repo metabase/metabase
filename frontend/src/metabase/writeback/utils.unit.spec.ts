@@ -1,15 +1,15 @@
 import {
   createMockDashboardActionButton,
   createMockQueryAction,
+  createMockImplictQueryAction,
 } from "metabase-types/api/mocks";
 import type {
-  ActionButtonDashboardCard,
-  ActionButtonParametersMapping,
+  ActionDashboardCard,
+  ActionParametersMapping,
 } from "metabase-types/api";
 import { isMappedExplicitActionButton } from "./utils";
 
 const PLAIN_BUTTON = createMockDashboardActionButton({
-  action_id: null,
   action: undefined,
   visualization_settings: { click_behavior: undefined },
 });
@@ -17,20 +17,42 @@ const PLAIN_BUTTON = createMockDashboardActionButton({
 const QUERY_ACTION = createMockQueryAction();
 
 const EXPLICIT_ACTION = createMockDashboardActionButton({
-  action_id: QUERY_ACTION.id,
   action: QUERY_ACTION,
-  visualization_settings: { click_behavior: undefined },
+  visualization_settings: {
+    click_behavior: undefined,
+    action_slug: "action_1337",
+  },
 });
 
-const PARAMETER_MAPPINGS: ActionButtonParametersMapping[] = [
+const PARAMETER_MAPPINGS: ActionParametersMapping[] = [
   {
     parameter_id: "param",
     target: ["variable", ["template-tag", "foo"]],
   },
 ];
 
+const IMPLICIT_INSERT_ACTION = createMockDashboardActionButton({
+  action: createMockImplictQueryAction({ slug: "insert" }),
+  visualization_settings: {
+    action_slug: "insert",
+  },
+});
+
+const IMPLICIT_UPDATE_ACTION = createMockDashboardActionButton({
+  action: createMockImplictQueryAction({ slug: "update" }),
+  visualization_settings: {
+    action_slug: "update",
+  },
+});
+
+const IMPLICIT_DELETE_ACTION = createMockDashboardActionButton({
+  action: createMockImplictQueryAction({ slug: "delete" }),
+  visualization_settings: {
+    action_slug: "delete",
+  },
+});
+
 const NAVIGATION_ACTION_BUTTON = createMockDashboardActionButton({
-  action_id: null,
   action: undefined,
   visualization_settings: {
     click_behavior: {
@@ -60,7 +82,7 @@ describe("isMappedExplicitActionButton", () => {
   });
 
   it("returns false for button without an explicit action attached, but with parameter mappings", () => {
-    const button: ActionButtonDashboardCard = {
+    const button: ActionDashboardCard = {
       ...PLAIN_BUTTON,
       parameter_mappings: PARAMETER_MAPPINGS,
     };
@@ -73,7 +95,7 @@ describe("isMappedExplicitActionButton", () => {
   });
 
   it("returns true for button with an explicit action attached and defined parameter mappings", () => {
-    const button: ActionButtonDashboardCard = {
+    const button: ActionDashboardCard = {
       ...EXPLICIT_ACTION,
       parameter_mappings: PARAMETER_MAPPINGS,
     };

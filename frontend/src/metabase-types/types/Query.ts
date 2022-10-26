@@ -3,12 +3,12 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
+import { DatetimeUnit } from "metabase-types/api/query";
 import { TableId } from "./Table";
 import { FieldId, BaseType } from "./Field";
 import { SegmentId } from "./Segment";
 import { MetricId } from "./Metric";
 import { ParameterType } from "./Parameter";
-import { DatetimeUnit } from "metabase-types/api/query";
 
 export type ExpressionName = string;
 
@@ -53,6 +53,9 @@ export type TemplateTag = {
   "widget-type"?: ParameterType;
   required?: boolean;
   default?: string;
+
+  // Card template specific
+  "card-id"?: number;
 
   // Snippet specific
   "snippet-id"?: number;

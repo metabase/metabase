@@ -1,13 +1,16 @@
 import React from "react";
 import { t } from "ttag";
 
+import moment, { Moment } from "moment-timezone";
 import { getDateStyleFromSettings } from "metabase/lib/time";
 import Calendar, { SelectAll } from "metabase/components/Calendar";
 import ExpandingContent from "metabase/components/ExpandingContent";
+import {
+  getTimeComponent,
+  setTimeComponent,
+} from "metabase-lib/queries/utils/query-time";
 import HoursMinutesInput from "./HoursMinutesInput";
 
-import moment, { Moment } from "moment-timezone";
-import { getTimeComponent, setTimeComponent } from "metabase/lib/query_time";
 import {
   CalendarIcon,
   DateInput,

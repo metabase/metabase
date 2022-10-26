@@ -1,8 +1,5 @@
-import { DimensionOption } from "metabase-lib/lib/queries/StructuredQuery";
-
-import { isDate } from "metabase/lib/schema_metadata";
-
-import { LONG_TEXT_MIN } from "metabase-lib/lib/metadata/Field";
+import { isDate } from "metabase-lib/types/utils/isa";
+import { DimensionOption } from "metabase-lib/queries/StructuredQuery";
 
 type PriorityMap = { [key: string]: number | undefined };
 

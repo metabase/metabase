@@ -4,14 +4,13 @@ import { Link } from "react-router";
 
 import { slugify } from "metabase/lib/formatting";
 
-import COMPONENTS from "../lib/components-webpack";
-
 import Heading from "metabase/components/type/Heading";
 import Text from "metabase/components/type/Text";
 import Subhead from "metabase/components/type/Subhead";
 
 import Props from "metabase/internal/components/Props";
 import Example from "metabase/internal/components/Example";
+import COMPONENTS from "../lib/components-webpack";
 
 const Section = ({ title, children }) => (
   <div className="mb2">

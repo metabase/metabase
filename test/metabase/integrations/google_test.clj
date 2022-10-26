@@ -32,9 +32,8 @@
 (deftest allow-autocreation-test
   (with-redefs [premium-features/enable-sso? (constantly false)]
     (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-      (are [allowed? email] (is (= allowed?
-                                   (#'google/autocreate-user-allowed-for-email? email))
-                                (format "Can we autocreate an account for email '%s'?" email))
+      (are [allowed? email] (= allowed?
+                               (#'google/autocreate-user-allowed-for-email? email))
         true  "cam@metabase.com"
         false "cam@expa.com"))))
 

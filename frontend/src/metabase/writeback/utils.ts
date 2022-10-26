@@ -1,14 +1,14 @@
-import { TYPE } from "metabase/lib/types";
-
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Field from "metabase-lib/lib/metadata/Field";
-
 import type {
-  ActionButtonDashboardCard,
+  ActionDashboardCard,
   BaseDashboardOrderedCard,
+  ClickBehavior,
   Database as IDatabase,
+  WritebackAction,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
+import { TYPE } from "metabase-lib/types/constants";
+import type Database from "metabase-lib/metadata/Database";
+import type Field from "metabase-lib/metadata/Field";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -61,14 +61,13 @@ export const isEditableField = (field: Field) => {
   return true;
 };
 
-export const isActionButtonCard = (card: SavedCard) =>
-  card?.display === "action-button";
+export const isActionCard = (card: SavedCard) => card?.display === "action";
 
-export function isActionButtonDashCard(
+export function isActionDashCard(
   dashCard: BaseDashboardOrderedCard,
-): dashCard is ActionButtonDashboardCard {
-  const virtualCard = dashCard.visualization_settings?.virtual_card;
-  return isActionButtonCard(virtualCard as SavedCard);
+): dashCard is ActionDashboardCard {
+  const virtualCard = dashCard?.visualization_settings?.virtual_card;
+  return isActionCard(virtualCard as SavedCard);
 }
 
 /**
@@ -81,12 +80,20 @@ export function isActionButtonDashCard(
  */
 export function isMappedExplicitActionButton(
   dashCard: BaseDashboardOrderedCard,
-): dashCard is ActionButtonDashboardCard {
-  const isAction = isActionButtonDashCard(dashCard);
-  return isAction && typeof dashCard.action_id === "number";
+): dashCard is ActionDashboardCard {
+  const isAction = isActionDashCard(dashCard);
+  return (
+    isAction && typeof dashCard.visualization_settings.action_slug === "string"
+  );
 }
 
-export function getActionButtonLabel(dashCard: ActionButtonDashboardCard) {
+export function getActionButtonLabel(dashCard: ActionDashboardCard) {
   const label = dashCard.visualization_settings?.["button.label"];
   return label || "";
 }
+
+export const hasImplicitActions = (actions: WritebackAction[]): boolean =>
+  actions.some(isImplicitAction);
+
+export const isImplicitAction = (action: WritebackAction): boolean =>
+  action.type === "implicit";

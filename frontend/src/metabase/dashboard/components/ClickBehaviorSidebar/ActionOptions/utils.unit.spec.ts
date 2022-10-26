@@ -1,14 +1,14 @@
 import type {
-  ActionButtonParametersMapping,
+  ActionParametersMapping,
   ClickBehaviorParameterMapping,
   WritebackParameter,
 } from "metabase-types/api";
-import type { UiParameter } from "metabase/parameters/types";
-
 import {
   createMockDashboardActionButton,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
+import type { UiParameter } from "metabase-lib/parameters/types";
+
 import {
   turnClickBehaviorParameterMappingsIntoDashCardMappings,
   turnDashCardParameterMappingsIntoClickBehaviorMappings,
@@ -30,7 +30,7 @@ const DASHBOARD_FILTER_PARAMETER: UiParameter = {
   value: 5,
 };
 
-const PARAMETER_MAPPING: ActionButtonParametersMapping = {
+const PARAMETER_MAPPING: ActionParametersMapping = {
   parameter_id: DASHBOARD_FILTER_PARAMETER.id,
   target: WRITEBACK_PARAMETER.target,
 };
@@ -53,7 +53,7 @@ const CLICK_BEHAVIOR_PARAMETER_MAPPINGS: ClickBehaviorParameterMapping = {
 describe("turnDashCardParameterMappingsIntoClickBehaviorMappings", () => {
   type SetupOpts = {
     actionParameters?: WritebackParameter[] | undefined;
-    dashCardParameterMappings?: ActionButtonParametersMapping[] | null;
+    dashCardParameterMappings?: ActionParametersMapping[] | null;
   };
 
   function setup({
@@ -63,7 +63,6 @@ describe("turnDashCardParameterMappingsIntoClickBehaviorMappings", () => {
     const action = createMockQueryAction({ parameters: actionParameters });
     const dashCard = createMockDashboardActionButton({
       action,
-      action_id: action.id,
       parameter_mappings: dashCardParameterMappings,
     });
     return { action, dashCard };

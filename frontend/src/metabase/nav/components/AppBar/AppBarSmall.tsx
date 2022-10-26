@@ -1,11 +1,11 @@
 import React, { useCallback, useState } from "react";
 import { User } from "metabase-types/api";
-import AppBarLogo from "./AppBarLogo";
-import AppBarToggle from "./AppBarToggle";
 import SearchBar from "../SearchBar";
 import ProfileLink from "../ProfileLink";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
+import AppBarToggle from "./AppBarToggle";
+import AppBarLogo from "./AppBarLogo";
 import {
   AppBarHeader,
   AppBarLogoContainer,

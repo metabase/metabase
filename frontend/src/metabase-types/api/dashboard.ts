@@ -1,10 +1,14 @@
-import { EntityId } from "metabase-types/types";
-import {
+import type { EntityId } from "metabase-types/types";
+import type {
   ParameterTarget,
   ParameterId,
   Parameter,
 } from "metabase-types/types/Parameter";
-import { CardId, SavedCard } from "metabase-types/types/Card";
+
+import type { CardId, SavedCard } from "metabase-types/types/Card";
+import type { WritebackAction } from "./writeback";
+
+import type { Dataset } from "./dataset";
 
 export type DashboardId = number;
 
@@ -39,6 +43,7 @@ export type DashboardOrderedCard = BaseDashboardOrderedCard & {
   card: SavedCard;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: SavedCard[];
+  action?: WritebackAction;
 };
 
 export type DashboardParameterMapping = {
@@ -46,3 +51,8 @@ export type DashboardParameterMapping = {
   parameter_id: ParameterId;
   target: ParameterTarget;
 };
+
+export type DashCardDataMap = Record<
+  DashCardId,
+  Record<CardId, Dataset | undefined>
+>;

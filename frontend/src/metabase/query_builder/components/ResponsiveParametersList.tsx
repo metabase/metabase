@@ -36,7 +36,10 @@ export const ResponsiveParametersList = ({
   }, [parameters]);
 
   return (
-    <ResponsiveParametersListRoot>
+    <ResponsiveParametersListRoot
+      isSmallScreen={isSmallScreen}
+      isShowingMobile={mobileShowParameterList}
+    >
       {isSmallScreen && (
         <FilterButton
           borderless

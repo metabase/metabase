@@ -1,15 +1,15 @@
 import React from "react";
 
-import { periodPopoverText } from "./periodPopoverText";
-import { formatBucketing } from "metabase/lib/query_time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { formatBucketing } from "metabase-lib/queries/utils/query-time";
+import Filter from "metabase-lib/queries/structured/Filter";
 import { DATE_PERIODS } from "../RelativeDatePicker";
 import {
   CurrentButton,
   CurrentContainer,
   CurrentPopover,
 } from "./CurrentPicker.styled";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import { periodPopoverText } from "./periodPopoverText";
 
 type CurrentPickerProps = {
   className?: string;

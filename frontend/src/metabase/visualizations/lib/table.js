@@ -1,4 +1,4 @@
-import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
+import { isNumber, isCoordinate } from "metabase-lib/types/utils/isa";
 
 export function getTableClickedObjectRowData(
   [series],
@@ -91,7 +91,10 @@ export function getTableHeaderClickedObject(
   } else {
     return {
       column,
-      dimension: query?.dimensionForColumn(column),
+      dimension:
+        typeof query?.dimensionForColumn === "function"
+          ? query?.dimensionForColumn(column)
+          : null,
     };
   }
 }

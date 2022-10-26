@@ -52,6 +52,10 @@
       :else
       nil))
 
+  clojure.lang.Symbol
+  (model [symb]
+    (db/resolve-model symb))
+
   nil
   (model [_this] nil))
 
@@ -59,6 +63,8 @@
   "Create a new instance of Toucan `model` with a map `m`.
 
     (instance User {:first_name \"Cam\"})"
-  [model m]
-  (let [model (db/resolve-model model)]
-    (into (empty model) m)))
+  ([model]
+   (let [model (db/resolve-model model)]
+     (empty model)))
+  ([model m]
+   (into (instance model) m)))

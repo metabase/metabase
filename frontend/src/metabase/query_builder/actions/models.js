@@ -1,22 +1,27 @@
 import { createAction } from "redux-actions";
-import _ from "underscore";
+import { push } from "react-router-redux";
 import { merge } from "icepick";
 import { t } from "ttag";
 
-import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { addUndo } from "metabase/redux/undo";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 import Questions from "metabase/entities/questions";
 
+import { getMetadata } from "metabase/selectors/metadata";
+import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
 import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
-import { runQuestionQuery } from "./querying";
+import { runDirtyQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
-import { getMetadata } from "metabase/selectors/metadata";
 
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
   dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
+  dispatch(runDirtyQuestionQuery());
+};
+
+export const onCancelCreateNewModel = () => async dispatch => {
+  await dispatch(push("/"));
 };
 
 export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";
@@ -25,7 +30,7 @@ export const onCancelDatasetChanges = () => (dispatch, getState) => {
   dispatch.action(CANCEL_DATASET_CHANGES, {
     card: cardBeforeChanges,
   });
-  dispatch(runQuestionQuery());
+  dispatch(runDirtyQuestionQuery());
 };
 
 export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
@@ -36,7 +41,7 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
       {
         id: question.id(),
       },
-      question.setDataset(true).setDisplay("table").card(),
+      question.setDataset(true).setPinned(true).setDisplay("table").card(),
     ),
   );
 
@@ -63,7 +68,7 @@ export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
   dispatch(
     addUndo({
       message: t`This is a question now.`,
-      actions: [apiUpdateQuestion(dataset, { rerunQuery: true })],
+      actions: [apiUpdateQuestion(dataset)],
     }),
   );
 };
@@ -81,13 +86,7 @@ export const setFieldMetadata =
     const resultsMetadata = getResultsMetadata(getState());
 
     const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
-      const compareExact =
-        !isLocalField(field_ref) || !isLocalField(fieldMetadata.field_ref);
-      const isTargetField = isSameField(
-        field_ref,
-        fieldMetadata.field_ref,
-        compareExact,
-      );
+      const isTargetField = isSameField(field_ref, fieldMetadata.field_ref);
       return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
     });
 

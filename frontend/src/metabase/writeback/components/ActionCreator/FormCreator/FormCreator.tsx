@@ -7,6 +7,7 @@ import type { ActionFormSettings, FieldSettings } from "metabase-types/api";
 import { FieldSettingsPopover } from "./FieldSettingsPopover";
 import { getDefaultFormSettings, getDefaultFieldSettings } from "./utils";
 import { FormField } from "./FormField";
+import { OptionEditor } from "./OptionEditor";
 
 import {
   FormItemWrapper,
@@ -14,6 +15,8 @@ import {
   FormItemName,
   FormSettings,
   EmptyFormPlaceholderWrapper,
+  FormSettingsPreviewContainer,
+  EditButton,
 } from "./FormCreator.styled";
 
 export function FormCreator({
@@ -74,12 +77,44 @@ function FormItem({
   fieldSettings: FieldSettings;
   onChange: (fieldSettings: FieldSettings) => void;
 }) {
+  const [isEditingOptions, setIsEditingOptions] = useState(false);
   const name = tag.name;
+
+  const updateOptions = (newOptions: (string | number)[]) => {
+    onChange({
+      ...fieldSettings,
+      valueOptions: newOptions,
+    });
+    setIsEditingOptions(false);
+  };
+
+  const hasOptions =
+    fieldSettings.inputType === "dropdown" ||
+    fieldSettings.inputType === "inline-select";
+
   return (
     <FormItemWrapper>
       <FormItemName>{name}</FormItemName>
       <FormSettings>
-        <FormField type={fieldSettings.inputType} />
+        <FormSettingsPreviewContainer>
+          {isEditingOptions && hasOptions ? (
+            <OptionEditor
+              options={fieldSettings.valueOptions ?? []}
+              onChange={updateOptions}
+            />
+          ) : (
+            <FormField tag={tag} fieldSettings={fieldSettings} />
+          )}
+          {!isEditingOptions && hasOptions && (
+            <EditButton
+              onClick={() => setIsEditingOptions(true)}
+              borderless
+              small
+            >
+              {t`Edit options`}
+            </EditButton>
+          )}
+        </FormSettingsPreviewContainer>
         <FieldSettingsPopover
           fieldSettings={fieldSettings}
           onChange={onChange}

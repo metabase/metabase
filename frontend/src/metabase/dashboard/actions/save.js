@@ -5,9 +5,8 @@ import { createThunkAction } from "metabase/lib/redux";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import { clickBehaviorIsValid } from "metabase/lib/click-behavior";
-
 import { DashboardApi, CardApi } from "metabase/services";
+import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
 import { getDashboardBeforeEditing } from "../selectors";
 
@@ -77,7 +76,6 @@ export const saveDashboardAndCards = createThunkAction(
               // mark isAdded because addcard doesn't record the position
               return {
                 ...result,
-                action_id: dc.action_id,
                 col: dc.col,
                 row: dc.row,
                 size_x: dc.size_x,
@@ -113,8 +111,8 @@ export const saveDashboardAndCards = createThunkAction(
         const cards = updatedDashcards.map(
           ({
             id,
-            action_id,
             card_id,
+            action,
             row,
             col,
             size_x,
@@ -124,8 +122,8 @@ export const saveDashboardAndCards = createThunkAction(
             visualization_settings,
           }) => ({
             id,
-            action_id,
             card_id,
+            action,
             row,
             col,
             size_x,
@@ -142,6 +140,7 @@ export const saveDashboardAndCards = createThunkAction(
                   }) &&
                   // filter out mappings for deleted series
                   (!card_id ||
+                    action ||
                     card_id === mapping.card_id ||
                     _.findWhere(series, { id: mapping.card_id })),
               ),

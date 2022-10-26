@@ -1,24 +1,28 @@
 (ns metabase.models.user
-  (:require [clojure.data :as data]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.models.collection :as collection]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.permissions-group-membership :as perms-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.session :refer [Session]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
-            [metabase.util.password :as u.password]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import java.util.UUID))
+  (:require
+   [clojure.data :as data]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.models.collection :as collection]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.permissions-group-membership
+    :as perms-group-membership
+    :refer [PermissionsGroupMembership]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.session :refer [Session]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [metabase.util.password :as u.password]
+   [metabase.util.schema :as su]
+   [schema.core :as schema]
+   [toucan.db :as db]
+   [toucan.models :as models])
+  (:import
+   (java.util UUID)))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -144,9 +148,11 @@
           :pre-update     pre-update
           :post-select    post-select
           :types          (constantly {:login_attributes :json-no-keywordization
-                                       :settings         :encrypted-json})})
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:email])})
+                                       :settings         :encrypted-json})}))
+
+(defmethod serdes.hash/identity-hash-fields User
+  [_user]
+  [:email])
 
 (defn group-ids
   "Fetch set of IDs of PermissionsGroup a User belongs to."
@@ -159,9 +165,9 @@
   In which :is_group_manager is only included if `advanced-permissions` is enabled."
   {:id                                su/IntGreaterThanZero
    ;; is_group_manager only included if `advanced-permissions` is enabled
-   (s/optional-key :is_group_manager) s/Bool})
+   (schema/optional-key :is_group_manager) schema/Bool})
 
-(s/defn user-group-memberships :- (s/maybe [UserGroupMembership])
+(schema/defn user-group-memberships :- (schema/maybe [UserGroupMembership])
   "Return a list of group memberships a User belongs to.
   Group membership is a map  with 2 keys [:id :is_group_manager], in which `is_group_manager` will only returned if
   advanced-permissions is available."
@@ -244,7 +250,7 @@
 
 (defn- send-welcome-email! [new-user invitor sent-from-setup?]
   (let [reset-token               (set-password-reset-token! (u/the-id new-user))
-        should-link-to-login-page (and (public-settings/sso-configured?)
+        should-link-to-login-page (and (public-settings/sso-enabled?)
                                        (not (public-settings/enable-password-login)))
         join-url                  (if should-link-to-login-page
                                     (str (public-settings/site-url) "/auth/login")
@@ -256,38 +262,44 @@
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
   (su/with-api-error-message
-      {su/KeywordOrString s/Any}
+    {su/KeywordOrString schema/Any}
     (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  {(s/optional-key :first_name)       (s/maybe su/NonBlankString)
-   (s/optional-key :last_name)        (s/maybe su/NonBlankString)
-   :email                             su/Email
-   (s/optional-key :password)         (s/maybe su/NonBlankString)
-   (s/optional-key :login_attributes) (s/maybe LoginAttributes)
-   (s/optional-key :google_auth)      s/Bool
-   (s/optional-key :ldap_auth)        s/Bool})
+  {(schema/optional-key :first_name)       (schema/maybe su/NonBlankString)
+   (schema/optional-key :last_name)        (schema/maybe su/NonBlankString)
+   :email                                  su/Email
+   (schema/optional-key :password)         (schema/maybe su/NonBlankString)
+   (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
+   (schema/optional-key :google_auth)      schema/Bool
+   (schema/optional-key :ldap_auth)        schema/Bool})
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
   {:email      su/Email
-   :first_name (s/maybe su/NonBlankString)
-   s/Any       s/Any})
+   :first_name (schema/maybe su/NonBlankString)
+   schema/Any  schema/Any})
 
-(s/defn ^:private insert-new-user!
+(schema/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (db/insert! User (update new-user :password #(or % (str (UUID/randomUUID))))))
 
-(s/defn create-and-invite-user!
+(defn serdes-synthesize-user!
+  "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
+  match any existing user."
+  [new-user]
+  (insert-new-user! new-user))
+
+(schema/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
-  [new-user :- NewUser, invitor :- Invitor, setup? :- s/Bool]
+  [new-user :- NewUser, invitor :- Invitor, setup? :- schema/Bool]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
     (send-welcome-email! <> invitor setup?)))
 
-(s/defn create-new-google-auth-user!
+(schema/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
@@ -296,7 +308,7 @@
     (classloader/require 'metabase.email.messages)
     ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)))
 
-(s/defn create-new-ldap-auth-user!
+(schema/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will receive an email right away."
   [new-user :- NewUser]

@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
-import ResetPassword from "../../components/ResetPassword";
 import { addUndo } from "metabase/redux/undo";
+import ResetPassword from "../../components/ResetPassword";
 import {
   resetPassword,
   validatePassword,

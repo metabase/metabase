@@ -24,12 +24,12 @@
                                      DashboardCardSeries
                                      Database
                                      Dimension
-                                     Emitter
                                      Field
                                      FieldValues
                                      LoginHistory
                                      Metric
                                      MetricImportantField
+                                     ModelAction
                                      ModerationReview
                                      NativeQuerySnippet
                                      Permissions
@@ -98,7 +98,7 @@
    Card
    CardBookmark
    DashboardBookmark
-   Emitter
+   ModelAction
    CollectionBookmark
    BookmarkOrdering
    DashboardCard

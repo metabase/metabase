@@ -750,9 +750,9 @@
               (mt/with-temporary-setting-values [report-timezone report-timezone]
                 (ffirst
                  (mt/rows
-                   (qp/process-query {:database (mt/id)
-                                      :type     :native
-                                      :native   {:query "SELECT current_setting('TIMEZONE') AS timezone;"}})))))]
+                  (qp/process-query {:database (mt/id)
+                                     :type     :native
+                                     :native   {:query "SELECT current_setting('TIMEZONE') AS timezone;"}})))))]
       (testing "check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific"
         (is  (= "US/Pacific"
                 (get-timezone-with-report-timezone "US/Pacific"))))
@@ -761,9 +761,8 @@
                (get-timezone-with-report-timezone "America/Chicago"))))
       (testing (str "ok, check that if we try to put in a fake timezone that the query still reëxecutes without a "
                     "custom timezone. This should give us the same result as if we didn't try to set a timezone at all")
-        (mt/suppress-output
-          (is (= (get-timezone-with-report-timezone nil)
-                 (get-timezone-with-report-timezone "Crunk Burger"))))))))
+        (is (= (get-timezone-with-report-timezone nil)
+               (get-timezone-with-report-timezone "Crunk Burger")))))))
 
 (deftest fingerprint-time-fields-test
   (mt/test-driver :postgres

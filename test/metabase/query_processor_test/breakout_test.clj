@@ -198,16 +198,15 @@
 
 (deftest binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
-    (mt/suppress-output
-      (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
-        (is (= {:status :failed
-                :class  clojure.lang.ExceptionInfo
-                :error  "Unable to bin Field without a min/max value"}
-               (-> (qp/process-userland-query
-                    (mt/mbql-query venues
-                      {:aggregation [[:count]]
-                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))
-                   (select-keys [:status :class :error]))))))))
+    (mt/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
+      (is (= {:status :failed
+              :class  clojure.lang.ExceptionInfo
+              :error  "Unable to bin Field without a min/max value"}
+             (-> (qp/process-userland-query
+                  (mt/mbql-query venues
+                                 {:aggregation [[:count]]
+                                  :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))
+                 (select-keys [:status :class :error])))))))
 
 (defn- nested-venues-query [card-or-card-id]
   {:database mbql.s/saved-questions-virtual-database-id

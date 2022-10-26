@@ -1,8 +1,8 @@
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
+import moment from "moment-timezone";
 import { parseTimestamp } from "metabase/lib/time";
 import MetabaseUtils from "metabase/lib/utils";
-import moment from "moment-timezone";
 
 const n2w = (n: number) => MetabaseUtils.numberToWord(n);
 
@@ -71,13 +71,15 @@ export type SettingName =
   | "engines"
   | "ga-code"
   | "ga-enabled"
+  | "google-auth-enabled"
   | "google-auth-client-id"
   | "has-sample-database?"
   | "has-user-setup"
   | "hide-embed-branding?"
   | "is-hosted?"
+  | "ldap-enabled"
   | "ldap-configured?"
-  | "other-sso-configured?"
+  | "other-sso-enabled?"
   | "enable-password-login"
   | "map-tile-server-url"
   | "password-complexity"
@@ -182,24 +184,28 @@ class Settings {
     return this.get("hide-embed-branding?");
   }
 
-  isGoogleAuthConfigured() {
-    return this.get("google-auth-client-id") != null;
+  isGoogleAuthEnabled() {
+    return this.get("google-auth-enabled");
+  }
+
+  isLdapEnabled() {
+    return this.get("ldap-enabled");
   }
 
   isLdapConfigured() {
     return this.get("ldap-configured?");
   }
 
-  // JWT or SAML is configured
-  isOtherSsoConfigured() {
-    return this.get("other-sso-configured?");
+  // JWT or SAML is enabled
+  isOtherSsoEnabled() {
+    return this.get("other-sso-enabled?");
   }
 
-  isSsoConfigured() {
+  isSsoEnabled() {
     return (
-      this.isGoogleAuthConfigured() ||
-      this.isLdapConfigured() ||
-      this.isGoogleAuthConfigured()
+      this.isLdapEnabled() ||
+      this.isGoogleAuthEnabled() ||
+      this.isOtherSsoEnabled()
     );
   }
 

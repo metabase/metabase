@@ -58,11 +58,17 @@ If you set the SSL Mode to either "verify-ca" or "verify-full", you'll need to s
 
 You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
-#### SSL Client KEY (PKCS-8/DER or PKCS-12)
+#### SSL Client Key (PKCS-8/DER)
 
-Again, you have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
+Again, you have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate. You'll also need to input your **SSL Client Key Password**.
 
-You'll also need to input your **SSL Client Key Password**.
+The private key must be PKCS8 and stored in DER format.
+
+If you instead have a PEM SSL client key, you can convert that key to the PKCS-8/DER format using [openssl](https://www.openssl.org/). The command would look something like:
+
+```
+openssl pkcs8 -topk8 -inform PEM -outform DER -in client-key.pem -out client-key.pk8 -nocrypt
+```
 
 ## Use an SSH tunnel
 

@@ -1,10 +1,9 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import Field from "metabase-lib/lib/metadata/Field";
-
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import Filter from "metabase-lib/queries/structured/Filter";
+import Field from "metabase-lib/metadata/Field";
 
 import {
   ValuesPickerContainer,

@@ -39,10 +39,11 @@
    {:properties (constantly {:timestamped? true
                              :entity_id    true})
     :pre-insert pre-insert
-    :pre-update pre-update})
+    :pre-update pre-update}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields NativeQuerySnippet
+  [_snippet]
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 (defmethod mi/can-read? NativeQuerySnippet
   [& args]
@@ -74,18 +75,10 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes.base/extract-query "NativeQuerySnippet" [_ {:keys [user]}]
-  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
-  (serdes.base/raw-reducible-query
-    "NativeQuerySnippet"
-    {:select     [:snippet.*]
-     :from       [[:native_query_snippet :snippet]]
-     :left-join  [[:collection :coll] [:= :coll.id :snippet.collection_id]]
-     :where      (if user
-                   ;; :snippet.collection_id is nullable, but this is a left join, so it works out neatly:
-                   ;; if this snippet has no collection, :coll.personal_owner_id is effectively NULL.
-                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                   [:is :coll.personal_owner_id nil])}))
+(defmethod serdes.base/extract-query "NativeQuerySnippet" [_ {:keys [collection-set]}]
+  (eduction cat [(db/select-reducible NativeQuerySnippet :collection_id nil)
+                 (when (seq collection-set)
+                   (db/select-reducible NativeQuerySnippet :collection_id [:in collection-set]))]))
 
 (defmethod serdes.base/serdes-generate-path "NativeQuerySnippet" [_ snippet]
   [(assoc (serdes.base/infer-self-path "NativeQuerySnippet" snippet)
@@ -94,13 +87,13 @@
 (defmethod serdes.base/extract-one "NativeQuerySnippet"
   [_model-name _opts snippet]
   (-> (serdes.base/extract-one-basics "NativeQuerySnippet" snippet)
-      (update :creator_id serdes.util/export-fk-keyed 'User :email)
+      (update :creator_id serdes.util/export-user)
       (update :collection_id #(when % (serdes.util/export-fk % 'Collection)))))
 
 (defmethod serdes.base/load-xform "NativeQuerySnippet" [snippet]
   (-> snippet
       serdes.base/load-xform-basics
-      (update :creator_id serdes.util/import-fk-keyed 'User :email)
+      (update :creator_id serdes.util/import-user)
       (update :collection_id #(when % (serdes.util/import-fk % 'Collection)))))
 
 (defmethod serdes.base/serdes-dependencies "NativeQuerySnippet"

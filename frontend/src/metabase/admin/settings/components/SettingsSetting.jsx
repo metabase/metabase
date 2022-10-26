@@ -34,6 +34,7 @@ const SETTING_WIDGET_MAP = {
 export default class SettingsSetting extends Component {
   static propTypes = {
     setting: PropTypes.object.isRequired,
+    settingValues: PropTypes.object,
     onChange: PropTypes.func.isRequired,
     onChangeSetting: PropTypes.func,
     autoFocus: PropTypes.bool,
@@ -41,7 +42,7 @@ export default class SettingsSetting extends Component {
   };
 
   render() {
-    const { setting, errorMessage } = this.props;
+    const { setting, settingValues, errorMessage } = this.props;
     const settingId = settingToFormFieldId(setting);
 
     let Widget = setting.widget || SETTING_WIDGET_MAP[setting.type];
@@ -55,7 +56,7 @@ export default class SettingsSetting extends Component {
     }
 
     const widgetProps = {
-      ...setting.getProps?.(setting),
+      ...setting.getProps?.(setting, settingValues),
       ...setting.props,
       ...this.props,
     };

@@ -5,7 +5,7 @@ import {
   ORDERS,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 import QuestionModerationButton from "./QuestionModerationButton";
 
 const VERIFIED_ICON_LABEL = "verified icon";

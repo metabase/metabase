@@ -99,6 +99,13 @@ describe("formatNumber", () => {
 
     expect(text).toEqual("10000.11");
   });
+
+  it("should format small number", () => {
+    expect(formatNumber(0.00196)).toEqual("0.002");
+    expect(formatNumber(0.00201)).toEqual("0.002");
+    expect(formatNumber(-0.00119)).toEqual("-0.0012");
+    expect(formatNumber(-0.00191)).toEqual("-0.0019");
+  });
 });
 
 describe("formatPercent", () => {

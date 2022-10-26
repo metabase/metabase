@@ -1,9 +1,9 @@
 import React from "react";
 
-import type Question from "metabase-lib/lib/Question";
-import type { DatasetQuery } from "metabase-types/types/Card";
-
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import type Query from "metabase-lib/queries/Query";
+
+import type Question from "metabase-lib/Question";
 import { EditorContainer } from "./ActionCreator.styled";
 
 export function QueryActionEditor({
@@ -18,8 +18,8 @@ export function QueryActionEditor({
       <NativeQueryEditor
         query={question.query()}
         viewHeight="full"
-        setDatasetQuery={(newQuery: DatasetQuery) =>
-          setQuestion(question.setDatasetQuery(newQuery))
+        setDatasetQuery={(newQuery: Query) =>
+          setQuestion(question.setQuery(newQuery))
         }
         enableRun={false}
         hasEditingSidebar={false} // TODO: make sidebar components work in popovers

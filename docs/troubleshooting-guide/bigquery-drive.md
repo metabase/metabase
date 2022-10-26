@@ -18,4 +18,4 @@ You may have forgotten to [share your Google Drive source](../databases/connecti
 
 ## Further reading
 
-- [Troubleshooting database connections](./datawarehouse.md)
+- [Troubleshooting database connections](./db-connection.md)

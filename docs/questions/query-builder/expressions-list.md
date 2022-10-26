@@ -1,7 +1,7 @@
 ---
 title: List of expressions
 redirect_from:
-  - /docs/latest/users-guide/expression-list
+  - /docs/latest/users-guide/expressions-list
 ---
 
 # List of expressions
@@ -30,11 +30,15 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [case](./expressions/case.md)
   - [ceil](#ceil)
   - [coalesce](./expressions/coalesce.md)
-  - [concat](#concat)
+  - [concat](./expressions/concat.md)
   - [contains](#contains)
+  - [dateAdd](#dateadd)
+  - [dateSubtract](#datesubtract)
+  - [day](#day)
   - [endswith](#endswith)
   - [exp](#exp)
   - [floor](#floor)
+  - [hour](#hour)
   - [interval](#interval)
   - [isempty](./expressions/isempty.md)
   - [isnull](./expressions/isnull.md)
@@ -42,16 +46,20 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [length](#length)
   - [log](#log)
   - [lower](#lower)
+  - [minute](#minute)
   - [power](#power)
-  - [regexextract](#regexextract)
+  - [quarter](#quarter)
+  - [regexextract](./expressions/regexextract.md)
   - [replace](#replace)
   - [righttrim](#righttrim)
   - [round](#round)
+  - [second](#second)
   - [sqrt](#sqrt)
   - [startswith](#startswith)
-  - [substring](#substring)
+  - [substring](./expressions/substring.md)
   - [trim](#trim)
   - [upper](#upper)
+  - [year](#year)
 - [Database limitations](#database-limitations)
 
 ## Aggregations
@@ -224,7 +232,7 @@ Example: `case([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a
 
 ### ceil
 
-Rounds a decimal up (ciel as in ceiling).
+Rounds a decimal up (ceil as in ceiling).
 
 Syntax: `ceil(column)`.
 
@@ -240,7 +248,7 @@ Syntax: `coalesce(value1, value2, …)`
 
 Example: `coalesce([Comments], [Notes], "No comments")`. If both the `Comments` and `Notes` columns are null for that row, the expression will return the string "No comments".
 
-### concat
+### [concat](./expressions/concat.md)
 
 Combine two or more strings together.
 
@@ -258,6 +266,38 @@ Example: `contains([Status], "Class")`. If `Status` were "Classified", the expre
 
 Related: [regexextract](#regexextract).
 
+### dateAdd
+
+Adds some unit of time to a date or timestamp value.
+
+Syntax: `dateAdd(column, amount, unit)`.
+
+ - column: the column with your date or timestamp values.
+ - amount: The number of units to be added.
+ - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+
+Example: `dateAdd("March 25, 2021, 12:52:37", 1, "month")` would return `April 25, 2021, 12:52:37`.
+
+### dateSubtract
+
+Subtracts some unit of time from a date or timestamp value.
+
+Syntax: `dateSubtract(column, amount, unit)`.
+
+ - column: the column with your date or timestamp values.
+ - amount: The number of units to be subtracted.
+ - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+
+Example: `dateSubtract("March 25, 2021, 12:52:37", 1, "month")` would return `February 25, 2021, 12:52:37`.
+
+### day
+
+Takes a datetime and returns the day of the month as an integer.
+
+Syntax: `day([datetime column)`.
+
+Example: `day("March 25, 2021, 12:52:37")` would return the day as an integer, `25`.
+
 ### endswith
 
 Returns true if the end of the text matches the comparison text.
@@ -270,7 +310,7 @@ Related: [contains](#contains) and [startswith](#startswith).
 
 ### exp
 
-Returns [Euler's number](https://en.wikipedia.org/wiki/E_(mathematical_constant)), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
+Returns [Euler's number](<https://en.wikipedia.org/wiki/E_(mathematical_constant)>), e, raised to the power of the supplied number. (Euler sounds like "Oy-ler").
 
 Syntax: `exp(column)`.
 
@@ -287,6 +327,14 @@ Syntax: `floor(column)`
 Example: `floor([Price])`. If the `Price` were 1.99, the expression would return 1.
 
 Related: [ceil](#ceil), [round](#round).
+
+### hour
+
+Takes a datetime and returns the hour as an integer (0-23).
+
+Syntax: `hour([datetime column)`.
+
+Example: `hour("March 25, 2021, 12:52:37")` would return `12`.
 
 ### interval
 
@@ -350,6 +398,22 @@ Example: `lower([Status])`. If the `Status` were "QUIET", the expression would r
 
 Related: [upper](#upper).
 
+### minute
+
+Takes a datetime and returns the minute as an integer (0-59).
+
+Syntax: `minute([datetime column)`.
+
+Example: `minute("March 25, 2021, 12:52:37")` would return `52`.
+
+### month
+
+Takes a datetime and returns the month number (1-12) as an integer.
+
+Syntax: `month([datetime column)`.
+
+Example: `month("March 25, 2021, 12:52:37")` would return the month as an integer, `3`.
+
 ### power
 
 Raises a number to the power of the exponent value.
@@ -362,7 +426,15 @@ Databases that don't support `power`: SQLite.
 
 Related: [exp](#exp).
 
-### regexextract
+### quarter
+
+Takes a datetime and returns the number of the quarter in a year (1-4) as an integer.
+
+Syntax: `quarter([datetime column)`.
+
+Example: `quarter("March 25, 2021, 12:52:37")` would return `1` for the first quarter.
+
+### [regexextract](./expressions/regexextract.md)
 
 Extracts matching substrings according to a regular expression.
 
@@ -372,7 +444,7 @@ Example: `regexextract([Address], "[0-9]+")`.
 
 Databases that don't support `regexextract`: H2, SQL Server, SQLite.
 
-Related: [contains](#contains).
+Related: [contains](#contains), [substring](#substring).
 
 ### replace
 
@@ -400,6 +472,14 @@ Syntax: `round(column)`.
 
 Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the expression would return `14`.
 
+### second
+
+Takes a datetime and returns the number of seconds in the minute (0-59) as an integer.
+
+Syntax: `second([datetime column)`.
+
+Example: `second("March 25, 2021, 12:52:37")` would return the integer `37`.
+
 ### sqrt
 
 Returns the square root of a value.
@@ -422,7 +502,7 @@ Example: `startsWith([Course Name], "Computer Science")` would return true for c
 
 Related: [endswith](#endswith), [contains](#contains).
 
-### substring
+### [substring](./expressions/substring.md)
 
 Returns a portion of the supplied text, specified by a starting position and a length.
 
@@ -430,7 +510,7 @@ Syntax: `substring(text, position, length)`
 
 Example: `substring([Title], 0, 10)` returns the first 11 letters of a string (the string index starts at position 0).
 
-Related: [replace](#replace).
+Related: [regexextract](#regexextract), [replace](#replace).
 
 ### trim
 
@@ -447,6 +527,14 @@ Returns the text in all upper case.
 Syntax: `upper(text)`.
 
 Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
+
+### year
+
+Takes a datetime and returns the year as an integer.
+
+Syntax: `year([datetime column)`.
+
+Example: `year("March 25, 2021, 12:52:37")` would return the year 2021 as an integer, `2,021`.
 
 ## Database limitations
 

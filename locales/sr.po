@@ -4412,14 +4412,14 @@ msgstr "Poslednjih 7 dana"
 msgid "Past 30 days"
 msgstr "Poslednjih 30 dana"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1719
+#: frontend/src/metabase-lib/Dimension.ts:1719
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:35
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:40
 #: metabase/api/table.clj:142
 msgid "Week"
 msgstr "Nedelja"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1725
+#: frontend/src/metabase-lib/Dimension.ts:1725
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:94
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:36
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:41
@@ -4427,7 +4427,7 @@ msgstr "Nedelja"
 msgid "Month"
 msgstr "Mesec"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1737
+#: frontend/src/metabase-lib/Dimension.ts:1737
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:37
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:42
 #: metabase/api/table.clj:145
@@ -7530,14 +7530,14 @@ msgstr "Desno"
 msgid "Show background"
 msgstr "Prikaži pozadinu"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:463
+#: frontend/src/metabase-lib/Dimension.ts:463
 msgid "{0} bin"
 msgid_plural "{0} bins"
 msgstr[0] "{0} bin"
 msgstr[1] "{0} bins"
 msgstr[2] "{0} bin"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:471
+#: frontend/src/metabase-lib/Dimension.ts:471
 msgid "Auto binned"
 msgstr "Auto binovanje"
 
@@ -7805,7 +7805,7 @@ msgstr "Neka svi budu na istoj stranici stvaranjem kanonskih skupova filtera koj
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "Tabela ''{0}'' je sada vidljiva. Resinhronizacija."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1659 metabase/api/table.clj:124
+#: frontend/src/metabase-lib/Dimension.ts:1659 metabase/api/table.clj:124
 msgid "Auto bin"
 msgstr "Auto bin"
 
@@ -7813,83 +7813,83 @@ msgstr "Auto bin"
 msgid "Don''t bin"
 msgstr "Don''t bin"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1713 metabase/api/table.clj:128
+#: frontend/src/metabase-lib/Dimension.ts:1713 metabase/api/table.clj:128
 msgid "Day"
 msgstr "Dan"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1701 metabase/api/table.clj:126
+#: frontend/src/metabase-lib/Dimension.ts:1701 metabase/api/table.clj:126
 msgid "Minute"
 msgstr "Minut"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1707
+#: frontend/src/metabase-lib/Dimension.ts:1707
 #: frontend/src/metabase/admin/settings/selectors.js:544
 #: metabase/api/table.clj:127
 msgid "Hour"
 msgstr "Sat"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1731 metabase/api/table.clj:144
+#: frontend/src/metabase-lib/Dimension.ts:1731 metabase/api/table.clj:144
 msgid "Quarter"
 msgstr "Kvartal"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1743 metabase/api/table.clj:146
+#: frontend/src/metabase-lib/Dimension.ts:1743 metabase/api/table.clj:146
 #: metabase/api/table.clj:160
 msgid "Minute of Hour"
 msgstr "Minuta sata"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1749 metabase/api/table.clj:147
+#: frontend/src/metabase-lib/Dimension.ts:1749 metabase/api/table.clj:147
 msgid "Hour of Day"
 msgstr "Sat dana"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1755 metabase/api/table.clj:148
+#: frontend/src/metabase-lib/Dimension.ts:1755 metabase/api/table.clj:148
 msgid "Day of Week"
 msgstr "Dan u nedelji"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1761 metabase/api/table.clj:149
+#: frontend/src/metabase-lib/Dimension.ts:1761 metabase/api/table.clj:149
 msgid "Day of Month"
 msgstr "Dan u mesecu"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1767 metabase/api/table.clj:150
+#: frontend/src/metabase-lib/Dimension.ts:1767 metabase/api/table.clj:150
 msgid "Day of Year"
 msgstr "Dan u godini"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1773 metabase/api/table.clj:151
+#: frontend/src/metabase-lib/Dimension.ts:1773 metabase/api/table.clj:151
 msgid "Week of Year"
 msgstr "Nedelja u godini"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1779 metabase/api/table.clj:152
+#: frontend/src/metabase-lib/Dimension.ts:1779 metabase/api/table.clj:152
 msgid "Month of Year"
 msgstr "Mesec u godini"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1785 metabase/api/table.clj:153
+#: frontend/src/metabase-lib/Dimension.ts:1785 metabase/api/table.clj:153
 msgid "Quarter of Year"
 msgstr "Kvartal godine"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1667 metabase/api/table.clj:169
+#: frontend/src/metabase-lib/Dimension.ts:1667 metabase/api/table.clj:169
 msgid "10 bins"
 msgstr "10 binova"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1676 metabase/api/table.clj:170
+#: frontend/src/metabase-lib/Dimension.ts:1676 metabase/api/table.clj:170
 msgid "50 bins"
 msgstr "50 binova"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1685 metabase/api/table.clj:171
+#: frontend/src/metabase-lib/Dimension.ts:1685 metabase/api/table.clj:171
 msgid "100 bins"
 msgstr "100 binova"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1794 metabase/api/table.clj:183
+#: frontend/src/metabase-lib/Dimension.ts:1794 metabase/api/table.clj:183
 msgid "Bin every 0.1 degrees"
 msgstr "Bin na svakih 0.1 stepeni"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1803 metabase/api/table.clj:184
+#: frontend/src/metabase-lib/Dimension.ts:1803 metabase/api/table.clj:184
 msgid "Bin every 1 degree"
 msgstr "Bin na svakih 1 stepen"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1812 metabase/api/table.clj:185
+#: frontend/src/metabase-lib/Dimension.ts:1812 metabase/api/table.clj:185
 msgid "Bin every 10 degrees"
 msgstr "Bin na svakih 10 stepeni"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1821 metabase/api/table.clj:186
+#: frontend/src/metabase-lib/Dimension.ts:1821 metabase/api/table.clj:186
 msgid "Bin every 20 degrees"
 msgstr "Bin na svakih 20 stepeni"
 
@@ -7966,7 +7966,7 @@ msgstr "kumulativni zbir"
 msgid "{0} and {1}"
 msgstr "{0} i {1}"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Aggregation.ts:74
+#: frontend/src/metabase-lib/queries/structured/Aggregation.ts:74
 #: metabase/automagic_dashboards/core.clj:128
 #: metabase/automagic_dashboards/core.clj:1153
 msgid "{0} of {1}"
@@ -11906,7 +11906,7 @@ msgstr[0] "Kvartal godine"
 msgstr[1] "Kvartali godine"
 msgstr[2] "Kvartal godine"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:323
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:323
 #: frontend/src/metabase/parameters/utils/formatting.ts:67
 #: frontend/src/metabase/query_builder/components/Filter.jsx:62
 msgid "{0} selection"
@@ -11937,7 +11937,7 @@ msgstr "Dodajte vreme"
 msgid "Nothing to compare for the previous {0}."
 msgstr "Ništa za upoređivanje za prethodni {0}."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:611
+#: frontend/src/metabase-lib/Dimension.ts:611
 msgid "by {0}"
 msgstr "by {0}"
 
@@ -13118,31 +13118,31 @@ msgstr "Red"
 msgid "Trend"
 msgstr "Trend"
 
-#: frontend/src/metabase-lib/lib/DimensionOptions.js:129
+#: frontend/src/metabase-lib/DimensionOptions.js:129
 msgid "Boolean"
 msgstr "Boolean"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:68
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:68
 msgid "Unknown Segment"
 msgstr "Nepoznati segment"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:81
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:81
 msgid "Unknown Filter"
 msgstr "Nepoznati Filter"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:32
+#: frontend/src/metabase-lib/queries/structured/Join.ts:32
 msgid "Left outer join"
 msgstr "Left outer join"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:37
+#: frontend/src/metabase-lib/queries/structured/Join.ts:37
 msgid "Right outer join"
 msgstr "Right outer join"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:42
+#: frontend/src/metabase-lib/queries/structured/Join.ts:42
 msgid "Inner join"
 msgstr "Inner join"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:47
+#: frontend/src/metabase-lib/queries/structured/Join.ts:47
 msgid "Full outer join"
 msgstr "Full outer join"
 
@@ -13528,7 +13528,7 @@ msgstr "Nije uspelo zakazivanje zadataka za bazu podataka {0}"
 msgid "All elements must be distinct."
 msgstr "Svi elementi moraju biti različiti."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Izaberite kolone koje želite da uključite"
@@ -17973,12 +17973,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulsevi se postupno ukidaju"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Umesto toga, sada možete da podesite {0}. Uklonićemo Pulseve u budućem izdanju i pomoći ćemo vam da migrirate sve što još uvek imate."
@@ -17987,7 +17987,7 @@ msgstr "Umesto toga, sada možete da podesite {0}. Uklonićemo Pulseve u buduc�
 msgid "dashboard subscriptions"
 msgstr "pretplate na infopanelu"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "Grafikoni {0} u Vašoj pretplati neće izgledati isto kao na Vašem infopanelu. {1}"
 
@@ -18136,7 +18136,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Podesite izvornu bazu podataka {0} i pokrenite migracije ..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."
@@ -21936,24 +21936,24 @@ msgstr "Dozvoljeno vam je da preuzmete do 10,000 redova."
 msgid "Manage database"
 msgstr "Upravljajte bazom podataka"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:616
+#: frontend/src/metabase-lib/Dimension.ts:616
 msgid "Unbinned"
 msgstr "Unbinned"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1564
+#: frontend/src/metabase-lib/Dimension.ts:1564
 msgid "Invalid template tag \"{0}\""
 msgstr "Nevažeća oznaka šablona \"{0}\""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1569
+#: frontend/src/metabase-lib/Dimension.ts:1569
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "Promenljiva \"{0}\" treba da bude mapirana u polje."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1694
-#: frontend/src/metabase-lib/lib/Dimension.ts:1830
+#: frontend/src/metabase-lib/Dimension.ts:1694
+#: frontend/src/metabase-lib/Dimension.ts:1830
 msgid "Don't bin"
 msgstr "Don't bin"
 
-#: frontend/src/metabase-lib/lib/queries/NativeQuery.ts:311
+#: frontend/src/metabase-lib/queries/NativeQuery.ts:311
 msgid "Invalid template tag: {0}"
 msgstr "Nevažeća oznaka šablona: {0}"
 
@@ -23649,7 +23649,7 @@ msgstr "Pokreće se upit..."
 msgid "Loading results..."
 msgstr "Učitavanje rezultata..."
 
-#: frontend/src/metabase-lib/lib/queries/StructuredQuery.ts:907
+#: frontend/src/metabase-lib/queries/StructuredQuery.ts:907
 msgid "Summaries"
 msgstr "Rezime"
 

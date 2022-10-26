@@ -1,19 +1,17 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Value from "metabase/components/Value";
-
-import Dimension from "metabase-lib/lib/Dimension";
-
-import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
-import { hasFilterOptions } from "metabase/lib/query/filter";
-import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
-
 import { t, ngettext, msgid } from "ttag";
+
+import Value from "metabase/components/Value";
 
 import { color } from "metabase/lib/colors";
 
 import ViewPill from "metabase/query_builder/components/view/ViewPill";
+import { getFilterArgumentFormatOptions } from "metabase-lib/operators/utils";
+import { generateTimeFilterValuesDescriptions } from "metabase-lib/queries/utils/query-time";
+import { hasFilterOptions } from "metabase-lib/queries/utils/filter";
+import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
 
 const DEFAULT_FILTER_RENDERER = ({ field, operator, values }) => {
   const items = [field, operator, ...values];
@@ -44,12 +42,12 @@ export const SimpleOperatorFilter = ({
   maxDisplayValues,
   children = DEFAULT_FILTER_RENDERER,
 }) => {
-  const [op, field] = filter;
+  const [op] = filter;
   const values = hasFilterOptions(filter)
     ? filter.slice(2, -1)
     : filter.slice(2);
 
-  const dimension = Dimension.parseMBQL(field, metadata);
+  const dimension = getFilterDimension(filter, metadata);
   if (!dimension) {
     return null;
   }

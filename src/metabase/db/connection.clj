@@ -3,11 +3,13 @@
    TODO - consider renaming this namespace `metabase.db.config`."
   (:require [metabase.db.connection-pool-setup :as connection-pool-setup]
             [metabase.db.env :as mdb.env]
-            [potemkin :as p]))
+            [potemkin :as p])
+  (:import java.util.concurrent.locks.ReentrantReadWriteLock))
 
-;; Counter for [[unique-identifier]] -- this is a simple counter rather that [[java.util.UUID/randomUUID]] so we don't
-;; waste precious entropy on launch generating something that doesn't need to be random (it just needs to be unique)
-(defonce ^:private application-db-counter
+(defonce ^{:doc "Counter for [[unique-identifier]] -- this is a simple counter rather that [[java.util.UUID/randomUUID]]
+  so we don't waste precious entropy on launch generating something that doesn't need to be random (it just needs to be
+  unique)"}
+  application-db-counter
   (atom 0))
 
 (p/defrecord+ ApplicationDB [^clojure.lang.Keyword db-type
@@ -18,13 +20,33 @@
                              ^clojure.lang.Atom    status
                              ;; A unique identifier generated for this specific application DB. Use this as a
                              ;; memoization/cache key. See [[unique-identifier]] for more information.
-                             id]
+                             id
+                             ;; Reentrant read-write lock for GETTING new connections. Lock doesn't track whether any
+                             ;; existing connections are open! Holding the write lock will however prevent any NEW
+                             ;; connections from being acquired.
+                             ;;
+                             ;; This is a reentrant read-write lock, which means any number of read locks are allowed at
+                             ;; the same time, but the write lock is exclusive. So if you want to prevent anyone from
+                             ;; getting new connections, lock the write lock.
+                             ;;
+                             ;; The main purpose of this is to power [[metabase.api.testing]] which allows you to reset
+                             ;; the application DB with data from a SQL dump -- during the restore process it is
+                             ;; important that we do not allow anyone to access the DB.
+                             ^ReentrantReadWriteLock lock]
   javax.sql.DataSource
   (getConnection [_]
-    (.getConnection data-source))
+    (try
+      (.. lock readLock lock)
+      (.getConnection data-source)
+      (finally
+        (.. lock readLock unlock))))
 
   (getConnection [_ user password]
-    (.getConnection data-source user password)))
+    (try
+      (.. lock readLock lock)
+      (.getConnection data-source user password)
+      (finally
+        (.. lock readLock unlock)))))
 
 (alter-meta! #'->ApplicationDB assoc :private true)
 (alter-meta! #'map->ApplicationDB assoc :private true)
@@ -52,7 +74,8 @@
                    data-source)
     :status      (atom nil)
     ;; for memoization purposes. See [[unique-identifier]] for more information.
-    :id          (swap! application-db-counter inc)}))
+    :id          (swap! application-db-counter inc)
+    :lock        (ReentrantReadWriteLock.)}))
 
 (def ^:dynamic ^ApplicationDB *application-db*
   "Type info and [[javax.sql.DataSource]] for the current Metabase application database. Create a new instance

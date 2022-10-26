@@ -4,12 +4,15 @@ import type {
   FieldType,
   InputType,
   ParameterType,
+  ModelAction,
 } from "metabase-types/api";
+
+import { getDefaultFieldSettings } from "metabase/writeback/components/ActionCreator/FormCreator";
 
 import type { Parameter as ParameterObject } from "metabase-types/types/Parameter";
 import type { TemplateTag, TemplateTagType } from "metabase-types/types/Query";
-import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import type Question from "metabase-lib/lib/Question";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type Question from "metabase-lib/Question";
 
 import {
   fieldTypeToParameterTypeMap,
@@ -28,6 +31,29 @@ export const removeOrphanSettings = (
   return {
     ...settings,
     fields: _.omit(settings.fields, orphanIds),
+  };
+};
+
+export const addMissingSettings = (
+  settings: ActionFormSettings,
+  parameters: ParameterObject[],
+): ActionFormSettings => {
+  const parameterIds = parameters.map(p => p.id);
+  const fieldIds = Object.keys(settings.fields);
+  const missingIds = _.difference(parameterIds, fieldIds);
+
+  if (!missingIds.length) {
+    return settings;
+  }
+
+  return {
+    ...settings,
+    fields: {
+      ...settings.fields,
+      ...Object.fromEntries(
+        missingIds.map(id => [id, getDefaultFieldSettings()]),
+      ),
+    },
   };
 };
 
@@ -74,7 +100,9 @@ export const setTemplateTagTypesFromFieldSettings = (
       question = question.setQuery(
         (question.query() as NativeQuery).setTemplateTag(tag.name, {
           ...tag,
-          type: getTagTypeFromFieldSettings(fields[tag.id].fieldType),
+          type: getTagTypeFromFieldSettings(
+            fields[tag.id]?.fieldType ?? "string",
+          ),
         }),
       );
     });

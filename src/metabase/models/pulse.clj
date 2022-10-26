@@ -133,10 +133,11 @@
                                  :entity_id    true})
     :pre-insert     pre-insert
     :pre-update     pre-update
-    :types          (constantly {:parameters :json})})
+    :types          (constantly {:parameters :json})}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields Pulse
+  [_pulse]
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 (def ^:private ^:dynamic *automatically-archive-when-last-channel-is-deleted*
   "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
@@ -567,11 +568,11 @@
   (cond-> (serdes.base/extract-one-basics "Pulse" pulse)
     (:collection_id pulse) (update :collection_id serdes.util/export-fk 'Collection)
     (:dashboard_id  pulse) (update :dashboard_id  serdes.util/export-fk 'Dashboard)
-    true                   (update :creator_id serdes.util/export-fk-keyed 'User :email)))
+    true                   (update :creator_id    serdes.util/export-user)))
 
 (defmethod serdes.base/load-xform "Pulse" [pulse]
   (cond-> (serdes.base/load-xform-basics pulse)
-      true                   (update :creator_id    serdes.util/import-fk-keyed 'User :email)
+      true                   (update :creator_id    serdes.util/import-user)
       (:collection_id pulse) (update :collection_id serdes.util/import-fk 'Collection)
       (:dashboard_id  pulse) (update :dashboard_id  serdes.util/import-fk 'Dashboard)))
 

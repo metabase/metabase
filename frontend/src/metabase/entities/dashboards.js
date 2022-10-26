@@ -1,3 +1,5 @@
+import { assocIn } from "icepick";
+import { t } from "ttag";
 import {
   compose,
   withAction,
@@ -8,8 +10,6 @@ import {
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-import { assocIn } from "icepick";
-import { t } from "ttag";
 
 import { addUndo } from "metabase/redux/undo";
 
@@ -133,12 +133,7 @@ const Dashboards = createEntity({
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard),
     getCollection: dashboard =>
       dashboard && normalizedCollection(dashboard.collection),
-    getIcon: dashboard => ({
-      name:
-        dashboard.is_app_page || dashboard.model === "page"
-          ? "document"
-          : "dashboard",
-    }),
+    getIcon: () => ({ name: "dashboard" }),
     getColor: () => color("dashboard"),
   },
 

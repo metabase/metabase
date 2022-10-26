@@ -1,12 +1,11 @@
 import React from "react";
 
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-
-import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
 import { t } from "ttag";
+import { Route } from "metabase/hoc/Title";
+import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 
 import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
@@ -43,6 +42,7 @@ import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
+import NewDatasetOptions from "metabase/new_query/containers/NewDatasetOptions";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
@@ -70,8 +70,6 @@ import TableQuestionsContainer from "metabase/reference/databases/TableQuestions
 import FieldListContainer from "metabase/reference/databases/FieldListContainer";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
 
-import DataAppLanding from "metabase/writeback/containers/DataAppLanding";
-
 import getAccountRoutes from "metabase/account/routes";
 import getAdminRoutes from "metabase/admin/routes";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
@@ -90,8 +88,6 @@ import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
-
-import ActionPage from "metabase/writeback/containers/ActionCreatorPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -199,7 +195,7 @@ export const getRoutes = store => (
 
       {/* MAIN */}
       <Route component={IsAuthenticated}>
-        {/* The global all hands rotues, things in here are for all the folks */}
+        {/* The global all hands routes, things in here are for all the folks */}
         <Route
           path="/"
           component={HomePage}
@@ -225,32 +221,6 @@ export const getRoutes = store => (
           <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
           {getCollectionTimelineRoutes()}
-        </Route>
-
-        <Route path="apps/:slug">
-          <IndexRoute component={DataAppLanding} />
-          <ModalRoute path="move" modal={MoveCollectionModal} />
-          <ModalRoute path="archive" modal={ArchiveCollectionModal} />
-          <ModalRoute path="new_collection" modal={CollectionCreate} />
-          <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
-          <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
-          {getCollectionTimelineRoutes()}
-        </Route>
-
-        <Route path="a/:slug">
-          <IndexRoute component={DataAppLanding} />
-          <ModalRoute path="move" modal={MoveCollectionModal} />
-          <ModalRoute path="archive" modal={ArchiveCollectionModal} />
-          <ModalRoute path="new_collection" modal={CollectionCreate} />
-          <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
-          <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
-          {getCollectionTimelineRoutes()}
-
-          <Route path="page/:pageId" component={DashboardApp}>
-            <ModalRoute path="move" modal={DashboardMoveModal} />
-            <ModalRoute path="copy" modal={DashboardCopyModal} />
-            <ModalRoute path="archive" modal={ArchiveDashboardModal} />
-          </Route>
         </Route>
 
         <Route path="activity" component={ActivityApp} />
@@ -281,12 +251,19 @@ export const getRoutes = store => (
 
         <Route path="/model">
           <IndexRoute component={QueryBuilder} />
+          <Route
+            path="new"
+            title={t`New Model`}
+            component={NewDatasetOptions}
+          />
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/query" component={QueryBuilder} />
           <Route path=":slug/metadata" component={QueryBuilder} />
           <Route path=":slug/:objectId" component={QueryBuilder} />
+          <Route path="query" component={QueryBuilder} />
+          <Route path="metadata" component={QueryBuilder} />
         </Route>
 
         <Route path="browse" component={BrowseApp}>
@@ -383,12 +360,6 @@ export const getRoutes = store => (
 
         {/* ADMIN */}
         {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
-
-        {/* ACTION */}
-        <Route path="/action">
-          <Route path="create" component={ActionPage} />
-          <Route path=":actionId" component={ActionPage} />
-        </Route>
       </Route>
     </Route>
 
