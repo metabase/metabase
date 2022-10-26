@@ -7,7 +7,7 @@ import PasswordPanel from "../../components/PasswordPanel";
 const mapStateToProps = (state: State) => ({
   providers: getExternalAuthProviders(state),
   isLdapEnabled: state.settings.values["ldap-enabled"],
-  isCookieEnabled: state.settings.values["session-cookies"] ?? false,
+  hasSessionCookies: state.settings.values["session-cookies"] ?? false,
 });
 
 const mapDispatchToProps = {

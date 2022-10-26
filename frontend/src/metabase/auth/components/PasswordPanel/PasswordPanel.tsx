@@ -9,7 +9,7 @@ export interface PasswordPanelProps {
   providers?: AuthProvider[];
   redirectUrl?: string;
   isLdapEnabled: boolean;
-  isCookieEnabled: boolean;
+  hasSessionCookies: boolean;
   onLogin: (data: LoginData, redirectUrl?: string) => void;
 }
 
@@ -17,7 +17,7 @@ const PasswordPanel = ({
   providers = [],
   redirectUrl,
   isLdapEnabled,
-  isCookieEnabled,
+  hasSessionCookies,
   onLogin,
 }: PasswordPanelProps) => {
   const handleSubmit = useCallback(
@@ -31,7 +31,7 @@ const PasswordPanel = ({
     <div>
       <LoginForm
         isLdapEnabled={isLdapEnabled}
-        isCookieEnabled={isCookieEnabled}
+        hasSessionCookies={hasSessionCookies}
         onSubmit={handleSubmit}
       />
       <ActionList>

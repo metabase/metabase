@@ -17,7 +17,6 @@ const FormCheckBox = forwardRef(function FormCheckBox(
     <CheckBox
       {...props}
       ref={ref}
-      id={name}
       name={name}
       checked={field.value}
       onChange={field.onChange}

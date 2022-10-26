@@ -24,19 +24,19 @@ const PasswordSchema = LdapSchema.shape({
 
 export interface LoginFormProps {
   isLdapEnabled: boolean;
-  isCookieEnabled: boolean;
+  hasSessionCookies: boolean;
   onSubmit: (data: LoginData) => void;
 }
 
 const LoginForm = ({
   isLdapEnabled,
-  isCookieEnabled,
+  hasSessionCookies,
   onSubmit,
 }: LoginFormProps): JSX.Element => {
   const initialValues: LoginData = {
     username: "",
     password: "",
-    remember: isCookieEnabled,
+    remember: !hasSessionCookies,
   };
   const handleSubmit = useForm(onSubmit);
 
@@ -69,7 +69,7 @@ const LoginForm = ({
             fullWidth
           />
         </FormField>
-        {isCookieEnabled && (
+        {!hasSessionCookies && (
           <FormField
             name="remember"
             title={t`Remember me`}
