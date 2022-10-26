@@ -62,10 +62,13 @@ export const formatNumber = (number: number, options?: NumberFormatOptions) => {
 
   const format = createFormat(compact);
 
+  const separatorMap = {
+    ",": grouping_separator || "",
+    ".": decimal_separator,
+  };
   const formattedNumber = format
     .format(number * scale)
-    .replace(/\./g, decimal_separator)
-    .replace(/,/g, grouping_separator ?? "");
+    .replace(/,|\./g, separator => separatorMap[separator as "." | ","]);
 
   return `${prefix}${formattedNumber}${suffix}`;
 };
