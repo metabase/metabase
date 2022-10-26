@@ -84,10 +84,10 @@ export default Object.assign(ListViz, {
           col => col.visibility_type !== "details-only",
         );
         const firstThreeColumns = columns.slice(0, 3).filter(Boolean);
-        const nextThreeColumns = columns.slice(3, 6).filter(Boolean);
+        const fourthColumn = columns.slice(3, 4).filter(Boolean);
         return {
           left: firstThreeColumns.map(col => col.id || col.field_ref),
-          right: nextThreeColumns.map(col => col.id || col.field_ref),
+          right: fourthColumn.map(col => col.id || col.field_ref),
         };
       },
       getProps: ([

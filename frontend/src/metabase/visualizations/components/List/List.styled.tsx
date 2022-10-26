@@ -25,12 +25,12 @@ export const Footer = styled(TableFooter)`
   margin-top: 0.5rem;
 `;
 
-export const ListBody = styled.div`
+export const ListBody = styled.ul`
   box-shadow: 0px 1px 10px ${color("shadow")};
   border-radius: ${LIST_ITEM_BORDER_RADIUS};
 `;
 
-export const ListItemRow = styled.div<{ isClickable?: boolean }>`
+export const ListItemRow = styled.li<{ isClickable?: boolean }>`
   padding: 1rem 2rem;
   cursor: ${props => (props?.isClickable ? "pointer" : "default")};
   width: 100%;
