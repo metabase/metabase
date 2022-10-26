@@ -1,6 +1,14 @@
 import { ActionsApi } from "metabase/services";
 
+import DataApps, {
+  getChildNavItems,
+  isTopLevelNavItem,
+} from "metabase/entities/data-apps";
+import Dashboards from "metabase/entities/dashboards";
+
+import type { DataApp, DataAppPage } from "metabase-types/api";
 import type { Value } from "metabase-types/types/Dataset";
+import type { Dispatch, GetState } from "metabase-types/store";
 import type Table from "metabase-lib/lib/metadata/Table";
 
 export type InsertRowPayload = {
@@ -98,4 +106,70 @@ export const deleteManyRows = (payload: BulkDeletePayload) => {
     },
     { bodyParamName: "body" },
   );
+};
+
+export type ArchiveDataAppPayload = {
+  id: DataApp["id"];
+};
+
+export const archiveDataApp = ({ id }: ArchiveDataAppPayload) => {
+  return async (dispatch: Dispatch, getState: GetState) => {
+    const state = getState();
+
+    const dataApp: DataApp = DataApps.selectors.getObject(state, {
+      entityId: id,
+    });
+
+    await dispatch(
+      DataApps.actions.update({
+        id,
+        collection_id: dataApp.collection_id,
+        collection: {
+          archived: true,
+        },
+      }),
+    );
+  };
+};
+
+export type ArchiveDataAppPagePayload = {
+  appId: DataApp["id"];
+  pageId: DataAppPage["id"];
+};
+
+export const archiveDataAppPage = ({
+  appId,
+  pageId,
+}: ArchiveDataAppPagePayload) => {
+  return async (dispatch: Dispatch, getState: GetState) => {
+    const state = getState();
+
+    const dataApp: DataApp = DataApps.selectors.getObject(state, {
+      entityId: appId,
+    });
+
+    const childNavItems = getChildNavItems(dataApp.nav_items, pageId);
+    const childPageIds = childNavItems.map(navItem => navItem.page_id);
+    const archivedPageIds = [pageId, ...childPageIds];
+    const nextNavItems = dataApp.nav_items.filter(
+      navItem => !archivedPageIds.includes(navItem.page_id),
+    );
+
+    await Promise.all(
+      archivedPageIds.map(pageId =>
+        dispatch(Dashboards.actions.update({ id: pageId, archived: true })),
+      ),
+    );
+
+    const isHomepageArchived =
+      dataApp.dashboard_id && archivedPageIds.includes(dataApp.dashboard_id);
+
+    await dispatch(
+      DataApps.actions.update({
+        id: appId,
+        nav_items: nextNavItems,
+        dashboard_id: isHomepageArchived ? null : dataApp.dashboard_id,
+      }),
+    );
+  };
 };

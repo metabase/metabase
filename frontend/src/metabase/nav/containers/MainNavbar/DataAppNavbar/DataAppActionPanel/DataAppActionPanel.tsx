@@ -14,9 +14,12 @@ import { Root } from "./DataAppActionPanel.styled";
 interface Props {
   dataApp: DataApp;
   selectedPageId?: DataAppPage["id"];
+  archiveActionTarget: "app" | "page";
   hasManageContentAction?: boolean;
   onEditAppPage: () => void;
   onEditAppSettings: () => void;
+  onArchiveApp: () => void;
+  onArchivePage: () => void;
 }
 
 type MenuItem = {
@@ -29,9 +32,12 @@ type MenuItem = {
 function DataAppActionPanel({
   dataApp,
   selectedPageId,
+  archiveActionTarget,
   hasManageContentAction = true,
   onEditAppPage,
   onEditAppSettings,
+  onArchiveApp,
+  onArchivePage,
 }: Props) {
   const hasSelectedPage = typeof selectedPageId === "number";
 
@@ -52,8 +58,25 @@ function DataAppActionPanel({
       });
     }
 
+    if (hasSelectedPage) {
+      const isArchiveApp = archiveActionTarget === "app";
+      items.push({
+        title: isArchiveApp ? t`Archive this app` : t`Archive this page`,
+        icon: "archive",
+        action: isArchiveApp ? onArchiveApp : onArchivePage,
+      });
+    }
+
     return items;
-  }, [dataApp, hasManageContentAction, onEditAppSettings]);
+  }, [
+    dataApp,
+    archiveActionTarget,
+    hasSelectedPage,
+    hasManageContentAction,
+    onEditAppSettings,
+    onArchiveApp,
+    onArchivePage,
+  ]);
 
   return (
     <Root>

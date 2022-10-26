@@ -15,9 +15,17 @@ export function isDataAppCollection(collection: Collection) {
   return typeof collection.app_id === "number";
 }
 
+export function isTopLevelNavItem(navItem: DataAppNavItem) {
+  return (!navItem.indent || navItem.indent === 0) && !navItem.hidden;
+}
+
 export function getDataAppHomePageId(dataApp: DataApp, pages: Dashboard[]) {
   if (dataApp.dashboard_id) {
     return dataApp.dashboard_id;
+  }
+  const navItem = dataApp.nav_items.find(isTopLevelNavItem);
+  if (navItem) {
+    return navItem.page_id;
   }
   const [firstPage] = _.sortBy(pages, "name");
   return firstPage?.id;
@@ -63,4 +71,51 @@ export function getParentDataAppPageId(
   );
 
   return pagesBeforeTarget[parentPageIndex]?.page_id || null;
+}
+
+export function getChildNavItems(
+  navItems: DataAppNavItem[],
+  pageId: DataAppPageId,
+) {
+  const targetIndex = navItems.findIndex(navItem => navItem.page_id === pageId);
+  if (targetIndex === -1) {
+    return [];
+  }
+
+  const targetNavItem = navItems[targetIndex];
+  const targetIndent = targetNavItem.indent || 0;
+
+  const navItemsAfterTarget = navItems.slice(targetIndex + 1);
+
+  const nextNavItemWithSameIndentIndex = navItemsAfterTarget.findIndex(
+    navItem => (navItem.indent || 0) === targetIndent,
+  );
+
+  const endIndex =
+    nextNavItemWithSameIndentIndex === -1
+      ? undefined
+      : nextNavItemWithSameIndentIndex;
+
+  return navItemsAfterTarget.slice(0, endIndex);
+}
+
+export function getPreviousNavItem(
+  navItems: DataAppNavItem[],
+  pageId: DataAppPageId,
+): DataAppNavItem | null {
+  const navItemIndex = navItems.findIndex(
+    navItem => navItem.page_id === pageId,
+  );
+
+  if (navItemIndex === -1) {
+    return navItems[navItems.length - 1] || null;
+  }
+
+  const navItemsBeforeTarget = navItems.slice(0, navItemIndex);
+  const previousNavItem = _.findLastIndex(
+    navItemsBeforeTarget,
+    isTopLevelNavItem,
+  );
+
+  return navItemsBeforeTarget[previousNavItem] || null;
 }

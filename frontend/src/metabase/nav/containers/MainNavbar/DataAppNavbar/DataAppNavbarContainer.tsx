@@ -10,14 +10,20 @@ import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import DataApps from "metabase/entities/data-apps";
+import DataApps, {
+  getPreviousNavItem,
+  isTopLevelNavItem,
+} from "metabase/entities/data-apps";
 import Dashboards from "metabase/entities/dashboards";
 import Search from "metabase/entities/search";
 
 import { setEditingDashboard as setEditingDataAppPage } from "metabase/dashboard/actions";
+
+import ArchiveDataAppModal from "metabase/writeback/containers/ArchiveDataAppModal";
+import ArchiveDataAppPageModal from "metabase/writeback/containers/ArchiveDataAppPageModal";
 import ScaffoldDataAppPagesModal from "metabase/writeback/containers/ScaffoldDataAppPagesModal";
 
-import type { DataApp, Dashboard } from "metabase-types/api";
+import type { DataApp, DataAppPage } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type {
@@ -39,6 +45,8 @@ type NavbarModal =
   | "MODAL_ADD_DATA"
   | "MODAL_APP_SETTINGS"
   | "MODAL_NEW_PAGE"
+  | "MODAL_ARCHIVE_PAGE"
+  | "MODAL_ARCHIVE_APP"
   | null;
 
 interface DataAppNavbarContainerOwnProps extends MainNavbarProps {
@@ -74,7 +82,7 @@ const mapDispatchToProps = {
 
 function DataAppNavbarContainer({
   dataApp,
-  pages,
+  pages: fetchedPages,
   location,
   params,
   onReloadNavbar,
@@ -88,10 +96,20 @@ function DataAppNavbarContainer({
     ? "manage-content"
     : "running";
 
+  const pages = useMemo(
+    () => fetchedPages.filter(page => !page.archived),
+    [fetchedPages],
+  );
+
   const selectedItems: SelectedItem[] = useMemo(
     () => getSelectedItems({ dataApp, pages, location, params }),
     [dataApp, pages, location, params],
   );
+
+  const selectedPageId = useMemo(() => {
+    const pageItem = selectedItems.find(item => item.type === "data-app-page");
+    return (pageItem?.id as DataAppPage["id"]) || null;
+  }, [selectedItems]);
 
   const handleEnablePageEditing = useCallback(() => {
     setEditingDataAppPage(true);
@@ -128,6 +146,36 @@ function DataAppNavbarContainer({
   const onNewPage = useCallback(() => {
     setModal("MODAL_NEW_PAGE");
   }, []);
+
+  const onArchiveApp = useCallback(() => {
+    setModal("MODAL_ARCHIVE_APP");
+  }, []);
+
+  const onArchivePage = useCallback(() => {
+    setModal("MODAL_ARCHIVE_PAGE");
+  }, []);
+
+  const handleAppArchive = useCallback(() => {
+    onChangeLocation("/");
+  }, [onChangeLocation]);
+
+  const handlePageArchive = useCallback(
+    (pageId: DataAppPage["id"]) => {
+      const navItemToOpen =
+        getPreviousNavItem(dataApp.nav_items, pageId) ||
+        dataApp.nav_items.find(
+          navItem => isTopLevelNavItem(navItem) && navItem.page_id !== pageId,
+        );
+
+      const nextUrl = navItemToOpen
+        ? Urls.dataAppPage(dataApp, navItemToOpen)
+        : Urls.dataApp(dataApp);
+
+      onChangeLocation(nextUrl);
+    },
+    [dataApp, onChangeLocation],
+  );
+
   const closeModal = useCallback(() => setModal(null), []);
 
   const renderModalContent = useCallback(() => {
@@ -161,15 +209,50 @@ function DataAppNavbarContainer({
             collection_id: dataApp.collection_id,
           }}
           onClose={closeModal}
-          onSaved={(page: Dashboard) => {
+          onSaved={(page: DataAppPage) => {
             closeModal();
             onChangeLocation(Urls.dataAppPage(dataApp, page));
           }}
         />
       );
     }
+
+    if (!selectedPageId) {
+      return null;
+    }
+
+    if (modal === "MODAL_ARCHIVE_APP") {
+      return (
+        <ArchiveDataAppModal
+          appId={dataApp.id}
+          onArchive={handleAppArchive}
+          onClose={closeModal}
+        />
+      );
+    }
+
+    if (modal === "MODAL_ARCHIVE_PAGE") {
+      return (
+        <ArchiveDataAppPageModal
+          appId={dataApp.id}
+          pageId={selectedPageId}
+          onArchive={() => handlePageArchive(selectedPageId)}
+          onClose={closeModal}
+        />
+      );
+    }
+
     return null;
-  }, [dataApp, modal, handleNewDataAdded, closeModal, onChangeLocation]);
+  }, [
+    dataApp,
+    selectedPageId,
+    modal,
+    handleNewDataAdded,
+    handleAppArchive,
+    handlePageArchive,
+    closeModal,
+    onChangeLocation,
+  ]);
 
   return (
     <>
@@ -183,6 +266,8 @@ function DataAppNavbarContainer({
         onNewPage={onNewPage}
         onEditAppPage={handleEnablePageEditing}
         onEditAppSettings={onEditAppSettings}
+        onArchiveApp={onArchiveApp}
+        onArchivePage={onArchivePage}
       />
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
     </>
