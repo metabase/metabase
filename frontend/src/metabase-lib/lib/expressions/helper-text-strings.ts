@@ -384,8 +384,14 @@ const helperTextStrings: HelpText[] = [
   {
     name: "datetimediff",
     structure:
-      "datetimediff(" + t`start` + ", " + t`end` + ", " + t`unit` + ")",
-    description: t`Returns the number of units between the two expressions.`,
+      "datetimediff(" +
+      t`datetime1` +
+      ", " +
+      t`datetime2` +
+      ", " +
+      t`unit` +
+      ")",
+    description: t`Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.`,
     example:
       "datetimediff([" +
       t`created_at` +
@@ -396,16 +402,12 @@ const helperTextStrings: HelpText[] = [
       ")",
     args: [
       {
-        name: t`start`,
-        description: t`The start date or timestamp.`,
-      },
-      {
-        name: t`end`,
-        description: t`The end date or timestamp.`,
+        name: t`datetime1, datetime2`,
+        description: t`The columns or expressions with your datetime values.`,
       },
       {
         name: t`unit`,
-        description: t`"year", "month", "week", "day", "hour", "minute", or "second".`,
+        description: t`Choose from: "year", "month", "week", "day", "hour", "minute", or "second".`,
       },
     ],
   },
