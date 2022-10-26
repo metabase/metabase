@@ -384,7 +384,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "datetimediff",
     structure:
-      "datetimediff(" + t`column` + ", " + t`column` + ", " + t`unit` + ")",
+      "datetimediff(" + t`start` + ", " + t`end` + ", " + t`unit` + ")",
     description: t`Returns the number of units between the two expressions.`,
     example:
       "datetimediff([" +
@@ -396,8 +396,16 @@ const helperTextStrings: HelpText[] = [
       ")",
     args: [
       {
-        name: t`column`,
-        description: t`The column or number to return the exponential value of.`,
+        name: t`start`,
+        description: t`The start date, datetime, or timestamp in the calculation.`,
+      },
+      {
+        name: t`end`,
+        description: t`The end date, datetime or timestamp in the calculation.`,
+      },
+      {
+        name: t`unit`,
+        description: t`The unit of time to return the difference in. Accepted values are: "year", "month", "week", "day", "hour", "minute", "second".`,
       },
     ],
   },
