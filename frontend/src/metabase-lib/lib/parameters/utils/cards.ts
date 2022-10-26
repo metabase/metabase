@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
 import { Card } from "metabase-types/types/Card";
 import {
