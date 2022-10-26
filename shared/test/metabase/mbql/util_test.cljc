@@ -733,7 +733,7 @@
   (t/is (mbql.u/datetime-arithmetics?
          [:+
           [:date-add
-           [:field 13 {:tempoarl-unit :default}]
+           [:field 13 {:temporal-unit :default}]
            [:datetimediff
             [:date-add [:field 13 {:temporal-unit :default}] 1 "hour"]
             [:field 14 {:temporal-unit :default}]]
