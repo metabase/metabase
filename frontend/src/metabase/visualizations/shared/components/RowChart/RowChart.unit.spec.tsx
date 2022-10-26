@@ -1,6 +1,7 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import type { NumberValue } from "d3-scale";
+import userEvent from "@testing-library/user-event";
 import { ChartFont } from "../../types/style";
 import { FontStyle, TextMeasurer } from "../../types/measure-text";
 import { RowChart, RowChartProps } from "./RowChart";
@@ -219,6 +220,90 @@ describe("RowChart", () => {
     it("should render goal line when specified", () => {
       const { goalLine } = setup({ goal: { label: "Goal label", value: 100 } });
       expect(goalLine?.textContent).toBe("Goal label");
+    });
+  });
+
+  describe("events", () => {
+    it("should call onClick with the clicked datum info", () => {
+      const onClick = jest.fn();
+
+      const { bars } = setup({ onClick });
+      userEvent.click(bars[0]);
+
+      expect(onClick).toHaveBeenCalledWith(
+        expect.objectContaining({ currentTarget: expect.anything() }),
+        0, // first series
+        0, // first bar
+      );
+
+      onClick.mockClear();
+
+      // the last bar
+      userEvent.click(bars[5]);
+
+      expect(onClick).toHaveBeenCalledWith(
+        expect.objectContaining({ currentTarget: expect.anything() }),
+        1, // second series
+        2, // third bar
+      );
+    });
+
+    it("should call onClick with the clicked datum info", () => {
+      const onHover = jest.fn();
+
+      const { bars } = setup({ onHover });
+      userEvent.hover(bars[0]);
+
+      expect(onHover).toHaveBeenCalledWith(
+        expect.objectContaining({ currentTarget: expect.anything() }),
+        0, // first series
+        0, // first bar
+      );
+
+      onHover.mockClear();
+
+      // the last bar
+      userEvent.click(bars[5]);
+
+      expect(onHover).toHaveBeenCalledWith(
+        expect.objectContaining({ currentTarget: expect.anything() }),
+        1, // second series
+        2, // third bar
+      );
+    });
+
+    it("should highlight all bars of hovered series when multi-series", () => {
+      const hoveredData = {
+        seriesIndex: 1,
+        datumIndex: 1,
+      };
+
+      const { bars } = setup({ hoveredData });
+      const firstSeriesBars = bars.slice(0, 3);
+      const secondSeriesBars = bars.slice(3);
+
+      firstSeriesBars.forEach(bar =>
+        expect(bar.getAttribute("opacity")).toBe("0.4"),
+      );
+
+      secondSeriesBars.forEach(bar =>
+        expect(bar.getAttribute("opacity")).toBe("1"),
+      );
+    });
+
+    it("should highlight only hovered bar when single-series", () => {
+      const hoveredData = {
+        seriesIndex: 0,
+        datumIndex: 1,
+      };
+
+      const { bars } = setup({ hoveredData, series: [series1] });
+
+      expect(bars.map(bar => bar.getAttribute("opacity"))).toStrictEqual([
+        "0.4",
+        "1",
+        "0.4",
+      ]);
     });
   });
 });

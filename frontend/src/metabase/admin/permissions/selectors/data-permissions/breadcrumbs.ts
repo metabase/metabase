@@ -1,5 +1,5 @@
 import { Group } from "metabase-types/api";
-import { isNotEmpty } from "metabase/core/utils/is-not-empty";
+import { isNotNull } from "metabase/core/utils/array";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";
@@ -91,7 +91,7 @@ export const getGroupsDataEditorBreadcrumbs = (
   const hasMultipleSchemas = database.schemasCount() > 1;
 
   if (tableId == null) {
-    return [databaseItem, hasMultipleSchemas && schemaItem].filter(isNotEmpty);
+    return [databaseItem, hasMultipleSchemas && schemaItem].filter(isNotNull);
   }
 
   const table = metadata.table(tableId) as Table;

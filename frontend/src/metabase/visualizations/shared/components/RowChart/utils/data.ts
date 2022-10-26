@@ -7,7 +7,7 @@ import {
   ContinuousScaleType,
   Range,
 } from "metabase/visualizations/shared/types/scale";
-import { isNotEmpty } from "metabase/core/utils/is-not-empty";
+import { isNotNull } from "metabase/core/utils/array";
 import { BarData, Series, SeriesData, StackOffset } from "../types";
 import { createXScale, createYScale } from "./scale";
 import { createStackedXDomain, createXDomain } from "./domain";
@@ -179,7 +179,7 @@ export const calculateNonStackedBars = <TDatum>({
           datumIndex,
         };
       })
-      .filter(isNotEmpty);
+      .filter(isNotNull);
 
     return {
       bars,

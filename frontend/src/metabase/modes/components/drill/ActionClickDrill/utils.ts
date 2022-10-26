@@ -11,7 +11,7 @@ import type {
   ActionParameterValue,
 } from "metabase-types/api";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
-import { isNotEmpty } from "metabase/core/utils/is-not-empty";
+import { isNotNull } from "metabase/core/utils/array";
 
 function formatParameterValue(value: ParameterValueOrArray) {
   return Array.isArray(value) ? value[0] : value;
@@ -31,7 +31,7 @@ export function getDashcardParamValues(
   return Object.fromEntries(
     parameter_mappings
       ?.map(mapping => prepareParameter(mapping, action, parameterValues))
-      ?.filter(isNotEmpty),
+      ?.filter(isNotNull),
   );
 }
 

@@ -5,7 +5,7 @@ import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 
 import { State } from "metabase-types/store";
 import { ITreeNodeItem } from "metabase/components/tree/types";
-import { isNotEmpty } from "metabase/core/utils/is-not-empty";
+import { isNotNull } from "metabase/core/utils/array";
 import Database from "metabase-lib/metadata/Database";
 import Metadata from "metabase-lib/metadata/Metadata";
 import { EntityId, RawDataRouteParams } from "../../types";
@@ -97,7 +97,7 @@ const getTablesSidebar = (
     selectedId,
     title: database.name,
     description: t`Select a table to set more specific permissions`,
-    entityGroups: [entities].filter(isNotEmpty),
+    entityGroups: [entities].filter(isNotNull),
     filterPlaceholder: t`Search for a table`,
   };
 };

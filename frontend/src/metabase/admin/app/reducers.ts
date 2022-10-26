@@ -9,7 +9,7 @@ import {
 } from "metabase/plugins";
 import { REFRESH_CURRENT_USER } from "metabase/redux/user";
 import { AdminPath, AdminPathKey } from "metabase-types/store";
-import { isNotEmpty } from "metabase/core/utils/is-not-empty";
+import { isNotNull } from "metabase/core/utils/array";
 import { DISABLE_ADMIN_PATH, DISABLE_NOTICE } from "./actions";
 
 const getAdminPaths: () => AdminPath[] = () => {
@@ -89,7 +89,7 @@ const paths = handleActions(
 
         return state
           .filter(path => (allowedPaths.has(path.key) ? path : null))
-          .filter(isNotEmpty);
+          .filter(isNotNull);
       },
     },
   },

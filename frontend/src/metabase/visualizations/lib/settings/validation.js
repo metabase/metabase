@@ -6,7 +6,7 @@ import {
 } from "metabase/visualizations/lib/errors";
 
 export const validateDatasetRows = series => {
-  const singleSeriesHasNoRows = ({ data: { rows } }) => rows.length < 1;
+  const singleSeriesHasNoRows = ({ data: { rows } }) => rows.length === 0;
   if (_.every(series, singleSeriesHasNoRows)) {
     throw new MinRowsError(1, 0);
   }

@@ -1,6 +1,6 @@
 import { extent } from "d3-array";
 import type { Series as D3Series } from "d3-shape";
-import { isNotEmpty } from "metabase/core/utils/is-not-empty";
+import { isNotNull } from "metabase/core/utils/array";
 import {
   ContinuousDomain,
   ContinuousScaleType,
@@ -27,7 +27,7 @@ export const createXDomain = <TDatum>(
   xScaleType: ContinuousScaleType,
 ): ContinuousDomain => {
   const allXValues = series.flatMap(series =>
-    data.map(datum => series.xAccessor(datum)).filter(isNotEmpty),
+    data.map(datum => series.xAccessor(datum)).filter(isNotNull),
   );
   const [min, max] = getExtent([...allXValues, ...additionalValues]);
 
