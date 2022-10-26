@@ -8,7 +8,7 @@ import {
   isDate,
   isNumeric,
   isPK,
-} from "metabase-lib/lib/types/utils/isa";
+} from "metabase-lib/types/utils/isa";
 
 const getIdOrRef = (column: Column | null) => column?.id ?? column?.field_ref;
 
