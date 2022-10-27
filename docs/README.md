@@ -104,7 +104,9 @@ Metabase's reference documentation.
 - [Organization overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
+- [History](./history.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
+- [X-rays](./exploration-and-organization/x-rays.md)
 
 ### People
 
