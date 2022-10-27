@@ -12,6 +12,7 @@ import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
 
 import ModelActionDetails from "./ModelActionDetails";
+import ModelApps from "./ModelApps";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
 import ModelSchemaDetails from "./ModelSchemaDetails";
 import ModelUsageDetails from "./ModelUsageDetails";
@@ -31,7 +32,7 @@ interface Props {
   onChangeModel: (model: Card) => void;
 }
 
-type ModelTab = "schema" | "actions" | "usage";
+type ModelTab = "schema" | "actions" | "usage" | "apps";
 
 function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
   const [tab, setTab] = useState<ModelTab>("usage");
@@ -79,6 +80,7 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
               { value: "usage", name: t`Used by` },
               { value: "schema", name: t`Schema` },
               { value: "actions", name: t`Actions` },
+              { value: "apps", name: t`Apps` },
             ]}
             onChange={tab => setTab(tab as ModelTab)}
           />
@@ -90,6 +92,9 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
           </TabPanel>
           <TabPanel value="actions">
             <ModelActionDetails modelId={model.id()} />
+          </TabPanel>
+          <TabPanel value="apps">
+            <ModelApps model={model} />
           </TabPanel>
         </TabContent>
       </ModelMain>
