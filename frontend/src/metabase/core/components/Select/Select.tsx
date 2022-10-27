@@ -69,8 +69,8 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   footer?: ReactNode;
 }
 
-export interface SelectOption<T = Key> {
-  value: T;
+export interface SelectOption<TValue = Key> {
+  value: TValue;
   name?: string;
   description?: string;
   icon?: string;
