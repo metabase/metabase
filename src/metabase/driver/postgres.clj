@@ -300,8 +300,7 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
-(defn- datetimediff-helper
-  [x y unit]
+(defn- datetimediff-helper [x y unit]
   (case unit
     (:year :day)
     (hx/cast
