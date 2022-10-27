@@ -47,7 +47,7 @@
     (is (.hasAttribute line "fill-opacity"))
     (is (= (.getAttribute line "fill-opacity") "0.0"))))
 
-(def ^Context context (delay (#'js-svg/static-viz-context)))
+(def ^Context context (#'js-svg/context))
 
 (defn document-tag-seq [^SVGOMDocument document]
   (map #(.getNodeName ^Node %)
@@ -92,7 +92,7 @@
 
 (defn- combo-chart-string
   [series settings]
-  (let [s (.asString (js/execute-fn-name @context
+  (let [s (.asString (js/execute-fn-name context
                                          "combo_chart"
                                          (json/generate-string series)
                                          (json/generate-string settings)
@@ -101,7 +101,7 @@
 
 (defn- combo-chart-hiccup
   [series settings]
-  (let [s (.asString (js/execute-fn-name @context
+  (let [s (.asString (js/execute-fn-name context
                                          "combo_chart"
                                          (json/generate-string series)
                                          (json/generate-string settings)
@@ -224,12 +224,12 @@
                          :labels {:bottom "" :left "" :right ""}}
         non-goal-hiccup (combo-chart-hiccup series settings)
         non-goal-node   (->> non-goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
-  (testing "No goal line exists when there are no goal settings."
-    (is (= nil (second non-goal-node))))
-  (let [goal-hiccup     (combo-chart-hiccup series (merge settings {:goal {:value 0 :label goal-label}}))
-        goal-node       (->> goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
-    (testing "A goal line does exist when goal settings are present in the viz-settings"
-      (is (= goal-label (second goal-node)))))))
+    (testing "No goal line exists when there are no goal settings."
+      (is (= nil (second non-goal-node))))
+    (let [goal-hiccup     (combo-chart-hiccup series (merge settings {:goal {:value 0 :label goal-label}}))
+          goal-node       (->> goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
+      (testing "A goal line does exist when goal settings are present in the viz-settings"
+        (is (= goal-label (second goal-node)))))))
 
 (deftest waterfall-test
   (testing "Timeseries Waterfall renders"
@@ -242,7 +242,7 @@
       (testing "It returns bytes"
         (let [svg-bytes (js-svg/waterfall rows labels settings waterfall-type)]
           (is (bytes? svg-bytes))))
-      (let [svg-string (.asString (js/execute-fn-name @context "waterfall"
+      (let [svg-string (.asString (js/execute-fn-name context "waterfall"
                                                       rows labels settings waterfall-type
                                                       (json/generate-string {})))]
         (testing "it returns a valid svg string (no html in it)"
@@ -256,7 +256,7 @@
       (testing "It returns bytes"
         (let [svg-bytes (js-svg/waterfall rows labels settings waterfall-type)]
           (is (bytes? svg-bytes))))
-      (let [svg-string (.asString (js/execute-fn-name @context "waterfall"
+      (let [svg-string (.asString (js/execute-fn-name context "waterfall"
                                                       rows labels settings waterfall-type
                                                       (json/generate-string {})))]
         (testing "it returns a valid svg string (no html in it)"
@@ -288,7 +288,7 @@
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/combo-chart series settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString (js/execute-fn-name @context "combo_chart"
+    (let [svg-string (.asString (js/execute-fn-name context "combo_chart"
                                                     (json/generate-string series)
                                                     (json/generate-string settings)
                                                     (json/generate-string {})))]
@@ -298,11 +298,12 @@
 (deftest categorical-donut-test
   (let [rows [["apples" 2]
               ["bananas" 3]]
-        colors {"apples" "red" "bananas" "yellow"}]
+        colors {"apples" "red" "bananas" "yellow"}
+        settings {:show_values true}]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/categorical-donut rows colors)]
+      (let [svg-bytes (js-svg/categorical-donut rows colors settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value (js/execute-fn-name @context "categorical_donut" rows (seq colors)))]
+    (let [svg-string (.asString ^Value (js/execute-fn-name context "categorical_donut" rows (seq colors) (json/generate-string settings)))]
       (validate-svg-string :categorical/donut svg-string))))
 
 (deftest progress-test
@@ -314,7 +315,7 @@
         (is (bytes? svg-bytes))))
     (let [svg-string (.asString ^Value
                                 (js/execute-fn-name
-                                  @context
+                                  context
                                   "progress"
                                   (json/generate-string {:value value :goal goal})
                                   (json/generate-string settings)))]

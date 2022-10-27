@@ -3,7 +3,7 @@ import React from "react";
 import { t } from "ttag";
 
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
-import { columnFilterDrill } from "metabase-lib/lib/queries/drills/column-filter-drill";
+import { columnFilterDrill } from "metabase-lib/queries/drills/column-filter-drill";
 
 export default function ColumnFilterDrill({ question, clicked }) {
   const drill = columnFilterDrill({ question, clicked });

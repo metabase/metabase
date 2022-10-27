@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.public-settings :as public-settings]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -50,15 +51,37 @@
         ts (u.date/parse "2022-01-01-00:00:00")]
     (u.date/format time-style (t/plus ts (t/hours n)))))
 
+(defn- viz-settings-for-col
+  "Get the column-settings map for the given column from the viz-settings."
+  [col viz-settings]
+  (let [[_ field-id]    (:field_ref col)
+        all-cols-settings (-> viz-settings
+                              ::mb.viz/column-settings
+                              ;; update the keys so that they will have only the :field-id or :column-name
+                              ;; and not have any metadata. Since we don't know the metadata, we can never
+                              ;; match a key with metadata, even if we do have the correct name or id
+                              (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))]
+    (or (all-cols-settings {::mb.viz/field-id field-id})
+        (all-cols-settings {::mb.viz/column-name field-id}))))
+
 (defn format-temporal-str
   "Reformat a temporal literal string `s` (i.e., an ISO-8601 string) with a human-friendly format based on the
   column `:unit`."
   ([timezone-id s col] (format-temporal-str timezone-id s col {}))
-  ([timezone-id s col col-viz-settings]
+  ([timezone-id s col viz-settings]
    (Locale/setDefault (Locale. (public-settings/site-locale)))
-   (let [{date-style :date_style
-          abbreviate :date_abbreviate
-          time-style :time_style} col-viz-settings]
+   (let [col-viz-settings (viz-settings-for-col col viz-settings)
+         {date-style     :date-style
+          abbreviate     :date-abbreviate
+          date-separator :date-separator
+          time-style     :time-style} (if (seq col-viz-settings)
+                                        (-> col-viz-settings
+                                            (update-keys (comp keyword name)))
+                                        (-> (:type/Temporal (public-settings/custom-formatting))
+                                            (update-keys (fn [k] (-> k name (str/replace #"_" "-") keyword)))))
+         date-style (cond-> date-style
+                      date-separator (str/replace #"/" date-separator)
+                      abbreviate (-> (str/replace #"MMMM" "MMM") (str/replace #"DDD" "D")))]
      (cond (str/blank? s) ""
 
            (isa? (or (:effective_type col) (:base_type col)) :type/Time)
@@ -86,10 +109,9 @@
              :hour-of-day     (hour-of-day s (str/replace (or time-style "h a") #"A" "a"))
 
              (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y (parse-long s))
-             ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
 
              ;; for everything else return in this format
-             (reformat-temporal-str timezone-id s "MMM d, yyyy"))))))
+             (reformat-temporal-str timezone-id s (str/replace (or date-style "MMM d, yyyy") #"D" "d")))))))
 
 (def ^:private RenderableInterval
   {:interval-start     Temporal

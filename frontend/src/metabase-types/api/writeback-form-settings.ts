@@ -1,3 +1,5 @@
+import type { Validator, FormFieldDefinition } from "metabase-types/forms";
+import type Field from "metabase-lib/metadata/Field";
 import type { ParameterId } from "./parameters";
 
 export type ActionDisplayType = "form" | "button";
@@ -11,7 +13,11 @@ export type InputType =
   | "text"
   | "number"
   | "dropdown"
-  | "inline-select";
+  | "radio"
+  | "email"
+  | "password"
+  | "boolean"
+  | "category";
 
 export type Size = "small" | "medium" | "large";
 
@@ -20,8 +26,9 @@ export type NumberRange = [number, number];
 
 export interface FieldSettings {
   name: string;
+  title: string;
   order: number;
-  description?: string;
+  description?: string | null;
   placeholder?: string;
   fieldType: FieldType;
   inputType: InputType;
@@ -33,6 +40,7 @@ export interface FieldSettings {
   width?: Size;
   height?: number;
   hasSearch?: boolean;
+  fieldInstance?: Field;
 }
 
 export type FieldSettingsMap = Record<ParameterId, FieldSettings>;
@@ -42,7 +50,22 @@ export interface ActionFormSettings {
   description?: string;
   fields: FieldSettingsMap;
   submitButtonLabel?: string;
+  submitButtonColor?: string;
   confirmMessage?: string;
   successMessage?: string;
   errorMessage?: string;
 }
+
+export type ActionFormOption = {
+  name: string | number;
+  value: string | number;
+};
+
+export type ActionFormFieldProps = FormFieldDefinition & {
+  validator?: Validator;
+  fieldInstance?: Field;
+};
+
+export type ActionFormProps = {
+  fields: ActionFormFieldProps[];
+};

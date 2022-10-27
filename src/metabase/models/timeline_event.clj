@@ -35,6 +35,14 @@
 
 ;;;; hydration
 
+(defn timeline
+  "Attach the parent `:timeline` to this [[TimelineEvent]]."
+  {:hydrate :timeline}
+  [{:keys [timeline_id]}]
+  (db/select-one 'Timeline :id timeline_id))
+
+;(hydrate (db/select-one 'TimelineEvent))
+
 (defn- fetch-events
   "Fetch events for timelines in `timeline-ids`. Can include optional `start` and `end` dates in the options map, as
   well as `all?`. By default, will return only unarchived events, unless `all?` is truthy and will return all events
@@ -94,7 +102,7 @@
 
 (defmethod serdes.hash/identity-hash-fields TimelineEvent
   [_timeline-event]
-  [:name :timestamp (serdes.hash/hydrated-hash :timeline)])
+  [:name :timestamp (serdes.hash/hydrated-hash :timeline) :created_at])
 
 ;;;; serialization
 (defmethod serdes.base/serdes-entity-id "TimelineEvent" [_model-name {:keys [timestamp]}]

@@ -16,6 +16,7 @@
             [metabase.models.setting :as setting]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -289,7 +290,10 @@
         bigquery-type
         (do
           (log/tracef "Coercing %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (pr-str (temporal-type x)) bigquery-type)
-          (with-temporal-type (hsql/call :cast (sql.qp/->honeysql :bigquery-cloud-sdk x) (hsql/raw (name bigquery-type))) target-type))
+          (let [expr (sql.qp/->honeysql :bigquery-cloud-sdk x)]
+            (if-let [report-zone (when (= bigquery-type :timestamp) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
+              (with-temporal-type (hsql/call :timestamp expr (hx/literal report-zone)) target-type)
+              (with-temporal-type (hsql/call :cast expr (hsql/raw (name bigquery-type))) target-type))))
 
         :else
         x))))
@@ -324,7 +328,9 @@
               :time      :time_trunc
               :datetime  :datetime_trunc
               :timestamp :timestamp_trunc)]
-      (hformat/to-sql (hsql/call f (->temporal-type t hsql-form) (hsql/raw (name unit)))))))
+      (if-let [report-zone (when (= f :timestamp_trunc) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
+        (hformat/to-sql (hsql/call f (->temporal-type t hsql-form) (hsql/raw (name unit)) (hx/literal report-zone)))
+        (hformat/to-sql (hsql/call f (->temporal-type t hsql-form) (hsql/raw (name unit))))))))
 
 (defmethod temporal-type TruncForm
   [trunc-form]
@@ -344,6 +350,15 @@
 
 (def ^:private valid-time-extract-units
   #{:microsecond :millisecond :second :minute :hour})
+
+(defrecord AtTimeZone
+  ;; record type to support applying BigQuery's `AT TIME ZONE` operator to an expression
+  [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (format "%s AT TIME ZONE %s"
+      (hformat/to-sql expr)
+      (hformat/to-sql (hx/literal zone)))))
 
 (defn- extract [unit expr]
   (condp = (temporal-type expr)
@@ -366,7 +381,9 @@
       (assert (or (valid-date-extract-units unit)
                   (valid-time-extract-units unit))
               (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
-      (with-temporal-type (hsql/call :extract unit expr) nil))
+      (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
+        (with-temporal-type (hsql/call :extract unit (->AtTimeZone expr report-zone)) nil)
+        (with-temporal-type (hsql/call :extract unit expr) nil)))
 
     ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
     (recur unit (->temporal-type :timestamp expr))))
@@ -402,6 +419,9 @@
 (defmethod sql.qp/date [:bigquery-cloud-sdk :week]
   [_ _ expr]
   (trunc (keyword (format "week(%s)" (name (setting/get-value-of-type :keyword :start-of-week)))) expr))
+
+;; TODO: bigquery supports week(weekday), maybe we don't have to do the complicated math for bigquery?
+(defmethod sql.qp/date [:bigquery-cloud-sdk :week-of-year-iso] [_ _ expr] (extract :isoweek expr))
 
 (doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
                                            :milliseconds :timestamp_millis
@@ -685,12 +705,16 @@
 (defrecord ^:private CurrentMomentForm [t]
   hformat/ToSql
   (to-sql [_]
-    (hformat/to-sql
-     (case (or t :timestamp)
-       :time      :%current_time
-       :date      :%current_date
-       :datetime  :%current_datetime
-       :timestamp :%current_timestamp))))
+    (let [f (case (or t :timestamp)
+              :time      :current_time
+              :date      :current_date
+              :datetime  :current_datetime
+              :timestamp :current_timestamp),
+          report-zone (when (not= f :current_timestamp) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
+      (hformat/to-sql
+        (if report-zone
+          (hsql/call f (hx/literal report-zone))
+          (hsql/call f))))))
 
 (defmethod temporal-type CurrentMomentForm
   [^CurrentMomentForm current-moment]

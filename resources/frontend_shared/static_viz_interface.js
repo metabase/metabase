@@ -54,10 +54,11 @@ function funnel(data, settings) {
   });
 }
 
-function categorical_donut(rows, colors) {
+function categorical_donut(rows, colors, settings) {
   return StaticViz.RenderChart("categorical/donut", {
     data: toJSArray(rows),
     colors: toJSMap(colors),
+    settings: JSON.parse(settings)
   });
 }
 

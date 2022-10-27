@@ -192,16 +192,17 @@ class DashboardGrid extends Component {
   }
 
   getRowHeight() {
-    const { width, dashboard } = this.props;
+    const { width, dashboard, isEditing } = this.props;
 
     const contentViewportElement = this.context;
     const hasScroll =
       contentViewportElement?.clientHeight <
       contentViewportElement?.scrollHeight;
 
-    const aspect = dashboard.is_app_page
-      ? DATA_APPS_ASPECT_RATIO
-      : GRID_ASPECT_RATIO;
+    const aspect =
+      dashboard.is_app_page && !isEditing
+        ? DATA_APPS_ASPECT_RATIO
+        : GRID_ASPECT_RATIO;
     const minHeight = dashboard.is_app_page
       ? DATA_APPS_MIN_ROW_HEIGHT
       : MIN_ROW_HEIGHT;
@@ -365,7 +366,7 @@ class DashboardGrid extends Component {
   );
 
   renderGrid() {
-    const { dashboard, width } = this.props;
+    const { dashboard, width, isEditing } = this.props;
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
     return (
@@ -377,7 +378,9 @@ class DashboardGrid extends Component {
         layouts={layouts}
         breakpoints={GRID_BREAKPOINTS}
         cols={GRID_COLUMNS}
-        width={dashboard.is_app_page ? DATA_APPS_MAX_WIDTH : width}
+        width={
+          dashboard.is_app_page && !isEditing ? DATA_APPS_MAX_WIDTH : width
+        }
         margin={
           dashboard.is_app_page
             ? DATA_APPS_GRID_MARGIN

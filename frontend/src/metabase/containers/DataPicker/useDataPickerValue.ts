@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/lib/metadata/utils/saved-questions";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 
 import { DataPickerValue } from "./types";
 
@@ -27,11 +27,24 @@ function cleanTablesValue({
   return databaseId && schemaId ? tableIds : [];
 }
 
+function cleanCollectionValue({
+  type,
+  databaseId,
+  collectionId,
+}: Partial<DataPickerValue>) {
+  const isUsingVirtualTables = type === "models" || type === "questions";
+  if (isUsingVirtualTables && databaseId === SAVED_QUESTIONS_VIRTUAL_DB_ID) {
+    return collectionId;
+  }
+  return undefined;
+}
+
 function cleanValue(value: Partial<DataPickerValue>): DataPickerValue {
   return {
     type: value.type,
     databaseId: cleanDatabaseValue(value),
     schemaId: cleanSchemaValue(value),
+    collectionId: cleanCollectionValue(value),
     tableIds: cleanTablesValue(value),
   };
 }

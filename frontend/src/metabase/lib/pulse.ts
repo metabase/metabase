@@ -9,11 +9,12 @@ import {
   Pulse,
   PulseParameter,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/core/utils/array";
 import {
   hasDefaultParameterValue,
   hasParameterValue,
   normalizeParameterValue,
-} from "metabase-lib/lib/parameters/utils/parameter-values";
+} from "metabase-lib/parameters/utils/parameter-values";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,
@@ -219,5 +220,5 @@ export function getActivePulseParameters(
           : parameter.default,
       };
     })
-    .filter(Boolean);
+    .filter(isNotNull);
 }

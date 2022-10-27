@@ -79,7 +79,7 @@ export type SettingName =
   | "is-hosted?"
   | "ldap-enabled"
   | "ldap-configured?"
-  | "other-sso-configured?"
+  | "other-sso-enabled?"
   | "enable-password-login"
   | "map-tile-server-url"
   | "password-complexity"
@@ -196,13 +196,17 @@ class Settings {
     return this.get("ldap-configured?");
   }
 
-  // JWT or SAML is configured
-  isOtherSsoConfigured() {
-    return this.get("other-sso-configured?");
+  // JWT or SAML is enabled
+  isOtherSsoEnabled() {
+    return this.get("other-sso-enabled?");
   }
 
   isSsoEnabled() {
-    return this.isLdapEnabled() || this.isGoogleAuthEnabled();
+    return (
+      this.isLdapEnabled() ||
+      this.isGoogleAuthEnabled() ||
+      this.isOtherSsoEnabled()
+    );
   }
 
   isPasswordLoginEnabled() {

@@ -1,6 +1,6 @@
 import { QueryMode } from "metabase-types/types/Visualization";
-import Question from "metabase-lib/lib/Question";
-import Mode, { getModeType } from "metabase-lib/lib/Mode";
+import Question from "metabase-lib/Question";
+import Mode, { getModeType } from "metabase-lib/Mode";
 import {
   MODE_TYPE_ACTION,
   MODE_TYPE_NATIVE,
@@ -9,7 +9,7 @@ import {
   MODE_TYPE_TIMESERIES,
   MODE_TYPE_GEO,
   MODE_TYPE_PIVOT,
-} from "metabase-lib/lib/Mode/constants";
+} from "metabase-lib/Mode/constants";
 import ActionMode from "../components/modes/ActionMode";
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";

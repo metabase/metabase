@@ -9,7 +9,7 @@ import {
   NULL_NUMERIC_VALUE,
   TOTAL_ORDINAL_VALUE,
 } from "metabase/lib/constants";
-import { datasetContainsNoResults } from "metabase-lib/lib/queries/utils/dataset";
+import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 
 import {
   computeTimeseriesDataInverval,

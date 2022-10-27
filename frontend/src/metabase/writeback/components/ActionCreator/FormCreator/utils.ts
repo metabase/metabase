@@ -1,4 +1,8 @@
 import { t } from "ttag";
+import _ from "underscore";
+
+import validate from "metabase/lib/validate";
+import { humanize, slugify } from "metabase/lib/formatting";
 
 import type {
   ActionFormSettings,
@@ -6,12 +10,20 @@ import type {
   FieldSettings,
   ParameterId,
   WritebackParameter,
+  ActionFormOption,
+  ActionFormProps,
+  ActionFormFieldProps,
+  InputType,
 } from "metabase-types/api";
 
-import validate from "metabase/lib/validate";
 import type { Parameter } from "metabase-types/types/Parameter";
 import type { TemplateTag } from "metabase-types/types/Query";
-import type { Validator } from "metabase-types/forms";
+
+import { isEditableField } from "metabase/writeback/utils";
+import Field from "metabase-lib/metadata/Field";
+import { TYPE } from "metabase-lib/types/constants";
+
+import { shouldShowConfirmation } from "../../ActionViz/utils";
 
 export const getDefaultFormSettings = (
   overrides: Partial<ActionFormSettings> = {},
@@ -24,21 +36,18 @@ export const getDefaultFormSettings = (
   ...overrides,
 });
 
-type OptionType = {
-  name: string | number;
-  value: string | number;
-};
-
-const getOptionsFromArray = (options: (number | string)[]): OptionType[] =>
-  options.map(o => ({ name: o, value: o }));
+const getOptionsFromArray = (
+  options: (number | string)[],
+): ActionFormOption[] => options.map(o => ({ name: o, value: o }));
 
 export const getDefaultFieldSettings = (
   overrides: Partial<FieldSettings> = {},
 ): FieldSettings => ({
   name: "",
-  order: 0,
+  title: "",
   description: "",
   placeholder: "",
+  order: 0,
   fieldType: "string",
   inputType: "string",
   required: true,
@@ -53,9 +62,7 @@ const getSampleOptions = () => [
   { name: t`Option Three`, value: 3 },
 ];
 
-interface FieldPropTypeMap {
-  [key: string]: string;
-}
+type FieldPropTypeMap = Record<InputType, string>;
 
 const fieldPropsTypeMap: FieldPropTypeMap = {
   string: "input",
@@ -64,26 +71,37 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
   datetime: "date",
   monthyear: "date",
   quarteryear: "date",
+  email: "email",
+  password: "password",
+  number: "integer", // this input type is badly named, it works for floats too
+  boolean: "boolean",
+  category: "categoryPillOrSearch",
   dropdown: "select",
-  "inline-select": "radio",
+  radio: "radio",
 };
 
 const inputTypeHasOptions = (fieldSettings: FieldSettings) =>
-  ["dropdown", "inline-select"].includes(fieldSettings.inputType);
+  ["dropdown", "radio"].includes(fieldSettings.inputType);
 
-interface FieldProps {
-  type: string;
-  options?: OptionType[];
-  values?: any;
-  placeholder?: string;
-  validate?: Validator;
-}
+export const getFormField = (
+  parameter: Parameter | TemplateTag,
+  fieldSettings: FieldSettings,
+) => {
+  if (
+    fieldSettings.fieldInstance &&
+    !isEditableField(fieldSettings.fieldInstance)
+  ) {
+    return undefined;
+  }
 
-const getParameterFieldProps = (fieldSettings: FieldSettings) => {
-  const fieldProps: FieldProps = {
+  const fieldProps: ActionFormFieldProps = {
+    name: parameter.id,
     type: fieldPropsTypeMap[fieldSettings?.inputType] ?? "input",
-    placeholder: fieldSettings.placeholder ?? "",
-    validate: fieldSettings.required ? validate.required() : () => undefined,
+    title: fieldSettings.title ?? fieldSettings.name,
+    description: fieldSettings.description ?? "",
+    placeholder: fieldSettings?.placeholder,
+    validate: fieldSettings.required ? validate.required() : _.noop,
+    fieldInstance: fieldSettings.fieldInstance,
   };
 
   if (inputTypeHasOptions(fieldSettings)) {
@@ -99,44 +117,125 @@ const getParameterFieldProps = (fieldSettings: FieldSettings) => {
   return fieldProps;
 };
 
-export const getFormFieldForParameter = (
-  parameter: Parameter | TemplateTag,
-  fieldSettings: FieldSettings,
-) => ({
-  name: parameter.id,
-  title: parameter.name ?? parameter.id,
-  ...getParameterFieldProps(fieldSettings),
-});
-
-export const getFormFromParameters = (
-  missingParameters: WritebackParameter[],
+export const getForm = (
+  parameters: WritebackParameter[],
   fieldSettings: Record<string, FieldSettings>,
-) => {
+): ActionFormProps => {
   return {
-    fields: missingParameters?.map(param =>
-      getFormFieldForParameter(param, fieldSettings[param.id] ?? {}),
-    ),
+    fields: parameters
+      ?.map(param => getFormField(param, fieldSettings[param.id] ?? {}))
+      .filter(Boolean) as ActionFormFieldProps[],
   };
 };
 
-export const getFormTitle = (action: WritebackAction): string =>
-  action.visualization_settings?.name ||
-  action.name ||
-  action.slug ||
-  "Action form";
+export const getFormTitle = (action: WritebackAction): string => {
+  let title =
+    action.visualization_settings?.name ||
+    action.name ||
+    humanize(action.slug ?? "") ||
+    "Action form";
 
-export const getSubmitButtonLabel = (action: WritebackAction): string =>
-  action.visualization_settings?.submitButtonLabel || t`Save`;
+  if (shouldShowConfirmation(action)) {
+    title += "?";
+  }
 
-export const generateFieldSettingsFromParameters = (params: Parameter[]) => {
+  return title;
+};
+
+export const getSubmitButtonColor = (action: WritebackAction): string => {
+  if (action.slug === "delete") {
+    return "danger";
+  }
+  return action.visualization_settings?.submitButtonColor ?? "primary";
+};
+
+export const getSubmitButtonLabel = (action: WritebackAction): string => {
+  if (action.visualization_settings?.submitButtonLabel) {
+    return action.visualization_settings.submitButtonLabel;
+  }
+
+  if (action.slug === "delete") {
+    return t`Delete`;
+  }
+
+  if (action.slug === "update") {
+    return t`Update`;
+  }
+
+  return t`Save`;
+};
+
+export const generateFieldSettingsFromParameters = (
+  params: Parameter[],
+  fields?: Field[],
+) => {
   const fieldSettings: Record<ParameterId, FieldSettings> = {};
 
+  const fieldMetadataMap = Object.fromEntries(
+    fields?.map(f => [slugify(f.name), f]) ?? [],
+  );
+
   params.forEach(param => {
+    const field = fieldMetadataMap[param.id]
+      ? new Field(fieldMetadataMap[param.id])
+      : undefined;
+
+    const name = param.name ?? param.id;
+    const displayName = field?.displayName?.() ?? name;
+
     fieldSettings[param.id] = getDefaultFieldSettings({
-      name: param.name ?? param.id,
-      fieldType: param.type.includes("Integer") ? "number" : "string",
-      inputType: param.type.includes("Integer") ? "number" : "string",
+      name,
+      title: displayName,
+      placeholder: displayName,
+      required: !!field?.database_required,
+      description: field?.description ?? "",
+      fieldType: getFieldType(param),
+      inputType: getInputType(param, field),
+      fieldInstance: field ?? undefined,
     });
   });
   return fieldSettings;
+};
+
+const getFieldType = (param: Parameter): "number" | "string" => {
+  return isNumericParameter(param) ? "number" : "string";
+};
+
+const isNumericParameter = (param: Parameter): boolean =>
+  /integer|float/gi.test(param.type);
+
+export const getInputType = (param: Parameter, field?: Field) => {
+  if (!field) {
+    return isNumericParameter(param) ? "number" : "string";
+  }
+
+  if (field.isFK()) {
+    return field.isNumeric() ? "number" : "string";
+  }
+  if (field.isNumeric()) {
+    return "number";
+  }
+  if (field.isBoolean()) {
+    return "boolean";
+  }
+  if (field.isDate()) {
+    return "date";
+  }
+  if (field.semantic_type === TYPE.Email) {
+    return "email";
+  }
+  if (
+    field.semantic_type === TYPE.Description ||
+    field.semantic_type === TYPE.Comment ||
+    field.base_type === TYPE.Structured
+  ) {
+    return "text";
+  }
+  if (field.semantic_type === TYPE.Title) {
+    return "string";
+  }
+  if (field.isCategory() && field.semantic_type !== TYPE.Name) {
+    return "category";
+  }
+  return "string";
 };

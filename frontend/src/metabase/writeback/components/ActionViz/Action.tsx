@@ -24,6 +24,8 @@ import { StyledButton } from "./ActionButton.styled";
 import LinkButton from "./LinkButton";
 import ActionForm from "./ActionForm";
 
+import { shouldShowConfirmation } from "./utils";
+
 interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;
   dashboard: DataAppPage;
@@ -60,8 +62,13 @@ function ActionComponent({
     );
   }, [dashcard, dashcardParamValues]);
 
-  const shouldDisplayButton =
-    actionDisplayType !== "form" || !missingParameters.length;
+  const shouldConfirm = shouldShowConfirmation(dashcard?.action);
+
+  const shouldDisplayButton = !!(
+    actionDisplayType !== "form" ||
+    !missingParameters.length ||
+    shouldConfirm
+  );
 
   const onSubmit = useCallback(
     (parameterMap: ParametersForActionExecution) => {

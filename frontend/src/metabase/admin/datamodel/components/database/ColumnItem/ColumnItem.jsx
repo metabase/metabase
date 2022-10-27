@@ -14,7 +14,7 @@ import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings
 import { currency } from "cljs/metabase.shared.util.currency";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { isTypeFK, isCurrency } from "metabase-lib/lib/types/utils/isa";
+import { isTypeFK, isCurrency } from "metabase-lib/types/utils/isa";
 import { getFieldRawName } from "../../../utils";
 import { ColumnItemInput } from "./ColumnItem.styled";
 

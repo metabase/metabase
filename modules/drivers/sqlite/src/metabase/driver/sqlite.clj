@@ -13,8 +13,10 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s])
   (:import [java.sql Connection ResultSet Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
@@ -174,6 +176,14 @@
                                   (hx/literal "weekday 0")))]
     (sql.qp/adjust-start-of-week :sqlite week-extract-fn expr)))
 
+(defmethod sql.qp/date [:sqlite :week-of-year-iso]
+  [driver _ expr]
+  ;; Maybe we can follow the algorithm here https://en.wikipedia.org/wiki/ISO_week_date#Algorithms
+  (throw (ex-info (tru "Sqlite doesn't support extract isoweek")
+                  {:driver driver
+                   :form   expr
+                   :type   qp.error-type/invalid-query})))
+
 (defmethod sql.qp/date [:sqlite :month]
   [driver _ expr]
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of month")))
@@ -281,8 +291,11 @@
 
 (defmethod sql.qp/->honeysql [:sqlite :ceil]
   [_driver [_ arg]]
-  (hsql/call :round (hsql/call :+ arg 0.5)))
-
+  (hsql/call :case
+    ;; if we're ceiling a whole number, just cast it to an integer
+    ;; [:ceil 1.0] should returns 1
+    (hsql/call := (hsql/call :round arg) arg) (hx/->integer arg)
+    :else                                     (hsql/call :round (hsql/call :+ arg 0.5))))
 
 ;; See https://sqlite.org/lang_datefunc.html
 

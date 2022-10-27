@@ -328,18 +328,13 @@
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]
-  [:name (serdes.hash/hydrated-hash :collection)])
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
-(defmethod serdes.base/extract-query "Card" [_ {:keys [user]}]
-  (serdes.base/raw-reducible-query
-   "Card"
-   {:select     [:card.*]
-    :from       [[:report_card :card]]
-    :left-join  [[:collection :coll] [:= :coll.id :card.collection_id]]
-    :where      (if user
-                  [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                  [:is :coll.personal_owner_id nil])}))
+(defmethod serdes.base/extract-query "Card" [_ {:keys [collection-set]}]
+  (if (seq collection-set)
+    (db/select-reducible Card :collection_id [:in collection-set])
+    (db/select-reducible Card)))
 
 (defmethod serdes.base/extract-one "Card"
   [_model-name _opts card]
@@ -353,7 +348,7 @@
       (update :collection_id          serdes.util/export-fk 'Collection)
       (update :creator_id             serdes.util/export-user)
       (update :made_public_by_id      serdes.util/export-user)
-      (update :dataset_query          serdes.util/export-json-mbql)
+      (update :dataset_query          serdes.util/export-mbql)
       (update :parameter_mappings     serdes.util/export-parameter-mappings)
       (update :visualization_settings serdes.util/export-visualization-settings)
       (dissoc :result_metadata))) ; Not portable, and can be rebuilt on the other side.
@@ -367,7 +362,7 @@
       (update :creator_id             serdes.util/import-user)
       (update :made_public_by_id      serdes.util/import-user)
       (update :collection_id          serdes.util/import-fk 'Collection)
-      (update :dataset_query          serdes.util/import-json-mbql)
+      (update :dataset_query          serdes.util/import-mbql)
       (update :parameter_mappings     serdes.util/import-parameter-mappings)
       (update :visualization_settings serdes.util/import-visualization-settings)))
 

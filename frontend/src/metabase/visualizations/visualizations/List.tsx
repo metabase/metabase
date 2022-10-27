@@ -6,6 +6,7 @@ import { formatColumn } from "metabase/lib/formatting";
 
 import List from "metabase/visualizations/components/List/List";
 import ChartSettingsListColumns from "metabase/visualizations/components/settings/ChartSettingsListColumns";
+import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { VisualizationSettings } from "metabase-types/api/card";
@@ -18,7 +19,7 @@ import {
   isEmail,
   isImageURL,
   isAvatarURL,
-} from "metabase-lib/lib/types/utils/isa";
+} from "metabase-lib/types/utils/isa";
 
 function ListViz(props: VisualizationProps) {
   const { data, settings } = props;
@@ -63,33 +64,13 @@ export default Object.assign(ListViz, {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     ...columnSettings({ hidden: true }),
-    "buttons.edit": {
-      section: t`Actions`,
-      title: t`Edit button`,
-      widget: "toggle",
-      default: true,
-    },
-    "buttons.delete": {
-      section: t`Actions`,
-      title: t`Delete button`,
-      widget: "toggle",
-      default: true,
-    },
-    "actions.bulk_enabled": {
-      section: t`Actions`,
-      title: t`Bulk actions`,
-      widget: "toggle",
-      default: true,
-    },
     "list.variant": {
       section: t`Options`,
       title: t`Variant`,
       widget: "radio",
-      options: [
-        { name: t`Basic`, value: "basic" },
-        { name: t`Info`, value: "info" },
-      ],
-      default: "basic",
+      options: [{ name: t`Info`, value: "info" }],
+      default: "info",
+      hidden: true,
     },
     "list.columns": {
       section: t`Options`,
@@ -104,10 +85,11 @@ export default Object.assign(ListViz, {
           col => col.visibility_type !== "details-only",
         );
         const firstThreeColumns = columns.slice(0, 3).filter(Boolean);
-        const nextThreeColumns = columns.slice(3, 6).filter(Boolean);
+        const fourthColumn = columns.slice(3, 4).filter(Boolean);
         return {
+          image: [null],
           left: firstThreeColumns.map(col => col.id || col.field_ref),
-          right: nextThreeColumns.map(col => col.id || col.field_ref),
+          right: fourthColumn.map(col => col.id || col.field_ref),
         };
       },
       getProps: ([
@@ -171,27 +153,55 @@ export default Object.assign(ListViz, {
 
     settings["link_text"] = {
       title: t`Link text`,
-      widget: "input",
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_: unknown, settings: VisualizationSettings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
-      props: {
-        placeholder: t`Link to {{bird_id}}`,
+      getProps: (
+        col: Column,
+        settings: VisualizationSettings,
+        onChange: (col: Column) => void,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        }: { series: Series },
+      ) => {
+        return {
+          keys: cols.map(column => column.name),
+          placeholder: t`Link to {{bird_id}}`,
+        };
       },
     };
 
     settings["link_url"] = {
       title: t`Link URL`,
-      widget: "input",
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_: unknown, settings: VisualizationSettings) =>
         settings["view_as"] !== "link",
       readDependencies: ["view_as"],
-      props: {
-        placeholder: t`http://toucan.example/{{bird_id}}`,
+      getProps: (
+        col: Column,
+        settings: VisualizationSettings,
+        onChange: (col: Column) => void,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        }: { series: Series },
+      ) => {
+        return {
+          keys: cols.map(column => column.name),
+          placeholder: t`http://toucan.example/{{bird_id}}`,
+        };
       },
     };
 

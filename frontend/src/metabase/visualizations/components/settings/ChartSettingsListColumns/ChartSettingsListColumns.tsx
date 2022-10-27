@@ -7,8 +7,8 @@ import Button from "metabase/core/components/Button";
 import { FieldId } from "metabase-types/types/Field";
 import { ConcreteField } from "metabase-types/types/Query";
 import { DatasetColumn } from "metabase-types/api";
-import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
-import Question from "metabase-lib/lib/Question";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import Question from "metabase-lib/Question";
 
 import {
   ColumnItemContainer,
@@ -19,6 +19,7 @@ import {
 type FieldIdOrFieldRef = FieldId | ConcreteField;
 
 type SettingValue = {
+  image: FieldIdOrFieldRef[];
   left: FieldIdOrFieldRef[];
   right: FieldIdOrFieldRef[];
 };
@@ -31,9 +32,11 @@ interface Props {
   onShowWidget: (config: unknown, targetElement: HTMLElement | null) => void;
 }
 
-type ListColumnSlot = "left" | "right";
+type ListColumnSlot = "left" | "right" | "image";
 
-function formatValueForSelect(value: FieldIdOrFieldRef): string | number {
+function formatValueForSelect(
+  value: FieldIdOrFieldRef | null,
+): string | number | null {
   const isFieldReference = Array.isArray(value);
   return isFieldReference ? JSON.stringify(value) : value;
 }
@@ -101,10 +104,31 @@ function ChartSettingsListColumns({
     ...columnOptions,
   ];
 
+  const nullIfEmpty = (value: FieldIdOrFieldRef[]) =>
+    value?.length ? value : [null];
+
   return (
     <div>
+      <GroupName>{t`Image`}</GroupName>
+      {nullIfEmpty(value.image).map((fieldIdOrFieldRef, index) => (
+        <ColumnItemContainer key={index}>
+          <StyledSelect
+            value={formatValueForSelect(fieldIdOrFieldRef)}
+            options={options}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+              onChangeColumn("image", index, parseSelectValue(e));
+            }}
+          />
+          <Button
+            icon="gear"
+            onlyIcon
+            disabled={fieldIdOrFieldRef === null}
+            onClick={e => onColumnSettingsClick(fieldIdOrFieldRef, e.target)}
+          />
+        </ColumnItemContainer>
+      ))}
       <GroupName>{t`Left`}</GroupName>
-      {value.left.map((fieldIdOrFieldRef, index) => (
+      {nullIfEmpty(value.left).map((fieldIdOrFieldRef, index) => (
         <ColumnItemContainer key={index}>
           <StyledSelect
             value={formatValueForSelect(fieldIdOrFieldRef)}
@@ -122,7 +146,7 @@ function ChartSettingsListColumns({
         </ColumnItemContainer>
       ))}
       <GroupName>{t`Right`}</GroupName>
-      {value.right.map((fieldIdOrFieldRef, index) => (
+      {nullIfEmpty(value.right).map((fieldIdOrFieldRef, index) => (
         <ColumnItemContainer key={index}>
           <StyledSelect
             key={index}

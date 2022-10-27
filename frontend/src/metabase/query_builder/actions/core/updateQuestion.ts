@@ -7,12 +7,12 @@ import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
 import {
   getTemplateTagsForParameters,
   getTemplateTagParameters,
-} from "metabase-lib/lib/parameters/utils/template-tags";
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+} from "metabase-lib/parameters/utils/template-tags";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import { isSupportedTemplateTagForModel } from "metabase-lib/lib/metadata/utils/models";
+import { isSupportedTemplateTagForModel } from "metabase-lib/metadata/utils/models";
 import {
   getFirstQueryResult,
   getIsShowingTemplateTagsEditor,

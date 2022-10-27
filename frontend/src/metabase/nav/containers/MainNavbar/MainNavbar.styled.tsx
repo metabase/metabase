@@ -9,7 +9,6 @@ import { color, lighten } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
-  breakpointMinLarge,
   space,
 } from "metabase/styled-components/theme";
 import { SidebarLink } from "./SidebarItems";
@@ -153,51 +152,7 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
   }
 `;
 
-export const ExitDataAppButton = styled(Button)`
-  margin-left: ${space(2)};
-`;
-
 export const DataAppActionsContainer = styled.div`
   display: flex;
   align-items: center;
 `;
-
-export const DataAppActionButton = styled(Button)`
-  padding: 0.6rem 1rem;
-
-  ${breakpointMinLarge} {
-    & {
-      padding: 0.85rem 1rem;
-    }
-  }
-`;
-
-DataAppActionButton.defaultProps = {
-  onlyIcon: true,
-};
-
-const ActionGroupCell = styled.div``;
-
-const _ActionGroup = styled.div`
-  display: flex;
-
-  ${ActionGroupCell} {
-    border: 1px solid ${color("border")};
-
-    &:not(:last-of-type) {
-      border-right-width: 0.5px;
-      border-top-left-radius: 8px;
-      border-bottom-left-radius: 8px;
-    }
-
-    &:not(:first-of-type) {
-      border-left-width: 0.5px;
-      border-top-right-radius: 8px;
-      border-bottom-right-radius: 8px;
-    }
-  }
-`;
-
-export const ActionGroup = Object.assign(_ActionGroup, {
-  Cell: ActionGroupCell,
-});

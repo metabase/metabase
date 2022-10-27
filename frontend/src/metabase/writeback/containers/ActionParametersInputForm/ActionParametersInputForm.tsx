@@ -3,9 +3,10 @@ import { t } from "ttag";
 import Form from "metabase/containers/FormikForm";
 
 import {
+  getSubmitButtonColor,
   getSubmitButtonLabel,
   generateFieldSettingsFromParameters,
-  getFormFromParameters,
+  getForm,
 } from "metabase/writeback/components/ActionCreator/FormCreator";
 import EmptyState from "metabase/components/EmptyState";
 
@@ -35,6 +36,8 @@ interface Props {
   action: WritebackQueryAction;
   page?: DataAppPage;
   dashcard?: ActionDashboardCard;
+  onCancel?: () => void;
+  submitButtonColor?: string;
   onSubmit: OnSubmitActionForm;
   onSubmitSuccess?: () => void;
 }
@@ -45,6 +48,8 @@ function ActionParametersInputForm({
   action,
   page,
   dashcard,
+  onCancel,
+  submitButtonColor,
   onSubmit,
   onSubmitSuccess,
 }: Props) {
@@ -78,12 +83,16 @@ function ActionParametersInputForm({
   const fieldSettings = useMemo(
     () =>
       action.visualization_settings?.fields ??
-      generateFieldSettingsFromParameters(missingParameters),
-    [action, missingParameters],
+      // if there are no field settings, we generate them from the parameters and field metadata
+      generateFieldSettingsFromParameters(
+        missingParameters,
+        dashcard?.card?.result_metadata,
+      ),
+    [action, missingParameters, dashcard],
   );
 
   const form = useMemo(
-    () => getFormFromParameters(missingParameters, fieldSettings),
+    () => getForm(missingParameters, fieldSettings),
     [missingParameters, fieldSettings],
   );
 
@@ -139,8 +148,10 @@ function ActionParametersInputForm({
       form={form}
       initialValues={initialValues}
       overwriteOnInitialValuesChange
+      onClose={onCancel}
       onSubmit={handleSubmit}
       submitTitle={submitButtonLabel}
+      submitButtonColor={getSubmitButtonColor(action)}
     />
   );
 }

@@ -52,11 +52,13 @@
 
 (defmethod serdes.hash/identity-hash-fields DashboardCard
   [_dashboard-card]
-  [(serdes.hash/hydrated-hash :card)
+  [(serdes.hash/hydrated-hash :card "<none>") ; :card is optional, eg. text cards
    (comp serdes.hash/identity-hash
          #(db/select-one 'Dashboard :id %)
          :dashboard_id)
-   :visualization_settings])
+   :visualization_settings
+   :row :col
+   :created_at])
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
@@ -219,17 +221,11 @@
     (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-(defmethod serdes.base/extract-query "DashboardCard" [_ {:keys [user]}]
-  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
-  (serdes.base/raw-reducible-query
-    "DashboardCard"
-    {:select     [:dc.*]
-     :from       [[:report_dashboardcard :dc]]
-     :left-join  [[:report_dashboard :dash] [:= :dash.id :dc.dashboard_id]
-                  [:collection :coll]       [:= :coll.id :dash.collection_id]]
-     :where      (if user
-                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                   [:is :coll.personal_owner_id nil])}))
+(defmethod serdes.base/extract-query "DashboardCard" [_ {:keys [collection-set]}]
+  (if (seq collection-set)
+    (let [dashboards (db/select-ids 'Dashboard :collection_id [:in collection-set])]
+      (db/select-reducible DashboardCard :dashboard_id [:in dashboards]))
+    (db/select-reducible DashboardCard)))
 
 (defmethod serdes.base/serdes-dependencies "DashboardCard"
   [{:keys [card_id dashboard_id parameter_mappings visualization_settings]}]
@@ -260,7 +256,11 @@
       (update :visualization_settings serdes.util/import-visualization-settings)))
 
 (defmethod serdes.base/serdes-descendants "DashboardCard" [_model-name id]
-  (let [{:keys [card_id dashboard_id]} (db/select-one DashboardCard :id id)]
+  (let [{:keys [card_id dashboard_id parameter_mappings]} (db/select-one DashboardCard :id id)
+        cards-in-params (set (for [{:keys [card_id]} parameter_mappings
+                                   :when card_id]
+                               ["Card" card_id]))]
     (cond-> #{["Dashboard" dashboard_id]}
       ;; card_id is nil for text cards; in that case there's no Card to depend on.
-      card_id (conj ["Card" card_id]))))
+      card_id               (conj ["Card" card_id])
+      (seq cards-in-params) (set/union cards-in-params))))

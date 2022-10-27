@@ -1,13 +1,17 @@
-import { DatasetQuery } from "./query";
+import type Field from "metabase-lib/metadata/Field";
+import type { DatasetQuery } from "./query";
 
 export interface Card extends UnsavedCard {
   id: CardId;
+  collection_id: number | null;
   name: string;
   description: string | null;
   dataset: boolean;
   can_write: boolean;
   cache_ttl: number | null;
   last_query_start: string | null;
+  result_metadata?: Field[];
+
   archived: boolean;
 
   creator?: {
@@ -30,6 +34,7 @@ export interface UnsavedCard {
 export type SeriesSettings = {
   title: string;
   color?: string;
+  show_series_values?: boolean;
 };
 
 export type SeriesOrderSetting = {

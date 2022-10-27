@@ -17,7 +17,9 @@
 
 (defmethod serdes.hash/identity-hash-fields PulseCard
   [_pulse-card]
-  [(serdes.hash/hydrated-hash :pulse) (serdes.hash/hydrated-hash :card)])
+  [(serdes.hash/hydrated-hash :pulse)
+   (serdes.hash/hydrated-hash :card)
+   :position])
 
 (defn next-position-for
   "Return the next available `pulse_card.position` for the given `pulse`"
@@ -67,12 +69,13 @@
   (cond-> (serdes.base/load-xform-basics card)
     true                      (update :card_id            serdes.util/import-fk 'Card)
     true                      (update :pulse_id           serdes.util/import-fk 'Pulse)
+    true                      (dissoc :dashboard_id)
     (:dashboard_card_id card) (update :dashboard_card_id  serdes.util/import-fk 'DashboardCard)))
 
 ;; Depends on the Pulse, Card and (optional) dashboard card.
 (defmethod serdes.base/serdes-dependencies "PulseCard" [{:keys [card_id dashboard_card_id pulse_id]}]
   (let [base [[{:model "Card" :id card_id}]
               [{:model "Pulse" :id pulse_id}]]]
-    (if dashboard_card_id
-      (conj base [{:model "DashboardCard" :id dashboard_card_id}])
+    (if-let [[dash-id dc-id] dashboard_card_id]
+      (conj base [{:model "Dashboard" :id dash-id} {:model "DashboardCard" :id dc-id}])
       base)))

@@ -28,11 +28,14 @@ import { isVirtualDashCard } from "metabase/dashboard/utils";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
-import { isActionCard } from "metabase/writeback/utils";
+import {
+  isActionCard,
+  shouldHideDashcardHeader,
+} from "metabase/writeback/utils";
 
 import Utils from "metabase/lib/utils";
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
-import { getParameterValuesBySlug } from "metabase-lib/lib/parameters/utils/parameter-values";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import DashCardParameterMapper from "./DashCardParameterMapper";
 import { DashCardRoot } from "./DashCard.styled";
 
@@ -192,6 +195,8 @@ export default class DashCard extends Component {
 
     const gridSize = { width: dashcard.size_x, height: dashcard.size_y };
 
+    const showTitle = !shouldHideDashcardHeader(dashboard, dashcard);
+
     return (
       <DashCardRoot
         className="Card rounded flex flex-column hover-parent hover--visibility"
@@ -237,7 +242,7 @@ export default class DashCard extends Component {
           isDataApp={dashboard.is_app_page}
           expectedDuration={expectedDuration}
           rawSeries={series}
-          showTitle={!dashboard.is_app_page}
+          showTitle={showTitle}
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           isDashboard

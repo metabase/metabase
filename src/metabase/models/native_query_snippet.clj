@@ -43,7 +43,7 @@
 
 (defmethod serdes.hash/identity-hash-fields NativeQuerySnippet
   [_snippet]
-  [:name (serdes.hash/hydrated-hash :collection)])
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 (defmethod mi/can-read? NativeQuerySnippet
   [& args]
@@ -75,18 +75,10 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes.base/extract-query "NativeQuerySnippet" [_ {:keys [user]}]
-  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
-  (serdes.base/raw-reducible-query
-    "NativeQuerySnippet"
-    {:select     [:snippet.*]
-     :from       [[:native_query_snippet :snippet]]
-     :left-join  [[:collection :coll] [:= :coll.id :snippet.collection_id]]
-     :where      (if user
-                   ;; :snippet.collection_id is nullable, but this is a left join, so it works out neatly:
-                   ;; if this snippet has no collection, :coll.personal_owner_id is effectively NULL.
-                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                   [:is :coll.personal_owner_id nil])}))
+(defmethod serdes.base/extract-query "NativeQuerySnippet" [_ {:keys [collection-set]}]
+  (eduction cat [(db/select-reducible NativeQuerySnippet :collection_id nil)
+                 (when (seq collection-set)
+                   (db/select-reducible NativeQuerySnippet :collection_id [:in collection-set]))]))
 
 (defmethod serdes.base/serdes-generate-path "NativeQuerySnippet" [_ snippet]
   [(assoc (serdes.base/infer-self-path "NativeQuerySnippet" snippet)

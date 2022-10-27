@@ -7,12 +7,12 @@ import {
 import Dimension, {
   FieldDimension,
   TemplateTagDimension,
-} from "metabase-lib/lib/Dimension";
-import Field from "metabase-lib/lib/metadata/Field";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import Question from "metabase-lib/lib/Question";
-import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
+} from "metabase-lib/Dimension";
+import Field from "metabase-lib/metadata/Field";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Question from "metabase-lib/Question";
+import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 const nestedQuestionCard = {
   table_id: null,

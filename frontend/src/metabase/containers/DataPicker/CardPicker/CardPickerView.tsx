@@ -7,7 +7,7 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 import type { Collection } from "metabase-types/api";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Table from "metabase-lib/metadata/Table";
 
 import type { DataPickerSelectedItem, VirtualTable } from "../types";
 import PanePicker from "../PanePicker";
@@ -78,7 +78,7 @@ function CardPickerView({
   onBack,
 }: CardPickerViewProps) {
   const { selectedCollectionId, selectedVirtualTableIds } = useMemo(() => {
-    const { schema: collections = [], table: tables = [] } = _.groupBy(
+    const { collection: collections = [], table: tables = [] } = _.groupBy(
       selectedItems,
       "type",
     );

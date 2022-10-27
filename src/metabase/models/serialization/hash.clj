@@ -81,13 +81,15 @@
 (defn hydrated-hash
   "Many entities reference other entities. Using the autoincrementing ID is not portable, so we use the identity hash
   of the referenced entity. This is a helper for writing [[identity-hash-fields]]."
-  [hydration-key]
-  (fn [entity]
-    (let [hydrated-value (get (hydrate entity hydration-key) hydration-key)]
-      (when (nil? hydrated-value)
-        (throw (ex-info (tru "Error calculating hydrated hash: {0} is nil after hydrating {1}"
-                             (pr-str hydration-key)
-                             (name entity))
-                        {:entity        entity
-                         :hydration-key hydration-key})))
-      (identity-hash hydrated-value))))
+  ([hydration-key] (hydrated-hash hydration-key nil))
+  ([hydration-key default]
+   (fn [entity]
+     (let [hydrated-value (get (hydrate entity hydration-key) hydration-key)]
+       (cond
+         hydrated-value (identity-hash hydrated-value)
+         default        default
+         :else          (throw (ex-info (tru "Error calculating hydrated hash: {0} is nil after hydrating {1}"
+                                             (pr-str hydration-key)
+                                             (name entity))
+                                        {:entity        entity
+                                         :hydration-key hydration-key})))))))

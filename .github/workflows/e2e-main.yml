@@ -52,6 +52,8 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
       RECORDING_ENABLED: ${{ secrets.CURRENTS_KEY }}
+      CYPRESS_DEPLOYSENTINEL_KEY: ${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}
+      ELECTRON_EXTRA_LAUNCH_ARGS: '--remote-debugging-port=40500' # deploysentinel
     strategy:
       fail-fast: false
       matrix:

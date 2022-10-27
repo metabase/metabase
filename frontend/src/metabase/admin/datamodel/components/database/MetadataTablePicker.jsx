@@ -6,7 +6,7 @@ import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/lib/metadata/utils/saved-questions";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 import MetadataTableList from "./MetadataTableList";
 import MetadataSchemaList from "./MetadataSchemaList";
 

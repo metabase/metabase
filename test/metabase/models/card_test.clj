@@ -10,7 +10,8 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.time.LocalDateTime))
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
@@ -357,11 +358,12 @@
 
 (deftest identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
-    (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/"}]
-                    Card        [card  {:name "the card" :collection_id (:id coll)}]]
-      (is (= "ead6cc05"
-             (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll)])
-             (serdes.hash/identity-hash card))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/" :created_at now}]
+                      Card        [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
+        (is (= "5199edf0"
+               (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll) now])
+               (serdes.hash/identity-hash card)))))))
 
 (deftest serdes-descendants-test
   (testing "regular cards don't depend on anything"

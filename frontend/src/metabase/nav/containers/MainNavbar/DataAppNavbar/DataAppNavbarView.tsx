@@ -1,41 +1,45 @@
 import React, { useCallback, useMemo } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 
-import type { DataApp, DataAppNavItem } from "metabase-types/api";
+import type {
+  DataApp,
+  DataAppNavItem,
+  DataAppPageId,
+} from "metabase-types/api";
 
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import type { MainNavbarProps, SelectedItem } from "../types";
+import type { DataAppNavbarMode } from "./types";
 
-import * as Urls from "metabase/lib/urls";
-
-import { MainNavbarProps, SelectedItem } from "../types";
+import NewButton from "./NewButton";
 import DataAppPageLink from "./DataAppPageLink";
 import DataAppActionPanel from "./DataAppActionPanel";
 
-import {
-  Root,
-  NavItemsList,
-  ActionPanelContainer,
-  ExitAppLink,
-} from "./DataAppNavbarView.styled";
+import { Root, NavItemsList } from "./DataAppNavbarView.styled";
 
 interface Props extends Omit<MainNavbarProps, "location" | "params"> {
   dataApp: DataApp;
   pages: any[];
   selectedItems: SelectedItem[];
+  mode: DataAppNavbarMode;
+  onEditAppPage: () => void;
   onEditAppSettings: () => void;
   onAddData: () => void;
   onNewPage: () => void;
+  onArchiveApp: () => void;
+  onArchivePage: () => void;
 }
 
 function DataAppNavbarView({
   dataApp,
   pages,
   selectedItems,
+  mode,
+  onEditAppPage,
   onEditAppSettings,
   onAddData,
   onNewPage,
+  onArchiveApp,
+  onArchivePage,
 }: Props) {
   const { "data-app-page": dataAppPage } = _.indexBy(
     selectedItems,
@@ -76,24 +80,31 @@ function DataAppNavbarView({
     [dataApp, pageMap, dataAppPage],
   );
 
-  const exitAppPath = Urls.dataApp(dataApp, { mode: "preview" });
+  const hasSelectedPage = !!dataAppPage?.id;
+
+  // Archiving last app page would lead a user into a weird app state
+  // For now we'd just hide the action when there's only one top-level page left
+  // and only let people archive the whole app instead
+  const hasArchivePageAction = hasSelectedPage && navItems.length > 1;
 
   return (
     <Root>
-      <NavItemsList>{navItems.map(renderNavItem)}</NavItemsList>
-      <ActionPanelContainer>
-        <DataAppActionPanel
-          dataApp={dataApp}
-          onAddData={onAddData}
-          onNewPage={onNewPage}
-          onEditAppSettings={onEditAppSettings}
-        />
-        <Tooltip tooltip={t`App elements`}>
-          <ExitAppLink to={exitAppPath}>
-            <Icon name="list" />
-          </ExitAppLink>
-        </Tooltip>
-      </ActionPanelContainer>
+      <NavItemsList>
+        {navItems.map(renderNavItem)}
+        <li>
+          <NewButton onAddData={onAddData} onNewPage={onNewPage} />
+        </li>
+      </NavItemsList>
+      <DataAppActionPanel
+        dataApp={dataApp}
+        hasEditPageAction={hasSelectedPage}
+        hasManageContentAction={mode !== "manage-content"}
+        hasArchivePageAction={hasArchivePageAction}
+        onEditAppPage={onEditAppPage}
+        onEditAppSettings={onEditAppSettings}
+        onArchiveApp={onArchiveApp}
+        onArchivePage={onArchivePage}
+      />
     </Root>
   );
 }

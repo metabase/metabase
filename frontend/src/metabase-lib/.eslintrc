@@ -9,9 +9,7 @@
               "metabase/*",
               "!metabase/env",
               "!metabase/lib",
-              "!metabase/services",
-              "!metabase/parameters",
-              "!metabase/writeback"
+              "!metabase/services"
             ]
           },
           {

@@ -4,9 +4,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
-import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
-import { findColumnForColumnSetting } from "metabase-lib/lib/queries/utils/dataset";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { findColumnForColumnSetting } from "metabase-lib/queries/utils/dataset";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import ColumnItem from "./ColumnItem";
 

@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
@@ -10,10 +9,10 @@ import { getUser } from "metabase/selectors/user";
 
 import type { Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Table from "metabase-lib/lib/metadata/Table";
-import type Schema from "metabase-lib/lib/metadata/Schema";
+import type Table from "metabase-lib/metadata/Table";
+import type Schema from "metabase-lib/metadata/Schema";
 
-import { getCollectionVirtualSchemaId } from "metabase-lib/lib/metadata/utils/saved-questions";
+import { getCollectionVirtualSchemaId } from "metabase-lib/metadata/utils/saved-questions";
 
 import type {
   DataPickerProps,
@@ -36,6 +35,7 @@ interface CardPickerStateProps {
 }
 
 interface CollectionsLoaderProps {
+  collectionTree: Collection[];
   collections: Collection[];
   rootCollection: Collection;
 }
@@ -58,6 +58,7 @@ function mapStateToProps(state: State) {
 function CardPickerContainer({
   value,
   collections,
+  collectionTree,
   rootCollection,
   schema: selectedSchema,
   currentUser,
@@ -65,9 +66,7 @@ function CardPickerContainer({
   onChange,
   onBack,
 }: CardPickerProps) {
-  const [selectedCollectionId, setSelectedCollectionId] = useState<
-    Collection["id"] | undefined
-  >();
+  const { collectionId } = value;
 
   const { selectedTableIds, toggleTableIdSelection } = useSelectedTables({
     initialValues: value.tableIds,
@@ -79,22 +78,22 @@ function CardPickerContainer({
     [collections],
   );
 
-  const collectionTree = useMemo(
+  const tree = useMemo(
     () =>
       buildCollectionTree({
-        collections,
+        collections: collectionTree,
         rootCollection,
         currentUser,
         targetModel,
       }),
-    [collections, rootCollection, currentUser, targetModel],
+    [collectionTree, rootCollection, currentUser, targetModel],
   );
 
   const selectedItems = useMemo(() => {
     const items: DataPickerSelectedItem[] = [];
 
-    if (selectedCollectionId) {
-      items.push({ type: "schema", id: selectedCollectionId });
+    if (collectionId) {
+      items.push({ type: "collection", id: collectionId });
     }
 
     const tables: DataPickerSelectedItem[] = selectedTableIds.map(id => ({
@@ -105,17 +104,16 @@ function CardPickerContainer({
     items.push(...tables);
 
     return items;
-  }, [selectedCollectionId, selectedTableIds]);
+  }, [collectionId, selectedTableIds]);
 
   const handleSelectedCollectionChange = useCallback(
     (id: Collection["id"]) => {
       const collection = id === "root" ? rootCollection : collectionsMap[id];
       if (collection) {
-        setSelectedCollectionId(id);
         const schemaId = getCollectionVirtualSchemaId(collection, {
           isDatasets: targetModel === "model",
         });
-        onChange({ ...value, schemaId, tableIds: [] });
+        onChange({ ...value, schemaId, collectionId: id, tableIds: [] });
       }
     },
     [value, collectionsMap, rootCollection, targetModel, onChange],
@@ -131,7 +129,7 @@ function CardPickerContainer({
 
   return (
     <CardPickerView
-      collectionTree={collectionTree}
+      collectionTree={tree}
       virtualTables={selectedSchema?.tables}
       selectedItems={selectedItems}
       targetModel={targetModel}
@@ -150,6 +148,10 @@ export default _.compose(
   }),
   Collections.loadList({
     query: () => ({ tree: true }),
+    listName: "collectionTree",
+  }),
+  Collections.loadList({
+    listName: "collections",
   }),
   Schemas.load({
     id: (state: State, props: CardPickerOwnProps) => props.value.schemaId,

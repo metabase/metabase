@@ -17,7 +17,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 import { isVirtualDashCard } from "./utils";
 
@@ -247,6 +247,9 @@ export const getDataApp = (state, routerParams) => {
 
 export const getDataAppNavItem = (state, routerParams) => {
   const dashboard = getDashboardComplete(state);
+  if (!dashboard) {
+    return;
+  }
   const dataApp = getDataApp(state, routerParams);
   return dataApp?.nav_items.find(navItem => navItem.page_id === dashboard.id);
 };

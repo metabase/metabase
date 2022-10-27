@@ -8,7 +8,7 @@ import { getMainElement } from "metabase/lib/dom";
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
@@ -23,7 +23,6 @@ import {
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
-import DataAppEditPageButton from "./DataAppEditPageButton";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
@@ -342,10 +341,6 @@ class Dashboard extends Component {
                   )}
                 </CardsContainer>
               </ParametersAndCardsContainer>
-
-              {isDataApp && !isEditing && (
-                <DataAppEditPageButton onClick={() => this.setEditing(true)} />
-              )}
 
               <DashboardSidebars
                 {...this.props}

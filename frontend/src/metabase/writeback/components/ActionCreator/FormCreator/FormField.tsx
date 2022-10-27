@@ -4,7 +4,7 @@ import type { TemplateTag } from "metabase-types/types/Query";
 
 import { getWidgetComponent } from "metabase/components/form/FormWidget";
 
-import { getFormFieldForParameter } from "./utils";
+import { getFormField } from "./utils";
 
 // sample form fields
 export function FormField({
@@ -14,7 +14,7 @@ export function FormField({
   tag: TemplateTag;
   fieldSettings: FieldSettings;
 }) {
-  const fieldProps = getFormFieldForParameter(tag, fieldSettings);
+  const fieldProps = getFormField(tag, fieldSettings);
   const InputField = getWidgetComponent(fieldProps);
   return <InputField field={fieldProps} {...fieldProps} />;
 }

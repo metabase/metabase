@@ -7,6 +7,7 @@ import DataApps, { getDataAppHomePageId } from "metabase/entities/data-apps";
 import Search from "metabase/entities/search";
 
 import CollectionContent from "metabase/collections/containers/CollectionContent";
+import DataAppNavbarContainer from "metabase/nav/containers/MainNavbar/DataAppNavbar";
 
 import type { DataApp } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -42,7 +43,13 @@ const DataAppLanding = ({
 
   if (Urls.isDataAppPreviewPath(location.pathname)) {
     return (
-      <CollectionContent collectionId={dataApp.collection_id} isRoot={false} />
+      <>
+        <DataAppNavbarContainer />
+        <CollectionContent
+          collectionId={dataApp.collection_id}
+          isRoot={false}
+        />
+      </>
     );
   }
 

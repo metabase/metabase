@@ -5,9 +5,9 @@ import { render, screen } from "@testing-library/react";
 
 import { metadata } from "__support__/sample_database_fixture";
 
-import Question from "metabase-lib/lib/Question";
-import Field from "metabase-lib/lib/metadata/Field";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Question from "metabase-lib/Question";
+import Field from "metabase-lib/metadata/Field";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 import BooleanPicker, { BooleanPickerCheckbox } from "./index";
 
