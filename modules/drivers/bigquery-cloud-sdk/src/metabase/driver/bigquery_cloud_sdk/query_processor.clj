@@ -550,22 +550,18 @@
                  :found   disallowed-types})))
     (case unit
       (:year :month)
-      (let [maybe-cast (fn [clause current]
-                         (cond->> clause
-                           (not= current :timestamp)
-                           (hx/cast :timestamp)))
-            truncate   (fn [temporal]
-                         (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
-                           (hsql/call
-                            :datetime
-                            (hsql/call :timestamp_trunc temporal (hsql/raw "day") report-zone)
-                            report-zone)
-                           (hsql/call
-                            :datetime
-                            (hsql/call :timestamp_trunc temporal (hsql/raw "day")))))
-            x' (truncate (maybe-cast x' (first types)))
-            y' (truncate (maybe-cast y' (second types)))
-            unit'       (hsql/raw (name unit))
+      (let [trunc (fn [temporal]
+                    (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
+                      (hsql/call
+                       :datetime
+                       (hsql/call :timestamp_trunc temporal (hsql/raw "day") report-zone)
+                       report-zone)
+                      (hsql/call
+                       :datetime
+                       (hsql/call :timestamp_trunc temporal (hsql/raw "day")))))
+            x'    (trunc (hx/->timestamp x'))
+            y'    (trunc (hx/->timestamp y'))
+            unit' (hsql/raw (name unit))
             positive-diff (fn [a b] ; precondition: a <= b
                             (hx/-
                              (hsql/call :datetime_diff b a unit')
@@ -578,16 +574,12 @@
         (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
 
       :week
-      (let [maybe-cast (fn [temporal current]
-                         (cond->> temporal
-                           (not= current :timestamp)
-                           (hx/cast :timestamp)))
-            truncate   (fn [temporal]
-                         (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
-                           (hsql/call :timestamp_trunc temporal (hsql/raw "day") report-zone)
-                           (hsql/call :timestamp_trunc temporal (hsql/raw "day"))))
-            x' (truncate (maybe-cast x' (first types)))
-            y' (truncate (maybe-cast y' (second types)))
+      (let [trunc (fn [temporal]
+                    (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
+                      (hsql/call :timestamp_trunc temporal (hsql/raw "day") report-zone)
+                      (hsql/call :timestamp_trunc temporal (hsql/raw "day"))))
+            x'    (trunc (hx/->timestamp x'))
+            y'    (trunc (hx/->timestamp y'))
             positive-diff (fn [a b]
                             (hx/cast
                              :integer
@@ -596,25 +588,17 @@
         (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
 
       :day
-      (let [maybe-cast (fn [temporal current]
-                         (cond->> temporal
-                           (not= current :timestamp)
-                           (hx/cast :timestamp)))
-            truncate   (fn [temporal]
-                         (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
-                           (hsql/call :timestamp_trunc temporal (hsql/raw "day") report-zone)
-                           (hsql/call :timestamp_trunc temporal (hsql/raw "day"))))
-            x' (truncate (maybe-cast x' (first types)))
-            y' (truncate (maybe-cast y' (second types)))]
+      (let [trunc (fn [temporal]
+                    (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
+                      (hsql/call :timestamp_trunc temporal (hsql/raw "day") report-zone)
+                      (hsql/call :timestamp_trunc temporal (hsql/raw "day"))))
+            x'    (trunc (hx/->timestamp x'))
+            y'    (trunc (hx/->timestamp y'))]
         (hsql/call :timestamp_diff y' x' (hsql/raw (name unit))))
 
       (:hour :minute :second)
-      (let [maybe-cast (fn [clause current]
-                         (cond->> clause
-                           (not= current :timestamp)
-                           (hx/cast :timestamp)))
-            x' (maybe-cast x' (first types))
-            y' (maybe-cast y' (second types))]
+      (let [x' (hx/->timestamp x')
+            y' (hx/->timestamp y')]
         (hsql/call :timestamp_diff y' x' (hsql/raw (name unit))))
 
       (throw (ex-info (tru "Unsupported datetimediff unit {0}" unit)
