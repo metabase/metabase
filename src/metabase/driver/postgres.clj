@@ -300,56 +300,56 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
+(defn- datetimediff-helper [x y unit]
+  (case unit
+    (:year :day)
+    (hx/cast
+     :integer
+     (hsql/call
+      :date_part
+      (hx/literal unit)
+      (hsql/call
+       (case unit :year :age :day :-)
+       (hsql/call :date_trunc (hx/literal "day") y)
+       (hsql/call :date_trunc (hx/literal "day") x))))
+
+    :week
+    (hx// (datetimediff-helper x y :day) 7)
+
+    :month
+    (hx/cast
+     :integer
+     (hx/+
+      (hx/* 12 (datetimediff-helper x y :year))
+      (hsql/call :date_part
+                 (hx/literal "month")
+                 (hsql/call
+                  :age
+                  (hsql/call :date_trunc (hx/literal "day") y)
+                  (hsql/call :date_trunc (hx/literal "day") x)))))
+
+    (:hour :minute :second)
+    (let [ex            (hsql/call :extract :epoch (hx/cast :timestamptz x))
+          ey            (hsql/call :extract :epoch (hx/cast :timestamptz y))
+          positive-diff (fn [a b]
+                          (hx/cast
+                           :integer
+                           (hx/floor
+                            (if (= unit :second)
+                              (hx/- b a)
+                              (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))))]
+      (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))
+
+    ;; else
+    (throw (ex-info (tru "Invalid datetimediff unit: {0}" unit)
+                    {:valid-units [:year :month :week :day :hour :minute :second]
+                     :bad-unit unit}))))
+
 (defmethod sql.qp/->honeysql [:postgres :datetimediff]
   [driver [_ x y unit]]
   (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)
-        helper
-        (fn helper [x y unit]
-          (case unit
-            (:year :day)
-            (hx/cast
-             :integer
-             (hsql/call
-              :date_part
-              (hx/literal (name unit))
-              (hsql/call
-               (case unit :year :age :day :-)
-               (hsql/call :date_trunc (hsql/raw "'day'") y)
-               (hsql/call :date_trunc (hsql/raw "'day'") x))))
-
-            :week
-            (hx// (helper x y :day) 7)
-
-            :month
-            (hx/cast
-             :integer
-             (hx/+
-              (hx/* 12 (helper x y :year))
-              (hsql/call :date_part
-               (hsql/raw "'month'")
-               (hsql/call
-                :age
-                (hsql/call :date_trunc (hsql/raw "'day'") y)
-                (hsql/call :date_trunc (hsql/raw "'day'") x)))))
-
-            (:hour :minute :second)
-            (let [ex            (hsql/call :extract :epoch (hx/cast :timestamptz x))
-                  ey            (hsql/call :extract :epoch (hx/cast :timestamptz y))
-                  positive-diff (fn [a b]
-                                  (hx/cast
-                                   :integer
-                                   (hx/floor
-                                    (if (= unit :second)
-                                      (hx/- b a)
-                                      (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))))]
-              (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))
-
-            ;; else
-            (throw (ex-info (tru "Invalid datetimediff unit: {0}" unit)
-                            {:valid-units [:year :month :week :day :hour :minute :second]
-                             :bad-unit unit}))))]
-    (helper x y unit)))
+        y (sql.qp/->honeysql driver y)]
+    (datetimediff-helper x y unit)))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
   hformat/ToSql
