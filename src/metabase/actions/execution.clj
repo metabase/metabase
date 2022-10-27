@@ -63,14 +63,21 @@
                          :type qp.error-type/invalid-parameter
                          :parameters request-parameters
                          :destination-parameters (:parameters action)}))))
-    (case action-type
-      :query
-      (execute-query-action! action request-parameters)
+    (when-not (contains? #{:query :http} action-type)
+      (throw (ex-info (tru "Unknown action type {0}." (name action-type)) action)))
+    (try
+      (case action-type
+        :query
+        (execute-query-action! action request-parameters)
 
-      :http
-      (http-action/execute-http-action! action request-parameters)
-
-      (throw (ex-info (tru "Unknown action type {0}." (name action-type)) action)))))
+        :http
+        (http-action/execute-http-action! action request-parameters))
+      (catch Exception e
+        (if (:status-code (ex-data e))
+          (throw e)
+          (do
+            (log/error e (tru "Error executing action."))
+            {:body {:message (tru "Error executing action.")} :status 500}))))))
 
 (defn- implicit-action-table
   [card_id]
@@ -151,7 +158,11 @@
 
                   (= implicit-action :row/update)
                   (assoc :update-row row-parameters))]
-    (actions/perform-action! implicit-action arg-map)))
+    (try
+      (actions/perform-action! implicit-action arg-map)
+      (catch Exception e
+        (log/error e (tru "Error executing action."))
+        {:body {:message (tru "Error executing action.")} :status 500}))))
 
 (defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
