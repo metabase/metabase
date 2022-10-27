@@ -44,7 +44,11 @@
      (java.util.Locale/getDefault))))
 
 (defsetting report-timezone
-  (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone."))
+  (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
+  :setter
+  (fn [new-value]
+    (setting/set-value-of-type! :string :report-timezone new-value)
+    (notify-all-databases-updated)))
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
