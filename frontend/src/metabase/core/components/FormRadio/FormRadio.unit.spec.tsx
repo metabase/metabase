@@ -6,12 +6,13 @@ import FormField from "metabase/core/components/FormField";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormRadio from "./FormRadio";
 
+const OPTIONS = [
+  { name: "Line", value: "line" },
+  { name: "Bar", value: "bar" },
+];
+
 describe("FormRadio", () => {
   it("should set the value in the formik context", () => {
-    const options = [
-      { name: "Line", value: "line" },
-      { name: "Bar", value: "bar" },
-    ];
     const initialValues = { display: "line" };
     const onSubmit = jest.fn();
 
@@ -19,7 +20,7 @@ describe("FormRadio", () => {
       <Formik initialValues={initialValues} onSubmit={onSubmit}>
         <Form>
           <FormField name="display" title="Display">
-            <FormRadio name="display" options={options} />
+            <FormRadio name="display" options={OPTIONS} />
           </FormField>
           <FormSubmitButton />
         </Form>
