@@ -43,11 +43,11 @@ export default Object.assign(Action, {
       section: t`Display`,
       title: t`Variant`,
       widget: "select",
-      default: "default",
+      default: "primary",
       props: {
         options: [
-          { name: t`Default`, value: "default" },
           { name: t`Primary`, value: "primary" },
+          { name: t`Outline`, value: "default" },
           { name: t`Danger`, value: "danger" },
           { name: t`Success`, value: "success" },
           { name: t`Borderless`, value: "borderless" },
