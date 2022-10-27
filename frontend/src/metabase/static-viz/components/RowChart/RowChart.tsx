@@ -16,6 +16,10 @@ import { ColorGetter } from "metabase/static-viz/lib/colors";
 import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import {
+  getAxesVisibility,
+  getXValueRange,
+} from "metabase/visualizations/visualizations/RowChart/utils/settings";
+import {
   getLabelsFormatter,
   getStaticColumnValueFormatter,
   getStaticFormatters,
@@ -55,12 +59,12 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   const goal = getChartGoal(settings);
   const theme = getStaticChartTheme(getColor);
   const stackOffset = getStackOffset(settings);
-  const shouldShowDataLabels =
-    settings["graph.show_values"] && stackOffset !== "expand";
 
   const tickFormatters = getStaticFormatters(chartColumns, settings);
 
   const { xLabel, yLabel } = getChartLabels(chartColumns, settings);
+  const { hasXAxis, hasYAxis } = getAxesVisibility(settings);
+  const xValueRange = getXValueRange(settings);
 
   return (
     <svg width={WIDTH} height={HEIGHT} fontFamily="Lato">
@@ -74,12 +78,14 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
         goal={goal}
         theme={theme}
         stackOffset={stackOffset}
-        shouldShowDataLabels={shouldShowDataLabels}
         tickFormatters={tickFormatters}
         labelsFormatter={labelsFormatter}
         measureText={staticTextMeasurer}
         xLabel={xLabel}
         yLabel={yLabel}
+        hasXAxis={hasXAxis}
+        hasYAxis={hasYAxis}
+        xValueRange={xValueRange}
       />
     </svg>
   );

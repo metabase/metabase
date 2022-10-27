@@ -35,7 +35,7 @@ interface Props {
 type ListColumnSlot = "left" | "right" | "image";
 
 function formatValueForSelect(
-  value: FieldIdOrFieldRef,
+  value: FieldIdOrFieldRef | null,
 ): string | number | null {
   const isFieldReference = Array.isArray(value);
   return isFieldReference ? JSON.stringify(value) : value;
