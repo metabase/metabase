@@ -725,7 +725,20 @@
   (t/is (not (mbql.u/datetime-arithmetics?
               [:+ [:field-id 13] 3])))
   (t/is (not (mbql.u/datetime-arithmetics?
-              [:+ [:datetimediff [:field 13] [:field 14] :hour] 1]))))
+              [:+
+               [:datetimediff
+                [:date-add [:field 13 {:temporal-unit :default}] 1 "hour"]
+                [:field 14 {:temporal-unit :default}]]
+               1])))
+  (t/is (mbql.u/datetime-arithmetics?
+         [:+
+          [:date-add
+           [:field 13 {:temporal-unit :default}]
+           [:datetimediff
+            [:date-add [:field 13 {:temporal-unit :default}] 1 "hour"]
+            [:field 14 {:temporal-unit :default}]]
+           "hour"]
+          1])))
 
 (t/deftest ^:parallel expression-with-name-test
   (t/is (= [:+ 1 1]
