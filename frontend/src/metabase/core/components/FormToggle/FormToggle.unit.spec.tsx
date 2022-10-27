@@ -1,28 +1,74 @@
 import React from "react";
 import { Form, Formik } from "formik";
+import * as Yup from "yup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import FormField from "metabase/core/components/FormField";
 import FormToggle from "./FormToggle";
 
+const TestSchema = Yup.object().shape({
+  value: Yup.boolean().isTrue("error"),
+});
+
+interface TestFormToggleProps {
+  initialValue?: boolean;
+  onSubmit: () => void;
+}
+
+const TestFormToggle = ({
+  initialValue = false,
+  onSubmit,
+}: TestFormToggleProps) => {
+  return (
+    <Formik
+      initialValues={{ value: initialValue }}
+      validationSchema={TestSchema}
+      onSubmit={onSubmit}
+    >
+      <Form>
+        <FormField name="value" title="Label">
+          <FormToggle name="value" />
+        </FormField>
+        <button type="submit">Submit</button>
+      </Form>
+    </Formik>
+  );
+};
+
 describe("FormToggle", () => {
-  it("should set the value in the formik context", () => {
-    const initialValues = { label: false };
+  it("should use the initial value from the form", () => {
     const onSubmit = jest.fn();
 
-    render(
-      <Formik initialValues={initialValues} onSubmit={onSubmit}>
-        <Form>
-          <FormToggle name="label" />
-          <button type="submit">Submit</button>
-        </Form>
-      </Formik>,
-    );
+    render(<TestFormToggle initialValue={true} onSubmit={onSubmit} />);
 
+    expect(screen.getByRole("switch")).toBeChecked();
+  });
+
+  it("should propagate the changed value to the form", () => {
+    const onSubmit = jest.fn();
+
+    render(<TestFormToggle onSubmit={onSubmit} />);
     userEvent.click(screen.getByRole("switch"));
-    userEvent.click(screen.getByText("Submit"));
+    userEvent.click(screen.getByRole("button"));
 
-    waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({ label: true });
-    });
+    waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: true }));
+  });
+
+  it("should be referenced by the label", () => {
+    const onSubmit = jest.fn();
+
+    render(<TestFormToggle onSubmit={onSubmit} />);
+
+    expect(screen.getByLabelText("Label")).toBeInTheDocument();
+  });
+
+  it("should be validated on blur", () => {
+    const onSubmit = jest.fn();
+
+    render(<TestFormToggle initialValue={true} onSubmit={onSubmit} />);
+    userEvent.click(screen.getByRole("switch"));
+    userEvent.tab();
+
+    waitFor(() => expect(screen.getByText("Label: error")).toBeInTheDocument());
   });
 });
