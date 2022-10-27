@@ -61,9 +61,10 @@ Metabase's reference documentation.
 #### Query builder
 
 - [Asking questions](./questions/query-builder/introduction.md)
+- [Joining data](./questions/query-builder/join.md)
+- [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Custom expressions](./questions/query-builder/expressions.md)
 - [List of expressions](./questions/query-builder/expressions-list.md)
-- [Joining data](./questions/query-builder/join.md)
 
 #### SQL and native queries
 
@@ -77,7 +78,6 @@ Metabase's reference documentation.
 #### Sharing
 
 - [Sharing answers](./questions/sharing/answers.md)
-- [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Setting and getting alerts](./questions/sharing/alerts.md)
 - [Public links](./questions/sharing/public-links.md)
 

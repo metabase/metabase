@@ -102,7 +102,7 @@ Some things to remember with bookmarks:
 
 Verified questions and models are marked with a blue checkmark icon:
 
-![Verified icon](../images/verified-icon.png)
+![Verified icon](./images/verified-icon.png)
 
 Administrators can **Verify** a question or model from the three dot menu (`...`) to signal that they've reviewed the question and deemed it to be trustworthy. That is: the question or model is filtering the right columns, or summarizing the right metrics, and querying records from the right tables. Verified items are more likely to show up higher in search suggestions and search results.
 
