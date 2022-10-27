@@ -293,6 +293,7 @@
 (defn ->date                     "CAST `x` to a `date`."                     [x] (maybe-cast :date x))
 (defn ->datetime                 "CAST `x` to a `datetime`."                 [x] (maybe-cast :datetime x))
 (defn ->timestamp                "CAST `x` to a `timestamp`."                [x] (maybe-cast :timestamp x))
+(defn ->timestamptz              "CAST `x` to a `timestamptz`."              [x] (maybe-cast :timestamptz x))
 (defn ->timestamp-with-time-zone "CAST `x` to a `timestamp with time zone`." [x] (maybe-cast "timestamp with time zone" x))
 (defn ->integer                  "CAST `x` to a `integer`."                  [x] (maybe-cast :integer x))
 (defn ->time                     "CAST `x` to a `time` datatype"             [x] (maybe-cast :time x))

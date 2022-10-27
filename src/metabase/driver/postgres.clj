@@ -310,8 +310,8 @@
       (hx/literal unit)
       (hsql/call
        (case unit :year :age :day :-)
-       (hsql/call :date_trunc (hx/literal "day") y)
-       (hsql/call :date_trunc (hx/literal "day") x))))
+       (hsql/call :date_trunc (hsql/raw "'day'") y)
+       (hsql/call :date_trunc (hsql/raw "'day'") x))))
 
     :week
     (hx// (datetimediff-helper x y :day) 7)
@@ -321,16 +321,17 @@
      :integer
      (hx/+
       (hx/* 12 (datetimediff-helper x y :year))
-      (hsql/call :date_part
-                 (hx/literal "month")
-                 (hsql/call
-                  :age
-                  (hsql/call :date_trunc (hx/literal "day") y)
-                  (hsql/call :date_trunc (hx/literal "day") x)))))
+      (hsql/call
+       :date_part
+       (hsql/raw "'month'")
+       (hsql/call
+        :age
+        (hsql/call :date_trunc (hsql/raw "'day'") y)
+        (hsql/call :date_trunc (hsql/raw "'day'") x)))))
 
     (:hour :minute :second)
-    (let [ex            (hsql/call :extract :epoch (hx/cast :timestamptz x))
-          ey            (hsql/call :extract :epoch (hx/cast :timestamptz y))
+    (let [ex            (hsql/call :extract :epoch (hx/->timestamptz x))
+          ey            (hsql/call :extract :epoch (hx/->timestamptz y))
           positive-diff (fn [a b]
                           (hx/cast
                            :integer
