@@ -8,7 +8,6 @@ import { LEGEND_CIRCLE_MARGIN_RIGHT, LEGEND_CIRCLE_SIZE } from "./constants";
 type LegendProps = {
   top: number;
   left: number;
-  lineHeight: number;
   fontSize: number;
   fontWeight: number;
   items: PositionedLegendItem[];
