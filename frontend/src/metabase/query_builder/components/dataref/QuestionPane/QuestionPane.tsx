@@ -84,18 +84,20 @@ const QuestionPane = ({
             {collection?.name ?? t`Our analytics`}
           </QuestionPaneDetailText>
         </QuestionPaneDetail>
-        <QuestionPaneDetail>
-          <QuestionPaneIcon name="calendar" />
-          <QuestionPaneDetailText>
-            {jt`Last edited ${(
-              <DateTime
-                key="day"
-                unit="day"
-                value={question.lastEditInfo().timestamp}
-              />
-            )}`}
-          </QuestionPaneDetailText>
-        </QuestionPaneDetail>
+        {question.lastEditInfo() && (
+          <QuestionPaneDetail>
+            <QuestionPaneIcon name="calendar" />
+            <QuestionPaneDetailText>
+              {jt`Last edited ${(
+                <DateTime
+                  key="day"
+                  unit="day"
+                  value={question.lastEditInfo().timestamp}
+                />
+              )}`}
+            </QuestionPaneDetailText>
+          </QuestionPaneDetail>
+        )}
         {table.fields && (
           <FieldList
             fields={table.fields}
