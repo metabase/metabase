@@ -2,7 +2,7 @@
 import React from "react";
 import { t, jt } from "ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
-import { pivotByTimeDrill } from "metabase-lib/lib/queries/drills/pivot-drill";
+import { pivotByTimeDrill } from "metabase-lib/queries/drills/pivot-drill";
 
 export default ({ question, clicked }) => {
   const drill = pivotByTimeDrill({ question, clicked });

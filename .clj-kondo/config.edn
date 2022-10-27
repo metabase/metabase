@@ -271,7 +271,7 @@
     metabase.plugins.initialize                                     plugins.init
     metabase.public-settings                                        public-settings
     metabase.public-settings.premium-features                       premium-features
-    metabase.pulse                                                  pulse              ; NB some conflicts with metabase.models.pulse
+    metabase.pulse                                                  pulse ; NB some conflicts with metabase.models.pulse
     metabase.pulse.markdown                                         markdown
     metabase.pulse.render                                           render
     metabase.pulse.render.body                                      body
@@ -581,9 +581,10 @@
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
    metabase.test.util.async/with-chans                                                                                       hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
+   metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
+   metabase.test.util.log/with-log-messages-for-level                                                                        hooks.common/with-ignored-first-arg
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg
    metabase.test.util/with-column-remappings                                                                                 hooks.common/with-ignored-first-arg
-   metabase.test.util/with-log-level                                                                                         hooks.common/with-ignored-first-arg
    metabase.test.util/with-non-admin-groups-no-root-collection-perms                                                         hooks.common/do*
    metabase.test.util/with-temp-file                                                                                         hooks.metabase.test.util/with-temp-file
    metabase.test.util/with-temporary-setting-values                                                                          hooks.metabase.test.util/with-temporary-setting-values
@@ -597,6 +598,7 @@
    metabase.test/with-column-remappings                                                                                      hooks.common/with-ignored-first-arg
    metabase.test/with-group                                                                                                  hooks.common/let-one-with-optional-value
    metabase.test/with-log-level                                                                                              hooks.common/with-ignored-first-arg
+   metabase.test/with-log-messages-for-level                                                                                 hooks.common/with-ignored-first-arg
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-temp                                                                                                   hooks.toucan.util.test/with-temp
    metabase.test/with-temp*                                                                                                  hooks.toucan.util.test/with-temp*

@@ -1,4 +1,8 @@
-import { restore, openNativeEditor } from "__support__/e2e/helpers";
+import {
+  restore,
+  openNativeEditor,
+  openQuestionActions,
+} from "__support__/e2e/helpers";
 
 describe("scenarios > native question > data reference sidebar", () => {
   beforeEach(() => {
@@ -38,11 +42,18 @@ describe("scenarios > native question > data reference sidebar", () => {
       },
       { visitQuestion: true },
     );
+    // Move question to personal collection
+    openQuestionActions();
+    cy.findByTestId("move-button").click();
+    cy.findByText("My personal collection").click();
+    cy.findByText("Move").click();
+
     openNativeEditor();
     cy.icon("reference").click();
     cy.findByText("1 model");
     cy.findByText("Native Products Model").click();
-    cy.findByText("A model of the Products table");
+    cy.findByText("A model of the Products table"); // description
+    cy.findByText("Bobby Tables's Personal Collection"); // collection
     cy.findByText("1 column");
     cy.findByText("RENAMED_ID").click();
     cy.findByText("No description");

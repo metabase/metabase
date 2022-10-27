@@ -29,9 +29,9 @@ import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
-import * as Q from "metabase-lib/lib/queries/utils/query";
-import Dimension from "metabase-lib/lib/Dimension";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import * as Q from "metabase-lib/queries/utils/query";
+import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
 
 import {
   ItemContent,
@@ -214,15 +214,22 @@ const TransientFilters = ({ filter, metadata }) => (
   </div>
 );
 
-const TransientFilter = ({ filter, metadata }) => (
-  <div className="mr3">
-    <Icon size={12} name={getIconForFilter(filter, metadata)} className="mr1" />
-    <Filter filter={filter} metadata={metadata} />
-  </div>
-);
+const TransientFilter = ({ filter, metadata }) => {
+  const dimension = getFilterDimension(filter, metadata);
 
-const getIconForFilter = (filter, metadata) => {
-  const field = Dimension.parseMBQL(filter[1], metadata).field();
+  return (
+    <div className="mr3">
+      <Icon
+        size={12}
+        name={getIconForFilter(dimension.field())}
+        className="mr1"
+      />
+      <Filter filter={filter} metadata={metadata} />
+    </div>
+  );
+};
+
+const getIconForFilter = field => {
   if (field.isDate()) {
     return "calendar";
   } else if (field.isLocation()) {

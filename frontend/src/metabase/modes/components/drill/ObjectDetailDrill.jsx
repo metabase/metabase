@@ -4,7 +4,7 @@ import {
   objectDetailDrill,
   objectDetailFKDrillQuestion,
   objectDetailPKDrillQuestion,
-} from "metabase-lib/lib/queries/drills/object-detail-drill";
+} from "metabase-lib/queries/drills/object-detail-drill";
 
 function getAction({ question, clicked, type, objectId }) {
   switch (type) {

@@ -17,7 +17,9 @@
 
 (defmethod serdes.hash/identity-hash-fields PulseCard
   [_pulse-card]
-  [(serdes.hash/hydrated-hash :pulse) (serdes.hash/hydrated-hash :card)])
+  [(serdes.hash/hydrated-hash :pulse)
+   (serdes.hash/hydrated-hash :card)
+   :position])
 
 (defn next-position-for
   "Return the next available `pulse_card.position` for the given `pulse`"

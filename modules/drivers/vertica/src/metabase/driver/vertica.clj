@@ -97,6 +97,8 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :vertica (partial date-trunc :week) (cast-timestamp expr)))
 
+(defmethod sql.qp/date [:vertica :week-of-year-iso] [_driver _ expr] (hsql/call :week_iso expr))
+
 (defmethod sql.qp/date [:vertica :day-of-week]
   [_ _ expr]
   (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))

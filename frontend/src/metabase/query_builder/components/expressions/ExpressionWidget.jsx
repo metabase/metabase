@@ -7,7 +7,7 @@ import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { isExpression } from "metabase-lib/lib/expressions";
+import { isExpression } from "metabase-lib/expressions";
 import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 
 // TODO: combine with ExpressionPopover

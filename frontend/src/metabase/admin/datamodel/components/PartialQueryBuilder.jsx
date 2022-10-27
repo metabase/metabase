@@ -10,11 +10,11 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Tables from "metabase/entities/tables";
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 import * as Urls from "metabase/lib/urls";
-import Query from "metabase-lib/lib/queries/Query";
+import Query from "metabase-lib/queries/Query";
 import {
   getSegmentOrMetricQuestion,
   getDefaultSegmentOrMetricQuestion,
-} from "metabase-lib/lib/queries/utils/segments";
+} from "metabase-lib/queries/utils/segments";
 
 import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
 

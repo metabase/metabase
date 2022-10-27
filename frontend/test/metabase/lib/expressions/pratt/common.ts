@@ -3,15 +3,15 @@ import {
   parse,
   compile as newCompile,
   Expr,
-} from "metabase-lib/lib/expressions/pratt";
-import { resolve } from "metabase-lib/lib/expressions/resolver";
-import { getMBQLName } from "metabase-lib/lib/expressions/config";
+} from "metabase-lib/expressions/pratt";
+import { resolve } from "metabase-lib/expressions/resolver";
+import { getMBQLName } from "metabase-lib/expressions/config";
 import {
   parse as oldParser,
   useShorthands,
   adjustCase,
   adjustOptions,
-} from "metabase-lib/lib/expressions/recursive-parser";
+} from "metabase-lib/expressions/recursive-parser";
 
 import { generateExpression } from "../generator";
 

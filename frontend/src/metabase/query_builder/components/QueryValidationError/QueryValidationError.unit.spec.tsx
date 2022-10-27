@@ -3,7 +3,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
-} from "metabase-lib/lib/ValidationError";
+} from "metabase-lib/ValidationError";
 
 import QueryValidationError from "./QueryValidationError";
 
