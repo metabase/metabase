@@ -1,9 +1,7 @@
 import React from "react";
-import { Formik, Form } from "formik";
+import { Form, Formik } from "formik";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import FormField from "metabase/core/components/FormField";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormToggle from "./FormToggle";
 
 describe("FormToggle", () => {
@@ -14,15 +12,13 @@ describe("FormToggle", () => {
     render(
       <Formik initialValues={initialValues} onSubmit={onSubmit}>
         <Form>
-          <FormField name="label" title="Show label">
-            <FormToggle name="label" />
-          </FormField>
-          <FormSubmitButton />
+          <FormToggle name="label" />
+          <button type="submit">Submit</button>
         </Form>
       </Formik>,
     );
 
-    userEvent.click(screen.getByLabelText("Show label"));
+    userEvent.click(screen.getByRole("switch"));
     userEvent.click(screen.getByText("Submit"));
 
     waitFor(() => {

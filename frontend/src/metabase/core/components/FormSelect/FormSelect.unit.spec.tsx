@@ -2,8 +2,6 @@ import React from "react";
 import { Formik, Form } from "formik";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import FormField from "metabase/core/components/FormField";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormSelect from "./FormSelect";
 
 const OPTIONS = [
@@ -20,10 +18,8 @@ describe("FormSelect", () => {
     render(
       <Formik initialValues={initialValues} onSubmit={onSubmit}>
         <Form>
-          <FormField name="display" title="Display">
-            <FormSelect name="display" options={OPTIONS} />
-          </FormField>
-          <FormSubmitButton />
+          <FormSelect name="display" options={OPTIONS} />
+          <button type="submit">Submit</button>
         </Form>
       </Formik>,
     );

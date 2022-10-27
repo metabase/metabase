@@ -2,8 +2,6 @@ import React from "react";
 import { Formik, Form } from "formik";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import FormField from "metabase/core/components/FormField";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormNumericInput from "./FormNumericInput";
 
 describe("FormNumericInput", () => {
@@ -14,15 +12,13 @@ describe("FormNumericInput", () => {
     render(
       <Formik initialValues={initialValues} onSubmit={onSubmit}>
         <Form>
-          <FormField name="value" title="Goal">
-            <FormNumericInput name="value" />
-          </FormField>
-          <FormSubmitButton />
+          <FormNumericInput name="value" />
+          <button type="submit">Submit</button>
         </Form>
       </Formik>,
     );
 
-    const input = screen.getByDisplayValue("10");
+    const input = screen.getByRole("textbox");
     userEvent.clear(input);
     userEvent.type(input, "20");
     userEvent.click(screen.getByText("Submit"));
