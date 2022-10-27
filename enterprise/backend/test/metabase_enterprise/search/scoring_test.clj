@@ -48,7 +48,7 @@
       (doseq [item [a b c d]]
         (is (> (ee-score search-string (assoc item :collection_authority_level "official"))
                (ee-score search-string item))
-            (str "Item not greater for item: " item)))
+            (str "Score should be greater for item: " item " vs " (assoc item :collection_authority_level "official"))))
       (is (= ["customer examples of bad sorting"
               "customer success stories"
               "examples of custom expressions"

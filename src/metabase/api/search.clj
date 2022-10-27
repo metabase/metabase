@@ -6,7 +6,6 @@
             [honeysql.core :as hsql]
             [honeysql.helpers :as hh]
             [medley.core :as m]
-            [metabase.api.collection :as api.collection]
             [metabase.api.common :as api]
             [metabase.db :as mdb]
             [metabase.models :refer [App Database]]
@@ -441,17 +440,17 @@
                              query)} sql-alias]]
        :order-by order-clause})))
 
-(defn ^:private search
+(s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
-  [search-ctx]
+  [search-ctx :- SearchContext]
   (let [search-query      (full-search-query search-ctx)
         _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
         reducible-results (db/reducible-query search-query :max-rows search-config/*db-max-results*)
         xf                (comp
                            (filter check-permissions-for-model)
                            ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
-                           (map #(update % :bookmark api.collection/bit->boolean))
-                           (map #(update % :archived api.collection/bit->boolean))
+                           (map #(update % :bookmark api/bit->boolean))
+                           (map #(update % :archived api/bit->boolean))
                            (map (partial scoring/score-and-result (:search-string search-ctx)))
                            (filter #(pos? (:score %))))
         total-results     (scoring/top-results reducible-results search-config/max-filtered-results xf)]

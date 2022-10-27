@@ -82,25 +82,25 @@
                  :text     (tokens->string text-tokens (not is-match))})))))
 
 (defn- text-scores-with
-  "Scores a search result. Returns a map with the score and other info about the text match,
-   if there is one. If there is no match, the score is 0."
+  "Scores a search result. Returns a vector of score maps, each containing `:weight`, `:score`, and other info about
+  the text match, if there is one. If there is no match, the score is 0."
   [weighted-scorers query-tokens search-result]
   ;; TODO is pmap over search-result worth it?
-  (let [scores       (for [column      (search-config/searchable-columns-for-model (:model search-result))
-                           {:keys [scorer name weight]
-                            :as   _ws} weighted-scorers
-                           :let        [matched-text (-> search-result
-                                                         (get column)
-                                                         (search-config/column->string (:model search-result) column))
-                                        match-tokens (some-> matched-text normalize tokenize)
-                                        raw-score (scorer query-tokens match-tokens)]
-                           :when       (and matched-text (pos? raw-score))]
-                       {:score               raw-score
-                        :name                (str "text-" name)
-                        :weight              weight
-                        :match               matched-text
-                        :match-context-thunk #(match-context query-tokens match-tokens)
-                        :column              column})]
+  (let [scores (for [column      (search-config/searchable-columns-for-model (:model search-result))
+                     {:keys [scorer name weight]
+                      :as   _ws} weighted-scorers
+                     :let        [matched-text (-> search-result
+                                                   (get column)
+                                                   (search-config/column->string (:model search-result) column))
+                                  match-tokens (some-> matched-text normalize tokenize)
+                                  raw-score (scorer query-tokens match-tokens)]
+                     :when       (and matched-text (pos? raw-score))]
+                 {:score               raw-score
+                  :name                (str "text-" name)
+                  :weight              weight
+                  :match               matched-text
+                  :match-context-thunk #(match-context query-tokens match-tokens)
+                  :column              column})]
     (if (seq scores)
       (vec scores)
       [{:score 0 :weight 0}])))
@@ -185,11 +185,9 @@
 
 (defn- text-scores-with-match
   [raw-search-string result]
-  (if (seq raw-search-string)
-    (text-scores-with match-based-scorers
-                      (tokenize (normalize raw-search-string))
-                      result)
-    [{:score 0 :weight 1 :match ""}]))
+  (text-scores-with match-based-scorers
+                    (tokenize (normalize raw-search-string))
+                    result))
 
 (defn- pinned-score
   [{:keys [model collection_position]}]
@@ -275,37 +273,53 @@
    [result]
    (weights-and-scores result))
 
+(defn- sum-weights [weights]
+  (reduce
+   (fn [acc {:keys [weight] :or {weight 0}}]
+     (+ acc weight))
+   0
+   weights))
+
 (defn- compute-normalized-score [scores]
-  (let [weight-sum (reduce + (map #(or (:weight %) 0) scores))
-        score-sum (reduce
-                   (fn [acc {:keys [weight score] :or {weight 0 score 0}}] (+ acc (* score weight)))
-                   0
-                   scores)]
+  (let [weight-sum (sum-weights scores)]
     (if (zero? weight-sum)
       0
-      (/ score-sum weight-sum))))
+      (let [score-sum (reduce
+                       (fn [acc {:keys [weight score]
+                                 :or {weight 0 score 0}}]
+                         (+ acc (* score weight)))
+                       0
+                       scores)]
+        (/ score-sum weight-sum)))))
 
 (defn force-weight
   "Reweight `scores` such that the sum of their weights equals `total`, and their proportions do not change."
   [scores total]
-  (let [total-found (reduce + (map :weight scores))]
-    (mapv #(update % :weight (fn [weight]
-                               (if (contains? #{nil 0} total-found)
-                                 0
-                                 (* total (/ weight total-found))))) scores)))
+  (let [total-weight (sum-weights scores)
+        weight-calc-fn (if (contains? #{nil 0} total-weight)
+                         (fn weight-calc-fn [_] 0)
+                         (fn weight-calc-fn [weight] (* total (/ weight total-weight))))]
+    (mapv #(update % :weight weight-calc-fn) scores)))
+
+(def ^:const text-scores-weight
+  "This is used to control the total weight of text-based scorers in [[score-and-result]]"
+  10)
 
 (defn score-and-result
   "Returns a map with the normalized, combined score from relevant-scores as `:score` and `:result`."
   [raw-search-string result]
-  (let [text-matches     (force-weight (text-scores-with-match raw-search-string result) 10)
-        all-scores       (vec (concat (score-result result) text-matches))
+  (let [text-matches     (-> raw-search-string
+                             (text-scores-with-match result)
+                             (force-weight text-scores-weight))
+        all-scores       (into (vec (score-result result)) text-matches)
         relevant-scores  (remove #(= 0 (:score %)) all-scores)
         total-score      (compute-normalized-score all-scores)]
     ;; Searches with a blank search string mean "show me everything, ranked";
     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
     ;; If the search string is non-blank, results with no text match have a score of zero.
     (if (or (str/blank? raw-search-string)
-            (pos? (reduce + (map :score text-matches))))
+            (pos? (reduce (fn [acc {:keys [score] :or {score 0}}] (+ acc score))
+                          text-matches)))
       {:score total-score
        :result (serialize result all-scores relevant-scores)}
       {:score 0})))

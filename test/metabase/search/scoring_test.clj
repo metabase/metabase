@@ -322,15 +322,14 @@
   (is (= [{:weight 10}]
          (scoring/force-weight [{:weight 1}] 10)))
 
-  (is (= [{:weight 5N} {:weight 5N}]
+  (is (= [{:weight 5} {:weight 5}]
          (scoring/force-weight [{:weight 1} {:weight 1}] 10)))
 
   (is (= [{:weight 0} {:weight 10}]
          (scoring/force-weight [{:weight 0} {:weight 1}] 10)))
 
   (is (= 10 (count (scoring/force-weight (repeat 10 {:weight 1}) 10))))
-  (is (= #{[:weight 1N]} (into #{} (first (scoring/force-weight (repeat 10 {:weight 1}) 10)))))
-
+  (is (= #{[:weight 1]} (into #{} (first (scoring/force-weight (repeat 10 {:weight 1}) 10)))))
 
   (is (= 100 (count (scoring/force-weight (repeat 100 {:weight 10}) 10))))
   (is (= #{{:weight 1/10}} (into #{} (scoring/force-weight (repeat 100 {:weight 10}) 10)))))
