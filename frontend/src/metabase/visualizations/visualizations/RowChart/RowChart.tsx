@@ -75,7 +75,7 @@ interface RowChartVisualizationProps {
   className: string;
   width: number;
   height: number;
-  data: DatasetData;
+  rawSeries: { data: DatasetData }[];
   settings: VisualizationSettings;
   visualizationIsClickable: (data: Record<string, unknown>) => boolean;
   onVisualizationClick: (data: Record<string, unknown>) => void;
@@ -96,7 +96,6 @@ const RowChartVisualization = ({
   card,
   className,
   settings,
-  data,
   visualizationIsClickable,
   onVisualizationClick,
   isPlaceholder,
@@ -109,10 +108,14 @@ const RowChartVisualization = ({
   onHoverChange,
   showTitle,
   onChangeCardAndRun,
+  rawSeries: rawMultipleSeries,
 }: RowChartVisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter(formatValue);
   }, []);
+  // Do not rely on the old series transformation API and use rawSeries instead of series here
+  const [rawSeries] = rawMultipleSeries;
+  const data = rawSeries.data;
 
   const { chartColumns, series, seriesColors } = useMemo(
     () => getTwoDimensionalChartSeries(data, settings, formatColumnValue),
@@ -360,14 +363,23 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
     data,
     chartColumns,
     getColumnValueFormatter(formatValue),
-  ).map(({ seriesKey, seriesName }) => {
+  ).map(series => {
     const seriesCard = {
       ...card,
-      name: seriesName,
-      _seriesKey: seriesKey,
+      name: series.seriesName,
+      _seriesKey: series.seriesKey,
       _transformed: true,
     };
-    return { card: seriesCard, data };
+
+    const newData = {
+      ...data,
+      cols: [
+        series.seriesInfo?.dimensionColumn,
+        series.seriesInfo?.metricColumn,
+      ],
+    };
+
+    return { card: seriesCard, data: newData };
   });
 
   return computedSeries.length > 0 ? computedSeries : originalMultipleSeries;
