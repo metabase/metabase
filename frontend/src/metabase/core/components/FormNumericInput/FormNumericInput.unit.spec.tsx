@@ -4,31 +4,31 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FormField from "metabase/core/components/FormField";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormInput from "./FormInput";
+import FormNumericInput from "./FormNumericInput";
 
-describe("FormInput", () => {
+describe("FormNumericInput", () => {
   it("should set the value in the formik context", () => {
-    const initialValues = { name: "Orders" };
+    const initialValues = { value: 10 };
     const onSubmit = jest.fn();
 
     render(
       <Formik initialValues={initialValues} onSubmit={onSubmit}>
         <Form>
-          <FormField name="name" title="Name">
-            <FormInput name="name" />
+          <FormField name="value" title="Goal">
+            <FormNumericInput name="value" />
           </FormField>
           <FormSubmitButton />
         </Form>
       </Formik>,
     );
 
-    const input = screen.getByDisplayValue("Orders");
+    const input = screen.getByDisplayValue("10");
     userEvent.clear(input);
-    userEvent.type(input, "Orders by month");
+    userEvent.type(input, "20");
     userEvent.click(screen.getByText("Submit"));
 
     waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({ name: "Orders by month" });
+      expect(onSubmit).toHaveBeenCalledWith({ value: 20 });
     });
   });
 });
