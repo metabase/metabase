@@ -1,4 +1,3 @@
-import { getIsMultiSelect } from "metabase/parameters/utils/dashboards";
 import { Parameter } from "metabase-types/types/Parameter";
 import {
   doesOperatorExist,
@@ -10,6 +9,7 @@ import {
   getParameterSubType,
 } from "metabase-lib/parameters/utils/parameter-type";
 import { PARAMETER_OPERATOR_TYPES } from "metabase-lib/parameters/constants";
+import { getIsMultiSelect } from "../../../metabase/parameters/utils/dashboards";
 
 type OperatorType = "date" | "number" | "string";
 
