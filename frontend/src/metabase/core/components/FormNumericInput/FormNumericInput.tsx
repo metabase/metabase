@@ -13,7 +13,7 @@ const FormNumericInput = forwardRef(function FormNumericInput(
   { name, ...props }: FormNumericInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
-  const [field, meta, helpers] = useField(name);
+  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
 
   return (
     <NumericInput
@@ -21,10 +21,10 @@ const FormNumericInput = forwardRef(function FormNumericInput(
       ref={ref}
       id={name}
       name={name}
-      value={field.value}
-      error={meta.touched && meta.error != null}
-      onChange={helpers.setValue}
-      onBlur={field.onBlur}
+      value={value}
+      error={touched && error != null}
+      onChange={setValue}
+      onBlur={onBlur}
     />
   );
 });

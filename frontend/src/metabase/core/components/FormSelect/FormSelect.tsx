@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useField } from "formik";
 import Select, {
   SelectOption,
@@ -14,15 +14,16 @@ function FormSelect<TValue, TOption = SelectOption<TValue>>({
   name,
   ...props
 }: FormSelectProps<TValue, TOption>) {
-  const [field] = useField(name);
+  const [{ value, onChange, onBlur }] = useField(name);
+  const buttonProps = useMemo(() => ({ id: name, onBlur }), [name, onBlur]);
 
   return (
     <Select
       {...props}
       name={name}
-      value={field.value}
-      onChange={field.onChange}
-      buttonProps={{ id: name, onBlur: field.onBlur }}
+      value={value}
+      onChange={onChange}
+      buttonProps={buttonProps}
     />
   );
 }

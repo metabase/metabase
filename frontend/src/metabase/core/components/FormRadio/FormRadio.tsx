@@ -16,16 +16,16 @@ const FormRadio = forwardRef(function FormRadio<
   { name, ...props }: FormRadioProps<TValue, TOption>,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [field, , helpers] = useField(name);
+  const [{ value, onBlur }, , { setValue }] = useField(name);
 
   return (
     <Radio
       {...props}
       ref={ref}
       name={name}
-      value={field.value}
-      onChange={helpers.setValue}
-      onBlur={field.onBlur}
+      value={value}
+      onChange={setValue}
+      onBlur={onBlur}
     />
   );
 });
