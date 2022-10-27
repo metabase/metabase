@@ -9,6 +9,7 @@ import withToast from "metabase/hoc/Toast";
 import { entityTypeForObject } from "metabase/lib/schema";
 
 import Link from "metabase/core/components/Link";
+import ModalContent from "metabase/components/ModalContent";
 
 import Dashboards from "metabase/entities/dashboards";
 import Collections from "metabase/entities/collections";
@@ -41,11 +42,49 @@ function CollectionCopyEntityModal({
   triggerToast,
 }) {
   const [isShallowCopy, setIsShallowCopy] = useState(true);
+  const [newEntityObject, setNewEntityObject] = useState({});
+  const [hasUncopiedQuestions, setHasUncopiedQuestions] = useState(false);
   const title = getTitle(entityObject, isShallowCopy);
 
   const handleValuesChange = ({ is_shallow_copy }) => {
     setIsShallowCopy(is_shallow_copy);
   };
+
+  const afterSaved = () => {
+    const newEntityUrl = Urls.modelToUrl({
+      model: entityObject.model,
+      model_object: newEntityObject,
+    });
+
+    triggerToast(
+      <div className="flex align-center">
+        {t`Duplicated ${entityObject.model}`}
+        <Link className="link text-bold ml1" to={newEntityUrl}>
+          {t`See it`}
+        </Link>
+      </div>,
+      { icon: entityObject.model },
+    );
+
+    onSaved(newEntityObject);
+  };
+
+  const handleSaved = savedEntityObject => {
+    setNewEntityObject(savedEntityObject);
+    if (savedEntityObject.uncopied.length > 0) {
+      setHasUncopiedQuestions(true);
+    } else {
+      afterSaved();
+    }
+  };
+
+  if (hasUncopiedQuestions) {
+    return (
+      <ModalContent title="Title" onClose={afterSaved}>
+        <div>Close this</div>
+      </ModalContent>
+    );
+  }
 
   return (
     <EntityCopyModal
@@ -61,23 +100,7 @@ function CollectionCopyEntityModal({
         return entityObject.copy(dissoc(values, "id"));
       }}
       onClose={onClose}
-      onSaved={newEntityObject => {
-        const newEntityUrl = Urls.modelToUrl({
-          model: entityObject.model,
-          model_object: newEntityObject,
-        });
-        triggerToast(
-          <div className="flex align-center">
-            {t`Duplicated ${entityObject.model}`}
-            <Link className="link text-bold ml1" to={newEntityUrl}>
-              {t`See it`}
-            </Link>
-          </div>,
-          { icon: entityObject.model },
-        );
-
-        onSaved(newEntityObject);
-      }}
+      onSaved={handleSaved}
       onValuesChange={handleValuesChange}
     />
   );
