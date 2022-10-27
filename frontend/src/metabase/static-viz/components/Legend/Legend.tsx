@@ -17,7 +17,6 @@ type LegendProps = {
 export const Legend = ({
   top,
   left,
-  lineHeight,
   fontSize,
   fontWeight,
   items,
@@ -30,14 +29,13 @@ export const Legend = ({
         const textX = LEGEND_CIRCLE_SIZE + LEGEND_CIRCLE_MARGIN_RIGHT;
 
         return (
-          <Group left={left} top={top} key={name}>
+          <Group left={left} top={top} key={index}>
             <circle fill={color} r={radius} cx={radius} cy={radius} />
             <Text
               textAnchor="start"
               verticalAnchor="start"
               x={textX}
               fontWeight={fontWeight}
-              lineHeight={lineHeight}
               fontSize={fontSize}
             >
               {name}

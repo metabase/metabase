@@ -18,15 +18,15 @@ const calculateItemWidth = (
   );
 };
 
-export const calculateLegendItems = (
+export const calculateLegendRows = (
   items: LegendItem[],
   width: number,
   lineHeight: number,
   fontSize: number,
   fontWeight: number,
-): PositionedLegendItem[][] => {
+) => {
   if (items.length <= 1) {
-    return [];
+    return null;
   }
 
   const rows: PositionedLegendItem[][] = [[]];
@@ -73,5 +73,10 @@ export const calculateLegendItems = (
     }
   }
 
-  return rows;
+  const height = rows.length * lineHeight;
+
+  return {
+    height,
+    items: rows.flat(),
+  };
 };
