@@ -616,6 +616,7 @@
             x' (maybe-cast x' (first types))
             y' (maybe-cast y' (second types))]
         (hsql/call :timestamp_diff y' x' (hsql/raw (name unit))))
+
       (throw (ex-info (tru "Unsupported datetimediff unit {0}" unit)
                       {:clause          clause
                        :supported-units [:year :month :week :day :hour :minute :second]})))))
