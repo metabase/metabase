@@ -61,10 +61,10 @@ Metabase's reference documentation.
 #### Query builder
 
 - [Asking questions](./questions/query-builder/introduction.md)
-- [Joining data](./questions/query-builder/join.md)
 - [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Custom expressions](./questions/query-builder/expressions.md)
 - [List of expressions](./questions/query-builder/expressions-list.md)
+- [Joining data](./questions/query-builder/join.md)
 
 #### SQL and native queries
 
@@ -104,7 +104,7 @@ Metabase's reference documentation.
 - [Organization overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
-- [History](./history.md)
+- [History](./exploration-and-organization/history.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 - [X-rays](./exploration-and-organization/x-rays.md)
 
