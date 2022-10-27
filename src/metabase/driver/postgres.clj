@@ -331,7 +331,7 @@
               (hsql/call :* 12 (helper x y :year))
               (hsql/call
                :date_part
-               (hsql/raw (format "'%s'" (name unit)))
+               (hsql/raw "'month'")
                (hsql/call
                 :age
                 (hsql/call :date_trunc (hsql/raw "'day'") y)
