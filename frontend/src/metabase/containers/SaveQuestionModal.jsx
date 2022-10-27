@@ -14,6 +14,16 @@ import { generateQueryDescription } from "metabase-lib/lib/queries/utils/descrip
 
 import "./SaveQuestionModal.css";
 
+const getSingleStepTitle = (questionType, showSaveType) => {
+  if (questionType === "model") {
+    return t`Save model`;
+  } else if (showSaveType) {
+    return t`Save question`;
+  } else {
+    return t`Save new question`;
+  }
+};
+
 export default class SaveQuestionModal extends Component {
   static propTypes = {
     card: PropTypes.object.isRequired,
@@ -110,12 +120,7 @@ export default class SaveQuestionModal extends Component {
       !originalCard.dataset &&
       originalCard.can_write;
 
-    const singleStepTitle =
-      questionType === "question"
-        ? showSaveType
-          ? t`Save question`
-          : t`Save new question`
-        : t`Save model`;
+    const singleStepTitle = getSingleStepTitle(questionType, showSaveType);
 
     const title = this.props.multiStep ? multiStepTitle : singleStepTitle;
 
