@@ -328,7 +328,7 @@
   [driver [_ arg unit]]
   (->> (sql.qp/->honeysql driver arg)
        to-timestamp-if-needed
-       (sql.qp/date driver (sql.qp/temporal-extract-unit->date-unit unit))))
+       (sql.qp/date driver unit)))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
