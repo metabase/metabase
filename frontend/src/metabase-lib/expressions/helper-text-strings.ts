@@ -609,6 +609,26 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
+    name: "get-week",
+    structure: "week(" + t`column` + ", " + t`mode` + ")",
+    description: t`Extracts the week of the year as an integer..`,
+    example: "week([" + t`Created At` + '], "iso")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The name of the column with your date or datetime value..`,
+      },
+      {
+        name: t`mode`,
+        description: t`Optional. The default is "ISO".
+- ISO: Week 1 starts on the Monday before the first Thursday of January.
+- US: Week 1 starts on Jan 1. All other weeks start on Sunday.
+- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+`,
+      },
+    ],
+  },
+  {
     name: "get-day",
     structure: "day(" + t`column` + ")",
     description: t`Takes a datetime and returns an integer (1-31) with the number of the day of the month.`,

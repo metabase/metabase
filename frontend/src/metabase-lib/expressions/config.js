@@ -336,6 +336,12 @@ export const MBQL_CLAUSES = {
     type: "number",
     args: ["expression"],
   },
+  "get-week": {
+    displayName: `week`,
+    type: "number",
+    args: ["expression"],
+    hasOptions: true, // optional mode parameter
+  },
   "get-day": {
     displayName: `day`,
     type: "number",
@@ -446,6 +452,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "get-year",
   "get-quarter",
   "get-month",
+  "get-week",
   "get-day",
   "get-day-of-week",
   "get-hour",

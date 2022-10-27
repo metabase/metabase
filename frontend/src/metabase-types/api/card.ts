@@ -34,6 +34,7 @@ export interface UnsavedCard {
 export type SeriesSettings = {
   title: string;
   color?: string;
+  show_series_values?: boolean;
 };
 
 export type SeriesOrderSetting = {

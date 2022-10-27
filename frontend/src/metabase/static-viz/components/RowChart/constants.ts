@@ -41,15 +41,3 @@ export const ROW_CHART_DEFAULT_OPTIONS = {
     ],
   },
 };
-
-// query: {
-//       "source-table": ORDERS_ID,
-//       aggregation: [["count"]],
-//       breakout: [
-//         ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-//       ],
-//     },
-//     visualization_settings: {
-//       "graph.dimensions": ["CATEGORY"],
-//       "graph.metrics": ["count"],
-//     },

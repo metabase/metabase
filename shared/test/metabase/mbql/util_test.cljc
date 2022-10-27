@@ -364,12 +364,12 @@
 
 (t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"
-    (doseq [[op unit] mbql.u/temporal-extract-ops->unit]
+    (doseq [[[op mode] unit] mbql.u/temporal-extract-ops->unit]
       (t/is (= [:temporal-extract [:field 1 nil] unit]
-               (mbql.u/desugar-temporal-extract [op [:field 1 nil]])))
+               (mbql.u/desugar-temporal-extract [op [:field 1 nil] mode])))
 
       (t/is (= [:+ [:temporal-extract [:field 1 nil] unit] 1]
-               (mbql.u/desugar-temporal-extract [:+ [op [:field 1 nil]] 1]))))))
+               (mbql.u/desugar-temporal-extract [:+ [op [:field 1 nil] mode] 1]))))))
 
 (t/deftest ^:parallel negate-simple-filter-clause-test
   (t/testing :=

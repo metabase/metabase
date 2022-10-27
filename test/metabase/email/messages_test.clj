@@ -1,10 +1,13 @@
 (ns metabase.email.messages-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.email-test :as et]
-            [metabase.email.messages :as messages]
-            [metabase.test.util :as tu])
-  (:import java.io.IOException))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.email-test :as et]
+   [metabase.email.messages :as messages]
+   [metabase.test :as mt]
+   [metabase.test.util :as tu])
+  (:import
+   (java.io IOException)))
 
 (deftest new-user-email
   (is (= [{:from    "notifications@metabase.com",
@@ -90,7 +93,7 @@
 
 (deftest render-pulse-email-test
   (testing "Email with few rows and columns can be rendered when tracing (#21166)"
-    (tu/with-log-level [metabase.email :trace]
+    (mt/with-log-level [metabase.email :trace]
       (let [result {:card   {:name "card-name"
                              :visualization_settings
                              {:table.column_formatting []}}
