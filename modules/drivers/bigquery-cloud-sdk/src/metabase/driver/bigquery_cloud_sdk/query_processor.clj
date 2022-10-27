@@ -536,6 +536,7 @@
     (cond->> ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)
       t (->temporal-type t))))
 
+;; See the explanation in the postgres driver for a full explanation of behaviour.
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetimediff]
   [driver [_ x y unit :as clause]]
   (let [x'               (sql.qp/->honeysql driver x)

@@ -300,7 +300,8 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
-(defn- datetimediff-helper [x y unit]
+(defn- datetimediff-helper
+  [x y unit]
   (case unit
     (:year :day)
     (hx/cast
@@ -346,6 +347,20 @@
                     {:valid-units [:year :month :week :day :hour :minute :second]
                      :bad-unit unit}))))
 
+;; datetimediff( temporal-expression-1, temporal-expression-2, unit )
+;;
+;; unit : year |  month | week | day | hour | minute | second
+;;
+;; The result is positive if temporal-expression-1 <= temporal-expression-2, and negative otherwise.
+;;
+;; Days, weeks, months, and years are only counted if they are whole to the \"day\".
+;; For example, `datetimediff(\"2022-01-30\", \"2022-02-28\", \"month\")` returns 0 months.
+;;
+;; If the values are timestamps, the time of the day doesn't matter for these units.
+;; For example, `datetimediff(\"2022-01-01T09:00:00\", \"2022-01-02T08:00:00\", \"day\")` returns 1 day even though it is less than 24 hours.
+;;
+;; Hours, minutes, and seconds are only counted if they are whole.
+;; For example, datetimediff(\"2022-01-00T00:01:30\", \"2022-02-28T00:02:29\", \"hour\") returns 0 hours.
 (defmethod sql.qp/->honeysql [:postgres :datetimediff]
   [driver [_ x y unit]]
   (let [x (sql.qp/->honeysql driver (cond-> x
