@@ -8,6 +8,7 @@ import List from "metabase/visualizations/components/List/List";
 import ChartSettingsListColumns, {
   getDefaultColumns,
 } from "metabase/visualizations/components/settings/ChartSettingsListColumns";
+import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { VisualizationSettings } from "metabase-types/api/card";
