@@ -261,6 +261,8 @@
 (defmethod sql.qp/date [:postgres :year]             [_ _ expr] (date-trunc :year expr))
 (defmethod sql.qp/date [:postgres :year-of-era]      [_ _ expr] (extract-integer :year expr))
 
+(defmethod sql.qp/date [:postgres :week-of-year-iso] [_driver _ expr] (extract-integer :week expr))
+
 (defmethod sql.qp/date [:postgres :day-of-week]
   [_ driver expr]
   ;; Postgres extract(dow ...) returns Sunday(0)...Saturday(6)

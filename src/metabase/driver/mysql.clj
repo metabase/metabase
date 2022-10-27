@@ -225,11 +225,14 @@
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
 
-
 (defmethod sql.qp/->float :mysql
   [_ value]
   ;; no-op as MySQL doesn't support cast to float
   value)
+
+(defmethod sql.qp/->integer :mysql
+  [_ value]
+  (hx/maybe-cast :signed value))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
@@ -326,6 +329,8 @@
                                        (hx/concat (hsql/call :yearweek expr)
                                                   (hx/literal " Sunday"))))]
     (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)))
+
+(defmethod sql.qp/date [:mysql :week-of-year-iso] [_ _ expr] (hx/week expr 3))
 
 (defmethod sql.qp/date [:mysql :month] [_ _ expr]
   (str-to-date "%Y-%m-%d"
