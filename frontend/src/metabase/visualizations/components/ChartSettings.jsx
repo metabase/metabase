@@ -180,9 +180,9 @@ class ChartSettings extends Component {
     const series = this._getTransformedSeries();
     const { currentWidget } = this.state;
     const seriesSettingsWidget =
-      currentWidget && widgets.find(w => w.id === "series_settings");
+      currentWidget && widgets.find(widget => widget.id === "series_settings");
 
-    //We don'ty want to show series settings widget for waterfall charts
+    //We don't want to show series settings widget for waterfall charts
     if (series?.[0]?.card?.display === "waterfall" || !seriesSettingsWidget) {
       return null;
     }
@@ -218,7 +218,7 @@ class ChartSettings extends Component {
     return null;
   };
 
-  getFormattingWidget = extraWidgetProps => {
+  getFormattingWidget = () => {
     const widgets = this._getWidgets();
     const { currentWidget } = this.state;
     const widget =
@@ -234,7 +234,7 @@ class ChartSettings extends Component {
   render() {
     const { className, question, addField, noPreview, dashboard, isDashboard } =
       this.props;
-    const { popoverRef, currentWidget } = this.state;
+    const { currentWidget, popoverRef } = this.state;
 
     const settings = this._getSettings();
     const widgets = this._getWidgets();
@@ -395,10 +395,9 @@ class ChartSettings extends Component {
             currentWidget?.props?.initialKey || currentWidget?.props?.seriesKey
           }
           anchor={popoverRef}
-          widgets={[
-            this.getFormattingWidget(extraWidgetProps),
-            this.getStyleWidget(),
-          ].filter(x => !!x)}
+          widgets={[this.getFormattingWidget(), this.getStyleWidget()].filter(
+            widget => !!widget,
+          )}
           handleEndShowWidget={this.handleEndShowWidget}
         />
       </div>

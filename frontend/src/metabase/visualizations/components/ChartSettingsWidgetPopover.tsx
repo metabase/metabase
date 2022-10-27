@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import _ from "underscore";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
@@ -23,21 +23,19 @@ const ChartSettingsWidgetPopover = ({
   widgets,
   currentWidgetKey,
 }: ChartSettingsWidgetPopoverProps) => {
-  const sections = useMemo(() => {
-    return _.groupBy(widgets, "section");
+  const sections = useRef<Record<React.Key, Widget[]>>({});
+
+  useEffect(() => {
+    sections.current = _.groupBy(widgets, "section");
   }, [widgets]);
 
   const [currentSection, setCurrentSection] = useState<React.Key>("");
-  const [widgetKey, setWidgetKey] = useState(currentWidgetKey);
 
   useEffect(() => {
-    if (currentWidgetKey !== widgetKey) {
-      setCurrentSection(Object.keys(sections)[0]);
-      setWidgetKey(currentWidgetKey);
-    }
-  }, [currentWidgetKey, widgetKey, sections]);
+    setCurrentSection(Object.keys(sections.current)[0]);
+  }, [currentWidgetKey, sections]);
 
-  const sectionNames = Object.keys(sections) || [];
+  const sectionNames = Object.keys(sections.current) || [];
   const hasMultipleSections = sectionNames.length > 1;
 
   return (
@@ -49,15 +47,15 @@ const ChartSettingsWidgetPopover = ({
             {hasMultipleSections && (
               <PopoverTabs
                 value={currentSection}
-                options={Object.keys(sections).map((sectionName: string) => ({
+                options={sectionNames.map((sectionName: string) => ({
                   name: sectionName,
                   value: sectionName,
                 }))}
-                onChange={tab => setCurrentSection(tab)}
+                onChange={setCurrentSection}
                 variant="underlined"
               />
             )}
-            {sections[currentSection]?.map(widget => (
+            {sections.current[currentSection]?.map(widget => (
               <ChartSettingsWidget key={widget.id} {...widget} hidden={false} />
             ))}
           </PopoverRoot>

@@ -1,8 +1,11 @@
 import React from "react";
 import ChartNestedSettingSeriesMultiple from "./ChartNestedSettingSeriesMultiple";
-import ChartNestedSettingSeriesSingle from "./ChartNestedSettingSeriesSingle";
+import ChartNestedSettingSeriesSingle, {
+  ChartNestedSettingsSeriesSingleProps,
+} from "./ChartNestedSettingSeriesSingle";
 
-interface ChartNestedSettingSeriesProps {
+interface ChartNestedSettingSeriesProps
+  extends ChartNestedSettingsSeriesSingleProps {
   isDashboard: boolean;
 }
 
