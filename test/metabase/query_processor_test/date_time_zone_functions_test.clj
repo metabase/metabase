@@ -257,7 +257,7 @@
         (testing title
           (is (= (set expected) (set (test-date-math query)))))))))
 
-(mt/defdataset useful-dates
+(mt/defdataset temporal-dataset
   [["datediff-mixed-types"
     [{:field-name "index" :base-type :type/Integer}
      {:field-name "description" :base-type :type/Text}
@@ -272,10 +272,8 @@
       (letfn [(query [x y unit]
                 (->> (mt/run-mbql-query orders
                        {:limit 1
-                        :expressions {"diff"
-                                      [:datetimediff x y unit]
-                                      "diff-rev"
-                                      [:datetimediff y x unit]}
+                        :expressions {"diff"     [:datetimediff x y unit]
+                                      "diff-rev" [:datetimediff y x unit]}
                         :fields [[:expression "diff"]
                                  [:expression "diff-rev"]]})
                      mt/rows first))]
@@ -308,20 +306,20 @@
           (testing (name unit)
             (testing desc
               (is (= [expected (- expected)] (query x y unit))))))))
-    (mt/dataset useful-dates
+    (mt/dataset temporal-dataset
       (testing "Can compare across dates, datetimes, and with timezones from a table"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
         (is (= [[428 397 31]]
                (mt/rows
                 (mt/run-mbql-query datediff-mixed-types
-                                   {:fields [[:expression "tz,dt"]
-                                             [:expression "tz,d"]
-                                             [:expression "d,dt"]]
-                                    :filter [:= $index 1]
-                                    :expressions
-                                    {"tz,dt" [:datetimediff $tz $dt :day]
-                                     "tz,d"  [:datetimediff $tz $d :day]
-                                     "d,dt"  [:datetimediff $d $dt :day]}}))))))))
+                  {:fields [[:expression "tz,dt"]
+                            [:expression "tz,d"]
+                            [:expression "d,dt"]]
+                   :filter [:= $index 1]
+                   :expressions
+                   {"tz,dt" [:datetimediff $tz $dt :day]
+                    "tz,d"  [:datetimediff $tz $d :day]
+                    "d,dt"  [:datetimediff $d $dt :day]}}))))))))
 
 (deftest datetimediff-time-zones-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
