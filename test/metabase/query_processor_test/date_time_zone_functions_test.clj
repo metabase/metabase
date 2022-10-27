@@ -337,12 +337,12 @@
         (testing "a day"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
             (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
-                          (diffs "2022-10-02T01:00:00+01:00"     ; 2022-10-02T00:00:00+00:00 <- datetime in report-timezone offset
-                                 "2022-10-03T00:00:00+00:00")))) ; 2022-10-03T00:00:00+00:00
+                          (diffs "2022-10-02T01:00:00+01:00"     ; 2022-10-01T23:00:00-01:00 <- datetime in report-timezone offset
+                                 "2022-10-03T00:00:00+00:00")))) ; 2022-10-02T23:00:00-01:00
           (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
             (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
-                          (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-01T23:00:00-01:00
-                                 "2022-10-03T00:00:00+00:00"))))) ; 2022-10-02T23:00:00-01:00
+                          (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00+00:00
+                                 "2022-10-03T00:00:00+00:00"))))) ; 2022-10-03T00:00:00+00:00
         (testing "hour under a day"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:second 82800 :minute 1380 :hour 23 :day 1}
