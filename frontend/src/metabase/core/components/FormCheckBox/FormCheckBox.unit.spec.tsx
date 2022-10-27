@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import FormField from "metabase/core/components/FormField";
 import FormCheckBox from "./FormCheckBox";
 
-const TestSchema = Yup.object().shape({
+const TEST_SCHEMA = Yup.object().shape({
   value: Yup.boolean().isTrue("error"),
 });
 
@@ -22,7 +22,7 @@ const TestFormCheckBox = ({
   return (
     <Formik
       initialValues={{ value: initialValue }}
-      validationSchema={TestSchema}
+      validationSchema={TEST_SCHEMA}
       onSubmit={onSubmit}
     >
       <Form>

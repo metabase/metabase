@@ -22,7 +22,6 @@ const FormRadio = forwardRef(function FormRadio<
     <Radio
       {...props}
       ref={ref}
-      id={name}
       name={name}
       value={field.value}
       onChange={helpers.setValue}

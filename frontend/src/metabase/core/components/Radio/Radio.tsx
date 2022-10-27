@@ -90,7 +90,7 @@ const Radio = forwardRef(function Radio<
     <RadioGroup
       {...props}
       role="radiogroup"
-      ref={ref as any}
+      ref={ref}
       variant={variant}
       vertical={vertical}
     >

@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import FormField from "metabase/core/components/FormField";
 import FormInput from "./FormInput";
 
-const TestSchema = Yup.object().shape({
+const TEST_SCHEMA = Yup.object().shape({
   value: Yup.string().required("error"),
 });
 
@@ -19,7 +19,7 @@ const TestFormInput = ({ initialValue = "", onSubmit }: TestFormInputProps) => {
   return (
     <Formik
       initialValues={{ value: initialValue }}
-      validationSchema={TestSchema}
+      validationSchema={TEST_SCHEMA}
       onSubmit={onSubmit}
     >
       <Form>
