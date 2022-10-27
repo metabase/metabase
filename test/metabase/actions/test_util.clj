@@ -70,17 +70,17 @@
   testing FK constraints."
   (ActionsTestDatasetDefinition.))
 
-(defn do-with-actions-test-data
-  "Impl for [[with-actions-test-data]] macro."
-  [thunk]
+(defn do-with-dataset-definition
+  "Impl for [[with-temp-test-data]] and [[with-actions-test-data]] macros."
+  [dataset-definition thunk]
   (let [db (atom nil)]
     (try
-      (mt/dataset actions-test-data
+      (mt/dataset dataset-definition
         (reset! db (mt/db))
         (thunk))
       (finally
         (when-let [{driver :engine, db-id :id} @db]
-          (tx/destroy-db! driver (tx/get-dataset-definition actions-test-data))
+          (tx/destroy-db! driver (tx/get-dataset-definition dataset-definition))
           (db/delete! Database :id db-id))))))
 
 (defmacro with-actions-test-data
@@ -88,7 +88,14 @@
   that gets destroyed at the conclusion of `body`. Use this to test destructive actions that may modify the data."
   {:style/indent 0}
   [& body]
-  `(do-with-actions-test-data (fn [] ~@body)))
+  `(do-with-dataset-definition actions-test-data (fn [] ~@body)))
+
+(defmacro with-temp-test-data
+  "Sets the current dataset to a freshly created dataset-definition that gets destroyed at the conclusion of `body`.
+   Use this to test destructive actions that may modify the data."
+  {:style/indent 0}
+  [dataset-definition & body]
+  `(do-with-dataset-definition (tx/dataset-definition ~(str (gensym)) ~dataset-definition) (fn [] ~@body)))
 
 (deftest with-actions-test-data-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
