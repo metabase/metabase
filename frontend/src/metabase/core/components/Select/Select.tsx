@@ -119,9 +119,8 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       // If a defaultValue is passed, replace a null value with it.
       // Otherwise, allow null values since we sometimes want them.
       Object.prototype.hasOwnProperty.call(props, "defaultValue") &&
-      props.value == null &&
-      props.defaultValue != null
-        ? props.defaultValue
+      props.value == null
+        ? (props.defaultValue as any)
         : props.value;
 
     const _getValues = createSelector([_getValue], value =>
