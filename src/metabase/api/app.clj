@@ -179,7 +179,8 @@
             {}
             ordered_cards)))
 
-(def ^:private page-type-display
+(defn- page-type-display
+  []
   {"model" {:name (i18n/tru "Model")
             :display "table"}
    "list" {:name (i18n/tru "List")
@@ -209,7 +210,7 @@
                                      :field-id)]]
     {:scaffold-target ["card" "table" table-id "model"]
      :name (or (:display_name table) (:name table))
-     :display (get-in page-type-display ["model" :display])
+     :display (get-in (page-type-display) ["model" :display])
      :visualization_settings {}
      :dataset true
      :dataset_query {:type "query"
@@ -252,7 +253,7 @@
           :card-ref ["scaffold-target-id" "card" ident-type table-id "model" "card"]
           :page-name (format "%s %s"
                              (or (:display_name table) (:name table))
-                             (get-in page-type-display [page-type :name]))})
+                             (get-in (page-type-display) [page-type :name]))})
        :models (generate-models table-ids table-id->table)})))
 
 (defn- page-infos-from-model-ids
@@ -302,7 +303,7 @@
          :card-ref (str "card__" model-id)
          :page-name (format "%s %s"
                             (:name model)
-                            (get-in page-type-display [page-type :name]))}))))
+                            (get-in (page-type-display) [page-type :name]))}))))
 
 (defn- generate-scaffold
   [app-name source-table-ids]
@@ -333,7 +334,7 @@
                   (for [{:keys [page-name page-type ident-type page-ident card-ref]} page-infos]
                     {:scaffold-target ["card" ident-type page-ident page-type]
                      :name page-name
-                     :display (get-in page-type-display [page-type :display])
+                     :display (get-in (page-type-display) [page-type :display])
                      :visualization_settings (cond-> {}
                                                (= page-type "list") (assoc "actions.bulk_enabled" false))
                      :dataset_query {:database mbql.s/saved-questions-virtual-database-id,
