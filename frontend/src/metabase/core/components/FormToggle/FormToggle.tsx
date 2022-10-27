@@ -1,4 +1,4 @@
-import React from "react";
+import React, { forwardRef, Ref } from "react";
 import { useField } from "formik";
 import Toggle, { ToggleProps } from "metabase/core/components/Toggle";
 
@@ -7,12 +7,16 @@ export interface FormToggleProps
   name: string;
 }
 
-const FormToggle = ({ name, ...props }: FormToggleProps): JSX.Element => {
+const FormToggle = forwardRef(function FormToggle(
+  { name, ...props }: FormToggleProps,
+  ref: Ref<HTMLInputElement>,
+) {
   const [field, , helpers] = useField(name);
 
   return (
     <Toggle
       {...props}
+      ref={ref}
       id={name}
       name={name}
       value={field.value}
@@ -20,6 +24,6 @@ const FormToggle = ({ name, ...props }: FormToggleProps): JSX.Element => {
       onBlur={field.onBlur}
     />
   );
-};
+});
 
 export default FormToggle;
