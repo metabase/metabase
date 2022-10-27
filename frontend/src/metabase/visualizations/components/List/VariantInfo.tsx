@@ -3,7 +3,7 @@ import React from "react";
 import { isEmpty } from "metabase/lib/validate";
 import { Avatar } from "metabase/components/UserAvatar";
 
-import { isImageURL } from "metabase-lib/lib/types/utils/isa";
+import { isImageURL } from "metabase-lib/types/utils/isa";
 
 import type { ListVariantProps } from "./types";
 import {
