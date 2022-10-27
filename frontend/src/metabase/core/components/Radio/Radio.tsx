@@ -228,5 +228,4 @@ export default Object.assign(Radio, {
     RadioContainerNormal,
     RadioContainerUnderlined,
   ],
-  RadioLabelText,
 });

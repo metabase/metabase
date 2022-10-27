@@ -197,10 +197,10 @@ class ChartSettings extends Component {
       };
     } else if (currentWidget.props?.initialKey) {
       const settings = this._getSettings();
-      const singleSeriesForColumn = series.find(
-        single =>
-          getColumnKey(single.data.cols[1]) === currentWidget.props.initialKey,
-      );
+      const singleSeriesForColumn = series.find(single => {
+        const metricColumn = single.data.cols[1];
+        return getColumnKey(metricColumn) === currentWidget.props.initialKey;
+      });
 
       const isBreakout = settings["graph.dimensions"]?.length > 1;
 
