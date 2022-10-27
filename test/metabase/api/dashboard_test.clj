@@ -37,6 +37,7 @@
             [metabase.models.revision :as revision]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features-test :as premium-features-test]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.streaming.test-util :as streaming.test-util]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
@@ -2353,12 +2354,12 @@
                                                                           Integer/MAX_VALUE)
                                              {}))))
               (testing "Missing parameter should fail gracefully"
-                (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": You'll need to pick a value for 'ID' before this query can run."}
+                (is (partial= {:message "Error executing action."}
                               (mt/user-http-request :crowberto :post 500 execute-path
                                                     {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
 
-                (is (partial= {:message "Error executing Action: Error building query parameter map: Error determining value for parameter \"id\": Unparseable number: \"BAD\""}
+                (is (partial= {:message "Error executing action."}
                               (mt/user-http-request :crowberto :post 500 execute-path
                                                     {:parameters {"id" "BAD"}})))))))))))
 
@@ -2388,13 +2389,13 @@
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"extra" 1}}))))
               (testing "Missing parameter should fail gracefully"
-                (is (partial= {:message "Problem building request: Cannot call the service: missing required parameters: #{\"id\"}"}
+                (is (partial= {:message "Error executing action."}
                               (mt/user-http-request :crowberto :post 500 execute-path
                                                     {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
-                (is (str/starts-with? (:message (mt/user-http-request :crowberto :post 500 execute-path
-                                                                      {:parameters {"id" "BAD"}}))
-                                      "Problem building request:"))))))))))
+                (is (= "Error executing action."
+                       (:message (mt/user-http-request :crowberto :post 500 execute-path
+                                                       {:parameters {"id" "BAD"}}))))))))))))
 
 (deftest dashcard-implicit-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -2467,6 +2468,87 @@
               (is (partial= "Missing primary key parameter: \"id\""
                             (mt/user-http-request :crowberto :post 400 execute-path
                                                   {:parameters {"name" "Birds"}}))))))))))
+
+(defn- custom-action-for-field [field-name]
+  ;; It seems the :type of parameters or template-tag doesn't matter??
+  ;; How to go from base-type (type/Integer) to param type (number)?
+  {:is_write true
+   :parameters [{:id field-name :slug field-name :target ["variable" ["template-tag" field-name]] :type :text}]
+   :dataset_query (mt/native-query
+                    {:query (format "insert into TYPES (%s) values ({{%s}})"
+                                    (str/upper-case field-name)
+                                    field-name)
+                     :template-tags {field-name {:id field-name :name field-name :type :text :display_name field-name}}})})
+
+(deftest dashcard-action-execution-type-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (let [types [{:field-name "text" :base-type :type/Text ::good "hello"}
+                 {:field-name "json" :base-type :type/JSON ::good "{\"a\": 1}"}
+                 {:field-name "xml" :base-type :type/XML ::good "<xml></xml>"}
+                 {:field-name "boolean" :base-type :type/Boolean ::good true ::bad "not boolean"}
+                 {:field-name "integer" :base-type :type/Integer ::good 100}
+                 {:field-name "float" :base-type :type/Float ::good 0.4}
+                 ;; h2 and postgres handle this differently str vs #uuid, in and out
+                 {:field-name "uuid" :base-type :type/UUID #_#_::good (random-uuid)}
+                 ;; These comeback with timezone, date comes back with time
+                 {:field-name "date" :base-type :type/Date #_#_::good "2020-02-02"}
+                 {:field-name "datetime" :base-type :type/DateTime #_#_::good "2020-02-02 14:39:59"}
+                 ;; Difference between h2 and postgres, in and out
+                 {:field-name "datetimetz" :base-type :type/DateTimeWithTZ #_#_::good "2020-02-02 14:39:59-0700" ::bad "not date"}]]
+      (actions.test-util/with-temp-test-data
+        ["types"
+         (map #(dissoc % ::good ::bad) types)
+         [["init"]]]
+        (actions.test-util/with-actions-enabled
+          (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}]
+                          ModelAction [_ {:slug "insert" :card_id card-id}]
+                          Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :card_id card-id
+                                                            :visualization_settings {:action_slug "insert"}}]]
+            (testing "Good data"
+              (doseq [{:keys [field-name] value ::good} (filter ::good types)]
+                (testing (str "Attempting to implicitly insert " field-name)
+                  (mt/user-http-request :crowberto :post 200  (format "dashboard/%s/dashcard/%s/execute/insert" dashboard-id dashcard-id)
+                                        {:parameters {field-name value}})
+                  (let [{{:keys [rows cols]} :data} (qp/process-query
+                                                      (assoc-in (mt/mbql-query types)
+                                                                [:query :order_by] [["asc", ["field", (mt/id :types :id) nil]]]))]
+                    (is (partial= {field-name value}
+                                  (zipmap (map (comp str/lower-case :name) cols)
+                                          (last rows))))))
+                (actions.test-util/with-action [{action-id :action-id} (custom-action-for-field field-name)]
+                  (mt/with-temp* [ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
+                                  DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
+                                                                           :card_id card-id
+                                                                           :visualization_settings {:action_slug "custom"}}]]
+                    (testing (str "Attempting to custom insert " field-name)
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "dashboard/%s/dashcard/%s/execute/custom" dashboard-id custom-dashcard-id)
+                                            {:parameters {field-name value}})
+                      (let [{{:keys [rows cols]} :data} (qp/process-query
+                                                          (assoc-in (mt/mbql-query types)
+                                                                    [:query :order_by] [["asc", ["field", (mt/id :types :id) nil]]]))]
+                        (is (partial= {field-name value}
+                                      (zipmap (map (comp str/lower-case :name) cols)
+                                              (last rows))))))))))
+            (testing "Bad data"
+              (doseq [{:keys [field-name] value ::bad} (filter ::bad types)]
+                (testing (str "Attempting to implicitly insert bad " field-name)
+                  (is (= {:message "Error executing action."}
+                         (mt/user-http-request :crowberto :post 500
+                                               (format "dashboard/%s/dashcard/%s/execute/insert" dashboard-id dashcard-id)
+                                               {:parameters {field-name value}}))))
+                (actions.test-util/with-action [{action-id :action-id} (custom-action-for-field field-name)]
+                  (mt/with-temp* [ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
+                                  DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
+                                                                           :card_id card-id
+                                                                           :visualization_settings {:action_slug "custom"}}]]
+                    (testing (str "Attempting to custom insert bad " field-name)
+                      (is (= {:message "Error executing action."}
+                             (mt/user-http-request :crowberto :post 500
+                                                   (format "dashboard/%s/dashcard/%s/execute/custom" dashboard-id custom-dashcard-id)
+                                                   {:parameters {field-name value}}))))))))))))))
 
 (deftest dashcard-action-execution-auth-test
   (mt/with-temp-copy-of-db
