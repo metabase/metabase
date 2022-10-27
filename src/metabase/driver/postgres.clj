@@ -345,10 +345,12 @@
                                    :integer
                                    (hsql/call
                                     :floor
-                                    (hsql/call
-                                     :/
-                                     (hsql/call :- b a)
-                                     (case unit :hour 3600 :minute 60 :second 1)))))]
+                                    (if (= unit :second)
+                                      (hsql/call :- b a)
+                                      (hsql/call
+                                       :/
+                                       (hsql/call :- b a)
+                                       (case unit :hour 3600 :minute 60))))))]
               (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hsql/call :* -1 (positive-diff ey ex))))
 
             ;; else
