@@ -96,6 +96,20 @@ Some things to remember with bookmarks:
 - Items that you bookmark will get a boost in your search results (but not the search results of other people).
 - To reorder bookmarks, simply drag and drop them in the sidebar.
 
+## Verified items
+
+{% include plans-blockquote.html feature="Verification" %}
+
+Administrators can **Verify** a question by clicking on the **Verify checkmark** in the **Moderation** section of the **Question detail sidebar**. Verifying a question is a simple way for an administrator to signal that they've reviewed the question and deemed it to be trustworthy. That is: the question is filtering the right columns, or summarizing the right metrics, and querying records from the right tables.
+
+Once verified, the question will have a verified icon next to the question's title.
+
+![Verified icon](../images/verified-icon.png)
+
+Verified questions are also more likely to show up higher in search suggestions and search results.
+
+If someone modifies a verified question, the question will lose its verified status, and an administrator will need to review and verify the question again to restore its verified status.
+
 [collections]: ./collections.md
 [dashboards]: ../dashboards/start.md
 [models]: ../data-modeling/models.md
