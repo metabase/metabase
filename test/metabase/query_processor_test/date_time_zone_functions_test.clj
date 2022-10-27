@@ -286,20 +286,20 @@
                               [:week [[#t "2022-10-01 09:18:09" #t "2022-10-04 09:18:09" 0   "under 7 days across week boundary"]
                                       [#t "2022-10-02 09:19:09" #t "2022-10-09 09:18:09" 1   "ignores time"]
                                       [#t "2022-10-02 09:18:09" #t "2023-10-03 09:18:09" 52 "over a year"]]]
-                              [:day [[#t "2022-10-02 08:30:00" #t "2022-10-02T10:30:00" 0   "<24h same day"]
+                              [:day [[#t "2022-10-02 08:30:00" #t "2022-10-02 10:30:00" 0   "<24h same day"]
                                      [#t "2022-10-02 09:19:09" #t "2022-10-03 09:18:09" 1   "<24h consecutive days"]
-                                     [#t "2021-10-02 08:30:00" #t "2022-10-05T10:30:00" 368 "over a year"]]]
+                                     [#t "2021-10-02 08:30:00" #t "2022-10-05 10:30:00" 368 "over a year"]]]
                               [:hour [[#t "2022-10-02 08:30:00" #t "2022-10-02 08:34:00" 0     "minutes"]
                                       [#t "2022-10-02 08:30:00" #t "2022-10-02 09:29:59.999" 0 "millisecond under an hour"]
                                       [#t "2022-10-02 08:30:00" #t "2022-10-05 08:34:00" 72    "hours"]
                                       [#t "2021-10-02 08:30:00" #t "2022-10-02 08:34:00" 8760  "over a year"]]]
                               [:minute [[#t "2022-10-02 08:30:00" #t "2022-10-02 08:30:59.999" 0  "millisecond under a minute"]
                                         [#t "2022-10-02 08:30:00" #t "2022-10-02 08:34:00" 4      "minutes"]
-                                        [#t "2022-10-02 08:30:00" #t "2022-10-02T10:30:00" 120    "hours"]
+                                        [#t "2022-10-02 08:30:00" #t "2022-10-02 10:30:00" 120    "hours"]
                                         [#t "2021-10-02 08:30:00" #t "2022-10-02 08:34:00" 525604 "over a year"]]]
                               [:second [[#t "2022-10-02 08:30:00" #t "2022-10-02 08:30:00.999" 0    "millisecond under a second"]
                                         [#t "2022-10-02 08:30:00" #t "2022-10-02 08:34:00" 240      "minutes"]
-                                        [#t "2022-10-02 08:30:00" #t "2022-10-02T10:30:00" 7200     "hours"]
+                                        [#t "2022-10-02 08:30:00" #t "2022-10-02 10:30:00" 7200     "hours"]
                                         [#t "2021-10-02 08:30:00" #t "2022-10-02 08:34:00" 31536240 "over a year"]]]]
 
                 [x y expected desc] cases]
@@ -339,65 +339,73 @@
             (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
                           (diffs #t "2022-10-02T01:00+01"     ; 2022-10-01T23:00-01
                                  #t "2022-10-03T00:00+00")))) ; 2022-10-03T00:00+00
-          (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
-                        (diffs #t "2022-10-02T01:00+01"     ; 2022-10-02T00:00+00
-                               #t "2022-10-03T00:00+00")))) ; 2022-10-02T23:00-01
+          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+            (is (partial= {:second 86400 :minute 1440 :hour 24 :day 1}
+                          (diffs #t "2022-10-02T01:00+01"      ; 2022-10-02T00:00+00
+                                 #t "2022-10-03T00:00+00"))))) ; 2022-10-02T23:00-01
         (testing "hour under a day"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:second 82800 :minute 1380 :hour 23 :day 1}
                           (diffs #t "2022-10-02T00:00+00"     ; 2022-10-01T23:00-01
                                  #t "2022-10-03T00:00+01")))) ; 2022-10-02T23:00+00
-          (is (partial= {:second 82800 :minute 1380 :hour 23 :day 0}
-                        (diffs #t "2022-10-02T00:00+00"     ; 2022-10-02T00:00+00
-                               #t "2022-10-03T00:00+01")))) ; 2022-10-02T22:00-01
+          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+            (is (partial= {:second 82800 :minute 1380 :hour 23 :day 0}
+                          (diffs #t "2022-10-02T00:00+00"      ; 2022-10-02T00:00+00
+                                 #t "2022-10-03T00:00+01"))))) ; 2022-10-02T22:00-01
         (testing "hour under a week"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:hour 167 :day 7 :week 1}
                           (diffs #t "2022-10-02T00:00+00"     ; 2022-10-01T23:00-01
                                  #t "2022-10-09T00:00+01")))) ; 2022-10-08T23:00+00
-          (is (partial= {:hour 167 :day 6 :week 0}
-                        (diffs #t "2022-10-02T00:00+00"     ; 2022-10-02T00:00+00
-                               #t "2022-10-09T00:00+01")))) ; 2022-10-08T22:00-01
+          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+            (is (partial= {:hour 167 :day 6 :week 0}
+                          (diffs #t "2022-10-02T00:00+00"      ; 2022-10-02T00:00+00
+                                 #t "2022-10-09T00:00+01"))))) ; 2022-10-08T22:00-01
         (testing "week"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:hour 168 :day 7 :week 1}
                           (diffs #t "2022-10-02T01:00+01"      ; 2022-10-01T23:00-01
                                  #t "2022-10-09T00:00+00"))))  ; 2022-10-09T00:00+00
-          (is (partial= {:hour 168 :day 7 :week 1}
-                        (diffs #t "2022-10-02T01:00+01"     ; 2022-10-02T00:00+00
-                               #t "2022-10-09T00:00+00")))) ; 2022-10-08T23:00-01
+          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+            (is (partial= {:hour 168 :day 7 :week 1}
+                          (diffs #t "2022-10-02T01:00+01"      ; 2022-10-02T00:00+00
+                                 #t "2022-10-09T00:00+00"))))) ; 2022-10-08T23:00-01
         (testing "hour under a month"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:hour 743 :day 31 :week 4 :month 1}
                           (diffs #t "2022-10-02T00:00+00"     ; 2022-10-01T23:00-01
                                  #t "2022-11-02T00:00+01")))) ; 2022-11-01T23:00+00
-          (is (partial= {:hour 743 :day 30 :week 4 :month 0}
-                        (diffs #t "2022-10-02T00:00+00"     ; 2022-10-02T00:00+00
-                               #t "2022-11-02T00:00+01")))) ; 2022-11-01T22:00-01
+          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+            (is (partial= {:hour 743 :day 30 :week 4 :month 0}
+                          (diffs #t "2022-10-02T00:00+00"      ; 2022-10-02T00:00+00
+                                 #t "2022-11-02T00:00+01"))))) ; 2022-11-01T22:00-01
         (testing "month"
-          (is (partial= {:hour 744 :day 31 :month 1 :year 0}
-                        (diffs #t "2022-10-02T01:00+01"     ; 2022-10-02T00:00+00
-                               #t "2022-11-02T00:00+00")))  ; 2022-11-02T00:00+00
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:hour 744 :day 31 :month 1 :year 0}
                           (diffs #t "2022-10-02T01:00+01"      ; 2022-10-01T23:00-01
+                                 #t "2022-11-02T00:00+00"))))  ; 2022-11-02T00:00+00
+          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+            (is (partial= {:hour 744 :day 31 :month 1 :year 0}
+                          (diffs #t "2022-10-02T01:00+01"      ; 2022-10-02T00:00+00
                                  #t "2022-11-02T00:00+00"))))) ; 2022-11-01T23:00-01
         (testing "year"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:day 365, :week 52, :month 12, :year 1}
                           (diffs #t "2022-10-02T01:00+01"     ; 2022-10-01T23:00-01
                                  #t "2023-10-02T00:00+00")))) ; 2023-10-02T00:00+00
-          (is (partial= {:day 365, :week 52, :month 12, :year 1}
-                        (diffs #t "2022-10-02T01:00+01"     ; 2022-10-02T00:00+00
-                               #t "2023-10-02T00:00+00")))) ; 2023-10-01T23:00-01
+          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+           (is (partial= {:day 365, :week 52, :month 12, :year 1}
+                         (diffs #t "2022-10-02T01:00+01"      ; 2022-10-02T00:00+00
+                                #t "2023-10-02T00:00+00"))))) ; 2023-10-01T23:00-01
         (testing "hour under a year"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:day 365 :month 12 :year 1}
                           (diffs #t "2022-10-02T00:00+00"     ; 2022-10-01T23:00-01
                                  #t "2023-10-02T00:00+01")))) ; 2023-10-01T23:00+00
-          (is (partial= {:day 364 :month 11 :year 0}
-                        (diffs #t "2022-10-02T00:00+00"         ; 2022-10-02T00:00+00
-                               #t "2023-10-02T00:00+01")))))))) ; 2023-10-01T22:00-01
+          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+            (is (partial= {:day 364 :month 11 :year 0}
+                          (diffs #t "2022-10-02T00:00+00"          ; 2022-10-02T00:00+00
+                                 #t "2023-10-02T00:00+01"))))))))) ; 2023-10-01T22:00-01
 
 (deftest datetimediff-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
