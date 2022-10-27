@@ -52,7 +52,7 @@ describe("FormRadio", () => {
 
     render(<TestFormRadio onSubmit={onSubmit} />);
     userEvent.click(screen.getByRole("radio", { name: "Line" }));
-    userEvent.click(screen.getByRole("button"));
+    userEvent.click(screen.getByText("Submit"));
 
     waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: "line" }));
   });

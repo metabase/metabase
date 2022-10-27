@@ -49,7 +49,7 @@ describe("FormCheckBox", () => {
 
     render(<TestFormCheckBox onSubmit={onSubmit} />);
     userEvent.click(screen.getByRole("checkbox"));
-    userEvent.click(screen.getByRole("button"));
+    userEvent.click(screen.getByText("Submit"));
 
     waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: true }));
   });

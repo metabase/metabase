@@ -49,7 +49,7 @@ describe("FormToggle", () => {
 
     render(<TestFormToggle onSubmit={onSubmit} />);
     userEvent.click(screen.getByRole("switch"));
-    userEvent.click(screen.getByRole("button"));
+    userEvent.click(screen.getByText("Submit"));
 
     waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: true }));
   });

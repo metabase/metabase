@@ -22,7 +22,7 @@ function FormSelect<TValue, TOption = SelectOption<TValue>>({
       name={name}
       value={field.value}
       onChange={field.onChange}
-      buttonProps={{ onBlur: field.onBlur }}
+      buttonProps={{ id: name, onBlur: field.onBlur }}
     />
   );
 }

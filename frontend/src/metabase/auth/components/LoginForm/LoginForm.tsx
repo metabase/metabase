@@ -10,13 +10,13 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { LoginData } from "../../types";
 
-const LdapSchema = Yup.object().shape({
+const LDAP_SCHEMA = Yup.object().shape({
   username: Yup.string().required(t`required`),
   password: Yup.string().required(t`required`),
   remember: Yup.boolean(),
 });
 
-const PasswordSchema = LdapSchema.shape({
+const PASSWORD_SCHEMA = LDAP_SCHEMA.shape({
   username: Yup.string()
     .required(t`required`)
     .email(t`must be a valid email address`),
@@ -43,7 +43,7 @@ const LoginForm = ({
   return (
     <Formik
       initialValues={initialValues}
-      validationSchema={isLdapEnabled ? LdapSchema : PasswordSchema}
+      validationSchema={isLdapEnabled ? LDAP_SCHEMA : PASSWORD_SCHEMA}
       isInitialValid={false}
       onSubmit={handleSubmit}
     >

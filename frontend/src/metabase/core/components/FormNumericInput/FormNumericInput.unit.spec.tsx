@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import FormField from "metabase/core/components/FormField";
 import FormNumericInput from "./FormNumericInput";
 
-const TEST_SCHEMA = Yup.object().shape({
+const TestSchema = Yup.object().shape({
   value: Yup.number().required("error"),
 });
 
@@ -22,7 +22,7 @@ const TestFormNumericInput = ({
   return (
     <Formik
       initialValues={{ value: initialValue }}
-      validationSchema={TEST_SCHEMA}
+      validationSchema={TestSchema}
       onSubmit={onSubmit}
     >
       <Form>
@@ -49,7 +49,7 @@ describe("FormNumericInput", () => {
 
     render(<TestFormNumericInput onSubmit={onSubmit} />);
     userEvent.type(screen.getByRole("textbox"), "10");
-    userEvent.click(screen.getByRole("button"));
+    userEvent.click(screen.getByText("Submit"));
 
     waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: 10 }));
   });

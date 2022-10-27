@@ -46,7 +46,7 @@ describe("FormInput", () => {
 
     render(<TestFormInput onSubmit={onSubmit} />);
     userEvent.type(screen.getByRole("textbox"), "Text");
-    userEvent.click(screen.getByRole("button"));
+    userEvent.click(screen.getByText("Submit"));
 
     waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: "Text" }));
   });
