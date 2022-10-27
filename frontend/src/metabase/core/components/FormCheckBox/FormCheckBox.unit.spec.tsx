@@ -1,28 +1,74 @@
 import React from "react";
-import { Formik, Form } from "formik";
+import { Form, Formik } from "formik";
+import * as Yup from "yup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import FormField from "metabase/core/components/FormField";
 import FormCheckBox from "./FormCheckBox";
 
+const TestSchema = Yup.object().shape({
+  value: Yup.boolean().isTrue("error"),
+});
+
+interface TestFormCheckBoxProps {
+  initialValue?: boolean;
+  onSubmit: () => void;
+}
+
+const TestFormCheckBox = ({
+  initialValue = false,
+  onSubmit,
+}: TestFormCheckBoxProps) => {
+  return (
+    <Formik
+      initialValues={{ value: initialValue }}
+      validationSchema={TestSchema}
+      onSubmit={onSubmit}
+    >
+      <Form>
+        <FormField name="value" title="Label">
+          <FormCheckBox name="value" />
+        </FormField>
+        <button type="submit">Submit</button>
+      </Form>
+    </Formik>
+  );
+};
+
 describe("FormCheckBox", () => {
-  it("should submit the form with the value", () => {
-    const initialValues = { remember: false };
+  it("should use the initial value from the form", () => {
     const onSubmit = jest.fn();
 
-    render(
-      <Formik initialValues={initialValues} onSubmit={onSubmit}>
-        <Form>
-          <FormCheckBox name="remember" />
-          <button type="submit">Submit</button>
-        </Form>
-      </Formik>,
-    );
+    render(<TestFormCheckBox initialValue={true} onSubmit={onSubmit} />);
 
+    expect(screen.getByRole("checkbox")).toBeChecked();
+  });
+
+  it("should propagate the changed value to the form", () => {
+    const onSubmit = jest.fn();
+
+    render(<TestFormCheckBox onSubmit={onSubmit} />);
     userEvent.click(screen.getByRole("checkbox"));
-    userEvent.click(screen.getByText("Submit"));
+    userEvent.click(screen.getByRole("button"));
 
-    waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({ remember: true });
-    });
+    waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: true }));
+  });
+
+  it("should be referenced by the label", () => {
+    const onSubmit = jest.fn();
+
+    render(<TestFormCheckBox onSubmit={onSubmit} />);
+
+    expect(screen.getByLabelText("Label")).toBeInTheDocument();
+  });
+
+  it("should be validated on blur", () => {
+    const onSubmit = jest.fn();
+
+    render(<TestFormCheckBox initialValue={true} onSubmit={onSubmit} />);
+    userEvent.click(screen.getByRole("checkbox"));
+    userEvent.tab();
+
+    waitFor(() => expect(screen.getByText("Label: error")).toBeInTheDocument());
   });
 });
