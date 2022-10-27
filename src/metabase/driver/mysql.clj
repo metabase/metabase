@@ -1,6 +1,7 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
   (:require [clojure.java.jdbc :as jdbc]
+            [metabase.util.date-2 :as u.date]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -349,8 +350,10 @@
 
 (defmethod sql.qp/->honeysql [:mysql :datetimediff]
   [driver [_ x y unit :as clause]]
-  (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)]
+  (let [x (sql.qp/->honeysql driver (cond-> x
+                                      (string? x) u.date/parse))
+        y (sql.qp/->honeysql driver (cond-> y
+                                      (string? y) u.date/parse))]
     (case unit
       (:year :month)
       (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))

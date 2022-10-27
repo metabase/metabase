@@ -348,8 +348,10 @@
 
 (defmethod sql.qp/->honeysql [:postgres :datetimediff]
   [driver [_ x y unit]]
-  (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)]
+  (let [x (sql.qp/->honeysql driver (cond-> x
+                                      (string? x) u.date/parse))
+        y (sql.qp/->honeysql driver (cond-> y
+                                      (string? y) u.date/parse))]
     (datetimediff-helper x y unit)))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
