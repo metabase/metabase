@@ -26,7 +26,7 @@
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs]])
+            [metabase.util.i18n :refer [deferred-tru trs tru]])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
@@ -348,7 +348,7 @@
                           (hx/literal "-01"))))
 
 (defmethod sql.qp/->honeysql [:mysql :datetimediff]
-  [driver [_ x y unit]]
+  [driver [_ x y unit :as clause]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)]
     (case unit
@@ -356,14 +356,19 @@
       (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))
 
       :week
-      (let [positive-diff (fn [a b] (hsql/call :floor (hsql/call :/ (hsql/call :datediff b a) 7)))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hsql/call :* -1 (positive-diff y x))))
+      (let [positive-diff (fn [a b] (hx/floor (hx// (hsql/call :datediff b a) 7)))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :day
       (hsql/call :datediff y x)
 
+      (:hour :minute :second)
+      (hsql/call :timestampdiff (hsql/raw (name unit)) x y)
+
       ;; else
-      (hsql/call :timestampdiff (hsql/raw (name unit)) x y))))
+      (throw (ex-info (tru "Unsupported datetimediff unit {0}" unit)
+                      {:clause          clause
+                       :supported-units [:year :month :week :day :hour :minute :second]})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

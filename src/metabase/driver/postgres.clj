@@ -29,7 +29,7 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [potemkin :as p]
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
@@ -321,16 +321,14 @@
                (hsql/call :date_trunc (hsql/raw "'day'") x))))
 
             :week
-            (hsql/call :/ (helper x y :day) 7)
+            (hx// (helper x y :day) 7)
 
             :month
             (hx/cast
              :integer
-             (hsql/call
-              :+
-              (hsql/call :* 12 (helper x y :year))
-              (hsql/call
-               :date_part
+             (hx/+
+              (hx/* 12 (helper x y :year))
+              (hsql/call :date_part
                (hsql/raw "'month'")
                (hsql/call
                 :age
@@ -343,18 +341,14 @@
                   positive-diff (fn [a b]
                                   (hx/cast
                                    :integer
-                                   (hsql/call
-                                    :floor
+                                   (hx/floor
                                     (if (= unit :second)
-                                      (hsql/call :- b a)
-                                      (hsql/call
-                                       :/
-                                       (hsql/call :- b a)
-                                       (case unit :hour 3600 :minute 60))))))]
-              (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hsql/call :* -1 (positive-diff ey ex))))
+                                      (hx/- b a)
+                                      (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))))]
+              (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))
 
             ;; else
-            (throw (ex-info (trs "Invalid datetimediff unit: {0}" unit)
+            (throw (ex-info (tru "Invalid datetimediff unit: {0}" unit)
                             {:valid-units [:year :month :week :day :hour :minute :second]
                              :bad-unit unit}))))]
     (helper x y unit)))

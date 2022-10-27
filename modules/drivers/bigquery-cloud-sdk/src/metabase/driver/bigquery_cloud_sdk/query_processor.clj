@@ -567,8 +567,7 @@
             y' (truncate (maybe-cast y' (second types)))
             unit'       (hsql/raw (name unit))
             positive-diff (fn [a b] ; precondition: a <= b
-                            (hsql/call
-                             :-
+                            (hx/-
                              (hsql/call :datetime_diff b a unit')
                              (hx/cast
                               :integer
@@ -576,7 +575,7 @@
                                :>
                                (hsql/call :datetime_diff a (hsql/call :date_trunc a unit') (hsql/raw "day"))
                                (hsql/call :datetime_diff b (hsql/call :date_trunc b unit') (hsql/raw "day"))))))]
-        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hsql/call :* -1 (positive-diff y' x'))))
+        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
 
       :week
       (let [maybe-cast (fn [temporal current]
@@ -592,10 +591,9 @@
             positive-diff (fn [a b]
                             (hx/cast
                              :integer
-                             (hsql/call
-                              :floor
-                              (hsql/call :/ (hsql/call :timestamp_diff b a (hsql/raw "day")) 7))))]
-        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hsql/call :* -1 (positive-diff y' x'))))
+                             (hx/floor
+                              (hx// (hsql/call :timestamp_diff b a (hsql/raw "day")) 7))))]
+        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
 
       :day
       (let [maybe-cast (fn [temporal current]
