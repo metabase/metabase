@@ -1,25 +1,28 @@
 import React from "react";
 import { Group } from "@visx/group";
-import { AxisBottom, AxisLeft } from "@visx/axis";
+import { AxisBottom, AxisLeft, AxisScale } from "@visx/axis";
 import { Bar } from "@visx/shape";
-import type { NumberValue, ScaleBand, ScaleLinear } from "d3-scale";
+import type { NumberValue, ScaleBand, ScaleContinuousNumeric } from "d3-scale";
 import { Text } from "@visx/text";
 import { GridColumns } from "@visx/grid";
+import { scaleBand } from "@visx/scale";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
 import { Margin } from "metabase/visualizations/shared/types/layout";
-import { ChartBar } from "../RowChart/utils/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
-import { RowChartTheme } from "../RowChart/types";
+import { RowChartTheme, SeriesData, YValue } from "../RowChart/types";
+import { DATA_LABEL_OFFSET } from "./constants";
+import { getDataLabel } from "./utils/data-labels";
 
 export interface RowChartViewProps {
   width: number;
   height: number;
-  yScale: ScaleBand<string>;
-  xScale: ScaleLinear<number, number, never>;
-  barsSeries: (ChartBar | null)[][];
+  yScale: ScaleBand<YValue>;
+  xScale: ScaleContinuousNumeric<number, number, never>;
+  seriesData: SeriesData<unknown>[];
   labelsFormatter: (value: NumberValue) => string;
-  yTickFormatter: (value: string | number) => string;
+  yTickFormatter: (value: YValue) => string;
   xTickFormatter: (value: NumberValue) => string;
+  xTicks: number[];
   goal: {
     label: string;
     value: number;
@@ -29,10 +32,12 @@ export interface RowChartViewProps {
   margin: Margin;
   innerWidth: number;
   innerHeight: number;
-  xTicks: number[];
-  shouldShowDataLabels?: boolean;
+  labelledSeries?: string[] | null;
   xLabel?: string | null;
   yLabel?: string | null;
+  hasXAxis?: boolean;
+  hasYAxis?: boolean;
+  isStacked?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
   onHover?: (
@@ -47,13 +52,13 @@ export interface RowChartViewProps {
   ) => void;
 }
 
-export const RowChartView = ({
+const RowChartView = ({
   width,
   height,
   innerHeight,
   xScale,
   yScale,
-  barsSeries,
+  seriesData,
   goal,
   theme,
   margin,
@@ -61,9 +66,12 @@ export const RowChartView = ({
   yTickFormatter,
   xTickFormatter,
   xTicks,
-  shouldShowDataLabels,
+  labelledSeries,
   yLabel,
   xLabel,
+  hasXAxis = true,
+  hasYAxis = true,
+  isStacked,
   style,
   hoveredData,
   onHover,
@@ -89,52 +97,82 @@ export const RowChartView = ({
     onClick?.(event, seriesIndex, datumIndex);
   };
 
+  const innerBarScale = isStacked
+    ? null
+    : scaleBand({
+        domain: seriesData.map((_, index) => index),
+        range: [0, yScale.bandwidth()],
+      });
+
   const goalLineX = xScale(goal?.value ?? 0);
 
   return (
     <svg width={width} height={height} style={style}>
       <Group top={margin.top} left={margin.left}>
         <GridColumns
-          scale={xScale}
+          scale={xScale as AxisScale<number>}
           height={innerHeight}
           stroke={theme.grid.color}
           tickValues={xTicks}
         />
 
-        {barsSeries.map((series, seriesIndex) => {
-          return series.map((bar, datumIndex) => {
-            if (bar == null) {
+        {seriesData.map((series, seriesIndex) => {
+          return series.bars.map(bar => {
+            const { xStartValue, xEndValue, isNegative, yValue, datumIndex } =
+              bar;
+
+            let y = yScale(yValue);
+
+            if (y == null) {
               return null;
             }
 
-            const { x, y, width, height, value, color } = bar;
+            y += innerBarScale?.(seriesIndex) ?? 0;
+
+            const x = xScale(xStartValue);
+            const width = Math.abs(xScale(xEndValue) - x);
 
             const hasSeriesHover = hoveredData != null;
             const isSeriesHovered = hoveredData?.seriesIndex === seriesIndex;
             const isDatumHovered = hoveredData?.datumIndex === datumIndex;
 
             const shouldHighlightBar =
-              barsSeries.length === 1 && isDatumHovered;
+              seriesData.length === 1 && isDatumHovered;
             const shouldHighlightSeries =
-              barsSeries.length > 1 && isSeriesHovered;
+              seriesData.length > 1 && isSeriesHovered;
 
             const opacity =
               !hasSeriesHover || shouldHighlightSeries || shouldHighlightBar
                 ? 1
                 : 0.4;
 
-            const isLabelVisible = shouldShowDataLabels && value != null;
+            const label = getDataLabel(
+              bar,
+              xScale,
+              series.key,
+              isStacked,
+              labelledSeries,
+            );
+
+            const height = innerBarScale?.bandwidth() ?? yScale.bandwidth();
+            const value = isNegative ? xStartValue : xEndValue;
+            const barKey = `${seriesIndex}:${datumIndex}`;
+            const ariaLabelledBy = `bar-${barKey}-value`;
 
             return (
-              <>
+              <React.Fragment key={barKey}>
                 <Bar
+                  aria-label={String(value)}
+                  role="graphics-symbol"
+                  aria-roledescription="bar"
+                  aria-labelledby={label != null ? ariaLabelledBy : undefined}
                   style={{ transition: "opacity 300ms", cursor: "pointer" }}
-                  key={`${seriesIndex}:${datumIndex}`}
+                  key={barKey}
                   x={x}
                   y={y}
                   width={width}
                   height={height}
-                  fill={color}
+                  fill={series.color}
                   opacity={opacity}
                   onClick={event => handleClick(event, seriesIndex, datumIndex)}
                   onMouseEnter={event =>
@@ -142,20 +180,23 @@ export const RowChartView = ({
                   }
                   onMouseLeave={handleBarMouseLeave}
                 />
-                {isLabelVisible && (
+                {label != null && (
                   <Text
+                    data-testid="data-label"
+                    id={ariaLabelledBy}
+                    textAnchor={isNegative ? "end" : "start"}
                     fontSize={theme.dataLabels.size}
                     fill={theme.dataLabels.color}
                     fontWeight={theme.dataLabels.weight}
-                    dx="0.33em"
-                    x={x + width}
+                    dx={(isNegative ? "-" : "") + DATA_LABEL_OFFSET}
+                    x={xScale(value)}
                     y={y + height / 2}
                     verticalAnchor="middle"
                   >
                     {labelsFormatter(value)}
                   </Text>
                 )}
-              </>
+              </React.Fragment>
             );
           });
         })}
@@ -181,7 +222,9 @@ export const RowChartView = ({
           }}
           labelOffset={margin.left - theme.axis.label.size}
           tickFormat={yTickFormatter}
+          hideAxisLine={!hasYAxis}
           hideTicks
+          tickValues={hasYAxis ? undefined : []}
           numTicks={Infinity}
           scale={yScale}
           stroke={theme.axis.color}
@@ -200,14 +243,15 @@ export const RowChartView = ({
             fill: theme.axis.label.color,
             fontSize: theme.axis.label.size,
             fontWeight: theme.axis.label.weight,
-            verticalAnchor: "end",
             textAnchor: "middle",
+            dy: hasXAxis ? undefined : "-1em",
           }}
+          hideAxisLine={!hasXAxis}
           hideTicks
-          tickValues={xTicks}
+          tickValues={hasXAxis ? xTicks : []}
           tickFormat={xTickFormatter}
           top={innerHeight}
-          scale={xScale}
+          scale={xScale as AxisScale<number>}
           stroke={theme.axis.color}
           tickStroke={theme.axis.color}
           tickLabelProps={() => ({
@@ -221,3 +265,5 @@ export const RowChartView = ({
     </svg>
   );
 };
+
+export default RowChartView;
