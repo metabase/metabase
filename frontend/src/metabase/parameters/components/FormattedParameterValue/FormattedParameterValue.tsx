@@ -5,8 +5,8 @@ import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/Pa
 import {
   UiParameter,
   FieldFilterUiParameter,
-} from "metabase-lib/lib/parameters/types";
-import { isDateParameter } from "metabase-lib/lib/parameters/utils/parameter-type";
+} from "metabase-lib/parameters/types";
+import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
 type FormattedParameterValueProps = {
   parameter: UiParameter;

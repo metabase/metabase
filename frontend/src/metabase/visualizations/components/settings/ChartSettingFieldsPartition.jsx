@@ -8,7 +8,7 @@ import { splice } from "icepick";
 
 import Label from "metabase/components/type/Label";
 
-import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import {
   DroppableContainer,
   FieldPartitionColumn,

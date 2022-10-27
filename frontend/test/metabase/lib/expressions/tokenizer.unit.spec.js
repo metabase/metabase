@@ -2,9 +2,9 @@ import {
   tokenize,
   TOKEN as T,
   OPERATOR as OP,
-} from "metabase-lib/lib/expressions/tokenizer";
+} from "metabase-lib/expressions/tokenizer";
 
-describe("metabase-lib/lib/expressions/tokenizer", () => {
+describe("metabase-lib/expressions/tokenizer", () => {
   const types = expr => tokenize(expr).tokens.map(t => t.type);
   const ops = expr => tokenize(expr).tokens.map(t => t.op);
   const values = expr => tokenize(expr).tokens.map(t => t.value);

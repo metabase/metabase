@@ -28,7 +28,7 @@ import {
   isMetric,
   isNumeric,
   isAny,
-} from "metabase-lib/lib/types/utils/isa";
+} from "metabase-lib/types/utils/isa";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
 const HISTOGRAM_DATE_EXTRACTS = new Set([
@@ -83,14 +83,11 @@ function getDefaultLineAreaBarColumns(series) {
 
 export const GRAPH_DATA_SETTINGS = {
   ...columnSettings({
-    getColumns: (
-      [
-        {
-          data: { cols },
-        },
-      ],
-      settings,
-    ) => cols,
+    getColumns: ([
+      {
+        data: { cols },
+      },
+    ]) => cols,
     hidden: true,
   }),
   "graph._dimension_filter": {
@@ -348,31 +345,7 @@ export const STACKABLE_SETTINGS = {
   },
 };
 
-export const GRAPH_GOAL_SETTINGS = {
-  "graph.show_goal": {
-    section: t`Display`,
-    title: t`Goal line`,
-    widget: "toggle",
-    default: false,
-    inline: true,
-    marginBottom: "1rem",
-  },
-  "graph.goal_value": {
-    section: t`Display`,
-    title: t`Goal value`,
-    widget: "number",
-    default: 0,
-    getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
-    readDependencies: ["graph.show_goal"],
-  },
-  "graph.goal_label": {
-    section: t`Display`,
-    title: t`Goal label`,
-    widget: "input",
-    default: t`Goal`,
-    getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
-    readDependencies: ["graph.show_goal"],
-  },
+export const GRAPH_TREND_SETTINGS = {
   "graph.show_trendline": {
     section: t`Display`,
     title: t`Trend line`,
@@ -588,28 +561,6 @@ export const GRAPH_AXIS_SETTINGS = {
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
-  /*
-  "graph.y_axis_right.auto_range": {
-      section: t`Axes`,
-      title: t`Auto right-hand y-axis range`,
-      widget: "toggle",
-      default: true
-  },
-  "graph.y_axis_right.min": {
-      section: t`Axes`,
-      title: t`Min`,
-      widget: "number",
-      default: 0,
-      getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
-  },
-  "graph.y_axis_right.max": {
-      section: t`Axes`,
-      title: t`Max`,
-      widget: "number",
-      default: 100,
-      getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
-  },
-*/
   "graph.y_axis.auto_split": {
     section: t`Axes`,
     group: t`Y-axis`,

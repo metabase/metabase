@@ -7,9 +7,9 @@ import { formatNumber } from "metabase/lib/formatting";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
-import { HARD_ROW_LIMIT } from "metabase-lib/lib/queries/utils";
+import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 const QuestionRowCount = ({
   question,

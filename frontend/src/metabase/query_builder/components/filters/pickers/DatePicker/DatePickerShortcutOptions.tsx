@@ -11,9 +11,9 @@ import {
   getTodayDateFilter,
   getYesterdayDateFilter,
   getLastWeekDateFilter,
-} from "metabase-lib/lib/queries/utils/date-filters";
+} from "metabase-lib/queries/utils/date-filters";
 
-import type Filter from "metabase-lib/lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 
 type Option = {
   displayName: string;

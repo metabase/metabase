@@ -10,7 +10,7 @@ import NativeQuery, {
   recognizeTemplateTags,
   cardIdFromTagName,
   updateCardTemplateTagNames,
-} from "metabase-lib/lib/queries/NativeQuery";
+} from "metabase-lib/queries/NativeQuery";
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
   return {

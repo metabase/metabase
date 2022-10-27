@@ -10,12 +10,12 @@ import {
   Footer,
   UpdateButton,
 } from "metabase/parameters/components/widgets/Widget.styled";
-import { deriveFieldOperatorFromParameter } from "metabase-lib/lib/parameters/utils/operators";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import {
   getFilterArgumentFormatOptions,
   isEqualsOperator,
   isFuzzyOperator,
-} from "metabase-lib/lib/operators/utils";
+} from "metabase-lib/operators/utils";
 
 import { normalizeValue } from "./normalizeValue";
 

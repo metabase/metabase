@@ -27,7 +27,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
-} from "metabase-lib/lib/metadata/utils/saved-questions";
+} from "metabase-lib/metadata/utils/saved-questions";
 
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>

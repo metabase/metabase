@@ -6,7 +6,7 @@ import {
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 const NUMBER_AND_DATE_FILTERS = ["<", ">", "=", "!="];
 const OTHER_FILTERS = ["=", "!="];

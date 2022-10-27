@@ -1,17 +1,17 @@
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionCard } from "metabase/writeback/utils";
-import Question from "metabase-lib/lib/Question";
-import { ExpressionDimension } from "metabase-lib/lib/Dimension";
+import Question from "metabase-lib/Question";
+import { ExpressionDimension } from "metabase-lib/Dimension";
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
   variableFilterForParameter,
-} from "metabase-lib/lib/parameters/utils/filters";
+} from "metabase-lib/parameters/utils/filters";
 import {
   buildDimensionTarget,
   buildTemplateTagVariableTarget,
   buildTextTagTarget,
-} from "metabase-lib/lib/parameters/utils/targets";
+} from "metabase-lib/parameters/utils/targets";
 
 function buildStructuredQuerySectionOptions(section) {
   return section.items.map(({ dimension }) => ({

@@ -31,7 +31,7 @@ import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
 import Questions from "metabase/entities/questions";
-import { CARD_TAG_REGEX } from "metabase-lib/lib/queries/NativeQuery";
+import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";

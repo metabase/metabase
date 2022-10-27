@@ -1,5 +1,5 @@
 import { ORDERS, SAMPLE_DATABASE } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 const TEST_EXPRESSION = ["+", 1, 1];
 const TEST_EXPRESSION_2 = ["+", 2, 2];
