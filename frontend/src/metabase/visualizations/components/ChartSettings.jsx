@@ -25,7 +25,7 @@ import {
 
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getSettingDefintionsForColumn } from "metabase/visualizations/lib/settings/column";
-import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
