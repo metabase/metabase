@@ -25,6 +25,15 @@ export const Footer = styled(TableFooter)`
   margin-top: 0.5rem;
 `;
 
+export const ListHeader = styled.div`
+  display: flex;
+  padding: 0.5rem 1.5rem;
+  font-weight: bold;
+  font-size: 0.75rem;
+  justify-content: space-between;
+  color: ${color("text-medium")};
+`;
+
 export const ListBody = styled.ul`
   box-shadow: 0px 1px 10px ${color("shadow")};
   border-radius: ${LIST_ITEM_BORDER_RADIUS};
