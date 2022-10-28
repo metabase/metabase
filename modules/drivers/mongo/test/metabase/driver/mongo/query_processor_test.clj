@@ -356,7 +356,7 @@
       (when (driver/database-supports? :mongo :date-arithmetics (mt/db))
         (testing "date arithmetic with datetime columns"
           (let [[col-type field-id] [:datetime (mt/id :times :dt)]]
-            (doseq [op               [:date-add :date-subtract]
+            (doseq [op               [:datetime-add :datetime-subtract]
                     unit             [:year :quarter :month :day :hour :minute :second :millisecond]
                     {:keys [expected query]}
                     [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
@@ -378,7 +378,7 @@
 
         (testing "date arithmetic with date columns"
           (let [[col-type field-id] [:date (mt/id :times :d)]]
-            (doseq [op               [:date-add :date-subtract]
+            (doseq [op               [:datetime-add :datetime-subtract]
                     unit             [:year :quarter :month :day]
                     {:keys [expected query]}
                     [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type)
