@@ -224,39 +224,38 @@ class ItemPicker extends React.Component {
         <div style={style} className={cx(className, "scroll-y")}>
           {this.renderHeader()}
           <ItemPickerList data-testid="item-picker-list">
-            {!searchString
-              ? allCollections.map(collection => {
-                  const hasChildren =
-                    (collection.children &&
-                      collection.children.length > 0 &&
-                      // exclude root since we show root's subcollections alongside it
-                      !isRootCollection(collection)) ||
-                    // non-collection models are loaded on-demand so we don't know ahead of time
-                    // if they have children, so we have to assume they do
-                    modelsIncludeNonCollections;
-                  // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
-                  const canSelect =
-                    models.has("collection") && collection.can_write;
+            {!searchString &&
+              allCollections.map(collection => {
+                const hasChildren =
+                  (collection.children &&
+                    collection.children.length > 0 &&
+                    // exclude root since we show root's subcollections alongside it
+                    !isRootCollection(collection)) ||
+                  // non-collection models are loaded on-demand so we don't know ahead of time
+                  // if they have children, so we have to assume they do
+                  modelsIncludeNonCollections;
+                // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
+                const canSelect =
+                  models.has("collection") && collection.can_write;
 
-                  const icon = getCollectionIcon(collection);
+                const icon = getCollectionIcon(collection);
 
-                  // only show if collection can be selected or has children
-                  return canSelect || hasChildren ? (
-                    <Item
-                      key={`collection-${collection.id}`}
-                      item={collection}
-                      name={collection.name}
-                      color={color(icon.color) || getCollectionIconColor()}
-                      icon={icon}
-                      selected={canSelect && isSelected(collection)}
-                      canSelect={canSelect}
-                      hasChildren={hasChildren}
-                      onChange={this.handleCollectionSelected}
-                      onChangeParentId={this.handleCollectionOpen}
-                    />
-                  ) : null;
-                })
-              : null}
+                // only show if collection can be selected or has children
+                return canSelect || hasChildren ? (
+                  <Item
+                    key={`collection-${collection.id}`}
+                    item={collection}
+                    name={collection.name}
+                    color={color(icon.color) || getCollectionIconColor()}
+                    icon={icon}
+                    selected={canSelect && isSelected(collection)}
+                    canSelect={canSelect}
+                    hasChildren={hasChildren}
+                    onChange={this.handleCollectionSelected}
+                    onChangeParentId={this.handleCollectionOpen}
+                  />
+                ) : null;
+              })}
             {(modelsIncludeNonCollections || searchString) && (
               <EntityListLoader
                 entityType="search"
