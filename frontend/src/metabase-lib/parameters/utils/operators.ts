@@ -1,5 +1,4 @@
 import { Parameter } from "metabase-types/types/Parameter";
-
 import {
   doesOperatorExist,
   getOperatorByTypeAndName,
@@ -10,6 +9,7 @@ import {
   getParameterSubType,
 } from "metabase-lib/parameters/utils/parameter-type";
 import { PARAMETER_OPERATOR_TYPES } from "metabase-lib/parameters/constants";
+import { getIsMultiSelect } from "../../../metabase/parameters/utils/dashboards";
 
 type OperatorType = "date" | "number" | "string";
 
@@ -36,8 +36,13 @@ export function deriveFieldOperatorFromParameter(parameter: Parameter) {
   const subtype = getParameterSubType(parameter);
   const operatorType = getParameterOperatorType(type);
   const operatorName = getParameterOperatorName(subtype);
-
-  return getOperatorByTypeAndName(operatorType, operatorName);
+  const operator = getOperatorByTypeAndName(operatorType, operatorName);
+  return (
+    operator && {
+      ...operator,
+      multi: operator.multi && getIsMultiSelect(parameter),
+    }
+  );
 }
 
 function getParameterOperatorType(parameterType?: string) {

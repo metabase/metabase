@@ -66,14 +66,8 @@ export function setParameterName(
   };
 }
 
-export function setParameterDefaultValue(
-  parameter: Parameter,
-  value: any,
-): Parameter {
-  return {
-    ...parameter,
-    default: value,
-  };
+export function getIsMultiSelect(parameter: Parameter): boolean {
+  return parameter.isMultiSelect == null ? true : parameter.isMultiSelect;
 }
 
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {

@@ -1,7 +1,6 @@
 import {
   createParameter,
   setParameterName,
-  setParameterDefaultValue,
   hasMapping,
   isDashboardParameterWithoutMapping,
   getParametersMappedToDashcard,
@@ -96,15 +95,6 @@ describe("metabase/parameters/utils/dashboards", () => {
       expect(setParameterName({}, "")).toEqual({
         name: "unnamed",
         slug: "unnamed",
-      });
-    });
-  });
-
-  describe("setParameterDefaultValue", () => {
-    it("should set a `default` property on a parameter", () => {
-      expect(setParameterDefaultValue({ foo: "bar" }, 123)).toEqual({
-        foo: "bar",
-        default: 123,
       });
     });
   });
