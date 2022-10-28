@@ -46,9 +46,12 @@ export function seriesSetting({
           { value: "bar", icon: "bar" },
         ],
       },
-      getHidden: (single, settings, { series }) =>
-        ["line", "area", "bar", "combo"].includes(single.card.display) &&
-        settings["stackable.stack_type"] != null,
+      getHidden: (single, settings, { series }) => {
+        return (
+          !["line", "area", "bar", "combo"].includes(single.card.display) ||
+          settings["stackable.stack_type"] != null
+        );
+      },
 
       getDefault: (single, settings, { series }) => {
         if (single.card.display === "combo") {
@@ -125,7 +128,7 @@ export function seriesSetting({
       title: t`Y-axis position`,
       widget: "segmentedControl",
       default: null,
-      getHidden: (single, settings) => settings["display"] === "row",
+      getHidden: (single, settings) => single.card.display === "row",
       props: {
         options: [
           { name: t`Auto`, value: null },

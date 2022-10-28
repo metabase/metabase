@@ -1,4 +1,9 @@
-import { restore, withDatabase, popover } from "__support__/e2e/helpers";
+import {
+  restore,
+  withDatabase,
+  popover,
+  openSeriesSettings,
+} from "__support__/e2e/helpers";
 
 const externalDatabaseId = 2;
 
@@ -26,6 +31,8 @@ describe("issue 16170", { tags: "@external" }, () => {
   ["Zero", "Nothing"].forEach(replacementValue => {
     it(`replace missing values with "${replacementValue}" should work on Mongo (metabase#16170)`, () => {
       cy.findByTestId("viz-settings-button").click();
+
+      openSeriesSettings("Count");
 
       replaceMissingValuesWith(replacementValue);
 

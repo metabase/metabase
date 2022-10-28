@@ -1,6 +1,6 @@
 import React from "react";
-import { ChartSettingInputBlurChange } from "./ChartSettingInput.styled";
 import _ from "underscore";
+import { ChartSettingInputBlurChange } from "./ChartSettingInput.styled";
 
 interface ChartSettingInputProps {
   value: string;

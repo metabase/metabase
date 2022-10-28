@@ -187,7 +187,7 @@ class ChartSettings extends Component {
       return null;
     }
 
-    if (currentWidget.props?.seriesKey) {
+    if (currentWidget.props?.seriesKey !== undefined) {
       return {
         ...seriesSettingsWidget,
         props: {
@@ -202,7 +202,7 @@ class ChartSettings extends Component {
         return getColumnKey(metricColumn) === currentWidget.props.initialKey;
       });
 
-      const isBreakout = settings["graph.dimensions"]?.length > 1;
+      const isBreakout = settings?.["graph.dimensions"]?.length > 1;
 
       if (singleSeriesForColumn && !isBreakout) {
         return {
