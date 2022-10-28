@@ -1,14 +1,9 @@
-import React, {
-  forwardRef,
-  Ref,
-  useEffect,
-  useLayoutEffect,
-  useState,
-} from "react";
+import React, { forwardRef, Ref } from "react";
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 import Button, { ButtonProps } from "metabase/core/components/Button";
-import useFormState, { FormStatus } from "metabase/core/hooks/use-form-state";
+import { FormStatus } from "metabase/core/hooks/use-form-state";
+import useFormStatus from "metabase/core/hooks/use-form-status";
 
 export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   normalText?: string;
@@ -40,36 +35,6 @@ const FormSubmitButton = forwardRef(function FormSubmitButton(
     </Button>
   );
 });
-
-const STATUS_TIMEOUT = 5000;
-
-const useFormStatus = (): FormStatus | undefined => {
-  const { status } = useFormState();
-  const isRecent = useIsRecent(status, STATUS_TIMEOUT);
-
-  switch (status) {
-    case "pending":
-      return status;
-    case "fulfilled":
-    case "rejected":
-      return isRecent ? status : undefined;
-  }
-};
-
-const useIsRecent = (value: unknown, timeout: number) => {
-  const [isRecent, setIsRecent] = useState(true);
-
-  useEffect(() => {
-    const timerId = setTimeout(() => setIsRecent(false), timeout);
-    return () => clearTimeout(timerId);
-  }, [value, timeout]);
-
-  useLayoutEffect(() => {
-    setIsRecent(true);
-  }, [value]);
-
-  return isRecent;
-};
 
 const getSubmitButtonText = (
   status: FormStatus | undefined,

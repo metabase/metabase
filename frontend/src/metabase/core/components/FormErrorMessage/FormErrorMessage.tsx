@@ -1,12 +1,5 @@
-import React, {
-  forwardRef,
-  HTMLAttributes,
-  Ref,
-  useLayoutEffect,
-  useState,
-} from "react";
-import { useFormikContext } from "formik";
-import useFormState from "metabase/core/hooks/use-form-state";
+import React, { forwardRef, HTMLAttributes, Ref } from "react";
+import useFormErrorMessage from "metabase/core/hooks/use-form-error-message";
 import { ErrorMessageRoot } from "./FormErrorMessage.styled";
 
 export type FormErrorMessageProps = Omit<
@@ -29,25 +22,5 @@ const FormErrorMessage = forwardRef(function FormErrorMessage(
     </ErrorMessageRoot>
   );
 });
-
-const useFormErrorMessage = () => {
-  const { dirty } = useFormikContext();
-  const { status, message } = useFormState();
-  const [errorMessage, setErrorMessage] = useState(message);
-
-  useLayoutEffect(() => {
-    if (dirty) {
-      setErrorMessage(undefined);
-    }
-  }, [dirty]);
-
-  useLayoutEffect(() => {
-    if (status === "rejected") {
-      setErrorMessage(message);
-    }
-  }, [status, message]);
-
-  return errorMessage;
-};
 
 export default FormErrorMessage;
