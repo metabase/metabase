@@ -1,32 +1,56 @@
 import React, { forwardRef, Key, Ref } from "react";
 import { useField } from "formik";
 import Radio, { RadioOption, RadioProps } from "metabase/core/components/Radio";
+import FormField, {
+  FieldAttributes,
+  FieldProps,
+} from "metabase/core/components/FormField";
 
-export interface FormRadioProps<
+export type FormRadioProps<
   TValue extends Key,
   TOption = RadioOption<TValue>,
-> extends Omit<RadioProps<TValue, TOption>, "value" | "onChange" | "onBlur"> {
-  name: string;
-}
+> = FieldAttributes &
+  FieldProps &
+  Omit<RadioProps<TValue, TOption>, "value" | "error" | "onChange" | "onBlur">;
 
 const FormRadio = forwardRef(function FormRadio<
   TValue extends Key,
   TOption = RadioOption<TValue>,
 >(
-  { name, ...props }: FormRadioProps<TValue, TOption>,
+  {
+    name,
+    validate,
+    className,
+    style,
+    title,
+    description,
+    alignment,
+    orientation,
+    ...props
+  }: FormRadioProps<TValue, TOption>,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [{ value, onBlur }, , { setValue }] = useField(name);
+  const [field, meta, helpers] = useField({ name, validate });
 
   return (
-    <Radio
-      {...props}
+    <FormField
       ref={ref}
-      name={name}
-      value={value}
-      onChange={setValue}
-      onBlur={onBlur}
-    />
+      className={className}
+      style={style}
+      title={title}
+      description={description}
+      alignment={alignment}
+      orientation={orientation}
+      error={meta.touched ? meta.error : undefined}
+    >
+      <Radio
+        {...props}
+        name={name}
+        value={field.value}
+        onChange={helpers.setValue}
+        onBlur={field.onBlur}
+      />
+    </FormField>
   );
 });
 

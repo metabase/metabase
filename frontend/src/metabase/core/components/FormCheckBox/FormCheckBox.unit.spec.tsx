@@ -49,7 +49,8 @@ describe("FormCheckBox", () => {
     userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({ value: true }, expect.anything());
+      const values = { value: true };
+      expect(onSubmit).toHaveBeenCalledWith(values, expect.anything());
     });
   });
 

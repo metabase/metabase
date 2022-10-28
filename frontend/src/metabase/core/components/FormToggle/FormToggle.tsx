@@ -1,28 +1,54 @@
 import React, { forwardRef, Ref } from "react";
 import { useField } from "formik";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Toggle, { ToggleProps } from "metabase/core/components/Toggle";
+import FormField, {
+  FieldAttributes,
+  FieldProps,
+} from "metabase/core/components/FormField";
 
-export interface FormToggleProps
-  extends Omit<ToggleProps, "value" | "onChange" | "onBlur"> {
-  name: string;
-}
+export type FormToggleProps = FieldAttributes &
+  FieldProps &
+  Omit<ToggleProps, "value" | "onChange" | "onBlur">;
 
 const FormToggle = forwardRef(function FormToggle(
-  { name, ...props }: FormToggleProps,
-  ref: Ref<HTMLInputElement>,
+  {
+    name,
+    validate,
+    className,
+    style,
+    title,
+    description,
+    alignment,
+    orientation,
+    ...props
+  }: FormToggleProps,
+  ref: Ref<HTMLDivElement>,
 ) {
-  const [{ value, onBlur }, , { setValue }] = useField(name);
+  const id = useUniqueId();
+  const [field, meta] = useField({ name, validate });
 
   return (
-    <Toggle
-      {...props}
+    <FormField
       ref={ref}
-      id={name}
-      name={name}
-      value={value}
-      onChange={setValue}
-      onBlur={onBlur}
-    />
+      className={className}
+      style={style}
+      title={title}
+      description={description}
+      alignment={alignment}
+      orientation={orientation}
+      htmlFor={id}
+      error={meta.touched ? meta.error : undefined}
+    >
+      <Toggle
+        {...props}
+        id={id}
+        name={name}
+        value={field.value}
+        onChange={field.onChange}
+        onBlur={field.onBlur}
+      />
+    </FormField>
   );
 });
 

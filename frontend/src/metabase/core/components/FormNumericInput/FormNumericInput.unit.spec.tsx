@@ -49,7 +49,8 @@ describe("FormNumericInput", () => {
     userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({ value: 10 }, expect.anything());
+      const values = { value: 10 };
+      expect(onSubmit).toHaveBeenCalledWith(values, expect.anything());
     });
   });
 
