@@ -3,13 +3,9 @@
     [cheshire.core :as json]
     [clojure.test :refer [deftest is testing]]
     [medley.core :as m]
-    [metabase.models :refer [App
-                             Card
-                             Collection
-                             Dashboard
-                             DashboardCard
-                             ModelAction
-                             Permissions]]
+    [metabase.actions.test-util :as actions.test-util]
+    [metabase.models :refer [App Card Collection Dashboard DashboardCard
+                             ModelAction Permissions]]
     [metabase.models.collection.graph :as graph]
     [metabase.models.permissions :as perms]
     [metabase.models.permissions-group :as perms-group]
@@ -298,6 +294,44 @@
                 :crowberto :post 400 "app/scaffold"
                 {:table-ids [(data/id :venues) (data/id :venues) Integer/MAX_VALUE]
                  :app-name (str "My test app " (gensym))})))))))
+
+(deftest scaffold-app-from-model-test
+  (mt/with-model-cleanup [Card Dashboard Collection Permissions]
+    (mt/with-all-users-permission (perms/app-root-collection-permission :read)
+      (testing "Golden path"
+        (actions.test-util/with-action [{action1-id :action-id} {}]
+          (actions.test-util/with-action [{action2-id :action-id} {}]
+            (mt/with-temp* [Card [{card-id :id card-name :name} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                            ModelAction [_ {:card_id card-id :slug "insert"}]
+                            ModelAction [_ {:card_id card-id :slug "update" :requires_pk true}]
+                            ModelAction [_ {:card_id card-id :slug "delete" :requires_pk true}]
+                            ModelAction [_ {:card_id card-id :slug "list-action" :requires_pk false :action_id action1-id}]
+                            ModelAction [_ {:card_id card-id :slug "detail-action" :requires_pk true :action_id action2-id}]]
+              (let [app (mt/user-http-request
+                          :crowberto :post 200 "app/scaffold"
+                          {:table-ids [(str "card__" card-id)]
+                           :app-name "My test app"})
+                    pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
+                    list-page (get pages (str card-name " List"))
+                    detail-page (get pages (str card-name " Detail"))]
+                (is (partial= {:nav_items [{:page_id (:id list-page)}
+                                           {:page_id (:id detail-page) :hidden true :indent 1}]
+                               :dashboard_id (:id list-page)}
+                              app))
+                (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                         {:type "link",
+                                                                          :linkType "page",
+                                                                          :targetId (:id detail-page)}}}
+                                               {:visualization_settings {:action_slug "insert"}}
+                                               {:visualization_settings {:action_slug "list-action"}}]}
+                              list-page))
+                (is (partial= {:ordered_cards [{:parameter_mappings
+                                                [{:target [:dimension [:field (mt/id :categories :id) nil]]}]}
+                                               {}
+                                               {:visualization_settings {:action_slug "update"}}
+                                               {:visualization_settings {:action_slug "delete"}}
+                                               {:visualization_settings {:action_slug "detail-action"}}]}
+                              detail-page))))))))))
 
 (deftest scaffold-app-test
   (mt/with-model-cleanup [Card Dashboard]
