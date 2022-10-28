@@ -98,6 +98,25 @@ class ItemPicker extends React.Component {
     this.setState({ parentId: collectionId });
   };
 
+  getSearchQuery = () => {
+    const { searchString, parentId } = this.state;
+    const models = new Set(this.props.models);
+
+    const query = {};
+
+    if (searchString) {
+      query.q = searchString;
+    } else {
+      query.collection = parentId;
+    }
+
+    if (models.size === 1) {
+      query.models = Array.from(models);
+    }
+
+    return query;
+  };
+
   render() {
     const {
       value,
@@ -225,12 +244,7 @@ class ItemPicker extends React.Component {
             {(modelsIncludeNonCollections || searchString) && (
               <EntityListLoader
                 entityType="search"
-                entityQuery={{
-                  ...(searchString
-                    ? { q: searchString }
-                    : { collection: parentId }),
-                  ...(models.size === 1 ? { models: Array.from(models) } : {}),
-                }}
+                entityQuery={this.getSearchQuery()}
                 wrapped
               >
                 {({ list }) => (
