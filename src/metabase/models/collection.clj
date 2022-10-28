@@ -559,9 +559,10 @@
   ;; Make sure we're not trying to archive the Root Collection...
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot archive the Root Collection."))))
-  ;; also make sure we're not trying to archive a PERSONAL Collection
-  (when (db/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
-    (throw (Exception. (tru "You cannot archive a Personal Collection."))))
+  ;; also make sure we're not trying to archive a PERSONAL Collection of an active user
+  (when-let [owner-id (db/select-one-field :personal_owner_id Collection :id (u/the-id collection))]
+    (when (:is_active ('User owner-id))
+      (throw (Exception. (tru "You cannot archive an active user's Personal Collection.")))))
   (set
    (for [collection-or-id (cons
                            (parent collection)
@@ -733,17 +734,17 @@
 
 (s/defn ^:private check-changes-allowed-for-personal-collection
   "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
-  have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
+  have lots of restrictions -- you can't move them, for example, nor can you transfer them to other Users."
   [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (let [unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a Personal Collection.")
                       :authority_level   (tru "You are not allowed to change the authority level of a Personal Collection.")
-                      ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
-                      ;; functions also check to make sure you're not operating on Personal Collections. But as an extra safety net it
-                      ;; doesn't hurt to check here too.
-                      :location          (tru "You are not allowed to move a Personal Collection.")
-                      :archived          (tru "You cannot archive a Personal Collection.")}]
+                      ;; The check below should be redundant because the `perms-for-moving` functions also check to
+                      ;; make sure you're not operating on Personal Collections. But as an extra safety net it doesn't
+                      ;; hurt to check here too. Personal collections can be archived by admins if they belong to
+                      ;; deactivated users so we don't check that here.
+                      :location          (tru "You are not allowed to move a Personal Collection.")}]
     (when-let [[k msg] (->> unchangeable
                             (filter (fn [[k _msg]]
                                       (api/column-will-change? k collection-before-updates collection-updates)))
