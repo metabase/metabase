@@ -20,7 +20,7 @@ import Databases from "metabase/entities/databases";
 import { getSetting } from "metabase/selectors/settings";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Database from "metabase-lib/lib/metadata/Database";
+import Database from "metabase-lib/metadata/Database";
 
 import { getEditingDatabase, getInitializeError } from "../selectors";
 

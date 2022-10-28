@@ -7,7 +7,7 @@ import {
 } from "__support__/sample_database_fixture";
 
 import { getMode } from "metabase/modes/lib/modes";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 describe("Mode", () => {
   const rawDataQuestion = ORDERS.question();

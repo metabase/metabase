@@ -68,8 +68,6 @@ Default.args = {
     value: 100,
   },
 
-  shouldShowDataLabels: true,
-
   xLabel: "X Label",
   yLabel: "Y Label",
 

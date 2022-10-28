@@ -32,11 +32,11 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
-import { isID, isPK, isFK } from "metabase-lib/lib/types/utils/isa";
-import { fieldRefForColumn } from "metabase-lib/lib/queries/utils/dataset";
-import Dimension from "metabase-lib/lib/Dimension";
-import { memoizeClass } from "metabase-lib/lib/utils";
-import { isAdHocModelQuestionCard } from "metabase-lib/lib/metadata/utils/models";
+import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
+import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
+import Dimension from "metabase-lib/Dimension";
+import { memoizeClass } from "metabase-lib/utils";
+import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
 import MiniBar from "../MiniBar";
 import {
   ExpandButton,
@@ -659,13 +659,7 @@ class TableInteractive extends Component {
       return undefined;
     }
 
-    const dimension = Dimension.parseMBQL(
-      column.field_ref,
-      query.metadata(),
-      query,
-    );
-
-    return dimension;
+    return query.parseFieldReference(column.field_ref);
   }
 
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)

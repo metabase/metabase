@@ -5,7 +5,7 @@
             [java-time :as t]
             [metabase.analytics.prometheus :as prometheus]
             [metabase.config :as config]
-            [metabase.config.file :as config.file]
+            [metabase.core.config-from-file :as config-from-file]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
             metabase.driver.h2
@@ -105,8 +105,8 @@
     (log/info (trs "Setting up prometheus metrics"))
     (prometheus/setup!)
     (init-status/set-progress! 0.6))
-  ;; initialize Metabase from an `config.yml` file as needed.
-  (config.file/initialize!)
+  ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
+  (config-from-file/init-from-file-if-code-available!)
   (init-status/set-progress! 0.65)
   ;; Bootstrap the event system
   (events/initialize-events!)

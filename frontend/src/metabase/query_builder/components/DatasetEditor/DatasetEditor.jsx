@@ -29,8 +29,8 @@ import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { isSameField } from "metabase-lib/lib/queries/utils/field-ref";
-import { checkCanBeModel } from "metabase-lib/lib/metadata/utils/models";
+import { isSameField } from "metabase-lib/queries/utils/field-ref";
+import { checkCanBeModel } from "metabase-lib/metadata/utils/models";
 import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";

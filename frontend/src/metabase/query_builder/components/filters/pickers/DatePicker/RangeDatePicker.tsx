@@ -1,12 +1,12 @@
 import React, { useCallback, useState } from "react";
 import moment, { Moment } from "moment-timezone";
 import Calendar from "metabase/components/Calendar";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
 import {
   clearDateRangeFilterTime,
   getDateRangeFilterValue,
   setDateRangeFilterValue,
-} from "metabase-lib/lib/queries/utils/date-filters";
+} from "metabase-lib/queries/utils/date-filters";
 import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
 import { DateContainer, DateDivider } from "./RangeDatePicker.styled";

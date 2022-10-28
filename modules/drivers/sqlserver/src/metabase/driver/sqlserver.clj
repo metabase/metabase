@@ -178,6 +178,10 @@
              (hx/- 1 (date-part :weekday expr) (driver.common/start-of-week-offset :sqlserver))
              (hx/->date expr))))
 
+(defmethod sql.qp/date [:sqlserver :week-of-year-iso]
+  [_ _ expr]
+  (date-part :iso_week expr))
+
 (defmethod sql.qp/date [:sqlserver :month]
   [_ _ expr]
   (if (::optimized-bucketing? *field-options*)

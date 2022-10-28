@@ -77,6 +77,7 @@ export type ChartStyle = {
   legend: {
     fontSize: number;
     lineHeight: number;
+    fontWeight: number;
   };
   value?: {
     color: string;

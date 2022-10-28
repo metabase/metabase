@@ -252,24 +252,31 @@
 
 (def temporal-extract-ops->unit
   "Mapping from the sugar syntax to extract datetime to the unit."
-  {:get-year        :year
-   :get-quarter     :quarter
-   :get-month       :month
-   :get-day         :day
-   :get-day-of-week :day-of-week
-   :get-hour        :hour
-   :get-minute      :minute
-   :get-second      :second})
+  {[:get-year        nil]       :year-of-era
+   [:get-quarter     nil]       :quarter-of-year
+   [:get-month       nil]       :month-of-year
+   ;; default get-week mode is iso
+   [:get-week        nil]       :week-of-year-iso
+   [:get-week        :iso]      :week-of-year-iso
+   [:get-week        :us]       :week-of-year-us
+   [:get-week        :instance] :week-of-year-instance
+   [:get-day         nil]       :day-of-month
+   [:get-day-of-week nil]       :day-of-week
+   [:get-hour        nil]       :hour-of-day
+   [:get-minute      nil]       :minute-of-hour
+   [:get-second      nil]       :second-of-minute})
 
 (def ^:private temporal-extract-ops
-  (set (keys temporal-extract-ops->unit)))
+  (->> (keys temporal-extract-ops->unit)
+       (map first)
+       set))
 
 (defn desugar-temporal-extract
   "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
   [m]
   (mbql.match/replace m
-    [(op :guard temporal-extract-ops) field]
-    [:temporal-extract field (temporal-extract-ops->unit op)]))
+    [(op :guard temporal-extract-ops) field & args]
+    [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically

@@ -145,7 +145,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Dashboard
   [_dashboard]
-  [:name (serdes.hash/hydrated-hash :collection)])
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -410,7 +410,9 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 (defmethod serdes.base/extract-query "Dashboard" [_ {:keys [collection-set]}]
-  (db/select-reducible Dashboard :collection_id [:in collection-set]))
+  (if (seq collection-set)
+    (db/select-reducible Dashboard :collection_id [:in collection-set])
+    (db/select-reducible Dashboard)))
 
 ;; TODO Maybe nest collections -> dashboards -> dashcards?
 (defmethod serdes.base/extract-one "Dashboard"

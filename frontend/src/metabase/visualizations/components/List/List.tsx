@@ -34,9 +34,9 @@ import { Row } from "metabase-types/types/Dataset";
 import { DashboardWithCards } from "metabase-types/types/Dashboard";
 import { VisualizationProps } from "metabase-types/types/Visualization";
 import { State } from "metabase-types/store";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Question from "metabase-lib/lib/Question";
+import Metadata from "metabase-lib/metadata/Metadata";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Question from "metabase-lib/Question";
 
 import ListCell from "./ListCell";
 import {

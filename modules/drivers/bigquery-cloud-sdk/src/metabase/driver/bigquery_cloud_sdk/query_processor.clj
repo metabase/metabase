@@ -420,6 +420,9 @@
   [_ _ expr]
   (trunc (keyword (format "week(%s)" (name (setting/get-value-of-type :keyword :start-of-week)))) expr))
 
+;; TODO: bigquery supports week(weekday), maybe we don't have to do the complicated math for bigquery?
+(defmethod sql.qp/date [:bigquery-cloud-sdk :week-of-year-iso] [_ _ expr] (extract :isoweek expr))
+
 (doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
                                            :milliseconds :timestamp_millis
                                            :microseconds :timestamp_micros}]

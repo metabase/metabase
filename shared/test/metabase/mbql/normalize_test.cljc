@@ -567,11 +567,11 @@
     {:query {:expressions {:prev_month ["-" ["field-id" 13] ["interval" 1 "month"] ["interval" 1 "day"]]}}}
     {:query {:expressions {"prev_month" [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}
 
-    {:query {:expressions {:date-add ["date-add" ["field" 1 nil] 1 "month"]}}}
-    {:query {:expressions {"date-add" [:date-add [:field 1 nil] 1 :month]}}}
+    {:query {:expressions {:datetime-add ["datetime-add" ["field" 1 nil] 1 "month"]}}}
+    {:query {:expressions {"datetime-add" [:datetime-add [:field 1 nil] 1 :month]}}}
 
-    {:query {:expressions {:date-subtract ["date-subtract" ["field" 1 nil] 1 "month"]}}}
-    {:query {:expressions {"date-subtract" [:date-subtract [:field 1 nil] 1 :month]}}}}
+    {:query {:expressions {:datetime-subtract ["datetime-subtract" ["field" 1 nil] 1 "month"]}}}
+    {:query {:expressions {"datetime-subtract" [:datetime-subtract [:field 1 nil] 1 :month]}}}}
 
    "expressions handle namespaced keywords correctly"
    {{:query {"expressions" {:abc/def ["+" 1 2]}

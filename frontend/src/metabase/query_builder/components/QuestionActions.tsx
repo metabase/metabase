@@ -17,12 +17,12 @@ import { State } from "metabase-types/store";
 import { color } from "metabase/lib/colors";
 
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
-} from "metabase-lib/lib/metadata/utils/models";
+} from "metabase-lib/metadata/utils/models";
 import {
   QuestionActionsDivider,
   StrengthIndicator,

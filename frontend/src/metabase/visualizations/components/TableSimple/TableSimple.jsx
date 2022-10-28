@@ -14,7 +14,7 @@ import Ellipsified from "metabase/core/components/Ellipsified";
 
 import { isPositiveInteger } from "metabase/lib/number";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
-import { isID } from "metabase-lib/lib/types/utils/isa";
+import { isID } from "metabase-lib/types/utils/isa";
 
 import TableCell from "./TableCell";
 import TableFooter from "./TableFooter";

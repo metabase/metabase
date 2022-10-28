@@ -181,6 +181,11 @@
   [driver _ v]
   (sql.qp/adjust-start-of-week driver (partial trunc :day) v))
 
+(defmethod sql.qp/date [:oracle :week-of-year-iso]
+  [_ _ v]
+  ;; the full list of format elements is in https://docs.oracle.com/cd/B19306_01/server.102/b14200/sql_elements004.htm#i34924
+  (hx/->integer (hsql/call :to_char v (hx/literal :iw))))
+
 (defmethod sql.qp/date [:oracle :day-of-year]
   [driver _ v]
   (hx/inc (hx/- (sql.qp/date driver :day v) (trunc :year v))))

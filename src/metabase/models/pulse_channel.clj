@@ -198,7 +198,7 @@
 
 (defmethod serdes.hash/identity-hash-fields PulseChannel
   [_pulse-channel]
-  [(serdes.hash/hydrated-hash :pulse) :channel_type :details])
+  [(serdes.hash/hydrated-hash :pulse) :channel_type :details :created_at])
 
 (defn will-delete-recipient
   "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is

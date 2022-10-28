@@ -5,7 +5,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import { Card } from "metabase-types/types/Card";
 import { Dispatch, GetState } from "metabase-types/store";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 export interface LoadMetadataOptions {
   reload?: boolean;
