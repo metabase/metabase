@@ -47,23 +47,18 @@ describe("FormRadio", () => {
     expect(screen.getByRole("radio", { name: "Line" })).toBeChecked();
   });
 
-  it("should propagate the changed value to the form", () => {
+  it("should propagate the changed value to the form", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormRadio onSubmit={onSubmit} />);
     userEvent.click(screen.getByRole("radio", { name: "Line" }));
     userEvent.click(screen.getByText("Submit"));
 
-    waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: "line" }));
-  });
-
-  it("should be validated on blur", () => {
-    const onSubmit = jest.fn();
-
-    render(<TestFormRadio initialValue="line" onSubmit={onSubmit} />);
-    userEvent.click(screen.getByRole("radio", { name: "Bar" }));
-    userEvent.tab();
-
-    waitFor(() => expect(screen.getByText("Label: error")).toBeInTheDocument());
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        { value: "line" },
+        expect.anything(),
+      );
+    });
   });
 });

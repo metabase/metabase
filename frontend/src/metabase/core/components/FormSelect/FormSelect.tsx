@@ -14,8 +14,8 @@ function FormSelect<TValue, TOption = SelectOption<TValue>>({
   name,
   ...props
 }: FormSelectProps<TValue, TOption>) {
-  const [{ value, onChange, onBlur }] = useField(name);
-  const buttonProps = useMemo(() => ({ id: name, onBlur }), [name, onBlur]);
+  const [{ value, onChange }] = useField(name);
+  const buttonProps = useMemo(() => ({ id: name }), [name]);
 
   return (
     <Select

@@ -11,7 +11,7 @@ const FormToggle = forwardRef(function FormToggle(
   { name, ...props }: FormToggleProps,
   ref: Ref<HTMLInputElement>,
 ) {
-  const [{ value, onBlur }, , { setValue }] = useField(name);
+  const [{ value }, , { setValue }] = useField(name);
 
   return (
     <Toggle
@@ -21,7 +21,6 @@ const FormToggle = forwardRef(function FormToggle(
       name={name}
       value={value}
       onChange={setValue}
-      onBlur={onBlur}
     />
   );
 });

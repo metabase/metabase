@@ -44,14 +44,16 @@ describe("FormCheckBox", () => {
     expect(screen.getByRole("checkbox")).toBeChecked();
   });
 
-  it("should propagate the changed value to the form", () => {
+  it("should propagate the changed value to the form", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormCheckBox onSubmit={onSubmit} />);
     userEvent.click(screen.getByRole("checkbox"));
     userEvent.click(screen.getByText("Submit"));
 
-    waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: true }));
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({ value: true }, expect.anything());
+    });
   });
 
   it("should be referenced by the label", () => {
@@ -62,13 +64,15 @@ describe("FormCheckBox", () => {
     expect(screen.getByLabelText("Label")).toBeInTheDocument();
   });
 
-  it("should be validated on blur", () => {
+  it("should be validated on blur", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormCheckBox initialValue={true} onSubmit={onSubmit} />);
     userEvent.click(screen.getByRole("checkbox"));
     userEvent.tab();
 
-    waitFor(() => expect(screen.getByText("Label: error")).toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.getByText(": error")).toBeInTheDocument();
+    });
   });
 });

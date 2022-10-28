@@ -51,7 +51,7 @@ describe("FormSelect", () => {
     expect(screen.getByText("Line")).toBeInTheDocument();
   });
 
-  it("should propagate the changed value to the form", () => {
+  it("should propagate the changed value to the form", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormSelect onSubmit={onSubmit} />);
@@ -59,7 +59,12 @@ describe("FormSelect", () => {
     userEvent.click(screen.getByText("Line"));
     userEvent.click(screen.getByText("Submit"));
 
-    waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: "line" }));
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        { value: "line" },
+        expect.anything(),
+      );
+    });
   });
 
   it("should be referenced by the label", () => {
@@ -68,16 +73,5 @@ describe("FormSelect", () => {
     render(<TestFormSelect onSubmit={onSubmit} />);
 
     expect(screen.getByLabelText("Label")).toBeInTheDocument();
-  });
-
-  it("should be validated on blur", () => {
-    const onSubmit = jest.fn();
-
-    render(<TestFormSelect initialValue="line" onSubmit={onSubmit} />);
-    userEvent.click(screen.getByText("Line"));
-    userEvent.click(screen.getByText("Bar"));
-    userEvent.tab();
-
-    waitFor(() => expect(screen.getByText("Label: error")).toBeInTheDocument());
   });
 });

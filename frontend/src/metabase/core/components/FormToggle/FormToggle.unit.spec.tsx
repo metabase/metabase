@@ -44,14 +44,16 @@ describe("FormToggle", () => {
     expect(screen.getByRole("switch")).toBeChecked();
   });
 
-  it("should propagate the changed value to the form", () => {
+  it("should propagate the changed value to the form", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormToggle onSubmit={onSubmit} />);
     userEvent.click(screen.getByRole("switch"));
     userEvent.click(screen.getByText("Submit"));
 
-    waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: true }));
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({ value: true }, expect.anything());
+    });
   });
 
   it("should be referenced by the label", () => {
@@ -60,15 +62,5 @@ describe("FormToggle", () => {
     render(<TestFormToggle onSubmit={onSubmit} />);
 
     expect(screen.getByLabelText("Label")).toBeInTheDocument();
-  });
-
-  it("should be validated on blur", () => {
-    const onSubmit = jest.fn();
-
-    render(<TestFormToggle initialValue={true} onSubmit={onSubmit} />);
-    userEvent.click(screen.getByRole("switch"));
-    userEvent.tab();
-
-    waitFor(() => expect(screen.getByText("Label: error")).toBeInTheDocument());
   });
 });

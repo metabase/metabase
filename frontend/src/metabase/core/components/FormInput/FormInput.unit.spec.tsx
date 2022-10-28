@@ -41,14 +41,19 @@ describe("FormInput", () => {
     expect(screen.getByRole("textbox")).toHaveValue("Text");
   });
 
-  it("should propagate the changed value to the form", () => {
+  it("should propagate the changed value to the form", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormInput onSubmit={onSubmit} />);
     userEvent.type(screen.getByRole("textbox"), "Text");
     userEvent.click(screen.getByText("Submit"));
 
-    waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: "Text" }));
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        { value: "Text" },
+        expect.anything(),
+      );
+    });
   });
 
   it("should be referenced by the label", () => {
@@ -59,13 +64,15 @@ describe("FormInput", () => {
     expect(screen.getByLabelText("Label")).toBeInTheDocument();
   });
 
-  it("should be validated on blur", () => {
+  it("should be validated on blur", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormInput initialValue="Text" onSubmit={onSubmit} />);
     userEvent.clear(screen.getByRole("textbox"));
     userEvent.tab();
 
-    waitFor(() => expect(screen.getByText("Label: error")).toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.getByText(": error")).toBeInTheDocument();
+    });
   });
 });
