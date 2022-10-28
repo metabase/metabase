@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 
-import { ItemContent, ExpandItemIcon, ItemRoot } from "./ItemPicker.styled";
+import { ItemContent, ExpandItemIcon, ItemRoot } from "./Item.styled";
 
 const Item = ({
   item,
