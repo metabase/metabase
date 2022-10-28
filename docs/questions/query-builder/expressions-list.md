@@ -47,6 +47,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [log](#log)
   - [lower](#lower)
   - [minute](#minute)
+  - [month](#month)
   - [power](#power)
   - [quarter](#quarter)
   - [regexextract](./expressions/regexextract.md)
@@ -59,6 +60,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [substring](./expressions/substring.md)
   - [trim](#trim)
   - [upper](#upper)
+  - [week](#week)
   - [year](#year)
 - [Database limitations](#database-limitations)
 
@@ -527,6 +529,14 @@ Returns the text in all upper case.
 Syntax: `upper(text)`.
 
 Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
+
+### week
+
+Takes a datetime and returns the week as an integer.
+
+Syntax: `week([datetime column)`.
+
+Example: `week("March 25, 2021, 12:52:37")` would return the week as an integer, `13`.
 
 ### year
 
