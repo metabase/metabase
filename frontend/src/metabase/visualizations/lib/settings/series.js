@@ -20,7 +20,7 @@ export function seriesSetting({
   ...def
 } = {}) {
   const settingId = "series_settings";
-  const colorSettingId = `${settingId}.colors`;
+  const colorSettingId = "series_settings.colors";
 
   const COMMON_SETTINGS = {
     // title, display, and color don't need widgets because they're handled direclty in ChartNestedSettingSeries
