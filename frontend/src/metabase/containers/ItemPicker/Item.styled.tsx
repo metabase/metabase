@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import Icon from "metabase/components/Icon";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 import { color } from "metabase/lib/colors";
 
@@ -45,20 +45,19 @@ export const ItemTitle = styled.h4`
   margin-right: 0.5rem;
 `;
 
-export interface ExpandItemIconProps {
-  canSelect: boolean;
-}
-
-export const ExpandItemIcon = styled(Icon)<ExpandItemIconProps>`
+export const ExpandButton = styled(IconButtonWrapper)<{ canSelect: boolean }>`
   padding: 0.5rem;
   margin-left: auto;
-  border-radius: 99px;
+
   color: ${color("text-light")};
   border: 1px solid ${color("border")};
-  cursor: pointer;
 
   &:hover {
     background-color: ${props =>
       props.canSelect ? color("white") : color("brand")};
   }
 `;
+
+ExpandButton.defaultProps = {
+  circle: true,
+};

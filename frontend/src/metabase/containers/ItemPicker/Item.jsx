@@ -4,12 +4,7 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 
-import {
-  ItemRoot,
-  ItemContent,
-  ItemTitle,
-  ExpandItemIcon,
-} from "./Item.styled";
+import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
 
 const Item = ({
   item,
@@ -41,14 +36,15 @@ const Item = ({
         <Icon size={22} {...iconProps} color={selected ? "white" : color} />
         <ItemTitle>{name}</ItemTitle>
         {hasChildren && (
-          <ExpandItemIcon
-            name="chevronright"
+          <ExpandButton
             canSelect={canSelect}
             onClick={e => {
               e.stopPropagation();
               onChangeParentId(item.id);
             }}
-          />
+          >
+            <Icon name="chevronright" />
+          </ExpandButton>
         )}
       </ItemContent>
     </ItemRoot>
