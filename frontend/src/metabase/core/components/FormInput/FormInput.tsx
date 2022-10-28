@@ -11,7 +11,7 @@ const FormInput = forwardRef(function FormInput(
   { name, ...props }: FormInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
-  const [field, meta] = useField(name);
+  const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
 
   return (
     <Input
@@ -19,10 +19,10 @@ const FormInput = forwardRef(function FormInput(
       ref={ref}
       id={name}
       name={name}
-      value={field.value}
-      error={meta.touched && meta.error != null}
-      onChange={field.onChange}
-      onBlur={field.onBlur}
+      value={value}
+      error={touched && error != null}
+      onChange={onChange}
+      onBlur={onBlur}
     />
   );
 });
