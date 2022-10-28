@@ -64,6 +64,7 @@ export const MetricSchema = new schema.Entity("metrics");
 export const PersistedModelSchema = new schema.Entity("persistedModels");
 export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
+export const DataAppCollectionSchema = new schema.Entity("dataAppCollections");
 export const TimelineSchema = new schema.Entity("timelines");
 export const TimelineEventSchema = new schema.Entity("timelineEvents");
 
