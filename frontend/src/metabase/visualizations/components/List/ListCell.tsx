@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import cx from "classnames";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Tooltip from "metabase/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
@@ -17,7 +16,6 @@ export interface ListCellProps
   extends Pick<VisualizationProps, "data" | "settings"> {
   value: Value;
   columnIndex: number;
-  columnTitle?: string;
 }
 
 interface CellDataProps {
@@ -60,7 +58,6 @@ function ListCellContent({
   data,
   settings,
   columnIndex,
-  columnTitle,
 }: ListCellProps) {
   const { rows, cols } = data;
   const column = cols[columnIndex];
@@ -85,15 +82,13 @@ function ListCellContent({
   });
 
   return (
-    <Tooltip tooltip={columnTitle}>
-      <CellContent
-        className={classNames}
-        isClickable={isLink}
-        data-testid="cell-data"
-      >
-        {cellData}
-      </CellContent>
-    </Tooltip>
+    <CellContent
+      className={classNames}
+      isClickable={isLink}
+      data-testid="cell-data"
+    >
+      {cellData}
+    </CellContent>
   );
 }
 
