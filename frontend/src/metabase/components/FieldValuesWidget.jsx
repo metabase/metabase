@@ -10,6 +10,7 @@ import TokenField, {
   parseStringValue,
 } from "metabase/components/TokenField";
 import ListField from "metabase/components/ListField";
+import SingleSelectListField from "metabase/components/SingleSelectListField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
@@ -316,8 +317,18 @@ class FieldValuesWidgetInner extends Component {
       >
         {isListMode && isLoading ? (
           <LoadingState />
-        ) : isListMode && hasListValues ? (
+        ) : isListMode && hasListValues && multi ? (
           <ListField
+            isDashboardFilter={parameter}
+            placeholder={tokenFieldPlaceholder}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={optionRenderer}
+            checkedColor={checkedColor}
+          />
+        ) : isListMode && hasListValues && !multi ? (
+          <SingleSelectListField
             isDashboardFilter={parameter}
             placeholder={tokenFieldPlaceholder}
             value={value.filter(v => v != null)}

@@ -4,6 +4,7 @@ export const LINE_AREA_BAR_CHART_TYPE = "combo-chart";
 
 export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
   settings: {
+    show_values: true,
     goal: {
       value: 140,
       label: "Goal",

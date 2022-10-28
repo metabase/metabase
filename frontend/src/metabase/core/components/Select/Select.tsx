@@ -1,12 +1,20 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
+import React, {
+  Component,
+  CSSProperties,
+  Key,
+  ReactElement,
+  ReactNode,
+  RefObject,
+} from "react";
 
 import _ from "underscore";
 import cx from "classnames";
 import { createSelector } from "reselect";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "metabase/core/components/SelectButton";
+import SelectButton, {
+  SelectButtonProps,
+} from "metabase/core/components/SelectButton";
 
 import { color } from "metabase/lib/colors";
 
@@ -16,71 +24,103 @@ import { SelectAccordionList } from "./Select.styled";
 
 const MIN_ICON_WIDTH = 20;
 
-class Select extends Component {
-  static propTypes = {
-    className: PropTypes.string,
+export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
+  className?: string;
 
-    // one of these is required
-    options: PropTypes.any,
-    sections: PropTypes.any,
-    children: PropTypes.any,
+  options?: TOption[];
+  sections?: SelectSection<TOption>[];
+  children?: ReactNode;
 
-    value: PropTypes.any.isRequired,
-    name: PropTypes.string,
-    defaultValue: PropTypes.any,
-    onChange: PropTypes.func.isRequired,
-    multiple: PropTypes.bool,
-    placeholder: PropTypes.string,
-    disabled: PropTypes.bool,
-    hiddenIcons: PropTypes.bool,
+  value: TValue;
+  name?: string;
+  defaultValue?: TValue;
+  onChange: (event: SelectChangeEvent<TValue>) => void;
+  multiple?: boolean;
+  placeholder?: string;
+  disabled?: boolean;
+  hiddenIcons?: boolean;
 
-    // PopoverWithTrigger props
-    isInitiallyOpen: PropTypes.bool,
-    triggerElement: PropTypes.any,
-    onClose: PropTypes.func,
+  // PopoverWithTrigger props
+  isInitiallyOpen?: boolean;
+  triggerElement?: ReactNode;
+  onClose?: () => void;
 
-    // SelectButton props
-    buttonProps: PropTypes.object,
-    buttonText: PropTypes.string, // will override selected options text
+  // SelectButton props
+  buttonProps?: Partial<SelectButtonProps>;
+  buttonText?: string; // will override selected options text
 
-    // AccordianList props
-    searchProp: PropTypes.string,
-    searchCaseInsensitive: PropTypes.bool,
-    searchPlaceholder: PropTypes.string,
-    searchFuzzy: PropTypes.bool,
-    hideEmptySectionsInSearch: PropTypes.bool,
-    width: PropTypes.number,
+  // AccordionList props
+  searchProp?: string;
+  searchCaseInsensitive?: boolean;
+  searchPlaceholder?: string;
+  searchFuzzy?: boolean;
+  hideEmptySectionsInSearch?: boolean;
+  width?: number;
 
-    optionNameFn: PropTypes.func,
-    optionValueFn: PropTypes.func,
-    optionDescriptionFn: PropTypes.func,
-    optionSectionFn: PropTypes.func,
-    optionDisabledFn: PropTypes.func,
-    optionIconFn: PropTypes.func,
-    optionClassNameFn: PropTypes.func,
-    optionStylesFn: PropTypes.func,
+  optionNameFn?: (option: TOption) => string | undefined;
+  optionValueFn?: (option: TOption) => TValue;
+  optionDescriptionFn?: (option: TOption) => string | undefined;
+  optionSectionFn?: (option: TOption) => string;
+  optionDisabledFn?: (option: TOption) => boolean;
+  optionIconFn?: (option: TOption) => string | undefined;
+  optionClassNameFn?: (option: TOption) => string | undefined;
+  optionStylesFn?: (option: TOption) => CSSProperties | undefined;
 
-    footer: PropTypes.node,
-  };
+  footer?: ReactNode;
+}
+
+export interface SelectOption<TValue = Key> {
+  value: TValue;
+  name?: string;
+  description?: string;
+  icon?: string;
+  iconSize?: number;
+  iconColor?: string;
+  disabled?: boolean;
+  children?: ReactNode;
+}
+
+export interface SelectSection<TOption = SelectOption> {
+  name?: string;
+  icon?: string;
+  items: TOption[];
+}
+
+export interface SelectChangeEvent<TValue> {
+  target: SelectChangeTarget<TValue>;
+}
+
+export interface SelectChangeTarget<TValue> {
+  name?: string;
+  value: TValue;
+}
+
+class Select<TValue, TOption = SelectOption<TValue>> extends Component<
+  SelectProps<TValue, TOption>
+> {
+  _popover?: any;
+  selectButtonRef: RefObject<any>;
+  _getValues: () => TValue[];
+  _getValuesSet: () => Set<TValue>;
 
   static defaultProps = {
-    optionNameFn: option => option.children || option.name,
-    optionValueFn: option => option.value,
-    optionDescriptionFn: option => option.description,
-    optionDisabledFn: option => option.disabled,
-    optionIconFn: option => option.icon,
+    optionNameFn: (option: SelectOption) => option.children || option.name,
+    optionValueFn: (option: SelectOption) => option.value,
+    optionDescriptionFn: (option: SelectOption) => option.description,
+    optionDisabledFn: (option: SelectOption) => option.disabled,
+    optionIconFn: (option: SelectOption) => option.icon,
   };
 
-  constructor(props) {
+  constructor(props: SelectProps<TValue, TOption>) {
     super(props);
 
     // reselect selectors
-    const _getValue = props =>
+    const _getValue = (props: SelectProps<TValue, TOption>) =>
       // If a defaultValue is passed, replace a null value with it.
       // Otherwise, allow null values since we sometimes want them.
       Object.prototype.hasOwnProperty.call(props, "defaultValue") &&
       props.value == null
-        ? props.defaultValue
+        ? (props.defaultValue as any)
         : props.value;
 
     const _getValues = createSelector([_getValue], value =>
@@ -95,19 +135,22 @@ class Select extends Component {
     this.selectButtonRef = React.createRef();
   }
 
-  _getSections() {
+  _getSections(): SelectSection<TOption>[] {
     // normalize `children`/`options` into same format as `sections`
     const { children, sections, options } = this.props;
     if (children) {
-      const optionToItem = option => option.props;
-      const first = Array.isArray(children) ? children[0] : children;
-      if (first && first.type === OptionSection) {
+      const optionToItem = (option: any) => option.props;
+      const first = (Array.isArray(children) ? children[0] : children) as any;
+      if (first && (first as ReactElement).type === OptionSection) {
         return React.Children.map(children, child => ({
-          ...child.props,
-          items: React.Children.map(child.props.children, optionToItem),
-        }));
+          ...(child as ReactElement<OptionProps<TValue>>).props,
+          items: React.Children.map(
+            (child as any).props.children,
+            optionToItem,
+          ),
+        })) as any;
       } else if (first && first.type === Option) {
-        return [{ items: React.Children.map(children, optionToItem) }];
+        return [{ items: React.Children.map(children, optionToItem) }] as any;
       }
     } else if (options) {
       if (this.props.optionSectionFn) {
@@ -125,17 +168,20 @@ class Select extends Component {
     return [];
   }
 
-  itemIsSelected = option => {
-    const optionValue = this.props.optionValueFn(option);
+  itemIsSelected = (option: TOption) => {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const optionValue = this.props.optionValueFn!(option);
     return this._getValuesSet().has(optionValue);
   };
 
-  itemIsClickable = option => !this.props.optionDisabledFn(option);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  itemIsClickable = (option: TOption) => !this.props.optionDisabledFn!(option);
 
-  handleChange = option => {
+  handleChange = (option: TOption) => {
     const { name, multiple, onChange } = this.props;
-    const optionValue = this.props.optionValueFn(option);
-    let value;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const optionValue = this.props.optionValueFn!(option);
+    let value: any;
     if (multiple) {
       const values = this._getValues();
       value = this.itemIsSelected(option)
@@ -147,23 +193,24 @@ class Select extends Component {
     }
     onChange({ target: { name, value } });
     if (!multiple) {
-      this._popover.close();
+      this._popover?.close();
       this.handleClose();
     }
   };
 
-  renderItemIcon = item => {
+  renderItemIcon = (item: TOption) => {
     if (this.props.hiddenIcons) {
       return null;
     }
 
-    const icon = this.props.optionIconFn(item);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const icon = this.props.optionIconFn!(item);
     if (icon) {
       return (
         <Icon
           name={icon}
-          size={item.iconSize || 18}
-          color={item.iconColor || color("text-dark")}
+          size={(item as any).iconSize || 18}
+          color={(item as any).iconColor || color("text-dark")}
           style={{ minWidth: MIN_ICON_WIDTH }}
         />
       );
@@ -211,7 +258,11 @@ class Select extends Component {
     const sections = this._getSections();
     const selectedNames = sections
       .map(section =>
-        section.items.filter(this.itemIsSelected).map(this.props.optionNameFn),
+        this.props.optionNameFn
+          ? section.items
+              .filter(this.itemIsSelected)
+              .map(this.props.optionNameFn)
+          : [],
       )
       .flat()
       .filter(n => n);
@@ -278,27 +329,31 @@ class Select extends Component {
 }
 
 export default Uncontrollable()(Select);
-export class OptionSection extends Component {
-  static propTypes = {
-    name: PropTypes.any,
-    icon: PropTypes.any,
-    children: PropTypes.any.isRequired,
-  };
+
+export interface OptionSectionProps {
+  name?: string;
+  icon?: string;
+  children?: ReactNode;
+}
+
+export class OptionSection extends Component<OptionSectionProps> {
   render() {
     return null;
   }
 }
-export class Option extends Component {
-  static propTypes = {
-    value: PropTypes.any.isRequired,
 
-    // one of these two is required
-    name: PropTypes.any,
-    children: PropTypes.any,
+export interface OptionProps<TValue> {
+  value: TValue;
 
-    icon: PropTypes.any,
-    disabled: PropTypes.bool,
-  };
+  // one of these two is required
+  name?: string;
+  children?: ReactNode;
+
+  icon?: string;
+  disabled?: boolean;
+}
+
+export class Option<TValue> extends Component<OptionProps<TValue>> {
   render() {
     return null;
   }

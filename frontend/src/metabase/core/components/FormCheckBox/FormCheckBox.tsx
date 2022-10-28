@@ -11,16 +11,16 @@ const FormCheckBox = forwardRef(function FormCheckBox(
   { name, ...props }: FormCheckBoxProps,
   ref: Ref<HTMLLabelElement>,
 ) {
-  const [field] = useField(name);
+  const [{ value, onChange, onBlur }] = useField(name);
 
   return (
     <CheckBox
       {...props}
       ref={ref}
       name={name}
-      checked={field.value}
-      onChange={field.onChange}
-      onBlur={field.onBlur}
+      checked={value}
+      onChange={onChange}
+      onBlur={onBlur}
     />
   );
 });
