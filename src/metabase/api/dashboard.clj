@@ -260,7 +260,9 @@
                        (api.card/create-card!
                         (cond-> (assoc card :collection_id dest-coll-id)
                           same-collection?
-                          (update :name #(str % " -- " (tru "Duplicate"))))))))
+                          (update :name #(str % " -- " (tru "Duplicate"))))
+                        ;; creating cards from a transaction. wait until tx complete to signal event
+                        true))))
             {:uncopied discard}
             copy)))
 
@@ -323,6 +325,7 @@
                         :collection_id       collection_id
                         :collection_position collection_position
                         :is_app_page         (:is_app_page existing-dashboard)}
+        new-cards      (atom nil)
         dashboard      (db/transaction
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                         ;; collection to change position, check that and fix up if needed
@@ -331,6 +334,7 @@
                         (let [dash (db/insert! Dashboard dashboard-data)
                               id->new-card (when is_deep_copy
                                              (duplicate-cards existing-dashboard collection_id))]
+                          (reset! new-cards (vals (dissoc id->new-card :uncopied)))
                           (doseq [card (update-cards-for-copy from-dashboard-id
                                                               (:ordered_cards existing-dashboard)
                                                               is_deep_copy
@@ -340,6 +344,10 @@
                             (:uncopied id->new-card)
                             (assoc :uncopied (:uncopied id->new-card)))))]
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
+    ;; must signal event outside of tx so cards are visible from other threads
+    (when-let [newly-created-cards (seq @new-cards)]
+      (doseq [card newly-created-cards]
+        (events/publish-event! :card-create card)))
     (events/publish-event! :dashboard-create dashboard)))
 
 
