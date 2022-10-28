@@ -780,14 +780,14 @@
                     "Copied a model"))))))
       (testing "When there are cards the user lacks write perms for"
         (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
-                        Collection [no-write-coll {:name "Crowberto lacks write coll"}]
+                        Collection [no-read-coll {:name "Crowberto lacks write coll"}]
                         Collection [dest-coll   {:name "Destination collection"}]
                         Dashboard  [dashboard {:name          "Dashboard to be Copied"
                                                :description   "A description"
                                                :collection_id (u/the-id source-coll)
                                                :creator_id    (mt/user->id :rasta)}]
                         Card       [total-card  {:name "Total orders per month"
-                                                 :collection_id (u/the-id no-write-coll)
+                                                 :collection_id (u/the-id no-read-coll)
                                                  :display :line
                                                  :visualization_settings
                                                  {:graph.dimensions ["CREATED_AT"]
@@ -830,8 +830,7 @@
                                                 :card_id (u/the-id avg-card)
                                                 :position 0}]]
           (mt/with-model-cleanup [Card Dashboard DashboardCard DashboardCardSeries]
-            (perms/revoke-collection-permissions! (perms-group/all-users) no-write-coll)
-            (perms/grant-collection-read-permissions! (perms-group/all-users) no-write-coll)
+            (perms/revoke-collection-permissions! (perms-group/all-users) no-read-coll)
             (let [resp (mt/user-http-request :rasta :post 200
                                              (format "dashboard/%d/copy" (:id dashboard))
                                              {:name        "New dashboard"
@@ -853,8 +852,10 @@
                 (testing "Should not create dashboardcardseries because the base card lacks permissions"
                   (is (empty? (db/select DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
                 (testing "Response includes uncopied cards"
-                  (is (= #{"Total orders per month" "Average orders per month"}
-                         (->> resp :uncopied (map :name) set)))))))))
+                  ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
+                  ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
+                  ;; you lack permissions for are also not copied, but you can see the whole card.
+                  (is (= 2 (->> resp :uncopied count)))))))))
       (testing "When source and destination are the same"
         (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
                         Dashboard  [dashboard {:name          "Dashboard to be Copied"
@@ -922,13 +923,13 @@
 
 (def ^:dynamic ^:private
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
-  *writable-card-ids* #{})
+  *readable-card-ids* #{})
 
-(defmethod mi/can-write? ::dispatches-on-dynamic
+(defmethod mi/can-read? ::dispatches-on-dynamic
   ([fake-model]
-   (contains? *writable-card-ids* (:id fake-model)))
+   (contains? *readable-card-ids* (:id fake-model)))
   ([_fake-model id]
-   (contains? *writable-card-ids* id)))
+   (contains? *readable-card-ids* id)))
 
 (defn- card-model
   "Return a card \"model\" that reports as a `::dispatches-on-dynamic` model type, and checking `mi/can-write?` checks
@@ -941,7 +942,7 @@
   (testing "Identifies all cards to be copied"
     (let [ordered-cards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                          {:card_id 3 :card (card-model{:id 3})}]]
-      (binding [*writable-card-ids* #{1 2 3}]
+      (binding [*readable-card-ids* #{1 2 3}]
         (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
                 :discard []}
                (#'api.dashboard/cards-to-copy ordered-cards))))))
@@ -949,14 +950,14 @@
     (testing "If they are in a series"
       (let [ordered-cards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                            {:card_id 3 :card (card-model{:id 3})}]]
-        (binding [*writable-card-ids* #{1 3}]
+        (binding [*readable-card-ids* #{1 3}]
           (is (= {:copy {1 {:id 1} 3 {:id 3}}
                   :discard [{:id 2}]}
                  (#'api.dashboard/cards-to-copy ordered-cards))))))
     (testing "When the base of a series lacks permissions"
       (let [ordered-cards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                            {:card_id 3 :card (card-model{:id 3})}]]
-        (binding [*writable-card-ids* #{3}]
+        (binding [*readable-card-ids* #{3}]
           (is (= {:copy {3 {:id 3}}
                   :discard [{:id 1} {:id 2}]}
                  (#'api.dashboard/cards-to-copy ordered-cards))))))))
