@@ -216,7 +216,7 @@
 
 (defn datetime-math
   [op x amount unit col-type]
-  (let [amount (if (= op :date-add)
+  (let [amount (if (= op :datetime-add)
                  amount
                  (- amount))
         fmt    (cond
@@ -262,7 +262,7 @@
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
       (testing "date arithmetic with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
-                op                  [:date-add :date-subtract]
+                op                  [:datetime-add :datetime-subtract]
                 unit                [:year :quarter :month :day :hour :minute :second]
 
                 {:keys [expected query]}
@@ -281,7 +281,7 @@
 
       (testing "date arithmetic with datetime columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
-                op                  [:date-add :date-subtract]
+                op                  [:datetime-add :datetime-subtract]
                 unit                [:year :quarter :month :day]
 
                 {:keys [expected query]}
@@ -305,17 +305,17 @@
       (doseq [{:keys [title expected query]}
               [{:title    "Nested date math then extract"
                 :expected [2006 2010 2014]
-                :query    {:expressions {"expr" [:get-year [:date-add [:field (mt/id :times :dt) nil] 2 :year]]}
+                :query    {:expressions {"expr" [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]]}
                             :fields [[:expression "expr"]]}}
 
                {:title   "Nested date math twice"
                 :expected ["2006-05-19 09:19:09" "2010-08-20 10:20:10" "2015-01-21 11:21:11"]
-                :query    {:expressions {"expr" [:date-add [:date-add [:field (mt/id :times :dt) nil] 2 :year] 2 :month]}
+                :query    {:expressions {"expr" [:datetime-add [:datetime-add [:field (mt/id :times :dt) nil] 2 :year] 2 :month]}
                            :fields [[:expression "expr"]]}}
 
                {:title    "filter with date math"
                 :expected [1]
-                :query   {:filter [:= [:get-year [:date-add [:field (mt/id :times :dt) nil] 2 :year]] 2006]
+                :query   {:filter [:= [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]] 2006]
                           :fields [[:field (mt/id :times :index)]]}}]]
         (testing title
           (is (= (set expected) (set (test-datetime-math query)))))))))
