@@ -623,7 +623,7 @@
          :location [:like (str (children-location collection) "%")]
          additional-conditions))
 
-(s/defn ^:private archive-collection!
+(s/defn archive-collection!
   "Archive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)
@@ -637,7 +637,7 @@
                                 :archived      false}
                          :archived true)))))
 
-(s/defn ^:private unarchive-collection!
+(s/defn unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)

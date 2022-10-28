@@ -3,7 +3,7 @@
    [clojure.data :as data]
    [clojure.string :as str]
    [metabase.db.query :as mdb.query]
-   [metabase.models.collection :as collection]
+   [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -112,8 +112,16 @@
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
-  (when (false? active?)
+  (when (not active?)
     (db/delete! 'PulseChannelRecipient :user_id id))
+  ;; archive or unarchive the user's personal collection as necessary
+  (let [{archived? :archived :as personal-collection} (db/select-one Collection :personal_owner_id id)]
+    (cond
+      (and (not active?) (not archived?))
+      (collection/archive-collection! personal-collection)
+
+      (and active? archived?)
+      (collection/unarchive-collection! personal-collection)))
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
     true        (merge (hashed-password-values user))

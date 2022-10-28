@@ -6,7 +6,8 @@
    [metabase.http-client :as client]
    [metabase.integrations.google]
    [metabase.models
-    :refer [Collection
+    :refer [Card
+            Collection
             Database
             PermissionsGroup
             PermissionsGroupMembership
@@ -475,6 +476,22 @@
           (is (db/update! User user-id :is_active false)))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
+
+(deftest archive-personal-collection-when-archived-test
+  ;; Allow personal collection to be deleted so that mt/with-temp* cleanup works
+  (binding [collection/*allow-deleting-personal-collections* true]
+    (mt/with-temp* [User       [{user-id :id}]
+                    Collection [{collection-id :id} {:personal_owner_id user-id}]
+                    Card       [{card-id :id} {:collection_id collection-id}]]
+      (testing "A User's personal collection and sub-content is archived when the User is archived"
+        (db/update! User user-id :is_active false)
+        (is (= true (db/select-one-field :archived Collection :id collection-id)))
+        (is (= true (db/select-one-field :archived Card :id card-id))))
+
+      (testing "A User's personal collection and sub-content is unarchived when the User is unarchived"
+        (db/update! User user-id :is_active true)
+        (is (= false (db/select-one-field :archived Collection :personal_owner_id user-id)))
+        (is (= false (db/select-one-field :archived Card :id card-id)))))))
 
 (deftest identity-hash-test
   (testing "User hashes are based on the email address"

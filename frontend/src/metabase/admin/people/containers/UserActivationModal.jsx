@@ -25,7 +25,7 @@ class UserActivationModalInner extends React.Component {
           title={t`Deactivate ${user.common_name}?`}
           onClose={onClose}
         >
-          <Text>{t`${user.common_name} won't be able to log in anymore.`}</Text>
+          <Text>{t`${user.common_name} won't be able to log in anymore, and their personal collection will be archived.`}</Text>
           <Button
             ml="auto"
             danger
@@ -42,7 +42,7 @@ class UserActivationModalInner extends React.Component {
           onClose={onClose}
         >
           <Text>
-            {t`They'll be able to log in again, and they'll be placed back into the groups they were in before their account was deactivated.`}
+            {t`They'll be able to log in again, their personal collection will be unarchived, and they'll be placed back into the groups they were in before their account was deactivated.`}
           </Text>
           <Button
             ml="auto"
