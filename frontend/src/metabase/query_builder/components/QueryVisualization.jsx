@@ -6,7 +6,7 @@ import cx from "classnames";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Utils from "metabase/lib/utils";
-import { HARD_ROW_LIMIT } from "metabase-lib/lib/queries/utils";
+import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 import VisualizationError from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";

@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import React from "react";
+import { Group } from "@visx/group";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
 import {
   FontStyle,
@@ -16,12 +17,28 @@ import { ColorGetter } from "metabase/static-viz/lib/colors";
 import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import {
+  getAxesVisibility,
+  getLabelledSeries,
+  getXValueRange,
+} from "metabase/visualizations/visualizations/RowChart/utils/settings";
+import { formatStaticValue } from "metabase/static-viz/lib/format-static-value";
+import {
+  getColumnValueFormatter,
+  getFormatters,
   getLabelsFormatter,
-  getStaticColumnValueFormatter,
-  getStaticFormatters,
-} from "./utils/format";
+} from "metabase/visualizations/shared/utils/format";
+import { calculateLegendRows } from "../Legend/utils";
+import { Legend } from "../Legend";
+
 import { getStaticChartTheme } from "./theme";
 import { getChartLabels } from "./utils/labels";
+
+const CHART_PADDING = 16;
+const LEGEND_FONT = {
+  lineHeight: 20,
+  size: 14,
+  weight: 700,
+};
 
 const WIDTH = 620;
 const HEIGHT = 440;
@@ -40,8 +57,8 @@ const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) =>
   );
 
 const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
-  const columnValueFormatter = getStaticColumnValueFormatter();
-  const labelsFormatter = getLabelsFormatter();
+  const columnValueFormatter = getColumnValueFormatter(formatStaticValue);
+
   const { chartColumns, series, seriesColors } = getTwoDimensionalChartSeries(
     data,
     settings,
@@ -52,35 +69,73 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
     chartColumns,
     columnValueFormatter,
   );
+  const labelsFormatter = getLabelsFormatter(
+    chartColumns,
+    settings,
+    formatStaticValue,
+  );
   const goal = getChartGoal(settings);
   const theme = getStaticChartTheme(getColor);
   const stackOffset = getStackOffset(settings);
-  const shouldShowDataLabels =
-    settings["graph.show_values"] && stackOffset !== "expand";
 
-  const tickFormatters = getStaticFormatters(chartColumns, settings);
+  const tickFormatters = getFormatters(
+    chartColumns,
+    settings,
+    formatStaticValue,
+  );
 
   const { xLabel, yLabel } = getChartLabels(chartColumns, settings);
+  const { hasXAxis, hasYAxis } = getAxesVisibility(settings);
+  const xValueRange = getXValueRange(settings);
+  const labelledSeries = getLabelledSeries(settings, series);
+
+  const legend = calculateLegendRows(
+    series.map(series => ({
+      name: series.seriesName,
+      color: seriesColors[series.seriesKey],
+    })),
+    WIDTH,
+    LEGEND_FONT.lineHeight,
+    LEGEND_FONT.size,
+    LEGEND_FONT.weight,
+  );
+
+  const legendHeight = legend != null ? legend.height + CHART_PADDING : 0;
+  const fullChartHeight = HEIGHT + legendHeight;
 
   return (
-    <svg width={WIDTH} height={HEIGHT} fontFamily="Lato">
-      <RowChart
-        width={WIDTH}
-        height={HEIGHT}
-        data={groupedData}
-        trimData={trimData}
-        series={series}
-        seriesColors={seriesColors}
-        goal={goal}
-        theme={theme}
-        stackOffset={stackOffset}
-        shouldShowDataLabels={shouldShowDataLabels}
-        tickFormatters={tickFormatters}
-        labelsFormatter={labelsFormatter}
-        measureText={staticTextMeasurer}
-        xLabel={xLabel}
-        yLabel={yLabel}
-      />
+    <svg width={WIDTH} height={fullChartHeight} fontFamily="Lato">
+      {legend && (
+        <Legend
+          items={legend.items}
+          top={CHART_PADDING}
+          fontSize={LEGEND_FONT.size}
+          fontWeight={LEGEND_FONT.weight}
+        />
+      )}
+      <Group top={legendHeight}>
+        <RowChart
+          width={WIDTH}
+          height={HEIGHT}
+          data={groupedData}
+          trimData={trimData}
+          series={series}
+          seriesColors={seriesColors}
+          goal={goal}
+          theme={theme}
+          stackOffset={stackOffset}
+          tickFormatters={tickFormatters}
+          labelsFormatter={labelsFormatter}
+          measureText={staticTextMeasurer}
+          xLabel={xLabel}
+          yLabel={yLabel}
+          hasXAxis={hasXAxis}
+          hasYAxis={hasYAxis}
+          xScaleType={settings["graph.y_axis.scale"]}
+          xValueRange={xValueRange}
+          labelledSeries={labelledSeries}
+        />
+      </Group>
     </svg>
   );
 };

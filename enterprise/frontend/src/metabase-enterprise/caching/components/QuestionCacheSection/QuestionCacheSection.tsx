@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import { getRelativeTime } from "metabase/lib/time";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 import CacheSection from "../CacheSection";
 import { QueryStartLabel } from "./QuestionCacheSection.styled";
 

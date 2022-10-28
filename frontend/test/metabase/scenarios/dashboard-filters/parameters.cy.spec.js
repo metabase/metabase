@@ -38,6 +38,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("filter").click();
     cy.contains("Text or Category").click();
     cy.findByText("Dropdown").click();
+    cy.findByText("A single value").click();
 
     // connect it to people.name and product.category
     // (this doesn't make sense to do, but it illustrates the feature)

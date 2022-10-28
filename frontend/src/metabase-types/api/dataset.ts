@@ -17,6 +17,11 @@ export interface DatasetColumn {
   unit?: DatetimeUnit;
   field_ref?: DimensionReference;
   expression_name?: any;
+  base_type?: string;
+  semantic_type?: string;
+  binning_info?: {
+    bin_width?: number;
+  };
 }
 
 export interface DatasetData {

@@ -12,18 +12,18 @@ import type {
   DashboardOrderedCard,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
-import { isFieldFilterParameter } from "metabase-lib/lib/parameters/utils/parameter-type";
+import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
   UiParameter,
   FieldFilterUiParameter,
   ParameterWithTarget,
-} from "metabase-lib/lib/parameters/types";
+} from "metabase-lib/parameters/types";
 import {
   getTargetFieldFromCard,
   isVariableTarget,
-} from "metabase-lib/lib/parameters/utils/targets";
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type Field from "metabase-lib/lib/metadata/Field";
+} from "metabase-lib/parameters/utils/targets";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type Field from "metabase-lib/metadata/Field";
 
 type ExtendedMapping = DashboardParameterMapping & {
   dashcard_id: number;
@@ -66,14 +66,8 @@ export function setParameterName(
   };
 }
 
-export function setParameterDefaultValue(
-  parameter: Parameter,
-  value: any,
-): Parameter {
-  return {
-    ...parameter,
-    default: value,
-  };
+export function getIsMultiSelect(parameter: Parameter): boolean {
+  return parameter.isMultiSelect == null ? true : parameter.isMultiSelect;
 }
 
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {

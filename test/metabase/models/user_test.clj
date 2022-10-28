@@ -3,8 +3,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.config.file :as config.file]
    [metabase.http-client :as client]
+   [metabase.integrations.google]
    [metabase.models
     :refer [Collection
             Database
@@ -29,6 +29,10 @@
    [metabase.util.password :as u.password]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
+
+(comment
+  ;; this has to be loaded for the Google Auth tests to work
+  metabase.integrations.google/keep-me)
 
 ;;; Tests for permissions-set
 
@@ -478,131 +482,27 @@
              (serdes.hash/raw-hash ["fred@flintston.es"])
              (serdes.hash/identity-hash user))))))
 
-(deftest init-from-config-file-test
-  (try
-    (binding [config.file/*supported-versions* {:min 1, :max 1}
-              config.file/*config*             {:version 1
-                                                :config  {:users [{:first_name "Cam"
-                                                                   :last_name  "Era"
-                                                                   :email      "cam+config-file-test@metabase.com"
-                                                                   :password   "2cans"}]}}]
-      (testing "Create a User if it does not already exist"
-        (is (= :ok
-               (config.file/initialize!)))
-        (is (partial= {:first_name "Cam"
-                       :last_name  "Era"
-                       :email      "cam+config-file-test@metabase.com"}
-                      (db/select-one User :email "cam+config-file-test@metabase.com")))
-        (is (= 1
-               (db/count User :email "cam+config-file-test@metabase.com"))))
-      (testing "upsert if User already exists"
-        (binding [config.file/*config* {:version 1
-                                        :config  {:users [{:first_name "Cam"
-                                                           :last_name  "Saul"
-                                                           :email      "cam+config-file-test@metabase.com"
-                                                           :password   "2cans"}]}}]
-          (is (= :ok
-                 (config.file/initialize!)))
-          (is (= 1
-                 (db/count User :email "cam+config-file-test@metabase.com")))
-          (is (partial= {:first_name "Cam"
-                         :last_name  "Saul"
-                         :email      "cam+config-file-test@metabase.com"}
-                        (db/select-one User :email "cam+config-file-test@metabase.com"))))))
-    (finally
-      (db/delete! User :email "cam+config-file-test@metabase.com"))))
-
-(deftest init-from-config-file-force-admin-for-first-user-test
-  (testing "If this is the first user being created, always make the user a superuser regardless of what is specified"
-    (try
-      (binding [config.file/*supported-versions* {:min 1, :max 1}]
-        (testing "Create the first User"
-          (binding [config.file/*config* {:version 1
-                                          :config  {:users [{:first_name   "Cam"
-                                                             :last_name    "Era"
-                                                             :email        "cam+config-file-admin-test@metabase.com"
-                                                             :password     "2cans"
-                                                             :is_superuser false}]}}]
-            (with-redefs [user/init-from-config-file-is-first-user? (constantly true)]
-              (is (= :ok
-                     (config.file/initialize!)))
-              (is (partial= {:first_name   "Cam"
-                             :last_name    "Era"
-                             :email        "cam+config-file-admin-test@metabase.com"
-                             :is_superuser true}
-                            (db/select-one User :email "cam+config-file-admin-test@metabase.com")))
-              (is (= 1
-                     (db/count User :email "cam+config-file-admin-test@metabase.com"))))))
-        (testing "Create the another User, DO NOT force them to be an admin"
-          (binding [config.file/*config* {:version 1
-                                          :config  {:users [{:first_name   "Cam"
-                                                             :last_name    "Saul"
-                                                             :email        "cam+config-file-admin-test-2@metabase.com"
-                                                             :password     "2cans"
-                                                             :is_superuser false}]}}]
-            (is (= :ok
-                   (config.file/initialize!)))
-            (is (partial= {:first_name   "Cam"
-                           :last_name    "Saul"
-                           :email        "cam+config-file-admin-test-2@metabase.com"
-                           :is_superuser false}
-                          (db/select-one User :email "cam+config-file-admin-test-2@metabase.com")))
-            (is (= 1
-                   (db/count User :email "cam+config-file-admin-test-2@metabase.com"))))))
-      (finally (db/delete! User :email [:in #{"cam+config-file-admin-test@metabase.com"
-                                              "cam+config-file-admin-test-2@metabase.com"}])))))
-
-(deftest init-from-config-file-env-var-for-password-test
-  (testing "Ensure that we can set User password using {{env ...}} templates"
-    (try
-      (binding [config.file/*supported-versions* {:min 1, :max 1}
-                config.file/*config*             {:version 1
-                                                  :config  {:users [{:first_name "Cam"
-                                                                     :last_name  "Era"
-                                                                     :email      "cam+config-file-password-test@metabase.com"
-                                                                     :password   "{{env USER_PASSWORD}}"}]}}
-                config.file/*env*                (assoc @#'config.file/*env* :user-password "1234cans")]
-        (testing "Create a User if it does not already exist"
-          (is (= :ok
-                 (config.file/initialize!)))
-          (let [user (db/select-one [User :first_name :last_name :email :password_salt :password]
-                       :email "cam+config-file-password-test@metabase.com")]
-            (is (partial= {:first_name "Cam"
-                           :last_name  "Era"
-                           :email      "cam+config-file-password-test@metabase.com"}
-                          user))
-            (is (u.password/verify-password "1234cans" (:password_salt user) (:password user))))))
-      (finally
-        (db/delete! User :email "cam+config-file-password-test@metabase.com")))))
-
-(deftest ^:parallel init-from-config-file-validation-test
-  (binding [config.file/*supported-versions* {:min 1, :max 1}]
-    (are [user error-pattern] (thrown-with-msg?
-                               clojure.lang.ExceptionInfo
-                               error-pattern
-                               (binding [config.file/*config* {:version 1
-                                                               :config  {:users [user]}}]
-                                 (#'config.file/config)))
-      ;; missing email
-      {:first_name "Cam"
-       :last_name  "Era"
-       :password   "2cans"}
-      (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :email)"))
-
-      ;; missing first name
-      {:last_name  "Era"
-       :email      "cam+config-file-admin-test@metabase.com"
-       :password   "2cans"}
-      (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :first_name)"))
-
-      ;; missing last name
-      {:first_name "Cam"
-       :email      "cam+config-file-admin-test@metabase.com"
-       :password   "2cans"}
-      (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :last_name)"))
-
-      ;; missing password
-      {:first_name "Cam"
-       :last_name  "Era"
-       :email      "cam+config-file-test@metabase.com"}
-      (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :password)")))))
+(deftest hash-password-on-update-test
+  (testing "Setting `:password` with [[db/update!]] should hash the password, just like [[db/insert!]]"
+    (let [plaintext-password "password-1234"]
+      (mt/with-temp User [{user-id :id} {:password plaintext-password}]
+        (let [salt                     (fn [] (db/select-one-field :password_salt User :id user-id))
+              hashed-password          (fn [] (db/select-one-field :password User :id user-id))
+              original-hashed-password (hashed-password)]
+          (testing "sanity check: check that password can be verified"
+            (is (u.password/verify-password plaintext-password
+                                            (salt)
+                                            original-hashed-password)))
+          (is (= true
+                 (db/update! User user-id :password plaintext-password)))
+          (let [new-hashed-password (hashed-password)]
+            (testing "password should have been hashed"
+              (is (not= plaintext-password
+                        new-hashed-password)))
+            (testing "even tho the plaintext password is the same, hashed password should be different (different salts)"
+              (is (not= original-hashed-password
+                        new-hashed-password)))
+            (testing "salt should have been set; verify password was hashed correctly"
+              (is (u.password/verify-password plaintext-password
+                                              (salt)
+                                              new-hashed-password)))))))))

@@ -8,8 +8,9 @@ import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import type { Database } from "metabase-types/api/database";
-import type Schema from "metabase-lib/lib/metadata/Schema";
-import type Table from "metabase-lib/lib/metadata/Table";
+import { isNotNull } from "metabase/core/utils/array";
+import type Schema from "metabase-lib/metadata/Schema";
+import type Table from "metabase-lib/metadata/Table";
 import DataSelectorSectionHeader from "../DataSelectorSectionHeader";
 
 import { DataSelectorSection as Section } from "../DataSelector.styled";
@@ -80,7 +81,7 @@ const DataSelectorTablePicker = ({
     const sections = [
       {
         name: header,
-        items: tables.filter(Boolean).map(table => ({
+        items: tables.filter(isNotNull).map(table => ({
           name: table.displayName(),
           table: table,
           database: selectedDatabase,

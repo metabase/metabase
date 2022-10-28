@@ -36,8 +36,9 @@ const LineAreaBarChart = ({
       },
     },
     legend: {
-      fontSize: 16,
+      fontSize: 14,
       lineHeight: 20,
+      fontWeight: 700,
     },
     value: {
       color: getColor("text-dark"),

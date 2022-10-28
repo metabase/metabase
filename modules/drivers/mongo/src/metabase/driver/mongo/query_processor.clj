@@ -192,6 +192,24 @@
                                               [resolution])]
                              [part (str (name parts) \. (name part))]))}))
 
+(declare with-rvalue-temporal-bucketing)
+
+(defn- days-till-start-of-first-full-week
+  [column]
+  (let [start-of-year                (with-rvalue-temporal-bucketing column :year)
+        day-of-week-of-start-of-year (with-rvalue-temporal-bucketing start-of-year :day-of-week)]
+    {:$subtract [8 day-of-week-of-start-of-year]}))
+
+(defn- week-of-year
+  "Full explanation of this magic is in [[metabase.driver.sql.query-processor/week-of-year]]."
+  [column mode]
+  (let [doy    (with-rvalue-temporal-bucketing column :day-of-year)
+        dtsofw (binding [driver.common/*start-of-week* (case mode
+                                                         :us :sunday
+                                                         :instance nil)]
+                 (days-till-start-of-first-full-week column))]
+    {:$toInt {:$add [1 {:$ceil {:$divide [{:$subtract [doy dtsofw]} 7]}}]}}))
+
 (defn- with-rvalue-temporal-bucketing
   [field unit]
   (if (= unit :default)
@@ -213,6 +231,9 @@
           :week             (truncate-to-resolution (week column) :day)
           :week-of-year     {:$ceil {$divide [{$dayOfYear (week column)}
                                               7.0]}}
+          :week-of-year-iso {:$isoWeek column}
+          :week-of-year-us  (week-of-year column :us)
+          :week-of-year-instance  (week-of-year column :instance)
           :month            (truncate :month)
           :month-of-year    {$month column}
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
@@ -374,19 +395,8 @@
 (defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
 (defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
 
-(def ^:private temporal-extract-unit->date-unit
-  {:second      :second-of-minute
-   :minute      :minute-of-hour
-   :hour        :hour-of-day
-   :day-of-week :day-of-week
-   :day         :day-of-month
-   :week        :week-of-year
-   :month       :month-of-year
-   :quarter     :quarter-of-year
-   :year        :year-of-era})
-
 (defmethod ->rvalue :temporal-extract [[_ inp unit]]
-  (with-rvalue-temporal-bucketing (->rvalue inp) (temporal-extract-unit->date-unit unit)))
+  (with-rvalue-temporal-bucketing (->rvalue inp) unit))
 
 ;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
 ;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
@@ -455,16 +465,16 @@
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
-(defmethod ->rvalue :date-add        [[_ inp amount unit]] (do
-                                                             (check-date-operations-supported)
-                                                             {"$dateAdd" {:startDate (->rvalue inp)
-                                                                          :unit      unit
-                                                                          :amount    amount}}))
-(defmethod ->rvalue :date-subtract   [[_ inp amount unit]] (do
-                                                             (check-date-operations-supported)
-                                                             {"$dateSubtract" {:startDate (->rvalue inp)
-                                                                               :unit      unit
-                                                                               :amount    amount}}))
+(defmethod ->rvalue :datetime-add        [[_ inp amount unit]] (do
+                                                                 (check-date-operations-supported)
+                                                                 {"$dateAdd" {:startDate (->rvalue inp)
+                                                                              :unit      unit
+                                                                              :amount    amount}}))
+(defmethod ->rvalue :datetime-subtract   [[_ inp amount unit]] (do
+                                                                 (check-date-operations-supported)
+                                                                 {"$dateSubtract" {:startDate (->rvalue inp)
+                                                                                   :unit      unit
+                                                                                   :amount    amount}}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |

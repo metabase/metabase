@@ -1,7 +1,7 @@
 import type { ConcreteTableId } from "metabase-types/api";
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Schema from "metabase-lib/lib/metadata/Schema";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Database from "metabase-lib/metadata/Database";
+import type Schema from "metabase-lib/metadata/Schema";
+import type Table from "metabase-lib/metadata/Table";
 import type { EntityId, PermissionSubject } from "../types";
 
 export const getDatabaseEntityId = (databaseEntity: Database) => ({

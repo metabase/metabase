@@ -1,5 +1,5 @@
 import _ from "underscore";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 // This converts an MBQL query into a sequence of notebook "steps", with special logic to determine which steps are
 // allowed to be added at every other step, generating a preview query at each step, how to delete a step,

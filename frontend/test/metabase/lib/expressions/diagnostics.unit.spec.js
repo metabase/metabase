@@ -1,10 +1,10 @@
-import { tokenize } from "metabase-lib/lib/expressions/tokenizer";
+import { tokenize } from "metabase-lib/expressions/tokenizer";
 import {
   countMatchingParentheses,
   diagnose,
-} from "metabase-lib/lib/expressions/diagnostics";
+} from "metabase-lib/expressions/diagnostics";
 
-describe("metabase-lib/lib/expressions/diagnostics", () => {
+describe("metabase-lib/expressions/diagnostics", () => {
   it("should count matching parentheses", () => {
     const count = expr => countMatchingParentheses(tokenize(expr).tokens);
     expect(count("()")).toEqual(0);

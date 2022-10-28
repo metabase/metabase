@@ -1,7 +1,6 @@
 import {
   createParameter,
   setParameterName,
-  setParameterDefaultValue,
   hasMapping,
   isDashboardParameterWithoutMapping,
   getParametersMappedToDashcard,
@@ -11,7 +10,7 @@ import {
   getDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
 import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
-import Field from "metabase-lib/lib/metadata/Field";
+import Field from "metabase-lib/metadata/Field";
 
 describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
@@ -96,15 +95,6 @@ describe("metabase/parameters/utils/dashboards", () => {
       expect(setParameterName({}, "")).toEqual({
         name: "unnamed",
         slug: "unnamed",
-      });
-    });
-  });
-
-  describe("setParameterDefaultValue", () => {
-    it("should set a `default` property on a parameter", () => {
-      expect(setParameterDefaultValue({ foo: "bar" }, 123)).toEqual({
-        foo: "bar",
-        default: 123,
       });
     });
   });

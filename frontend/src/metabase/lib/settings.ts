@@ -404,4 +404,8 @@ function makeRegexTest(property: string, regex: RegExp) {
     (password.match(regex) || []).length >= (requirements[property] || 0);
 }
 
-export default new Settings(_.clone(window.MetabaseBootstrap));
+// window is not defined for static charts SSR
+const initValues =
+  typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
+
+export default new Settings(initValues);

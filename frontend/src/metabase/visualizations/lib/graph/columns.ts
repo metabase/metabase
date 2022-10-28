@@ -3,6 +3,7 @@ import {
   DatasetData,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/core/utils/array";
 import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
 
 export type ColumnDescriptor = {
@@ -32,13 +33,13 @@ export const hasValidColumnsSelected = (
     .map(metricColumnName =>
       data.cols.find(column => column.name === metricColumnName),
     )
-    .filter(Boolean);
+    .filter(isNotNull);
 
   const dimensionColumns = (visualizationSettings["graph.dimensions"] ?? [])
     .map(dimensionColumnName =>
       data.cols.find(column => column.name === dimensionColumnName),
     )
-    .filter(Boolean);
+    .filter(isNotNull);
 
   return metricColumns.length > 0 && dimensionColumns.length > 0;
 };
@@ -61,12 +62,12 @@ export const getChartColumns = (
   visualizationSettings: VisualizationSettings,
 ): ChartColumns => {
   const [dimension, breakout] = getColumnDescriptors(
-    visualizationSettings["graph.dimensions"] ?? [],
+    (visualizationSettings["graph.dimensions"] ?? []).filter(isNotNull),
     data.cols,
   );
 
   const metrics = getColumnDescriptors(
-    visualizationSettings["graph.metrics"] ?? [],
+    (visualizationSettings["graph.metrics"] ?? []).filter(isNotNull),
     data.cols,
   );
 

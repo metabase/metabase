@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { CollectionDatasetOrDataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { getDatabasesList } from "metabase/query_builder/selectors";
-import { isLocalField } from "metabase-lib/lib/queries/utils/field-ref";
+import { isLocalField } from "metabase-lib/queries/utils/field-ref";
 
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import {

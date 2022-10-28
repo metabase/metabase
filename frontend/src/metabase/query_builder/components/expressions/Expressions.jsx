@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import Tooltip from "metabase/components/Tooltip";
 
-import { format } from "metabase-lib/lib/expressions/format";
+import { format } from "metabase-lib/expressions/format";
 
 export default class Expressions extends Component {
   static propTypes = {

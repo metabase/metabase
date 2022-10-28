@@ -16,7 +16,8 @@ import {
   TwoDimensionalChartData,
 } from "metabase/visualizations/shared/types/data";
 import { Series } from "metabase/visualizations/shared/components/RowChart/types";
-import { isMetric } from "metabase-lib/lib/types/utils/isa";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { isMetric } from "metabase-lib/types/utils/isa";
 
 const getMetricValue = (value: RowValue): MetricValue => {
   if (typeof value === "number") {
@@ -113,13 +114,13 @@ export const getGroupedDataset = (
 
 export const trimData = (
   dataset: GroupedDataset,
-  valuesLimit: number,
+  valuesCountLimit: number,
 ): GroupedDataset => {
-  if (dataset.length <= valuesLimit) {
+  if (dataset.length <= valuesCountLimit) {
     return dataset;
   }
 
-  const groupStartingFromIndex = valuesLimit - 1;
+  const groupStartingFromIndex = valuesCountLimit - 1;
   const result = dataset.slice();
   const dataToGroup = result.splice(groupStartingFromIndex);
 
@@ -149,7 +150,6 @@ export const trimData = (
     {
       dimensionValue: groupedDatumDimensionValue,
       metrics: {},
-      breakout: {},
     },
   );
 
@@ -175,12 +175,15 @@ const getBreakoutSeries = (
   metric: ColumnDescriptor,
   dimension: ColumnDescriptor,
 ): Series<GroupedDatum, SeriesInfo>[] => {
-  return breakoutValues.map((breakoutValue, seriesIndex) => {
+  return breakoutValues.map(breakoutValue => {
     const breakoutName = String(breakoutValue);
     return {
       seriesKey: breakoutName,
       seriesName: breakoutName,
-      yAccessor: (datum: GroupedDatum) => String(datum.dimensionValue),
+      yAccessor: (datum: GroupedDatum) =>
+        datum.dimensionValue == null
+          ? NULL_DISPLAY_VALUE
+          : datum.dimensionValue,
       xAccessor: (datum: GroupedDatum) =>
         datum.breakout?.[breakoutName]?.[metric.column.name] ?? null,
       seriesInfo: {
@@ -200,7 +203,8 @@ const getMultipleMetricSeries = (
     return {
       seriesKey: metric.column.name,
       seriesName: metric.column.display_name ?? metric.column.name,
-      yAccessor: (datum: GroupedDatum) => String(datum.dimensionValue),
+      yAccessor: (datum: GroupedDatum) =>
+        datum.dimensionValue != null ? datum.dimensionValue : "null",
       xAccessor: (datum: GroupedDatum) => datum.metrics[metric.column.name],
       seriesInfo: {
         dimensionColumn: dimension.column,
@@ -215,8 +219,6 @@ export const getSeries = (
   chartColumns: ChartColumns,
   columnFormatter: ColumnFormatter,
 ): Series<GroupedDatum, SeriesInfo>[] => {
-  let series: Series<GroupedDatum, SeriesInfo>[];
-
   if ("breakout" in chartColumns) {
     const breakoutValues = getBreakoutDistinctValues(
       data,
