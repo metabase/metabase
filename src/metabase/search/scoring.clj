@@ -185,9 +185,11 @@
 
 (defn- text-scores-with-match
   [raw-search-string result]
-  (text-scores-with match-based-scorers
-                    (tokenize (normalize raw-search-string))
-                    result))
+  (if (seq raw-search-string)
+    (text-scores-with match-based-scorers
+                      (tokenize (normalize raw-search-string))
+                      result)
+    [{:score 0 :weight 0}]))
 
 (defn- pinned-score
   [{:keys [model collection_position]}]
