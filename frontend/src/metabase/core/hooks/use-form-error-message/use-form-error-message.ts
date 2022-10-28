@@ -4,20 +4,16 @@ import useFormState from "metabase/core/hooks/use-form-state";
 
 const useFormErrorMessage = () => {
   const { dirty } = useFormikContext();
-  const { status, message } = useFormState();
+  const { message } = useFormState();
   const [errorMessage, setErrorMessage] = useState(message);
 
   useLayoutEffect(() => {
-    if (dirty) {
-      setErrorMessage(undefined);
-    }
+    setErrorMessage(undefined);
   }, [dirty]);
 
   useLayoutEffect(() => {
-    if (status === "rejected") {
-      setErrorMessage(message);
-    }
-  }, [status, message]);
+    setErrorMessage(message);
+  }, [message]);
 
   return errorMessage;
 };
