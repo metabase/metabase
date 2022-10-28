@@ -21,12 +21,12 @@ import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoa
 
 import Collections from "metabase/entities/collections";
 
+import { isRootCollection } from "metabase/collections/utils";
+
 import Item from "./Item";
 import { ItemPickerHeader, ItemPickerList } from "./ItemPicker.styled";
 
 const getCollectionIconColor = () => color("text-light");
-
-const isRoot = collection => collection.id === "root" || collection.id == null;
 
 const propTypes = {
   // undefined = no selection
@@ -86,7 +86,7 @@ class ItemPicker extends React.Component {
 
   handleCollectionSelected = collection => {
     const { onChange } = this.props;
-    if (isRoot(collection)) {
+    if (isRootCollection(collection)) {
       // "root" collection should have `null` id
       onChange({ id: null, model: "collection" });
     } else {
@@ -142,7 +142,11 @@ class ItemPicker extends React.Component {
     let allCollections = (collection && collection.children) || [];
 
     // show root in itself if we can pick it
-    if (collection && isRoot(collection) && models.has("collection")) {
+    if (
+      collection &&
+      isRootCollection(collection) &&
+      models.has("collection")
+    ) {
       allCollections = [collection, ...allCollections];
     }
 
@@ -214,7 +218,7 @@ class ItemPicker extends React.Component {
                     (collection.children &&
                       collection.children.length > 0 &&
                       // exclude root since we show root's subcollections alongside it
-                      !isRoot(collection)) ||
+                      !isRootCollection(collection)) ||
                     // non-collection models are loaded on-demand so we don't know ahead of time
                     // if they have children, so we have to assume they do
                     modelsIncludeNonCollections;
