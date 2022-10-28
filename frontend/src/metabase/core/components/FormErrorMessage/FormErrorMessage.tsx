@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import { useFormikContext } from "formik";
+import { t } from "ttag";
 import useFormState from "metabase/core/hooks/use-form-state";
 import { ErrorMessageRoot } from "./FormErrorMessage.styled";
 
@@ -30,18 +31,24 @@ const FormErrorMessage = forwardRef(function FormErrorMessage(
   );
 });
 
+const DEFAULT_ERROR_MESSAGE = t`An error occurred`;
+
 const useFormErrorMessage = () => {
   const { dirty } = useFormikContext();
-  const { message } = useFormState();
+  const { status, message } = useFormState();
   const [errorMessage, setErrorMessage] = useState(message);
 
   useLayoutEffect(() => {
-    setErrorMessage(undefined);
+    if (dirty) {
+      setErrorMessage(undefined);
+    }
   }, [dirty]);
 
   useLayoutEffect(() => {
-    setErrorMessage(message);
-  }, [message]);
+    if (status === "rejected") {
+      setErrorMessage(message ?? DEFAULT_ERROR_MESSAGE);
+    }
+  }, [status, message]);
 
   return errorMessage;
 };

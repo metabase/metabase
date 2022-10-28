@@ -11,9 +11,11 @@ const useForm = <T>(onSubmit: (data: T) => void) => {
         helpers.setStatus({ status: "fulfilled" });
       } catch (error) {
         if (isFormError(error)) {
-          const { data } = error;
-          helpers.setErrors(data?.errors ?? {});
-          helpers.setStatus({ status: "rejected", message: data?.message });
+          helpers.setErrors(getFieldErrors(error));
+          helpers.setStatus({
+            status: "rejected",
+            message: getErrorMessage(error),
+          });
         } else {
           helpers.setStatus({ status: "rejected", message: undefined });
         }
@@ -25,6 +27,14 @@ const useForm = <T>(onSubmit: (data: T) => void) => {
 
 const isFormError = <T>(error: unknown): error is FormError<T> => {
   return error != null && typeof error === "object";
+};
+
+const getFieldErrors = <T>(error: FormError<T>) => {
+  return error.data?.errors ?? error.errors ?? {};
+};
+
+const getErrorMessage = <T>(error: FormError<T>) => {
+  return error.data?.message ?? error.message;
 };
 
 export default useForm;

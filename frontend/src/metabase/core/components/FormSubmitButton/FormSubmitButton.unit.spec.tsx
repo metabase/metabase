@@ -11,11 +11,11 @@ const TEST_SCHEMA = Yup.object().shape({
   name: Yup.string().required("error"),
 });
 
-interface TestFormInputProps {
+interface TestFormSubmitButtonProps {
   onSubmit: () => void;
 }
 
-const TestFormSubmitButton = ({ onSubmit }: TestFormInputProps) => {
+const TestFormSubmitButton = ({ onSubmit }: TestFormSubmitButtonProps) => {
   return (
     <Formik
       initialValues={{ name: "" }}
