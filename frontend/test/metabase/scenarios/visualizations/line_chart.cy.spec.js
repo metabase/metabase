@@ -3,6 +3,7 @@ import {
   visitQuestionAdhoc,
   popover,
   visitDashboard,
+  openSeriesSettings,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -35,6 +36,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     cy.findByText("Settings").click();
+    openSeriesSettings("Count");
     cy.findByText("Right").click();
     cy.get(Y_AXIS_RIGHT_SELECTOR);
   });
@@ -155,17 +157,20 @@ describe("scenarios > visualizations > line chart", () => {
 
     cy.findByText("Settings").click();
 
-    cy.findByTestId("sidebar-left").within(() => {
-      // Make sure we can update input with some existing value
+    // Make sure we can update input with some existing value
+    openSeriesSettings("cat1", true);
+    popover().within(() => {
       cy.findByDisplayValue("cat1").type(" new").blur();
       cy.findByDisplayValue("cat1 new");
-
-      // Now do the same for the input with no value
-      cy.findByDisplayValue("").type("cat2").blur();
-      cy.findByDisplayValue("cat2");
-
-      cy.button("Done").click();
+      cy.wait(500);
     });
+    // Now do the same for the input with no value
+    openSeriesSettings("Unknown", true);
+    popover().within(() => {
+      cy.get("input[type=text]").type("cat2").blur();
+      cy.findByDisplayValue("cat2");
+    });
+    cy.button("Done").click();
 
     cy.findAllByTestId("legend-item")
       .should("contain", "cat1 new")

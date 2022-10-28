@@ -84,7 +84,7 @@ export function nestedSettings(
     [id]: {
       section: t`Display`,
       default: {},
-      getProps: (series, settings) => {
+      getProps: (series, settings, onChange, extra) => {
         const objects = getObjects(series, settings);
         const allComputedSettings = getComputedSettingsForAllObjects(
           series,
@@ -98,6 +98,7 @@ export function nestedSettings(
           objects,
           allComputedSettings,
           extra: { series, settings },
+          ...extra,
         };
       },
       widget,

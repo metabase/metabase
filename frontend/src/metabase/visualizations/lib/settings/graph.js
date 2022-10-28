@@ -180,11 +180,13 @@ export const GRAPH_DATA_SETTINGS = {
           name: seriesSettings[key]?.title || key,
           originalIndex: index,
         })),
+        series,
       };
     },
     getHidden: (series, settings) => {
       return settings["graph.dimensions"]?.length < 2 || series.length > 20;
     },
+    dashboard: false,
   },
   "graph.metrics": {
     section: t`Data`,
