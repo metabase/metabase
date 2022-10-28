@@ -1,29 +1,55 @@
 import React, { forwardRef, Ref } from "react";
 import { useField } from "formik";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Input, { InputProps } from "metabase/core/components/Input";
+import FormField, {
+  FieldAttributes,
+  FieldProps,
+} from "metabase/core/components/FormField";
 
-export interface FormInputProps
-  extends Omit<InputProps, "value" | "error" | "onChange" | "onBlur"> {
-  name: string;
-}
+export type FormInputProps = FieldAttributes &
+  FieldProps &
+  Omit<InputProps, "value" | "error" | "onChange" | "onBlur">;
 
 const FormInput = forwardRef(function FormInput(
-  { name, ...props }: FormInputProps,
+  {
+    name,
+    validate,
+    className,
+    style,
+    title,
+    description,
+    alignment,
+    orientation,
+    ...props
+  }: FormInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
-  const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
+  const id = useUniqueId();
+  const [field, meta] = useField({ name, validate });
 
   return (
-    <Input
-      {...props}
+    <FormField
       ref={ref}
-      id={name}
-      name={name}
-      value={value}
-      error={touched && error != null}
-      onChange={onChange}
-      onBlur={onBlur}
-    />
+      className={className}
+      style={style}
+      title={title}
+      description={description}
+      alignment={alignment}
+      orientation={orientation}
+      htmlFor={id}
+      error={meta.touched ? meta.error : undefined}
+    >
+      <Input
+        {...props}
+        id={id}
+        name={name}
+        value={field.value}
+        error={meta.touched && meta.error != null}
+        onChange={field.onChange}
+        onBlur={field.onBlur}
+      />
+    </FormField>
   );
 });
 

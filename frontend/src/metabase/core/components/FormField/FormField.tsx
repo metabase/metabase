@@ -1,28 +1,56 @@
-import React, { forwardRef, Ref } from "react";
-import { useField } from "formik";
-import InputField, {
-  InputFieldProps,
-} from "metabase/core/components/InputField";
+import React, { forwardRef, HTMLAttributes, Ref } from "react";
+import { FieldProps } from "./types";
+import {
+  FieldCaption,
+  FieldDescription,
+  FieldLabel,
+  FieldLabelError,
+  FieldRoot,
+} from "./FormField.styled";
 
 export interface FormFieldProps
-  extends Omit<InputFieldProps, "error" | "htmlFor"> {
-  name: string;
+  extends HTMLAttributes<HTMLDivElement>,
+    FieldProps {
+  error?: string;
+  htmlFor?: string;
 }
 
 const FormField = forwardRef(function FormField(
-  { name, ...props }: FormFieldProps,
+  {
+    title,
+    description,
+    error,
+    htmlFor,
+    alignment = "end",
+    orientation = "vertical",
+    children,
+    ...props
+  }: FormFieldProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [, meta] = useField(name);
-  const { error, touched } = meta;
+  const hasError = Boolean(error);
 
   return (
-    <InputField
+    <FieldRoot
       {...props}
       ref={ref}
-      htmlFor={name}
-      error={touched ? error : undefined}
-    />
+      orientation={orientation}
+      hasError={hasError}
+    >
+      {alignment === "start" && children}
+      {(title || description) && (
+        <FieldCaption alignment={alignment} orientation={orientation}>
+          {title && (
+            <FieldLabel htmlFor={htmlFor}>
+              {title}
+              {hasError && <FieldLabelError>: {error}</FieldLabelError>}
+            </FieldLabel>
+          )}
+          {description && <FieldDescription>{description}</FieldDescription>}
+        </FieldCaption>
+      )}
+      {alignment === "end" && children}
+    </FieldRoot>
   );
 });
 
