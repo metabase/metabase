@@ -36,6 +36,8 @@ describe("issue 16170", { tags: "@external" }, () => {
 
       replaceMissingValuesWith(replacementValue);
 
+      cy.findByText("Done").click();
+
       assertOnTheYAxis();
 
       cy.get(".dot").eq(-2).trigger("mousemove", { force: true });
