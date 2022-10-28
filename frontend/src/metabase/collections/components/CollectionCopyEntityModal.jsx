@@ -47,6 +47,28 @@ function CollectionCopyEntityModal({
     setIsShallowCopy(is_shallow_copy);
   };
 
+  const handleSaved = newEntityObject => {
+    const newEntityUrl = Urls.modelToUrl({
+      model: entityObject.model,
+      model_object: newEntityObject,
+    });
+
+    triggerToast(
+      <div className="flex align-center">
+        {/* A shallow-copied newEntityObject will not include `uncopied` */}
+        {newEntityObject.uncopied?.length > 0
+          ? t`Duplicated ${entityObject.model}, but couldn't duplicate some questions`
+          : t`Duplicated ${entityObject.model}`}
+        <Link className="link text-bold ml1" to={newEntityUrl}>
+          {t`See it`}
+        </Link>
+      </div>,
+      { icon: entityObject.model },
+    );
+
+    onSaved(newEntityObject);
+  };
+
   return (
     <EntityCopyModal
       overwriteOnInitialValuesChange
@@ -61,23 +83,7 @@ function CollectionCopyEntityModal({
         return entityObject.copy(dissoc(values, "id"));
       }}
       onClose={onClose}
-      onSaved={newEntityObject => {
-        const newEntityUrl = Urls.modelToUrl({
-          model: entityObject.model,
-          model_object: newEntityObject,
-        });
-        triggerToast(
-          <div className="flex align-center">
-            {t`Duplicated ${entityObject.model}`}
-            <Link className="link text-bold ml1" to={newEntityUrl}>
-              {t`See it`}
-            </Link>
-          </div>,
-          { icon: entityObject.model },
-        );
-
-        onSaved(newEntityObject);
-      }}
+      onSaved={handleSaved}
       onValuesChange={handleValuesChange}
     />
   );
