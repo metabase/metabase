@@ -5,15 +5,16 @@ import _ from "underscore";
 import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
 import { DatasetData, VisualizationSettings } from "metabase-types/api";
 
+import { formatValue } from "metabase/lib/formatting";
 import {
   getChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
 import {
-  formatColumnValue,
+  getColumnValueFormatter,
   getFormatters,
   getLabelsFormatter,
-} from "metabase/visualizations/visualizations/RowChart/utils/format";
+} from "metabase/visualizations/shared/utils/format";
 import { measureText } from "metabase/lib/measure-text";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import {
@@ -109,14 +110,18 @@ const RowChartVisualization = ({
   showTitle,
   onChangeCardAndRun,
 }: RowChartVisualizationProps) => {
+  const formatColumnValue = useMemo(() => {
+    return getColumnValueFormatter(formatValue);
+  }, []);
+
   const { chartColumns, series, seriesColors } = useMemo(
     () => getTwoDimensionalChartSeries(data, settings, formatColumnValue),
-    [data, settings],
+    [data, formatColumnValue, settings],
   );
 
   const groupedData = useMemo(
     () => getGroupedDataset(data, chartColumns, formatColumnValue),
-    [chartColumns, data],
+    [chartColumns, data, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
   const theme = useMemo(getChartTheme, []);
@@ -135,12 +140,12 @@ const RowChartVisualization = ({
   );
 
   const tickFormatters = useMemo(
-    () => getFormatters(chartColumns, settings),
+    () => getFormatters(chartColumns, settings, formatValue),
     [chartColumns, settings],
   );
 
   const labelsFormatter = useMemo(
-    () => getLabelsFormatter(chartColumns, settings),
+    () => getLabelsFormatter(chartColumns, settings, formatValue),
     [chartColumns, settings],
   );
 
@@ -351,17 +356,19 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
 
   const chartColumns = getChartColumns(data, settings);
 
-  const computedSeries = getSeries(data, chartColumns, formatColumnValue).map(
-    ({ seriesKey, seriesName }) => {
-      const seriesCard = {
-        ...card,
-        name: seriesName,
-        _seriesKey: seriesKey,
-        _transformed: true,
-      };
-      return { card: seriesCard, data };
-    },
-  );
+  const computedSeries = getSeries(
+    data,
+    chartColumns,
+    getColumnValueFormatter(formatValue),
+  ).map(({ seriesKey, seriesName }) => {
+    const seriesCard = {
+      ...card,
+      name: seriesName,
+      _seriesKey: seriesKey,
+      _transformed: true,
+    };
+    return { card: seriesCard, data };
+  });
 
   return computedSeries.length > 0 ? computedSeries : originalMultipleSeries;
 };
