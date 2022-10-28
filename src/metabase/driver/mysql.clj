@@ -1,7 +1,6 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
   (:require [clojure.java.jdbc :as jdbc]
-            [metabase.util.date-2 :as u.date]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -26,6 +25,7 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru trs tru]])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
