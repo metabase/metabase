@@ -10,14 +10,14 @@ title: History
 2. Click the info icon.
 3. A sidebar will pop up with a history of up to 15 versions.
 
-Metabase will keep track of a version each time you [save](../questions/sharing/answers.md#how-to-save-a-question), [move](../questions/sharing/answers.md#editing-your-question), [revert](#reverting-to-previous-versions), [archive](#archiving-items), or [verify](./exploration.md#verified-items) a question or model.
+Metabase will keep track of a version each time you [save](../questions/sharing/answers.md#how-to-save-a-question), [move](../questions/sharing/answers.md#editing-your-question), [revert](#reverting-to-previous-versions), [archive](#archiving-items), or [verify](./exploration.md#verified-items) an item.
 
 ## Reverting to previous versions
 
 1. Go to your question, dashboard, or model.
 2. Click the info icon.
 3. A sidebar will appear with up to 15 previous versions.
-4. Click on the **back arrow** icon beside a version to revert your item to that point in time.
+4. Click on the **back arrow** beside a version to revert your item to that point in time.
 
 ## Archiving items
 
@@ -37,9 +37,9 @@ You can batch archive multiple items from the same collection:
 ### Archiving a collection
 
 1. Go to the collection.
-2. Click `...` > **Archive** to send the collection to the archive.
+2. Click `...` > **Archive**.
 
-Archiving a collection archives all of the collection's contents as well. You can only archive a collection if you have permission to **Curate** a collection (as well as all of the collections inside that collection). If you don't see the **Archive** option, you don't have the right permissions.
+Archiving a collection archives all of the collection's contents as well. You can only archive a collection if you have permission to **Curate** a collection (as well as all of the collections inside that collection). If you don't see the **Archive** option, see your Metabase admin about your [collection permissions](../permissions/collections.md).
 
 ### Viewing the archive
 
@@ -54,12 +54,14 @@ Archiving a collection archives all of the collection's contents as well. You ca
 3. Click **View archive**.
 4. Hover over the item and click the **unarchive** icon (rectangle with a `^` symbol).
 
-The unarchived item should get restored to the parent collection that it was most recently saved in. If you unarchive an item, and you don't know where it's reappeared:
+The unarchived item should get restored to the parent collection that it was most recently saved in. If you unarchive an item, but you don't know where it's reappeared:
 
 - search for the item directly, or
 - check if the item's parent collection is also in the archive.
 
 ### Unarchiving multiple items
+
+You can unarchive multiple items at once from the same collection:
 
 1. Go to the collection.
 2. Hover over the icon beside the name of the item and click the checkbox that appears.
@@ -72,9 +74,15 @@ The unarchived item should get restored to the parent collection that it was mos
 3. Click **View archive**.
 4. Hover over the item and click the **trash bin** icon.
 
-The item will get permanently deleted from your application database. You cannot restore a deleted item unless you happen to maintain regular backups of your application database.
+The item will get permanently deleted from your application database.
+
+Remember that [archiving](#archiving-items) and deleting items can have unanticipated ripple effects on related [dashboards](../dashboards/introduction.md), [subscriptions](../dashboards/subscriptions.md), and [SQL questions](../questions/native-editor/referencing-saved-questions-in-queries.md).
+
+We recommend archiving because you can always unarchive if something breaks. If you delete an item and accidentally break something, you might have to recreate all of that work from scratch (unless you're prepared to revert to a backup of your application database).
 
 ### Deleting multiple items permanently
+
+You can delete multiple items at once from the same collection:
 
 1. Go to the collection.
 2. Hover over the icon beside the name of the item and click the checkbox that appears.
