@@ -175,13 +175,18 @@ export default class Activity extends Component {
           item.model === "dataset" ? t`deleted a model` : t`deleted a question`;
         break;
       case "dashboard-create":
-        description.summary = t`created a dashboard`;
+        description.summary =
+          item.model === "page" ? t`created a page` : t`created a dashboard`;
         break;
       case "dashboard-delete":
-        description.summary = t`deleted a dashboard`;
+        description.summary =
+          item.model === "page" ? t`deleted a page` : t`deleted a dashboard`;
         break;
       case "dashboard-add-cards":
-        if (item.model_exists) {
+        // 1. Don't show a link to a deleted dashboard
+        // 2. Don't show a link to a page as we don't hydrate an app_id on page activity item
+        // and can't build a proper URL. Activity response is not paginated, so adding a join can cause performance issues.
+        if (item.model_exists && item.model !== "page") {
           description.summary = (
             <span>
               {t`added a question to the dashboard - `}
@@ -200,16 +205,20 @@ export default class Activity extends Component {
             </span>
           );
         } else {
+          const text =
+            item.model === "page"
+              ? t`added a question to the page - `
+              : t`added a question to the dashboard - `;
           description.summary = (
             <span>
-              {t`added a question to the dashboard - `}
+              {text}
               <span className="text-dark">{item.details.name}</span>
             </span>
           );
         }
         break;
       case "dashboard-remove-cards":
-        if (item.model_exists) {
+        if (item.model_exists && item.model !== "page") {
           description.summary = (
             <span>
               {t`removed a question from the dashboard - `}
@@ -228,9 +237,13 @@ export default class Activity extends Component {
             </span>
           );
         } else {
+          const text =
+            item.model === "page"
+              ? t`removed a question from the page - `
+              : t`removed a question from the dashboard - `;
           description.summary = (
             <span>
-              {t`removed a question from the dashboard - `}
+              {text}
               <span className="text-dark">{item.details.name}</span>
             </span>
           );
@@ -464,7 +477,10 @@ export default class Activity extends Component {
         break;
       case "dashboard-create":
         description.body = item.details.name;
-        description.bodyLink = item.model_exists ? Urls.modelToUrl(item) : null;
+        description.bodyLink =
+          item.model_exists && item.model !== "page"
+            ? Urls.modelToUrl(item)
+            : null;
         break;
       case "dashboard-delete":
         description.body = item.details.name;
