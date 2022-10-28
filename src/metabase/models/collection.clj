@@ -561,7 +561,7 @@
     (throw (Exception. (tru "You cannot archive the Root Collection."))))
   ;; also make sure we're not trying to archive a PERSONAL Collection of an active user
   (when-let [owner-id (db/select-one-field :personal_owner_id Collection :id (u/the-id collection))]
-    (when (:is_active ('User owner-id))
+    (when-not (false? (:is_active ('User owner-id)))
       (throw (Exception. (tru "You cannot archive an active user's Personal Collection.")))))
   (set
    (for [collection-or-id (cons
@@ -742,8 +742,8 @@
                       :authority_level   (tru "You are not allowed to change the authority level of a Personal Collection.")
                       ;; The check below should be redundant because the `perms-for-moving` functions also check to
                       ;; make sure you're not operating on Personal Collections. But as an extra safety net it doesn't
-                      ;; hurt to check here too. Personal collections can be archived by admins if they belong to
-                      ;; deactivated users so we don't check that here.
+                      ;; hurt to check here too. Personal collections can be archived or unarchived by admins if they
+                      ;; belong to deactivated users so we don't check that here.
                       :location          (tru "You are not allowed to move a Personal Collection.")}]
     (when-let [[k msg] (->> unchangeable
                             (filter (fn [[k _msg]]

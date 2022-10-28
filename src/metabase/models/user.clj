@@ -112,12 +112,12 @@
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
-  (when (not active?)
+  (when (false? active?)
     (db/delete! 'PulseChannelRecipient :user_id id))
   ;; archive or unarchive the user's personal collection as necessary
-  (let [{archived? :archived :as personal-collection} (db/select-one Collection :personal_owner_id id)]
+  (when-let [{archived? :archived :as personal-collection} (db/select-one Collection :personal_owner_id id)]
     (cond
-      (and (not active?) (not archived?))
+      (and (false? active?) (not archived?))
       (collection/archive-collection! personal-collection)
 
       (and active? archived?)

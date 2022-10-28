@@ -1215,13 +1215,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest personal-collections-restrictions-test
-  (testing "Make sure we're not allowed to *unarchive* a Personal Collection"
-    (mt/with-temp User [my-cool-user]
-      (let [personal-collection (collection/user->personal-collection my-cool-user)]
-        (is (thrown?
-             Exception
-             (db/update! Collection (u/the-id personal-collection) :archived true))))))
-
   (testing "Make sure we're not allowed to *move* a Personal Collection"
     (mt/with-temp* [User       [my-cool-user]
                     Collection [some-other-collection]]
