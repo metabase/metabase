@@ -538,13 +538,11 @@ Syntax: `week(column, mode)`.
 
 Example: `week("March 25, 2021, 12:52:37")` would return the week as an integer, `12`.
 
-**column**: the name of the column of the date or datetime value.
-
-**mode**: `Optional. The default is "ISO".
-
-- ISO: Week 1 starts on the Monday before the first Thursday of January.
-- US: Week 1 starts on Jan 1. All other weeks start on Sunday.
-- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+- column: the name of the column of the date or datetime value.
+- mode: Optional.
+  - ISO: (default) Week 1 starts on the Monday before the first Thursday of January.
+  - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
+  - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
 
 ### year
 
