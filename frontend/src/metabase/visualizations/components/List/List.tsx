@@ -21,12 +21,11 @@ import {
   Root,
   Footer,
   LIST_ITEM_BORDER_DIVIDER_WIDTH,
-  ListHeader,
   ListBody,
   ListItemRow,
 } from "./List.styled";
 
-import { VariantInfo } from "./VariantInfo";
+import { VariantInfoHeader, VariantInfoRow } from "./VariantInfo";
 
 function getBoundingClientRectSafe(ref: React.RefObject<HTMLBaseElement>) {
   return ref.current?.getBoundingClientRect?.() ?? ({} as DOMRect);
@@ -151,12 +150,11 @@ function List({
           isClickable={isClickable}
           data-testid="table-row"
         >
-          <VariantInfo
+          <VariantInfoRow
             data={data}
             row={row}
             listColumnIndexes={listColumnIndexes}
             settings={settings}
-            getColumnTitle={getColumnTitle}
           />
         </ListItemRow>
       );
@@ -168,16 +166,15 @@ function List({
       isDataApp,
       checkIsVisualizationClickable,
       onVisualizationClick,
-      getColumnTitle,
     ],
   );
 
   return (
     <Root className={className} isQueryBuilder={isQueryBuilder}>
-      <ListHeader>
-        <div></div>
-        <div>{getColumnTitle(listColumnIndexes.right[0])}</div>
-      </ListHeader>
+      <VariantInfoHeader
+        listColumnIndexes={listColumnIndexes}
+        getColumnTitle={getColumnTitle}
+      />
       <ListBody>{paginatedRowIndexes.map(renderListItem)}</ListBody>
       {pageSize < rows.length && (
         <Footer

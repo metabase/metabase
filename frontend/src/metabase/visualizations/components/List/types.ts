@@ -12,5 +12,4 @@ export interface ListColumnIndexes {
 export type ListVariantProps = Pick<VisualizationProps, "settings" | "data"> & {
   row: Row;
   listColumnIndexes: ListColumnIndexes;
-  getColumnTitle: (columnIndex: number) => string;
 };
