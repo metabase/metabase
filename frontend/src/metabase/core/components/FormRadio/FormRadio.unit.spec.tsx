@@ -61,4 +61,16 @@ describe("FormRadio", () => {
       );
     });
   });
+
+  it("should be validated on blur", async () => {
+    const onSubmit = jest.fn();
+
+    render(<TestFormRadio initialValue="line" onSubmit={onSubmit} />);
+    userEvent.click(screen.getByRole("radio", { name: "Bar" }));
+    userEvent.tab();
+
+    await waitFor(() => {
+      expect(screen.getByText(": error")).toBeInTheDocument();
+    });
+  });
 });

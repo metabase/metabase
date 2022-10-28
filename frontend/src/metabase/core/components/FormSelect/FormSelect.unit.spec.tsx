@@ -7,7 +7,7 @@ import FormField from "metabase/core/components/FormField";
 import FormSelect from "./FormSelect";
 
 const TEST_SCHEMA = Yup.object().shape({
-  value: Yup.string().notOneOf(["Bar"]),
+  value: Yup.string().notOneOf(["bar"], "error"),
 });
 
 const TEST_OPTIONS = [
@@ -17,11 +17,14 @@ const TEST_OPTIONS = [
 ];
 
 interface TestFormSelectProps {
-  initialValue?: string;
+  initialValue?: string | null;
   onSubmit: () => void;
 }
 
-const TestFormSelect = ({ initialValue, onSubmit }: TestFormSelectProps) => {
+const TestFormSelect = ({
+  initialValue = null,
+  onSubmit,
+}: TestFormSelectProps) => {
   return (
     <Formik
       initialValues={{ value: initialValue }}
@@ -73,5 +76,17 @@ describe("FormSelect", () => {
     render(<TestFormSelect onSubmit={onSubmit} />);
 
     expect(screen.getByLabelText("Label")).toBeInTheDocument();
+  });
+
+  it("should be validated on blur", async () => {
+    const onSubmit = jest.fn();
+
+    render(<TestFormSelect initialValue="bar" onSubmit={onSubmit} />);
+    userEvent.click(screen.getByText("Bar"));
+    userEvent.tab();
+
+    await waitFor(() => {
+      expect(screen.getByText(": error")).toBeInTheDocument();
+    });
   });
 });
