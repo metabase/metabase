@@ -104,7 +104,7 @@ Verified questions and models are marked with a blue checkmark icon:
 
 ![Verified icon](./images/verified-icon.png)
 
-Administrators can **Verify** a question or model from the three dot menu (`...`) to signal that they've reviewed the question and deemed it to be trustworthy. That is: the question or model is filtering the right columns, or summarizing the right metrics, and querying records from the right tables. Verified items are more likely to show up higher in search suggestions and search results.
+Administrators can **Verify** a question or model from the three dot menu (`...`) to signal that they've reviewed the item and deemed it to be trustworthy. That is: the question or model is filtering the right columns, summarizing the right metrics, and querying records from the right tables. Verified items are more likely to show up higher in search suggestions and search results.
 
 If someone modifies a verified question, the question will lose its verified status, and an administrator will need to review and verify the question again to restore its verified status.
 

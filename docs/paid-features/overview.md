@@ -54,9 +54,9 @@ You can mark certain collections as [official](../exploration-and-organization/c
 
 ## Question moderation
 
-People can ask administrators to verify their questions.
+People can ask administrators to verify their questions and models.
 
-- [Question moderation](../questions/sharing/answers.md#question-moderation)
+- [Verified items](../exploration-and-organization/exploration.md#verified-items)
 
 ## Advanced caching controls
 

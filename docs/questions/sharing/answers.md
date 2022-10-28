@@ -59,7 +59,7 @@ To share a question, click on the arrow pointing up and to the right in the bott
 You can set up questions to run periodically and notify you if the results are interesting. Check out [Alerts][alerts].
 
 [alerts]: ./alerts.md
-[archiving-items]: ../../exploration-and-organization/collections.md#archiving-items
+[archiving-items]: ../../exploration-and-organization/history.md#archiving-items
 [caching]: ../../configuring-metabase/caching.md
 [collections]: ../../exploration-and-organization/collections.md
 [collection-permissions]: ../../permissions/collections.md
