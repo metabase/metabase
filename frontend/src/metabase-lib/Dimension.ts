@@ -1167,6 +1167,15 @@ export class ExpressionDimension extends Dimension {
     Object.freeze(this);
   }
 
+  setQuery(query: StructuredQuery): ExpressionDimension {
+    return new ExpressionDimension(
+      this._expressionName,
+      this._options,
+      this._metadata,
+      query,
+    );
+  }
+
   isEqual(somethingElse) {
     if (isExpressionDimension(somethingElse)) {
       return (
@@ -1425,6 +1434,15 @@ export class AggregationDimension extends Dimension {
     }
 
     Object.freeze(this);
+  }
+
+  setQuery(query: StructuredQuery): AggregationDimension {
+    return new AggregationDimension(
+      this._aggregationIndex,
+      this._options,
+      this._metadata,
+      query,
+    );
   }
 
   aggregationIndex(): number {
