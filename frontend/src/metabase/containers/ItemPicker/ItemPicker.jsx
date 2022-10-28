@@ -216,7 +216,7 @@ class ItemPicker extends React.Component {
         loading={!collectionsById}
         className={cx({ "scroll-y": showScroll })}
       >
-        <div style={style} className={cx(className, "scroll-y")}>
+        <div className={cx(className, "scroll-y")} style={style}>
           {this.renderHeader()}
           <ItemPickerList data-testid="item-picker-list">
             {!searchString &&
