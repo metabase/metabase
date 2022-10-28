@@ -63,4 +63,16 @@ describe("FormToggle", () => {
 
     expect(screen.getByLabelText("Label")).toBeInTheDocument();
   });
+
+  it("should be validated on blur", async () => {
+    const onSubmit = jest.fn();
+
+    render(<TestFormToggle initialValue={true} onSubmit={onSubmit} />);
+    userEvent.click(screen.getByRole("switch"));
+    userEvent.tab();
+
+    await waitFor(() => {
+      expect(screen.getByText(": error")).toBeInTheDocument();
+    });
+  });
 });
