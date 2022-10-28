@@ -289,7 +289,8 @@
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
-  (let [expr         (sql.qp/->honeysql driver arg)
+  (let [expr         (sql.qp/->honeysql driver (cond-> arg
+                                                 (string? arg) u.date/parse))
         timestamptz? (hx/is-of-type? expr "timestamptz")]
     (when (and timestamptz? source-timezone)
       (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone`")
