@@ -24,7 +24,12 @@ import Collections from "metabase/entities/collections";
 import { isRootCollection } from "metabase/collections/utils";
 
 import Item from "./Item";
-import { ItemPickerHeader, ItemPickerList } from "./ItemPicker.styled";
+import {
+  ItemPickerHeader,
+  ItemPickerList,
+  SearchInput,
+  SearchToggle,
+} from "./ItemPicker.styled";
 
 const getCollectionIconColor = () => color("text-light");
 
@@ -128,38 +133,28 @@ class ItemPicker extends React.Component {
 
     if (searchMode) {
       return (
-        <ItemPickerHeader
-          className="border-bottom flex align-center"
-          data-testid="item-picker-header"
-        >
-          <input
+        <ItemPickerHeader data-testid="item-picker-header">
+          <SearchInput
             type="search"
-            className="input rounded flex-full"
+            className="input"
             placeholder={t`Search`}
             autoFocus
             onKeyPress={this.handleSearchInputKeyPress}
           />
-          <Icon
-            name="close"
-            className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
-            onClick={this.handleCloseSearch}
-          />
+          <SearchToggle onClick={this.handleCloseSearch}>
+            <Icon name="close" />
+          </SearchToggle>
         </ItemPickerHeader>
       );
     }
 
     return (
-      <ItemPickerHeader
-        className="border-bottom flex align-center"
-        data-testid="item-picker-header"
-      >
+      <ItemPickerHeader data-testid="item-picker-header">
         <Breadcrumbs crumbs={crumbs} />
         {showSearch && (
-          <Icon
-            name="search"
-            className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
-            onClick={this.handleOpenSearch}
-          />
+          <SearchToggle onClick={this.handleOpenSearch}>
+            <Icon name="search" />
+          </SearchToggle>
         )}
       </ItemPickerHeader>
     );
