@@ -52,20 +52,21 @@
           :created_at             :%now
           :updated_at             :%now)
         ;; serialize "everything" (which should just be the card and user), which should succeed if #16931 is fixed
-        (is (nil? (cmd/dump (ts/random-dump-dir "serdes-"))))))))
+        (is (nil? (cmd/dump (ts/random-dump-dir "serdes-") "--legacy" "true")))))))
 
 (deftest blank-target-db-test
   (testing "Loading a dump into an empty app DB still works (#16639)"
     (let [dump-dir                 (ts/random-dump-dir "serdes-")
           user-pre-insert-called?  (atom false)]
       (log/infof "Dumping to %s" dump-dir)
-      (cmd/dump dump-dir "--user" "crowberto@metabase.com")
+      (cmd/dump dump-dir "--user" "crowberto@metabase.com" "--legacy" "true")
       (ts/with-empty-h2-app-db
         (with-redefs [load/pre-insert-user  (fn [user]
                                               (reset! user-pre-insert-called? true)
                                               (assoc user :password "test-password"))]
           (cmd/load dump-dir "--mode"     :update
-                             "--on-error" :abort)
+                             "--on-error" :abort
+                             "--legacy"   "true")
           (is (true? @user-pre-insert-called?)))))))
 
 (deftest mode-update-remove-cards-test
@@ -92,7 +93,7 @@
                     (doseq [card-id [card-1-id card-2-id]]
                       (ts/create! DashboardCard :dashboard_id dashboard-id, :card_id card-id))
                     (testing "dump in source"
-                      (is (nil? (cmd/dump dump-dir)))))))))
+                      (is (nil? (cmd/dump dump-dir "--legacy" "true")))))))))
           (testing "verify the Dashboard was dumped as expected"
             (is (.exists (io/file dashboard-yaml-filename)))
             (let [yaml (yaml/from-file dashboard-yaml-filename)]
@@ -104,7 +105,7 @@
               (testing "Create admin user"
                 (is (some? (ts/create! User, :is_superuser true)))
                 (is (db/exists? User :is_superuser true)))
-              (is (nil? (cmd/load dump-dir "--on-error" :abort)))
+              (is (nil? (cmd/load dump-dir "--on-error" :abort "--legacy" "true")))
               (testing "verify that things were loaded as expected"
                 (is (= 1 (db/count Dashboard)) "# Dashboards")
                 (is (= 2 (db/count Card)) "# Cards")
@@ -116,7 +117,7 @@
               (is (= 1 (db/count DashboardCard)) "# DashboardCards")))
           (testing "dump again"
             (ts/with-source-db
-              (cmd/dump dump-dir))
+              (cmd/dump dump-dir "--legacy" "true"))
             (testing "Verify dump only contains one Card"
               (is (.exists (io/file dashboard-yaml-filename)))
               (when-let [yaml (yaml/from-file dashboard-yaml-filename)]
@@ -124,7 +125,7 @@
                               yaml)))))
           (testing "load again, with --mode update, destination Dashboard should now only have one question."
             (ts/with-dest-db
-              (is (nil? (cmd/load dump-dir "--mode" :update, "--on-error" :abort)))
+              (is (nil? (cmd/load dump-dir "--mode" :update, "--on-error" :abort "--legacy" "true")))
               (is (= 1 (db/count Dashboard)) "# Dashboards")
               (testing "Don't delete the Card even tho it was deleted. Just delete the DashboardCard"
                 (is (= 2 (db/count Card)) "# Cards"))

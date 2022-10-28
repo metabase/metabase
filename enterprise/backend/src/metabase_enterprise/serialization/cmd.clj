@@ -25,6 +25,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-trs trs]]
             [metabase.util.schema :as su]
+            [schema.coerce :as coerce]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -39,8 +40,18 @@
 (def ^:private Context
   (su/with-api-error-message
     {(s/optional-key :on-error) OnError
-     (s/optional-key :mode)     Mode}
+     (s/optional-key :mode)     Mode
+     (s/optional-key :v2)       s/Bool
+     (s/optional-key :legacy)   s/Bool}
     (deferred-trs "invalid context seed value")))
+
+(def coerce-context
+  "Schema coercer for the arguments to serialization commands."
+  (coerce/coercer Context coerce/string-coercion-matcher))
+
+(def v2-and-legacy-error
+  "Shared error message used in several places."
+  (trs "cannot specify both --legacy and --v2"))
 
 (s/defn v1-load
   "Load serialized metabase instance as created by [[dump]] command from directory `path`."
@@ -80,10 +91,13 @@
 
 (defn load
   "Load serialized metabase instance as created by `dump` command from directory `path`."
-  [path args]
-  (if (:v2 args)
-    (v2-load path args)
-    (v1-load path args)))
+  [path {:keys [legacy v2] :as args}]
+  (when (and v2 legacy)
+    (log/error v2-and-legacy-error)
+    (throw (ex-info v2-and-legacy-error {})))
+  (if legacy
+    (v1-load path args)
+    (v2-load path args)))
 
 (defn- select-entities-in-collections
   ([model collections]
@@ -194,15 +208,18 @@
 
 (defn dump
   "Serialized metabase instance into directory `path`."
-  [path {:keys [state user v2]
+  [path {:keys [legacy state user v2]
          :or {state :active}
          :as opts}]
   (log/tracef "Dumping to %s with options %s" (pr-str path) (pr-str opts))
   (mdb/setup-db!)
   (db/select User) ;; TODO -- why???
-  (if v2
-    (v2-dump path opts)
-    (v1-dump path state user opts)))
+  (when (and v2 legacy)
+    (log/error v2-and-legacy-error)
+    (throw (ex-info v2-and-legacy-error {})))
+  (if legacy
+    (v1-dump path state user opts)
+    (v2-dump path opts)))
 
 (defn seed-entity-ids
   "Add entity IDs for instances of serializable models that don't already have them.

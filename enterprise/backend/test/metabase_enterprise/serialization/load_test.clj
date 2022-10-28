@@ -302,7 +302,8 @@
                                                              table-id-users
                                                              table-id-checkins])
                           (dump dump-dir {:user        (:email (test.users/fetch-user :crowberto))
-                                          :only-db-ids #{db-id}})
+                                          :only-db-ids #{db-id}
+                                          :legacy      true})
                           {:query-results (gather-orig-results [card-id
                                                                 card-arch-id
                                                                 card-id-root
@@ -378,7 +379,7 @@
                                            [Card               (db/select-one Card :id card-id-with-native-snippet)]
                                            [Card               (db/select-one Card :id card-join-card-id)]]})]
         (with-world-cleanup
-          (load dump-dir {:on-error :continue :mode :skip})
+          (load dump-dir {:on-error :continue :mode :skip :legacy true})
           (mt/with-db (db/select-one Database :name ts/temp-db-name)
             (doseq [[model entity] (:entities fingerprint)]
               (testing (format "%s \"%s\"" (type model) (:name entity))

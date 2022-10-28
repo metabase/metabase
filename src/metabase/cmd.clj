@@ -18,7 +18,6 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :as env]
-            [medley.core :as m]
             [metabase.config :as config]
             [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
@@ -141,10 +140,11 @@
                       "--on-error" :continue}))
 
   ([path & args]
-   (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/load)]
+   (let [cmd     (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/load)
+         coercer @(ns-resolve 'metabase-enterprise.serialization.cmd 'coerce-context)]
      (cmd path (->> args
                     cmd-args->map
-                    (m/map-vals mbql.u/normalize-token))))))
+                    coercer)))))
 
 (defn ^:command dump
   "Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
