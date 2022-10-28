@@ -28,21 +28,21 @@ const getCollectionIconColor = () => color("text-light");
 
 const isRoot = collection => collection.id === "root" || collection.id == null;
 
+const propTypes = {
+  // undefined = no selection
+  // null = root collection
+  // number = non-root collection id
+  value: PropTypes.number,
+  types: PropTypes.array,
+  showSearch: PropTypes.bool,
+  showScroll: PropTypes.bool,
+};
+
 class ItemPicker extends React.Component {
   state = {
     parentId: "root",
     searchMode: false,
     searchString: false,
-  };
-
-  static propTypes = {
-    // undefined = no selection
-    // null = root collection
-    // number = non-root collection id
-    value: PropTypes.number,
-    types: PropTypes.array,
-    showSearch: PropTypes.bool,
-    showScroll: PropTypes.bool,
   };
 
   checkHasWritePermissionForItem(item, models) {
@@ -256,6 +256,8 @@ class ItemPicker extends React.Component {
     );
   }
 }
+
+ItemPicker.propTypes = propTypes;
 
 export default _.compose(
   entityObjectLoader({
