@@ -485,7 +485,7 @@
                              mt/rows first
                              (zipmap units))))]
           (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :year 1}
-                 (diffs [:date-add #t "2022-10-03T00:00:00" 1 "day"] [:date-add #t "2023-10-03T00:00:00" 4 "day"])))))
+                 (diffs [:datetime-add #t "2022-10-03T00:00:00" 1 "day"] [:datetime-add #t "2023-10-03T00:00:00" 4 "day"])))))
       (testing "Result works in arithmetic expressions"
         (let [start "2021-10-03T09:19:09"
               end   "2022-10-03T09:18:09"]
@@ -521,4 +521,4 @@
               (mt/run-mbql-query orders
                 {:limit 1
                  :fields      [[:expression "diff-day"]]
-                 :expressions {"diff-day" [:datetime-diff "2021-01-01" [:date-add #t "00:00:01" 3 "hour"] :day]}}))))))))
+                 :expressions {"diff-day" [:datetime-diff "2021-01-01" [:datetime-add #t "00:00:01" 3 "hour"] :day]}}))))))))

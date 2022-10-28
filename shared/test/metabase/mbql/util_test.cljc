@@ -727,15 +727,15 @@
   (t/is (not (mbql.u/datetime-arithmetics?
               [:+
                [:datetime-diff
-                [:date-add [:field 13 {:temporal-unit :default}] 1 "hour"]
+                [:datetime-add [:field 13 {:temporal-unit :default}] 1 "hour"]
                 [:field 14 {:temporal-unit :default}]]
                1])))
   (t/is (mbql.u/datetime-arithmetics?
          [:+
-          [:date-add
+          [:datetime-add
            [:field 13 {:temporal-unit :default}]
            [:datetime-diff
-            [:date-add [:field 13 {:temporal-unit :default}] 1 "hour"]
+            [:datetime-add [:field 13 {:temporal-unit :default}] 1 "hour"]
             [:field 14 {:temporal-unit :default}]]
            "hour"]
           1])))
