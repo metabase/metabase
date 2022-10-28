@@ -55,7 +55,7 @@
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
     "leaflet.heat": "^0.2.0",
-    "moment-timezone": "^0.5.26",
+    "moment-timezone": "^0.5.38",
     "mustache": "^2.3.2",
     "normalizr": "^3.0.2",
     "number-to-locale-string": "^1.0.1",
