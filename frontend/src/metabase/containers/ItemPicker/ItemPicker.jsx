@@ -70,6 +70,34 @@ class ItemPicker extends React.Component {
     );
   }
 
+  handleSearchInputKeyPress = e => {
+    if (e.key === "Enter") {
+      this.setState({ searchString: e.target.value });
+    }
+  };
+
+  handleOpenSearch = () => {
+    this.setState({ searchMode: true });
+  };
+
+  handleCloseSearch = () => {
+    this.setState({ searchMode: null, searchString: null });
+  };
+
+  handleCollectionSelected = collection => {
+    const { onChange } = this.props;
+    if (isRoot(collection)) {
+      // "root" collection should have `null` id
+      onChange({ id: null, model: "collection" });
+    } else {
+      onChange(collection);
+    }
+  };
+
+  handleCollectionOpen = collectionId => {
+    this.setState({ parentId: collectionId });
+  };
+
   render() {
     const {
       value,
@@ -137,18 +165,12 @@ class ItemPicker extends React.Component {
                 className="input rounded flex-full"
                 placeholder={t`Search`}
                 autoFocus
-                onKeyPress={e => {
-                  if (e.key === "Enter") {
-                    this.setState({ searchString: e.target.value });
-                  }
-                }}
+                onKeyPress={this.handleSearchInputKeyPress}
               />
               <Icon
                 name="close"
                 className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
-                onClick={() =>
-                  this.setState({ searchMode: null, searchString: null })
-                }
+                onClick={this.handleCloseSearch}
               />
             </ItemPickerHeader>
           ) : (
@@ -161,7 +183,7 @@ class ItemPicker extends React.Component {
                 <Icon
                   name="search"
                   className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
-                  onClick={() => this.setState({ searchMode: true })}
+                  onClick={this.handleOpenSearch}
                 />
               )}
             </ItemPickerHeader>
@@ -194,13 +216,8 @@ class ItemPicker extends React.Component {
                       selected={canSelect && isSelected(collection)}
                       canSelect={canSelect}
                       hasChildren={hasChildren}
-                      onChange={collection =>
-                        isRoot(collection)
-                          ? // "root" collection should have `null` id
-                            onChange({ id: null, model: "collection" })
-                          : onChange(collection)
-                      }
-                      onChangeParentId={parentId => this.setState({ parentId })}
+                      onChange={this.handleCollectionSelected}
+                      onChangeParentId={this.handleCollectionOpen}
                     />
                   ) : null;
                 })
