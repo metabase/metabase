@@ -149,13 +149,13 @@
   [[_ amount unit]]
   [:interval amount (maybe-normalize-token unit)])
 
-(defmethod normalize-mbql-clause-tokens :date-add
+(defmethod normalize-mbql-clause-tokens :datetime-add
   [[_ field amount unit]]
-  [:date-add (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+  [:datetime-add (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
 
-(defmethod normalize-mbql-clause-tokens :date-subtract
+(defmethod normalize-mbql-clause-tokens :datetime-subtract
   [[_ field amount unit]]
-  [:date-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+  [:datetime-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
 
 (defmethod normalize-mbql-clause-tokens :get-week
   [[_ field mode]]

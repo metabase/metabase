@@ -493,7 +493,7 @@
 
 (def date-arithmetic-functions
   "Functions to do math with date, datetime."
-  #{:date-add :date-subtract})
+  #{:datetime-add :datetime-subtract})
 
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
@@ -685,18 +685,18 @@
    (apply s/enum #{:millisecond :second :minute :hour :day :week :month :quarter :year})
    "arithmetic-datetime-unit"))
 
-(defclause ^{:requires-features #{:date-arithmetics}} date-add
+(defclause ^{:requires-features #{:date-arithmetics}} datetime-add
   datetime DateTimeExpressionArg
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
-(defclause ^{:requires-features #{:date-arithmetics}} date-subtract
+(defclause ^{:requires-features #{:date-arithmetics}} datetime-subtract
   datetime DateTimeExpressionArg
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
 (def ^:private DatetimeExpression*
-  (one-of temporal-extract date-add date-subtract
+  (one-of temporal-extract datetime-add datetime-subtract
           ;; SUGAR drivers do not need to implement
           get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))
