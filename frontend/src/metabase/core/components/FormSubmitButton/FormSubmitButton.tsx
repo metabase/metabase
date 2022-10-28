@@ -8,7 +8,7 @@ import React, {
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 import Button, { ButtonProps } from "metabase/core/components/Button";
-import useFormState from "metabase/core/hooks/use-form-state";
+import useFormState, { FormStatus } from "metabase/core/hooks/use-form-state";
 
 export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   normalText?: string;
@@ -43,7 +43,7 @@ const FormSubmitButton = forwardRef(function FormSubmitButton(
 
 const STATUS_TIMEOUT = 5000;
 
-const useFormStatus = () => {
+const useFormStatus = (): FormStatus | undefined => {
   const { status } = useFormState();
   const isRecent = useIsRecent(status, STATUS_TIMEOUT);
 
@@ -72,7 +72,7 @@ const useIsRecent = (value: unknown, timeout: number) => {
 };
 
 const getSubmitButtonText = (
-  status: "pending" | "fulfilled" | "rejected" | undefined,
+  status: FormStatus | undefined,
   {
     normalText = t`Submit`,
     activeText = normalText,
