@@ -227,8 +227,8 @@
               (nil? (:card_id db-card)) ;; text card
               []
 
-              (not (mi/instance-of? Card card)) ;; cards without permissions are just a map with an :id from
-                                                ;; [[hide-unreadable-card]]
+              ;; cards without permissions are just a map with an :id from [[hide-unreadable-card]]
+              (not (mi/model card))
               [nil (into [card] series)]
 
               (mi/can-read? card)
