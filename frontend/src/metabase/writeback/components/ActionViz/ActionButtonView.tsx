@@ -16,7 +16,7 @@ function ActionButtonView({
   onClick,
 }: ActionButtonViewProps) {
   const label = settings["button.label"];
-  const variant = settings["button.variant"];
+  const variant = settings["button.variant"] ?? "primary";
 
   const variantProps: any = {};
   if (variant !== "default") {
