@@ -117,6 +117,54 @@ class ItemPicker extends React.Component {
     return query;
   };
 
+  renderHeader = () => {
+    const { collectionsById, showSearch = true } = this.props;
+    const { parentId, searchMode } = this.state;
+
+    const collection = collectionsById[parentId];
+    const crumbs = getCrumbs(collection, collectionsById, id =>
+      this.setState({ parentId: id }),
+    );
+
+    if (searchMode) {
+      return (
+        <ItemPickerHeader
+          className="border-bottom flex align-center"
+          data-testid="item-picker-header"
+        >
+          <input
+            type="search"
+            className="input rounded flex-full"
+            placeholder={t`Search`}
+            autoFocus
+            onKeyPress={this.handleSearchInputKeyPress}
+          />
+          <Icon
+            name="close"
+            className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
+            onClick={this.handleCloseSearch}
+          />
+        </ItemPickerHeader>
+      );
+    }
+
+    return (
+      <ItemPickerHeader
+        className="border-bottom flex align-center"
+        data-testid="item-picker-header"
+      >
+        <Breadcrumbs crumbs={crumbs} />
+        {showSearch && (
+          <Icon
+            name="search"
+            className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
+            onClick={this.handleOpenSearch}
+          />
+        )}
+      </ItemPickerHeader>
+    );
+  };
+
   render() {
     const {
       value,
@@ -125,19 +173,15 @@ class ItemPicker extends React.Component {
       getCollectionIcon,
       style,
       className,
-      showSearch = true,
       showScroll = true,
     } = this.props;
-    const { parentId, searchMode, searchString } = this.state;
+    const { parentId, searchString } = this.state;
 
     const models = new Set(this.props.models);
     const modelsIncludeNonCollections =
       this.props.models.filter(model => model !== "collection").length > 0;
 
     const collection = collectionsById[parentId];
-    const crumbs = getCrumbs(collection, collectionsById, id =>
-      this.setState({ parentId: id }),
-    );
 
     let allCollections = (collection && collection.children) || [];
 
@@ -178,39 +222,7 @@ class ItemPicker extends React.Component {
         className={cx({ "scroll-y": showScroll })}
       >
         <div style={style} className={cx(className, "scroll-y")}>
-          {searchMode ? (
-            <ItemPickerHeader
-              className="border-bottom flex align-center"
-              data-testid="item-picker-header"
-            >
-              <input
-                type="search"
-                className="input rounded flex-full"
-                placeholder={t`Search`}
-                autoFocus
-                onKeyPress={this.handleSearchInputKeyPress}
-              />
-              <Icon
-                name="close"
-                className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
-                onClick={this.handleCloseSearch}
-              />
-            </ItemPickerHeader>
-          ) : (
-            <ItemPickerHeader
-              className="border-bottom flex align-center"
-              data-testid="item-picker-header"
-            >
-              <Breadcrumbs crumbs={crumbs} />
-              {showSearch && (
-                <Icon
-                  name="search"
-                  className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
-                  onClick={this.handleOpenSearch}
-                />
-              )}
-            </ItemPickerHeader>
-          )}
+          {this.renderHeader()}
           <ItemPickerList data-testid="item-picker-list">
             {!searchString
               ? allCollections.map(collection => {
