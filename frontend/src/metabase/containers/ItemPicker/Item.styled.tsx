@@ -1,7 +1,9 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+
 import Icon from "metabase/components/Icon";
+
+import { color } from "metabase/lib/colors";
 
 export interface ItemRootProps {
   canSelect: boolean;
@@ -36,6 +38,11 @@ export const ItemRoot = styled.div<ItemRootProps>`
 export const ItemContent = styled.div`
   display: flex;
   align-items: center;
+`;
+
+export const ItemTitle = styled.h4`
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
 `;
 
 export interface ExpandItemIconProps {
