@@ -726,7 +726,7 @@
               [:+ [:field-id 13] 3])))
   (t/is (not (mbql.u/datetime-arithmetics?
               [:+
-               [:datetimediff
+               [:datetime-diff
                 [:date-add [:field 13 {:temporal-unit :default}] 1 "hour"]
                 [:field 14 {:temporal-unit :default}]]
                1])))
@@ -734,7 +734,7 @@
          [:+
           [:date-add
            [:field 13 {:temporal-unit :default}]
-           [:datetimediff
+           [:datetime-diff
             [:date-add [:field 13 {:temporal-unit :default}] 1 "hour"]
             [:field 14 {:temporal-unit :default}]]
            "hour"]

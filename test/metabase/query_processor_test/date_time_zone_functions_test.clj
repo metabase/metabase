@@ -266,14 +266,14 @@
      {:field-name "dt" :base-type :type/DateTime}]
     [[1 "simple comparing across types" #t "2021-08-03T08:09:10.582Z" #t "2022-09-04" #t "2022-10-05 09:19:09"]]]])
 
-(deftest datetimediff-base-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
+(deftest datetime-diff-base-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset sample-dataset
       (letfn [(query [x y unit]
                 (->> (mt/run-mbql-query orders
                        {:limit 1
-                        :expressions {"diff"     [:datetimediff x y unit]
-                                      "diff-rev" [:datetimediff y x unit]}
+                        :expressions {"diff"     [:datetime-diff x y unit]
+                                      "diff-rev" [:datetime-diff y x unit]}
                         :fields [[:expression "diff"]
                                  [:expression "diff-rev"]]})
                      mt/rows first))]
@@ -317,19 +317,19 @@
                             [:expression "d,dt"]]
                    :filter [:= $index 1]
                    :expressions
-                   {"tz,dt" [:datetimediff $tz $dt :day]
-                    "tz,d"  [:datetimediff $tz $d :day]
-                    "d,dt"  [:datetimediff $d $dt :day]}}))))))))
+                   {"tz,dt" [:datetime-diff $tz $dt :day]
+                    "tz,d"  [:datetime-diff $tz $d :day]
+                    "d,dt"  [:datetime-diff $d $dt :day]}}))))))))
 
-(deftest datetimediff-time-zones-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
+(deftest datetime-diff-time-zones-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset sample-dataset
       (let [diffs (fn [x y]
                     (let [units [:second :minute :hour :day :week :month :year]]
                       (->> (mt/run-mbql-query orders
                              {:limit 1
                               :expressions (into {} (for [unit units]
-                                                      [(name unit) [:datetimediff x y unit]]))
+                                                      [(name unit) [:datetime-diff x y unit]]))
                               :fields (into [] (for [unit units]
                                                  [:expression (name unit)]))})
                            mt/rows first
@@ -407,8 +407,8 @@
                           (diffs "2022-10-02T00:00:00+00:00"          ; 2022-10-02T00:00:00+00:00
                                  "2023-10-02T00:00:00+01:00"))))))))) ; 2023-10-01T23:00:00+00:00
 
-(deftest datetimediff-expressions-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :datetimediff)
+(deftest datetime-diff-expressions-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset sample-dataset
       (testing "Args can be expressions that return datetime values"
         (let [diffs (fn [x y]
@@ -416,7 +416,7 @@
                         (->> (mt/run-mbql-query orders
                                {:limit 1
                                 :expressions (into {} (for [unit units]
-                                                        [(name unit) [:datetimediff x y unit]]))
+                                                        [(name unit) [:datetime-diff x y unit]]))
                                 :fields (into [] (for [unit units]
                                                    [:expression (name unit)]))})
                              mt/rows first
@@ -430,18 +430,18 @@
                  (mt/rows
                   (mt/run-mbql-query orders
                     {:limit       1
-                     :expressions {"datediff1"     [:datetimediff start end :year]
-                                   "datediff1-add" [:+ [:datetimediff start end :year] 5]
-                                   "datediff2"     [:datetimediff start end :day]
-                                   "datediff2-add" [:+ 5 [:datetimediff start end :day]]}
+                     :expressions {"datediff1"     [:datetime-diff start end :year]
+                                   "datediff1-add" [:+ [:datetime-diff start end :year] 5]
+                                   "datediff2"     [:datetime-diff start end :day]
+                                   "datediff2-add" [:+ 5 [:datetime-diff start end :day]]}
                      :fields      [[:expression "datediff1"]
                                    [:expression "datediff1-add"]
                                    [:expression "datediff2"]
                                    [:expression "datediff2-add"]]})))))))))
 
-(deftest datetimediff-type-test
+(deftest datetime-diff-type-test
   (mt/test-drivers #{:bigquery-cloud-sdk}
-    (testing "Cannot datetimediff against time column"
+    (testing "Cannot datetime-diff against time column"
       (mt/dataset sample-dataset
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -450,7 +450,7 @@
               (mt/run-mbql-query orders
                 {:limit 1
                  :fields      [[:expression "diff-day"]]
-                 :expressions {"diff-day" [:datetimediff "2022-01-01T00:00:00" #t "00:00:01" :day]}}))))
+                 :expressions {"diff-day" [:datetime-diff "2022-01-01T00:00:00" #t "00:00:01" :day]}}))))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Only datetime, timestamp, or date types allowed. Found .*"
@@ -458,4 +458,4 @@
               (mt/run-mbql-query orders
                 {:limit 1
                  :fields      [[:expression "diff-day"]]
-                 :expressions {"diff-day" [:datetimediff "2021-01-01" [:date-add #t "00:00:01" 3 "hour"] :day]}}))))))))
+                 :expressions {"diff-day" [:datetime-diff "2021-01-01" [:date-add #t "00:00:01" 3 "hour"] :day]}}))))))))

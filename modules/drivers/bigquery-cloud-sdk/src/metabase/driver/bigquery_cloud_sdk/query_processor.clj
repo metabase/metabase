@@ -537,7 +537,7 @@
       t (->temporal-type t))))
 
 ;; See the explanation in the postgres driver for a full explanation of behaviour.
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetimediff]
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetime-diff]
   [driver [_ x y unit :as clause]]
   (let [x'               (sql.qp/->honeysql driver x)
         y'               (sql.qp/->honeysql driver y)
@@ -602,7 +602,7 @@
             y' (hx/->timestamp y')]
         (hsql/call :timestamp_diff y' x' (hsql/raw (name unit))))
 
-      (throw (ex-info (tru "Unsupported datetimediff unit {0}" unit)
+      (throw (ex-info (tru "Unsupported datetime-diff unit {0}" unit)
                       {:clause          clause
                        :supported-units [:year :month :week :day :hour :minute :second]})))))
 

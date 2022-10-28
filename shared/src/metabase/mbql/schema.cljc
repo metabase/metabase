@@ -467,7 +467,7 @@
 (def arithmetic-expressions
   "Set of valid arithmetic expression clause keywords."
   #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case
-    :datetimediff})
+    :datetime-diff})
 
 (def boolean-expressions
   "Set of valid boolean expression clause keywords."
@@ -637,7 +637,7 @@
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
 
-(defclause ^{:requires-features #{:datetimediff}} datetimediff
+(defclause ^{:requires-features #{:datetime-diff}} datetime-diff
   datetime-x DateTimeExpressionArg
   datetime-y DateTimeExpressionArg
   unit       DatetimeDiffUnits)
@@ -867,7 +867,7 @@
   clauses CaseClauses, options (optional CaseOptions))
 
 (def ^:private ArithmeticExpression*
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datetimediff))
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datetime-diff))
 
 (def ^:private StringExpression*
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))

@@ -161,9 +161,9 @@
   [[_ field unit]]
   [:temporal-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit)])
 
-(defmethod normalize-mbql-clause-tokens :datetimediff
+(defmethod normalize-mbql-clause-tokens :datetime-diff
   [[_ x y unit]]
-  [:datetimediff
+  [:datetime-diff
    (normalize-tokens x :ignore-path)
    (normalize-tokens y :ignore-path)
    (maybe-normalize-token unit)])

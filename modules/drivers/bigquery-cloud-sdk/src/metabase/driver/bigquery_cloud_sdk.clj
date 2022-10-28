@@ -316,7 +316,7 @@
 
 (defmethod driver/supports? [:bigquery-cloud-sdk :foreign-keys] [_ _] true)
 
-(defmethod driver/database-supports? [:bigquery-cloud-sdk :datetimediff]
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :datetime-diff]
   [_driver _feat _db] true)
 
 ;; BigQuery uses timezone operators and arguments on calls like extract() and timezone_trunc() rather than literally

@@ -53,7 +53,7 @@
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
-(defmethod driver/database-supports? [:mysql :datetimediff]
+(defmethod driver/database-supports? [:mysql :datetime-diff]
   [_driver _feature _db]
   true)
 
@@ -349,7 +349,7 @@
                           (hx/literal "-01"))))
 
 ;; See the explanation in the postgres driver for a full explanation of behaviour.
-(defmethod sql.qp/->honeysql [:mysql :datetimediff]
+(defmethod sql.qp/->honeysql [:mysql :datetime-diff]
   [driver [_ x y unit :as clause]]
   (let [x (sql.qp/->honeysql driver (cond-> x
                                       (string? x) u.date/parse))
@@ -370,7 +370,7 @@
       (hsql/call :timestampdiff (hsql/raw (name unit)) x y)
 
       ;; else
-      (throw (ex-info (tru "Unsupported datetimediff unit {0}" unit)
+      (throw (ex-info (tru "Unsupported datetime-diff unit {0}" unit)
                       {:clause          clause
                        :supported-units [:year :month :week :day :hour :minute :second]})))))
 

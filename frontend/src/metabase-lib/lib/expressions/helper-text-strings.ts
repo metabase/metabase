@@ -382,9 +382,9 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
-    name: "datetimediff",
+    name: "datetime-diff",
     structure:
-      "datetimediff(" +
+      "datetime-diff(" +
       t`datetime1` +
       ", " +
       t`datetime2` +
@@ -393,7 +393,7 @@ const helperTextStrings: HelpText[] = [
       ")",
     description: t`Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.`,
     example:
-      "datetimediff([" +
+      "datetime-diff([" +
       t`created_at` +
       "], [" +
       t`shipped_at` +
