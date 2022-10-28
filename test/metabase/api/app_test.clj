@@ -295,7 +295,7 @@
                 {:table-ids [(data/id :venues) (data/id :venues) Integer/MAX_VALUE]
                  :app-name (str "My test app " (gensym))})))))))
 
-(deftest scaffold-model-test
+(deftest scaffold-app-from-model-test
   (mt/with-model-cleanup [Card Dashboard Collection Permissions]
     (mt/with-all-users-permission (perms/app-root-collection-permission :read)
       (testing "Golden path"
