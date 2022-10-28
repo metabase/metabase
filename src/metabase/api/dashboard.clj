@@ -288,9 +288,9 @@
                     (assoc :card (-> dashboard-card :card_id id->new-card))
                     (m/update-existing :parameter_mappings
                                        (fn [pms]
-                                         (map (fn [pm]
-                                                (m/update-existing pm :card_id new-id))
-                                              pms)))
+                                         (keep (fn [pm]
+                                                 (m/update-existing pm :card_id new-id))
+                                               pms)))
                     (m/update-existing :series
                                        (fn [series]
                                          (keep (fn [card]
