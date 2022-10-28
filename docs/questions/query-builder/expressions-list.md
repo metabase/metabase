@@ -534,7 +534,7 @@ Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would retur
 
 Takes a datetime and returns the week as an integer.
 
-Syntax: `week([datetime column)`.
+Syntax: `week([datetime column])`.
 
 Example: `week("March 25, 2021, 12:52:37")` would return the week as an integer, `13`.
 
