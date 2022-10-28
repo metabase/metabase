@@ -319,6 +319,7 @@
     ;; If the search string is non-blank, results with no text match have a score of zero.
     (if (or (str/blank? raw-search-string)
             (pos? (reduce (fn [acc {:keys [score] :or {score 0}}] (+ acc score))
+                          0
                           text-matches)))
       {:score total-score
        :result (serialize result all-scores relevant-scores)}
