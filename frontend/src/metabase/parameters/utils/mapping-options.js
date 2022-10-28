@@ -1,5 +1,5 @@
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
-import { isActionCard } from "metabase/writeback/utils";
+import { isActionDashCard } from "metabase/writeback/utils";
 import Question from "metabase-lib/Question";
 import { ExpressionDimension } from "metabase-lib/Dimension";
 import {
@@ -64,9 +64,15 @@ export function getParameterMappingOptions(
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
 
-  if (isActionCard(card)) {
-    // Action parameters are mapped via click behavior UI for now
-    return [];
+  if (isActionDashCard(dashcard)) {
+    const actionParams = dashcard?.action?.parameters?.map(p => ({
+      icon: "variable",
+      isForeign: false,
+      name: p.id,
+      ...p,
+    }));
+
+    return actionParams || [];
   }
 
   if (!card.dataset_query) {

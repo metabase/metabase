@@ -72,6 +72,10 @@ export function isActionDashCard(
   return isActionCard(virtualCard as SavedCard);
 }
 
+export const isLinkActionDashCard = (dashCard: BaseDashboardOrderedCard) =>
+  isActionDashCard(dashCard) &&
+  dashCard.visualization_settings?.click_behavior?.type === "link";
+
 /**
  * Checks if a dashboard card is an explicit action (has associated WritebackAction).
  *

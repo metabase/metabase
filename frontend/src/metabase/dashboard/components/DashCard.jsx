@@ -30,6 +30,7 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 import {
   isActionCard,
+  isLinkActionDashCard,
   shouldHideDashcardHeader,
 } from "metabase/writeback/utils";
 
@@ -284,7 +285,7 @@ export default class DashCard extends Component {
                     : t`Action button`}
                 </h4>
               </div>
-            ) : isEditingParameter && !isAction ? (
+            ) : isEditingParameter ? (
               <DashCardParameterMapper
                 dashcard={dashcard}
                 isMobile={isMobile}
@@ -388,7 +389,7 @@ const DashCardActionButtons = ({
         />,
       );
     }
-    if (!isVirtualDashCard || isActionCard(card)) {
+    if (!isVirtualDashCard || isLinkActionDashCard(card)) {
       buttons.push(
         <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
           <a

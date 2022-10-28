@@ -72,8 +72,10 @@ export function showVirtualDashCardInfoText(dashcard, isMobile) {
   }
 }
 
-export function getNativeDashCardEmptyMappingText(parameter) {
-  if (isDateParameter(parameter)) {
+export function getNativeDashCardEmptyMappingText(parameter, type) {
+  if (type === "action") {
+    return t`Add a variable to this action to connect it to a dashboard filter.`;
+  } else if (isDateParameter(parameter)) {
     return t`Add a date variable to this question to connect it to a dashboard filter.`;
   } else if (isNumberParameter(parameter)) {
     return t`Add a number variable to this question to connect it to a dashboard filter.`;

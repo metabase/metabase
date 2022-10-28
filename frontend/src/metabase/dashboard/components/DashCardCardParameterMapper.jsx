@@ -16,6 +16,7 @@ import {
   isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
+import { isActionDashCard } from "metabase/writeback/utils";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import Question from "metabase-lib/Question";
@@ -100,6 +101,7 @@ function DashCardCardParameterMapper({
     [card.id, dashcard.id, editingParameter.id, setParameterMapping],
   );
 
+  const isAction = isActionDashCard(dashcard);
   const isVirtual = isVirtualDashCard(dashcard);
   const isNative = isNativeDashCard(dashcard);
 
@@ -166,18 +168,18 @@ function DashCardCardParameterMapper({
     if (!isVirtual && !(isNative && isDisabled)) {
       return t`Column to filter on`;
     } else if (dashcard.size_y !== 1 || isMobile) {
-      return t`Variable to map to`;
+      return t`{${editingParameter.name}} should populate`;
     } else {
       return null;
     }
-  }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
+  }, [dashcard, isVirtual, isNative, isDisabled, isMobile, editingParameter]);
 
   const mappingInfoText = t`You can connect widgets to {{variables}} in text cards.`;
 
   return (
     <Container>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
-      {isVirtual && isDisabled ? (
+      {isVirtual && !isAction && isDisabled ? (
         showVirtualDashCardInfoText(dashcard, isMobile) ? (
           <TextCardDefault>
             <Icon name="info" size={12} className="pr1" />
@@ -193,11 +195,14 @@ function DashCardCardParameterMapper({
             />
           </TextCardDefault>
         )
-      ) : isNative && isDisabled ? (
+      ) : (isNative || isAction) && isDisabled ? (
         <NativeCardDefault>
           <NativeCardIcon name="info" />
           <NativeCardText>
-            {getNativeDashCardEmptyMappingText(editingParameter)}
+            {getNativeDashCardEmptyMappingText(
+              editingParameter,
+              isAction ? "action" : "question",
+            )}
           </NativeCardText>
           <NativeCardLink
             href={MetabaseSettings.docsUrl(
@@ -247,7 +252,7 @@ function DashCardCardParameterMapper({
           </Tooltip>
         </>
       )}
-      {onlyAcceptsSingleValue && (
+      {onlyAcceptsSingleValue && !isAction && (
         <Warning>
           {t`This field only accepts a single value because it's used in a SQL query.`}
         </Warning>
