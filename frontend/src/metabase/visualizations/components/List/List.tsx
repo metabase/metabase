@@ -12,6 +12,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 import type { VisualizationProps } from "metabase-types/types/Visualization";
+import { singularize } from "metabase/lib/formatting";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
 import type { ListColumnIndexes } from "./types";
@@ -20,6 +21,7 @@ import {
   Root,
   Footer,
   LIST_ITEM_BORDER_DIVIDER_WIDTH,
+  ListHeader,
   ListBody,
   ListItemRow,
 } from "./List.styled";
@@ -172,6 +174,10 @@ function List({
 
   return (
     <Root className={className} isQueryBuilder={isQueryBuilder}>
+      <ListHeader>
+        <div></div>
+        <div>{getColumnTitle(listColumnIndexes.right[0])}</div>
+      </ListHeader>
       <ListBody>{paginatedRowIndexes.map(renderListItem)}</ListBody>
       {pageSize < rows.length && (
         <Footer
