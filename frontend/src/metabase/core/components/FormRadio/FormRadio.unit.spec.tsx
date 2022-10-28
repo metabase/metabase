@@ -7,7 +7,7 @@ import FormField from "metabase/core/components/FormField";
 import FormRadio from "./FormRadio";
 
 const TEST_SCHEMA = Yup.object().shape({
-  value: Yup.string().notOneOf(["Bar"]),
+  value: Yup.string().notOneOf(["bar"], "error"),
 });
 
 const TEST_OPTIONS = [
