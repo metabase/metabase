@@ -10,7 +10,7 @@ title: History
 2. Click the info icon.
 3. A sidebar will pop up with a history of up to 15 versions.
 
-Metabase will keep track of a version each time you [save](../questions/sharing/answers.md#how-to-save-a-question), [move](../questions/sharing/answers.md#editing-your-question), [revert](#reverting-to-previous-versions), [archive](#archive), or [verify](./exploration.md#verified-items) a question or model.
+Metabase will keep track of a version each time you [save](../questions/sharing/answers.md#how-to-save-a-question), [move](../questions/sharing/answers.md#editing-your-question), [revert](#reverting-to-previous-versions), [archive](#archiving-items), or [verify](./exploration.md#verified-items) a question or model.
 
 ## Reverting to previous versions
 
@@ -19,13 +19,11 @@ Metabase will keep track of a version each time you [save](../questions/sharing/
 3. A sidebar will appear with up to 15 previous versions.
 4. Click on the **back arrow** icon beside a version to revert your item to that point in time.
 
-## Archive
+## Archiving items
 
-Sometimes your questions or dashboards outlive their usefulness and need to be sent to Metabase Heaven.
+Sometimes your questions, dashboards, or models outlive their usefulness. You can send outdated items to the **Archive** from the three dot menu `...` of your questions, dashboards, or models.
 
-You can find the **Archive** option from the three dot menu `...` of questions, dashboards, and models. 
-
-Note that archiving an item will affect any [dashboards](../dashboards/introduction.md), [subscriptions](../dashboards/subscriptions.md), or [questions](../questions/native-editor/referencing-saved-questions-in-queries.md) that depend on that item, so be careful!
+Note that archiving an item will affect any [dashboards](../dashboards/introduction.md), [subscriptions](../dashboards/subscriptions.md), or [SQL questions](../questions/native-editor/referencing-saved-questions-in-queries.md) that depend on that item, so be careful!
 
 ### Archiving multiple items
 
@@ -49,7 +47,7 @@ Archiving a collection archives all of the collection's contents as well. You ca
 2. Click the `...` beside the "Collections" header in the sidebar.
 3. Click **View archive**.
 
-## Unarchive
+## Unarchiving items
 
 1. Open the main Metabase sidebar.
 2. Click the `...` beside the "Collections" header in the sidebar.
@@ -64,7 +62,7 @@ Archiving a collection archives all of the collection's contents as well. You ca
 
 The item will get restored to the collection it was most recently saved in.
 
-## Delete permanently
+## Deleting items permanently
 
 1. Open the main Metabase sidebar.
 2. Click the `...` beside the "Collections" header in the sidebar.
@@ -73,7 +71,7 @@ The item will get restored to the collection it was most recently saved in.
 
 The item will get permanently deleted from your application database. You cannot restore a deleted item unless you happen to maintain regular backups of your application database.
 
-### Deleting multiple items
+### Deleting multiple items permanently
 
 1. Go to the collection.
 2. Hover over the icon beside the name of the item and click the checkbox that appears.
