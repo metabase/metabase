@@ -4,18 +4,14 @@ import {
   VisualizationSettings,
 } from "metabase-types/api";
 import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { formatValue } from "metabase/lib/formatting";
 import {
   ChartTicksFormatters,
-  ColumnFormatter,
   ValueFormatter,
 } from "metabase/visualizations/shared/types/format";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
-const getXValueMetricColumn = (
-  chartColumns: ChartColumns,
-  settings: VisualizationSettings,
-) => {
+export const getXValueMetricColumn = (chartColumns: ChartColumns) => {
   // For multi-metrics charts we use the first metic column settings for formatting
   return "breakout" in chartColumns
     ? chartColumns.metric
@@ -25,37 +21,51 @@ const getXValueMetricColumn = (
 export const getFormatters = (
   chartColumns: ChartColumns,
   settings: VisualizationSettings,
+  formatValue: any,
 ): ChartTicksFormatters => {
   const yTickFormatter = (value: RowValue) => {
+    const column = chartColumns.dimension.column;
+    const columnSettings = settings.column_settings?.[getColumnKey(column)];
+
     return String(
       formatValue(value, {
-        ...settings.column(chartColumns.dimension.column),
+        column,
+        ...columnSettings,
         jsx: false,
       }),
     );
   };
 
-  const metricColumn = getXValueMetricColumn(chartColumns, settings);
+  const metricColumn = getXValueMetricColumn(chartColumns);
 
-  const percentXTicksFormatter = (percent: any) =>
-    String(
+  const percentXTicksFormatter = (percent: any) => {
+    const column = metricColumn.column;
+    const number_separators =
+      settings.column_settings?.[getColumnKey(column)]?.number_separators;
+
+    return String(
       formatValue(percent, {
-        column: metricColumn.column,
-        number_separators: settings.column(metricColumn.column)
-          .number_separators,
+        column,
+        number_separators,
         jsx: false,
         number_style: "percent",
         decimals: 2,
       }),
     );
+  };
 
-  const xTickFormatter = (value: any) =>
-    String(
+  const xTickFormatter = (value: any) => {
+    const column = metricColumn.column;
+    const columnSettings = settings.column_settings?.[getColumnKey(column)];
+
+    return String(
       formatValue(value, {
-        ...settings.column(metricColumn.column),
+        column,
+        ...columnSettings,
         jsx: false,
       }),
     );
+  };
 
   const shouldFormatXTicksAsPercent = getStackOffset(settings) === "expand";
 
@@ -70,13 +80,16 @@ export const getFormatters = (
 export const getLabelsFormatter = (
   chartColumns: ChartColumns,
   settings: VisualizationSettings,
+  formatValue: any,
 ): ValueFormatter => {
-  const metricColumn = getXValueMetricColumn(chartColumns, settings);
+  const column = getXValueMetricColumn(chartColumns).column;
+  const columnSettings = settings.column_settings?.[getColumnKey(column)];
 
   const labelsFormatter = (value: any) =>
     String(
       formatValue(value, {
-        ...settings.column(metricColumn.column),
+        column,
+        ...columnSettings,
         jsx: false,
         compact: settings["graph.label_value_formatting"] === "compact",
       }),
@@ -85,7 +98,7 @@ export const getLabelsFormatter = (
   return labelsFormatter;
 };
 
-export const formatColumnValue: ColumnFormatter = (
-  value: any,
-  column: DatasetColumn,
-) => String(formatValue(value, { column }));
+export const getColumnValueFormatter = (formatValue: any) => {
+  return (value: any, column: DatasetColumn) =>
+    String(formatValue(value, { column }));
+};

@@ -6,8 +6,8 @@ import { PositionedLegendItem } from "./types";
 import { LEGEND_CIRCLE_MARGIN_RIGHT, LEGEND_CIRCLE_SIZE } from "./constants";
 
 type LegendProps = {
-  top: number;
-  left: number;
+  top?: number;
+  left?: number;
   fontSize: number;
   fontWeight: number;
   items: PositionedLegendItem[];

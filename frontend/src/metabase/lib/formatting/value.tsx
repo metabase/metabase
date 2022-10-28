@@ -10,7 +10,7 @@ import {
   clickBehaviorIsValid,
   getDataFromClicked,
 } from "metabase-lib/parameters/utils/click-behavior";
-import { rangeForValue } from "metabase-lib/queries/utils/dataset";
+import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
 import {
   isBoolean,
   isCoordinate,
@@ -31,10 +31,6 @@ import { formatImage } from "./image";
 
 import { OptionsType } from "./types";
 
-interface MARKDOWN_RENDERERS_PROP_TYPE {
-  children: React.ReactElement;
-  href?: string;
-}
 const MARKDOWN_RENDERERS = {
   // eslint-disable-next-line react/display-name
   a: ({ href, children }: any) => (
