@@ -54,13 +54,16 @@ Archiving a collection archives all of the collection's contents as well. You ca
 3. Click **View archive**.
 4. Hover over the item and click the **unarchive** icon (rectangle with a `^` symbol).
 
+The unarchived item should get restored to the parent collection that it was most recently saved in. If you unarchive an item, and you don't know where it's reappeared:
+
+- search for the item directly, or
+- check if the item's parent collection is also in the archive.
+
 ### Unarchiving multiple items
 
 1. Go to the collection.
 2. Hover over the icon beside the name of the item and click the checkbox that appears.
 3. When you're done selecting your items, click **Unarchive** at the bottom of the page.
-
-The item will get restored to the collection it was most recently saved in.
 
 ## Deleting items permanently
 
