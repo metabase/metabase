@@ -2,15 +2,15 @@
 import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
+
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { getCrumbs } from "metabase/lib/collections";
 
+import { getCrumbs } from "metabase/lib/collections";
 import { color } from "metabase/lib/colors";
 
 // NOTE: replacing these with Collections.ListLoader etc currently fails due to circular dependency
