@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
@@ -17,16 +17,32 @@ const Item = ({
   onChange,
   onChangeParentId,
 }) => {
-  const iconProps = _.isObject(icon) ? icon : { name: icon };
+  const handleClick = useMemo(() => {
+    if (canSelect) {
+      return () => onChange(item);
+    }
+    if (hasChildren) {
+      return () => onChangeParentId(item.id);
+    }
+    return;
+  }, [item, canSelect, hasChildren, onChange, onChangeParentId]);
+
+  const handleExpand = useCallback(
+    event => {
+      event.stopPropagation();
+      onChangeParentId(item.id);
+    },
+    [item, onChangeParentId],
+  );
+
+  const iconProps = useMemo(
+    () => (_.isObject(icon) ? icon : { name: icon }),
+    [icon],
+  );
+
   return (
     <ItemRoot
-      onClick={
-        canSelect
-          ? () => onChange(item)
-          : hasChildren
-          ? () => onChangeParentId(item.id)
-          : null
-      }
+      onClick={handleClick}
       canSelect={canSelect}
       isSelected={selected}
       hasChildren={hasChildren}
@@ -36,13 +52,7 @@ const Item = ({
         <Icon size={22} {...iconProps} color={selected ? "white" : color} />
         <ItemTitle>{name}</ItemTitle>
         {hasChildren && (
-          <ExpandButton
-            canSelect={canSelect}
-            onClick={e => {
-              e.stopPropagation();
-              onChangeParentId(item.id);
-            }}
-          >
+          <ExpandButton canSelect={canSelect} onClick={handleExpand}>
             <Icon name="chevronright" />
           </ExpandButton>
         )}
