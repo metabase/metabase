@@ -336,48 +336,55 @@ saved later when it is ready."
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
-  the card will be saved without metadata and it will be saved to the card in the future when it is ready."
-  [{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data}]
-  ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
-  ;; `api/maybe-reconcile-collection-position!`
-  (let [data-keys            [:dataset_query :description :display :name :visualization_settings
-                              :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :is_write]
-        card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                                    :creator_id api/*current-user-id*
-                                    :is_write (boolean (:is_write card-data))
-                                    :dataset (boolean (:dataset card-data))
-                                    :parameters (or parameters [])
-                                    :parameter_mappings (or parameter_mappings []))
-        result-metadata-chan (result-metadata-async {:query    dataset_query
-                                                     :metadata result_metadata
-                                                     :dataset? dataset})
-        metadata-timeout     (a/timeout metadata-sync-wait-ms)
-        [metadata port]      (a/alts!! [result-metadata-chan metadata-timeout])
-        timed-out?           (= port metadata-timeout)
-        card                 (db/transaction
-                              ;; Adding a new card at `collection_position` could cause other cards in this
-                              ;; collection to change position, check that and fix it if needed
-                              (api/maybe-reconcile-collection-position! card-data)
-                              (db/insert! Card (cond-> card-data
-                                                 (and metadata (not timed-out?))
-                                                 (assoc :result_metadata metadata))))]
-    (events/publish-event! :card-create card)
-    (when timed-out?
-      (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
-    ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
-    ;; returned one -- See #4283
-    (u/prog1 (-> card
-                 (hydrate :creator
-                          :dashboard_count
-                          :can_write
-                          :average_query_time
-                          :last_query_start
-                          :collection [:moderation_reviews :moderator_details])
-                 (cond-> ;; card
-                   (:is_write card) (hydrate :card/action-id))
-                 (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
-      (when timed-out?
-        (schedule-metadata-saving result-metadata-chan <>)))))
+  the card will be saved without metadata and it will be saved to the card in the future when it is ready.
+
+  Dispatches the `:card-create` event unless `delay-event?` is true. Useful for when many cards are created in a
+  transaction and work in the `:card-create` event cannot proceed because the cards would not be visible outside of
+  the transaction yet. If you pass true here it is important to call the event after the cards are successfully
+  created."
+  ([card] (create-card! card false))
+  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data} delay-event?]
+   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
+   ;; `api/maybe-reconcile-collection-position!`
+   (let [data-keys            [:dataset_query :description :display :name :visualization_settings
+                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :is_write]
+         card-data            (assoc (zipmap data-keys (map card-data data-keys))
+                                     :creator_id api/*current-user-id*
+                                     :is_write (boolean (:is_write card-data))
+                                     :dataset (boolean (:dataset card-data))
+                                     :parameters (or parameters [])
+                                     :parameter_mappings (or parameter_mappings []))
+         result-metadata-chan (result-metadata-async {:query    dataset_query
+                                                      :metadata result_metadata
+                                                      :dataset? dataset})
+         metadata-timeout     (a/timeout metadata-sync-wait-ms)
+         [metadata port]      (a/alts!! [result-metadata-chan metadata-timeout])
+         timed-out?           (= port metadata-timeout)
+         card                 (db/transaction
+                               ;; Adding a new card at `collection_position` could cause other cards in this
+                               ;; collection to change position, check that and fix it if needed
+                               (api/maybe-reconcile-collection-position! card-data)
+                               (db/insert! Card (cond-> card-data
+                                                  (and metadata (not timed-out?))
+                                                  (assoc :result_metadata metadata))))]
+     (when-not delay-event?
+       (events/publish-event! :card-create card))
+     (when timed-out?
+       (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
+     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
+     ;; returned one -- See #4283
+     (u/prog1 (-> card
+                  (hydrate :creator
+                           :dashboard_count
+                           :can_write
+                           :average_query_time
+                           :last_query_start
+                           :collection [:moderation_reviews :moderator_details])
+                  (cond-> ;; card
+                      (:is_write card) (hydrate :card/action-id))
+                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
+       (when timed-out?
+         (schedule-metadata-saving result-metadata-chan <>))))))
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
