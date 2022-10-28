@@ -48,9 +48,9 @@ describe("FormCheckBox", () => {
     userEvent.click(screen.getByRole("checkbox"));
     userEvent.click(screen.getByText("Submit"));
 
-    await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith({ value: true }, expect.anything()),
-    );
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({ value: true }, expect.anything());
+    });
   });
 
   it("should be referenced by the label", () => {

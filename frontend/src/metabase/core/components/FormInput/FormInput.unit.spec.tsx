@@ -45,12 +45,12 @@ describe("FormInput", () => {
     userEvent.type(screen.getByRole("textbox"), "Text");
     userEvent.click(screen.getByText("Submit"));
 
-    await waitFor(() =>
+    await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
         { value: "Text" },
         expect.anything(),
-      ),
-    );
+      );
+    });
   });
 
   it("should be referenced by the label", () => {

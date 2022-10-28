@@ -1,31 +1,57 @@
 import React, { forwardRef, Ref } from "react";
 import { useField } from "formik";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import NumericInput, {
   NumericInputProps,
 } from "metabase/core/components/NumericInput";
+import FormField, {
+  FieldAttributes,
+  FieldProps,
+} from "metabase/core/components/FormField";
 
-export interface FormNumericInputProps
-  extends Omit<NumericInputProps, "value" | "error" | "onChange" | "onBlur"> {
-  name: string;
-}
+export type FormInputProps = FieldAttributes &
+  FieldProps &
+  Omit<NumericInputProps, "value" | "error" | "onChange" | "onBlur">;
 
 const FormNumericInput = forwardRef(function FormNumericInput(
-  { name, ...props }: FormNumericInputProps,
+  {
+    name,
+    validate,
+    className,
+    style,
+    title,
+    description,
+    alignment,
+    orientation,
+    ...props
+  }: FormInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
-  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
+  const id = useUniqueId();
+  const [field, meta, helpers] = useField({ name, validate });
 
   return (
-    <NumericInput
-      {...props}
+    <FormField
       ref={ref}
-      id={name}
-      name={name}
-      value={value}
-      error={touched && error != null}
-      onChange={setValue}
-      onBlur={onBlur}
-    />
+      className={className}
+      style={style}
+      title={title}
+      description={description}
+      alignment={alignment}
+      orientation={orientation}
+      htmlFor={id}
+      error={meta.touched ? meta.error : undefined}
+    >
+      <NumericInput
+        {...props}
+        id={id}
+        name={name}
+        value={field.value}
+        error={meta.touched && meta.error != null}
+        onChange={helpers.setValue}
+        onBlur={field.onBlur}
+      />
+    </FormField>
   );
 });
 
