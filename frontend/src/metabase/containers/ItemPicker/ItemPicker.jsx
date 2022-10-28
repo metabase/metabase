@@ -29,14 +29,11 @@ const getCollectionIconColor = () => color("text-light");
 const isRoot = collection => collection.id === "root" || collection.id == null;
 
 class ItemPicker extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      parentId: "root",
-      searchMode: false,
-      searchString: false,
-    };
-  }
+  state = {
+    parentId: "root",
+    searchMode: false,
+    searchString: false,
+  };
 
   static propTypes = {
     // undefined = no selection
