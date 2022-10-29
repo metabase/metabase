@@ -1,6 +1,5 @@
 import React, { forwardRef, Key, ReactNode, Ref } from "react";
 import { useField } from "formik";
-import type { FieldValidator } from "formik";
 import Radio, { RadioOption, RadioProps } from "metabase/core/components/Radio";
 import FormField from "metabase/core/components/FormField";
 
@@ -12,7 +11,6 @@ export interface FormRadioProps<
     "value" | "error" | "onChange" | "onBlur"
   > {
   name: string;
-  validate?: FieldValidator;
   title?: string;
   description?: ReactNode;
 }
@@ -23,7 +21,6 @@ const FormRadio = forwardRef(function FormRadio<
 >(
   {
     name,
-    validate,
     className,
     style,
     title,
@@ -32,7 +29,7 @@ const FormRadio = forwardRef(function FormRadio<
   }: FormRadioProps<TValue, TOption>,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [field, meta, helpers] = useField({ name, validate });
+  const [field, meta, helpers] = useField(name);
 
   return (
     <FormField

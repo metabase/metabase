@@ -1,6 +1,5 @@
 import React, { forwardRef, ReactNode, Ref, useMemo } from "react";
 import { useField } from "formik";
-import type { FieldValidator } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Select, {
   SelectOption,
@@ -11,7 +10,6 @@ import FormField from "metabase/core/components/FormField";
 export interface FormSelectProps<TValue, TOption = SelectOption<TValue>>
   extends Omit<SelectProps<TValue, TOption>, "value" | "onChange"> {
   name: string;
-  validate?: FieldValidator;
   title?: string;
   description?: ReactNode;
 }
@@ -22,7 +20,6 @@ const FormSelect = forwardRef(function FormSelect<
 >(
   {
     name,
-    validate,
     className,
     title,
     description,
@@ -31,7 +28,7 @@ const FormSelect = forwardRef(function FormSelect<
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [{ value, onChange, onBlur }, meta] = useField({ name, validate });
+  const [{ value, onChange, onBlur }, meta] = useField(name);
   const buttonProps = useMemo(() => ({ id, onBlur }), [id, onBlur]);
 
   return (
