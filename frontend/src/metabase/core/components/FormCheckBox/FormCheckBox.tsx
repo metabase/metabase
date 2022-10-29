@@ -1,15 +1,17 @@
-import React, { forwardRef, Ref } from "react";
+import React, { forwardRef, ReactNode, Ref } from "react";
 import { useField } from "formik";
+import type { FieldValidator } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import CheckBox, { CheckBoxProps } from "metabase/core/components/CheckBox";
-import FormField, {
-  FieldAttributes,
-  FieldProps,
-} from "metabase/core/components/FormField";
+import FormField from "metabase/core/components/FormField";
 
-export type FormCheckBoxProps = FieldAttributes &
-  FieldProps &
-  Omit<CheckBoxProps, "checked" | "onChange" | "onBlur">;
+export interface FormCheckBoxProps
+  extends Omit<CheckBoxProps, "checked" | "onChange" | "onBlur"> {
+  name: string;
+  validate?: FieldValidator;
+  title?: string;
+  description?: ReactNode;
+}
 
 const FormCheckBox = forwardRef(function FormCheckBox(
   {
@@ -19,8 +21,6 @@ const FormCheckBox = forwardRef(function FormCheckBox(
     style,
     title,
     description,
-    alignment,
-    orientation,
     ...props
   }: FormCheckBoxProps,
   ref: Ref<HTMLDivElement>,
@@ -35,8 +35,8 @@ const FormCheckBox = forwardRef(function FormCheckBox(
       style={style}
       title={title}
       description={description}
-      alignment={alignment}
-      orientation={orientation}
+      alignment="start"
+      orientation="horizontal"
       htmlFor={id}
       error={meta.touched ? meta.error : undefined}
     >

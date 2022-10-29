@@ -1,5 +1,5 @@
-import React, { forwardRef, HTMLAttributes, Ref } from "react";
-import { FieldProps } from "./types";
+import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
+import { FieldAlignment, FieldOrientation } from "./types";
 import {
   FieldCaption,
   FieldDescription,
@@ -8,9 +8,11 @@ import {
   FieldRoot,
 } from "./FormField.styled";
 
-export interface FormFieldProps
-  extends HTMLAttributes<HTMLDivElement>,
-    FieldProps {
+export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
+  title?: string;
+  description?: ReactNode;
+  alignment?: FieldAlignment;
+  orientation?: FieldOrientation;
   error?: string;
   htmlFor?: string;
 }

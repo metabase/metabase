@@ -1,17 +1,19 @@
-import React, { forwardRef, Ref } from "react";
+import React, { forwardRef, ReactNode, Ref } from "react";
 import { useField } from "formik";
+import type { FieldValidator } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import NumericInput, {
   NumericInputProps,
 } from "metabase/core/components/NumericInput";
-import FormField, {
-  FieldAttributes,
-  FieldProps,
-} from "metabase/core/components/FormField";
+import FormField from "metabase/core/components/FormField";
 
-export type FormInputProps = FieldAttributes &
-  FieldProps &
-  Omit<NumericInputProps, "value" | "error" | "onChange" | "onBlur">;
+export interface FormInputProps
+  extends Omit<NumericInputProps, "value" | "error" | "onChange" | "onBlur"> {
+  name: string;
+  validate?: FieldValidator;
+  title?: string;
+  description?: ReactNode;
+}
 
 const FormNumericInput = forwardRef(function FormNumericInput(
   {
@@ -21,8 +23,6 @@ const FormNumericInput = forwardRef(function FormNumericInput(
     style,
     title,
     description,
-    alignment,
-    orientation,
     ...props
   }: FormInputProps,
   ref: Ref<HTMLInputElement>,
@@ -37,8 +37,6 @@ const FormNumericInput = forwardRef(function FormNumericInput(
       style={style}
       title={title}
       description={description}
-      alignment={alignment}
-      orientation={orientation}
       htmlFor={id}
       error={meta.touched ? meta.error : undefined}
     >

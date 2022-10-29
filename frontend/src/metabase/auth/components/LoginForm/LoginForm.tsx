@@ -65,12 +65,7 @@ const LoginForm = ({
           fullWidth
         />
         {!hasSessionCookies && (
-          <FormCheckBox
-            name="remember"
-            title={t`Remember me`}
-            alignment="start"
-            orientation="horizontal"
-          />
+          <FormCheckBox name="remember" title={t`Remember me`} />
         )}
         <FormSubmitButton title={t`Sign in`} fullWidth />
         <FormErrorMessage />

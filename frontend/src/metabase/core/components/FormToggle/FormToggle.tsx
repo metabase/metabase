@@ -1,15 +1,17 @@
-import React, { forwardRef, Ref } from "react";
+import React, { forwardRef, ReactNode, Ref } from "react";
 import { useField } from "formik";
+import type { FieldValidator } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Toggle, { ToggleProps } from "metabase/core/components/Toggle";
-import FormField, {
-  FieldAttributes,
-  FieldProps,
-} from "metabase/core/components/FormField";
+import FormField from "metabase/core/components/FormField";
 
-export type FormToggleProps = FieldAttributes &
-  FieldProps &
-  Omit<ToggleProps, "value" | "onChange" | "onBlur">;
+export interface FormToggleProps
+  extends Omit<ToggleProps, "value" | "onChange" | "onBlur"> {
+  name: string;
+  validate?: FieldValidator;
+  title?: string;
+  description?: ReactNode;
+}
 
 const FormToggle = forwardRef(function FormToggle(
   {
@@ -19,14 +21,12 @@ const FormToggle = forwardRef(function FormToggle(
     style,
     title,
     description,
-    alignment,
-    orientation,
     ...props
   }: FormToggleProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [field, meta] = useField({ name, validate });
+  const [field, meta, helpers] = useField({ name, validate });
 
   return (
     <FormField
@@ -35,8 +35,7 @@ const FormToggle = forwardRef(function FormToggle(
       style={style}
       title={title}
       description={description}
-      alignment={alignment}
-      orientation={orientation}
+      orientation="horizontal"
       htmlFor={id}
       error={meta.touched ? meta.error : undefined}
     >
@@ -45,7 +44,7 @@ const FormToggle = forwardRef(function FormToggle(
         id={id}
         name={name}
         value={field.value}
-        onChange={field.onChange}
+        onChange={helpers.setValue}
         onBlur={field.onBlur}
       />
     </FormField>

@@ -3,11 +3,10 @@ import { Form, Formik } from "formik";
 import * as Yup from "yup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import FormField from "metabase/core/components/FormField";
 import FormSelect from "./FormSelect";
 
 const TEST_SCHEMA = Yup.object().shape({
-  value: Yup.string().notOneOf(["Bar"]),
+  value: Yup.string().notOneOf(["bar"], "error"),
 });
 
 const TEST_OPTIONS = [
@@ -29,13 +28,12 @@ const TestFormSelect = ({ initialValue, onSubmit }: TestFormSelectProps) => {
       onSubmit={onSubmit}
     >
       <Form>
-        <FormField name="value" title="Label">
-          <FormSelect
-            name="value"
-            options={TEST_OPTIONS}
-            placeholder="Choose"
-          />
-        </FormField>
+        <FormSelect
+          name="value"
+          title="Label"
+          options={TEST_OPTIONS}
+          placeholder="Choose"
+        />
         <button type="submit">Submit</button>
       </Form>
     </Formik>
@@ -51,7 +49,7 @@ describe("FormSelect", () => {
     expect(screen.getByText("Line")).toBeInTheDocument();
   });
 
-  it("should propagate the changed value to the form", () => {
+  it("should propagate the changed value to the form", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormSelect onSubmit={onSubmit} />);
@@ -59,7 +57,10 @@ describe("FormSelect", () => {
     userEvent.click(screen.getByText("Line"));
     userEvent.click(screen.getByText("Submit"));
 
-    waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: "line" }));
+    await waitFor(() => {
+      const values = { value: "line" };
+      expect(onSubmit).toHaveBeenCalledWith(values, expect.anything());
+    });
   });
 
   it("should be referenced by the label", () => {
@@ -70,14 +71,14 @@ describe("FormSelect", () => {
     expect(screen.getByLabelText("Label")).toBeInTheDocument();
   });
 
-  it("should be validated on blur", () => {
+  it("should be validated on blur", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormSelect initialValue="line" onSubmit={onSubmit} />);
     userEvent.click(screen.getByText("Line"));
     userEvent.click(screen.getByText("Bar"));
-    userEvent.tab();
+    userEvent.click(screen.getByText("Submit"));
 
-    waitFor(() => expect(screen.getByText("Label: error")).toBeInTheDocument());
+    expect(await screen.findByText(": error")).toBeInTheDocument();
   });
 });
