@@ -76,6 +76,7 @@ interface RowChartVisualizationProps {
   width: number;
   height: number;
   rawSeries: { data: DatasetData }[];
+  series: { data: DatasetData }[];
   settings: VisualizationSettings;
   visualizationIsClickable: (data: Record<string, unknown>) => boolean;
   onVisualizationClick: (data: Record<string, unknown>) => void;
@@ -109,13 +110,15 @@ const RowChartVisualization = ({
   showTitle,
   onChangeCardAndRun,
   rawSeries: rawMultipleSeries,
+  series: multipleSeries,
 }: RowChartVisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter(formatValue);
   }, []);
-  // Do not rely on the old series transformation API and use rawSeries instead of series here
-  const [rawSeries] = rawMultipleSeries;
-  const data = rawSeries.data;
+  const [chartSeries] = useMemo(() => {
+    return isPlaceholder ? multipleSeries : rawMultipleSeries;
+  }, [isPlaceholder, multipleSeries, rawMultipleSeries]);
+  const data = chartSeries.data;
 
   const { chartColumns, series, seriesColors } = useMemo(
     () => getTwoDimensionalChartSeries(data, settings, formatColumnValue),
