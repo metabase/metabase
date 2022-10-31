@@ -1,19 +1,19 @@
 import { createSelector } from "reselect";
 
 import _ from "underscore";
-import { isVirtualCardId } from "metabase-lib/lib/metadata/utils/saved-questions";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   getFieldValues,
   getRemappings,
-} from "metabase-lib/lib/queries/utils/field";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import Database from "metabase-lib/lib/metadata/Database";
-import Schema from "metabase-lib/lib/metadata/Schema";
-import Table from "metabase-lib/lib/metadata/Table";
-import Field from "metabase-lib/lib/metadata/Field";
-import Metric from "metabase-lib/lib/metadata/Metric";
-import Segment from "metabase-lib/lib/metadata/Segment";
-import Question from "metabase-lib/lib/Question";
+} from "metabase-lib/queries/utils/field";
+import Metadata from "metabase-lib/metadata/Metadata";
+import Database from "metabase-lib/metadata/Database";
+import Schema from "metabase-lib/metadata/Schema";
+import Table from "metabase-lib/metadata/Table";
+import Field from "metabase-lib/metadata/Field";
+import Metric from "metabase-lib/metadata/Metric";
+import Segment from "metabase-lib/metadata/Segment";
+import Question from "metabase-lib/Question";
 
 // fully nomalized, raw "entities"
 export const getNormalizedDatabases = state => state.entities.databases;

@@ -1,7 +1,7 @@
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 import { isVirtualDashCard } from "../utils";
 

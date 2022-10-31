@@ -26,7 +26,7 @@
 (defn- oss-score
   [search-string]
   (fn [item]
-    (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
+    (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly false)]
       (-> (scoring/score-and-result search-string item) :score))))
 
 (deftest official-collection-tests

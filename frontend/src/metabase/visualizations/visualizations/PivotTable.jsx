@@ -29,7 +29,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 
 import { PLUGIN_SELECTORS } from "metabase/plugins";
-import { isDimension } from "metabase-lib/lib/types/utils/isa";
+import { isDimension } from "metabase-lib/types/utils/isa";
 import {
   PivotTableRoot,
   PivotTableCell,

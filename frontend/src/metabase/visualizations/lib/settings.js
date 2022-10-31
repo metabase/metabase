@@ -137,6 +137,9 @@ function getSettingWidget(
     ...settingDef,
     id: settingId,
     value: value,
+    section: settingDef.getSection
+      ? settingDef.getSection(object, computedSettings, extra)
+      : settingDef.section,
     title: settingDef.getTitle
       ? settingDef.getTitle(object, computedSettings, extra)
       : settingDef.title,

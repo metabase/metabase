@@ -12,9 +12,9 @@ import {
   getShallowMetrics as getMetrics,
   getShallowSegments as getSegments,
 } from "metabase/selectors/metadata";
-import * as Query from "metabase-lib/lib/queries/utils/query";
-import * as Filter from "metabase-lib/lib/queries/utils/filter";
-import * as Aggregation from "metabase-lib/lib/queries/utils/aggregation";
+import * as Query from "metabase-lib/queries/utils/query";
+import * as Filter from "metabase-lib/queries/utils/filter";
+import * as Aggregation from "metabase-lib/queries/utils/aggregation";
 
 import { idsToObjectMap, databaseToForeignKeys } from "./utils";
 

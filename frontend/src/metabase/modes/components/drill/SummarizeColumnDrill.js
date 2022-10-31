@@ -2,7 +2,7 @@ import { t } from "ttag";
 import {
   summarizeColumnDrill,
   summarizeColumnDrillQuestion,
-} from "metabase-lib/lib/queries/drills/summarize-column-drill";
+} from "metabase-lib/queries/drills/summarize-column-drill";
 
 const ACTIONS = {
   sum: {

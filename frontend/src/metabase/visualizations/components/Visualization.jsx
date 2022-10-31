@@ -34,14 +34,14 @@ import {
 } from "metabase/visualizations/lib/errors";
 
 import NoResults from "assets/img/no_results.svg";
-import { datasetContainsNoResults } from "metabase-lib/lib/queries/utils/dataset";
+import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 
 export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart.`;
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
 
-import Question from "metabase-lib/lib/Question";
-import Mode from "metabase-lib/lib/Mode";
-import { memoizeClass } from "metabase-lib/lib/utils";
+import Question from "metabase-lib/Question";
+import Mode from "metabase-lib/Mode";
+import { memoizeClass } from "metabase-lib/utils";
 import { VisualizationSlowSpinner } from "./Visualization.styled";
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
@@ -536,6 +536,7 @@ class Visualization extends React.PureComponent {
             {...this.props}
             // NOTE: CardVisualization class used to target ExplicitSize HOC
             className="CardVisualization flex-full flex-basis-none"
+            isPlaceholder={isPlaceholder}
             series={series}
             settings={settings}
             card={series[0].card} // convenience for single-series visualizations

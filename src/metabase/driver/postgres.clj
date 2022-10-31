@@ -76,16 +76,6 @@
     ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
     (= driver :postgres)))
 
-(doseq [[feature supported?] {:persist-models         (constantly true)
-                              :convert-timezone       (constantly true)
-                              :persist-models-enabled (fn [_driver db] (-> db :options :persist-models-enabled))
-                              ;; actions only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
-                              :actions                (fn [driver _db] (= driver :postgres))
-                              :actions/custom         (fn [driver _db] (= driver :postgres))}]
-  (defmethod driver/database-supports? [:postgres feature]
-    [driver _feature database]
-    (supported? driver database)))
-
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
 
@@ -277,6 +267,8 @@
 (defmethod sql.qp/date [:postgres :year]             [_ _ expr] (date-trunc :year expr))
 (defmethod sql.qp/date [:postgres :year-of-era]      [_ _ expr] (extract-integer :year expr))
 
+(defmethod sql.qp/date [:postgres :week-of-year-iso] [_driver _ expr] (extract-integer :week expr))
+
 (defmethod sql.qp/date [:postgres :day-of-week]
   [_ driver expr]
   ;; Postgres extract(dow ...) returns Sunday(0)...Saturday(6)
@@ -297,7 +289,8 @@
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
-  (let [expr         (sql.qp/->honeysql driver arg)
+  (let [expr         (sql.qp/->honeysql driver (cond-> arg
+                                                 (string? arg) u.date/parse))
         timestamptz? (hx/is-of-type? expr "timestamptz")]
     (when (and timestamptz? source-timezone)
       (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone`")
@@ -337,7 +330,7 @@
   [driver [_ arg unit]]
   (->> (sql.qp/->honeysql driver arg)
        to-timestamp-if-needed
-       (sql.qp/date driver (sql.qp/temporal-extract-unit->date-unit unit))))
+       (sql.qp/date driver unit)))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]

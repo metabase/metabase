@@ -27,6 +27,7 @@ describe("issue 21504", () => {
     });
 
     cy.findByText("Settings").click();
+    cy.findByText("Display").click();
     cy.findByText("April, 2016").should("be.visible");
   });
 });

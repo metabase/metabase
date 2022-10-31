@@ -12,7 +12,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
-import { isNumeric } from "metabase-lib/lib/types/utils/isa";
+import { isNumeric } from "metabase-lib/types/utils/isa";
 import { GaugeArcPath } from "./Gauge.styled";
 
 const MAX_WIDTH = 500;

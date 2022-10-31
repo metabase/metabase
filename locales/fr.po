@@ -4402,14 +4402,14 @@ msgstr "Les 7 derniers jours"
 msgid "Past 30 days"
 msgstr "Les 30 derniers jours"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1719
+#: frontend/src/metabase-lib/Dimension.ts:1719
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:35
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:40
 #: metabase/api/table.clj:142
 msgid "Week"
 msgstr "Semaine"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1725
+#: frontend/src/metabase-lib/Dimension.ts:1725
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:94
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:36
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:41
@@ -4417,7 +4417,7 @@ msgstr "Semaine"
 msgid "Month"
 msgstr "Mois"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1737
+#: frontend/src/metabase-lib/Dimension.ts:1737
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:37
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:42
 #: metabase/api/table.clj:145
@@ -7539,13 +7539,13 @@ msgstr "Droite"
 msgid "Show background"
 msgstr "Montrer l'arrière plan"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:463
+#: frontend/src/metabase-lib/Dimension.ts:463
 msgid "{0} bin"
 msgid_plural "{0} bins"
 msgstr[0] "{0} cellule"
 msgstr[1] "{0} cellules"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:471
+#: frontend/src/metabase-lib/Dimension.ts:471
 msgid "Auto binned"
 msgstr "Binning automatique"
 
@@ -7813,7 +7813,7 @@ msgstr "Gagnez en cohésion en créant des jeux communs de filtres utilisables p
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "La table \"{0}\" n'est pas visible. Resynchronisation en cours."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1659 metabase/api/table.clj:124
+#: frontend/src/metabase-lib/Dimension.ts:1659 metabase/api/table.clj:124
 msgid "Auto bin"
 msgstr "Binning automatique"
 
@@ -7821,83 +7821,83 @@ msgstr "Binning automatique"
 msgid "Don''t bin"
 msgstr "Aucun binning"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1713 metabase/api/table.clj:128
+#: frontend/src/metabase-lib/Dimension.ts:1713 metabase/api/table.clj:128
 msgid "Day"
 msgstr "Jour"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1701 metabase/api/table.clj:126
+#: frontend/src/metabase-lib/Dimension.ts:1701 metabase/api/table.clj:126
 msgid "Minute"
 msgstr "Minute"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1707
+#: frontend/src/metabase-lib/Dimension.ts:1707
 #: frontend/src/metabase/admin/settings/selectors.js:544
 #: metabase/api/table.clj:127
 msgid "Hour"
 msgstr "Heure"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1731 metabase/api/table.clj:144
+#: frontend/src/metabase-lib/Dimension.ts:1731 metabase/api/table.clj:144
 msgid "Quarter"
 msgstr "Trimestre"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1743 metabase/api/table.clj:146
+#: frontend/src/metabase-lib/Dimension.ts:1743 metabase/api/table.clj:146
 #: metabase/api/table.clj:160
 msgid "Minute of Hour"
 msgstr "Minute dans l'heure"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1749 metabase/api/table.clj:147
+#: frontend/src/metabase-lib/Dimension.ts:1749 metabase/api/table.clj:147
 msgid "Hour of Day"
 msgstr "Heure dans le jour"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1755 metabase/api/table.clj:148
+#: frontend/src/metabase-lib/Dimension.ts:1755 metabase/api/table.clj:148
 msgid "Day of Week"
 msgstr "Jour de la semaine"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1761 metabase/api/table.clj:149
+#: frontend/src/metabase-lib/Dimension.ts:1761 metabase/api/table.clj:149
 msgid "Day of Month"
 msgstr "Jour du mois"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1767 metabase/api/table.clj:150
+#: frontend/src/metabase-lib/Dimension.ts:1767 metabase/api/table.clj:150
 msgid "Day of Year"
 msgstr "Jour dans l'année"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1773 metabase/api/table.clj:151
+#: frontend/src/metabase-lib/Dimension.ts:1773 metabase/api/table.clj:151
 msgid "Week of Year"
 msgstr "Semaine de l'année"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1779 metabase/api/table.clj:152
+#: frontend/src/metabase-lib/Dimension.ts:1779 metabase/api/table.clj:152
 msgid "Month of Year"
 msgstr "Mois dans l'année"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1785 metabase/api/table.clj:153
+#: frontend/src/metabase-lib/Dimension.ts:1785 metabase/api/table.clj:153
 msgid "Quarter of Year"
 msgstr "Semestre dans l'année"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1667 metabase/api/table.clj:169
+#: frontend/src/metabase-lib/Dimension.ts:1667 metabase/api/table.clj:169
 msgid "10 bins"
 msgstr "10 cellules"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1676 metabase/api/table.clj:170
+#: frontend/src/metabase-lib/Dimension.ts:1676 metabase/api/table.clj:170
 msgid "50 bins"
 msgstr "50 cellules"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1685 metabase/api/table.clj:171
+#: frontend/src/metabase-lib/Dimension.ts:1685 metabase/api/table.clj:171
 msgid "100 bins"
 msgstr "100 cellules"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1794 metabase/api/table.clj:183
+#: frontend/src/metabase-lib/Dimension.ts:1794 metabase/api/table.clj:183
 msgid "Bin every 0.1 degrees"
 msgstr "Binner tous les 0,1 degrés"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1803 metabase/api/table.clj:184
+#: frontend/src/metabase-lib/Dimension.ts:1803 metabase/api/table.clj:184
 msgid "Bin every 1 degree"
 msgstr "Binner tous les degrés"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1812 metabase/api/table.clj:185
+#: frontend/src/metabase-lib/Dimension.ts:1812 metabase/api/table.clj:185
 msgid "Bin every 10 degrees"
 msgstr "Binner tous les 10 degrés"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1821 metabase/api/table.clj:186
+#: frontend/src/metabase-lib/Dimension.ts:1821 metabase/api/table.clj:186
 msgid "Bin every 20 degrees"
 msgstr "Binner tous les 20 degrés"
 
@@ -7974,7 +7974,7 @@ msgstr "somme cumulée"
 msgid "{0} and {1}"
 msgstr "{0} et {1}"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Aggregation.ts:74
+#: frontend/src/metabase-lib/queries/structured/Aggregation.ts:74
 #: metabase/automagic_dashboards/core.clj:128
 #: metabase/automagic_dashboards/core.clj:1153
 msgid "{0} of {1}"
@@ -11909,7 +11909,7 @@ msgid_plural "Quarters of year"
 msgstr[0] "Trimestre de l'année"
 msgstr[1] "Trimestres de l'année"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:323
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:323
 #: frontend/src/metabase/parameters/utils/formatting.ts:67
 #: frontend/src/metabase/query_builder/components/Filter.jsx:62
 msgid "{0} selection"
@@ -11939,7 +11939,7 @@ msgstr "Ajouter une heure"
 msgid "Nothing to compare for the previous {0}."
 msgstr "Rien à comparer pour les {0} précédents."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:611
+#: frontend/src/metabase-lib/Dimension.ts:611
 msgid "by {0}"
 msgstr "par {0}"
 
@@ -13120,31 +13120,31 @@ msgstr "Ligne"
 msgid "Trend"
 msgstr "Tendance"
 
-#: frontend/src/metabase-lib/lib/DimensionOptions.js:129
+#: frontend/src/metabase-lib/DimensionOptions.js:129
 msgid "Boolean"
 msgstr "Booléen"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:68
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:68
 msgid "Unknown Segment"
 msgstr "Segment inconnu"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:81
+#: frontend/src/metabase-lib/queries/structured/Filter.ts:81
 msgid "Unknown Filter"
 msgstr "Filtre inconnu"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:32
+#: frontend/src/metabase-lib/queries/structured/Join.ts:32
 msgid "Left outer join"
 msgstr "Jointure externe gauche (left outer join)"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:37
+#: frontend/src/metabase-lib/queries/structured/Join.ts:37
 msgid "Right outer join"
 msgstr "Jointure externe droite (right outer join)"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:42
+#: frontend/src/metabase-lib/queries/structured/Join.ts:42
 msgid "Inner join"
 msgstr "Jointure interne (inner join)"
 
-#: frontend/src/metabase-lib/lib/queries/structured/Join.ts:47
+#: frontend/src/metabase-lib/queries/structured/Join.ts:47
 msgid "Full outer join"
 msgstr "Jointure externe complète (full outer join)"
 
@@ -13530,7 +13530,7 @@ msgstr "Échec à la planification des tâches pour la base de données {0}"
 msgid "All elements must be distinct."
 msgstr "Tous les éléments doivent être distincts."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Choisissez les colonnes concernées"
@@ -17972,12 +17972,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Les impulsions sont progressivement supprimées"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Vous pouvez maintenant mettre en place {0} à la place. Nous supprimerons Pulses dans une prochaine version, et nous vous aiderons à migrer tout ce qui vous reste."
@@ -17986,7 +17986,7 @@ msgstr "Vous pouvez maintenant mettre en place {0} à la place. Nous supprimeron
 msgid "dashboard subscriptions"
 msgstr "abonnements au tableau de bord"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "Les graphiques de votre abonnement ne seront pas les mêmes que ceux de votre tableau de bord. {1}"
 
@@ -18135,7 +18135,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "Configurer la base de données source {0} et lancer les migrations..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:343
 msgid "Set up {0} target database and run migrations..."
@@ -21930,24 +21930,24 @@ msgstr "Vous pouvez télécharger jusqu'à 10.000 lignes."
 msgid "Manage database"
 msgstr "Gérer la base de donnée"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:616
+#: frontend/src/metabase-lib/Dimension.ts:616
 msgid "Unbinned"
 msgstr "Non-relié(e)"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1564
+#: frontend/src/metabase-lib/Dimension.ts:1564
 msgid "Invalid template tag \"{0}\""
 msgstr "Template tag invalide \"{0}\""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1569
+#: frontend/src/metabase-lib/Dimension.ts:1569
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "La variable \"{0}\" doit être reliée à un champ."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1694
-#: frontend/src/metabase-lib/lib/Dimension.ts:1830
+#: frontend/src/metabase-lib/Dimension.ts:1694
+#: frontend/src/metabase-lib/Dimension.ts:1830
 msgid "Don't bin"
 msgstr "Ne pas relier"
 
-#: frontend/src/metabase-lib/lib/queries/NativeQuery.ts:311
+#: frontend/src/metabase-lib/queries/NativeQuery.ts:311
 msgid "Invalid template tag: {0}"
 msgstr "Template tag invalide: {0}"
 
@@ -23617,7 +23617,7 @@ msgstr "Requête en cours..."
 msgid "Loading results..."
 msgstr "Chargement des résultats..."
 
-#: frontend/src/metabase-lib/lib/queries/StructuredQuery.ts:907
+#: frontend/src/metabase-lib/queries/StructuredQuery.ts:907
 msgid "Summaries"
 msgstr "Résumés"
 

@@ -43,7 +43,7 @@
 
 (defmethod serdes.hash/identity-hash-fields NativeQuerySnippet
   [_snippet]
-  [:name (serdes.hash/hydrated-hash :collection "<none>")])
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 (defmethod mi/can-read? NativeQuerySnippet
   [& args]

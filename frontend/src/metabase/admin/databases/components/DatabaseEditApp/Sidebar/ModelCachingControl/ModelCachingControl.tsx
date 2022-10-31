@@ -8,8 +8,8 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { MetabaseApi } from "metabase/services";
 
 import MetabaseSettings from "metabase/lib/settings";
-import Database from "metabase-lib/lib/metadata/Database";
-import { getModelCacheSchemaName } from "metabase-lib/lib/metadata/utils/models";
+import Database from "metabase-lib/metadata/Database";
+import { getModelCacheSchemaName } from "metabase-lib/metadata/utils/models";
 
 import {
   ControlContainer,

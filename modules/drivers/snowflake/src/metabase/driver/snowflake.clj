@@ -182,6 +182,21 @@
   [_driver _unit expr]
   (date-trunc :week expr))
 
+(defmethod sql.qp/date [:snowflake :week-of-year-iso]
+  [_ _ expr]
+  (extract :weekiso expr))
+
+(defmethod sql.qp/date [:snowflake :week-of-year-us]
+  [driver _ expr]
+  ;; TODO: probably not hard to figure this out
+  ;; we don't support it at the moment because the implementation in (defmethod date [:sql :week-of-year-us])
+  ;; relies on the ability to dynamicall change `start-of-week` setting, but with snowflake we set the
+  ;; start-of-week in connection session instead of manipulate in MBQL
+  (throw (ex-info (tru "sqlite doesn't support extract us week")
+          {:driver driver
+           :form   expr
+           :type   qp.error-type/invalid-query})))
+
 (defmethod sql.qp/date [:snowflake :day-of-week]
   [_driver _unit expr]
   (extract :dayofweek expr))

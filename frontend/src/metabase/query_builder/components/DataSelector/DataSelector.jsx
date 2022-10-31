@@ -22,12 +22,12 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getHasDataAccess } from "metabase/new_query/selectors";
-import { getSchemaName } from "metabase-lib/lib/metadata/utils/schema";
+import { getSchemaName } from "metabase-lib/metadata/utils/schema";
 import {
   isVirtualCardId,
   getQuestionVirtualTableId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/lib/metadata/utils/saved-questions";
+} from "metabase-lib/metadata/utils/saved-questions";
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,

@@ -1,8 +1,8 @@
-import { parse } from "metabase-lib/lib/expressions/recursive-parser";
-import { resolve } from "metabase-lib/lib/expressions/resolver";
-import { infer } from "metabase-lib/lib/expressions/typeinferencer";
+import { parse } from "metabase-lib/expressions/recursive-parser";
+import { resolve } from "metabase-lib/expressions/resolver";
+import { infer } from "metabase-lib/expressions/typeinferencer";
 
-describe("metabase-lib/lib/expressions/typeinferencer", () => {
+describe("metabase-lib/expressions/typeinferencer", () => {
   function mockResolve(kind, name) {
     return ["field", name];
   }
