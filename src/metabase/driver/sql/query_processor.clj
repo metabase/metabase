@@ -655,11 +655,11 @@
   [driver [_ arg unit]]
   (date driver unit (->honeysql driver arg)))
 
-(defmethod ->honeysql [:sql :date-add]
+(defmethod ->honeysql [:sql :datetime-add]
   [driver [_ arg amount unit]]
   (add-interval-honeysql-form driver (->honeysql driver arg) amount unit))
 
-(defmethod ->honeysql [:sql :date-subtract]
+(defmethod ->honeysql [:sql :datetime-subtract]
   [driver [_ arg amount unit]]
   (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
 

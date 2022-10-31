@@ -3,13 +3,12 @@ import React from "react";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorSelector from "metabase/core/components/ColorSelector";
-import { SegmentedControl } from "metabase/components/SegmentedControl";
 import IconWrapper from "metabase/components/IconWrapper";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import { OptionsIcon } from "./ChartNestedSettingSeries.styled";
 
 // various props injected by chartSettingNestedSettings HOC
-export default class ChartNestedSettingSeries extends React.Component {
+export default class ChartNestedSettingSeriesMultiple extends React.Component {
   render() {
     const {
       objects,
@@ -19,14 +18,14 @@ export default class ChartNestedSettingSeries extends React.Component {
       objectSettingsWidgets,
       object,
       allComputedSettings,
-      settings,
     } = this.props;
     const objectKey = object && getObjectKey(object);
     const isSelected = single => objectKey === getObjectKey(single);
 
     const display = object && object.card.display;
     const isLineAreaBar = ["line", "area", "bar", "combo"].includes(display);
-    const isStacked = settings["stackable.stack_type"] != null;
+
+    console.log(isLineAreaBar);
 
     return (
       <div>
@@ -57,21 +56,6 @@ export default class ChartNestedSettingSeries extends React.Component {
                       onChangeObjectSettings(single, { title: e.target.value })
                     }
                   />
-                  {isLineAreaBar && !isStacked ? (
-                    <SegmentedControl
-                      className="ml1 align-self-stretch"
-                      value={settings.display}
-                      options={[
-                        { value: "line", icon: "line" },
-                        { value: "area", icon: "area" },
-                        { value: "bar", icon: "bar" },
-                      ]}
-                      onChange={value =>
-                        onChangeObjectSettings(single, { display: value })
-                      }
-                      fullWidth
-                    />
-                  ) : null}
                   {objects.length > 1 ? (
                     <IconWrapper className="ml1 p1">
                       <OptionsIcon

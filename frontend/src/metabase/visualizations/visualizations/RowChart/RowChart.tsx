@@ -5,15 +5,16 @@ import _ from "underscore";
 import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
 import { DatasetData, VisualizationSettings } from "metabase-types/api";
 
+import { formatValue } from "metabase/lib/formatting";
 import {
   getChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
 import {
-  formatColumnValue,
+  getColumnValueFormatter,
   getFormatters,
   getLabelsFormatter,
-} from "metabase/visualizations/visualizations/RowChart/utils/format";
+} from "metabase/visualizations/shared/utils/format";
 import { measureText } from "metabase/lib/measure-text";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import {
@@ -74,7 +75,7 @@ interface RowChartVisualizationProps {
   className: string;
   width: number;
   height: number;
-  data: DatasetData;
+  rawSeries: { data: DatasetData }[];
   settings: VisualizationSettings;
   visualizationIsClickable: (data: Record<string, unknown>) => boolean;
   onVisualizationClick: (data: Record<string, unknown>) => void;
@@ -95,7 +96,6 @@ const RowChartVisualization = ({
   card,
   className,
   settings,
-  data,
   visualizationIsClickable,
   onVisualizationClick,
   isPlaceholder,
@@ -108,15 +108,23 @@ const RowChartVisualization = ({
   onHoverChange,
   showTitle,
   onChangeCardAndRun,
+  rawSeries: rawMultipleSeries,
 }: RowChartVisualizationProps) => {
+  const formatColumnValue = useMemo(() => {
+    return getColumnValueFormatter(formatValue);
+  }, []);
+  // Do not rely on the old series transformation API and use rawSeries instead of series here
+  const [rawSeries] = rawMultipleSeries;
+  const data = rawSeries.data;
+
   const { chartColumns, series, seriesColors } = useMemo(
     () => getTwoDimensionalChartSeries(data, settings, formatColumnValue),
-    [data, settings],
+    [data, formatColumnValue, settings],
   );
 
   const groupedData = useMemo(
     () => getGroupedDataset(data, chartColumns, formatColumnValue),
-    [chartColumns, data],
+    [chartColumns, data, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
   const theme = useMemo(getChartTheme, []);
@@ -135,12 +143,12 @@ const RowChartVisualization = ({
   );
 
   const tickFormatters = useMemo(
-    () => getFormatters(chartColumns, settings),
+    () => getFormatters(chartColumns, settings, formatValue),
     [chartColumns, settings],
   );
 
   const labelsFormatter = useMemo(
-    () => getLabelsFormatter(chartColumns, settings),
+    () => getLabelsFormatter(chartColumns, settings, formatValue),
     [chartColumns, settings],
   );
 
@@ -351,17 +359,28 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
 
   const chartColumns = getChartColumns(data, settings);
 
-  const computedSeries = getSeries(data, chartColumns, formatColumnValue).map(
-    ({ seriesKey, seriesName }) => {
-      const seriesCard = {
-        ...card,
-        name: seriesName,
-        _seriesKey: seriesKey,
-        _transformed: true,
-      };
-      return { card: seriesCard, data };
-    },
-  );
+  const computedSeries = getSeries(
+    data,
+    chartColumns,
+    getColumnValueFormatter(formatValue),
+  ).map(series => {
+    const seriesCard = {
+      ...card,
+      name: series.seriesName,
+      _seriesKey: series.seriesKey,
+      _transformed: true,
+    };
+
+    const newData = {
+      ...data,
+      cols: [
+        series.seriesInfo?.dimensionColumn,
+        series.seriesInfo?.metricColumn,
+      ],
+    };
+
+    return { card: seriesCard, data: newData };
+  });
 
   return computedSeries.length > 0 ? computedSeries : originalMultipleSeries;
 };
