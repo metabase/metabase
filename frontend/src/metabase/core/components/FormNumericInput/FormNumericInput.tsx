@@ -6,7 +6,7 @@ import NumericInput, {
 } from "metabase/core/components/NumericInput";
 import FormField from "metabase/core/components/FormField";
 
-export interface FormInputProps
+export interface FormNumericInputProps
   extends Omit<NumericInputProps, "value" | "error" | "onChange" | "onBlur"> {
   name: string;
   title?: string;
@@ -14,7 +14,14 @@ export interface FormInputProps
 }
 
 const FormNumericInput = forwardRef(function FormNumericInput(
-  { name, className, style, title, description, ...props }: FormInputProps,
+  {
+    name,
+    className,
+    style,
+    title,
+    description,
+    ...props
+  }: FormNumericInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
   const id = useUniqueId();
