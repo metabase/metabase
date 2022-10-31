@@ -1,27 +1,44 @@
-import React, { forwardRef, Ref } from "react";
+import React, { forwardRef, ReactNode, Ref } from "react";
 import { useField } from "formik";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import CheckBox, { CheckBoxProps } from "metabase/core/components/CheckBox";
+import FormField from "metabase/core/components/FormField";
 
 export interface FormCheckBoxProps
   extends Omit<CheckBoxProps, "checked" | "onChange" | "onBlur"> {
   name: string;
+  title?: string;
+  description?: ReactNode;
 }
 
 const FormCheckBox = forwardRef(function FormCheckBox(
-  { name, ...props }: FormCheckBoxProps,
-  ref: Ref<HTMLLabelElement>,
+  { name, className, style, title, description, ...props }: FormCheckBoxProps,
+  ref: Ref<HTMLDivElement>,
 ) {
-  const [{ value, onChange, onBlur }] = useField(name);
+  const id = useUniqueId();
+  const [field, meta] = useField(name);
 
   return (
-    <CheckBox
-      {...props}
+    <FormField
       ref={ref}
-      name={name}
-      checked={value}
-      onChange={onChange}
-      onBlur={onBlur}
-    />
+      className={className}
+      style={style}
+      title={title}
+      description={description}
+      alignment="start"
+      orientation="horizontal"
+      htmlFor={id}
+      error={meta.touched ? meta.error : undefined}
+    >
+      <CheckBox
+        {...props}
+        id={id}
+        name={name}
+        checked={field.value}
+        onChange={field.onChange}
+        onBlur={field.onBlur}
+      />
+    </FormField>
   );
 });
 
