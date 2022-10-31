@@ -130,15 +130,17 @@
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[import-field-fk]] is the inverse."
   [field-id]
-  (let [{:keys [name table_id]}     (db/select-one 'Field :id field-id)
-        [db-name schema field-name] (export-table-fk table_id)]
-    [db-name schema field-name name]))
+  (when field-id
+    (let [{:keys [name table_id]}     (db/select-one 'Field :id field-id)
+          [db-name schema field-name] (export-table-fk table_id)]
+      [db-name schema field-name name])))
 
 (defn import-field-fk
   "Given a `field_id` as exported by [[export-field-fk]], resolve it back into a numeric `field_id`."
-  [[db-name schema table-name field-name]]
-  (let [table_id (import-table-fk [db-name schema table-name])]
-    (db/select-one-id 'Field :table_id table_id :name field-name)))
+  [[db-name schema table-name field-name :as field-id]]
+  (when field-id
+    (let [table_id (import-table-fk [db-name schema table-name])]
+      (db/select-one-id 'Field :table_id table_id :name field-name))))
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
