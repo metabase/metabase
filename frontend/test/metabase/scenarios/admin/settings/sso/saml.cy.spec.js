@@ -24,18 +24,6 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     cy.findByRole("switch", { name: "SAML" }).should("be.checked");
   });
 
-  it("should allow to save but not enable saml", () => {
-    cy.visit("/admin/settings/authentication/saml");
-
-    enterSAMLSettings();
-    cy.button("Save but don't enable").click();
-    cy.wait("@updateSettings");
-    cy.findByText("Changes saved!").should("exist");
-
-    cy.findAllByRole("link", { name: "Authentication" }).first().click();
-    cy.findByRole("switch", { name: "SAML" }).should("not.be.checked");
-  });
-
   it("should allow to update saml settings", () => {
     setupSAML();
     cy.visit("/admin/settings/authentication/saml");

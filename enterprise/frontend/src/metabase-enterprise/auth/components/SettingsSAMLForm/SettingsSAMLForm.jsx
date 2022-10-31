@@ -1,9 +1,8 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import _ from "underscore";
-import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CopyWidget from "metabase/components/CopyWidget";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -31,7 +30,6 @@ const propTypes = {
 
 const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
   const isEnabled = Boolean(settingValues["saml-enabled"]);
-  const isEnabledRef = useRef(isEnabled);
 
   const settings = useMemo(() => {
     return _.indexBy(elements, "key");
@@ -50,19 +48,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
   }, [settingValues, defaultValues]);
 
   const handleSubmit = useCallback(
-    values => onSubmit({ ...values, "saml-enabled": isEnabledRef.current }),
+    values => onSubmit({ ...values, "saml-enabled": true }),
     [onSubmit],
   );
-
-  const handleSaveAndEnableClick = useCallback(handleSubmit => {
-    isEnabledRef.current = true;
-    return handleSubmit();
-  }, []);
-
-  const handleSaveAndNotEnableClick = useCallback(handleSubmit => {
-    isEnabledRef.current = false;
-    return handleSubmit();
-  }, []);
 
   return (
     <Form
@@ -71,25 +59,6 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
       initialValues={{ ...settingValues, ...attributeValues }}
       disablePristineSubmit
       overwriteOnInitialValuesChange
-      renderSubmit={({ canSubmit, handleSubmit }) => (
-        <>
-          <ActionButton
-            actionFn={() => handleSaveAndEnableClick(handleSubmit)}
-            primary={canSubmit}
-            disabled={!canSubmit}
-            normalText={isEnabled ? t`Save changes` : t`Save and enable`}
-            successText={t`Changes saved!`}
-          />
-          {!isEnabled && (
-            <ActionButton
-              actionFn={() => handleSaveAndNotEnableClick(handleSubmit)}
-              disabled={!canSubmit}
-              normalText={t`Save but don't enable`}
-              successText={t`Changes saved!`}
-            />
-          )}
-        </>
-      )}
       onSubmit={handleSubmit}
     >
       <Breadcrumbs
@@ -215,7 +184,9 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
         <FormMessage />
       </div>
       <SAMLFormFooter>
-        <FormSubmit>{t`Save changes`}</FormSubmit>
+        <FormSubmit>
+          {isEnabled ? t`Save changes` : t`Save and enable`}
+        </FormSubmit>
       </SAMLFormFooter>
     </Form>
   );
