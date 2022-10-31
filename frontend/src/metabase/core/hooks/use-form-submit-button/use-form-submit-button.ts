@@ -5,16 +5,16 @@ import useFormState, { FormStatus } from "metabase/core/hooks/use-form-state";
 const STATUS_TIMEOUT = 5000;
 
 export interface UseFormSubmitButtonProps {
-  disabled?: boolean;
+  isDisabled?: boolean;
 }
 
 export interface UseFormSubmitButtonResult {
   status: FormStatus;
-  isEnabled: boolean;
+  isDisabled: boolean;
 }
 
 const useFormSubmitButton = ({
-  disabled = false,
+  isDisabled = false,
 }: UseFormSubmitButtonProps): UseFormSubmitButtonResult => {
   const { isValid, isSubmitting } = useFormikContext();
   const { status } = useFormState();
@@ -22,7 +22,7 @@ const useFormSubmitButton = ({
 
   return {
     status: getFormStatus(status, isRecent),
-    isEnabled: isValid && !isSubmitting && !disabled,
+    isDisabled: !isValid || isSubmitting || isDisabled,
   };
 };
 

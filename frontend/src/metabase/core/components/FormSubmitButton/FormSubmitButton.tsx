@@ -6,7 +6,6 @@ import useFormSubmitButton from "metabase/core/hooks/use-form-submit-button";
 
 export interface FormSubmitTextProps {
   status: FormStatus;
-  isEnabled: boolean;
 }
 
 export interface FormSubmitButtonProps extends ButtonProps {
@@ -22,21 +21,19 @@ const FormSubmitButton = forwardRef(function FormSubmitButton(
   }: FormSubmitButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const { status, isEnabled } = useFormSubmitButton({ disabled });
+  const { status, isDisabled } = useFormSubmitButton({ isDisabled: disabled });
 
   return (
     <Button
       {...props}
       ref={ref}
       type="submit"
-      primary={primary && isEnabled}
+      primary={primary && !isDisabled}
       success={status === "fulfilled"}
       danger={status === "rejected"}
-      disabled={!isEnabled}
+      disabled={isDisabled}
     >
-      {typeof children === "function"
-        ? children({ status, isEnabled })
-        : children}
+      {typeof children === "function" ? children({ status }) : children}
     </Button>
   );
 });
