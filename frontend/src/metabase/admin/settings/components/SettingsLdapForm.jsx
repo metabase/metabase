@@ -16,8 +16,8 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
   const layout = getLayout(settingValues);
   const breadcrumbs = getBreadcrumbs();
 
-  const handleAutoEnableSubmit = formData => {
-    return updateLdapSettings({ ...formData, "ldap-enabled": true });
+  const handleSubmit = values => {
+    return updateLdapSettings({ ...values, "ldap-enabled": true });
   };
 
   return (
@@ -26,30 +26,16 @@ const SettingsLdapForm = ({ settingValues, updateLdapSettings, ...props }) => {
       layout={layout}
       breadcrumbs={breadcrumbs}
       settingValues={settingValues}
-      updateSettings={updateLdapSettings}
-      renderSubmitButton={
-        !isEnabled &&
-        (({ disabled, pristine, onSubmit }) => (
-          <FormButton
-            primary={!disabled}
-            disabled={disabled || pristine}
-            actionFn={() => onSubmit(handleAutoEnableSubmit)}
-            normalText={t`Save and enable`}
-            successText={t`Changes saved!`}
-          />
-        ))
-      }
-      renderExtraButtons={
-        !isEnabled &&
-        (({ disabled, pristine, onSubmit }) => (
-          <FormButton
-            disabled={disabled || pristine}
-            actionFn={() => onSubmit(updateLdapSettings)}
-            normalText={t`Save but don't enable`}
-            successText={t`Changes saved!`}
-          />
-        ))
-      }
+      updateSettings={handleSubmit}
+      renderSubmitButton={({ disabled, pristine, onSubmit }) => (
+        <FormButton
+          primary={!disabled}
+          disabled={disabled || pristine}
+          actionFn={onSubmit}
+          normalText={isEnabled ? t`Save changes` : t`Save and enable`}
+          successText={t`Changes saved!`}
+        />
+      )}
     />
   );
 };
