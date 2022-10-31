@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [java-time :as t]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.models.humanization :as humanization]
             [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.search.config :as search-config]
             [metabase.util :as u]
@@ -237,9 +238,11 @@
         match-context-thunk (first (keep :match-context-thunk relevant-scores))]
     (-> result
         (assoc
-         :name           (if (or (= column :name) (nil? display_name))
-                           name
-                           display_name)
+         :name           (humanization/name->human-readable-name
+                          :simple
+                          (if (or (= column :name) (nil? display_name))
+                            name
+                            display_name))
          :context        (when (and (not (contains? search-config/displayed-columns column))
                                     match-context-thunk)
                            (match-context-thunk))

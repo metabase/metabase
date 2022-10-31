@@ -451,7 +451,6 @@
                            ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
                            (map #(update % :bookmark api/bit->boolean))
                            (map #(update % :archived api/bit->boolean))
-                           (map #(update % :name str/upper-case))
                            (map (partial scoring/score-and-result (:search-string search-ctx)))
                            (filter #(pos? (:score %))))
         total-results     (scoring/top-results reducible-results search-config/max-filtered-results xf)]
