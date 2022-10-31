@@ -741,6 +741,11 @@ export class FieldDimension extends Dimension {
       this._options,
       this._metadata,
       query,
+      {
+        _fieldInstance: this._fieldInstance,
+        _subDisplayName: this._subDisplayName,
+        _subTriggerDisplayName: this._subTriggerDisplayName,
+      },
     );
   }
 
