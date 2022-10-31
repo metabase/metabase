@@ -68,3 +68,8 @@
                 {:portal.viewer/default :portal.viewer/diff})
               (update (meta middleware-var) :ns #(.name %)))
     (send-log event)))
+
+(defn spy-tap>
+  "Tap `value` and return it. The return value of `tap>` gets lost."
+  [value]
+  (doto value tap>))
