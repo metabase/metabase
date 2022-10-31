@@ -224,7 +224,8 @@
 (defmethod serdes.base/extract-query "DashboardCard" [_ {:keys [collection-set]}]
   (if (seq collection-set)
     (let [dashboards (db/select-ids 'Dashboard :collection_id [:in collection-set])]
-      (db/select-reducible DashboardCard :dashboard_id [:in dashboards]))
+      (when (seq dashboards)
+        (db/select-reducible DashboardCard :dashboard_id [:in dashboards])))
     (db/select-reducible DashboardCard)))
 
 (defmethod serdes.base/serdes-dependencies "DashboardCard"
