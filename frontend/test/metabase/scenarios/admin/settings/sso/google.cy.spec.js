@@ -22,7 +22,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     typeAndBlurUsingLabel("Client ID", `example2.${CLIENT_ID_SUFFIX}`);
     cy.button("Save changes").click();
     cy.wait("@updateGoogleSettings");
-    cy.findByText("Changes saved!").should("be.visible");
+    cy.findByText("Success").should("be.visible");
   });
 
   it("should disable google auth (metabase#20442)", () => {
