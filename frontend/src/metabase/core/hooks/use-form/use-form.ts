@@ -6,17 +6,15 @@ const useForm = <T>(onSubmit: (data: T) => void) => {
   return useCallback(
     async (data: T, helpers: FormikHelpers<T>) => {
       try {
-        helpers.setStatus({ status: "pending", message: undefined });
+        helpers.setStatus({ status: "pending" });
         await onSubmit(data);
         helpers.setStatus({ status: "fulfilled" });
       } catch (error) {
-        if (isFormError(error)) {
-          const { data } = error;
-          helpers.setErrors(data?.errors ?? {});
-          helpers.setStatus({ status: "rejected", message: data?.message });
-        } else {
-          helpers.setStatus({ status: "rejected", message: undefined });
-        }
+        helpers.setErrors(getFormErrors(error));
+        helpers.setStatus({
+          status: "rejected",
+          message: getFormMessage(error),
+        });
       }
     },
     [onSubmit],
@@ -25,6 +23,14 @@ const useForm = <T>(onSubmit: (data: T) => void) => {
 
 const isFormError = <T>(error: unknown): error is FormError<T> => {
   return error != null && typeof error === "object";
+};
+
+const getFormErrors = (error: unknown) => {
+  return isFormError(error) ? error.data?.errors ?? error.errors ?? {} : {};
+};
+
+const getFormMessage = (error: unknown) => {
+  return isFormError(error) ? error.data?.message ?? error.message : undefined;
 };
 
 export default useForm;

@@ -1,2 +1,3 @@
-export type FormFieldAlignment = "start" | "end";
-export type FormFieldOrientation = "horizontal" | "vertical";
+export type FieldAlignment = "start" | "end";
+
+export type FieldOrientation = "horizontal" | "vertical";
