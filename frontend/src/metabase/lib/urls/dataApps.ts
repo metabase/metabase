@@ -10,6 +10,7 @@ import type {
 import { appendSlug } from "./utils";
 
 const DATA_APP_PAGE_URL_PATTERN = /\/a\/(\d+)\/page\/(\d+)/;
+const DATA_APP_URL_PATTERN = /\/a\/(\d+)/;
 
 type DataAppUrlMode = "preview" | "internal" | "app-url";
 
@@ -69,4 +70,10 @@ export function isDataAppHomepagePath(pathname: string) {
 
 export function isDataAppPagePath(pathname: string) {
   return DATA_APP_PAGE_URL_PATTERN.test(pathname);
+}
+
+export function getDataAppIdFromPath(pathname: string) {
+  return isDataAppPath(pathname)
+    ? Number(DATA_APP_URL_PATTERN.exec(pathname)?.[1])
+    : null;
 }
