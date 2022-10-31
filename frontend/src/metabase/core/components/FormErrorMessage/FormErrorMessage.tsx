@@ -7,7 +7,7 @@ export interface FormErrorContentProps {
 }
 
 export interface FormErrorMessageProps extends HTMLAttributes<HTMLDivElement> {
-  children?: ReactNode | ((props: FormErrorContentProps) => ReactNode);
+  children?: (props: FormErrorContentProps) => ReactNode;
 }
 
 const FormErrorMessage = forwardRef(function FormErrorMessage(
@@ -21,7 +21,7 @@ const FormErrorMessage = forwardRef(function FormErrorMessage(
 
   return (
     <ErrorMessageRoot {...props} ref={ref}>
-      {typeof children === "function" ? children({ message }) : children}
+      {children({ message })}
     </ErrorMessageRoot>
   );
 });
