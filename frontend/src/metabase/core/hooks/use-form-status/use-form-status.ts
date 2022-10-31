@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from "react";
-import useFormState, { FormStatus } from "../use-form-state";
+import useFormState, { FormStatus } from "metabase/core/hooks/use-form-state";
 
 const STATUS_TIMEOUT = 5000;
 
@@ -16,7 +16,7 @@ const useFormStatus = (): FormStatus | undefined => {
   }
 };
 
-function useIsRecent(value: unknown, timeout: number) {
+const useIsRecent = (value: unknown, timeout: number) => {
   const [isRecent, setIsRecent] = useState(true);
 
   useEffect(() => {
@@ -29,6 +29,6 @@ function useIsRecent(value: unknown, timeout: number) {
   }, [value]);
 
   return isRecent;
-}
+};
 
 export default useFormStatus;
