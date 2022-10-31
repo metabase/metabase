@@ -327,7 +327,7 @@
                 :query   {:filter [:= [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]] 2006]
                           :fields [[:field (mt/id :times :index)]]}}]]
         (testing title
-          (is (= (set expected) (set (test-date-math query)))))))))
+          (is (= (set expected) (set (test-datetime-math query)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
