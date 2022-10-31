@@ -41,7 +41,7 @@ function SidebarContent({
       <SidebarContentMain data-testid="sidebar-content">
         {(title || icon || onBack) && (
           <SidebarHeader
-            className="mx3 my2 pt1"
+            className="mx3 my2 pt1 sidebar-header"
             title={title}
             icon={icon}
             onBack={onBack}
