@@ -11,23 +11,23 @@ jobs:
     if: contains(github.event.comment.body, '@metabase-bot backport')
     runs-on: ubuntu-20.04
     steps:
+      - uses: tibdex/github-app-token@v1.6.0
+        id: generate-token
+        with:
+          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
       - id: is_organization_member
         uses: JamesSingleton/is-organization-member@1.0.0
         with:
           organization: metabase
           username: ${{ github.event.issue.user.login }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.generate-token.outputs.token }}
       - run: |
           result=${{ steps.is_organization_member.outputs.result }}
           if [ $result == false ]; then
               echo User ${{ github.event.comment.user.login }} is not a member of Metabase organization
               exit 1
           fi
-      - uses: tibdex/github-app-token@v1.6.0
-        id: generate-token
-        with:
-          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
-          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
       - uses: actions/github-script@v4
         id: branch_info
         with:
