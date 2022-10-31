@@ -6,10 +6,10 @@ import { FormStatus } from "metabase/core/hooks/use-form-state";
 import useFormStatus from "metabase/core/hooks/use-form-status";
 
 export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
-  normalText?: string;
-  activeText?: string;
-  successText?: string;
-  failedText?: string;
+  title?: string;
+  activeTitle?: string;
+  successTitle?: string;
+  failedTitle?: string;
 }
 
 const FormSubmitButton = forwardRef(function FormSubmitButton(
@@ -39,21 +39,21 @@ const FormSubmitButton = forwardRef(function FormSubmitButton(
 const getSubmitButtonText = (
   status: FormStatus | undefined,
   {
-    normalText = t`Submit`,
-    activeText = normalText,
-    successText = t`Success`,
-    failedText = t`Failed`,
+    title = t`Submit`,
+    activeTitle = title,
+    successTitle = t`Success`,
+    failedTitle = t`Failed`,
   }: FormSubmitButtonProps,
 ) => {
   switch (status) {
     case "pending":
-      return activeText;
+      return activeTitle;
     case "fulfilled":
-      return successText;
+      return successTitle;
     case "rejected":
-      return failedText;
+      return failedTitle;
     default:
-      return normalText;
+      return title;
   }
 };
 
