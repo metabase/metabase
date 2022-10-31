@@ -401,7 +401,7 @@
             (testing "timestamp with time zone columns shouldn't have `from_tz`"
               (is (thrown-with-msg?
                     clojure.lang.ExceptionInfo
-                    #"`timestamp with time zone` columns shouldn't have a `source timezone`"
+                    #".* columns shouldn't have a `source timezone`"
                     (mt/$ids (test-convert-tz
                                $times.dt_tz
                                [:convert-timezone [:field (mt/id :times :dt_tz) nil]
@@ -429,7 +429,7 @@
                          :fields      [$times.dt
                                        [:expression "converted"]
                                        [:expression "hour"]]})
-                      mt/rows
+                      (mt/formatted-rows [str str int])
                       first))))
         (testing "convert-timezone nested with date-math, date-extract"
           (is (= ["2004-03-19T09:19:09Z" "2004-03-19T18:19:09+09:00" "2004-03-19T11:19:09Z" 20]
@@ -443,7 +443,7 @@
                                        [:expression "converted"]
                                        [:expression "date-added"]
                                        [:expression "hour"]]})
-                      mt/rows
+                      (mt/formatted-rows [str str str int])
                       first))))
 
         (testing "extract hour should respect daylight savings times"
@@ -457,7 +457,7 @@
                          :fields      [$times.dt
                                        [:expression "converted"]
                                        [:expression "hour"]]})
-                      mt/rows))))
+                      (mt/formatted-rows [str str int])))))
         (testing "convert-timezone twice should works"
           (is (= ["2004-03-19T09:19:09Z"      ;; original column
                   "2004-03-19T16:19:09+07:00" ;; at +07
@@ -470,7 +470,6 @@
                          :fields      [$times.dt
                                        [:expression "to-07"]
                                        [:expression "to-07-to-09"]]})
-                      mt/rows
                       first))))
 
         (testing "filter a converted-timezone column"
