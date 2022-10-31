@@ -94,7 +94,7 @@ export type FieldOptions = {
   };
 };
 
-// import Dimension from "metabase-lib/lib/Dimension";
+// import Dimension from "metabase-lib/Dimension";
 type Dimension = any;
 
 export type DimensionOptions = {

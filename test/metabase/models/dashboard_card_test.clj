@@ -11,7 +11,8 @@
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import java.time.LocalDateTime))
 
 (defn remove-ids-and-timestamps [m]
   (let [f (fn [v]
@@ -263,12 +264,16 @@
 
 (deftest identity-hash-test
   (testing "Dashboard card hashes are composed of the card hash, dashboard hash, and visualization settings"
-    (mt/with-temp* [Collection    [c1       {:name "top level" :location "/"}]
-                    Dashboard     [dash     {:name "my dashboard"  :collection_id (:id c1)}]
-                    Card          [card     {:name "some question" :collection_id (:id c1)}]
-                    DashboardCard [dashcard {:card_id                (:id card)
-                                             :dashboard_id           (:id dash)
-                                             :visualization_settings {}}]]
-      (is (= "c926aed0"
-             (serdes.hash/raw-hash [(serdes.hash/identity-hash card) (serdes.hash/identity-hash dash) {}])
-             (serdes.hash/identity-hash dashcard))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection    [c1       {:name "top level" :location "/" :created_at now}]
+                      Dashboard     [dash     {:name "my dashboard"  :collection_id (:id c1) :created_at now}]
+                      Card          [card     {:name "some question" :collection_id (:id c1) :created_at now}]
+                      DashboardCard [dashcard {:card_id                (:id card)
+                                               :dashboard_id           (:id dash)
+                                               :visualization_settings {}
+                                               :row                    6
+                                               :col                    3
+                                               :created_at             now}]]
+        (is (= "1311d6dc"
+               (serdes.hash/raw-hash [(serdes.hash/identity-hash card) (serdes.hash/identity-hash dash) {} 6 3 now])
+               (serdes.hash/identity-hash dashcard)))))))

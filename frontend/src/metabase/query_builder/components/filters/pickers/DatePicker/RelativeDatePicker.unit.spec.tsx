@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
 import { PastPicker, NextPicker } from "./RelativeDatePicker";
 
 describe("PastPicker", () => {

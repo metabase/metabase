@@ -56,7 +56,9 @@
    (comp serdes.hash/identity-hash
          #(db/select-one 'Dashboard :id %)
          :dashboard_id)
-   :visualization_settings])
+   :visualization_settings
+   :row :col
+   :created_at])
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
@@ -220,8 +222,10 @@
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 (defmethod serdes.base/extract-query "DashboardCard" [_ {:keys [collection-set]}]
-  (let [dashboards (db/select-ids 'Dashboard :collection_id [:in collection-set])]
-    (db/select-reducible DashboardCard :dashboard_id [:in dashboards])))
+  (if (seq collection-set)
+    (let [dashboards (db/select-ids 'Dashboard :collection_id [:in collection-set])]
+      (db/select-reducible DashboardCard :dashboard_id [:in dashboards]))
+    (db/select-reducible DashboardCard)))
 
 (defmethod serdes.base/serdes-dependencies "DashboardCard"
   [{:keys [card_id dashboard_id parameter_mappings visualization_settings]}]

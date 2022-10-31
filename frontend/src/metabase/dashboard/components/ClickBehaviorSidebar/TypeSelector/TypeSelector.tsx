@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 import { isActionDashCard } from "metabase/writeback/utils";
 
 import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";
-import type { UiParameter } from "metabase-lib/lib/parameters/types";
+import type { UiParameter } from "metabase-lib/parameters/types";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
 import { SidebarItem } from "../SidebarItem";

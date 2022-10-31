@@ -10,7 +10,7 @@ import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 
 import { hasEventAxis } from "metabase/visualizations/lib/timelines";
-import { datasetContainsNoResults } from "metabase-lib/lib/queries/utils/dataset";
+import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { computeTimeseriesTicksInterval } from "./timeseries";
 import timeseriesScale from "./timeseriesScale";
 import { isMultipleOf } from "./numeric";

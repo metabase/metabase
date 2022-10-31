@@ -1,5 +1,5 @@
 (ns metabase.util.honeysql-extensions
-  (:refer-clojure :exclude [+ - / * mod inc dec cast concat format second])
+  (:refer-clojure :exclude [+ - / * abs mod inc dec cast concat format second])
   (:require [clojure.pprint :as pprint]
             [clojure.string :as str]
             [honeysql.core :as hsql]
@@ -299,6 +299,8 @@
 (defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (maybe-cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
+(def ^{:arglists '([& exprs])} abs     "SQL `abs` function."     (partial hsql/call :abs))
+(def ^{:arglists '([& exprs])} ceil    "SQL `ceil` function."    (partial hsql/call :ceil))
 (def ^{:arglists '([& exprs])} floor   "SQL `floor` function."   (partial hsql/call :floor))
 (def ^{:arglists '([& exprs])} second  "SQL `second` function."  (partial hsql/call :second))
 (def ^{:arglists '([& exprs])} minute  "SQL `minute` function."  (partial hsql/call :minute))

@@ -118,6 +118,9 @@
                               (hx/with-database-type-info "timestamp")))]
     (sql.qp/adjust-start-of-week driver week-extract-fn expr)))
 
+
+(defmethod sql.qp/date [:hive-like :week-of-year-iso] [_driver _ expr] (hsql/call :weekofyear (hx/->timestamp expr)))
+
 (defmethod sql.qp/date [:hive-like :quarter]
   [_ _ expr]
   (hsql/call :add_months

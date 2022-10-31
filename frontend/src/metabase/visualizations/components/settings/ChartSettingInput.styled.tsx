@@ -16,6 +16,6 @@ export const ChartSettingInputStyle = css`
   font-weight: 700;
 `;
 
-export const ChartSettingInputBlueChange = styled(InputBlurChange)`
+export const ChartSettingInputBlurChange = styled(InputBlurChange)`
   ${ChartSettingInputStyle}
 `;

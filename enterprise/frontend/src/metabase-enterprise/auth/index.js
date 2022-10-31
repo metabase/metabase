@@ -9,7 +9,6 @@ import {
   PLUGIN_IS_PASSWORD_USER,
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
-import { UtilApi } from "metabase/services";
 
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
@@ -40,11 +39,15 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       getHidden: () => !hasPremiumFeature("sso"),
     },
     {
-      authName: t`JWT`,
-      authDescription: t`Allows users to login via a JWT Identity Provider.`,
-      authType: "jwt",
-      authEnabled: settings => settings["jwt-enabled"],
-      widget: AuthenticationOption,
+      key: "jwt-enabled",
+      description: null,
+      widget: AuthenticationWidget,
+      getProps: (setting, settings) => ({
+        authName: t`JWT`,
+        authDescription: t`Allows users to login via a JWT Identity Provider.`,
+        authType: "jwt",
+        authConfigured: settings["jwt-configured"],
+      }),
       getHidden: () => !hasPremiumFeature("sso"),
     },
     {
@@ -170,26 +173,9 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     settings: [
       {
         key: "jwt-enabled",
-        description: null,
-        getHidden: settings => settings["jwt-enabled"],
-        onChanged: async (
-          oldValue,
-          newValue,
-          settingsValues,
-          onChangeSetting,
-        ) => {
-          // Generate a secret key if none already exists
-          if (!oldValue && newValue && !settingsValues["jwt-shared-secret"]) {
-            const result = await UtilApi.random_token();
-            await onChangeSetting("jwt-shared-secret", result.token);
-          }
-        },
-      },
-      {
-        key: "jwt-enabled",
         display_name: t`JWT Authentication`,
         type: "boolean",
-        getHidden: settings => !settings["jwt-enabled"],
+        getHidden: () => true,
       },
       {
         key: "jwt-identity-provider-uri",

@@ -23,36 +23,16 @@ import {
   getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
 
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getSettingDefintionsForColumn } from "metabase/visualizations/lib/settings/column";
-import ChartSettingsWidget from "./ChartSettingsWidget";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+
 import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
 import { SectionContainer, SectionWarnings } from "./ChartSettings.styled";
 
 // section names are localized
-const DEFAULT_TAB_PRIORITY = [t`Display`];
-
-const getPopoverWidget = (widgets, currentWidget, extraWidgetProps) => {
-  const widget =
-    currentWidget && widgets.find(widget => widget.id === currentWidget.id);
-
-  if (widget) {
-    return (
-      <ChartSettingsWidget
-        key={widget.id}
-        {...widget}
-        props={{
-          ...widget.props,
-          ...currentWidget.props,
-        }}
-        hidden={false}
-        {...extraWidgetProps}
-      />
-    );
-  }
-
-  return undefined;
-};
+const DEFAULT_TAB_PRIORITY = [t`Data`];
 
 const withTransientSettingState = ComposedComponent =>
   class extends React.Component {
@@ -194,6 +174,62 @@ class ChartSettings extends Component {
       col,
     ).some(widget => !widget.hidden);
   }
+
+  getStyleWidget = () => {
+    const widgets = this._getWidgets();
+    const series = this._getTransformedSeries();
+    const { currentWidget } = this.state;
+    const seriesSettingsWidget =
+      currentWidget && widgets.find(widget => widget.id === "series_settings");
+
+    //We don't want to show series settings widget for waterfall charts
+    if (series?.[0]?.card?.display === "waterfall" || !seriesSettingsWidget) {
+      return null;
+    }
+
+    if (currentWidget.props?.seriesKey !== undefined) {
+      return {
+        ...seriesSettingsWidget,
+        props: {
+          ...seriesSettingsWidget.props,
+          initialKey: currentWidget.props.seriesKey,
+        },
+      };
+    } else if (currentWidget.props?.initialKey) {
+      const settings = this._getSettings();
+      const singleSeriesForColumn = series.find(single => {
+        const metricColumn = single.data.cols[1];
+        return getColumnKey(metricColumn) === currentWidget.props.initialKey;
+      });
+
+      const isBreakout = settings?.["graph.dimensions"]?.length > 1;
+
+      if (singleSeriesForColumn && !isBreakout) {
+        return {
+          ...seriesSettingsWidget,
+          props: {
+            ...seriesSettingsWidget.props,
+            initialKey: keyForSingleSeries(singleSeriesForColumn),
+          },
+        };
+      }
+    }
+
+    return null;
+  };
+
+  getFormattingWidget = () => {
+    const widgets = this._getWidgets();
+    const { currentWidget } = this.state;
+    const widget =
+      currentWidget && widgets.find(widget => widget.id === currentWidget.id);
+
+    if (widget) {
+      return { ...widget, props: { ...widget.props, ...currentWidget.props } };
+    }
+
+    return null;
+  };
 
   render() {
     const { className, question, addField, noPreview, dashboard, isDashboard } =
@@ -355,8 +391,13 @@ class ChartSettings extends Component {
           </div>
         )}
         <ChartSettingsWidgetPopover
+          currentWidgetKey={
+            currentWidget?.props?.initialKey || currentWidget?.props?.seriesKey
+          }
           anchor={popoverRef}
-          widget={getPopoverWidget(widgets, currentWidget, extraWidgetProps)}
+          widgets={[this.getFormattingWidget(), this.getStyleWidget()].filter(
+            widget => !!widget,
+          )}
           handleEndShowWidget={this.handleEndShowWidget}
         />
       </div>

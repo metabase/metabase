@@ -10,7 +10,7 @@ import {
   getDashboardDrillQuestionUrl,
   getDashboardDrillType,
   getDashboardDrillUrl,
-} from "metabase-lib/lib/queries/drills/dashboard-click-drill";
+} from "metabase-lib/queries/drills/dashboard-click-drill";
 
 function getAction(type, question, clicked) {
   switch (type) {

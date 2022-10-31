@@ -11,7 +11,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import {
   getTemplateTagsForParameters,
   getTemplateTagParameters,
-} from "metabase-lib/lib/parameters/utils/template-tags";
+} from "metabase-lib/parameters/utils/template-tags";
 import {
   getDataReferenceStack,
   getNativeEditorCursorOffset,

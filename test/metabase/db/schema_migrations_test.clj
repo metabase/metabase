@@ -712,7 +712,10 @@
                                                                     :slug              "personal_collection"})
             impersonal-collection-id (db/simple-insert! Collection {:name  "Regular Collection"
                                                                     :color "#ff0000"
-                                                                    :slug  "personal_collection"})
+                                                                    :slug  "regular_collection"})
+            empty-collection-id      (db/simple-insert! Collection {:name  "Empty Collection"
+                                                                    :color "#ff0000"
+                                                                    :slug  "empty_collection"})
             _                        (db/simple-insert! Card {:collection_id          impersonal-collection-id
                                                               :name                   "Card 1"
                                                               :display                "table"
@@ -737,4 +740,10 @@
                  (t/offset-date-time (db/select-one-field :created_at Collection :id personal-collection-id)))))
         (testing "A non-personal Collection should get created_at set to its oldest object"
           (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
-                 (t/offset-date-time (db/select-one-field :created_at Collection :id impersonal-collection-id)))))))))
+                 (t/offset-date-time (db/select-one-field :created_at Collection :id impersonal-collection-id)))))
+        (testing "Empty Collection should not have been updated"
+          (let [empty-collection-created-at (t/offset-date-time (db/select-one-field :created_at Collection :id empty-collection-id))]
+            (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
+                      empty-collection-created-at))
+            (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
+                      empty-collection-created-at))))))))

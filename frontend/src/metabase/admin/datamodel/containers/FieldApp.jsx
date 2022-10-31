@@ -38,7 +38,7 @@ import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
-import { isTypeFK, isCurrency } from "metabase-lib/lib/types/utils/isa";
+import { isTypeFK, isCurrency } from "metabase-lib/types/utils/isa";
 import { rescanFieldValues, discardFieldValues } from "../field";
 import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
 import FieldRemapping from "../components/FieldRemapping";

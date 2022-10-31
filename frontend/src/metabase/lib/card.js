@@ -2,7 +2,7 @@ import Utils from "metabase/lib/utils";
 
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import Questions from "metabase/entities/questions";
-import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
+import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 export function createCard(name = null) {
   return {

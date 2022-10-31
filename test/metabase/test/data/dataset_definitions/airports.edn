@@ -3,25 +3,25 @@
 ;; Adapted from https://raw.githubusercontent.com/datasets/airport-codes/master/data/airport-codes.csv and
 ;; https://ourairports.com/help/data-dictionary.html
 ;;
-;; continent (INTEGER id, TEXT name, TEXT iso-code)
+;; continent (INTEGER id, TEXT name, TEXT iso_code)
 ;; 6 rows
 ;;
-;; country (INTEGER id, TEXT name, TEXT iso-code, INTEGER continent-id)
+;; country (INTEGER id, TEXT name, TEXT iso_code, INTEGER continent_id)
 ;; 147 rows
 ;;
-;; region (INTEGER id, TEXT name, TEXT iso-code, INTEGER country-id)
+;; region (INTEGER id, TEXT name, TEXT iso_code, INTEGER country_id)
 ;; This is a subdivision of the country such as state.
 ;; 415 rows
 ;;
-;; municipality (INTEGER id, TEXT name, INTEGER region-id)
+;; municipality (INTEGER id, TEXT name, INTEGER region_id)
 ;; This is the municipality the airport serves -- usually, but not always, a city
 ;; 577 rows
 ;;
-;; airport (INTEGER id, TEXT name, TEXT code, DOUBLE latitude, DOUBLE longitude, INTEGER elevation-ft, INTEGER municipality-id)
+;; airport (INTEGER id, TEXT name, TEXT code, DOUBLE latitude, DOUBLE longitude, INTEGER elevation_ft, INTEGER municipality_id)
 ;; 601 rows
 [["continent"
   [{:field-name "name", :base-type :type/Text}
-   {:field-name "iso-code", :base-type :type/Text}]
+   {:field-name "iso_code", :base-type :type/Text}]
   [[       "Africa" "AF"]               ;   1
    [         "Asia" "AS"]               ;   2
    [       "Europe" "EU"]               ;   3
@@ -32,8 +32,8 @@
 
  ["country"
   [{:field-name "name", :base-type :type/Text}
-   {:field-name "iso-code", :base-type :type/Text}
-   {:field-name "continent-id", :base-type :type/Integer, :fk "continent"}]
+   {:field-name "iso_code", :base-type :type/Text}
+   {:field-name "continent_id", :base-type :type/Integer, :fk "continent"}]
   [[               "Albania" "AL" 3]    ;   1
    [               "Algeria" "DZ" 1]    ;   2
    [                "Angola" "AO" 1]    ;   3
@@ -185,8 +185,8 @@
 
  ["region"
   [{:field-name "name", :base-type :type/Text}
-   {:field-name "iso-code", :base-type :type/Text}
-   {:field-name "country-id", :base-type :type/Integer, :fk "country"}]
+   {:field-name "iso_code", :base-type :type/Text}
+   {:field-name "country_id", :base-type :type/Integer, :fk "country"}]
   [[                                       nil  "UG-102" 137] ;   1
    [                                       nil    "FR-B"  46] ;   2
    [                                       nil    "FR-N"  46] ;   3
@@ -606,7 +606,7 @@
 
  ["municipality"
   [{:field-name "name", :base-type :type/Text}
-   {:field-name "region-id", :base-type :type/Integer, :fk "region"}]
+   {:field-name "region_id", :base-type :type/Integer, :fk "region"}]
   [[                                    nil   9] ;   1
    [                                    nil  10] ;   2
    [                                    nil  21] ;   3
@@ -1191,7 +1191,7 @@
    {:field-name "code", :base-type :type/Text}
    {:field-name "latitude", :base-type :type/Float}
    {:field-name "longitude", :base-type :type/Float}
-   {:field-name "municipality-id", :base-type :type/Integer, :fk "municipality"}]
+   {:field-name "municipality_id", :base-type :type/Integer, :fk "municipality"}]
   [[                                                  "Aalborg Airport" "AAL"       57.0927589138        9.84924316406   9] ;   1
    [                         "Abeid Amani Karume International Airport" "ZNZ"            -6.22202            39.224899 573] ;   2
    [                                            "Aberdeen Dyce Airport" "ABZ"  57.201900482177734   -2.197779893875122  10] ;   3

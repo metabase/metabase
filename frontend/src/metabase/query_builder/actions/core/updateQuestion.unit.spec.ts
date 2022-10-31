@@ -15,11 +15,11 @@ import {
   state as entitiesState,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Join from "metabase-lib/lib/queries/structured/Join";
-import Field from "metabase-lib/lib/metadata/Field";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Join from "metabase-lib/queries/structured/Join";
+import Field from "metabase-lib/metadata/Field";
 import {
   getAdHocQuestion,
   getSavedStructuredQuestion,

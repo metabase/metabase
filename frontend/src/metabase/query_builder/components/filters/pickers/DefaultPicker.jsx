@@ -11,9 +11,9 @@ import { getCurrencySymbol } from "metabase/lib/formatting";
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
-} from "metabase-lib/lib/operators/utils";
-import { isCurrency } from "metabase-lib/lib/types/utils/isa";
-import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
+} from "metabase-lib/operators/utils";
+import { isCurrency } from "metabase-lib/types/utils/isa";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import TextPicker from "./TextPicker";
 import SelectPicker from "./SelectPicker";
 import NumberPicker from "./NumberPicker";

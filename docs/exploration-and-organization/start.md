@@ -14,6 +14,10 @@ Find data, explore questions and dashboards, and bookmark your favorites.
 
 Organize questions, dashboards, and models with collections.
 
+## [History](./history.md)
+
+View changes to a question or dashboard, revert to previous versions, and archive outdated items.
+
 ## [Events and timelines](./events-and-timelines.md)
 
 Add events to timelines to annotate charts.

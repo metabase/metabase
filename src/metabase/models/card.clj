@@ -328,11 +328,13 @@
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]
-  [:name (serdes.hash/hydrated-hash :collection)])
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 (defmethod serdes.base/extract-query "Card" [_ {:keys [collection-set]}]
-  (db/select-reducible Card :collection_id [:in collection-set]))
+  (if (seq collection-set)
+    (db/select-reducible Card :collection_id [:in collection-set])
+    (db/select-reducible Card)))
 
 (defmethod serdes.base/extract-one "Card"
   [_model-name _opts card]

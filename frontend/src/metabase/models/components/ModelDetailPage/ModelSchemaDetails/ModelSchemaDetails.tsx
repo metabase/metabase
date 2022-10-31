@@ -7,8 +7,8 @@ import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 
-import type Field from "metabase-lib/lib/metadata/Field";
-import type Question from "metabase-lib/lib/Question";
+import type Field from "metabase-lib/metadata/Field";
+import type Question from "metabase-lib/Question";
 
 import {
   SchemaHeader,
