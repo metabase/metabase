@@ -32,7 +32,7 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.button("Save changes").click();
     cy.wait("@updateSettings");
 
-    cy.findByText("Changes saved!").should("exist");
+    cy.findByText("Success").should("exist");
   });
 });
 

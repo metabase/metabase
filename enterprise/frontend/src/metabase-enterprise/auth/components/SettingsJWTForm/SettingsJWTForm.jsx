@@ -34,7 +34,7 @@ const SettingsJWTForm = ({ settingValues, onSubmit, ...props }) => {
           disabled={disabled || pristine}
           actionFn={onSubmit}
           normalText={isEnabled ? t`Save changes` : t`Save and enable`}
-          successText={t`Changes saved!`}
+          successText={t`Success`}
         />
       )}
     />

@@ -18,7 +18,7 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     enterSAMLSettings();
     cy.button("Save and enable").click();
     cy.wait("@updateSettings");
-    cy.findByText("Changes saved!").should("exist");
+    cy.findByText("Success").should("exist");
 
     cy.findAllByRole("link", { name: "Authentication" }).first().click();
     cy.findByRole("switch", { name: "SAML" }).should("be.checked");
@@ -31,7 +31,7 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     typeAndBlurUsingLabel("SAML Identity Provider URL", "https://other.test");
     cy.button("Save changes").click();
     cy.wait("@updateSettings");
-    cy.findByText("Changes saved!").should("exist");
+    cy.findByText("Success").should("exist");
 
     cy.findAllByRole("link", { name: "Authentication" }).first().click();
     cy.findByRole("switch", { name: "SAML" }).should("be.checked");
