@@ -17,6 +17,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
       {
         key: "ldap-enabled",
         description: null,
+        noHeader: true,
         widget: AuthenticationWidget,
         getProps: (setting, settings) => ({
           authType: "ldap",

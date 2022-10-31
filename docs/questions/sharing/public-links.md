@@ -26,7 +26,9 @@ In the case of a dashboard, the button is located on the top right of the page.
 
 Copy and share the public link URL with whomever you please. The public link URL will display static results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
 
-However, public URLs preserve [custom click behavior](../../dashboards/interactive.md). If you like, you can share specific drill-down views by linking to other questions or dashboards.
+However, public URLs preserve [custom click behavior](../../dashboards/interactive.md) to custom URLs. If you like, you can share specific drill-down views by linking to the public links of other questions or dashboards.
+
+If you want to restrict what people can see in a public link based on a filter value, check out [signed embedding](../../embedding/signed-embedding.md).
 
 ## Public exports for question results in CSV, XLSX, JSON
 

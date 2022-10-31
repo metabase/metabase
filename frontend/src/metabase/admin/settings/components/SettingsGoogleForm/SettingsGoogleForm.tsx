@@ -1,8 +1,7 @@
-import React, { useRef } from "react";
+import React, { useCallback } from "react";
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import ActionButton from "metabase/components/ActionButton";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import {
@@ -35,44 +34,17 @@ const SettingsGoogleForm = ({
   onSubmit,
 }: SettingsGoogleFormProps) => {
   const isEnabled = Boolean(settingValues["google-auth-enabled"]);
-  const isEnabledRef = useRef(isEnabled);
 
-  const handleSubmit = (values: Record<string, unknown>) => {
-    return onSubmit({ ...values, "google-auth-enabled": isEnabledRef.current });
-  };
-
-  const handleSaveAndEnableClick = (handleSubmit: () => void) => {
-    isEnabledRef.current = true;
-    return handleSubmit();
-  };
-
-  const handleSaveAndNotEnableClick = (handleSubmit: () => void) => {
-    isEnabledRef.current = false;
-    return handleSubmit();
-  };
+  const handleSubmit = useCallback(
+    (values: Record<string, unknown>) => {
+      return onSubmit({ ...values, "google-auth-enabled": true });
+    },
+    [onSubmit],
+  );
 
   return (
     <FormRoot
       initialValues={settingValues}
-      renderSubmit={({ canSubmit, handleSubmit }) => (
-        <>
-          <ActionButton
-            actionFn={() => handleSaveAndEnableClick(handleSubmit)}
-            primary={canSubmit}
-            disabled={!canSubmit}
-            normalText={isEnabled ? t`Save changes` : t`Save and enable`}
-            successText={t`Changes saved!`}
-          />
-          {!isEnabled && (
-            <ActionButton
-              actionFn={() => handleSaveAndNotEnableClick(handleSubmit)}
-              disabled={!canSubmit}
-              normalText={t`Save but don't enable`}
-              successText={t`Changes saved!`}
-            />
-          )}
-        </>
-      )}
       disablePristineSubmit
       overwriteOnInitialValuesChange
       onSubmit={handleSubmit}
@@ -108,7 +80,9 @@ const SettingsGoogleForm = ({
         <FormMessage />
       </FormSection>
       <FormSection>
-        <FormSubmit>{t`Save changes`}</FormSubmit>
+        <FormSubmit>
+          {isEnabled ? t`Save changes` : t`Save and enable`}
+        </FormSubmit>
       </FormSection>
     </FormRoot>
   );

@@ -6,7 +6,7 @@ redirect_from:
 
 # Asking questions
 
-Metabase's two core concepts are questions and their corresponding answers. Everything else is based around questions and answers. To ask a question in Metabase, click the **+ New** button in the upper right of the main navigation bar, and select either:
+Metabase's two core concepts are questions and their corresponding answers. To ask a question in Metabase, click the **+ New** button in the upper right of the main navigation bar, and select either:
 
 - Question
 - [SQL query](../native-editor/writing-sql.md)
@@ -19,7 +19,7 @@ From the **+ New** dropdown, select **Question**, then pick your starting data:
 
 You can start a question from:
 
-- **A model**. A [model][model] is a special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
+- **A model**. A [model](../../data-modeling/models.md) is a special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
 - **Raw data**. You'll need to specify the database and the table in that database as the starting point for your question.
 - A **saved question**. You can use the results of any question as the starting point for a new question.
 
@@ -220,6 +220,5 @@ If you find yourself using the same saved question as a starting point for multi
 ## Further reading
 
 - [Visualize results](../sharing/visualizing-results.md).
+- [Sharing answers](../sharing/answers.md).
 - [Asking questions](https://www.metabase.com/learn/questions)
-
-[model]: ../../data-modeling/models.md
