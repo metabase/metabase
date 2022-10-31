@@ -1,59 +1,54 @@
-import React, { forwardRef, Ref } from "react";
-import { useFormikContext } from "formik";
+import React, { forwardRef, ReactNode, Ref } from "react";
 import { t } from "ttag";
 import Button, { ButtonProps } from "metabase/core/components/Button";
 import { FormStatus } from "metabase/core/hooks/use-form-state";
-import useFormStatus from "metabase/core/hooks/use-form-status";
+import useFormSubmitButton from "metabase/core/hooks/use-form-submit-button";
 
-export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
-  title?: string;
-  activeTitle?: string;
-  successTitle?: string;
-  failedTitle?: string;
+export interface FormSubmitTextProps {
+  status: FormStatus;
+  isEnabled: boolean;
+}
+
+export interface FormSubmitButtonProps extends ButtonProps {
+  children?: ReactNode | ((props: FormSubmitTextProps) => ReactNode);
 }
 
 const FormSubmitButton = forwardRef(function FormSubmitButton(
-  { disabled, ...props }: FormSubmitButtonProps,
+  {
+    primary,
+    disabled,
+    children = getSubmitButtonText,
+    ...props
+  }: FormSubmitButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const { isValid, isSubmitting } = useFormikContext();
-  const status = useFormStatus();
-  const submitText = getSubmitButtonText(status, props);
-  const isEnabled = isValid && !isSubmitting && !disabled;
+  const { status, isEnabled } = useFormSubmitButton({ disabled });
 
   return (
     <Button
       {...props}
       ref={ref}
       type="submit"
-      primary={isEnabled}
+      primary={primary && isEnabled}
       success={status === "fulfilled"}
       danger={status === "rejected"}
       disabled={!isEnabled}
     >
-      {submitText}
+      {typeof children === "function"
+        ? children({ status, isEnabled })
+        : children}
     </Button>
   );
 });
 
-const getSubmitButtonText = (
-  status: FormStatus | undefined,
-  {
-    title = t`Submit`,
-    activeTitle = title,
-    successTitle = t`Success`,
-    failedTitle = t`Failed`,
-  }: FormSubmitButtonProps,
-) => {
+const getSubmitButtonText = ({ status }: FormSubmitTextProps) => {
   switch (status) {
-    case "pending":
-      return activeTitle;
     case "fulfilled":
-      return successTitle;
+      return t`Success`;
     case "rejected":
-      return failedTitle;
+      return t`Failed`;
     default:
-      return title;
+      return t`Submit`;
   }
 };
 

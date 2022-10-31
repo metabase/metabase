@@ -37,7 +37,7 @@ const LoginForm = ({
     password: "",
     remember: !hasSessionCookies,
   };
-  const handleSubmit = useForm(onSubmit);
+  const { handleSubmit } = useForm({ onSubmit });
 
   return (
     <Formik
@@ -67,7 +67,7 @@ const LoginForm = ({
         {!hasSessionCookies && (
           <FormCheckBox name="remember" title={t`Remember me`} />
         )}
-        <FormSubmitButton title={t`Sign in`} fullWidth />
+        <FormSubmitButton primary fullWidth>{t`Sign in`}</FormSubmitButton>
         <FormErrorMessage />
       </Form>
     </Formik>

@@ -2,16 +2,13 @@ import React, { forwardRef, HTMLAttributes, Ref } from "react";
 import useFormErrorMessage from "metabase/core/hooks/use-form-error-message";
 import { ErrorMessageRoot } from "./FormErrorMessage.styled";
 
-export type FormErrorMessageProps = Omit<
-  HTMLAttributes<HTMLDivElement>,
-  "children"
->;
+export type FormErrorMessageProps = HTMLAttributes<HTMLDivElement>;
 
 const FormErrorMessage = forwardRef(function FormErrorMessage(
   props: FormErrorMessageProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const message = useFormErrorMessage();
+  const { message } = useFormErrorMessage();
   if (!message) {
     return null;
   }
