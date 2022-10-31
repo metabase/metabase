@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
@@ -35,9 +35,12 @@ const SettingsGoogleForm = ({
 }: SettingsGoogleFormProps) => {
   const isEnabled = Boolean(settingValues["google-auth-enabled"]);
 
-  const handleSubmit = (values: Record<string, unknown>) => {
-    return onSubmit({ ...values, "google-auth-enabled": true });
-  };
+  const handleSubmit = useCallback(
+    (values: Record<string, unknown>) => {
+      return onSubmit({ ...values, "google-auth-enabled": true });
+    },
+    [onSubmit],
+  );
 
   return (
     <FormRoot
