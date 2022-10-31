@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import Actions from "metabase/entities/actions";
+import Database from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createQuestionFromAction } from "metabase/writeback/selectors";
 
@@ -177,5 +178,6 @@ export const ActionCreator = _.compose(
   Actions.load({
     id: (state: State, props: { actionId?: number }) => props.actionId,
   }),
+  Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(ActionCreatorComponent);
