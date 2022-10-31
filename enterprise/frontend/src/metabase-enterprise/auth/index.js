@@ -10,7 +10,6 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 
-import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
@@ -29,6 +28,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     {
       key: "saml-enabled",
       description: null,
+      noHeader: true,
       widget: AuthenticationWidget,
       getProps: (setting, settings) => ({
         authName: t`SAML`,
@@ -41,6 +41,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     {
       key: "jwt-enabled",
       description: null,
+      noHeader: true,
       widget: AuthenticationWidget,
       getProps: (setting, settings) => ({
         authName: t`JWT`,
