@@ -19,6 +19,7 @@ import {
   QueryBuilderUIControls,
 } from "metabase-types/store";
 import { Card, SavedCard } from "metabase-types/types/Card";
+import { isNotNull } from "metabase/core/utils/array";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import Question from "metabase-lib/Question";
@@ -225,7 +226,7 @@ export async function updateTemplateTagNames(
         }
       }),
     )
-  ).filter(Boolean);
+  ).filter(isNotNull);
   query = updateCardTemplateTagNames(query, referencedCards);
   if (query.hasSnippets()) {
     await dispatch(Snippets.actions.fetchList());

@@ -30,6 +30,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     {
       key: "google-auth-enabled",
       description: null,
+      noHeader: true,
       widget: AuthenticationWidget,
       getProps: (setting, settings) => ({
         authType: "google",

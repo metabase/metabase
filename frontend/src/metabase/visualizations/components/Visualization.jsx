@@ -536,6 +536,7 @@ class Visualization extends React.PureComponent {
             {...this.props}
             // NOTE: CardVisualization class used to target ExplicitSize HOC
             className="CardVisualization flex-full flex-basis-none"
+            isPlaceholder={isPlaceholder}
             series={series}
             settings={settings}
             card={series[0].card} // convenience for single-series visualizations

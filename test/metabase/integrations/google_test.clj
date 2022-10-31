@@ -1,12 +1,13 @@
 (ns metabase.integrations.google-test
-  (:require [clojure.test :refer :all]
-            [metabase.email-test :as et]
-            [metabase.integrations.google :as google]
-            [metabase.integrations.google.interface :as google.i]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.test :as mt]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.email-test :as et]
+   [metabase.integrations.google :as google]
+   [metabase.integrations.google.interface :as google.i]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.test :as mt]
+   [toucan.db :as db]))
 
 ;;; --------------------------------------------- google-auth-client-id ----------------------------------------------
 

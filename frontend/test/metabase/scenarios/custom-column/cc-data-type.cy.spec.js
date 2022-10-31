@@ -44,15 +44,19 @@ describe("scenarios > question > custom column > data type", () => {
       { name: "Year", formula: "year([Created At])" },
       { name: "Quarter", formula: "quarter([Created At])" },
       { name: "Month", formula: "month([Created At])" },
+      { name: "Week", formula: 'week([Created At], "iso")' },
       { name: "Day", formula: "day([Created At])" },
       { name: "Weekday", formula: "weekday([Created At])" },
       { name: "Hour", formula: "hour([Created At])" },
       { name: "Minute", formula: "minute([Created At])" },
       { name: "Second", formula: "second([Created At])" },
-      { name: "Date Add", formula: 'dateAdd([Created At], 1, "month")' },
       {
-        name: "Date Subtract",
-        formula: 'dateSubtract([Created At], 1, "month")',
+        name: "Datetime Add",
+        formula: 'datetimeAdd([Created At], 1, "month")',
+      },
+      {
+        name: "Datetime Subtract",
+        formula: 'datetimeSubtract([Created At], 1, "month")',
       },
     ]);
 

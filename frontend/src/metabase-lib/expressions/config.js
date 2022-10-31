@@ -336,6 +336,12 @@ export const MBQL_CLAUSES = {
     type: "number",
     args: ["expression"],
   },
+  "get-week": {
+    displayName: `week`,
+    type: "number",
+    args: ["expression"],
+    hasOptions: true, // optional mode parameter
+  },
   "get-day": {
     displayName: `day`,
     type: "number",
@@ -361,13 +367,13 @@ export const MBQL_CLAUSES = {
     type: "number",
     args: ["expression"],
   },
-  "date-add": {
-    displayName: `dateAdd`,
+  "datetime-add": {
+    displayName: `datetimeAdd`,
     type: "expression",
     args: ["expression", "number", "string"],
   },
-  "date-subtract": {
-    displayName: `dateSubtract`,
+  "datetime-subtract": {
+    displayName: `datetimeSubtract`,
     type: "expression",
     args: ["expression", "number", "string"],
   },
@@ -446,13 +452,14 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "get-year",
   "get-quarter",
   "get-month",
+  "get-week",
   "get-day",
   "get-day-of-week",
   "get-hour",
   "get-minute",
   "get-second",
-  "date-add",
-  "date-subtract",
+  "datetime-add",
+  "datetime-subtract",
   // boolean
   "contains",
   "ends-with",

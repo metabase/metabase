@@ -257,6 +257,8 @@
                                      (hx/- 1 (sql.qp/date :h2 :day-of-week expr))
                                      :day))
 
+(defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (hsql/call :iso_week expr))
+
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;
 ;; *  convert the quarter (1 - 4) to the corresponding starting month (1, 4, 7, or 10).
