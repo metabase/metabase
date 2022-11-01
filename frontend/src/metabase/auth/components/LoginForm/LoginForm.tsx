@@ -1,8 +1,8 @@
 import React from "react";
 import { t } from "ttag";
-import { Form, Formik } from "formik";
 import * as Yup from "yup";
-import useForm from "metabase/core/hooks/use-form";
+import Form from "metabase/core/components/Form";
+import FormProvider from "metabase/core/components/FormProvider";
 import FormCheckBox from "metabase/core/components/FormCheckBox";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
@@ -37,14 +37,12 @@ const LoginForm = ({
     password: "",
     remember: !hasSessionCookies,
   };
-  const { handleSubmit } = useForm({ onSubmit });
-
   return (
-    <Formik
+    <FormProvider
       initialValues={initialValues}
       validationSchema={isLdapEnabled ? LDAP_SCHEMA : PASSWORD_SCHEMA}
       isInitialValid={false}
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
     >
       <Form>
         <FormInput
@@ -70,7 +68,7 @@ const LoginForm = ({
         <FormSubmitButton primary fullWidth>{t`Sign in`}</FormSubmitButton>
         <FormErrorMessage />
       </Form>
-    </Formik>
+    </FormProvider>
   );
 };
 

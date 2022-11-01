@@ -4,12 +4,12 @@ import Button, { ButtonProps } from "metabase/core/components/Button";
 import { FormStatus } from "metabase/core/hooks/use-form-state";
 import useFormSubmitButton from "metabase/core/hooks/use-form-submit-button";
 
-export interface FormSubmitTextProps {
+export interface FormSubmitContentProps {
   status: FormStatus;
 }
 
 export interface FormSubmitButtonProps extends ButtonProps {
-  children?: ReactNode | ((props: FormSubmitTextProps) => ReactNode);
+  children?: ReactNode | ((props: FormSubmitContentProps) => ReactNode);
 }
 
 const FormSubmitButton = forwardRef(function FormSubmitButton(
@@ -38,7 +38,7 @@ const FormSubmitButton = forwardRef(function FormSubmitButton(
   );
 });
 
-const getSubmitButtonText = ({ status }: FormSubmitTextProps) => {
+const getSubmitButtonText = ({ status }: FormSubmitContentProps) => {
   switch (status) {
     case "fulfilled":
       return t`Success`;

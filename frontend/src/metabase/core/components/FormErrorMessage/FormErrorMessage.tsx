@@ -14,7 +14,7 @@ const FormErrorMessage = forwardRef(function FormErrorMessage(
   { children = getErrorContent, ...props }: FormErrorMessageProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const { message } = useFormErrorMessage();
+  const message = useFormErrorMessage();
   if (!message) {
     return null;
   }
