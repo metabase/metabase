@@ -45,7 +45,7 @@
   :visibility :public
   :type       :boolean
   :getter     (fn []
-                (if-some [value setting/get-value-of-type :boolean :google-auth-enabled]
+                (if-some [value (setting/get-value-of-type :boolean :google-auth-enabled)]
                   value
                   (boolean (google-auth-client-id))))
   :setter     (fn [new-value]
