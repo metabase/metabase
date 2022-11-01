@@ -65,7 +65,7 @@ const LoginForm = ({
         {!hasSessionCookies && (
           <FormCheckBox name="remember" title={t`Remember me`} />
         )}
-        <FormSubmitButton primary fullWidth>{t`Sign in`}</FormSubmitButton>
+        <FormSubmitButton title={t`Sign in`} primary fullWidth />
         <FormErrorMessage />
       </Form>
     </FormProvider>
