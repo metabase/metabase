@@ -1,6 +1,6 @@
-export type FormStatus = "pending" | "fulfilled" | "rejected";
+export type FormStatus = "idle" | "pending" | "fulfilled" | "rejected";
 
 export interface FormState {
-  status?: FormStatus;
+  status: FormStatus;
   message?: string;
 }
