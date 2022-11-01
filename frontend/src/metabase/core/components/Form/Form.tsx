@@ -21,13 +21,13 @@ const Form = forwardRef(function Form(
     <form
       {...props}
       ref={ref}
-      onSubmit={!disabled ? handleSubmit : preventAndStopEvent}
-      onReset={!disabled ? handleReset : preventAndStopEvent}
+      onSubmit={!disabled ? handleSubmit : handleDisabledEvent}
+      onReset={!disabled ? handleReset : handleDisabledEvent}
     />
   );
 });
 
-const preventAndStopEvent = (event: SyntheticEvent) => {
+const handleDisabledEvent = (event: SyntheticEvent) => {
   event.preventDefault();
   event.stopPropagation();
 };
