@@ -121,7 +121,7 @@ function ActionCreatorComponent({
             form={isNew ? Actions.forms.saveForm : Actions.forms.updateForm}
             action={{
               id: (question.card() as SavedCard).id,
-              name: question.displayName(),
+              name: question?.displayName() ?? t`New Action`,
               description: question.description(),
               model_id: defaultModelId,
               formSettings,
