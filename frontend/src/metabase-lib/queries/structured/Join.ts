@@ -625,7 +625,7 @@ export default class Join extends MBQLObjectClause {
 
   joinedDimension(dimension: Dimension) {
     if (dimension instanceof FieldDimension) {
-      return dimension.withJoinAlias(this.alias);
+      return dimension.withJoinAlias(this.alias).setQuery(this.query());
     }
 
     console.warn("Don't know how to create joined dimension with:", dimension);
