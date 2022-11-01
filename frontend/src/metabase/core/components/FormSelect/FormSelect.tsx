@@ -1,31 +1,54 @@
-import React, { useMemo } from "react";
+import React, { forwardRef, ReactNode, Ref, useMemo } from "react";
 import { useField } from "formik";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Select, {
   SelectOption,
   SelectProps,
 } from "metabase/core/components/Select";
+import FormField from "metabase/core/components/FormField";
 
 export interface FormSelectProps<TValue, TOption = SelectOption<TValue>>
   extends Omit<SelectProps<TValue, TOption>, "value" | "onChange"> {
   name: string;
+  title?: string;
+  description?: ReactNode;
 }
 
-function FormSelect<TValue, TOption = SelectOption<TValue>>({
-  name,
-  ...props
-}: FormSelectProps<TValue, TOption>) {
-  const [{ value, onChange, onBlur }] = useField(name);
-  const buttonProps = useMemo(() => ({ id: name, onBlur }), [name, onBlur]);
+const FormSelect = forwardRef(function FormSelect<
+  TValue,
+  TOption = SelectOption<TValue>,
+>(
+  {
+    name,
+    className,
+    title,
+    description,
+    ...props
+  }: FormSelectProps<TValue, TOption>,
+  ref: Ref<HTMLDivElement>,
+) {
+  const id = useUniqueId();
+  const [{ value, onChange, onBlur }, meta] = useField(name);
+  const buttonProps = useMemo(() => ({ id, onBlur }), [id, onBlur]);
 
   return (
-    <Select
-      {...props}
-      name={name}
-      value={value}
-      onChange={onChange}
-      buttonProps={buttonProps}
-    />
+    <FormField
+      ref={ref}
+      className={className}
+      title={title}
+      description={description}
+      htmlFor={id}
+      error={meta.touched ? meta.error : undefined}
+    >
+      <Select
+        {...props}
+        name={name}
+        value={value}
+        onChange={onChange}
+        buttonProps={buttonProps}
+      />
+    </FormField>
   );
-}
+});
 
 export default FormSelect;

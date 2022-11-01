@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from "react";
-import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import * as Urls from "metabase/lib/urls";
+import { GoogleOAuthProvider, GoogleLogin } from "metabase/oauth";
 import { AuthError, AuthErrorContainer, TextLink } from "./GoogleButton.styled";
 
 export interface GoogleButtonProps {

@@ -3,7 +3,6 @@ import { Form, Formik } from "formik";
 import * as Yup from "yup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import FormField from "metabase/core/components/FormField";
 import FormNumericInput from "./FormNumericInput";
 
 const TestSchema = Yup.object().shape({
@@ -26,9 +25,7 @@ const TestFormNumericInput = ({
       onSubmit={onSubmit}
     >
       <Form>
-        <FormField name="value" title="Label">
-          <FormNumericInput name="value" />
-        </FormField>
+        <FormNumericInput name="value" title="Label" />
         <button type="submit">Submit</button>
       </Form>
     </Formik>
@@ -44,14 +41,17 @@ describe("FormNumericInput", () => {
     expect(screen.getByRole("textbox")).toHaveValue("10");
   });
 
-  it("should propagate the changed value to the form", () => {
+  it("should propagate the changed value to the form", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormNumericInput onSubmit={onSubmit} />);
     userEvent.type(screen.getByRole("textbox"), "10");
     userEvent.click(screen.getByText("Submit"));
 
-    waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ value: 10 }));
+    await waitFor(() => {
+      const values = { value: 10 };
+      expect(onSubmit).toHaveBeenCalledWith(values, expect.anything());
+    });
   });
 
   it("should be referenced by the label", () => {
@@ -62,13 +62,13 @@ describe("FormNumericInput", () => {
     expect(screen.getByLabelText("Label")).toBeInTheDocument();
   });
 
-  it("should be validated on blur", () => {
+  it("should be validated on blur", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormNumericInput initialValue={10} onSubmit={onSubmit} />);
     userEvent.clear(screen.getByRole("textbox"));
     userEvent.tab();
 
-    waitFor(() => expect(screen.getByText("Label: error")).toBeInTheDocument());
+    expect(await screen.findByText(": error")).toBeInTheDocument();
   });
 });
