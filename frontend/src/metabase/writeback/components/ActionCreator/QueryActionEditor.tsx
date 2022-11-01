@@ -9,9 +9,11 @@ import { PopoverDataReferenceButton } from "./PopoverDataReference";
 export function QueryActionEditor({
   question,
   setQuestion,
+  toggleDataRef,
 }: {
   question: Question;
   setQuestion: (q: Question) => void;
+  toggleDataRef: () => void;
 }) {
   return (
     <>

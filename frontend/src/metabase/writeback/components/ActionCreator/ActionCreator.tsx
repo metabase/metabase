@@ -25,6 +25,10 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 import { ActionCreatorHeader } from "./ActionCreatorHeader";
 import { QueryActionEditor } from "./QueryActionEditor";
 import { FormCreator } from "./FormCreator";
+import {
+  DataReferenceTriggerButton,
+  DataReferenceInline,
+} from "./InlineDataReference";
 
 import {
   ActionCreatorBodyContainer,
@@ -72,6 +76,8 @@ function ActionCreatorComponent({
     ActionFormSettings | undefined
   >(undefined);
   const [showSaveModal, setShowSaveModal] = useState(false);
+
+  const [showDataRef, setShowDataRef] = useState(false);
 
   useEffect(() => {
     setQuestion(passedQuestion ?? newQuestion(metadata));

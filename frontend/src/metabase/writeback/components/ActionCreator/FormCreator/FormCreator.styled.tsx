@@ -7,6 +7,8 @@ import { color, lighten } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const FormCreatorWrapper = styled.div`
+  flex: 1 1 0;
+  transition: flex 500ms ease-in-out;
   padding: ${space(3)};
   background-color: ${color("white")};
   overflow-y: auto;
