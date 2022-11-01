@@ -1,4 +1,9 @@
-import React, { FormHTMLAttributes, forwardRef, Ref } from "react";
+import React, {
+  FormHTMLAttributes,
+  forwardRef,
+  Ref,
+  SyntheticEvent,
+} from "react";
 import { useFormikContext } from "formik";
 
 export interface FormProps
@@ -16,10 +21,15 @@ const Form = forwardRef(function Form(
     <form
       {...props}
       ref={ref}
-      onSubmit={!disabled ? handleSubmit : undefined}
-      onReset={!disabled ? handleReset : undefined}
+      onSubmit={!disabled ? handleSubmit : preventAndStopEvent}
+      onReset={!disabled ? handleReset : preventAndStopEvent}
     />
   );
 });
+
+const preventAndStopEvent = (event: SyntheticEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
+};
 
 export default Form;
