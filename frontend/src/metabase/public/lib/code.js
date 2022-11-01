@@ -158,7 +158,7 @@ payload = {
   },
   "exp": round(time.time()) + (60 * 10) # 10 minute expiration
 }
-token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
+token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256").decode("UTF-8")
 
 iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
     optionsToHashParams(displayOptions)
