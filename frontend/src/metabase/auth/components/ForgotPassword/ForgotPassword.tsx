@@ -22,7 +22,7 @@ import {
 
 type ViewType = "form" | "disabled" | "success";
 
-const PASSWORD_SCHEMA = Yup.object().shape({
+const FORGOT_PASSWORD_SCHEMA = Yup.object().shape({
   email: Yup.string()
     .required(t`required`)
     .email(t`must be a valid email address`),
@@ -90,7 +90,7 @@ const ForgotPasswordForm = ({
       <FormTitle>{t`Forgot password`}</FormTitle>
       <FormProvider
         initialValues={initialValues}
-        validationSchema={PASSWORD_SCHEMA}
+        validationSchema={FORGOT_PASSWORD_SCHEMA}
         isInitialValid={false}
         onSubmit={handleSubmit}
       >
