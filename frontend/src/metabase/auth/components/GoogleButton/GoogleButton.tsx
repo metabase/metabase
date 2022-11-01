@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import { TextLink } from "../AuthButton/AuthButton.styled";
 
 import { AuthError, AuthErrorContainer } from "./GoogleButton.styled";
-import { GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin } from "metabase/oauth";
 import MetabaseSettings from "metabase/lib/settings";
 
 export interface GoogleButtonProps {
