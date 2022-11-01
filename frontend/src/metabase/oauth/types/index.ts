@@ -67,6 +67,10 @@ export interface CredentialResponse {
   clientId?: string;
 }
 
+export interface GoogleCredentialResponse extends CredentialResponse {
+  client_id?: string;
+}
+
 export interface GsiButtonConfiguration {
   /** The button [type](https://developers.google.com/identity/gsi/web/reference/js-reference#type): icon, or standard button */
   type?: "standard" | "icon";
