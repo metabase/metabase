@@ -1,6 +1,6 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
-import { GoogleOAuthProvider } from "@react-oauth/google";
+import { GoogleOAuthProvider } from "metabase/oauth";
 
 // Use of classList.add and .remove in Background and FitViewPort Hocs requires
 // this polyfill so that those work in older browsers
