@@ -24,7 +24,7 @@ import {
 } from "metabase/visualizations/lib/settings";
 
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-import { getSettingDefintionsForColumn } from "metabase/visualizations/lib/settings/column";
+import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
@@ -164,7 +164,7 @@ class ChartSettings extends Component {
   columnHasSettings(col) {
     const { series } = this.props;
     const settings = this._getSettings() || {};
-    const settingsDefs = getSettingDefintionsForColumn(series, col);
+    const settingsDefs = getSettingDefinitionsForColumn(series, col);
     const computedSettings = getComputedSettings(settingsDefs, col, settings);
 
     return getSettingsWidgets(
