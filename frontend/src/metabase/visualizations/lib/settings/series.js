@@ -151,7 +151,7 @@ export function seriesSetting({
     },
   };
 
-  function getSettingDefintionsForSingleSeries(series, object, settings) {
+  function getSettingDefinitionsForSingleSeries(series, object, settings) {
     return COMMON_SETTINGS;
   }
 
@@ -164,7 +164,7 @@ export function seriesSetting({
       objectName: "series",
       getObjects: (series, settings) => series,
       getObjectKey: keyForSingleSeries,
-      getSettingDefintionsForObject: getSettingDefintionsForSingleSeries,
+      getSettingDefinitionsForObject: getSettingDefinitionsForSingleSeries,
       component: ChartNestedSettingSeries,
       readDependencies: [colorSettingId, ...readDependencies],
       noPadding: true,
