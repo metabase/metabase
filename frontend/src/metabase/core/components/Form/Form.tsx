@@ -1,13 +1,25 @@
 import React, { FormHTMLAttributes, forwardRef, Ref } from "react";
-import { Form as FormikForm } from "formik";
+import { useFormikContext } from "formik";
 
-export type FormProps = FormHTMLAttributes<HTMLFormElement>;
+export interface FormProps
+  extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit" | "onReset"> {
+  disabled?: boolean;
+}
 
 const Form = forwardRef(function Form(
-  props: FormProps,
+  { disabled, ...props }: FormProps,
   ref: Ref<HTMLFormElement>,
 ) {
-  return <FormikForm {...props} ref={ref} />;
+  const { handleSubmit, handleReset } = useFormikContext();
+
+  return (
+    <form
+      {...props}
+      ref={ref}
+      onSubmit={!disabled ? handleSubmit : undefined}
+      onReset={!disabled ? handleReset : undefined}
+    />
+  );
 });
 
 export default Form;
