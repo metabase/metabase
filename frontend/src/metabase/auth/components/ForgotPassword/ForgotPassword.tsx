@@ -1,7 +1,12 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import Users from "metabase/entities/users";
+import * as Yup from "yup";
 import Button from "metabase/core/components/Button";
+import Form from "metabase/core/components/Form";
+import FormProvider from "metabase/core/components/FormProvider";
+import FormInput from "metabase/core/components/FormInput";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import AuthLayout from "../../containers/AuthLayout";
 import { ForgotPasswordData } from "../../types";
 import {
@@ -16,6 +21,12 @@ import {
 } from "./ForgotPassword.styled";
 
 type ViewType = "form" | "disabled" | "success";
+
+const PASSWORD_SCHEMA = Yup.object().shape({
+  email: Yup.string()
+    .required(t`required`)
+    .email(t`must be a valid email address`),
+});
 
 export interface ForgotPasswordProps {
   canResetPassword: boolean;
@@ -60,7 +71,7 @@ interface ForgotPasswordFormProps {
 }
 
 const ForgotPasswordForm = ({
-  initialEmail,
+  initialEmail = "",
   onSubmit,
 }: ForgotPasswordFormProps): JSX.Element => {
   const initialValues = useMemo(() => {
@@ -75,19 +86,29 @@ const ForgotPasswordForm = ({
   );
 
   return (
-    <div>
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={PASSWORD_SCHEMA}
+      onSubmit={handleSubmit}
+    >
       <FormTitle>{t`Forgot password`}</FormTitle>
-      <Users.Form
-        form={Users.forms.password_forgot}
-        initialValues={initialValues}
-        submitTitle={t`Send password reset email`}
-        submitFullWidth
-        onSubmit={handleSubmit}
-      />
+      <Form>
+        <FormInput
+          name="email"
+          title={t`Email address`}
+          placeholder={t`The email you use for your Metabase account`}
+        />
+        <FormSubmitButton
+          title={t`Send password reset email`}
+          primary
+          fullWidth
+        />
+        <FormErrorMessage />
+      </Form>
       <FormFooter>
         <FormLink to="/auth/login">{t`Back to sign in`}</FormLink>
       </FormFooter>
-    </div>
+    </FormProvider>
   );
 };
 
