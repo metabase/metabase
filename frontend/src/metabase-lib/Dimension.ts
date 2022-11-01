@@ -410,6 +410,10 @@ export default class Dimension {
     return this._query;
   }
 
+  setQuery(query: StructuredQuery): Dimension {
+    return this;
+  }
+
   sourceDimension() {
     return this._query && this._query.dimensionForSourceQuery(this);
   }
@@ -729,6 +733,20 @@ export class FieldDimension extends Dimension {
     }
 
     Object.freeze(this);
+  }
+
+  setQuery(query: StructuredQuery): FieldDimension {
+    return new FieldDimension(
+      this._fieldIdOrName,
+      this._options,
+      this._metadata,
+      query,
+      {
+        _fieldInstance: this._fieldInstance,
+        _subDisplayName: this._subDisplayName,
+        _subTriggerDisplayName: this._subTriggerDisplayName,
+      },
+    );
   }
 
   isEqual(somethingElse) {
@@ -1154,6 +1172,15 @@ export class ExpressionDimension extends Dimension {
     Object.freeze(this);
   }
 
+  setQuery(query: StructuredQuery): ExpressionDimension {
+    return new ExpressionDimension(
+      this._expressionName,
+      this._options,
+      this._metadata,
+      query,
+    );
+  }
+
   isEqual(somethingElse) {
     if (isExpressionDimension(somethingElse)) {
       return (
@@ -1412,6 +1439,15 @@ export class AggregationDimension extends Dimension {
     }
 
     Object.freeze(this);
+  }
+
+  setQuery(query: StructuredQuery): AggregationDimension {
+    return new AggregationDimension(
+      this._aggregationIndex,
+      this._options,
+      this._metadata,
+      query,
+    );
   }
 
   aggregationIndex(): number {
