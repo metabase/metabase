@@ -11,14 +11,14 @@ export function nestedSettings(
     objectName = "object",
     getObjects,
     getObjectKey,
-    getSettingDefintionsForObject,
+    getSettingDefinitionsForObject,
     getInheritedSettingsForObject = () => ({}),
     component,
     ...def
   } = {},
 ) {
   function getComputedSettingsForObject(series, object, storedSettings, extra) {
-    const settingsDefs = getSettingDefintionsForObject(series, object);
+    const settingsDefs = getSettingDefinitionsForObject(series, object);
     const inheritedSettings = getInheritedSettingsForObject(object);
     const computedSettings = getComputedSettings(
       settingsDefs,
@@ -56,7 +56,7 @@ export function nestedSettings(
     onChangeSettings,
     extra,
   ) {
-    const settingsDefs = getSettingDefintionsForObject(series, object);
+    const settingsDefs = getSettingDefinitionsForObject(series, object);
     const computedSettings = getComputedSettingsForObject(
       series,
       object,
