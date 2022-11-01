@@ -86,29 +86,33 @@ const ForgotPasswordForm = ({
   );
 
   return (
-    <FormProvider
-      initialValues={initialValues}
-      validationSchema={PASSWORD_SCHEMA}
-      onSubmit={handleSubmit}
-    >
+    <div>
       <FormTitle>{t`Forgot password`}</FormTitle>
-      <Form>
-        <FormInput
-          name="email"
-          title={t`Email address`}
-          placeholder={t`The email you use for your Metabase account`}
-        />
-        <FormSubmitButton
-          title={t`Send password reset email`}
-          primary
-          fullWidth
-        />
-        <FormErrorMessage />
-      </Form>
+      <FormProvider
+        initialValues={initialValues}
+        validationSchema={PASSWORD_SCHEMA}
+        isInitialValid={false}
+        onSubmit={handleSubmit}
+      >
+        <Form>
+          <FormInput
+            name="email"
+            title={t`Email address`}
+            placeholder={t`The email you use for your Metabase account`}
+            fullWidth
+          />
+          <FormSubmitButton
+            title={t`Send password reset email`}
+            primary
+            fullWidth
+          />
+          <FormErrorMessage />
+        </Form>
+      </FormProvider>
       <FormFooter>
         <FormLink to="/auth/login">{t`Back to sign in`}</FormLink>
       </FormFooter>
-    </FormProvider>
+    </div>
   );
 };
 
