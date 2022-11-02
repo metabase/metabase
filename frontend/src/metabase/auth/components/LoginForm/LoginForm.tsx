@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import Form from "metabase/core/components/Form";
@@ -9,16 +9,15 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { LoginData } from "../../types";
 
-const LDAP_SCHEMA = Yup.object().shape({
-  username: Yup.string().required(t`required`),
-  password: Yup.string().required(t`required`),
-  remember: Yup.boolean(),
-});
-
-const PASSWORD_SCHEMA = LDAP_SCHEMA.shape({
+const LoginSchema = Yup.object().shape({
   username: Yup.string()
     .required(t`required`)
-    .email(t`must be a valid email address`),
+    .when("$isLdapEnabled", {
+      is: false,
+      then: schema => schema.email(t`must be a valid email address`),
+    }),
+  password: Yup.string().required(t`required`),
+  remember: Yup.boolean(),
 });
 
 export interface LoginFormProps {
@@ -32,16 +31,27 @@ const LoginForm = ({
   hasSessionCookies,
   onSubmit,
 }: LoginFormProps): JSX.Element => {
-  const initialValues: LoginData = {
-    username: "",
-    password: "",
-    remember: !hasSessionCookies,
-  };
+  const initialValues = useMemo(
+    () => ({
+      username: "",
+      password: "",
+      remember: !hasSessionCookies,
+    }),
+    [hasSessionCookies],
+  );
+
+  const validationContext = useMemo(
+    () => ({
+      isLdapEnabled,
+    }),
+    [isLdapEnabled],
+  );
+
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={isLdapEnabled ? LDAP_SCHEMA : PASSWORD_SCHEMA}
-      isInitialValid={false}
+      validationSchema={LoginSchema}
+      validationContext={validationContext}
       onSubmit={onSubmit}
     >
       <Form>
