@@ -1,18 +1,9 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import AuthLayout from "../../containers/AuthLayout";
-import { ForgotPasswordData } from "../../types";
+import ForgotPasswordForm from "../ForgotPasswordForm";
 import {
-  FormFooter,
-  FormLink,
-  FormTitle,
   InfoBody,
   InfoIcon,
   InfoIconContainer,
@@ -21,12 +12,6 @@ import {
 } from "./ForgotPassword.styled";
 
 type ViewType = "form" | "disabled" | "success";
-
-const ForgotPasswordSchema = Yup.object().shape({
-  email: Yup.string()
-    .required(t`required`)
-    .email(t`must be a valid email address`),
-});
 
 export interface ForgotPasswordProps {
   canResetPassword: boolean;
@@ -62,58 +47,6 @@ const ForgotPassword = ({
       {view === "success" && <ForgotPasswordSuccess />}
       {view === "disabled" && <ForgotPasswordDisabled />}
     </AuthLayout>
-  );
-};
-
-interface ForgotPasswordFormProps {
-  initialEmail?: string;
-  onSubmit: (email: string) => void;
-}
-
-const ForgotPasswordForm = ({
-  initialEmail = "",
-  onSubmit,
-}: ForgotPasswordFormProps): JSX.Element => {
-  const initialValues = useMemo(() => {
-    return { email: initialEmail };
-  }, [initialEmail]);
-
-  const handleSubmit = useCallback(
-    async ({ email }: ForgotPasswordData) => {
-      await onSubmit(email);
-    },
-    [onSubmit],
-  );
-
-  return (
-    <div>
-      <FormTitle>{t`Forgot password`}</FormTitle>
-      <FormProvider
-        initialValues={initialValues}
-        validationSchema={ForgotPasswordSchema}
-        isInitialValid={false}
-        onSubmit={handleSubmit}
-      >
-        <Form>
-          <FormInput
-            name="email"
-            title={t`Email address`}
-            placeholder={t`The email you use for your Metabase account`}
-            autoFocus
-            fullWidth
-          />
-          <FormSubmitButton
-            title={t`Send password reset email`}
-            primary
-            fullWidth
-          />
-          <FormErrorMessage />
-        </Form>
-      </FormProvider>
-      <FormFooter>
-        <FormLink to="/auth/login">{t`Back to sign in`}</FormLink>
-      </FormFooter>
-    </div>
   );
 };
 
