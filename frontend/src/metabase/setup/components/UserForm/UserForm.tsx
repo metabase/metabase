@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
@@ -15,22 +15,25 @@ interface UserFormProps {
 }
 
 const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
-  const validationSchema = useMemo(
-    () => createValidationSchema(onValidatePassword),
-    [onValidatePassword],
-  );
+  const initialValues = useMemo(() => {
+    return getFormValues(user);
+  }, [user]);
 
-  const initialValues = useMemo(
-    () => validationSchema.cast(user ?? {}),
-    [user, validationSchema],
+  const validationSchema = useMemo(() => {
+    return createValidationSchema(onValidatePassword);
+  }, [onValidatePassword]);
+
+  const handleSubmit = useCallback(
+    (values: UserInfo) => onSubmit(getSubmitValues(values)),
+    [onSubmit],
   );
 
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={validationSchema}
-      isInitialValid={false}
-      onSubmit={onSubmit}
+      isInitialValid={user != null}
+      onSubmit={handleSubmit}
     >
       <UserFormRoot>
         <UserFieldGroup>
@@ -81,18 +84,34 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
   );
 };
 
+const getFormValues = (user?: UserInfo): UserInfo => {
+  return {
+    email: "",
+    site_name: "",
+    password: "",
+    password_confirm: "",
+    ...user,
+    first_name: user?.first_name || "",
+    last_name: user?.last_name || "",
+  };
+};
+
+const getSubmitValues = (user: UserInfo): UserInfo => {
+  return {
+    ...user,
+    first_name: user.first_name || null,
+    last_name: user.last_name || null,
+  };
+};
+
 const createValidationSchema = (
   onValidatePassword: (password: string) => Promise<string | undefined>,
 ) => {
   const handleValidatePassword = _.memoize(onValidatePassword);
 
   return Yup.object().shape({
-    first_name: Yup.string()
-      .max(100, t`must be 100 characters or less`)
-      .default(""),
-    last_name: Yup.string()
-      .max(100, t`must be 100 characters or less`)
-      .default(""),
+    first_name: Yup.string().max(100, t`must be 100 characters or less`),
+    last_name: Yup.string().max(100, t`must be 100 characters or less`),
     email: Yup.string()
       .required(t`required`)
       .email(t`must be a valid email address`),
