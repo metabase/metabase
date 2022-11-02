@@ -18,6 +18,10 @@ Organize questions, dashboards, and models with collections.
 
 View changes to a question or dashboard, revert to previous versions, and archive outdated items.
 
+## [Data reference](./data-model-reference.md)
+
+Document your data sources: databases, tables, columns, and more.
+
 ## [Events and timelines](./events-and-timelines.md)
 
 Add events to timelines to annotate charts.
