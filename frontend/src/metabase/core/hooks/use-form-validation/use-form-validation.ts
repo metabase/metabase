@@ -14,7 +14,7 @@ export interface UseFormValidationResult<T extends FormikValues> {
   handleValidate: (values: T) => void | object | FormikErrors<T>;
 }
 
-const useFormValidation = <T, C>({
+const useFormValidation = <T extends FormikValues, C>({
   initialValues,
   validationSchema,
   validationContext,
