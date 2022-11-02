@@ -10,7 +10,6 @@ export interface FormProviderProps<T, C> extends FormikConfig<T> {
 
 function FormProvider<T, C>({
   initialValues,
-  validate,
   validationSchema,
   validationContext,
   onSubmit,
@@ -25,11 +24,11 @@ function FormProvider<T, C>({
 
   return (
     <Formik
-      {...props}
       initialValues={initialValues}
       initialErrors={initialErrors}
-      validate={validate ?? handleValidate}
+      validate={handleValidate}
       onSubmit={handleSubmit}
+      {...props}
     />
   );
 }
