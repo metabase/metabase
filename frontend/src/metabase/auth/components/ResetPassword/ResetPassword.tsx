@@ -1,24 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
-import _ from "underscore";
-import MetabaseSettings from "metabase/lib/settings";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import AuthLayout from "../../containers/AuthLayout";
+import ResetPasswordForm from "../ResetPasswordForm";
 import { ResetPasswordData } from "../../types";
-import {
-  FormMessage,
-  FormTitle,
-  InfoBody,
-  InfoMessage,
-  InfoTitle,
-} from "./ResetPassword.styled";
+import { InfoBody, InfoMessage, InfoTitle } from "./ResetPassword.styled";
 
 type ViewType = "none" | "form" | "success" | "expired";
 
@@ -76,66 +63,6 @@ const ResetPassword = ({
   );
 };
 
-interface ResetPasswordFormProps {
-  onValidatePassword: (password: string) => Promise<string | undefined>;
-  onSubmit: (data: ResetPasswordData) => void;
-}
-
-const ResetPasswordForm = ({
-  onValidatePassword,
-  onSubmit,
-}: ResetPasswordFormProps): JSX.Element => {
-  const initialValues = useMemo(
-    () => ({ password: "", password_confirm: "" }),
-    [],
-  );
-
-  const passwordDescription = useMemo(
-    () => MetabaseSettings.passwordComplexityDescription(),
-    [],
-  );
-
-  const validationSchema = useMemo(
-    () => createValidationSchema(onValidatePassword),
-    [onValidatePassword],
-  );
-
-  return (
-    <div>
-      <FormTitle>{t`New password`}</FormTitle>
-      <FormMessage>
-        {t`To keep your data secure, passwords ${passwordDescription}`}
-      </FormMessage>
-      <FormProvider
-        initialValues={initialValues}
-        validationSchema={validationSchema}
-        isInitialValid={false}
-        onSubmit={onSubmit}
-      >
-        <Form>
-          <FormInput
-            name="password"
-            type="password"
-            title={t`Create a password`}
-            placeholder={t`Shhh...`}
-            autoFocus
-            fullWidth
-          />
-          <FormInput
-            name="password_confirm"
-            type="password"
-            title={t`Confirm your password`}
-            placeholder={t`Shhh... but one more time so we get it right`}
-            fullWidth
-          />
-          <FormSubmitButton title={t`Save new password`} primary fullWidth />
-          <FormErrorMessage />
-        </Form>
-      </FormProvider>
-    </div>
-  );
-};
-
 const ResetPasswordExpired = (): JSX.Element => {
   return (
     <InfoBody>
@@ -148,24 +75,6 @@ const ResetPasswordExpired = (): JSX.Element => {
       </Button>
     </InfoBody>
   );
-};
-
-const createValidationSchema = (
-  onValidatePassword: (password: string) => Promise<string | undefined>,
-) => {
-  const handleValidatePassword = _.memoize(onValidatePassword);
-
-  return Yup.object().shape({
-    password: Yup.string()
-      .required(t`required`)
-      .test(async (value = "", context) => {
-        const error = await handleValidatePassword(value);
-        return error ? context.createError({ message: error }) : true;
-      }),
-    password_confirm: Yup.string()
-      .required(t`required`)
-      .oneOf([Yup.ref("password")], t`passwords do not match`),
-  });
 };
 
 export default ResetPassword;
