@@ -1,10 +1,12 @@
 import React from "react";
 import { Formik } from "formik";
 import type { FormikConfig } from "formik";
+import type { AnySchema } from "yup";
 import useFormSubmit from "metabase/core/hooks/use-form-submit";
 import useFormValidation from "metabase/core/hooks/use-form-validation";
 
 export interface FormProviderProps<T, C> extends FormikConfig<T> {
+  validationSchema?: AnySchema;
   validationContext?: C;
 }
 
