@@ -153,13 +153,13 @@ const ResetPasswordExpired = (): JSX.Element => {
 const createValidationSchema = (
   onValidatePassword: (password: string) => Promise<string | undefined>,
 ) => {
-  const onPasswordChange = _.memoize(onValidatePassword);
+  const handleValidatePassword = _.memoize(onValidatePassword);
 
   return Yup.object().shape({
     password: Yup.string()
       .required(t`required`)
       .test(async (value = "", context) => {
-        const error = await onPasswordChange(value);
+        const error = await handleValidatePassword(value);
         return error ? context.createError({ message: error }) : true;
       }),
     password_confirm: Yup.string()
