@@ -26,10 +26,10 @@ What type of [SQL variable][sql-variable-def] are you using?
 
 ### Field filter variables
 
-- [Filter widget doesn't display a dropdown menu of values](../data-modeling/metadata-editing#changing-a-search-box-filter-to-a-dropdown-filter).
-- [SQL query contains a subquery (nested query) or CTE](../questions/native-editor/sql-parameters#field-filters-dont-work-with-table-aliases).
-- [400 error from BigQuery](../questions/native-editor/sql-parameters#some-databases-require-the-schema-in-the-from-clause).
-- [SQL syntax error: missing `FROM` clause](../questions/native-editor/sql-parameters#include-dependencies-in-your-query).
+- [Filter widget doesn't display a dropdown menu of values](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter).
+- [SQL query contains a subquery (nested query) or CTE](../questions/native-editor/sql-parameters.md#field-filters-dont-work-with-table-aliases).
+- [400 error from BigQuery](../questions/native-editor/sql-parameters.md#some-databases-require-the-schema-in-the-from-clause).
+- [SQL syntax error: missing `FROM` clause](../questions/native-editor/sql-parameters.md#include-dependencies-in-your-query).
 
 ### Text, number, or date variables
 

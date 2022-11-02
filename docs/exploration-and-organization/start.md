@@ -20,7 +20,7 @@ View changes to a question or dashboard, revert to previous versions, and archiv
 
 ## [Data reference](./data-model-reference.md)
 
-Document your data sources: databases, tables, columns, and more.
+Documentation that helps you understand your data sources: tables, columns, metrics, and more.
 
 ## [Events and timelines](./events-and-timelines.md)
 

@@ -110,7 +110,7 @@ In both cases, you can pick one or multiple selections for your filter.
 
 ## Creating a dropdown filter
 
-To override the default text box or search box filter widget, ask your Metabase admin to help you [update the column's settings](/docs/latest/data-modeling/metadata-editing#changing-a-search-box-filter-to-a-dropdown-filter) on the Data Model page.
+To override the default text box or search box filter widget, ask your Metabase admin to help you [update the column's settings](/docs/latest/data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) on the Data Model page.
 
 ## Linking filters
 
