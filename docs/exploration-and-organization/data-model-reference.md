@@ -14,7 +14,7 @@ Sometimes when you're composing a question, you might forget the exact names of 
 
 ## Browse data reference
 
-The data reference is a collection of pages organized by database, then tables (the same structure you use to [pick data](../../questions/query-builder/introduction.md#filter-types)). This is the best place to find information about the [data types](https://www.metabase.com/learn/databases/data-types-overview) of columns in your data.
+The data reference is a collection of pages organized by database, then tables (the same structure you use to [pick data](../questions/query-builder/introduction.md#picking-data)). This is the best place to find information about the [data types](https://www.metabase.com/learn/databases/data-types-overview) of columns in your data.
 
 ![Data reference page](./images/data-reference-page.png)
 
@@ -32,4 +32,4 @@ If you click on a column you’re interested in, you’ll see a description of i
 
 ## Foreign keys
 
-You can find a list of table relationships ([foreign keys](https://www.metabase.com/glossary/foreign_key)) under **Connected to these tables**. Metabase will display this section in the sidebar if a Metabase admin has documented the relationship between your current table and another table in the database. If a foreign key relationship exists in your database, but doesn't show up in your Metabase, your Metabase admin will need to update your [Metabase data model](../../data-modeling/metadata-editing.md).
+You can find a list of table relationships ([foreign keys](https://www.metabase.com/glossary/foreign_key)) under **Connected to these tables**. Metabase will display this section in the sidebar if a Metabase admin has documented the relationship between your current table and another table in the database. If a foreign key relationship exists in your database, but doesn't show up in your Metabase, your Metabase admin will need to update your [Metabase data model](../data-modeling/metadata-editing.md).
