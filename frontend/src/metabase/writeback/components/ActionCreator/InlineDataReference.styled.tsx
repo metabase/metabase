@@ -5,13 +5,15 @@ import Button from "metabase/core/components/Button";
 
 export const DataReferenceContainer = styled.div<{ isOpen: boolean }>`
   flex: ${props => (props.isOpen ? 1 : 0)} 1 0;
-  overflow: auto;
+  overflow: ${props => (props.isOpen ? "auto" : "hidden")};
   position: relative;
   height: 100%;
   background-color: ${color("white")};
   border-left: 1px solid ${color("border")};
   border-right: 1px solid ${color("border")};
-  transition: flex-grow 500ms ease-in-out;
+  transition: flex-grow 500ms ease-in-out,
+    opacity 250ms ease-in-out ${props => (props.isOpen ? "250ms" : "")};
+  opacity: ${props => (props.isOpen ? 1 : 0)};
 
   .sidebar-header {
     position: sticky;
