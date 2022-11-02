@@ -3707,11 +3707,6 @@
   resolved "https://registry.yarnpkg.com/@popperjs/core/-/core-2.10.2.tgz#0798c03351f0dea1a5a4cabddf26a55a7cbee590"
   integrity sha512-IXf3XA7+XyN7CP9gGh/XB0UxVMlvARGEgGXLubFICsUMGz6Q+DU+i4gGlpOxTjKvXjkJDJC8YdqdKkDj9qZHEQ==
 
-"@react-oauth/google@^0.2.8":
-  version "0.2.8"
-  resolved "https://registry.yarnpkg.com/@react-oauth/google/-/google-0.2.8.tgz#68ebce792c6c5e4123c7485d1c60ae562a894924"
-  integrity sha512-W3sRcU6kSZMGUOk10Vy5kPZPzvsi7+UpM2MxnT6fMVp+whDMKCVope5R01gwRydK9OI+0rozAARCD2NgrbkV7w==
-
 "@sinclair/typebox@^0.24.1":
   version "0.24.44"
   resolved "https://registry.yarnpkg.com/@sinclair/typebox/-/typebox-0.24.44.tgz#0a0aa3bf4a155a678418527342a3ee84bd8caa5c"
