@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import { getIn } from "icepick";
+import * as Yup from "yup";
 import Settings from "metabase/lib/settings";
-import Users from "metabase/entities/users";
 import Link from "metabase/core/components/Link";
+import Form from "metabase/core/components/Form";
+import FormProvider from "metabase/core/components/FormProvider";
+import FormInput from "metabase/core/components/FormInput";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import AuthLayout from "../../containers/AuthLayout";
 import { ResetPasswordData } from "../../types";
 import {
@@ -16,10 +20,21 @@ import {
 
 type ViewType = "none" | "form" | "success" | "expired";
 
+const ResetPasswordSchema = Yup.object().shape({
+  password: Yup.string()
+    .required(t`required`)
+    .test((value, context) => {
+      const message = Settings.passwordComplexityDescription(value);
+      return message ? context.createError({ message }) : true;
+    }),
+  password_confirm: Yup.string()
+    .required(t`required`)
+    .oneOf([Yup.ref("password")], t`passwords do not match`),
+});
+
 export interface ResetPasswordProps {
   token: string;
   onResetPassword: (token: string, password: string) => void;
-  onValidatePassword: (password: string) => void;
   onValidatePasswordToken: (token: string) => void;
   onShowToast: (toast: { message: string }) => void;
   onRedirect: (url: string) => void;
@@ -28,7 +43,6 @@ export interface ResetPasswordProps {
 const ResetPassword = ({
   token,
   onResetPassword,
-  onValidatePassword,
   onValidatePasswordToken,
   onShowToast,
   onRedirect,
@@ -43,18 +57,6 @@ const ResetPassword = ({
       setView("expired");
     }
   }, [token, onValidatePasswordToken]);
-
-  const handlePasswordChange = useCallback(
-    async ({ password }: ResetPasswordData) => {
-      try {
-        await onValidatePassword(password);
-        return {};
-      } catch (error) {
-        return getPasswordError(error);
-      }
-    },
-    [onValidatePassword],
-  );
 
   const handlePasswordSubmit = useCallback(
     async ({ password }: ResetPasswordData) => {
@@ -71,26 +73,27 @@ const ResetPassword = ({
 
   return (
     <AuthLayout>
-      {view === "form" && (
-        <ResetPasswordForm
-          onPasswordChange={handlePasswordChange}
-          onSubmit={handlePasswordSubmit}
-        />
-      )}
+      {view === "form" && <ResetPasswordForm onSubmit={handlePasswordSubmit} />}
       {view === "expired" && <ResetPasswordExpired />}
     </AuthLayout>
   );
 };
 
 interface ResetPasswordFormProps {
-  onPasswordChange: (data: ResetPasswordData) => void;
   onSubmit: (data: ResetPasswordData) => void;
 }
 
 const ResetPasswordForm = ({
-  onPasswordChange,
   onSubmit,
 }: ResetPasswordFormProps): JSX.Element => {
+  const initialValues = useMemo(
+    () => ({
+      password: "",
+      password_confirm: "",
+    }),
+    [],
+  );
+
   const passwordDescription = useMemo(
     () => Settings.passwordComplexityDescription(),
     [],
@@ -99,15 +102,35 @@ const ResetPasswordForm = ({
   return (
     <div>
       <FormTitle>{t`New password`}</FormTitle>
-      <FormMessage>{t`To keep your data secure, passwords ${passwordDescription}`}</FormMessage>
-      <Users.Form
-        form={Users.forms.password_reset}
-        asyncValidate={onPasswordChange}
-        asyncBlurFields={["password"]}
-        submitTitle={t`Save new password`}
-        submitFullWidth
+      <FormMessage>
+        {t`To keep your data secure, passwords ${passwordDescription}`}
+      </FormMessage>
+      <FormProvider
+        initialValues={initialValues}
+        validationSchema={ResetPasswordSchema}
+        isInitialValid={false}
         onSubmit={onSubmit}
-      />
+      >
+        <Form>
+          <FormInput
+            name="password"
+            type="password"
+            title={t`Create a password`}
+            placeholder={t`Shhh...`}
+            autoFocus
+            fullWidth
+          />
+          <FormInput
+            name="password_confirm"
+            type="password"
+            title={t`Confirm your password`}
+            placeholder={t`Shhh... but one more time so we get it right`}
+            fullWidth
+          />
+          <FormSubmitButton title={t`Save new password`} primary fullWidth />
+          <FormErrorMessage />
+        </Form>
+      </FormProvider>
     </div>
   );
 };
@@ -125,10 +148,6 @@ const ResetPasswordExpired = (): JSX.Element => {
       >{t`Request a new reset email`}</Link>
     </InfoBody>
   );
-};
-
-const getPasswordError = (error: unknown) => {
-  return getIn(error, ["data", "errors"]);
 };
 
 export default ResetPassword;
