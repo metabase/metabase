@@ -21,7 +21,7 @@ const useFormValidation = <T, C>({
 }: UseFormValidationProps<C>): UseFormValidationResult<T> => {
   const initialErrors = useMemo(() => {
     if (validationSchema) {
-      return validateSchemaSync(
+      return validateSchemaInitial(
         initialValues,
         validationSchema,
         validationContext,
@@ -51,13 +51,16 @@ const validateSchema = async <T, C>(
 ) => {
   try {
     const data = prepareDataForValidation(values);
-    await validationSchema.validate(data, { context: validationContext });
+    await validationSchema.validate(data, {
+      context: validationContext,
+      abortEarly: false,
+    });
   } catch (error) {
     return yupToFormErrors(error);
   }
 };
 
-const validateSchemaSync = <T, C>(
+const validateSchemaInitial = <T, C>(
   values: T,
   validationSchema: AnySchema,
   validationContext?: C,
