@@ -97,13 +97,13 @@ export const resetPassword = createThunkAction(
   },
 );
 
-export const VALIDATE_PASSWORD = "metabase/auth/VALIDATE_PASSWORD";
-export const validatePassword = createThunkAction(
-  VALIDATE_PASSWORD,
-  (password: string) => async () => {
+export const validatePassword = async (password: string) => {
+  try {
     await UtilApi.password_check({ password });
-  },
-);
+  } catch (error) {
+    return getIn(error, ["data", "errors", "password"]);
+  }
+};
 
 export const VALIDATE_PASSWORD_TOKEN = "metabase/auth/VALIDATE_TOKEN";
 export const validatePasswordToken = createThunkAction(

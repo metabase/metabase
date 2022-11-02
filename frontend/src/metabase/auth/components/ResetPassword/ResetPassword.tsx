@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
+import _ from "underscore";
 import Settings from "metabase/lib/settings";
 import Link from "metabase/core/components/Link";
 import Form from "metabase/core/components/Form";
@@ -20,21 +21,10 @@ import {
 
 type ViewType = "none" | "form" | "success" | "expired";
 
-const ResetPasswordSchema = Yup.object().shape({
-  password: Yup.string()
-    .required(t`required`)
-    .test((value, context) => {
-      const message = Settings.passwordComplexityDescription(value);
-      return message ? context.createError({ message }) : true;
-    }),
-  password_confirm: Yup.string()
-    .required(t`required`)
-    .oneOf([Yup.ref("password")], t`passwords do not match`),
-});
-
 export interface ResetPasswordProps {
   token: string;
   onResetPassword: (token: string, password: string) => void;
+  onValidatePassword: (password: string) => Promise<string | undefined>;
   onValidatePasswordToken: (token: string) => void;
   onShowToast: (toast: { message: string }) => void;
   onRedirect: (url: string) => void;
@@ -43,6 +33,7 @@ export interface ResetPasswordProps {
 const ResetPassword = ({
   token,
   onResetPassword,
+  onValidatePassword,
   onValidatePasswordToken,
   onShowToast,
   onRedirect,
@@ -73,30 +64,39 @@ const ResetPassword = ({
 
   return (
     <AuthLayout>
-      {view === "form" && <ResetPasswordForm onSubmit={handlePasswordSubmit} />}
+      {view === "form" && (
+        <ResetPasswordForm
+          onValidatePassword={onValidatePassword}
+          onSubmit={handlePasswordSubmit}
+        />
+      )}
       {view === "expired" && <ResetPasswordExpired />}
     </AuthLayout>
   );
 };
 
 interface ResetPasswordFormProps {
+  onValidatePassword: (password: string) => Promise<string | undefined>;
   onSubmit: (data: ResetPasswordData) => void;
 }
 
 const ResetPasswordForm = ({
+  onValidatePassword,
   onSubmit,
 }: ResetPasswordFormProps): JSX.Element => {
   const initialValues = useMemo(
-    () => ({
-      password: "",
-      password_confirm: "",
-    }),
+    () => ({ password: "", password_confirm: "" }),
     [],
   );
 
   const passwordDescription = useMemo(
     () => Settings.passwordComplexityDescription(),
     [],
+  );
+
+  const validationSchema = useMemo(
+    () => createValidationSchema(onValidatePassword),
+    [onValidatePassword],
   );
 
   return (
@@ -107,7 +107,7 @@ const ResetPasswordForm = ({
       </FormMessage>
       <FormProvider
         initialValues={initialValues}
-        validationSchema={ResetPasswordSchema}
+        validationSchema={validationSchema}
         isInitialValid={false}
         onSubmit={onSubmit}
       >
@@ -148,6 +148,28 @@ const ResetPasswordExpired = (): JSX.Element => {
       >{t`Request a new reset email`}</Link>
     </InfoBody>
   );
+};
+
+const createValidationSchema = (
+  onValidatePassword: (password: string) => Promise<string | undefined>,
+) => {
+  const validatePassword = _.memoize(onValidatePassword);
+
+  return Yup.object().shape({
+    password: Yup.string()
+      .required(t`required`)
+      .test((value, context) => {
+        const error = Settings.passwordComplexityDescription(value);
+        return error ? context.createError({ message: error }) : true;
+      })
+      .test(async (value = "", context) => {
+        const error = await validatePassword(value);
+        return error ? context.createError({ message: error }) : true;
+      }),
+    password_confirm: Yup.string()
+      .required(t`required`)
+      .oneOf([Yup.ref("password")], t`passwords do not match`),
+  });
 };
 
 export default ResetPassword;
