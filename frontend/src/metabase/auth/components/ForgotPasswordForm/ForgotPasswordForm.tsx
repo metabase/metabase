@@ -45,7 +45,6 @@ const ForgotPasswordForm = ({
       <FormProvider
         initialValues={initialValues}
         validationSchema={ForgotPasswordSchema}
-        isInitialValid={false}
         onSubmit={handleSubmit}
       >
         <Form>
