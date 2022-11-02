@@ -3707,10 +3707,10 @@
   resolved "https://registry.yarnpkg.com/@popperjs/core/-/core-2.10.2.tgz#0798c03351f0dea1a5a4cabddf26a55a7cbee590"
   integrity sha512-IXf3XA7+XyN7CP9gGh/XB0UxVMlvARGEgGXLubFICsUMGz6Q+DU+i4gGlpOxTjKvXjkJDJC8YdqdKkDj9qZHEQ==
 
-"@react-oauth/google@^0.2.1":
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/@react-oauth/google/-/google-0.2.1.tgz#a0bdacf5374b5a11d31ee9afd6b5d2f519fa7c1d"
-  integrity sha512-ZG20jrOaBuVt6kIv7acE4JHjIQ8rYwGNsA7MdBvjxmxyU7l8vRR/FV6XvneDWXE+AGc8YxqSI6U+cvJLJ3YQ9w==
+"@react-oauth/google@^0.4.0":
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/@react-oauth/google/-/google-0.4.0.tgz#ae4fe2724040bd11facdc53aad43a21e9f34b2c9"
+  integrity sha512-2QxxrKbXXH8bwHSefB56sBgsKs7Bq3Pvv8tVmGJuINGefECsssIUKidTDm5P55T4CV99sCX/GUfxs3l2Ntxo8Q==
 
 "@sinclair/typebox@^0.24.1":
   version "0.24.44"
