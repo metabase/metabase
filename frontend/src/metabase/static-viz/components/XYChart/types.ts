@@ -21,6 +21,9 @@ export type Series = {
   data: SeriesData;
   type: VisualizationType;
   yAxisPosition: YAxisPosition;
+  seriesKey?: string;
+  // TODO: fix the type
+  column?: any;
 };
 
 export type StackedDatum = [XValue, YValue, YValue];

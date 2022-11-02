@@ -1,5 +1,9 @@
 import React from "react";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
+import { isNotNull } from "metabase/core/utils/array";
+import { getColorsForValues } from "metabase/lib/colors/charts";
+import { formatStaticValue } from "metabase/static-viz/lib/format-static-value";
+import { colors } from "metabase/lib/colors/palette";
 import { XYChart } from "../XYChart";
 import { ChartSettings, ChartStyle, Series } from "../XYChart/types";
 import { Colors } from "./types";
@@ -20,6 +24,7 @@ const LineAreaBarChart = ({
   series,
   settings,
   getColor,
+  colors: instanceColors,
 }: LineAreaBarChartProps) => {
   const chartStyle: ChartStyle = {
     fontFamily: "Lato, sans-serif",
@@ -60,9 +65,29 @@ const LineAreaBarChart = ({
     chartSize,
   );
 
+  const keys = series
+    .map(singleSeries => {
+      if (singleSeries.seriesKey) {
+        return singleSeries.seriesKey;
+      }
+
+      return formatStaticValue(singleSeries.name, {
+        column: singleSeries.column,
+      });
+    })
+    .filter(isNotNull);
+  const palette = { ...colors, ...instanceColors };
+  const chartColors = getColorsForValues(keys, undefined, palette);
+  const seriesWithColors = series.map((singleSeries, index) => {
+    return {
+      ...singleSeries,
+      color: chartColors[keys[index]],
+    };
+  });
+
   return (
     <XYChart
-      series={series}
+      series={seriesWithColors}
       settings={adjustedSettings}
       style={chartStyle}
       width={chartSize.width}
