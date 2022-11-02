@@ -7,14 +7,6 @@ import FormProvider from "metabase/core/components/FormProvider";
 import { InviteInfo, UserInfo } from "metabase-types/store";
 import { UserFieldGroup } from "./InviteUserForm.styled";
 
-const InviteUserSchema = Yup.object().shape({
-  first_name: Yup.string().max(100, t`must be 100 characters or less`),
-  last_name: Yup.string().max(100, t`must be 100 characters or less`),
-  email: Yup.string()
-    .required(t`required`)
-    .email(t`must be a valid email address`),
-});
-
 interface InviteUserFormProps {
   user?: UserInfo;
   invite?: InviteInfo;
@@ -26,21 +18,18 @@ const InviteUserForm = ({
   invite,
   onSubmit,
 }: InviteUserFormProps): JSX.Element => {
-  const initialValues = useMemo(() => {
-    return getInitialValues(invite);
-  }, [invite]);
+  const initialValues = useMemo(() => getInitialValues(invite), [invite]);
+  const validationSchema = useMemo(() => getValidationSchema(user), [user]);
 
   const handleSubmit = useCallback(
-    (values: InviteInfo) => {
-      onSubmit(getSubmitValues(values));
-    },
+    (values: InviteInfo) => onSubmit(getSubmitValues(values)),
     [onSubmit],
   );
 
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={InviteUserSchema}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
       <Form>
@@ -69,6 +58,20 @@ const getSubmitValues = (invite: InviteInfo): InviteInfo => {
     first_name: invite.first_name || null,
     last_name: invite.last_name || null,
   };
+};
+
+const getValidationSchema = (user?: UserInfo) => {
+  return Yup.object().shape({
+    first_name: Yup.string().max(100, t`must be 100 characters or less`),
+    last_name: Yup.string().max(100, t`must be 100 characters or less`),
+    email: Yup.string()
+      .required(t`required`)
+      .email(t`must be a valid email address`)
+      .notOneOf(
+        [user?.email],
+        t`must be different from the email address you used in setup`,
+      ),
+  });
 };
 
 export default InviteUserForm;
