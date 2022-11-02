@@ -14,6 +14,18 @@ import {
   PasswordFormTitle,
 } from "./ResetPasswordForm.styled";
 
+const ResetPasswordSchema = Yup.object().shape({
+  password: Yup.string()
+    .required(t`required`)
+    .test(async (value = "", context) => {
+      const error = await context.options.context?.onValidatePassword(value);
+      return error ? context.createError({ message: error }) : true;
+    }),
+  password_confirm: Yup.string()
+    .required(t`required`)
+    .oneOf([Yup.ref("password")], t`passwords do not match`),
+});
+
 interface ResetPasswordFormProps {
   onValidatePassword: (password: string) => Promise<string | undefined>;
   onSubmit: (data: ResetPasswordData) => void;
@@ -33,8 +45,8 @@ const ResetPasswordForm = ({
     [],
   );
 
-  const validationSchema = useMemo(
-    () => getValidationSchema(onValidatePassword),
+  const validationContext = useMemo(
+    () => ({ onValidatePassword: _.memoize(onValidatePassword) }),
     [onValidatePassword],
   );
 
@@ -46,8 +58,8 @@ const ResetPasswordForm = ({
       </PasswordFormMessage>
       <FormProvider
         initialValues={initialValues}
-        validationSchema={validationSchema}
-        isInitialValid={false}
+        validationSchema={ResetPasswordSchema}
+        validationContext={validationContext}
         onSubmit={onSubmit}
       >
         <Form>
@@ -56,6 +68,7 @@ const ResetPasswordForm = ({
             type="password"
             title={t`Create a password`}
             placeholder={t`Shhh...`}
+            autoComplete="new-password"
             autoFocus
             fullWidth
           />
@@ -64,6 +77,7 @@ const ResetPasswordForm = ({
             type="password"
             title={t`Confirm your password`}
             placeholder={t`Shhh... but one more time so we get it right`}
+            autoComplete="new-password"
             fullWidth
           />
           <FormSubmitButton title={t`Save new password`} primary fullWidth />
@@ -72,24 +86,6 @@ const ResetPasswordForm = ({
       </FormProvider>
     </div>
   );
-};
-
-const getValidationSchema = (
-  onValidatePassword: (password: string) => Promise<string | undefined>,
-) => {
-  const handleValidatePassword = _.memoize(onValidatePassword);
-
-  return Yup.object().shape({
-    password: Yup.string()
-      .required(t`required`)
-      .test(async (value = "", context) => {
-        const error = await handleValidatePassword(value);
-        return error ? context.createError({ message: error }) : true;
-      }),
-    password_confirm: Yup.string()
-      .required(t`required`)
-      .oneOf([Yup.ref("password")], t`passwords do not match`),
-  });
 };
 
 export default ResetPasswordForm;

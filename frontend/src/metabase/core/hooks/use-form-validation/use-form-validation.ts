@@ -51,7 +51,10 @@ const validateSchema = async <T, C>(
 ) => {
   try {
     const data = prepareDataForValidation(values);
-    await validationSchema.validate(data, { context: validationContext });
+    await validationSchema.validate(data, {
+      context: validationContext,
+      abortEarly: false,
+    });
   } catch (error) {
     return yupToFormErrors(error);
   }
@@ -64,7 +67,9 @@ const validateSchemaSync = <T, C>(
 ) => {
   try {
     const data = prepareDataForValidation(values);
-    validationSchema.validateSync(data, { context: validationContext });
+    validationSchema.validateSync(data, {
+      context: validationContext,
+    });
   } catch (error) {
     return yupToFormErrors(error);
   }
