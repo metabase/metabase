@@ -20,7 +20,7 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
   }, [user]);
 
   const validationSchema = useMemo(() => {
-    return createValidationSchema(onValidatePassword);
+    return getValidationSchema(onValidatePassword);
   }, [onValidatePassword]);
 
   const handleSubmit = useCallback(
@@ -104,7 +104,7 @@ const getSubmitValues = (user: UserInfo): UserInfo => {
   };
 };
 
-const createValidationSchema = (
+const getValidationSchema = (
   onValidatePassword: (password: string) => Promise<string | undefined>,
 ) => {
   const handleValidatePassword = _.memoize(onValidatePassword);
