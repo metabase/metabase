@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.v2.load-test
   (:require [clojure.test :refer :all]
+            [java-time :as t]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as serdes.extract]
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
@@ -783,3 +784,49 @@
           (testing "new FieldValues are properly added"
             (is (= (dissoc @fv2s :id :field_id :created_at :updated_at)
                    (dissoc @fv2d :id :field_id :created_at :updated_at)))))))))
+
+(deftest bare-import-test
+  ;; If the dependencies of an entity exist in the receiving database, they don't need to be in the export.
+  ;; This tests that such an import will succeed, and that it still fails when the dependency is not found in
+  ;; either location.
+  (let [db1s       (atom nil)
+        table1s    (atom nil)]
+
+    (testing "loading a bare card"
+      (ts/with-empty-h2-app-db
+        (reset! db1s    (ts/create! Database :name "my-db"))
+        (reset! table1s (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
+        (ts/create! Field :name "STATE" :table_id (:id @table1s))
+        (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
+
+        (testing "depending on existing values works"
+          (let [ingestion (ingestion-in-memory [{:serdes/meta   [{:model "Card" :id "0123456789abcdef_0123"}]
+                                                 :created_at    (t/instant)
+                                                 :creator_id    "glee@rush.yyz"
+                                                 :database_id   "my-db"
+                                                 :dataset_query {:database "my-db"
+                                                                 :type     :query
+                                                                 :query    {:source-table ["my-db" nil "CUSTOMERS"]}}
+                                                 :display       :table
+                                                 :entity_id     "0123456789abcdef_0123"
+                                                 :name          "Some card"
+                                                 :table_id      ["my-db" nil "CUSTOMERS"]
+                                                 :visualization_settings {}}])]
+            (is (some? (serdes.load/load-metabase ingestion)))))
+
+        (testing "depending on nonexisting values fails"
+          (let [ingestion (ingestion-in-memory [{:serdes/meta   [{:model "Card" :id "0123456789abcdef_0123"}]
+                                                 :created_at    (t/instant)
+                                                 :creator_id    "glee@rush.yyz"
+                                                 :database_id   "bad-db"
+                                                 :dataset_query {:database "bad-db"
+                                                                 :type     :query
+                                                                 :query    {:source-table ["bad-db" nil "CUSTOMERS"]}}
+                                                 :display       :table
+                                                 :entity_id     "0123456789abcdef_0123"
+                                                 :name          "Some card"
+                                                 :table_id      ["bad-db" nil "CUSTOMERS"]
+                                                 :visualization_settings {}}])]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"Failed to read file"
+                                  (serdes.load/load-metabase ingestion)))))))))
