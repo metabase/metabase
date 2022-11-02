@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
-import Settings from "metabase/lib/settings";
+import MetabaseSettings from "metabase/lib/settings";
 import Link from "metabase/core/components/Link";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
@@ -90,7 +90,7 @@ const ResetPasswordForm = ({
   );
 
   const passwordDescription = useMemo(
-    () => Settings.passwordComplexityDescription(),
+    () => MetabaseSettings.passwordComplexityDescription(),
     [],
   );
 
@@ -153,17 +153,13 @@ const ResetPasswordExpired = (): JSX.Element => {
 const createValidationSchema = (
   onValidatePassword: (password: string) => Promise<string | undefined>,
 ) => {
-  const validatePassword = _.memoize(onValidatePassword);
+  const onPasswordChange = _.memoize(onValidatePassword);
 
   return Yup.object().shape({
     password: Yup.string()
       .required(t`required`)
-      .test((value, context) => {
-        const error = Settings.passwordComplexityDescription(value);
-        return error ? context.createError({ message: error }) : true;
-      })
       .test(async (value = "", context) => {
-        const error = await validatePassword(value);
+        const error = await onPasswordChange(value);
         return error ? context.createError({ message: error }) : true;
       }),
     password_confirm: Yup.string()

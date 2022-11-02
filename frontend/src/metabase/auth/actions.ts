@@ -98,6 +98,11 @@ export const resetPassword = createThunkAction(
 );
 
 export const validatePassword = async (password: string) => {
+  const error = MetabaseSettings.passwordComplexityDescription(password);
+  if (error) {
+    return error;
+  }
+
   try {
     await UtilApi.password_check({ password });
   } catch (error) {
