@@ -2,8 +2,9 @@ import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import Form from "metabase/core/components/Form";
-import FormInput from "metabase/core/components/FormInput";
 import FormProvider from "metabase/core/components/FormProvider";
+import FormInput from "metabase/core/components/FormInput";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { InviteInfo, UserInfo } from "metabase-types/store";
 import { UserFieldGroup } from "./InviteUserForm.styled";
 
@@ -30,14 +31,32 @@ const InviteUserForm = ({
     <FormProvider
       initialValues={initialValues}
       validationSchema={validationSchema}
+      isInitialValid={false}
       onSubmit={handleSubmit}
     >
       <Form>
         <UserFieldGroup>
-          <FormInput name="first_name" />
-          <FormInput name="last_name" />
+          <FormInput
+            name="first_name"
+            title={t`First name`}
+            placeholder={t`Johnny`}
+            autoFocus
+            fullWidth
+          />
+          <FormInput
+            name="last_name"
+            title={t`Last name`}
+            placeholder={t`Appleseed`}
+            fullWidth
+          />
         </UserFieldGroup>
-        <FormInput name="email" />
+        <FormInput
+          name="email"
+          title={t`Email`}
+          placeholder={"nicetoseeyou@email.com"}
+          fullWidth
+        />
+        <FormSubmitButton title={`Send invitation`} primary />
       </Form>
     </FormProvider>
   );
