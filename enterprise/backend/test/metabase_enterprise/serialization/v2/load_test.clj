@@ -7,7 +7,6 @@
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric Pulse
                                      PulseChannel PulseChannelRecipient Segment Table User]]
             [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]))
 
 (defn- no-labels [path]
@@ -105,43 +104,6 @@
                      (:location child-dest)))
               (is (= (format "/%d/%d/" (:id parent-dest) (:id child-dest))
                      (:location grandchild-dest))))))))))
-
-(deftest deserialization-upsert-and-dupe-test
-  (testing "basic collections with their names changing, one without entity_id:"
-    (let [serialized (atom nil)
-          c1a        (atom nil)
-          c2a        (atom nil)
-          c1b        (atom nil)
-          c2b        (atom nil)]
-      (ts/with-source-and-dest-dbs
-        (testing "serializing the two collections"
-          (ts/with-source-db
-            (reset! c1b (ts/create! Collection :name "Renamed Collection 1"))
-            (reset! c2b (ts/create! Collection :name "Collection 2 version 2"))
-            (db/update! Collection (:id @c2b) {:entity_id nil})
-            (reset! c2b (db/select-one Collection :id (:id @c2b)))
-            (is (nil? (:entity_id @c2b)))
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
-
-        (testing "serialization should use identity hashes where no entity_id is defined"
-          (is (= #{(:entity_id @c1b)
-                   (serdes.hash/identity-hash @c2b)}
-                 (ids-by-model @serialized "Collection"))))
-
-        (testing "deserializing, the name change causes a duplicated collection"
-          (ts/with-dest-db
-            (reset! c1a (ts/create! Collection :name "Collection 1" :entity_id (:entity_id @c1b)))
-            (reset! c2a (ts/create! Collection :name "Collection 2 version 1"))
-            (db/update! Collection (:id @c2a) {:entity_id nil})
-            (reset! c2a (db/select-one Collection :id (:id @c2a)))
-            (is (nil? (:entity_id @c2b)))
-
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
-            (is (= 3 (db/count Collection)) "Collection 2 versions get duplicated, since the identity-hash changed")
-            (is (= #{"Renamed Collection 1"
-                     "Collection 2 version 1"
-                     "Collection 2 version 2"}
-                   (set (db/select-field :name Collection))))))))))
 
 (deftest deserialization-database-table-field-test
   (testing "databases, tables and fields are nested in namespaces"

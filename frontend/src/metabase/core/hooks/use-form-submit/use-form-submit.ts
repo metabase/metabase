@@ -2,10 +2,18 @@ import { useCallback } from "react";
 import type { FormikHelpers } from "formik";
 import { FormError } from "./types";
 
-const useFormSubmit = <T>(
-  onSubmit: (data: T, helpers: FormikHelpers<T>) => void,
-) => {
-  return useCallback(
+export interface UseFormSubmitProps<T> {
+  onSubmit: (values: T, helpers: FormikHelpers<T>) => void;
+}
+
+export interface UseFormSubmitResult<T> {
+  handleSubmit: (values: T, helpers: FormikHelpers<T>) => void;
+}
+
+const useFormSubmit = <T>({
+  onSubmit,
+}: UseFormSubmitProps<T>): UseFormSubmitResult<T> => {
+  const handleSubmit = useCallback(
     async (data: T, helpers: FormikHelpers<T>) => {
       try {
         helpers.setStatus({ status: "pending" });
@@ -21,6 +29,10 @@ const useFormSubmit = <T>(
     },
     [onSubmit],
   );
+
+  return {
+    handleSubmit,
+  };
 };
 
 const isFormError = <T>(error: unknown): error is FormError<T> => {
