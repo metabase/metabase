@@ -34,7 +34,7 @@ const ResetPasswordForm = ({
   );
 
   const validationSchema = useMemo(
-    () => createValidationSchema(onValidatePassword),
+    () => getValidationSchema(onValidatePassword),
     [onValidatePassword],
   );
 
@@ -74,7 +74,7 @@ const ResetPasswordForm = ({
   );
 };
 
-const createValidationSchema = (
+const getValidationSchema = (
   onValidatePassword: (password: string) => Promise<string | undefined>,
 ) => {
   const handleValidatePassword = _.memoize(onValidatePassword);
