@@ -16,7 +16,7 @@ interface UserFormProps {
 
 const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
   const initialValues = useMemo(() => {
-    return getFormValues(user);
+    return getInitialValues(user);
   }, [user]);
 
   const validationSchema = useMemo(() => {
@@ -84,7 +84,7 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
   );
 };
 
-const getFormValues = (user?: UserInfo): UserInfo => {
+const getInitialValues = (user?: UserInfo): UserInfo => {
   return {
     email: "",
     site_name: "",
