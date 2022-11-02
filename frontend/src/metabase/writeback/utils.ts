@@ -106,11 +106,13 @@ export const shouldPrefetchValues = (action: WritebackAction) => {
   return action.slug === "update";
 };
 
+const vizTypesToHideHeader = ["object"];
+const vizTypesToHideHeaderInApps = ["object", "list"];
+
 export const shouldHideDashcardHeader = (
   dashboard: Dashboard,
   dashcard: DashCard,
 ): boolean =>
   !!(
-    dashboard.is_app_page &&
-    ["list", "object"].includes(dashcard?.card?.display ?? "")
-  );
+    dashboard.is_app_page ? vizTypesToHideHeaderInApps : vizTypesToHideHeader
+  ).includes(dashcard?.card?.display ?? "");

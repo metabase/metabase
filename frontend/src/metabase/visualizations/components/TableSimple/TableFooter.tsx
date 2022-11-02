@@ -20,6 +20,7 @@ interface TableFooterProps {
   limit?: number;
   onPreviousPage: () => void;
   onNextPage: () => void;
+  singleItem?: boolean;
 }
 
 const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
@@ -32,15 +33,22 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
       total,
       onPreviousPage,
       onNextPage,
+      singleItem,
     }: TableFooterProps,
     ref,
   ) {
     const paginateMessage = useMemo(() => {
-      if (limit === undefined && total >= HARD_ROW_LIMIT) {
-        return t`Rows ${start + 1}-${end + 1} of first ${total}`;
+      const totalMessage =
+        limit === undefined && total >= HARD_ROW_LIMIT
+          ? t`of first ${total}`
+          : t`of ${total}`;
+
+      if (singleItem) {
+        return t`Item ${start + 1} ${totalMessage}`;
       }
-      return t`Rows ${start + 1}-${end + 1} of ${total}`;
-    }, [total, start, end, limit]);
+
+      return t`Rows ${start + 1}-${end + 1} ${totalMessage}`;
+    }, [total, start, end, limit, singleItem]);
 
     const handlePreviousPage = useCallback(
       (event: MouseEvent) => {
