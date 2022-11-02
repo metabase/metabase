@@ -3,6 +3,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
+import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
@@ -142,10 +143,9 @@ const ResetPasswordExpired = (): JSX.Element => {
       <InfoMessage>
         {t`For security reasons, password reset links expire after a little while. If you still need to reset your password, you can request a new reset email.`}
       </InfoMessage>
-      <Link
-        className="Button Button--primary"
-        to={"/auth/forgot_password"}
-      >{t`Request a new reset email`}</Link>
+      <Button as={Link} primary to={"/auth/forgot_password"}>
+        {t`Request a new reset email`}
+      </Button>
     </InfoBody>
   );
 };
