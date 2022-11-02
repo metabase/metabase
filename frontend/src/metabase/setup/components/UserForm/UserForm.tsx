@@ -21,7 +21,7 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
   );
 
   const initialValues = useMemo(
-    () => validationSchema.cast(user),
+    () => validationSchema.cast(user ?? {}),
     [user, validationSchema],
   );
 
@@ -29,17 +29,52 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
     <FormProvider
       initialValues={initialValues}
       validationSchema={validationSchema}
+      isInitialValid={false}
       onSubmit={onSubmit}
     >
       <UserFormRoot>
         <UserFieldGroup>
-          <FormInput name="first_name" />
-          <FormInput name="last_name" />
+          <FormInput
+            name="first_name"
+            title={t`First name`}
+            placeholder={t`Johnny`}
+            autoFocus
+            fullWidth
+          />
+          <FormInput
+            name="last_name"
+            title={t`Last name`}
+            placeholder={t`Appleseed`}
+            fullWidth
+          />
         </UserFieldGroup>
-        <FormInput name="email" />
-        <FormInput name="site_name" />
-        <FormInput name="password" />
-        <FormInput name="password_confirm" />
+        <FormInput
+          name="email"
+          type="email"
+          title={t`Email`}
+          placeholder="nicetoseeyou@email.com"
+          fullWidth
+        />
+        <FormInput
+          name="site_name"
+          title={t`Company or team name`}
+          placeholder={t`Department of Awesome`}
+          fullWidth
+        />
+        <FormInput
+          name="password"
+          type="password"
+          title={t`Create a password`}
+          placeholder={t`Shhh...`}
+          fullWidth
+        />
+        <FormInput
+          name="password_confirm"
+          type="password"
+          title={t`Confirm your password`}
+          placeholder={t`Shhh... but one more time so we get it right`}
+          fullWidth
+        />
         <FormSubmitButton title={t`Next`} primary />
       </UserFormRoot>
     </FormProvider>
@@ -52,8 +87,12 @@ const createValidationSchema = (
   const handleValidatePassword = _.memoize(onValidatePassword);
 
   return Yup.object().shape({
-    first_name: Yup.string().max(100).default(""),
-    last_name: Yup.string().max(100).default(""),
+    first_name: Yup.string()
+      .max(100, t`must be 100 characters or less`)
+      .default(""),
+    last_name: Yup.string()
+      .max(100, t`must be 100 characters or less`)
+      .default(""),
     email: Yup.string()
       .required(t`required`)
       .email(t`must be a valid email address`),
