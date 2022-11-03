@@ -143,7 +143,7 @@ You can manually change the user interface for the filter to:
 
 ## Changing a search box filter to a dropdown filter
 
-1. Go to **Settings** > **Admin settings**  > Data Model.
+1. Go to **Settings** > **Admin settings** > **Data Model**.
 2. Select the database, schema, table, and field in question.
 3. Click the **gear** icon to view all the field’s settings.
 4. Set **Field Type** to “Category”.
