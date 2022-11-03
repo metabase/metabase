@@ -97,19 +97,6 @@ export default {
       disablePristineSubmit: true,
     };
   },
-  setup: () => ({
-    fields: [
-      ...getNameFields(),
-      getEmailField(),
-      {
-        name: "site_name",
-        title: t`Company or team name`,
-        placeholder: t`Department of Awesome`,
-        validate: validate.required(),
-      },
-      ...getPasswordFields(),
-    ],
-  }),
   setup_invite: user => ({
     fields: [
       ...getNameFields(),
