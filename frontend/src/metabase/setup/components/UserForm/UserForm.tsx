@@ -8,6 +8,24 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { UserInfo } from "metabase-types/store";
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
 
+const UserSchema = Yup.object({
+  first_name: Yup.string().max(100, t`must be 100 characters or less`),
+  last_name: Yup.string().max(100, t`must be 100 characters or less`),
+  email: Yup.string()
+    .required(t`required`)
+    .email(t`must be a valid email address`),
+  site_name: Yup.string().required(t`required`),
+  password: Yup.string()
+    .required(t`required`)
+    .test(async (value = "", context) => {
+      const error = await context.options.context?.onValidatePassword(value);
+      return error ? context.createError({ message: error }) : true;
+    }),
+  password_confirm: Yup.string()
+    .required(t`required`)
+    .oneOf([Yup.ref("password")], t`passwords do not match`),
+});
+
 interface UserFormProps {
   user?: UserInfo;
   onValidatePassword: (password: string) => Promise<string | undefined>;
@@ -19,9 +37,12 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
     return getInitialValues(user);
   }, [user]);
 
-  const validationSchema = useMemo(() => {
-    return getValidationSchema(onValidatePassword);
-  }, [onValidatePassword]);
+  const validationContext = useMemo(
+    () => ({
+      onValidatePassword: _.memoize(onValidatePassword),
+    }),
+    [onValidatePassword],
+  );
 
   const handleSubmit = useCallback(
     (values: UserInfo) => onSubmit(getSubmitValues(values)),
@@ -31,8 +52,8 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={validationSchema}
-      isInitialValid={user != null}
+      validationSchema={UserSchema}
+      validationContext={validationContext}
       onSubmit={handleSubmit}
     >
       <UserFormRoot>
@@ -102,30 +123,6 @@ const getSubmitValues = (user: UserInfo): UserInfo => {
     first_name: user.first_name || null,
     last_name: user.last_name || null,
   };
-};
-
-const getValidationSchema = (
-  onValidatePassword: (password: string) => Promise<string | undefined>,
-) => {
-  const handleValidatePassword = _.memoize(onValidatePassword);
-
-  return Yup.object().shape({
-    first_name: Yup.string().max(100, t`must be 100 characters or less`),
-    last_name: Yup.string().max(100, t`must be 100 characters or less`),
-    email: Yup.string()
-      .required(t`required`)
-      .email(t`must be a valid email address`),
-    site_name: Yup.string().required(t`required`),
-    password: Yup.string()
-      .required(t`required`)
-      .test(async (value = "", context) => {
-        const error = await handleValidatePassword(value);
-        return error ? context.createError({ message: error }) : true;
-      }),
-    password_confirm: Yup.string()
-      .required(t`required`)
-      .oneOf([Yup.ref("password")], t`passwords do not match`),
-  });
 };
 
 export default UserForm;
