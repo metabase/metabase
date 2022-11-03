@@ -28,7 +28,7 @@ If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-
 1. Go to **Settings** > **Admin settings** > **Embedding**.
 2. Click **Enable**.
 3. Click **Full-app embedding**.
-4. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (e.g., `https://*.example.com`).
+4. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
 
 ## Setting up embedding on your website
 
@@ -39,10 +39,9 @@ If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-
    - [Add your license token](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
    - [Embed Metabase in a different domain](#embedding-metabase-in-a-different-domain).
    - [Secure your full-app embed](#securing-full-app-embeds).
-3. Optional: Enable communication to and from the embedded Metabase using [`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage):
-   - [Fill an entire iframe with an embedded Metabase page](#filling-an-entire-iframe-with-an-embedded-metabase-page).
-   - [Fit an iframe to a Metabase page with a fixed size](#fitting-an-iframe-to-a-metabase-page-with-a-fixed-size).
-   - [Pass an embedding URL between Metabase and your app](#passing-an-embedding-url-between-metabase-and-your-app).
+3. Optional: Enable communication to and from the embedded Metabase using supported [`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) messages:
+    - [From Metabase](#supported-postmessage-messages-from-embedded-metabase)
+    - [To Metabase](#supported-postmessage-messages-to-embedded-metabase)
 4. Optional: Set parameters to [show or hide Metabase UI components](#showing-or-hiding-metabase-ui-components).
 
 Once you're ready to roll out your full-app embed, make sure that people **allow** browser cookies from Metabase, otherwise they won't be able to log in.
@@ -51,17 +50,13 @@ Once you're ready to roll out your full-app embed, make sure that people **allow
 
 Go to your Metabase instance and find the page that you want to embed.
 
-For example, to embed your Metabase home page, set the `src` attribute to your [site URL](../configuring-metabase/settings.md#site-url).
+For example, to embed your Metabase home page, set the `src` attribute to your [site URL](../configuring-metabase/settings.md#site-url), such as:
 
-```
-http://metabase.yourcompany.com/
-```
+`http://metabase.yourcompany.com/`
 
-To embed a specific Metabase dashboard, use the dashboard's URL:
+To embed a specific Metabase dashboard, use the dashboard's URL, such as:
 
-```
-http://metabase.yourcompany.com/dashboard/1
-```
+`http://metabase.yourcompany.com/dashboard/1`
 
 ### Pointing an iframe to an authentication endpoint
 
@@ -87,13 +82,11 @@ https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1%3Ffi
 
 ## Embedding Metabase in a different domain
 
-If you want to embed Metabase in another domain (e.g., Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), set the following [environment variable](../configuring-metabase/environment-variables.md):
+If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), set the following [environment variable](../configuring-metabase/environment-variables.md):
 
-```
-MB_SESSION_COOKIE_SAMESITE=None
-```
+`MB_SESSION_COOKIE_SAMESITE=None`
 
-If you set this environment variable to `None`, you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 
 ## Securing full-app embeds
 
@@ -103,49 +96,41 @@ To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE
 
 For example, to keep people signed in for 24 hours at most:
 
-```
-MAX_SESSION_AGE=1440
-```
+`MAX_SESSION_AGE=1440`
 
 To automatically clear a person's login cookies when they end a browser session:
 
-```
-MB_SESSION_COOKIES=true
-```
+`MB_SESSION_COOKIES=true`
 
 To manually log someone out of Metabase, load the following URL (for example, in a hidden iframe on the logout page of your application):
 
-```
-https://metabase.yourcompany.com/auth/logout
-```
+`https://metabase.yourcompany.com/auth/logout`
 
 If you're using [JWT](../people-and-groups/authenticating-with-jwt.md) for SSO, we recommend setting the `exp` (expiration time) property to a short duration (e.g., 1 minute).
 
-## Filling an entire iframe with an embedded Metabase page
+## Supported postMessage messages _from_ embedded Metabase
 
-To make an embedded Metabase page fill up the entire iframe (e.g., a question page), use [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "frame" message _from_ Metabase to your app:
+To keep up with changes to an embedded Metabase URL (for example, when a filter is applied), set up your app to listen for "location" messages from the embedded Metabase. If you want to use this message for deep-linking, note that "location" mirrors "window.location".
+
+```
+{ “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT_OR_URL }}
+```
+
+To make an embedded Metabase page (like a question) fill up the entire iframe in your app, set up your app to listen for a "frame" message with "normal" mode from Metabase:
 
 ```
 { “metabase”: { “type”: “frame”, “frame”: { “mode”: “normal” }}}
 ```
 
-## Fitting an iframe to a Metabase page with a fixed size
-
-To specify the size of an iframe so that it matches an embedded Metabase page (e.g., a dashboard page), use [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "frame" message _from_ Metabase to your app:
+To specify the size of an iframe in your app so that it matches an embedded Metabase page (such as a dashboard), set up your app to listen for a "frame" message with "fit" mode from Metabase:
 
 ```
 { “metabase”: { “type”: “frame”, “frame”: { “mode”: “fit”, height: HEIGHT_IN_PIXELS }}}
 ```
 
-## Passing an embedding URL between Metabase and your app
+## Supported postMessage messages _to_ embedded Metabase
 
-To make a request for a particular embedding URL (e.g., for deep linking), you can use [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "location" message _from_ your embedded Metabase to your app:
-
-```
-{ “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT }}
-```
-
-Or, send a "location" message _to_ your embedded Metabase from your app:
+To change an embedding URL, send a "location" message from your app to Metabase:
 
 ```
 { “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT_OR_URL }}
@@ -157,81 +142,65 @@ To change the interface of your full-app embed, you can add parameters to the en
 
 For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav menu](#side_nav) like this:
 
-```
-your_embedding_url?top_nav=false&side_nav=false
-```
+`your_embedding_url?top_nav=false&side_nav=false`
 
 ![Top nav and side nav disabled](./images/no-top-no-side.png)
 
-### `top_nav`
+### top_nav
 
 Hidden by default. To show the top navigation bar:
 
-```
-top_nav=true
-```
+`top_nav=true`
 
 ![Top nav bar](./images/top-nav.png)
 
-### `search`
+### search
 
 Hidden by default. To show the search box in the top nav:
 
-```
-top_nav=true&search=true
-```
+`top_nav=true&search=true`
 
-### `new_button`
+### new_button
 
 Hidden by default. To show the **+ New** button used to create queries or dashboards:
 
-```
-top_nav=true&new_button=true
-```
+`top_nav=true&new_button=true`
 
-### `side_nav`
+### side_nav
 
 The navigation sidebar is shown on `/collection` and home page routes, and hidden everywhere else by default.
 
 To allow people to minimize the sidebar:
 
-```
-top_nav=true&side_nav=true
-```
+`top_nav=true&side_nav=true`
 
 ![Side nav](./images/side-nav.png)
 
-### `header`
+### header
 
 Visible by default on question and dashboard pages.
 
 To hide a question or dashboard's title, [additional info](#additional_info), and [action buttons](#action_buttons):
 
-```
-header=false
-```
+`header=false`
 
-### `additional_info`
+### additional_info
 
 Visible by default on question and dashboard pages, when the [header](#header) is enabled.
 
 To hide the gray text “Edited X days ago by FirstName LastName”, as well as the breadcrumbs with collection, database, and table names:
 
-```
-header=false&additional_info=false
-```
+`header=false&additional_info=false`
 
 ![Additional info](./images/additional-info.png)
 
-### `action_buttons`
+### action_buttons
 
 Visible by default on question pages when the [header](#header) is enabled.
 
-To hide the action buttons such as **Save**, **Summarize**, **Filter**, or the query builder icon:
+To hide the action buttons such as **Filter**, **Summarize**, the query builder button, and so on:
 
-```
-header=false&action_buttons=false
-```
+`header=false&action_buttons=false`
 
 ![Action buttons](./images/action-buttons.png)
 
