@@ -12,7 +12,7 @@ import { LocaleData, User } from "metabase-types/api";
 import { UserProfileData } from "../../types";
 
 const SsoProfileSchema = Yup.object({
-  locale: Yup.string(),
+  locale: Yup.string().nullable(true),
 });
 
 const LocalProfileSchema = SsoProfileSchema.shape({
