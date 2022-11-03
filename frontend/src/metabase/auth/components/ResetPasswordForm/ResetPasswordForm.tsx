@@ -14,7 +14,7 @@ import {
   PasswordFormTitle,
 } from "./ResetPasswordForm.styled";
 
-const ResetPasswordSchema = Yup.object().shape({
+const ResetPasswordSchema = Yup.object({
   password: Yup.string()
     .required(t`required`)
     .test(async (value = "", context) => {
