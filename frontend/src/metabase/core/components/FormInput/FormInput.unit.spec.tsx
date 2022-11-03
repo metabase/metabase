@@ -5,7 +5,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FormInput from "./FormInput";
 
-const TEST_SCHEMA = Yup.object().shape({
+const TestSchema = Yup.object().shape({
   value: Yup.string().required("error"),
 });
 
@@ -18,7 +18,7 @@ const TestFormInput = ({ initialValue = "", onSubmit }: TestFormInputProps) => {
   return (
     <Formik
       initialValues={{ value: initialValue }}
-      validationSchema={TEST_SCHEMA}
+      validationSchema={TestSchema}
       onSubmit={onSubmit}
     >
       <Form>
