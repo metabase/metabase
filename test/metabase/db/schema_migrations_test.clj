@@ -750,7 +750,7 @@
 
 (deftest convert-text-to-longtext-migration-test-part-2
   (testing "all columns that were TEXT type in MySQL were changed to"
-    (impl/test-migrations ["v45.00-051" "v45.00-055"] [migrate!]
+    (impl/test-migrations ["v45.00-051" "v45.00-057"] [migrate!]
       (migrate!) ; just run migrations immediately, then check the new types
       (let [all-text-cols [["collection_permission_graph_revision" "after"]
                            ["collection_permission_graph_revision" "before"]
