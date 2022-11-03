@@ -39,10 +39,9 @@ If you're dealing with a [multi-tenant](https://www.metabase.com/learn/customer-
    - [Add your license token](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
    - [Embed Metabase in a different domain](#embedding-metabase-in-a-different-domain).
    - [Secure your full-app embed](#securing-full-app-embeds).
-3. Optional: Enable communication to and from the embedded Metabase using [`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage):
-   - [Fill an entire iframe with an embedded Metabase page](#filling-an-entire-iframe-with-an-embedded-metabase-page).
-   - [Fit an iframe to a Metabase page with a fixed size](#fitting-an-iframe-to-a-metabase-page-with-a-fixed-size).
-   - [Pass an embedding URL between Metabase and your app](#passing-an-embedding-url-between-metabase-and-your-app).
+3. Optional: Enable communication to and from the embedded Metabase using supported [`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) messages:
+    - [From Metabase](#supported-postmessage-messages-from-embedded-metabase)
+    - [To Metabase](#supported-postmessage-messages-to-embedded-metabase)
 4. Optional: Set parameters to [show or hide Metabase UI components](#showing-or-hiding-metabase-ui-components).
 
 Once you're ready to roll out your full-app embed, make sure that people **allow** browser cookies from Metabase, otherwise they won't be able to log in.
@@ -121,31 +120,29 @@ https://metabase.yourcompany.com/auth/logout
 
 If you're using [JWT](../people-and-groups/authenticating-with-jwt.md) for SSO, we recommend setting the `exp` (expiration time) property to a short duration (e.g., 1 minute).
 
-## Filling an entire iframe with an embedded Metabase page
+## Supported postMessage messages _from_ embedded Metabase
 
-To make an embedded Metabase page fill up the entire iframe (e.g., a question page), use [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "frame" message _from_ Metabase to your app:
+To keep up with changes to an embedded Metabase URL (for example, when a filter is applied), set up your app to listen for "location" messages from the embedded Metabase. If you want to use this message for deep-linking, note that `location` mirrors `window.location`.
+
+```
+{ “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT_OR_URL }}
+```
+
+To make an embedded Metabase page (like a question) fill up the entire iframe in your app, set up your app to listen for a "frame" message with "normal" mode from Metabase:
 
 ```
 { “metabase”: { “type”: “frame”, “frame”: { “mode”: “normal” }}}
 ```
 
-## Fitting an iframe to a Metabase page with a fixed size
-
-To specify the size of an iframe so that it matches an embedded Metabase page (e.g., a dashboard page), use [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "frame" message _from_ Metabase to your app:
+To specify the size of an iframe in your app so that it matches an embedded Metabase page (such as a dashboard), set up your app to listen for a "frame" message with "fit" mode from Metabase:
 
 ```
 { “metabase”: { “type”: “frame”, “frame”: { “mode”: “fit”, height: HEIGHT_IN_PIXELS }}}
 ```
 
-## Passing an embedding URL between Metabase and your app
+### Supported postMessage messages _to_ embedded Metabase
 
-To make a request for a particular embedding URL (e.g., for deep linking), you can use [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) to send a "location" message _from_ your embedded Metabase to your app:
-
-```
-{ “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT }}
-```
-
-Or, send a "location" message _to_ your embedded Metabase from your app:
+To change an embedding URL, send a "location" message from your app _to_ Metabase:
 
 ```
 { “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT_OR_URL }}
