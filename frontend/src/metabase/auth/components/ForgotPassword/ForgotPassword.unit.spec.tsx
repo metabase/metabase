@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ForgotPassword, { ForgotPasswordProps } from "./ForgotPassword";
 
@@ -13,16 +13,20 @@ describe("ForgotPassword", () => {
   });
 
   it("should show a success message when the form is submitted", async () => {
+    const email = "user@metabase.test";
     const props = getProps({
       canResetPassword: true,
       onResetPassword: jest.fn().mockResolvedValue({}),
     });
 
     render(<ForgotPassword {...props} />);
-    userEvent.click(screen.getByText("Send password reset email"));
+    userEvent.type(screen.getByLabelText("Email address"), email);
+    userEvent.click(await screen.findByText("Send password reset email"));
 
-    const message = await screen.findByText(/Check your email/);
-    expect(message).toBeInTheDocument();
+    await waitFor(() => {
+      expect(props.onResetPassword).toHaveBeenCalledWith(email);
+      expect(screen.getByText(/Check your email/)).toBeInTheDocument();
+    });
   });
 
   it("should show an error message when the user cannot reset their password", () => {
@@ -41,20 +45,6 @@ const getProps = (
   onResetPassword: jest.fn(),
   ...opts,
 });
-
-interface FormMockProps {
-  submitTitle: string;
-  onSubmit: () => void;
-}
-
-const FormMock = ({ submitTitle, onSubmit }: FormMockProps) => {
-  return <button onClick={onSubmit}>{submitTitle}</button>;
-};
-
-jest.mock("metabase/entities/users", () => ({
-  forms: { password_reset: jest.fn() },
-  Form: FormMock,
-}));
 
 interface AuthLayoutMockProps {
   children?: ReactNode;
