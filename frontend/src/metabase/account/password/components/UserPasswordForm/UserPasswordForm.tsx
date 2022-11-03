@@ -35,11 +35,7 @@ const UserPasswordForm = ({
   onSubmit,
 }: UserPasswordFormProps): JSX.Element => {
   const initialValues = useMemo(
-    () => ({
-      old_password: "",
-      password: "",
-      password_confirm: "",
-    }),
+    () => ({ old_password: "", password: "", password_confirm: "" }),
     [],
   );
 
