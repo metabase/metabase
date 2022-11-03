@@ -747,3 +747,34 @@
                       empty-collection-created-at))
             (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
                       empty-collection-created-at))))))))
+
+(deftest convert-text-to-longtext-migration-test-part-2
+  (testing "all columns that were TEXT type in MySQL were changed to"
+    (impl/test-migrations ["v45.00-051" "v45.00-055"] [migrate!]
+      (migrate!) ; just run migrations immediately, then check the new types
+      (let [all-text-cols [["collection_permission_graph_revision" "after"]
+                           ["collection_permission_graph_revision" "before"]
+                           ["collection_permission_graph_revision" "remark"]
+                           ["permissions_revision" "after"]
+                           ["permissions_revision" "before"]
+                           ["permissions_revision" "remark"]]]
+        (with-open [conn (jdbc/get-connection (db/connection))]
+          (doseq [[tbl-nm col-nms] (group-by first all-text-cols)]
+            (let [^String exp-type (case driver/*driver*
+                                     :mysql "longtext"
+                                     :h2    "CLOB"
+                                     "text")
+                  name-fn          (case driver/*driver*
+                                     :h2 str/upper-case
+                                     identity)
+                  tbl-cols         (app-db-column-types conn (name-fn tbl-nm))]
+              (doseq [col-nm (map last col-nms)]
+                (testing (format " %s in %s" exp-type driver/*driver*)
+                  ;; just get the first/only scalar value from the results (which is a vec of maps)
+                  (is (.equalsIgnoreCase exp-type (get tbl-cols (name-fn col-nm)))
+                      (format "Using %s, type for %s.%s was supposed to be %s, but was %s"
+                              driver/*driver*
+                              tbl-nm
+                              col-nm
+                              exp-type
+                              (get tbl-cols col-nm))))))))))))
