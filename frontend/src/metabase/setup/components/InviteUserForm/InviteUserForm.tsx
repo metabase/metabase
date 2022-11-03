@@ -31,7 +31,9 @@ const InviteUserForm = ({
   invite,
   onSubmit,
 }: InviteUserFormProps): JSX.Element => {
-  const initialValues = useMemo(() => getInitialValues(invite), [invite]);
+  const initialValues = useMemo(() => {
+    return getInitialValues(invite);
+  }, [invite]);
 
   const handleSubmit = useCallback(
     (values: InviteInfo) => onSubmit(getSubmitValues(values)),
