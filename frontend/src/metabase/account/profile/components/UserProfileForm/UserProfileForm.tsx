@@ -9,7 +9,6 @@ import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { LocaleData, User } from "metabase-types/api";
-import { UserProfileData } from "../../types";
 
 const SsoProfileSchema = Yup.object({
   locale: Yup.string().nullable(true),
@@ -22,6 +21,14 @@ const LocalProfileSchema = SsoProfileSchema.shape({
     .required(t`required`)
     .email(t`must be a valid email address`),
 });
+
+export interface UserProfileData {
+  id: number;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  locale: string | null;
+}
 
 export interface UserProfileFormProps {
   user: User;
@@ -40,9 +47,7 @@ const UserProfileForm = ({
   const localeOptions = useMemo(() => getLocaleOptions(locales), [locales]);
 
   const handleSubmit = useCallback(
-    (data: UserProfileData) => {
-      return onSubmit(getSubmitValues(data));
-    },
+    (data: UserProfileData) => onSubmit(getSubmitValues(data)),
     [onSubmit],
   );
 
