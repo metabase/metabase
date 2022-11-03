@@ -21,7 +21,7 @@ describe("ForgotPassword", () => {
 
     render(<ForgotPassword {...props} />);
     userEvent.type(screen.getByLabelText("Email address"), email);
-    userEvent.click(screen.getByText("Send password reset email"));
+    userEvent.click(await screen.findByText("Send password reset email"));
 
     await waitFor(() => {
       expect(props.onResetPassword).toHaveBeenCalledWith(email);

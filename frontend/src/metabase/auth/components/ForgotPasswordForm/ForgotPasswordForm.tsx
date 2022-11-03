@@ -28,14 +28,13 @@ const ForgotPasswordForm = ({
   initialEmail = "",
   onSubmit,
 }: ForgotPasswordFormProps): JSX.Element => {
-  const initialValues = useMemo(() => {
-    return { email: initialEmail };
-  }, [initialEmail]);
+  const initialValues = useMemo(
+    () => ({ email: initialEmail }),
+    [initialEmail],
+  );
 
   const handleSubmit = useCallback(
-    async ({ email }: ForgotPasswordData) => {
-      await onSubmit(email);
-    },
+    ({ email }: ForgotPasswordData) => onSubmit(email),
     [onSubmit],
   );
 
