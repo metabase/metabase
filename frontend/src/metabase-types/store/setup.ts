@@ -4,8 +4,8 @@ export interface Locale {
 }
 
 export interface UserInfo {
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   email: string;
   site_name: string;
   password: string;
@@ -13,8 +13,8 @@ export interface UserInfo {
 }
 
 export interface InviteInfo {
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   email: string;
 }
 
