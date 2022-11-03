@@ -138,9 +138,6 @@ export default {
       },
     ],
   },
-  password_reset: {
-    fields: [...getPasswordFields()],
-  },
   newsletter: {
     fields: [
       {
