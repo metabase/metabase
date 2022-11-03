@@ -52,34 +52,40 @@ const UserProfileForm = ({
       validationSchema={isSsoUser ? SsoProfileSchema : LocalProfileSchema}
       onSubmit={handleSubmit}
     >
-      <Form>
-        {!isSsoUser && (
-          <>
-            <FormInput
-              name="first_name"
-              title={t`First name`}
-              placeholder={t`Johnny`}
-              fullWidth
-            />
-            <FormInput
-              name="last_name"
-              title={t`Last name`}
-              placeholder={t`Appleseed`}
-              fullWidth
-            />
-            <FormInput
-              name="email"
-              type="email"
-              title={t`Email`}
-              placeholder="nicetoseeyou@email.com"
-              fullWidth
-            />
-          </>
-        )}
-        <FormSelect name="locale" title={t`Language`} options={localeOptions} />
-        <FormSubmitButton title={t`Update`} primary />
-        <FormErrorMessage />
-      </Form>
+      {({ dirty }) => (
+        <Form disabled={!dirty}>
+          {!isSsoUser && (
+            <>
+              <FormInput
+                name="first_name"
+                title={t`First name`}
+                placeholder={t`Johnny`}
+                fullWidth
+              />
+              <FormInput
+                name="last_name"
+                title={t`Last name`}
+                placeholder={t`Appleseed`}
+                fullWidth
+              />
+              <FormInput
+                name="email"
+                type="email"
+                title={t`Email`}
+                placeholder="nicetoseeyou@email.com"
+                fullWidth
+              />
+            </>
+          )}
+          <FormSelect
+            name="locale"
+            title={t`Language`}
+            options={localeOptions}
+          />
+          <FormSubmitButton title={t`Update`} disabled={!dirty} primary />
+          <FormErrorMessage />
+        </Form>
+      )}
     </FormProvider>
   );
 };
