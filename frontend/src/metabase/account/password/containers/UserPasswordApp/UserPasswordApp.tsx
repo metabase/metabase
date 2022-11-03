@@ -1,15 +1,13 @@
 import { connect } from "react-redux";
 import { getUser } from "metabase/selectors/user";
+import { State } from "metabase-types/store";
 import { updatePassword, validatePassword } from "../../actions";
 import UserPasswordForm from "../../components/UserPasswordForm";
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state: State) => ({
   user: getUser(state),
+  onValidatePassword: validatePassword,
+  onSubmit: updatePassword,
 });
 
-const mapDispatchToProps = {
-  validatePassword,
-  updatePassword,
-};
-
-export default connect(mapStateToProps, mapDispatchToProps)(UserPasswordForm);
+export default connect(mapStateToProps)(UserPasswordForm);
