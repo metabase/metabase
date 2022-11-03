@@ -128,16 +128,6 @@ export default {
       ...getPasswordFields(),
     ],
   },
-  password_forgot: {
-    fields: [
-      {
-        name: "email",
-        title: t`Email address`,
-        placeholder: t`The email you use for your Metabase account`,
-        validate: validate.required().email(),
-      },
-    ],
-  },
   newsletter: {
     fields: [
       {
