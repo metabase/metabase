@@ -130,7 +130,7 @@ To specify the size of an iframe in your app so that it matches an embedded Meta
 
 ## Supported postMessage messages _to_ embedded Metabase
 
-To change an embedding URL, send a "location" message from your app _to_ Metabase:
+To change an embedding URL, send a "location" message from your app to Metabase:
 
 ```
 { “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT_OR_URL }}
@@ -198,7 +198,7 @@ To hide the gray text “Edited X days ago by FirstName LastName”, as well as 
 
 Visible by default on question pages when the [header](#header) is enabled.
 
-To hide the action buttons such as **Save**, **Summarize**, **Filter**, or the query builder icon:
+To hide the action buttons such as **Filter**, **Summarize**, the query builder button, and so on:
 
 `header=false&action_buttons=false`
 
