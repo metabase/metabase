@@ -3,25 +3,25 @@ import { prepareDataForValidation, yupToFormErrors } from "formik";
 import type { FormikErrors, FormikValues } from "formik";
 import type { AnySchema } from "yup";
 
-export interface UseFormValidationProps<C> {
-  initialValues?: FormikValues;
+export interface UseFormValidationProps<T extends FormikValues, C> {
+  initialValues: T;
   validationSchema?: AnySchema;
   validationContext?: C;
 }
 
-export interface UseFormValidationResult<T> {
+export interface UseFormValidationResult<T extends FormikValues> {
   initialErrors: FormikErrors<T> | undefined;
-  handleValidate: (data: T) => void;
+  handleValidate: (values: T) => void | object | FormikErrors<T>;
 }
 
-const useFormValidation = <T, C>({
+const useFormValidation = <T extends FormikValues, C>({
   initialValues,
   validationSchema,
   validationContext,
-}: UseFormValidationProps<C>): UseFormValidationResult<T> => {
+}: UseFormValidationProps<T, C>): UseFormValidationResult<T> => {
   const initialErrors = useMemo(() => {
     if (validationSchema) {
-      return validateSchemaSync(
+      return validateSchemaInitial(
         initialValues,
         validationSchema,
         validationContext,
@@ -30,7 +30,7 @@ const useFormValidation = <T, C>({
   }, [initialValues, validationSchema, validationContext]);
 
   const handleValidate = useCallback(
-    (values: T) => {
+    (values: FormikValues) => {
       if (validationSchema) {
         return validateSchema(values, validationSchema, validationContext);
       }
@@ -44,7 +44,7 @@ const useFormValidation = <T, C>({
   };
 };
 
-const validateSchema = async <T, C>(
+const validateSchema = async <T extends FormikValues, C>(
   values: T,
   validationSchema: AnySchema,
   validationContext?: C,
@@ -60,16 +60,14 @@ const validateSchema = async <T, C>(
   }
 };
 
-const validateSchemaSync = <T, C>(
+const validateSchemaInitial = <T extends FormikValues, C>(
   values: T,
   validationSchema: AnySchema,
   validationContext?: C,
 ) => {
   try {
     const data = prepareDataForValidation(values);
-    validationSchema.validateSync(data, {
-      context: validationContext,
-    });
+    validationSchema.validateSync(data, { context: validationContext });
   } catch (error) {
     return yupToFormErrors(error);
   }
