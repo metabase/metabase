@@ -13,7 +13,7 @@ import {
   PasswordFormTitle,
 } from "./ForgotPasswordForm.styled";
 
-const ForgotPasswordSchema = Yup.object().shape({
+const ForgotPasswordSchema = Yup.object({
   email: Yup.string()
     .required(t`required`)
     .email(t`must be a valid email address`),
