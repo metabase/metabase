@@ -771,7 +771,8 @@
               (doseq [col-nm (map last col-nms)]
                 (testing (format " %s in %s" exp-type driver/*driver*)
                   ;; just get the first/only scalar value from the results (which is a vec of maps)
-                  (is (.equalsIgnoreCase exp-type (get tbl-cols (name-fn col-nm)))
+                  (is (= (str/lower-case exp-type)
+                         (str/lower-case (get tbl-cols (name-fn col-nm))))
                       (format "Using %s, type for %s.%s was supposed to be %s, but was %s"
                               driver/*driver*
                               tbl-nm
