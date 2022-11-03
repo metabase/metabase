@@ -68,6 +68,7 @@ const UserPasswordForm = ({
           type="password"
           title={t`Current password`}
           placeholder={t`Shhh...`}
+          autoComplete="current-password"
           autoFocus
           fullWidth
         />
