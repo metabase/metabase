@@ -39,7 +39,7 @@ const TimelineForm = ({
   onCancel,
 }: TimelineFormProps) => {
   const isNew = initialValues.id == null;
-  const iconOptions = useMemo(() => getTimelineIcons(), []);
+  const icons = useMemo(() => getTimelineIcons(), []);
 
   return (
     <FormProvider
@@ -47,29 +47,35 @@ const TimelineForm = ({
       validationSchema={TimelineSchema}
       onSubmit={onSubmit}
     >
-      <Form>
-        <FormInput
-          name="name"
-          title={t`Title`}
-          placeholder={t`Product releases`}
-          autoFocus
-          fullWidth
-        />
-        <FormTextArea name="description" title={t`Description`} fullWidth />
-        <FormSelect name="icon" title={t`Default icon`} options={iconOptions} />
-        <TimelineFormFooter>
-          <FormErrorMessage inline />
-          {!isNew && (
-            <FormArchiveButton onClick={onArchive}>
-              {t`Archive timeline and all events`}
-            </FormArchiveButton>
-          )}
-          <Button type="button" onClick={onCancel}>
-            {t`Cancel`}
-          </Button>
-          <FormSubmitButton title={isNew ? t`Create` : t`Update`} primary />
-        </TimelineFormFooter>
-      </Form>
+      {({ dirty }) => (
+        <Form disabled={!dirty}>
+          <FormInput
+            name="name"
+            title={t`Title`}
+            placeholder={t`Product releases`}
+            autoFocus
+            fullWidth
+          />
+          <FormTextArea name="description" title={t`Description`} fullWidth />
+          <FormSelect name="icon" title={t`Default icon`} options={icons} />
+          <TimelineFormFooter>
+            <FormErrorMessage inline />
+            {!isNew && (
+              <FormArchiveButton onClick={onArchive}>
+                {t`Archive timeline and all events`}
+              </FormArchiveButton>
+            )}
+            <Button type="button" onClick={onCancel}>
+              {t`Cancel`}
+            </Button>
+            <FormSubmitButton
+              title={isNew ? t`Create` : t`Update`}
+              disabled={!dirty}
+              primary
+            />
+          </TimelineFormFooter>
+        </Form>
+      )}
     </FormProvider>
   );
 };
