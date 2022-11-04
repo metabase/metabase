@@ -225,7 +225,7 @@ export function ObjectDetailFn({
   const hasRelationships =
     showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
 
-  const showHeader = settings["detail.showHeader"] !== false;
+  const showHeader = !!settings["detail.showHeader"];
 
   return (
     <ObjectDetailContainer wide={hasRelationships}>

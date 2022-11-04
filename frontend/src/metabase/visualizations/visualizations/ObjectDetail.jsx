@@ -54,7 +54,7 @@ const ObjectDetailProperties = {
       section: t`Options`,
       title: t`Show Header`,
       widget: "toggle",
-      default: true,
+      default: false,
     },
   },
   columnSettings: column => {
