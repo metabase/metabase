@@ -1,13 +1,15 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import { Timeline, TimelineData } from "metabase-types/api";
+import Form from "metabase/containers/FormikForm";
+import forms from "metabase/entities/timelines/forms";
+import { Timeline } from "metabase-types/api";
 import ModalBody from "../ModalBody";
+import ModalDangerButton from "../ModalDangerButton";
 import ModalHeader from "../ModalHeader";
-import TimelineForm from "../TimelineForm";
 
 export interface EditTimelineModalProps {
   timeline: Timeline;
-  onSubmit: (values: Timeline) => void;
+  onSubmit: (values: Partial<Timeline>) => void;
   onSubmitSuccess?: () => void;
   onArchive: (timeline: Timeline) => void;
   onArchiveSuccess?: () => void;
@@ -25,15 +27,15 @@ const EditTimelineModal = ({
   onClose,
 }: EditTimelineModalProps): JSX.Element => {
   const initialValues = useMemo(() => {
-    return getInitialValues(timeline);
+    return { ...timeline, default: false };
   }, [timeline]);
 
   const handleSubmit = useCallback(
-    async (values: TimelineData) => {
-      await onSubmit(getSubmitValues(values, timeline));
+    async (values: Partial<Timeline>) => {
+      await onSubmit(values);
       onSubmitSuccess?.();
     },
-    [timeline, onSubmit, onSubmitSuccess],
+    [onSubmit, onSubmitSuccess],
   );
 
   const handleArchive = useCallback(async () => {
@@ -45,30 +47,21 @@ const EditTimelineModal = ({
     <div>
       <ModalHeader title={t`Edit event timeline`} onClose={onClose} />
       <ModalBody>
-        <TimelineForm
+        <Form
+          form={forms.details}
           initialValues={initialValues}
+          isModal={true}
           onSubmit={handleSubmit}
-          onArchive={handleArchive}
-          onCancel={onCancel}
+          onClose={onCancel}
+          footerExtraButtons={
+            <ModalDangerButton onClick={handleArchive}>
+              {t`Archive timeline and all events`}
+            </ModalDangerButton>
+          }
         />
       </ModalBody>
     </div>
   );
 };
-
-const getInitialValues = (timeline: Timeline): TimelineData => ({
-  ...timeline,
-  default: false,
-  description: timeline.description || "",
-});
-
-const getSubmitValues = (
-  values: TimelineData,
-  timeline: Timeline,
-): Timeline => ({
-  ...timeline,
-  ...values,
-  description: values.description || null,
-});
 
 export default EditTimelineModal;

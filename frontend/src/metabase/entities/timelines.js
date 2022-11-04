@@ -7,12 +7,14 @@ import { createEntity, undo } from "metabase/lib/entities";
 import { getDefaultTimeline, getTimelineName } from "metabase/lib/timelines";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import TimelineEvents from "./timeline-events";
+import forms from "./timelines/forms";
 
 const Timelines = createEntity({
   name: "timelines",
   nameOne: "timeline",
   path: "/api/timeline",
   schema: TimelineSchema,
+  forms,
 
   api: {
     list: (params, ...args) => {

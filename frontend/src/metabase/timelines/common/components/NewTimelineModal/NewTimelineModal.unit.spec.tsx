@@ -1,27 +1,25 @@
-import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import React, { FormHTMLAttributes } from "react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import {
-  createMockCollection,
-  createMockTimelineData,
-} from "metabase-types/api/mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
 import NewTimelineModal, { NewTimelineModalProps } from "./NewTimelineModal";
 
+const FormMock = (props: FormHTMLAttributes<HTMLFormElement>) => (
+  <form {...props}>
+    <button>Create</button>
+  </form>
+);
+
+jest.mock("metabase/containers/FormikForm", () => FormMock);
+
 describe("NewTimelineModal", () => {
-  it("should submit modal", async () => {
+  it("should submit modal", () => {
     const props = getProps();
-    const values = createMockTimelineData();
 
     render(<NewTimelineModal {...props} />);
-    userEvent.type(screen.getByLabelText("Name"), values.name);
-    await waitFor(() => {
-      expect(screen.getByText("Create")).toBeEnabled();
-    });
-
     userEvent.click(screen.getByText("Create"));
-    await waitFor(() => {
-      expect(props.onSubmit).toHaveBeenCalledWith(values, props.collection);
-    });
+
+    expect(props.onSubmit).toHaveBeenCalled();
   });
 });
 
