@@ -53,7 +53,7 @@ const TimelineForm = ({
         <FormInput name="description" title={t`Description`} fullWidth />
         <FormSelect name="icon" title={t`Default icon`} options={iconOptions} />
         <TimelineFormFooter>
-          <FormErrorMessage />
+          <FormErrorMessage inline />
           <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
           <FormSubmitButton
             title={initialValues.id ? t`Update` : t`Create`}
