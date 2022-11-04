@@ -335,7 +335,9 @@
       :labels      labels}
      (when (:graph.show_goal viz-settings)
        {:goal {:value (:graph.goal_value viz-settings)
-               :label (or (:graph.goal_label viz-settings) (tru "Goal"))}}))))
+               :label (or (:graph.goal_label viz-settings) (tru "Goal"))}})
+     (when (:series_settings viz-settings)
+       {:series_settings (:series_settings viz-settings)}))))
 
 (defn- set-default-stacked
   "Default stack type is stacked for area chart with more than one metric.

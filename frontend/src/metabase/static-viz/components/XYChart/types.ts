@@ -56,6 +56,7 @@ export type ChartSettings = {
     bottom?: string;
     right?: string;
   };
+  series_settings?: Record<string, { color: string }>;
 };
 
 export interface Dimensions {

@@ -1,4 +1,5 @@
 import React from "react";
+import _ from "underscore";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
 import { isNotNull } from "metabase/core/utils/array";
 import { getColorsForValues } from "metabase/lib/colors/charts";
@@ -77,7 +78,12 @@ const LineAreaBarChart = ({
     })
     .filter(isNotNull);
   const palette = { ...colors, ...instanceColors };
-  const chartColors = getColorsForValues(keys, undefined, palette);
+  const seriesColors = settings.series_settings
+    ? _.mapObject(settings.series_settings, value => {
+        return value.color;
+      })
+    : undefined;
+  const chartColors = getColorsForValues(keys, seriesColors, palette);
   const seriesWithColors = series.map((singleSeries, index) => {
     return {
       ...singleSeries,
