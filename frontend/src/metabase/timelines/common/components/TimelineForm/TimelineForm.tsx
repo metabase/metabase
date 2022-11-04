@@ -6,6 +6,7 @@ import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormInput from "metabase/core/components/FormInput";
+import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
@@ -50,7 +51,7 @@ const TimelineForm = ({
           autoFocus
           fullWidth
         />
-        <FormInput name="description" title={t`Description`} fullWidth />
+        <FormTextArea name="description" title={t`Description`} fullWidth />
         <FormSelect name="icon" title={t`Default icon`} options={iconOptions} />
         <TimelineFormFooter>
           <FormErrorMessage inline />
