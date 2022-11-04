@@ -10,8 +10,8 @@ describe("EditTimelineModal", () => {
     const name = "Another timeline";
 
     render(<EditTimelineModal {...props} />);
-    userEvent.clear(screen.getByLabelText("Title"));
-    userEvent.type(screen.getByLabelText("Title"), name);
+    userEvent.clear(screen.getByLabelText("Name"));
+    userEvent.type(screen.getByLabelText("Name"), name);
     userEvent.click(screen.getByText("Update"));
 
     await waitFor(() => {

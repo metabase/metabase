@@ -51,7 +51,7 @@ const TimelineForm = ({
         <Form disabled={!dirty}>
           <FormInput
             name="name"
-            title={t`Title`}
+            title={t`Name`}
             placeholder={t`Product releases`}
             autoFocus
             fullWidth

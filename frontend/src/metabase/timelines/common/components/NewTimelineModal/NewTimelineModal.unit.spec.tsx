@@ -13,7 +13,7 @@ describe("NewTimelineModal", () => {
     const values = createMockTimelineData();
 
     render(<NewTimelineModal {...props} />);
-    userEvent.type(screen.getByLabelText("Title"), values.name);
+    userEvent.type(screen.getByLabelText("Name"), values.name);
     await waitFor(() => {
       expect(screen.getByText("Create")).toBeEnabled();
     });
