@@ -11,6 +11,7 @@ import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { TimelineData } from "metabase-types/api";
+import FormArchiveButton from "../FormArchiveButton";
 import { TimelineFormFooter } from "./TimelineForm.styled";
 
 const TimelineSchema = Yup.object({
@@ -27,14 +28,17 @@ const TimelineSchema = Yup.object({
 export interface TimelineFormProps {
   initialValues: TimelineData;
   onSubmit: (data: TimelineData) => void;
-  onCancel: () => void;
+  onArchive?: () => void;
+  onCancel?: () => void;
 }
 
 const TimelineForm = ({
   initialValues,
   onSubmit,
+  onArchive,
   onCancel,
 }: TimelineFormProps) => {
+  const isNew = initialValues.id == null;
   const iconOptions = useMemo(() => getTimelineIcons(), []);
 
   return (
@@ -55,11 +59,15 @@ const TimelineForm = ({
         <FormSelect name="icon" title={t`Default icon`} options={iconOptions} />
         <TimelineFormFooter>
           <FormErrorMessage inline />
-          <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
-          <FormSubmitButton
-            title={initialValues.id ? t`Update` : t`Create`}
-            primary
-          />
+          {!isNew && (
+            <FormArchiveButton onClick={onArchive}>
+              {t`Archive timeline and all events`}
+            </FormArchiveButton>
+          )}
+          <Button type="button" onClick={onCancel}>
+            {t`Cancel`}
+          </Button>
+          <FormSubmitButton title={isNew ? t`Create` : t`Update`} primary />
         </TimelineFormFooter>
       </Form>
     </FormProvider>
