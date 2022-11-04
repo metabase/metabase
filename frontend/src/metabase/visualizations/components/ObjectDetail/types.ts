@@ -39,6 +39,7 @@ export interface ObjectDetailProps {
   isDataApp?: boolean;
   showActions?: boolean;
   showRelations?: boolean;
+  showHeader?: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
   fetchTableFks: (id: number) => void;

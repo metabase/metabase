@@ -117,6 +117,7 @@ export function ObjectDetailFn({
   canZoomNextRow,
   showActions = true,
   showRelations = true,
+  showHeader,
   onVisualizationClick,
   visualizationIsClickable,
   fetchTableFks,
@@ -225,8 +226,6 @@ export function ObjectDetailFn({
   const hasRelationships =
     showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
 
-  const showHeader = !!settings["detail.showHeader"];
-
   return (
     <ObjectDetailContainer wide={hasRelationships}>
       {hasNotFoundError ? (
@@ -294,6 +293,7 @@ export function ObjectDetailWrapper({
       >
         <ObjectDetailFn
           {...props}
+          showHeader
           data={data}
           question={question}
           closeObjectDetail={closeObjectDetail}
@@ -319,6 +319,7 @@ export function ObjectDetailWrapper({
         zoomedRow={data.rows[currentObjectIndex]}
         data={data}
         question={question}
+        showHeader={props.settings["detail.showHeader"]}
         showActions={false}
         showRelations={false}
         closeObjectDetail={closeObjectDetail}
