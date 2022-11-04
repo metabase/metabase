@@ -3,7 +3,12 @@ import { createMockUser } from "./user";
 
 export const createMockTimeline = (opts?: Partial<Timeline>): Timeline => ({
   id: 1,
-  ...createMockTimelineData(opts),
+  collection_id: 1,
+  name: "Events",
+  description: null,
+  icon: "star",
+  default: false,
+  archived: false,
   ...opts,
 });
 

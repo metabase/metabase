@@ -3,6 +3,12 @@ import { User } from "./user";
 
 export interface Timeline extends TimelineData {
   id: number;
+  collection_id: number | null;
+  name: string;
+  description: string | null;
+  icon: string;
+  default: boolean;
+  archived: boolean;
   collection?: Collection;
   events?: TimelineEvent[];
 }
