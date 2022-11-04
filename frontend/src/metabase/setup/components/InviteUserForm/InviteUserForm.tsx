@@ -9,8 +9,14 @@ import { InviteInfo, UserInfo } from "metabase-types/store";
 import { UserFieldGroup } from "./InviteUserForm.styled";
 
 const InviteUserSchema = Yup.object({
-  first_name: Yup.string().max(100, t`must be 100 characters or less`),
-  last_name: Yup.string().max(100, t`must be 100 characters or less`),
+  first_name: Yup.string().max(
+    100,
+    ({ max }) => t`must be ${max} characters or less`,
+  ),
+  last_name: Yup.string().max(
+    100,
+    ({ max }) => t`must be ${max} characters or less`,
+  ),
   email: Yup.string()
     .required(t`required`)
     .email(t`must be a valid email address`)
