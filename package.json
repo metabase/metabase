@@ -167,7 +167,6 @@
     "@types/leaflet.heat": "^0.2.1",
     "@types/mini-css-extract-plugin": "^2.4.0",
     "@types/mockdate": "^3.0.0",
-    "@types/moment-timezone": "^0.5.26",
     "@types/mustache": "^4.1.2",
     "@types/postcss-import": "^12.0.1",
     "@types/postcss-url": "^8.0.2",
