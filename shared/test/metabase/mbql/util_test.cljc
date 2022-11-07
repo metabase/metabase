@@ -718,27 +718,29 @@
                    (mbql.u/query->max-rows-limit query))))))))
 
 (t/deftest ^:parallel datetime-arithmetics?-test
-  (t/is (mbql.u/datetime-arithmetics?
-         [:+ [:field-id 13] [:interval -1 :month]]))
-  (t/is (mbql.u/datetime-arithmetics?
-         [:field "a" {:temporal-unit :month}]))
-  (t/is (not (mbql.u/datetime-arithmetics?
-              [:+ [:field-id 13] 3])))
-  (t/is (not (mbql.u/datetime-arithmetics?
-              [:+
-               [:datetime-diff
-                [:datetime-add [:field 13 {:temporal-unit :default}] 1 "hour"]
-                [:field 14 {:temporal-unit :default}]]
-               1])))
-  (t/is (mbql.u/datetime-arithmetics?
-         [:+
-          [:datetime-add
-           [:field 13 {:temporal-unit :default}]
-           [:datetime-diff
-            [:datetime-add [:field 13 {:temporal-unit :default}] 1 "hour"]
-            [:field 14 {:temporal-unit :default}]]
-           "hour"]
-          1])))
+  (doseq [clause [[:+ [:field-id 13] [:interval -1 :month]]
+                  [:+ [:field "a" {:temporal-unit :month}] 1]
+                  [:+
+                   [:datetime-subtract [:field 14] 1 "hour"]
+                   [:datetime-subtract [:field-id 13] 1 "day"]]
+                  [:+
+                   [:datetime-add
+                    [:field 13 {:temporal-unit :default}]
+                    [:datetime-diff
+                     [:datetime-subtract [:field 13 {:temporal-unit :default}] 1 "hour"]
+                     [:field 14 {:temporal-unit :default}]]
+                    "hour"]
+                   1]]]
+    (t/is (mbql.u/datetime-arithmetics? clause)
+          clause))
+  (doseq [clause [[:+ [:field-id 13] 3]
+                  [:+
+                   [:datetime-diff
+                    [:datetime-add [:field 13 {:temporal-unit :default}] 1 "hour"]
+                    [:field 14 {:temporal-unit :default}]]
+                   1]]]
+    (t/is (not (mbql.u/datetime-arithmetics? clause))
+          clause)))
 
 (t/deftest ^:parallel expression-with-name-test
   (t/is (= [:+ 1 1]

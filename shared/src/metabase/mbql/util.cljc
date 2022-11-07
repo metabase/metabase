@@ -465,7 +465,7 @@
     #{:datetime-diff :temporal-extract}
     false
 
-    #{:interval :relative-datetime :datetime-add}
+    #{:interval :relative-datetime :datetime-add :datetime-subtract}
     true
 
     [:field _ (_ :guard :temporal-unit)]
