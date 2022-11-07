@@ -1,6 +1,6 @@
 import React from "react";
+import { t } from "ttag";
 
-import humanize from "inflection";
 import { isEmpty } from "metabase/lib/validate";
 import { Avatar } from "metabase/components/UserAvatar";
 
@@ -48,14 +48,14 @@ export const VariantInfoHeader = ({
     getColumnTitle(subtitle2Index),
   ].filter(Boolean);
 
-  const leftTitleString =
+  const leftTitle =
     leftTitleArray.length === 3
-      ? `${leftTitleArray[0]}, ${leftTitleArray[1]}, and ${leftTitleArray[2]}`
+      ? t`${leftTitleArray[0]}, ${leftTitleArray[1]}, and ${leftTitleArray[2]}`
       : leftTitleArray.join(" & ");
 
   return (
     <ListHeader hasImage={!isEmpty(imageIndex)}>
-      <div>{leftTitleString}</div>
+      <div>{leftTitle}</div>
       <div>{getColumnTitle(infoIndex)}</div>
     </ListHeader>
   );
