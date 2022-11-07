@@ -172,6 +172,10 @@ class ChartSettings extends Component {
       settings,
       computedSettings,
       col,
+      _.noop,
+      {
+        series,
+      },
     ).some(widget => !widget.hidden);
   }
 
