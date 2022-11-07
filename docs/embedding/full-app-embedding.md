@@ -113,19 +113,19 @@ If you're using [JWT](../people-and-groups/authenticating-with-jwt.md) for SSO, 
 To keep up with changes to an embedded Metabase URL (for example, when a filter is applied), set up your app to listen for "location" messages from the embedded Metabase. If you want to use this message for deep-linking, note that "location" mirrors "window.location".
 
 ```
-{ “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT_OR_URL }}
+{ "metabase": { "type": "location", "location": LOCATION_OBJECT_OR_URL }}
 ```
 
 To make an embedded Metabase page (like a question) fill up the entire iframe in your app, set up your app to listen for a "frame" message with "normal" mode from Metabase:
 
 ```
-{ “metabase”: { “type”: “frame”, “frame”: { “mode”: “normal” }}}
+{ "metabase": { "type": "frame", "frame": { "mode": "normal" }}}
 ```
 
 To specify the size of an iframe in your app so that it matches an embedded Metabase page (such as a dashboard), set up your app to listen for a "frame" message with "fit" mode from Metabase:
 
 ```
-{ “metabase”: { “type”: “frame”, “frame”: { “mode”: “fit”, height: HEIGHT_IN_PIXELS }}}
+{ "metabase": { "type": "frame", "frame": { "mode": "fit", height: HEIGHT_IN_PIXELS }}}
 ```
 
 ## Supported postMessage messages _to_ embedded Metabase
@@ -133,7 +133,7 @@ To specify the size of an iframe in your app so that it matches an embedded Meta
 To change an embedding URL, send a "location" message from your app to Metabase:
 
 ```
-{ “metabase”: { “type”: “location”, “location”: LOCATION_OBJECT_OR_URL }}
+{ "metabase": { "type": "location", "location": LOCATION_OBJECT_OR_URL }}
 ```
 
 ## Showing or hiding Metabase UI components
@@ -188,7 +188,7 @@ To hide a question or dashboard's title, [additional info](#additional_info), an
 
 Visible by default on question and dashboard pages, when the [header](#header) is enabled.
 
-To hide the gray text “Edited X days ago by FirstName LastName”, as well as the breadcrumbs with collection, database, and table names:
+To hide the gray text "Edited X days ago by FirstName LastName", as well as the breadcrumbs with collection, database, and table names:
 
 `header=false&additional_info=false`
 
