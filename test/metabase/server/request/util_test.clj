@@ -102,7 +102,7 @@
     ;; multiple addresses at once
     ;; store.metabase.com, Google DNS
     ["52.206.149.9" "2001:4860:4860::8844"]
-    {(s/required-key "52.206.149.9")         {:description (s/eq "Ashburn, Virginia, United States")
+    {(s/required-key "52.206.149.9")         {:description (s/eq "Ashburn, United States")
                                               :timezone    (s/eq (t/zone-id "America/New_York"))}
      (s/required-key "2001:4860:4860::8844") {:description (s/eq "United States")
                                               :timezone    (s/eq (t/zone-id "America/Chicago"))}}

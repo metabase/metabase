@@ -58,6 +58,9 @@ function getHorizontalPropValue(
   return false;
 }
 
+/**
+ * @deprecated
+ */
 function FormField({
   className,
   formField,
