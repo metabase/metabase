@@ -9,7 +9,6 @@ import type {
 import type { UiParameter } from "metabase-lib/parameters/types";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
-import ActionOptions from "../ActionOptions";
 import CrossfilterOptions from "../CrossfilterOptions";
 import LinkOptions from "../LinkOptions";
 import { SidebarItem } from "../SidebarItem";
@@ -39,9 +38,6 @@ function ClickBehaviorOptions({
   parameters,
   updateSettings,
 }: ClickBehaviorOptionsProps) {
-  if (isActionDashboardCard(dashcard)) {
-    return <ActionOptions dashcard={dashcard} parameters={parameters} />;
-  }
   if (clickBehavior.type === "link") {
     return (
       <LinkOptions
