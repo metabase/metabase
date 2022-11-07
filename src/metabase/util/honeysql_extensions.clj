@@ -161,20 +161,12 @@
 (alter-meta! #'->TypedHoneySQLForm assoc :private true)
 (alter-meta! #'map->TypedHoneySQLForm assoc :private true)
 
-(def ^:private available-timezones (java.time.ZoneId/getAvailableZoneIds))
-
-(def ^:private ConvertTimezoneInfo
-  "Type info for `convert-timezone` expression."
-  {:source-timezone (apply s/enum available-timezones)
-   :target-timezone (apply s/enum available-timezones)})
-
 (def ^:private NormalizedTypeInfo
   {(s/optional-key ::database-type) (s/constrained
                                      su/NonBlankString
                                      (fn [s]
                                        (= s (str/lower-case s)))
-                                     "lowercased string")
-   (s/optional-key ::convert-timezone) ConvertTimezoneInfo})
+                                     "lowercased string")})
 
 (s/defn ^:private normalize-type-info :- NormalizedTypeInfo
   "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
@@ -213,12 +205,6 @@
   [type-info]
   {:added "0.39.0"}
   (::database-type type-info))
-
-(defn type-info->convert-timezone-info
-  "For a given type-info, returns the `convert-timezone`."
-  [type-info]
-  {:added "0.45.0"}
-  (::convert-timezone type-info))
 
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `database-type`?
