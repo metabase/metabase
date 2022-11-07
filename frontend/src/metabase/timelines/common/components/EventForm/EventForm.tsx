@@ -31,7 +31,7 @@ const EventSchema = Yup.object({
 
 export interface EventFormProps {
   initialValues: TimelineEventData;
-  timelines: Timeline[];
+  timelines?: Timeline[];
   onSubmit: (data: TimelineEventData) => void;
   onArchive?: () => void;
   onCancel?: () => void;
@@ -39,7 +39,7 @@ export interface EventFormProps {
 
 const EventForm = ({
   initialValues,
-  timelines,
+  timelines = [],
   onSubmit,
   onArchive,
   onCancel,

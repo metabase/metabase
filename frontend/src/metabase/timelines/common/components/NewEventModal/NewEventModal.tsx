@@ -15,8 +15,8 @@ import ModalHeader from "../ModalHeader";
 export interface NewEventModalProps {
   timelines?: Timeline[];
   collection?: Collection;
-  cardId?: number;
   source: TimelineEventSource;
+  cardId?: number;
   onSubmit: (
     values: TimelineEventData,
     collection?: Collection,
@@ -30,8 +30,8 @@ export interface NewEventModalProps {
 const NewEventModal = ({
   timelines = [],
   collection,
-  cardId,
   source,
+  cardId,
   onSubmit,
   onSubmitSuccess,
   onCancel,
