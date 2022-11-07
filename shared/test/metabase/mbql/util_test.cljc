@@ -723,6 +723,10 @@
   (t/is (mbql.u/datetime-arithmetics?
          [:field "a" {:temporal-unit :month}]))
   (t/is (not (mbql.u/datetime-arithmetics?
+              [:+ 1 [:temporal-extract
+                     [:+ [:field-id 13] [:interval -1 :month]]
+                     :year]])))
+  (t/is (not (mbql.u/datetime-arithmetics?
               [:+ [:field-id 13] 3]))))
 
 (t/deftest ^:parallel expression-with-name-test
