@@ -35,8 +35,7 @@
                                             {:mvn/version "2.13.2.2"}           ; JSON processor used by snowplow-java-tracker (pinned version due to CVE-2020-36518)
   com.h2database/h2                         {:mvn/version "1.4.197"}            ; embedded SQL database
   com.snowplowanalytics/snowplow-java-tracker
-                                            {:mvn/version "0.12.0"              ; Snowplow analytics
-                                             :exclusions [com.fasterxml.jackson.core/jackson-databind]}
+                                            {:mvn/version "1.0.0"}              ; Snowplow analytics
   com.taoensso/nippy                        {:mvn/version "3.1.1"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.0"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink

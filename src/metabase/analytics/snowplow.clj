@@ -11,9 +11,9 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
             [toucan.db :as db])
-  (:import [com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder]
-           [com.snowplowanalytics.snowplow.tracker.emitter BatchEmitter BatchEmitter$Builder Emitter]
-           [com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder]
+  (:import [com.snowplowanalytics.snowplow.tracker Snowplow Subject$SubjectBuilder Tracker]
+           [com.snowplowanalytics.snowplow.tracker.configuration EmitterConfiguration TrackerConfiguration NetworkConfiguration]
+           [com.snowplowanalytics.snowplow.tracker.events SelfDescribing SelfDescribing$Builder]
            [com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter ApacheHttpClientAdapter$Builder]
            com.snowplowanalytics.snowplow.tracker.payload.SelfDescribingJson
            [org.apache.http.client.config CookieSpecs RequestConfig]
@@ -78,33 +78,26 @@
                     (track-event! ::new-instance-created)))
                 (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation))))
 
-(def ^:private emitter
-  "Returns an instance of a Snowplow emitter"
-  (let [emitter* (delay
-                   (let [request-config (-> (RequestConfig/custom)
-                                            ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
-                                            ;; header in request response (PR #24579)
-                                            (.setCookieSpec CookieSpecs/STANDARD)
-                                            (.build))
-                         client (-> (HttpClients/custom)
-                                    (.setConnectionManager (PoolingHttpClientConnectionManager.))
-                                    (.setDefaultRequestConfig request-config)
-                                    (.build))
-                         builder (-> (ApacheHttpClientAdapter/builder)
-                                     (.httpClient client)
-                                     (.url (snowplow-url)))
-                         adapter (.build ^ApacheHttpClientAdapter$Builder builder)
-                         batch-emitter-builder (-> (BatchEmitter/builder)
-                                                   (.batchSize 1)
-                                                   (.httpClientAdapter adapter))]
-                     (.build ^BatchEmitter$Builder batch-emitter-builder)))]
-     (fn [] @emitter*)))
-
 (def ^:private tracker
-  "Returns instance of a Snowplow tracker"
-  (let [tracker* (delay
-                  (-> (Tracker$TrackerBuilder. ^Emitter (emitter) "sp" "metabase")
-                      .build))]
+  "Returns an instance of a Snowplow tracker"
+  (let [request-config (-> (RequestConfig/custom)
+                           ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
+                           ;; header in request response (PR #24579)
+                           (.setCookieSpec CookieSpecs/STANDARD)
+                           (.build))
+        client         (-> (HttpClients/custom)
+                           (.setConnectionManager (PoolingHttpClientConnectionManager.))
+                           (.setDefaultRequestConfig request-config)
+                           (.build))
+        builder        (-> (ApacheHttpClientAdapter/builder)
+                           (.httpClient client)
+                           (.url (snowplow-url)))
+        adapter        (.build ^ApacheHttpClientAdapter$Builder builder)
+        tracker*       (delay
+                        (Snowplow/createTracker
+                         (new TrackerConfiguration "sp" "metabase")
+                         (new NetworkConfiguration adapter)
+                         (. (new EmitterConfiguration) batchSize 1)))]
     (fn [] @tracker*)))
 
 (defn- subject
@@ -156,7 +149,7 @@
   "Wrapper function around the `.track` method on a Snowplow tracker. Can be redefined in tests to instead append
   event data to an in-memory store."
   [tracker event]
-  (.track ^Tracker tracker ^Unstructured event))
+  (.track ^Tracker tracker ^SelfDescribing event))
 
 (def ^:private event->schema
   "The schema to use for each analytics event."
@@ -177,11 +170,11 @@
   (when (snowplow-enabled)
     (try
       (let [schema (event->schema event-kw)
-            ^Unstructured$Builder builder (-> (. Unstructured builder)
-                                              (.eventData (payload schema (schema->version schema) event-kw data))
-                                              (.customContext [(context)])
-                                              (cond-> user-id (.subject (subject user-id))))
-            ^Unstructured event (.build builder)]
+            ^SelfDescribing$Builder builder (-> (. SelfDescribing builder)
+                                                (.eventData (payload schema (schema->version schema) event-kw data))
+                                                (.customContext [(context)])
+                                                (cond-> user-id (.subject (subject user-id))))
+            ^SelfDescribing event (.build builder)]
         (track-event-impl! (tracker) event))
       (catch Throwable e
         (log/debug e (trs "Error sending Snowplow analytics event {0}" event-kw))))))
