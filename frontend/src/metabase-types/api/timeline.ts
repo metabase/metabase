@@ -13,8 +13,14 @@ export interface Timeline {
   events?: TimelineEvent[];
 }
 
-export interface TimelineEvent {
+export interface TimelineEvent extends TimelineEventData {
   id: number;
+  creator: User;
+  created_at: string;
+}
+
+export interface TimelineEventData {
+  id?: number;
   timeline_id: number;
   name: string;
   description: string | null;
@@ -23,8 +29,6 @@ export interface TimelineEvent {
   timezone: string;
   time_matters: boolean;
   archived: boolean;
-  creator: User;
-  created_at: string;
 }
 
 export type TimelineEventSource = "question" | "collections" | "api";
