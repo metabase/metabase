@@ -36,6 +36,7 @@ export const ListItemRow = styled.li<{ isClickable?: boolean }>`
   width: 100%;
   border-bottom: 1px solid ${color("border")};
   overflow: hidden;
+  background: ${color("bg-white")};
   &:last-child {
     border-bottom: none;
   }
@@ -43,7 +44,7 @@ export const ListItemRow = styled.li<{ isClickable?: boolean }>`
     props?.isClickable &&
     css`
       &:hover {
-        background-color: ${color("bg-medium")};
+        background-color: ${color("bg-light")};
       }
     `}
 `;
