@@ -5389,6 +5389,13 @@
   dependencies:
     mockdate "*"
 
+"@types/moment-timezone@^0.5.26":
+  version "0.5.30"
+  resolved "https://registry.yarnpkg.com/@types/moment-timezone/-/moment-timezone-0.5.30.tgz#340ed45fe3e715f4a011f5cfceb7cb52aad46fc7"
+  integrity sha512-aDVfCsjYnAQaV/E9Qc24C5Njx1CoDjXsEgkxtp9NyXDpYu4CCbmclb6QhWloS9UTU/8YROUEEdEkWI0D7DxnKg==
+  dependencies:
+    moment-timezone "*"
+
 "@types/mustache@^4.1.2":
   version "4.1.2"
   resolved "https://registry.yarnpkg.com/@types/mustache/-/mustache-4.1.2.tgz#d0e158013c81674a5b6d8780bc3fe234e1804eaf"
@@ -16483,7 +16490,7 @@ module-deps-sortable@^5.0.3:
     through2 "^2.0.0"
     xtend "^4.0.0"
 
-moment-timezone@^0.5.38:
+moment-timezone@*, moment-timezone@^0.5.38:
   version "0.5.38"
   resolved "https://registry.yarnpkg.com/moment-timezone/-/moment-timezone-0.5.38.tgz#9674a5397b8be7c13de820fd387d8afa0f725aad"
   integrity sha512-nMIrzGah4+oYZPflDvLZUgoVUO4fvAqHstvG3xAUnMolWncuAiLDWNnJZj6EwJGMGfb1ZcuTFE6GI3hNOVWI/Q==
