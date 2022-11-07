@@ -66,7 +66,7 @@ const DateWidget = forwardRef(function DateWidget(
           onSubmit={handleClose}
         />
       }
-      onHide={handleClose}
+      onClickOutside={handleClose}
     >
       <DateInput
         {...props}
