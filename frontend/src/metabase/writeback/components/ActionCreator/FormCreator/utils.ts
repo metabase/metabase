@@ -97,7 +97,11 @@ export const getFormField = (
   const fieldProps: ActionFormFieldProps = {
     name: parameter.id,
     type: fieldPropsTypeMap[fieldSettings?.inputType] ?? "input",
-    title: fieldSettings.title ?? fieldSettings.name,
+    title:
+      fieldSettings.title ||
+      fieldSettings.name ||
+      parameter.name ||
+      parameter.id,
     description: fieldSettings.description ?? "",
     placeholder: fieldSettings?.placeholder,
     validate: fieldSettings.required ? validate.required() : _.noop,
