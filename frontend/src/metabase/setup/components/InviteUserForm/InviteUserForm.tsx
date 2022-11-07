@@ -75,7 +75,7 @@ const InviteUserForm = ({
           placeholder={"nicetoseeyou@email.com"}
           fullWidth
         />
-        <FormSubmitButton title={`Send invitation`} primary />
+        <FormSubmitButton title={t`Send invitation`} primary />
       </Form>
     </FormProvider>
   );
