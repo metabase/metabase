@@ -1,5 +1,6 @@
 import React from "react";
 
+import humanize from "inflection";
 import { isEmpty } from "metabase/lib/validate";
 import { Avatar } from "metabase/components/UserAvatar";
 
