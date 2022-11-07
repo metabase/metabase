@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
 
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 
@@ -44,12 +45,7 @@ export const DataReferenceTriggerButton = ({
 }: {
   onClick: () => void;
 }) => (
-  <TriggerButton
-    title={t`Data Reference`}
-    borderless
-    onClick={onClick}
-    style={{ position: "absolute", top: 10, right: 10, zIndex: 10 }}
-  >
-    <Icon name="reference" size={16} />
-  </TriggerButton>
+  <Tooltip tooltip={t`Data Reference`}>
+    <TriggerButton onlyIcon onClick={onClick} icon="reference" iconSize={16} />
+  </Tooltip>
 );
