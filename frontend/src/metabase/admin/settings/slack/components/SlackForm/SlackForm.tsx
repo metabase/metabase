@@ -24,13 +24,13 @@ export interface SlackFormProps {
 const SlackForm = ({
   initialValues,
   isReadOnly,
-  onSubmit,
+  onSubmit = _.noop,
 }: SlackFormProps): JSX.Element => {
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={!isReadOnly ? SlackSchema : undefined}
-      onSubmit={onSubmit ?? _.noop}
+      onSubmit={onSubmit}
     >
       <Form>
         <FormInput
