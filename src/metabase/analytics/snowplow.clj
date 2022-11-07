@@ -97,7 +97,7 @@
                         (Snowplow/createTracker
                          (new TrackerConfiguration "sp" "metabase")
                          (new NetworkConfiguration adapter)
-                         (. (new EmitterConfiguration) batchSize 1)))]
+                         (-> (new EmitterConfiguration) (.batchSize 1))))]
     (fn [] @tracker*)))
 
 (defn- subject
