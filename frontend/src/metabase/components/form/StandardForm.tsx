@@ -10,6 +10,9 @@ interface Props extends BaseFormProps, CustomFormFooterProps {
   onClose?: () => void;
 }
 
+/**
+ * @deprecated
+ */
 const StandardForm = ({
   submitTitle,
   submitFullWidth,

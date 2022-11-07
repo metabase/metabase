@@ -52,6 +52,9 @@ export function getWidgetComponent(formField) {
   return formField.type || FormInputWidget;
 }
 
+/**
+ * @deprecated
+ */
 const FormWidget = forwardRef(function FormWidget(
   { field, formField, ...props },
   ref,
