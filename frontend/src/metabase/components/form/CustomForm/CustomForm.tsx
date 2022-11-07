@@ -50,6 +50,9 @@ function CustomForm(props: CustomFormProps) {
   return <Form {...props} />;
 }
 
+/**
+ * @deprecated
+ */
 class CustomFormWithLegacyContext extends React.Component<CustomFormProps> {
   static childContextTypes = LegacyContextTypes;
 
