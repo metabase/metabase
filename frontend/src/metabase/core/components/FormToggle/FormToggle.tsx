@@ -16,7 +16,7 @@ const FormToggle = forwardRef(function FormToggle(
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [field, meta, helpers] = useField(name);
+  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
 
   return (
     <FormField
@@ -27,15 +27,15 @@ const FormToggle = forwardRef(function FormToggle(
       description={description}
       orientation="horizontal"
       htmlFor={id}
-      error={meta.touched ? meta.error : undefined}
+      error={touched ? error : undefined}
     >
       <Toggle
         {...props}
         id={id}
         name={name}
-        value={field.value}
-        onChange={helpers.setValue}
-        onBlur={field.onBlur}
+        value={value}
+        onChange={setValue}
+        onBlur={onBlur}
       />
     </FormField>
   );
