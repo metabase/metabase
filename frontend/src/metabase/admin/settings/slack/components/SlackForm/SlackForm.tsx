@@ -1,7 +1,6 @@
 import React from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import _ from "underscore";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormInput from "metabase/core/components/FormInput";
@@ -24,7 +23,7 @@ export interface SlackFormProps {
 const SlackForm = ({
   initialValues,
   isReadOnly,
-  onSubmit = _.noop,
+  onSubmit = () => undefined,
 }: SlackFormProps): JSX.Element => {
   return (
     <FormProvider
