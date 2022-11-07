@@ -9,10 +9,21 @@ export interface FormTextAreaProps
   name: string;
   title?: string;
   description?: ReactNode;
+  infoLabel?: string;
+  infoTooltip?: string;
 }
 
 const FormTextArea = forwardRef(function FormTextArea(
-  { name, className, style, title, description, ...props }: FormTextAreaProps,
+  {
+    name,
+    className,
+    style,
+    title,
+    description,
+    infoLabel,
+    infoTooltip,
+    ...props
+  }: FormTextAreaProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
@@ -27,6 +38,8 @@ const FormTextArea = forwardRef(function FormTextArea(
       description={description}
       htmlFor={id}
       error={touched ? error : undefined}
+      infoLabel={infoLabel}
+      infoTooltip={infoTooltip}
     >
       <TextArea
         {...props}
