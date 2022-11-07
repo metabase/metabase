@@ -1,7 +1,7 @@
 import { Collection } from "./collection";
 import { User } from "./user";
 
-export interface Timeline extends TimelineData {
+export interface Timeline {
   id: number;
   collection_id: number | null;
   name: string;
