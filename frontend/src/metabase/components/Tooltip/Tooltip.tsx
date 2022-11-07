@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import * as Tippy from "@tippyjs/react";
 import * as ReactIs from "react-is";
 
-import { isReactDOMTypeElement } from "metabase-types/guards/react";
+import { isReactDOMTypeElement } from "metabase-types/guards";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";

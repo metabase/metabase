@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import _ from "underscore";
 
-import { isElement } from "metabase-types/guards/dom";
+import { isElement } from "metabase-types/guards";
 
 type PopoverData = {
   contentEl: Element;

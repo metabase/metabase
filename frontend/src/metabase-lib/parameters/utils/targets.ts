@@ -4,7 +4,7 @@ import {
   ParameterVariableTarget,
 } from "metabase-types/types/Parameter";
 import { SavedCard } from "metabase-types/types/Card";
-import { isDimensionTarget } from "metabase-types/guards/parameters";
+import { isDimensionTarget } from "metabase-types/guards";
 import Dimension from "metabase-lib/Dimension";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Question from "metabase-lib/Question";

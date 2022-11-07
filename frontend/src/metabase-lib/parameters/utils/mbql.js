@@ -1,7 +1,7 @@
 import moment from "moment-timezone";
 import _ from "underscore";
 
-import { isDimensionTarget } from "metabase-types/guards/parameters";
+import { isDimensionTarget } from "metabase-types/guards";
 import {
   setStartingFrom,
   EXCLUDE_OPTIONS,

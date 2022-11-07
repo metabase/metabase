@@ -1,11 +1,12 @@
 import type {
   ActionDashboardCard,
+  DashboardOrderedCard,
   Dashboard,
   DataAppNavItem,
 } from "metabase-types/api";
 
 export function isActionDashboardCard(
-  dashcard: unknown,
+  dashcard: DashboardOrderedCard | ActionDashboardCard,
 ): dashcard is ActionDashboardCard {
   return "action" in (dashcard as ActionDashboardCard);
 }

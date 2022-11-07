@@ -7,7 +7,7 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 
-import { isNavItem } from "metabase-types/guards/data-apps";
+import { isNavItem } from "metabase-types/guards";
 
 import { appendSlug } from "./utils";
 

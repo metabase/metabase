@@ -12,7 +12,7 @@ import type {
   DashboardOrderedCard,
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
-import { isFieldFilterParameter } from "metabase-types/guards/parameters";
+import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
   UiParameter,
   FieldFilterUiParameter,
