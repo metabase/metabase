@@ -29,7 +29,7 @@ const FormRadio = forwardRef(function FormRadio<
   }: FormRadioProps<TValue, TOption>,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [field, meta, helpers] = useField(name);
+  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
 
   return (
     <FormField
@@ -38,14 +38,14 @@ const FormRadio = forwardRef(function FormRadio<
       style={style}
       title={title}
       description={description}
-      error={meta.touched ? meta.error : undefined}
+      error={touched ? error : undefined}
     >
       <Radio
         {...props}
         name={name}
-        value={field.value}
-        onChange={helpers.setValue}
-        onBlur={field.onBlur}
+        value={value}
+        onChange={setValue}
+        onBlur={onBlur}
       />
     </FormField>
   );
