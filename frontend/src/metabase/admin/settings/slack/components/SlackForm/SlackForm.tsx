@@ -54,7 +54,7 @@ const SlackForm = ({
         />
         {!isReadOnly && (
           <>
-            <FormSubmitButton title={t`Save changes`} />
+            <FormSubmitButton title={t`Save changes`} primary />
             <FormErrorMessage />
           </>
         )}
