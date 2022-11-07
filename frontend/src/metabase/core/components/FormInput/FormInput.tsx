@@ -13,7 +13,7 @@ export interface FormInputProps
 
 const FormInput = forwardRef(function FormInput(
   { name, className, style, title, description, ...props }: FormInputProps,
-  ref: Ref<HTMLInputElement>,
+  ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [field, meta] = useField(name);

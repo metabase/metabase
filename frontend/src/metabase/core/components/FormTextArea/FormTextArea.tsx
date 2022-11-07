@@ -1,31 +1,22 @@
 import React, { forwardRef, ReactNode, Ref } from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import NumericInput, {
-  NumericInputProps,
-} from "metabase/core/components/NumericInput";
+import TextArea, { TextAreaProps } from "metabase/core/components/TextArea";
 import FormField from "metabase/core/components/FormField";
 
-export interface FormNumericInputProps
-  extends Omit<NumericInputProps, "value" | "error" | "onChange" | "onBlur"> {
+export interface FormTextAreaProps
+  extends Omit<TextAreaProps, "value" | "error" | "onChange" | "onBlur"> {
   name: string;
   title?: string;
   description?: ReactNode;
 }
 
-const FormNumericInput = forwardRef(function FormNumericInput(
-  {
-    name,
-    className,
-    style,
-    title,
-    description,
-    ...props
-  }: FormNumericInputProps,
+const FormTextArea = forwardRef(function FormTextArea(
+  { name, className, style, title, description, ...props }: FormTextAreaProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [field, meta, helpers] = useField(name);
+  const [field, meta] = useField(name);
 
   return (
     <FormField
@@ -37,17 +28,17 @@ const FormNumericInput = forwardRef(function FormNumericInput(
       htmlFor={id}
       error={meta.touched ? meta.error : undefined}
     >
-      <NumericInput
+      <TextArea
         {...props}
         id={id}
         name={name}
         value={field.value}
         error={meta.touched && meta.error != null}
-        onChange={helpers.setValue}
+        onChange={field.onChange}
         onBlur={field.onBlur}
       />
     </FormField>
   );
 });
 
-export default FormNumericInput;
+export default FormTextArea;
