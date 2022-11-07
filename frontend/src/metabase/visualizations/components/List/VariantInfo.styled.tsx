@@ -40,3 +40,13 @@ export const InfoRight = styled.div`
   font-size: 0.75rem;
   font-weight: bold;
 `;
+
+export const ListHeader = styled.div<{ hasImage?: boolean }>`
+  display: flex;
+  padding: 0.5rem 1.5rem;
+  ${({ hasImage }) => (hasImage ? "padding-left: 4.75rem;" : "")}
+  font-weight: bold;
+  font-size: 0.75rem;
+  justify-content: space-between;
+  color: ${color("text-medium")};
+`;

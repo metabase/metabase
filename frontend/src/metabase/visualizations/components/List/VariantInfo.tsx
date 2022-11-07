@@ -1,13 +1,15 @@
 import React from "react";
+import { t } from "ttag";
 
 import { isEmpty } from "metabase/lib/validate";
 import { Avatar } from "metabase/components/UserAvatar";
 
 import { isImageURL } from "metabase-lib/types/utils/isa";
 
-import type { ListVariantProps } from "./types";
+import type { ListColumnIndexes, ListVariantProps } from "./types";
 import {
   InfoListItem,
+  ListHeader,
   ListItemTitle,
   ListItemSubtitle,
   InfoLeft,
@@ -16,20 +18,61 @@ import {
 
 import ListCell from "./ListCell";
 
-export const VariantInfo = ({
+const getNamedColumnIndexes = (listColumnIndexes: ListColumnIndexes) => {
+  const [imageIndex] = listColumnIndexes.image;
+  const [titleIndex, subtitleIndex, subtitle2Index] = listColumnIndexes.left;
+  const [infoIndex] = listColumnIndexes.right;
+
+  return {
+    imageIndex,
+    titleIndex,
+    subtitleIndex,
+    subtitle2Index,
+    infoIndex,
+  };
+};
+
+export const VariantInfoHeader = ({
+  listColumnIndexes,
+  getColumnTitle,
+}: {
+  listColumnIndexes: ListColumnIndexes;
+  getColumnTitle: (columnIndex: number) => string;
+}) => {
+  const { imageIndex, titleIndex, subtitleIndex, subtitle2Index, infoIndex } =
+    getNamedColumnIndexes(listColumnIndexes);
+
+  const leftTitleArray = [
+    getColumnTitle(titleIndex),
+    getColumnTitle(subtitleIndex),
+    getColumnTitle(subtitle2Index),
+  ].filter(Boolean);
+
+  const leftTitle =
+    leftTitleArray.length === 3
+      ? t`${leftTitleArray[0]}, ${leftTitleArray[1]}, and ${leftTitleArray[2]}`
+      : leftTitleArray.join(" & ");
+
+  return (
+    <ListHeader hasImage={!isEmpty(imageIndex)}>
+      <div>{leftTitle}</div>
+      <div>{getColumnTitle(infoIndex)}</div>
+    </ListHeader>
+  );
+};
+
+export const VariantInfoRow = ({
   data,
   row,
   listColumnIndexes,
   settings,
-  getColumnTitle,
 }: ListVariantProps) => {
   if (!data || !row) {
     return null;
   }
 
-  const [imageIndex] = listColumnIndexes.image;
-  const [titleIndex, subtitleIndex, subtitle2Index] = listColumnIndexes.left;
-  const [infoIndex] = listColumnIndexes.right;
+  const { imageIndex, titleIndex, subtitleIndex, subtitle2Index, infoIndex } =
+    getNamedColumnIndexes(listColumnIndexes);
 
   const image = row[imageIndex];
   const title = row[titleIndex];
@@ -45,7 +88,6 @@ export const VariantInfo = ({
         {image && imageColIsImage && (
           <ListCell
             value={image}
-            columnTitle={getColumnTitle(imageIndex)}
             data={data}
             settings={settings}
             columnIndex={imageIndex}
@@ -59,7 +101,6 @@ export const VariantInfo = ({
             {!isEmpty(title) && (
               <ListCell
                 value={title}
-                columnTitle={getColumnTitle(titleIndex)}
                 data={data}
                 settings={settings}
                 columnIndex={titleIndex}
@@ -70,7 +111,6 @@ export const VariantInfo = ({
             {!isEmpty(subtitle) && (
               <ListCell
                 value={subtitle}
-                columnTitle={getColumnTitle(subtitleIndex)}
                 data={data}
                 settings={settings}
                 columnIndex={subtitleIndex}
@@ -80,7 +120,6 @@ export const VariantInfo = ({
             {!isEmpty(subtitle2) && (
               <ListCell
                 value={subtitle2}
-                columnTitle={getColumnTitle(subtitle2Index)}
                 data={data}
                 settings={settings}
                 columnIndex={subtitle2Index}
@@ -93,7 +132,6 @@ export const VariantInfo = ({
         {!isEmpty(info) && (
           <ListCell
             value={info}
-            columnTitle={getColumnTitle(infoIndex)}
             data={data}
             settings={settings}
             columnIndex={infoIndex}
