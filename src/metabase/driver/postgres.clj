@@ -298,38 +298,13 @@
                        :target-timezone target-timezone
                        :source-timezone source-timezone})))
     (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
-          ;; If a column doesn't have a timezone, calling `timezone(source-timezone, column)` will cast it
-          ;; to `timestamp with time zone` with time zone is the `source-timezone`.
-          ;; For `timestamp with time zone` columns, Postgres will shift the hours back to report-tz beforing returning it.
-          ;; So what we care is to just make sure the output of `convert-timezone` is a `timestammp with time zone`.
-          ;; And the actual conversion will be done in `format-rows` middleware.
-          expr (if-not timestamptz?
-                 (hsql/call :timezone source-timezone expr)
-                 expr)]
+          expr            (cond->> expr
+                            (and (not timestamptz?) source-timezone)
+                            (hsql/call :timezone source-timezone)
+                            target-timezone
+                            (hsql/call :timezone target-timezone))]
       (hx/with-type-info expr
-        {::hx/convert-timezone {:source-timezone source-timezone
-                                :target-timezone target-timezone}
-         ::hx/database-type    "timestamptz"}))))
-
-(defn- to-timestamp-if-needed
-  "If the expr was converted to a timezone, convert to a timestamp so extract functions return date-part in the targeted timezone.
-
-  In Postgres, extract hour from a `timestamp with time zone` return the hour in `report-tz`.
-  I.e: select extract(hour, timestamp with time zone '2000/01/01 07:00:00+07:00') => 0 (assuming report-tz = UTC)
-
-  This is unintuive and our users will expect [:temporal-extract '2000/01/01 07:00:00+07:00' :hour] to returns 7 instead."
-  [expr]
-  (let [{:keys [target-timezone]} (hx/type-info->convert-timezone-info (hx/type-info expr))]
-    (if (and (hx/is-of-type? expr "timestamptz")
-             target-timezone)
-      (hx/with-database-type-info (hsql/call :timezone target-timezone expr) "timestamp")
-      expr)))
-
-(defmethod sql.qp/->honeysql [:postgres :temporal-extract]
-  [driver [_ arg unit]]
-  (->> (sql.qp/->honeysql driver arg)
-       to-timestamp-if-needed
-       (sql.qp/date driver unit)))
+        {::hx/database-type "timestamp"}))))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
