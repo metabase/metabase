@@ -459,14 +459,19 @@
        (not (time-field? field))))
 
 (defn datetime-arithmetics?
-  "Is a given artihmetics clause operating on datetimes?"
+  "Does a given artihmetics clause return a Datetime type?"
   [clause]
   (mbql.match/match-one clause
-    #{:interval :relative-datetime}
+    :relative-datetime
     true
 
     [:field _ (_ :guard :temporal-unit)]
-    true))
+    true
+
+    #{:+ :-}
+    (some (partial is-clause? :interval) (rest clause))
+
+    _ false))
 
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
