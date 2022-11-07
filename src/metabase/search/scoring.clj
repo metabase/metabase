@@ -227,21 +227,21 @@
      (max (- stale-time days-ago) 0)
      stale-time)))
 
-
-
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
   [result all-scores relevant-scores]
-  (let [{:keys [name display_name collection_id collection_name collection_authority_level collection_app_id]} result
-        column              (first (keep :column relevant-scores))
-        match-context-thunk (first (keep :match-context-thunk relevant-scores))]
+  (let [{:keys [name display_name collection_id collection_name collection_authority_level
+                collection_app_id]} result
+        matching-columns            (into #{} (remove nil? (map :column relevant-scores)))
+        match-context-thunk         (first (keep :match-context-thunk relevant-scores))]
     (-> result
         (assoc
-         :name           (if (or (= column :name) (nil? display_name))
-                           name
-                           display_name)
-         :context        (when (and (not (contains? search-config/displayed-columns column))
-                                    match-context-thunk)
+         :name           (if (and (contains? matching-columns :display_name) display_name)
+                           display_name
+                           name)
+         :context        (when (and match-context-thunk
+                                    (empty?
+                                     (remove matching-columns search-config/displayed-columns)))
                            (match-context-thunk))
          :collection     {:id              collection_id
                           :name            collection_name
