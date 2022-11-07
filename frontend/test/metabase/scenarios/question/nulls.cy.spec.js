@@ -36,8 +36,10 @@ describe("scenarios > question > null", () => {
 
     cy.log("'No Results since at least v0.34.3");
     cy.get("#detail-shortcut").click();
-    cy.findByText("Discount");
-    cy.findByText("Empty");
+    cy.get(".ObjectDetail").within(() => {
+      cy.findByText(/Discount/i);
+      cy.findByText(/Empty/i);
+    });
   });
 
   // [quarantine]

@@ -44,7 +44,7 @@ export function DetailsTableCell({
   let isLink;
 
   const columnTitle =
-    settings.column(column)["_column_title_full"] || formatColumn(column);
+    settings?.column?.(column)?.["_column_title_full"] || formatColumn(column);
 
   if (isColumnName) {
     cellValue = column !== null ? columnTitle : null;
