@@ -26,7 +26,7 @@ const EventSchema = Yup.object({
   timestamp: Yup.string().required(`required`),
   time_matters: Yup.boolean(),
   icon: Yup.string().required(`required`),
-  timeline_id: Yup.number().required(t`required`),
+  timeline_id: Yup.number(),
 });
 
 export interface EventFormProps {
@@ -73,6 +73,7 @@ const EventForm = ({
             name="timestamp"
             title={t`Date`}
             hasTime={values.time_matters}
+            fullWidth
             onHasTimeChange={value => setFieldValue("time_matters", value)}
           />
           <FormTextArea name="description" title={t`Description`} fullWidth />
