@@ -14,20 +14,8 @@ import {
 } from "metabase/visualizations/shared/types/scale";
 import { ChartFont } from "metabase/visualizations/shared/types/style";
 import { DATA_LABEL_OFFSET } from "../../RowChartView";
-import { Series, YValue } from "../types";
-import { createYDomain } from "./domain";
-
-export const createYScale = <TDatum>(
-  data: TDatum[],
-  series: Series<TDatum>[],
-  chartHeight: number,
-) => {
-  return scaleBand<YValue>({
-    domain: createYDomain(data, series),
-    range: [0, chartHeight],
-    padding: 0.2,
-  });
-};
+import { Series, SeriesData, YValue } from "../types";
+import { createXDomain, createYDomain } from "./domain";
 
 export const createXScale = (
   domain: ContinuousDomain,
@@ -41,23 +29,55 @@ export const createXScale = (
         range,
         domain,
         exponent: 2,
-        clamp: true,
+        clamp: isExactRange,
       });
     case "log":
       return scaleLog({
         range,
         domain,
         base: 10,
-        clamp: true,
+        clamp: isExactRange,
       });
     default:
       return scaleLinear({
         range,
         domain,
         nice: !isExactRange,
-        clamp: true,
+        clamp: isExactRange,
       });
   }
+};
+
+export const getChartScales = <TDatum>(
+  seriesData: SeriesData<TDatum>[],
+  innerHeight: number,
+  innerWidth: number,
+  additionalXValues: number[],
+  xScaleType: ContinuousScaleType,
+  rangeOverride?: Range,
+) => {
+  const yDomain = createYDomain(seriesData);
+  const yScale = scaleBand<YValue>({
+    domain: yDomain,
+    range: [0, innerHeight],
+    padding: 0.2,
+  });
+
+  const xDomain =
+    rangeOverride ?? createXDomain(seriesData, additionalXValues, xScaleType);
+  const xScale = createXScale(
+    xDomain,
+    [0, innerWidth],
+    xScaleType,
+    !!rangeOverride,
+  );
+
+  return {
+    yDomain,
+    xDomain,
+    yScale,
+    xScale,
+  };
 };
 
 export const addScalePadding = (
@@ -66,6 +86,7 @@ export const addScalePadding = (
   paddingEnd: number = 0,
 ) => {
   const [start, end] = scale.range();
+
   const adjustedDomainStart = scale.invert(start - paddingStart);
   const adjustedDomainEnd = scale.invert(end + paddingEnd);
 
@@ -93,7 +114,6 @@ const Y_AXIS_LEFT_PADDING = 16;
 
 export const addSideSpacingForTicksAndLabels = (
   xScale: ScaleContinuousNumeric<number, number, never>,
-  xDomain: ContinuousDomain,
   measureText: TextMeasurer,
   tickFont: ChartFont,
   tickFormatter: ValueFormatter,
@@ -102,7 +122,7 @@ export const addSideSpacingForTicksAndLabels = (
   shouldShowLabels?: boolean,
 ) => {
   const [rangeMin, rangeMax] = xScale.range();
-  const [domainMin, domainMax] = xDomain;
+  const [domainMin, domainMax] = xScale.domain();
   let [leftPadding, rightPadding] = [0, 0];
 
   const minTick = getTickInfo(
@@ -119,7 +139,7 @@ export const addSideSpacingForTicksAndLabels = (
       ? rangeMin -
         (xScale(domainMin) -
           measureText(labelFormatter(domainMin), labelFont) -
-          DATA_LABEL_OFFSET -
+          DATA_LABEL_OFFSET * 2 -
           Y_AXIS_LEFT_PADDING)
       : 0;
 

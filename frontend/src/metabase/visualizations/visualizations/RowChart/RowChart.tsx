@@ -37,13 +37,17 @@ import {
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { GroupedDatum } from "metabase/visualizations/shared/types/data";
+import {
+  GroupedDatum,
+  SeriesInfo,
+} from "metabase/visualizations/shared/types/data";
 import { IconProps } from "metabase/components/Icon";
 import {
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
+import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -157,18 +161,9 @@ const RowChartVisualization = ({
 
   const handleClick = (
     event: React.MouseEvent,
-    seriesIndex: number,
-    datumIndex: number,
+    bar: BarData<GroupedDatum, SeriesInfo>,
   ) => {
-    const clickData = getClickData(
-      seriesIndex,
-      datumIndex,
-      series,
-      groupedData,
-      settings,
-      chartColumns,
-      data.cols,
-    );
+    const clickData = getClickData(bar, settings, chartColumns, data.cols);
 
     if (!visualizationIsClickable(clickData)) {
       return;
@@ -179,23 +174,15 @@ const RowChartVisualization = ({
 
   const handleHover = (
     event: React.MouseEvent,
-    seriesIndex: number | null,
-    datumIndex: number | null,
+    bar: BarData<GroupedDatum, SeriesInfo>,
   ) => {
-    if (seriesIndex == null || datumIndex == null) {
-      onHoverChange(null);
+    if (bar == null) {
+      onHoverChange?.(null);
       return;
     }
-    const hoverData = getHoverData(
-      seriesIndex,
-      datumIndex,
-      series,
-      groupedData,
-      settings,
-      chartColumns,
-      data.cols,
-    );
-    onHoverChange({
+    const hoverData = getHoverData(bar, settings, chartColumns, data.cols);
+
+    onHoverChange?.({
       ...hoverData,
       event: event.nativeEvent,
       element: event.target,

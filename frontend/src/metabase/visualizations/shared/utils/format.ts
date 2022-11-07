@@ -9,7 +9,6 @@ import {
   ValueFormatter,
 } from "metabase/visualizations/shared/types/format";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 export const getXValueMetricColumn = (chartColumns: ChartColumns) => {
   // For multi-metrics charts we use the first metic column settings for formatting
@@ -24,13 +23,9 @@ export const getFormatters = (
   formatValue: any,
 ): ChartTicksFormatters => {
   const yTickFormatter = (value: RowValue) => {
-    const column = chartColumns.dimension.column;
-    const columnSettings = settings.column_settings?.[getColumnKey(column)];
-
     return String(
       formatValue(value, {
-        column,
-        ...columnSettings,
+        ...settings.column(chartColumns.dimension.column),
         jsx: false,
       }),
     );
@@ -40,8 +35,7 @@ export const getFormatters = (
 
   const percentXTicksFormatter = (percent: any) => {
     const column = metricColumn.column;
-    const number_separators =
-      settings.column_settings?.[getColumnKey(column)]?.number_separators;
+    const number_separators = settings.column(column)?.number_separators;
 
     return String(
       formatValue(percent, {
@@ -55,13 +49,9 @@ export const getFormatters = (
   };
 
   const xTickFormatter = (value: any) => {
-    const column = metricColumn.column;
-    const columnSettings = settings.column_settings?.[getColumnKey(column)];
-
     return String(
       formatValue(value, {
-        column,
-        ...columnSettings,
+        ...settings.column(metricColumn.column),
         jsx: false,
       }),
     );
@@ -83,13 +73,11 @@ export const getLabelsFormatter = (
   formatValue: any,
 ): ValueFormatter => {
   const column = getXValueMetricColumn(chartColumns).column;
-  const columnSettings = settings.column_settings?.[getColumnKey(column)];
 
   const labelsFormatter = (value: any) =>
     String(
       formatValue(value, {
-        column,
-        ...columnSettings,
+        ...settings.column(column),
         jsx: false,
         compact: settings["graph.label_value_formatting"] === "compact",
       }),

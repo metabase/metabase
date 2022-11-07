@@ -96,7 +96,10 @@ export const getGroupedDataset = (
 ): GroupedDataset => {
   // We are grouping all metrics because they are used in chart tooltips
   const allMetricColumns = data.cols
-    .filter(isMetric)
+    .filter(
+      (column, index) =>
+        isMetric(column) && index !== chartColumns.dimension.index,
+    )
     .map(column => column.name);
 
   const allMetricDescriptors = getColumnDescriptors(
