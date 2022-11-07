@@ -297,13 +297,6 @@
   [_ collection options]
   (card-query false collection options))
 
-(defn- bit->boolean
-  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
-  [v]
-  (if (number? v)
-    (not (zero? v))
-    v))
-
 (defn- fully-parametrized-text?
   "Decide if `text`, usually (a part of) a query, is fully parametrized given the parameter types
   described by `template-tags` (usually the template tags of a native query).
@@ -347,7 +340,7 @@
 (defn- post-process-card-row [row]
   (-> row
       (dissoc :authority_level :icon :personal_owner_id :dataset_query)
-      (update :collection_preview bit->boolean)
+      (update :collection_preview api/bit->boolean)
       (assoc :fully_parametrized (fully-parametrized-query? row))))
 
 (defmethod post-process-collection-children :card

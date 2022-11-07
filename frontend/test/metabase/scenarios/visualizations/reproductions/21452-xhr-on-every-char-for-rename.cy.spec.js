@@ -1,4 +1,9 @@
-import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/helpers";
+import {
+  restore,
+  visitQuestionAdhoc,
+  popover,
+  openSeriesSettings,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -27,9 +32,12 @@ describe("issue 21452", () => {
   });
 
   it("should not fire POST request after every character during display name change (metabase#21452)", () => {
+    openSeriesSettings("Sum of Quantity");
     cy.findByDisplayValue("Sum of Quantity").clear().type("Foo").blur();
     // Blur will result in another POST request which is expected
     cy.wait("@dataset");
+    // Dismiss the popup and close settings
+    cy.findByText("Done").click();
 
     cy.get("circle").first().realHover();
 

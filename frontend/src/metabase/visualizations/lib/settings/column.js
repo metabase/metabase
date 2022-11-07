@@ -34,7 +34,7 @@ export function columnSettings({
     objectName: "column",
     getObjects: getColumns,
     getObjectKey: getColumnKey,
-    getSettingDefintionsForObject: getSettingDefintionsForColumn,
+    getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
     useRawSeries: true,
@@ -366,9 +366,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     default: true,
     getHidden: (column, settings, { series }) =>
       settings["number_style"] !== "currency" ||
-      // FIXME: temp stub to unbreak the page
-      // https://metaboat.slack.com/archives/C505ZNNH4/p1665002329746859
-      series?.[0].card.display !== "table",
+      series[0].card.display !== "table",
     readDependencies: ["number_style"],
   },
   number_separators: {
@@ -476,7 +474,7 @@ const COMMON_COLUMN_SETTINGS = {
   },
 };
 
-export function getSettingDefintionsForColumn(series, column) {
+export function getSettingDefinitionsForColumn(series, column) {
   const { visualization } = getVisualizationRaw(series);
   const extraColumnSettings =
     typeof visualization.columnSettings === "function"

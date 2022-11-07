@@ -1,31 +1,52 @@
-import React, { forwardRef, Ref } from "react";
+import React, { forwardRef, ReactNode, Ref } from "react";
 import { useField } from "formik";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import NumericInput, {
   NumericInputProps,
 } from "metabase/core/components/NumericInput";
+import FormField from "metabase/core/components/FormField";
 
 export interface FormNumericInputProps
   extends Omit<NumericInputProps, "value" | "error" | "onChange" | "onBlur"> {
   name: string;
+  title?: string;
+  description?: ReactNode;
 }
 
 const FormNumericInput = forwardRef(function FormNumericInput(
-  { name, ...props }: FormNumericInputProps,
-  ref: Ref<HTMLInputElement>,
+  {
+    name,
+    className,
+    style,
+    title,
+    description,
+    ...props
+  }: FormNumericInputProps,
+  ref: Ref<HTMLDivElement>,
 ) {
+  const id = useUniqueId();
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
 
   return (
-    <NumericInput
-      {...props}
+    <FormField
       ref={ref}
-      id={name}
-      name={name}
-      value={value}
-      error={touched && error != null}
-      onChange={setValue}
-      onBlur={onBlur}
-    />
+      className={className}
+      style={style}
+      title={title}
+      description={description}
+      htmlFor={id}
+      error={touched ? error : undefined}
+    >
+      <NumericInput
+        {...props}
+        id={id}
+        name={name}
+        value={value}
+        error={touched && error != null}
+        onChange={setValue}
+        onBlur={onBlur}
+      />
+    </FormField>
   );
 });
 

@@ -99,6 +99,7 @@ export function getSettingsWidgetsForSeries(
     computedSettings,
     series,
     onChangeSettings,
+    { isDashboard },
   ).filter(
     widget =>
       widget.dashboard === undefined || widget.dashboard === isDashboard,

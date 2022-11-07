@@ -43,9 +43,16 @@ export interface CheckBoxProps
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
+interface CheckboxTooltipProps {
+  hasTooltip: boolean;
+  tooltipLabel: ReactNode;
+  children: ReactNode;
+}
+
 const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
   {
     name,
+    id,
     label,
     labelEllipsis = false,
     checked,
@@ -75,7 +82,7 @@ const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
         tooltipLabel={label}
       >
         <CheckBoxInput
-          id={name}
+          id={id ?? name}
           name={name}
           type="checkbox"
           checked={isControlledCheckBoxInput ? !!checked : undefined}
@@ -117,12 +124,6 @@ const CheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(function Checkbox(
     </CheckBoxRoot>
   );
 });
-
-interface CheckboxTooltipProps {
-  hasTooltip: boolean;
-  tooltipLabel: ReactNode;
-  children: ReactNode;
-}
 
 function CheckboxTooltip({
   hasTooltip,

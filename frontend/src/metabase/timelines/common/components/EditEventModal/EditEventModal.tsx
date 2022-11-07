@@ -1,10 +1,8 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import Form from "metabase/containers/FormikForm";
-import forms from "metabase/entities/timeline-events/forms";
-import { Timeline, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent, TimelineEventData } from "metabase-types/api";
+import EventForm from "../EventForm";
 import ModalBody from "../ModalBody";
-import ModalDangerButton from "../ModalDangerButton";
 import ModalHeader from "../ModalHeader";
 
 export interface EditEventModalProps {
@@ -28,14 +26,16 @@ const EditEventModal = ({
   onCancel,
   onClose,
 }: EditEventModalProps): JSX.Element => {
-  const form = useMemo(() => forms.details(), []);
+  const initialValues = useMemo(() => {
+    return getInitialValues(event);
+  }, [event]);
 
   const handleSubmit = useCallback(
-    async (event: TimelineEvent) => {
-      await onSubmit(event, timeline);
+    async (values: TimelineEventData) => {
+      await onSubmit(getSubmitValues(event, values), timeline);
       onSubmitSuccess?.();
     },
-    [timeline, onSubmit, onSubmitSuccess],
+    [event, timeline, onSubmit, onSubmitSuccess],
   );
 
   const handleArchive = useCallback(async () => {
@@ -47,21 +47,29 @@ const EditEventModal = ({
     <div>
       <ModalHeader title={t`Edit event`} onClose={onClose} />
       <ModalBody>
-        <Form<TimelineEvent>
-          form={form}
-          initialValues={event}
-          isModal={true}
+        <EventForm
+          initialValues={initialValues}
           onSubmit={handleSubmit}
-          onClose={onCancel}
-          footerExtraButtons={
-            <ModalDangerButton onClick={handleArchive}>
-              {t`Archive event`}
-            </ModalDangerButton>
-          }
+          onArchive={handleArchive}
+          onCancel={onCancel}
         />
       </ModalBody>
     </div>
   );
 };
+
+const getInitialValues = (event: TimelineEvent): TimelineEventData => ({
+  ...event,
+  description: event.description || "",
+});
+
+const getSubmitValues = (
+  event: TimelineEvent,
+  values: TimelineEventData,
+): TimelineEvent => ({
+  ...event,
+  ...values,
+  description: values.description || null,
+});
 
 export default EditEventModal;

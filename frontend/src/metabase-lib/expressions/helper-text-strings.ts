@@ -611,12 +611,12 @@ const helperTextStrings: HelpText[] = [
   {
     name: "get-week",
     structure: "week(" + t`column` + ", " + t`mode` + ")",
-    description: t`Extracts the week of the year as an integer..`,
+    description: t`Extracts the week of the year as an integer.`,
     example: "week([" + t`Created At` + '], "iso")',
     args: [
       {
         name: t`column`,
-        description: t`The name of the column with your date or datetime value..`,
+        description: t`The name of the column with your date or datetime value.`,
       },
       {
         name: t`mode`,
@@ -689,10 +689,11 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
-    name: "date-add",
-    structure: "dateAdd(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+    name: "datetime-add",
+    structure:
+      "datetimeAdd(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
     description: t`Adds some units of time to a date or timestamp value.`,
-    example: "dateAdd([" + t`Created At` + '], 1, "' + t`month` + '")',
+    example: "datetimeAdd([" + t`Created At` + '], 1, "' + t`month` + '")',
     args: [
       {
         name: t`column`,
@@ -709,11 +710,11 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
-    name: "date-subtract",
+    name: "datetime-subtract",
     structure:
-      "dateSubtract(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+      "datetimeSubtract(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
     description: t`Subtracts some units of time to a date or timestamp value.`,
-    example: "dateSubtract([" + t`Created At` + '], 1, "' + t`month` + '")',
+    example: "datetimeSubtract([" + t`Created At` + '], 1, "' + t`month` + '")',
     args: [
       {
         name: t`column`,

@@ -1,4 +1,5 @@
 import React from "react";
+import _ from "underscore";
 import { ChartSettingInputBlurChange } from "./ChartSettingInput.styled";
 
 interface ChartSettingInputProps {
@@ -13,7 +14,7 @@ const ChartSettingInput = ({
   ...props
 }: ChartSettingInputProps) => (
   <ChartSettingInputBlurChange
-    {...props}
+    {..._.omit(props, "onChangeSettings")}
     data-testid={props.id}
     value={value}
     onBlurChange={e => onChange(e.target.value)}
