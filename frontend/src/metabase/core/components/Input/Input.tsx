@@ -69,8 +69,9 @@ const Input = forwardRef(function Input(
         fieldSize={size}
         hasError={error}
         fullWidth={fullWidth}
+        hasSubtitle={Boolean(subtitle)}
+        hasLeftIcon={Boolean(leftIcon)}
         hasRightIcon={Boolean(rightIcon)}
-        subtitle={subtitle}
       />
       {leftIcon && (
         <Tooltip tooltip={leftIconTooltip} placement="left" offset={[0, 24]}>

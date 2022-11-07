@@ -22,7 +22,7 @@ const FormNumericInput = forwardRef(function FormNumericInput(
     description,
     ...props
   }: FormNumericInputProps,
-  ref: Ref<HTMLInputElement>,
+  ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [field, meta, helpers] = useField(name);

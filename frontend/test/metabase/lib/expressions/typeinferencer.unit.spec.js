@@ -36,6 +36,8 @@ describe("metabase-lib/expressions/typeinferencer", () => {
       case "Location":
       case "Place":
         return "type/Coordinate";
+      case "CreatedAt":
+        return "type/Datetime";
     }
   }
 
@@ -111,5 +113,30 @@ describe("metabase-lib/expressions/typeinferencer", () => {
     expect(type("COALESCE([FirstName], [LastName])")).toEqual("string");
     expect(type("COALESCE([BirthDate], [MiscDate])")).toEqual("type/Temporal");
     expect(type("COALESCE([Place], [Location])")).toEqual("type/Coordinate");
+  });
+
+  it("should infer the result of datetimeAdd, datetimeSubtract", () => {
+    expect(type('datetimeAdd([CreatedAt], 2, "month")')).toEqual(
+      "type/Datetime",
+    );
+    expect(type('datetimeSubtract([CreatedAt], 2, "month")')).toEqual(
+      "type/Datetime",
+    );
+  });
+
+  it("should infer the result of datetimeExtract functions", () => {
+    const ops = [
+      "year",
+      "month",
+      "quarter",
+      "month",
+      "week",
+      "hour",
+      "minute",
+      "second",
+    ];
+    ops.forEach(op => {
+      expect(type(`${op}([Created At])`)).toEqual("number");
+    });
   });
 });
