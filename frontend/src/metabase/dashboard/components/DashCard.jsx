@@ -30,7 +30,7 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 import {
   isActionCard,
-  isLinkActionDashCard,
+  isButtonLinkDashCard,
   shouldHideDashcardHeader,
 } from "metabase/writeback/utils";
 
@@ -389,7 +389,7 @@ const DashCardActionButtons = ({
         />,
       );
     }
-    if (!isVirtualDashCard || isLinkActionDashCard(card)) {
+    if (!isVirtualDashCard || isButtonLinkDashCard(card)) {
       buttons.push(
         <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
           <a

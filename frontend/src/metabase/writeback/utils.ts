@@ -72,7 +72,7 @@ export function isActionDashCard(
   return isActionCard(virtualCard as SavedCard);
 }
 
-export const isLinkActionDashCard = (dashCard: BaseDashboardOrderedCard) =>
+export const isButtonLinkDashCard = (dashCard: BaseDashboardOrderedCard) =>
   isActionDashCard(dashCard) &&
   dashCard.visualization_settings?.click_behavior?.type === "link";
 

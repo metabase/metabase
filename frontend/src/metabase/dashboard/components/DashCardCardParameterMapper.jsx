@@ -11,7 +11,7 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
-  getNativeDashCardEmptyMappingText,
+  getDashCardEmptyMappingText,
   isNativeDashCard,
   isVirtualDashCard,
   showVirtualDashCardInfoText,
@@ -199,7 +199,7 @@ function DashCardCardParameterMapper({
         <NativeCardDefault>
           <NativeCardIcon name="info" />
           <NativeCardText>
-            {getNativeDashCardEmptyMappingText(
+            {getDashCardEmptyMappingText(
               editingParameter,
               isAction ? "action" : "question",
             )}

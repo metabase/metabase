@@ -65,11 +65,11 @@ export function getParameterMappingOptions(
   }
 
   if (isActionDashCard(dashcard)) {
-    const actionParams = dashcard?.action?.parameters?.map(p => ({
+    const actionParams = dashcard?.action?.parameters?.map(param => ({
       icon: "variable",
       isForeign: false,
-      name: p.id,
-      ...p,
+      name: param.id,
+      ...param,
     }));
 
     return actionParams || [];
