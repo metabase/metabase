@@ -19,6 +19,9 @@ function Form({
   );
 }
 
+/**
+ * @deprecated
+ */
 const FormUsingLegacyContext = (
   props: Props,
   context: CustomFormLegacyContext,
