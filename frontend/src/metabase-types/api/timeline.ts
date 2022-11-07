@@ -1,5 +1,5 @@
 import { CardId } from "./card";
-import { Collection, CollectionId } from "./collection";
+import { Collection, RegularCollectionId } from "./collection";
 import { User } from "./user";
 
 export type TimelineId = number;
@@ -8,7 +8,7 @@ export type TimelineEventSource = "question" | "collections" | "api";
 
 export interface Timeline {
   id: TimelineId;
-  collection_id: CollectionId | null;
+  collection_id: RegularCollectionId | null;
   name: string;
   description: string | null;
   icon: string;
@@ -20,7 +20,7 @@ export interface Timeline {
 
 export interface TimelineData {
   id?: number;
-  collection_id: CollectionId | null;
+  collection_id: RegularCollectionId | null;
   name: string;
   description: string | null;
   icon: string;
