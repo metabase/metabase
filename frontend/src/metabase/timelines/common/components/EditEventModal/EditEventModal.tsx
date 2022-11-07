@@ -4,7 +4,7 @@ import Form from "metabase/containers/FormikForm";
 import forms from "metabase/entities/timeline-events/forms";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import ModalBody from "../ModalBody";
-import ModalDangerButton from "../ModalDangerButton";
+import FormArchiveButton from "../FormArchiveButton";
 import ModalHeader from "../ModalHeader";
 
 export interface EditEventModalProps {
@@ -54,9 +54,9 @@ const EditEventModal = ({
           onSubmit={handleSubmit}
           onClose={onCancel}
           footerExtraButtons={
-            <ModalDangerButton onClick={handleArchive}>
+            <FormArchiveButton onClick={handleArchive}>
               {t`Archive event`}
-            </ModalDangerButton>
+            </FormArchiveButton>
           }
         />
       </ModalBody>
