@@ -125,14 +125,19 @@
                      (db/do-post-select 'Card))
           cards-by-action-id (m/index-by :action_id cards)]
       (keep (fn [action]
-              (let [{card-name :name :keys [description] :as card} (get cards-by-action-id (:id action))]
+              (let [{card-name :name :keys [description dataset_query] :as card} (get cards-by-action-id (:id action))
+                    tags (get-in dataset_query [:native :template-tags])
+                    params (for [param (:parameters card)
+                                 :let [tag (get tags (:slug param))]]
+                             (assoc param :required (:required tag)))]
                 (-> action
                     (merge
                       {:name card-name
                        :description description
                        :disabled (::disabled card)
-                       :card (dissoc card ::disabled)}
-                      (select-keys card [:parameters :parameter_mappings :visualization_settings])))))
+                       :card (dissoc card ::disabled)
+                       :parameters params}
+                      (select-keys card [:parameter_mappings :visualization_settings])))))
             actions))))
 
 (defn- normalize-http-actions [actions]
@@ -201,8 +206,9 @@
                                              {:id (u/slugify (:name field))
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
                                               :type (:base_type field)
-                                              ::pk? (isa? (:semantic_type field) :type/PK)
-                                              ::field-id (:id field)})))]]
+                                              :required (:database_required field)
+                                              ::field-id (:id field)
+                                              ::pk? (isa? (:semantic_type field) :type/PK)})))]]
             [(:id card) parameters]))))
 
 (defn merged-model-action
@@ -232,6 +238,8 @@
                 implicit-action (when-let [parameters (get parameters-by-model-id (:card_id model-action))]
                                   {:parameters (cond->> parameters
                                                  (= "delete" (:slug model-action)) (filter ::pk?)
+                                                 (:requires_pk model-action) (map (fn [param] (cond-> param
+                                                                                                (::pk? param) (assoc :required true))))
                                                  :always (map #(dissoc % ::pk? ::field-id)))
                                    :type "implicit"})]]
       (m/deep-merge (-> model-action

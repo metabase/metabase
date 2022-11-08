@@ -36,13 +36,21 @@
           (let [response (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))]
             (is (partial= [{:slug "custom"
                             :action_id action-id
-                            :parameters [{:id "id"} {:id "name"}]
+                            :parameters [{:id "id" :required true} {:id "name" :required false}]
                             :card {:is_write true}
                             :type "query"
                             :name "Query Example"}
-                           {:slug "insert" :action_id nil :parameters [{:id "id"} {:id "name"}] :type "implicit"}
-                           {:slug "update" :action_id nil :parameters [{:id "id"} {:id "name"}] :type "implicit"}
-                           {:slug "delete" :action_id nil :parameters [{:id "id"}] :type "implicit"}]
+                           {:slug "insert"
+                            :action_id nil
+                            :parameters [{:id "id" :required false} {:id "name" :required true}]
+                            :type "implicit"}
+                           {:slug "update"
+                            :action_id nil
+                            :parameters [{:id "id" :required true} {:id "name" :required true}]
+                            :type "implicit"}
+                           {:slug "delete"
+                            :action_id nil
+                            :parameters [{:id "id" :required true}] :type "implicit"}]
                           response))
             (let [action (some (fn [action]
                                  (when (= (:id action) action-id)
