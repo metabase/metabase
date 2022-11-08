@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon";
 
 import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
 
-const Item = ({
+function Item({
   item,
   name,
   icon,
@@ -16,7 +16,7 @@ const Item = ({
   hasChildren,
   onChange,
   onChangeParentId,
-}) => {
+}) {
   const handleClick = useMemo(() => {
     if (canSelect) {
       return () => onChange(item);
@@ -59,6 +59,6 @@ const Item = ({
       </ItemContent>
     </ItemRoot>
   );
-};
+}
 
 export default Item;
