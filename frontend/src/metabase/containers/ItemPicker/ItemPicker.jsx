@@ -85,6 +85,27 @@ class ItemPicker extends React.Component {
     );
   }
 
+  checkCollectionMaybeHasChildren = collection => {
+    const { models } = this.props;
+    const modelsIncludeNonCollections = models.some(
+      model => model !== "collection",
+    );
+
+    if (modelsIncludeNonCollections) {
+      // Non-collection models (e.g. questions, dashboards)
+      // are loaded on-demand so we don't know ahead of time
+      // if they have children, so we have to assume they do
+      return true;
+    }
+
+    if (isRootCollection(collection)) {
+      // Skip root as we don't show root's sub-collections alongside it
+      return false;
+    }
+
+    return collection.children?.length > 0;
+  };
+
   handleSearchInputKeyPress = e => {
     if (e.key === "Enter") {
       this.setState({ searchString: e.target.value });
@@ -233,13 +254,8 @@ class ItemPicker extends React.Component {
             {!searchString &&
               allCollections.map(collection => {
                 const hasChildren =
-                  (collection.children &&
-                    collection.children.length > 0 &&
-                    // exclude root since we show root's subcollections alongside it
-                    !isRootCollection(collection)) ||
-                  // non-collection models are loaded on-demand so we don't know ahead of time
-                  // if they have children, so we have to assume they do
-                  modelsIncludeNonCollections;
+                  this.checkCollectionMaybeHasChildren(collection);
+
                 // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
                 const canSelect =
                   models.includes("collection") && collection.can_write;
