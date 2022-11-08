@@ -11,7 +11,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
 import FormikForm from "metabase/containers/FormikForm";
-import GoogleSettingsForm from "metabase/admin/settings/components/GoogleSettingsForm";
+import GoogleSettingsForm from "metabase/admin/settings/containers/GoogleSettingsForm";
 
 PLUGIN_AUTH_PROVIDERS.push(providers => {
   const googleProvider = {

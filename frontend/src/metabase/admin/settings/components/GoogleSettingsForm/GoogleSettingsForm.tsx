@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
@@ -10,7 +9,6 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { updateGoogleSettings } from "metabase/admin/settings/settings";
 import { SettingDefinition } from "metabase-types/api";
 import {
   GoogleForm,
@@ -38,18 +36,12 @@ const GoogleSettingsSchema = Yup.object({
   [DOMAIN_KEY]: Yup.string(),
 });
 
-interface GoogleSettingsFormOwnProps {
+interface GoogleSettingsFormProps {
   elements?: SettingDefinition[];
   settingValues?: Partial<GoogleSettings>;
   hasMultipleDomains?: boolean;
-}
-
-interface GoogleSettingsFormDispatchProps {
   onSubmit: (settingValues: GoogleSettings) => void;
 }
-
-export type GoogleSettingsFormProps = GoogleSettingsFormOwnProps &
-  GoogleSettingsFormDispatchProps;
 
 const GoogleSettingsForm = ({
   elements = [],
@@ -152,15 +144,4 @@ const getDocsLink = (): string => {
   );
 };
 
-const mapDispatchToProps = {
-  onSubmit: updateGoogleSettings,
-};
-
-export default connect<
-  null,
-  GoogleSettingsFormDispatchProps,
-  GoogleSettingsFormOwnProps
->(
-  null,
-  mapDispatchToProps,
-)(GoogleSettingsForm);
+export default GoogleSettingsForm;
