@@ -50,11 +50,11 @@ class ItemPicker extends React.Component {
     searchString: false,
   };
 
-  checkHasWritePermissionForItem(item, models) {
-    const { collectionsById } = this.props;
+  checkHasWritePermissionForItem(item) {
+    const { collectionsById, models } = this.props;
 
     // if user is selecting a collection, they must have a `write` access to it
-    if (models.has("collection") && item.model === "collection") {
+    if (models.includes("collection") && item.model === "collection") {
       return item.can_write;
     }
 
@@ -104,8 +104,8 @@ class ItemPicker extends React.Component {
   };
 
   getSearchQuery = () => {
+    const { models } = this.props;
     const { searchString, parentId } = this.state;
-    const models = new Set(this.props.models);
 
     const query = {};
 
@@ -115,8 +115,8 @@ class ItemPicker extends React.Component {
       query.collection = parentId;
     }
 
-    if (models.size === 1) {
-      query.models = Array.from(models);
+    if (models.length === 1) {
+      query.models = models;
     }
 
     return query;
@@ -163,6 +163,7 @@ class ItemPicker extends React.Component {
   render() {
     const {
       value,
+      models,
       onChange,
       collectionsById,
       getCollectionIcon,
@@ -172,9 +173,9 @@ class ItemPicker extends React.Component {
     } = this.props;
     const { parentId, searchString } = this.state;
 
-    const models = new Set(this.props.models);
-    const modelsIncludeNonCollections =
-      this.props.models.filter(model => model !== "collection").length > 0;
+    const modelsIncludeNonCollections = models.some(
+      model => model !== "collection",
+    );
 
     const collection = collectionsById[parentId];
 
@@ -184,7 +185,7 @@ class ItemPicker extends React.Component {
     if (
       collection &&
       isRootCollection(collection) &&
-      models.has("collection")
+      models.includes("collection")
     ) {
       allCollections = [collection, ...allCollections];
     }
@@ -209,7 +210,7 @@ class ItemPicker extends React.Component {
       item &&
       value &&
       getId(item) === getId(value) &&
-      (models.size === 1 || item.model === value.model);
+      (models.length === 1 || item.model === value.model);
 
     return (
       <LoadingAndErrorWrapper
@@ -231,7 +232,7 @@ class ItemPicker extends React.Component {
                   modelsIncludeNonCollections;
                 // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
                 const canSelect =
-                  models.has("collection") && collection.can_write;
+                  models.includes("collection") && collection.can_write;
 
                 const icon = getCollectionIcon(collection);
 
@@ -267,7 +268,7 @@ class ItemPicker extends React.Component {
                       if (
                         hasPermission &&
                         // only include desired models (TODO: ideally the endpoint would handle this)
-                        models.has(item.model) &&
+                        models.includes(item.model) &&
                         // remove collections unless we're searching
                         // (so a user can navigate through collections)
                         (item.model !== "collection" || !!searchString)
