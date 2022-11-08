@@ -51,6 +51,10 @@ function mapStateToProps(state, props) {
   };
 }
 
+function getEntityLoaderType(state, props) {
+  return props.entity?.name ?? "collections";
+}
+
 class ItemPicker extends React.Component {
   state = {
     parentId: "root",
@@ -311,12 +315,12 @@ ItemPicker.propTypes = propTypes;
 
 export default _.compose(
   entityObjectLoader({
-    id: () => "root",
-    entityType: (state, props) => props.entity?.name ?? "collections",
+    id: "root",
+    entityType: getEntityLoaderType,
     loadingAndErrorWrapper: false,
   }),
   entityListLoader({
-    entityType: (state, props) => props.entity?.name ?? "collections",
+    entityType: getEntityLoaderType,
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps),
