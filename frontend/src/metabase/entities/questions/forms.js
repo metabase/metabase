@@ -16,7 +16,7 @@ const FORM_FIELDS = [
   {
     name: "is_write",
     title: t`Is Write`,
-    description: t`Write questions can be used for experimental actions.`,
+    description: t`Write questions that can be used for experimental actions.`,
     type: "boolean",
   },
 ];
