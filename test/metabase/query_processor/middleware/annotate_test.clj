@@ -520,7 +520,7 @@
   (is (not (#'annotate/datetime-arithmetics? [:+ [:field-id 13] 3]))))
 
 (deftest temporal-extract-test
-  (is (= {:base_type :type/Date}
+  (is (= {:base_type :type/DateTime}
          (infered-col-type [:datetime-add $date 2 :month] checkins)))
   (is (= {:base_type :type/DateTime}
          (infered-col-type [:datetime-add $date 2 :hour] checkins)))
