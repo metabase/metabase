@@ -54,7 +54,6 @@ const TimelineForm = ({
             title={t`Name`}
             placeholder={t`Product releases`}
             autoFocus
-            fullWidth
           />
           <FormTextArea name="description" title={t`Description`} />
           <FormSelect name="icon" title={t`Default icon`} options={icons} />

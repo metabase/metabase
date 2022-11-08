@@ -65,7 +65,6 @@ const UserPasswordForm = ({
           title={t`Current password`}
           placeholder={t`Shhh...`}
           autoComplete="current-password"
-          fullWidth
         />
         <FormInput
           name="password"
@@ -73,7 +72,6 @@ const UserPasswordForm = ({
           title={t`Create a password`}
           placeholder={t`Shhh...`}
           autoComplete="new-password"
-          fullWidth
         />
         <FormInput
           name="password_confirm"
@@ -81,7 +79,6 @@ const UserPasswordForm = ({
           title={t`Confirm your password`}
           placeholder={t`Shhh... but one more time so we get it right`}
           autoComplete="new-password"
-          fullWidth
         />
         <FormSubmitButton title={t`Save`} primary />
         <FormErrorMessage />

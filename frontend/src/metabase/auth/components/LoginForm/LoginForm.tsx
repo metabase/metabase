@@ -63,14 +63,12 @@ const LoginForm = ({
           type={isLdapEnabled ? "input" : "email"}
           placeholder="nicetoseeyou@email.com"
           autoFocus
-          fullWidth
         />
         <FormInput
           name="password"
           title={t`Password`}
           type="password"
           placeholder={t`Shhh...`}
-          fullWidth
         />
         {!hasSessionCookies && (
           <FormCheckBox name="remember" title={t`Remember me`} />

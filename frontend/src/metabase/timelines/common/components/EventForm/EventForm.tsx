@@ -79,7 +79,6 @@ const EventForm = ({
             title={t`Event name`}
             placeholder={t`Product launch`}
             autoFocus
-            fullWidth
           />
           <FormDateInput
             name="timestamp"
