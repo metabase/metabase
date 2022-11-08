@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
+import _ from "underscore";
 import * as Yup from "yup";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -10,6 +11,7 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { updateGoogleSettings } from "metabase/admin/settings/settings";
+import { SettingDefinition } from "metabase-types/api";
 import {
   GoogleForm,
   GoogleFormCaption,
@@ -33,14 +35,17 @@ export interface GoogleAuthSettings {
 }
 
 export interface GoogleAuthFormProps {
+  elements?: SettingDefinition[];
   settingValues?: Partial<GoogleAuthSettings>;
   onSubmit: (settingValues: GoogleAuthSettings) => void;
 }
 
 const GoogleAuthForm = ({
+  elements = [],
   settingValues = {},
   onSubmit,
 }: GoogleAuthFormProps): JSX.Element => {
+  const settings = _.indexBy(elements, "key");
   const isEnabled = settingValues["google-auth-enabled"];
 
   const initialValues = useMemo(() => {
@@ -70,21 +75,24 @@ const GoogleAuthForm = ({
           </GoogleFormCaption>
           <GoogleFormCaption>
             {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
-              <ExternalLink
-                key="link"
-                href={getDocsLink()}
-              >{t`here`}</ExternalLink>
+              <ExternalLink key="link" href={getDocsLink()}>
+                {t`here`}
+              </ExternalLink>
             )}.`}
           </GoogleFormCaption>
           <FormInput
+            {...getProps(settings["google-auth-client-id"])}
             name="google-auth-client-id"
             title={t`Client ID`}
             placeholder={t`{your-client-id}.apps.googleusercontent.com`}
             fullWidth
           />
           <FormInput
+            {...getProps(settings["google-auth-auto-create-accounts-domain"])}
             name="google-auth-auto-create-accounts-domain"
             title={t`Domain`}
+            description={t`Allow users to sign up on their own if their Google account email address is from:`}
+            placeholder="mycompany.com"
             fullWidth
           />
           <FormSubmitButton
@@ -111,6 +119,15 @@ const getSubmitValues = (values: GoogleAuthSettings) => ({
   "google-auth-auto-create-accounts-domain":
     values["google-auth-auto-create-accounts-domain"] || null,
 });
+
+const getProps = (setting?: SettingDefinition) => {
+  if (setting?.is_env_setting) {
+    return {
+      readOnly: true,
+      placeholder: t`Using ${setting.env_name}`,
+    };
+  }
+};
 
 const getDocsLink = () => {
   return MetabaseSettings.docsUrl(
