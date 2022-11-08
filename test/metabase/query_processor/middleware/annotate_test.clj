@@ -511,6 +511,22 @@
       (is (= {:base_type :type/Float}
              (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]]]))))))
 
+(deftest ^:parallel datetime-arithmetics?-test
+  (is (#'annotate/datetime-arithmetics? [:+ [:field-id 13] [:interval -1 :month]]))
+  (is (#'annotate/datetime-arithmetics? [:field "a" {:temporal-unit :month}]))
+  (is (not (#'annotate/datetime-arithmetics? [:+ 1 [:temporal-extract
+                                                    [:+ [:field-id 13] [:interval -1 :month]]
+                                                    :year]])))
+  (is (not (#'annotate/datetime-arithmetics? [:+ [:field-id 13] 3]))))
+
+(deftest temporal-extract-test
+  (is (= {:base_type :type/Date}
+         (infered-col-type [:datetime-add $date 2 :month] checkins)))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add $date 2 :hour] checkins)))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add $last_login 2 :month] users))))
+
 (deftest test-string-extracts
   (is (= {:base_type :type/Text}
          (infered-col-type  [:trim "foo"])))
@@ -536,13 +552,7 @@
          (infered-col-type  [:coalesce "foo" "bar"])))
   (is (= {:base_type     :type/Text
           :semantic_type :type/Name}
-         (infered-col-type  [:coalesce [:field (mt/id :venues :name) nil] "bar"])))
-  (is (= {:base_type :type/Date
-          :semantic_type nil}
-         (infered-col-type [:datetime-add $date 2 :month] checkins)))
-  (is (= {:base_type :type/DateTime
-          :semantic_type nil}
-         (infered-col-type [:datetime-add $last_login 2 :month] users))))
+         (infered-col-type  [:coalesce [:field (mt/id :venues :name) nil] "bar"]))))
 
 (deftest unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"
