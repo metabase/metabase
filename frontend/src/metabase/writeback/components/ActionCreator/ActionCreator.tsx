@@ -15,6 +15,7 @@ import type {
 import type { State } from "metabase-types/store";
 import Modal from "metabase/components/Modal";
 import { SavedCard } from "metabase-types/types/Card";
+import Button from "metabase/core/components/Button";
 import Question from "metabase-lib/Question";
 
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -25,8 +26,9 @@ import { QueryActionEditor } from "./QueryActionEditor";
 import { FormCreator } from "./FormCreator";
 
 import {
-  ActionCreatorRoot,
   ActionCreatorBodyContainer,
+  ModalRoot,
+  ModalFooter,
 } from "./ActionCreator.styled";
 
 import { newQuestion } from "./utils";
@@ -48,14 +50,18 @@ interface ActionCreatorProps {
   metadata: Metadata;
   question?: Question;
   actionId?: number;
+  modelId?: number;
   push: (url: string) => void;
+  onClose?: () => void;
 }
 
 function ActionCreatorComponent({
   metadata,
   question: passedQuestion,
   actionId,
+  modelId,
   push,
+  onClose,
 }: ActionCreatorProps) {
   const [question, setQuestion] = useState(
     passedQuestion ?? newQuestion(metadata),
@@ -72,10 +78,13 @@ function ActionCreatorComponent({
   }, [actionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const defaultModelId: number | undefined = useMemo(() => {
+    if (modelId) {
+      return modelId;
+    }
     const params = new URLSearchParams(window.location.search);
-    const modelId = params.get("model-id");
-    return modelId ? Number(modelId) : undefined;
-  }, []);
+    const modelQueryParam = params.get("model-id");
+    return modelId ? Number(modelQueryParam) : undefined;
+  }, [modelId]);
 
   if (!question || !metadata) {
     return null;
@@ -86,9 +95,7 @@ function ActionCreatorComponent({
   const afterSave = (action: SavedCard) => {
     setQuestion(question.setCard(action));
     setTimeout(() => setShowSaveModal(false), 1000);
-    if (!actionId && action.action_id) {
-      setTimeout(() => push(`/action/${action.action_id}`), 1500);
-    }
+    onClose?.();
   };
 
   const handleClose = () => setShowSaveModal(false);
@@ -96,24 +103,36 @@ function ActionCreatorComponent({
   const isNew = !actionId && !(question.card() as SavedCard).id;
 
   return (
-    <ActionCreatorRoot>
-      <ActionCreatorHeader
-        type="query"
-        name={question.displayName() ?? t`New Action`}
-        onChangeName={newName => setQuestion(q => q.setDisplayName(newName))}
-        onSave={() => setShowSaveModal(true)}
-        canSave={question.query().canRun()}
-      />
-      <ActionCreatorBodyContainer>
-        <QueryActionEditor question={question} setQuestion={setQuestion} />
-        <FormCreator
-          tags={query?.templateTagsWithoutSnippets()}
-          formSettings={
-            question?.card()?.visualization_settings as ActionFormSettings
-          }
-          onChange={setFormSettings}
-        />
-      </ActionCreatorBodyContainer>
+    <>
+      <Modal onClose={onClose} formModal={false} wide>
+        <ModalRoot>
+          <ActionCreatorHeader
+            type="query"
+            name={question.displayName() ?? t`New Action`}
+            onChangeName={newName =>
+              setQuestion(q => q.setDisplayName(newName))
+            }
+          />
+
+          <ActionCreatorBodyContainer>
+            <QueryActionEditor question={question} setQuestion={setQuestion} />
+            <FormCreator
+              tags={query?.templateTagsWithoutSnippets()}
+              formSettings={
+                question?.card()?.visualization_settings as ActionFormSettings
+              }
+              onChange={setFormSettings}
+            />
+          </ActionCreatorBodyContainer>
+
+          <ModalFooter>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button primary onClick={() => setShowSaveModal(true)}>
+              Save
+            </Button>
+          </ModalFooter>
+        </ModalRoot>
+      </Modal>
       {showSaveModal && (
         <Modal onClose={handleClose}>
           <Actions.ModalForm
@@ -132,7 +151,7 @@ function ActionCreatorComponent({
           />
         </Modal>
       )}
-    </ActionCreatorRoot>
+    </>
   );
 }
 

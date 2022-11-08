@@ -92,8 +92,6 @@ import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 
-import ActionPage from "metabase/writeback/containers/ActionCreatorPage";
-
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
 
 const MetabaseIsSetup = UserAuthWrapper({
@@ -395,12 +393,6 @@ export const getRoutes = store => (
 
         {/* ADMIN */}
         {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
-
-        {/* ACTION */}
-        <Route path="/action">
-          <Route path="create" component={ActionPage} />
-          <Route path=":actionId" component={ActionPage} />
-        </Route>
       </Route>
     </Route>
 

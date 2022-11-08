@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
+
+import { useToggle } from "metabase/hooks/use-toggle";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
@@ -13,6 +15,8 @@ import { hasImplicitActions, isImplicitAction } from "metabase/writeback/utils";
 
 import type { WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+
+import { ActionCreator } from "metabase/writeback/components/ActionCreator";
 
 import {
   EmptyStateContainer,
@@ -35,6 +39,20 @@ function ModelActionDetails({
   modelId,
   enableImplicitActionsForModel,
 }: Props) {
+  const [editingActionId, setEditingActionId] = useState<number | undefined>(
+    undefined,
+  );
+
+  const [
+    isActionCreatorOpen,
+    { toggle: toggleIsActionCreatorVisible, turnOff: hideActionCreator },
+  ] = useToggle();
+
+  const closeModal = () => {
+    hideActionCreator();
+    setEditingActionId(undefined);
+  };
+
   const handleCreateImplicitActions = async () => {
     await enableImplicitActionsForModel(modelId);
   };
@@ -46,7 +64,7 @@ function ModelActionDetails({
         <Button onClick={handleCreateImplicitActions} icon="add">
           {t`Enable implicit actions`}
         </Button>
-        <AddActionButton modelId={modelId} />
+        <AddActionButton onClick={toggleIsActionCreatorVisible} />
       </EmptyStateContainer>
     );
   }
@@ -60,13 +78,24 @@ function ModelActionDetails({
           {t`Enable implicit actions`}
         </Button>
       )}
-      <AddActionButton modelId={modelId} />
+      <Button
+        onClick={toggleIsActionCreatorVisible}
+        icon="add"
+      >{t`Create a new action`}</Button>
       <ul>
         {actions.map(action => (
           <li key={action.id}>
             <ActionListItem
-              to={`/action/${action.id}`}
+              borderless
               disabled={isImplicitAction(action)}
+              onClick={
+                !isImplicitAction(action)
+                  ? () => {
+                      setEditingActionId(action.id);
+                      toggleIsActionCreatorVisible();
+                    }
+                  : undefined
+              }
             >
               <Icon name="insight" />
               <ActionTitle>
@@ -76,14 +105,21 @@ function ModelActionDetails({
           </li>
         ))}
       </ul>
+      {isActionCreatorOpen && (
+        <ActionCreator
+          modelId={modelId}
+          actionId={editingActionId}
+          onClose={closeModal}
+        />
+      )}
     </>
   );
 }
 
-const AddActionButton = ({ modelId }: { modelId: number }) => (
+const AddActionButton = ({ onClick }: { onClick: () => void }) => (
   <Button
-    as={Link}
-    to={`/action/create?model-id=${modelId}`}
+    onlyIcon
+    onClick={onClick}
     icon="add"
   >{t`Create a new action`}</Button>
 );
