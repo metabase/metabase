@@ -52,7 +52,6 @@ const ForgotPasswordForm = ({
             title={t`Email address`}
             placeholder={t`The email you use for your Metabase account`}
             autoFocus
-            fullWidth
           />
           <FormSubmitButton
             title={t`Send password reset email`}

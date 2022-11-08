@@ -7,7 +7,10 @@ import NumericInput, {
 import FormField from "metabase/core/components/FormField";
 
 export interface FormNumericInputProps
-  extends Omit<NumericInputProps, "value" | "error" | "onChange" | "onBlur"> {
+  extends Omit<
+    NumericInputProps,
+    "value" | "error" | "fullWidth" | "onChange" | "onBlur"
+  > {
   name: string;
   title?: string;
   description?: ReactNode;
@@ -43,6 +46,7 @@ const FormNumericInput = forwardRef(function FormNumericInput(
         name={name}
         value={value}
         error={touched && error != null}
+        fullWidth
         onChange={setValue}
         onBlur={onBlur}
       />

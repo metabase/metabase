@@ -8,7 +8,10 @@ import DateWidget, {
 import FormField from "metabase/core/components/FormField";
 
 export interface FormDateInputProps
-  extends Omit<DateWidgetProps, "value" | "error" | "onChange" | "onBlur"> {
+  extends Omit<
+    DateWidgetProps,
+    "value" | "error" | "fullWidth" | "onChange" | "onBlur"
+  > {
   name: string;
   title?: string;
   description?: ReactNode;
@@ -48,6 +51,7 @@ const FormDateInput = forwardRef(function FormDateInput(
         name={name}
         value={date}
         error={touched && error != null}
+        fullWidth
         onChange={handleChange}
         onBlur={onBlur}
       />
