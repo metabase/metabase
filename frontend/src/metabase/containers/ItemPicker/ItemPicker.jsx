@@ -43,6 +43,14 @@ const propTypes = {
   showScroll: PropTypes.bool,
 };
 
+function mapStateToProps(state, props) {
+  const entity = props.entity || Collections;
+  return {
+    collectionsById: entity.selectors.getExpandedCollectionsById(state),
+    getCollectionIcon: entity.objectSelectors.getIcon,
+  };
+}
+
 class ItemPicker extends React.Component {
   state = {
     parentId: "root",
@@ -311,10 +319,5 @@ export default _.compose(
     entityType: (state, props) => props.entity?.name ?? "collections",
     loadingAndErrorWrapper: false,
   }),
-  connect((state, props) => ({
-    collectionsById: (
-      props.entity || Collections
-    ).selectors.getExpandedCollectionsById(state),
-    getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
-  })),
+  connect(mapStateToProps),
 )(ItemPicker);
