@@ -94,7 +94,6 @@ const EventForm = ({
             title={t`Description`}
             infoLabel={t`Markdown supported`}
             infoTooltip={t`Add links and formatting via markdown`}
-            fullWidth
           />
           <FormSelect name="icon" title={t`Icon`} options={iconOptions} />
           {timelines.length > 1 && (
