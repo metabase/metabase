@@ -106,6 +106,25 @@ class ItemPicker extends React.Component {
     return collection.children?.length > 0;
   };
 
+  getItemId = item => {
+    if (!item) {
+      return;
+    }
+    if (item.model === "collection") {
+      return item.id === null ? "root" : item.id;
+    }
+    return item.id;
+  };
+
+  checkIsItemSelected = item => {
+    const { value, models } = this.props;
+    if (!value || !item) {
+      return false;
+    }
+    const isSameModel = item.model === value.model || models.length === 1;
+    return isSameModel && this.getItemId(item) === this.getItemId(value);
+  };
+
   handleSearchInputKeyPress = e => {
     if (e.key === "Enter") {
       this.setState({ searchString: e.target.value });
@@ -193,7 +212,6 @@ class ItemPicker extends React.Component {
 
   render() {
     const {
-      value,
       models,
       onChange,
       collectionsById,
@@ -232,17 +250,6 @@ class ItemPicker extends React.Component {
       model: "collection",
     }));
 
-    // special case for root collection
-    const getId = item =>
-      item &&
-      (item.model === "collection" && item.id === null ? "root" : item.id);
-
-    const isSelected = item =>
-      item &&
-      value &&
-      getId(item) === getId(value) &&
-      (models.length === 1 || item.model === value.model);
-
     return (
       <ScrollAwareLoadingAndErrorWrapper
         loading={!collectionsById}
@@ -270,7 +277,9 @@ class ItemPicker extends React.Component {
                       name={collection.name}
                       color={color(icon.color) || getCollectionIconColor()}
                       icon={icon}
-                      selected={canSelect && isSelected(collection)}
+                      selected={
+                        canSelect && this.checkIsItemSelected(collection)
+                      }
                       canSelect={canSelect}
                       hasChildren={hasChildren}
                       onChange={this.handleCollectionSelected}
@@ -305,7 +314,7 @@ class ItemPicker extends React.Component {
                             name={item.getName()}
                             color={item.getColor()}
                             icon={item.getIcon().name}
-                            selected={isSelected(item)}
+                            selected={this.checkIsItemSelected(item)}
                             canSelect={hasPermission}
                             onChange={onChange}
                           />
