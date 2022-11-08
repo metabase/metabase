@@ -1,14 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
 
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { getCrumbs } from "metabase/lib/collections";
 import { color } from "metabase/lib/colors";
@@ -23,10 +21,12 @@ import { isRootCollection } from "metabase/collections/utils";
 
 import Item from "./Item";
 import {
+  ItemPickerRoot,
   ItemPickerHeader,
   ItemPickerList,
   SearchInput,
   SearchToggle,
+  ScrollAwareLoadingAndErrorWrapper,
 } from "./ItemPicker.styled";
 
 const getCollectionIconColor = () => color("text-light");
@@ -223,11 +223,11 @@ class ItemPicker extends React.Component {
       (models.length === 1 || item.model === value.model);
 
     return (
-      <LoadingAndErrorWrapper
+      <ScrollAwareLoadingAndErrorWrapper
         loading={!collectionsById}
-        className={cx({ "scroll-y": showScroll })}
+        hasScroll={showScroll}
       >
-        <div className={cx(className, "scroll-y")} style={style}>
+        <ItemPickerRoot className={className} style={style}>
           {this.renderHeader()}
           <ItemPickerList data-testid="item-picker-list">
             {!searchString &&
@@ -299,8 +299,8 @@ class ItemPicker extends React.Component {
               </Search.ListLoader>
             )}
           </ItemPickerList>
-        </div>
-      </LoadingAndErrorWrapper>
+        </ItemPickerRoot>
+      </ScrollAwareLoadingAndErrorWrapper>
     );
   }
 }

@@ -1,8 +1,24 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 import { color } from "metabase/lib/colors";
+
+export const ScrollAwareLoadingAndErrorWrapper = styled(
+  LoadingAndErrorWrapper,
+)<{ hasScroll?: boolean }>`
+  ${props =>
+    props.hasScroll &&
+    css`
+      overflow-y: auto;
+    `}
+`;
+
+export const ItemPickerRoot = styled.div`
+  overflow-y: auto;
+`;
 
 export const ItemPickerHeader = styled.div`
   display: flex;
