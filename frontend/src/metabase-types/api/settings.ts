@@ -42,7 +42,7 @@ export interface Settings {
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "available-fonts": string[];
-  "available-locales": LocaleData[] | undefined;
+  "available-locales": LocaleData[] | null;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "email-configured?": boolean;

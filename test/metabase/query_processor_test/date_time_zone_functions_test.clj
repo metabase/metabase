@@ -45,7 +45,23 @@
     [[1 #t "2004-03-19 09:19:09" #t "2004-03-19" "2004-03-19 09:19:09" "2004-03-19"]
      [2 #t "2008-06-20 10:20:10" #t "2008-06-20" "2008-06-20 10:20:10" "2008-06-20"]
      [3 #t "2012-11-21 11:21:11" #t "2012-11-21" "2012-11-21 11:21:11" "2012-11-21"]
-     [4 #t "2012-11-21 11:21:11" #t "2012-11-21" "2012-11-21 11:21:11" "2012-11-21"]]]])
+     [4 #t "2012-11-21 11:21:11" #t "2012-11-21" "2012-11-21 11:21:11" "2012-11-21"]]]
+   ["weeks" [{:field-name "index"
+              :base-type :type/Integer}
+             {:field-name "description"
+              :base-type :type/Text}
+             {:field-name "d"
+              :base-type :type/Date}]
+    [[1 "1st saturday"   #t "2000-01-01"]
+     [2 "1st sunday"     #t "2000-01-02"]
+     [3 "1st monday"     #t "2000-01-03"]
+     [4 "1st wednesday"  #t "2000-01-04"]
+     [5 "1st tuesday"    #t "2000-01-05"]
+     [6 "1st thursday"   #t "2000-01-06"]
+     [7 "1st friday"     #t "2000-01-07"]
+     [8 "2nd saturday"   #t "2000-01-08"]
+     [9 "2nd sunday"     #t "2000-01-09"]
+     [10 "2005 saturday" #t "2005-01-01"]]]])
 
 (def ^:private temporal-extraction-op->unit
   {:get-second      :second-of-minute
@@ -53,7 +69,6 @@
    :get-hour        :hour-of-day
    :get-day-of-week :day-of-week
    :get-day         :day-of-month
-   :get-week        :week-of-year
    :get-month       :month-of-year
    :get-quarter     :quarter-of-year
    :get-year        :year})
@@ -148,13 +163,60 @@
         (testing title
           (is (= expected (test-temporal-extract query))))))))
 
+(defmacro with-start-of-week
+  "With start of week."
+  [start-of-week & body]
+  `(mt/with-temporary-setting-values [start-of-week ~start-of-week]
+     ~@body))
+
+(defn test-extract-week
+  [field-id method]
+  (->> (mt/mbql-query weeks {:expressions {"expr" [:get-week [:field field-id nil] method]}
+                             :order-by    [[:asc [:field (mt/id :weeks :index)]]]
+                             :fields      [[:expression "expr"]]})
+      mt/process-query
+      (mt/formatted-rows [int])
+      (map first)))
+
+(deftest extract-week-tests
+  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
+    (mt/dataset times-mixed
+      ;; the native get week of sqlite is not iso, and it's not easy
+      ;; to implement in raw sql, so skips it for now
+      (when-not (#{:sqlite} driver/*driver*)
+        (testing "iso8601 week"
+          (is (= [52 52 1 1 1 1 1 1 1 53]
+                 (test-extract-week (mt/id :weeks :d) :iso)))
+          (testing "shouldn't change if start-of-week settings change"
+            (with-start-of-week :monday
+              (is (= [52 52 1 1 1 1 1 1 1 53]
+                     (test-extract-week (mt/id :weeks :d) :iso)))))))
+
+      ;; check the (defmethod sql.qp/date [:snowflake :week-of-year-us]) for why we skip snowflake
+      (when-not (#{:snowflake} driver/*driver*)
+        (testing "us week"
+          (is (= [1 2 2 2 2 2 2 2 3 1]
+                 (test-extract-week (mt/id :weeks :d) :us)))
+          (testing "shouldn't change if start-of-week settings change"
+            (with-start-of-week :monday
+              (is (= [1 2 2 2 2 2 2 2 3 1]
+                     (test-extract-week (mt/id :weeks :d) :us)))))))
+
+      (testing "instance week"
+        (is (= [1 2 2 2 2 2 2 2 3 1]
+               (test-extract-week (mt/id :weeks :d) :instance)))
+
+        (with-start-of-week :monday
+          (is (= [1 1 2 2 2 2 2 2 2 1]
+                 (test-extract-week (mt/id :weeks :d) :instance))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Date arithmetics tests                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn date-math
+(defn datetime-math
   [op x amount unit col-type]
-  (let [amount (if (= op :date-add)
+  (let [amount (if (= op :datetime-add)
                  amount
                  (- amount))
         fmt    (cond
@@ -177,7 +239,7 @@
         (str/replace  #"T" " ")
         (str/replace  #"Z" ""))))
 
-(defn test-date-math
+(defn test-datetime-math
   [{:keys [aggregation breakout expressions fields filter limit]}]
   (if breakout
     (->> (mt/run-mbql-query times {:expressions expressions
@@ -194,65 +256,66 @@
          (mt/formatted-rows [normalize-timestamp-str])
          (map first))))
 
-(deftest date-math-tests
+(deftest datetime-math-tests
   (mt/dataset times-mixed
     ;; mongo doesn't supports coercion yet so we exclude it here, Tests for it are in [[metabase.driver.mongo.query-processor-test]]
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
       (testing "date arithmetic with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
-                op                  [:date-add :date-subtract]
+                op                  [:datetime-add :datetime-subtract]
                 unit                [:year :quarter :month :day :hour :minute :second]
 
                 {:keys [expected query]}
-                [{:expected [(date-math op #t "2004-03-19 09:19:09" 2 unit col-type) (date-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                             (date-math op #t "2012-11-21 11:21:11" 2 unit col-type) (date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
+                [{:expected [(datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type) (datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                             (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type) (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :fields      [[:expression "expr"]]}}
                  {:expected (into [] (frequencies
-                                       [(date-math op #t "2004-03-19 09:19:09" 2 unit col-type) (date-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                        (date-math op #t "2012-11-21 11:21:11" 2 unit col-type) (date-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
+                                       [(datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type) (datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                                        (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type) (datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :aggregation [[:count]]
                              :breakout    [[:expression "expr"]]}}]]
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-            (is (= (set expected) (set (test-date-math query)))))))
+            (is (= (set expected) (set (test-datetime-math query)))))))
 
       (testing "date arithmetic with datetime columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
-                op                  [:date-add :date-subtract]
+                op                  [:datetime-add :datetime-subtract]
                 unit                [:year :quarter :month :day]
 
                 {:keys [expected query]}
-                [{:expected [(date-math op #t "2004-03-19 00:00:00" 2 unit col-type) (date-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                             (date-math op #t "2012-11-21 00:00:00" 2 unit col-type) (date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]
+                [{:expected [(datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type) (datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                             (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type) (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :fields      [[:expression "expr"]]}}
                  {:expected (into [] (frequencies
-                                       [(date-math op #t "2004-03-19 00:00:00" 2 unit col-type) (date-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                        (date-math op #t "2012-11-21 00:00:00" 2 unit col-type) (date-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
+                                       [(datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type) (datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                                        (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type) (datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
                   :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                              :aggregation [[:count]]
                              :breakout    [[:expression "expr"]]}}]]
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-            (is (= (set expected) (set (test-date-math query))))))))))
+            (is (= (set expected) (set (test-datetime-math query))))))))))
 
-(deftest date-math-with-extract-test
+
+(deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested date math then extract"
                 :expected [2006 2010 2014]
-                :query    {:expressions {"expr" [:get-year [:date-add [:field (mt/id :times :dt) nil] 2 :year]]}
+                :query    {:expressions {"expr" [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]]}
                             :fields [[:expression "expr"]]}}
 
                {:title   "Nested date math twice"
                 :expected ["2006-05-19 09:19:09" "2010-08-20 10:20:10" "2015-01-21 11:21:11"]
-                :query    {:expressions {"expr" [:date-add [:date-add [:field (mt/id :times :dt) nil] 2 :year] 2 :month]}
+                :query    {:expressions {"expr" [:datetime-add [:datetime-add [:field (mt/id :times :dt) nil] 2 :year] 2 :month]}
                            :fields [[:expression "expr"]]}}
 
                {:title    "filter with date math"
                 :expected [1]
-                :query   {:filter [:= [:get-year [:date-add [:field (mt/id :times :dt) nil] 2 :year]] 2006]
+                :query   {:filter [:= [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]] 2006]
                           :fields [[:field (mt/id :times :index)]]}}]]
         (testing title
-          (is (= (set expected) (set (test-date-math query)))))))))
+          (is (= (set expected) (set (test-datetime-math query)))))))))

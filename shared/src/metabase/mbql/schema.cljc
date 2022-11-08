@@ -81,8 +81,24 @@
 (def TemporalExtractUnits
   "Valid units to extract from a temporal."
   (s/named
-    (apply s/enum #{:second :minute :hour :day :day-of-week :week :month :quarter :year})
+    (apply s/enum #{:year-of-era
+                    :quarter-of-year
+                    :month-of-year
+                    :week-of-year-iso
+                    :week-of-year-us
+                    :week-of-year-instance
+                    :day-of-month
+                    :day-of-week
+                    :hour-of-day
+                    :minute-of-hour
+                    :second-of-minute})
     "temporal-extract-units"))
+
+(def ExtractWeekModes
+  "Valid modes to extract weeks."
+  (s/named
+    (apply s/enum #{:iso :us :instance})
+    "extract-week-modes"))
 
 (def ^:private RelativeDatetimeUnit
   (s/named
@@ -473,11 +489,11 @@
   #{;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
-    :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
+    :get-year :get-quarter :get-month :get-week :get-day :get-day-of-week :get-hour :get-minute :get-second})
 
 (def date-arithmetic-functions
   "Functions to do math with date, datetime."
-  #{:date-add :date-subtract})
+  #{:datetime-add :datetime-subtract})
 
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
@@ -632,7 +648,8 @@
 
 (defclause ^{:requires-features #{:temporal-extract}} temporal-extract
   datetime DateTimeExpressionArg
-  unit     TemporalExtractUnits)
+  unit     TemporalExtractUnits
+  mode     (optional ExtractWeekModes)) ;; only for get-week
 
 ;; SUGAR CLAUSE: get-year, get-month... clauses are all sugars clause that will be rewritten as [:temporal-extract column :year]
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-year
@@ -643,6 +660,10 @@
 
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-month
   date DateTimeExpressionArg)
+
+(defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-week
+  date DateTimeExpressionArg
+  mode (optional ExtractWeekModes))
 
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-day
   date DateTimeExpressionArg)
@@ -664,21 +685,21 @@
    (apply s/enum #{:millisecond :second :minute :hour :day :week :month :quarter :year})
    "arithmetic-datetime-unit"))
 
-(defclause ^{:requires-features #{:date-arithmetics}} date-add
+(defclause ^{:requires-features #{:date-arithmetics}} datetime-add
   datetime DateTimeExpressionArg
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
-(defclause ^{:requires-features #{:date-arithmetics}} date-subtract
+(defclause ^{:requires-features #{:date-arithmetics}} datetime-subtract
   datetime DateTimeExpressionArg
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
 (def ^:private DatetimeExpression*
-  (one-of temporal-extract date-add date-subtract
+  (one-of temporal-extract datetime-add datetime-subtract
           ;; SUGAR drivers do not need to implement
-          get-year get-quarter get-month get-day get-day-of-week get-hour
-          get-minute get-second))
+          get-year get-quarter get-month get-week get-day get-day-of-week
+          get-hour get-minute get-second))
 
 (def DatetimeExpression
   "Schema for the definition of a date function expression."

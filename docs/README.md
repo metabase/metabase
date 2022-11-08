@@ -61,6 +61,7 @@ Metabase's reference documentation.
 #### Query builder
 
 - [Asking questions](./questions/query-builder/introduction.md)
+- [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Custom expressions](./questions/query-builder/expressions.md)
 - [List of expressions](./questions/query-builder/expressions-list.md)
 - [Joining data](./questions/query-builder/join.md)
@@ -77,7 +78,6 @@ Metabase's reference documentation.
 #### Sharing
 
 - [Sharing answers](./questions/sharing/answers.md)
-- [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Setting and getting alerts](./questions/sharing/alerts.md)
 - [Public links](./questions/sharing/public-links.md)
 
@@ -104,7 +104,9 @@ Metabase's reference documentation.
 - [Organization overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
+- [History](./exploration-and-organization/history.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
+- [X-rays](./exploration-and-organization/x-rays.md)
 
 ### People
 

@@ -7,15 +7,6 @@ export const datasetContainsNoResults = data =>
   data.rows == null || data.rows.length === 0;
 
 /**
- * @returns min and max for a value in a column
- */
-export const rangeForValue = (value, column) => {
-  if (typeof value === "number" && column?.binning_info?.bin_width) {
-    return [value, value + column.binning_info.bin_width];
-  }
-};
-
-/**
  * Returns a MBQL field reference (FieldReference) for a given result dataset column
  *
  * @param  {Column} column Dataset result column

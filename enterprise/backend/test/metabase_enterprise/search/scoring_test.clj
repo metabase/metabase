@@ -1,5 +1,8 @@
 (ns metabase-enterprise.search.scoring-test
-  (:require [clojure.test :refer :all]
+  (:require [cheshire.core :as json]
+            [clojure.math.combinatorics :as math.combo]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [java-time :as t]
             [metabase-enterprise.search.scoring :as ee-scoring]
             [metabase.public-settings.premium-features :as premium-features]
@@ -18,67 +21,108 @@
       (is (= [1 3 2] (score [(item 1 "verified") (item 2 nil) (item 3 nil)]))))))
 
 (defn- ee-score
-  [search-string]
-  (fn [item]
-    (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
-      (-> (scoring/score-and-result search-string item) :score))))
+  [search-string item]
+  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]}
+                premium-features/enable-enhancements? (constantly true)]
+    (-> (scoring/score-and-result search-string item) :score)))
 
 (defn- oss-score
-  [search-string]
-  (fn [item]
-    (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly false)]
-      (-> (scoring/score-and-result search-string item) :score))))
+  [search-string item]
+  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]}
+                premium-features/enable-enhancements? (constantly false)]
+    (-> (scoring/score-and-result search-string item) :score)))
 
 (deftest official-collection-tests
   (testing "it should bump up the value of items in official collections"
     ;; using the ee implementation that isn't wrapped by enable-enhancements? check
-    (let [search-string     "custom expression examples"
-          ee-score          (ee-score search-string)
-          oss-score         (oss-score search-string)
-          labeled-results   {:a {:name "custom expression examples" :model "dashboard"}
-                             :b {:name "examples of custom expressions" :model "dashboard"}
-                             :c {:name                "customer success stories"
-                                 :dashboardcard_count 50
-                                 :updated_at          (t/offset-date-time)
-                                 :collection_position 1
-                                 :model               "dashboard"}
-                             :d {:name "customer examples of bad sorting" :model "dashboard"}}
-          {:keys [a b c d]} labeled-results]
+    (let [search-string "custom expression examples"
+          a             {:id "a" :name "custom expression examples" :model "dashboard"}
+          b             {:id "b" :name "examples of custom expressions" :model "dashboard"}
+          c             {:id "c"
+                         :name                "customer success stories"
+                         :dashboardcard_count 50
+                         :updated_at          (t/offset-date-time)
+                         :collection_position 1
+                         :model               "dashboard"}
+          d             {:id "d" :name "customer examples of bad sorting" :model "dashboard"}]
       (doseq [item [a b c d]]
-        (is (> (ee-score (assoc item :collection_authority_level "official")) (ee-score item))
-            (str "Item not greater for model: " (:model item))))
-      (let [items (shuffle [a b c d])]
-        (is (= (sort-by oss-score items)
-               ;; assert that the ordering remains the same even if scores are slightly different
-               (sort-by ee-score items)))
-        (is (= ["customer examples of bad sorting"
-                "customer success stories"
-                "examples of custom expressions"
-                "custom expression examples"]
-               (map :name (sort-by oss-score [a b c d]))))
-        (is (= ["customer success stories"
-                "customer examples of bad sorting" ;; bumped up slightly in results
-                "examples of custom expressions"
-                "custom expression examples"]
-               (map :name (sort-by ee-score [a b c
-                                             (assoc d :collection_authority_level "official")])))))))
+        (is (> (ee-score search-string (assoc item :collection_authority_level "official"))
+               (ee-score search-string item))
+            (str "Score should be greater for item: " item " vs " (assoc item :collection_authority_level "official"))))
+      (is (= ["customer examples of bad sorting"
+              "customer success stories"
+              "examples of custom expressions"
+              "custom expression examples"]
+             (mapv :name (sort-by #(oss-score search-string %)
+                                  (shuffle [a b c d])))))
+      (is (= ["customer examples of bad sorting"
+              "customer success stories"
+              "examples of custom expressions"
+              "custom expression examples"]
+             (mapv :name (sort-by #(ee-score search-string %)
+                                  (shuffle [a b c (assoc d :collection_authority_level "official")])))))))
   (testing "It should bump up the value of verified items"
-    (let [search-string     "foo"
-          dashboard-count   #(assoc % :dashboardcard_count 0)
-          ee-score          (comp (ee-score search-string) dashboard-count)
-          oss-score          (comp (oss-score search-string) dashboard-count)
-          labeled-results   {:a {:name "foobar" :model "card" :id :a}
-                             :b {:name "foo foo" :model "card" :id :b}
-                             :c {:name "foo foo foo" :model "card" :id :c}}
-          {:keys [a b c]} labeled-results]
+    (let [ss "foo"
+          a  {:name                "foobar"
+              :model               "card"
+              :id                  :a
+              :dashboardcard_count 0}
+          b  {:name                "foo foo"
+              :model               "card"
+              :id                  :b
+              :dashboardcard_count 0}
+          c  {:name                "foo foo foo"
+              :model               "card"
+              :id                  :c
+              :dashboardcard_count 0}]
       (doseq [item [a b c]]
-        (is (> (ee-score (assoc item :moderated_status "verified")) (ee-score item))
+        (is (> (ee-score ss (assoc item :moderated_status "verified"))
+               (ee-score ss item))
             (str "Item not greater for model: " (:model item))))
       (let [items (shuffle [a b c])]
-        (is (= (sort-by oss-score items) (sort-by ee-score items))))
-      ;; a is sorted lowest here (sort-by is ascending)
-      (is (= [:a :c :b] (map :id (sort-by ee-score [a b c]))))
-      ;; a is verified and is now last or highest score
-      (is (= [:c :b :a]
+        (is (= (sort-by #(oss-score ss %) items)
+               (sort-by #(ee-score ss %) items))))
+      (is (= [:c :b :a] (map :id (sort-by #(ee-score ss %) [a b c]))))
+      ;; c is verified and is now last or highest score
+      (is (= [:b :a :c]
              (map :id
-                  (sort-by ee-score [(assoc a :moderated_status "verified") b c])))))))
+                  (sort-by #(ee-score ss %)
+                           [a
+                            b
+                            (assoc c :moderated_status "verified")])))))))
+
+(defn- all-permutations-all-orders
+  "(all-permutations-all-orders [1]) ;; => [[] [1]]
+   (all-permutations-all-orders [1 2])
+   ;; => [[] [1] [2] [1 2] [2 1]]
+   (all-permutations-all-orders [1 2 3])
+   ;; => [[]                                               ;; size 0
+   ;;     [1]             [2]             [3]              ;; size 1
+   ;;     [1 2]   [2 1]   [1 3]   [3 1]   [2 3]   [3 2]    ;; size 2
+   ;;     [1 2 3] [1 3 2] [2 1 3] [2 3 1] [3 1 2] [3 2 1]] ;; size 3
+  "
+  [values]
+  {:pre [(> 10 (count values))]}
+  (mapv vec (mapcat math.combo/permutations (math.combo/subsets values))))
+
+(defn test-corups [words]
+  (let [corpus (->> words
+                    all-permutations-all-orders
+                    (mapv #(str/join " " %))
+                    (remove #{""}))
+        the-query (json/generate-string {:type :query :query {:source-table 1}})
+        ->query (fn [n] {:name n :dataset_query the-query})
+        results (map ->query corpus)]
+    (doseq [search-string corpus]
+      (is (= search-string
+             (-> (scoring/top-results
+                  results
+                  1
+                  (map #(metabase.search.scoring/score-and-result search-string %)))
+                 first
+                 :name))))))
+
+(deftest identical-results-result-in-identical-hits
+  (test-corups ["foo" "bar"])
+  (test-corups ["foo" "bar" "baz"])
+  (test-corups ["foo" "bar" "baz" "quux"]))

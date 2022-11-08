@@ -7,6 +7,7 @@
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [medley.core :as m]
+    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
     [metabase-enterprise.serialization.v2.models :as serdes.models]
     [metabase.models :refer [Card Collection Dashboard DashboardCard]]
     [metabase.models.collection :as collection]
@@ -41,6 +42,7 @@
   there."
   [opts]
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
+  (serdes.backfill/backfill-ids)
   (let [model-pred (if (:data-model-only opts)
                      #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
                      (constantly true))
@@ -166,14 +168,19 @@
   serialized output."
   [{:keys [selected-collections targets] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (if-let [analysis (escape-analysis selected-collections)]
-    ;; If that is non-nil, emit the report.
-    (escape-report analysis)
-    ;; If it's nil, there are no errors, and we can proceed to do the dump.
-    (let [closure  (descendants-closure opts targets)
-          by-model (->> closure
-                        (group-by first)
-                        (m/map-vals #(set (map second %))))]
-      (eduction cat (for [[model ids] by-model]
-                      (eduction (map #(serdes.base/extract-one model opts %))
-                                (db/select-reducible (symbol model) :id [:in ids])))))))
+  (let [selected-collections (or selected-collections (->> targets
+                                                           (filter #(= (first %) "Collection"))
+                                                           (map second)
+                                                           set))]
+    (serdes.backfill/backfill-ids)
+    (if-let [analysis (escape-analysis selected-collections)]
+      ;; If that is non-nil, emit the report.
+      (escape-report analysis)
+      ;; If it's nil, there are no errors, and we can proceed to do the dump.
+      (let [closure  (descendants-closure opts targets)
+            by-model (->> closure
+                          (group-by first)
+                          (m/map-vals #(set (map second %))))]
+        (eduction cat (for [[model ids] by-model]
+                        (eduction (map #(serdes.base/extract-one model opts %))
+                                  (db/select-reducible (symbol model) :id [:in ids]))))))))

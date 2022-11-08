@@ -209,7 +209,7 @@ function formatNumberCompactWithoutOptions(value: number) {
   }
 }
 
-// replaces the decimale and grouping separators with those specified by a NumberSeparators option
+// replaces the decimal and grouping separators with those specified by a NumberSeparators option
 function replaceNumberSeparators(formatted: any, separators: any) {
   const [decimalSeparator, groupingSeparator] = (separators || ".,").split("");
 

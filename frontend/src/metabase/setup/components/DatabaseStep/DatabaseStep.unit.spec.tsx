@@ -10,11 +10,6 @@ jest.mock("metabase/entities/databases", () => ({
   Form: ComponentMock,
 }));
 
-jest.mock("metabase/entities/users", () => ({
-  forms: { setup_invite: jest.fn() },
-  Form: ComponentMock,
-}));
-
 jest.mock("metabase/containers/DriverWarning", () => ComponentMock);
 
 describe("DatabaseStep", () => {

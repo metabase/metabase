@@ -14,6 +14,7 @@ export const settingToFormField = setting => ({
     ? t`Using ${setting.env_name}`
     : setting.placeholder || setting.default,
   validate: setting.required ? value => !value && "required" : undefined,
+  autoFocus: setting.autoFocus,
 });
 
 export const settingToFormFieldId = setting => `setting-${setting.key}`;

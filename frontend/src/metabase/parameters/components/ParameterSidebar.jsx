@@ -17,7 +17,9 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
+import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
 import Sidebar from "metabase/dashboard/components/Sidebar";
+import { getIsMultiSelect } from "metabase/parameters/utils/dashboards";
 
 const LINKED_FILTER = "linked-filters";
 const TABS = [
@@ -53,6 +55,7 @@ class ParameterSidebar extends React.Component {
       done,
       setName,
       setDefaultValue,
+      setIsMultiSelect,
       setFilteringParameters,
     } = this.props;
     const { currentTab } = this.state;
@@ -93,6 +96,20 @@ class ParameterSidebar extends React.Component {
                   className="input bg-white"
                 />
               </div>
+              {isSingleOrMultiSelectable(parameter) && (
+                <div className="pb2">
+                  <label className="mt2 mb1 block text-bold">{t`Users can pick`}</label>
+                  <Radio
+                    value={getIsMultiSelect(parameter)}
+                    onChange={setIsMultiSelect}
+                    options={[
+                      { name: t`Multiple values`, value: true },
+                      { name: t`A single value`, value: false },
+                    ]}
+                    vertical
+                  />
+                </div>
+              )}
               <a
                 borderless
                 className="mt2 block text-medium text-error-hover text-bold"

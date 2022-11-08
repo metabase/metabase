@@ -23,17 +23,6 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.findByRole("switch", { name: "JWT" }).should("be.checked");
   });
 
-  it("should allow to save but not enable jwt", () => {
-    cy.visit("/admin/settings/authentication/jwt");
-
-    enterJWTSettings();
-    cy.button("Save but don't enable").click();
-    cy.wait("@updateSettings");
-    cy.findAllByRole("link", { name: "Authentication" }).first().click();
-
-    cy.findByRole("switch", { name: "JWT" }).should("not.be.checked");
-  });
-
   it("should allow to regenerate the jwt key and save the settings", () => {
     setupJWT();
     cy.visit("/admin/settings/authentication/jwt");
@@ -43,7 +32,7 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.button("Save changes").click();
     cy.wait("@updateSettings");
 
-    cy.findByText("Changes saved!").should("exist");
+    cy.findByText("Success").should("exist");
   });
 });
 

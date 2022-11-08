@@ -609,6 +609,26 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
+    name: "get-week",
+    structure: "week(" + t`column` + ", " + t`mode` + ")",
+    description: t`Extracts the week of the year as an integer.`,
+    example: "week([" + t`Created At` + '], "iso")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The name of the column with your date or datetime value.`,
+      },
+      {
+        name: t`mode`,
+        description: t`Optional. The default is "ISO".
+- ISO: Week 1 starts on the Monday before the first Thursday of January.
+- US: Week 1 starts on Jan 1. All other weeks start on Sunday.
+- Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+`,
+      },
+    ],
+  },
+  {
     name: "get-day",
     structure: "day(" + t`column` + ")",
     description: t`Takes a datetime and returns an integer (1-31) with the number of the day of the month.`,
@@ -669,10 +689,11 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
-    name: "date-add",
-    structure: "dateAdd(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+    name: "datetime-add",
+    structure:
+      "datetimeAdd(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
     description: t`Adds some units of time to a date or timestamp value.`,
-    example: "dateAdd([" + t`Created At` + '], 1, "' + t`month` + '")',
+    example: "datetimeAdd([" + t`Created At` + '], 1, "' + t`month` + '")',
     args: [
       {
         name: t`column`,
@@ -689,11 +710,11 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
-    name: "date-subtract",
+    name: "datetime-subtract",
     structure:
-      "dateSubtract(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+      "datetimeSubtract(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
     description: t`Subtracts some units of time to a date or timestamp value.`,
-    example: "dateSubtract([" + t`Created At` + '], 1, "' + t`month` + '")',
+    example: "datetimeSubtract([" + t`Created At` + '], 1, "' + t`month` + '")',
     args: [
       {
         name: t`column`,

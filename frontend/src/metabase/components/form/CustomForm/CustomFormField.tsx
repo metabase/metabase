@@ -130,8 +130,14 @@ CustomFormFieldLegacyContext.contextTypes = {
   unregisterFormField: PropTypes.func,
 };
 
-export default React.forwardRef<HTMLInputElement, CustomFormFieldProps>(
-  function CustomFormField(props, ref) {
-    return <CustomFormFieldLegacyContext {...props} forwardedRef={ref} />;
-  },
-);
+/**
+ * @deprecated
+ */
+const CustomFormField = React.forwardRef<
+  HTMLInputElement,
+  CustomFormFieldProps
+>(function CustomFormField(props, ref) {
+  return <CustomFormFieldLegacyContext {...props} forwardedRef={ref} />;
+});
+
+export default CustomFormField;
