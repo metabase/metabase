@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
 import Modal from "metabase/components/Modal";
+import Link from "metabase/core/components/Link";
 import { breakpointMinMedium } from "metabase/styled-components/theme/media-queries";
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import TableFooter from "../TableSimple/TableFooter";
 
 interface ObjectDetailContainerProps {
@@ -137,4 +138,16 @@ export const ObjectRelationContent = styled.div<ObjectRelationshipContentProps>`
 export const PaginationFooter = styled(TableFooter)`
   margin-top: 0.5rem;
   text-align: right;
+`;
+
+export const QuestionLink = styled(Link)`
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 1;
+  text-align: right;
+  color: ${color("brand")};
+  &:hover {
+    color: ${lighten("brand", 0.1)};
+  }
 `;

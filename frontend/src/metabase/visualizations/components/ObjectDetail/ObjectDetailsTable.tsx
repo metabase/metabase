@@ -43,8 +43,9 @@ export function DetailsTableCell({
   const clicked = { column: null, value: null };
   let isLink;
 
+  const columnSettings = settings?.column?.(column) ?? {};
   const columnTitle =
-    settings?.column?.(column)?.["_column_title_full"] || formatColumn(column);
+    columnSettings?.["_column_title_full"] || formatColumn(column);
 
   if (isColumnName) {
     cellValue = column !== null ? columnTitle : null;
@@ -66,7 +67,7 @@ export function DetailsTableCell({
       cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
     } else {
       cellValue = formatValue(value, {
-        ...settings.column(column),
+        ...columnSettings,
         jsx: true,
         rich: true,
       });

@@ -38,16 +38,17 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
     ref,
   ) {
     const paginateMessage = useMemo(() => {
-      const totalMessage =
-        limit === undefined && total >= HARD_ROW_LIMIT
-          ? t`of first ${total}`
-          : t`of ${total}`;
+      const isOverLimit = limit === undefined && total >= HARD_ROW_LIMIT;
 
       if (singleItem) {
-        return t`Item ${start + 1} ${totalMessage}`;
+        return isOverLimit
+          ? t`Item ${start + 1} of first ${total}`
+          : t`Item ${start + 1} of ${total}`;
       }
 
-      return t`Rows ${start + 1}-${end + 1} ${totalMessage}`;
+      return isOverLimit
+        ? t`Rows ${start + 1}-${end + 1} of first ${total}`
+        : t`Rows ${start + 1}-${end + 1} of ${total}`;
     }, [total, start, end, limit, singleItem]);
 
     const handlePreviousPage = useCallback(

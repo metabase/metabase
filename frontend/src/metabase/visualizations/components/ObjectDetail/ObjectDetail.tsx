@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { Link } from "react-router";
 
 import { State } from "metabase-types/store";
 import type {
@@ -63,6 +62,7 @@ import {
   ErrorWrapper,
   PaginationFooter,
   ObjectDetailWrapperDiv,
+  QuestionLink,
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
@@ -302,17 +302,18 @@ export function ObjectDetailWrapper({
     );
   }
 
-  const shouldShowPagination = data?.rows?.length > 1;
-  const shouldShowQuestionLink = !isDataApp && dashcard && (question || card);
+  const hasPagination = data?.rows?.length > 1;
+  const hasQuestionLink = !isDataApp && dashcard && (question || card);
 
   return (
     <>
-      {shouldShowQuestionLink && (
-        <QuestionLink
-          title={question?.displayName() ?? card?.name ?? t`View Question`}
-          cardId={question?.id() ?? card?.id}
-          // onClick={props.onChangeCardAndRun({ nextCard: question.card() })}
-        />
+      {hasQuestionLink && (
+        <QuestionLink to={`/question/${question?.id() ?? card?.id}`}>
+          <Icon
+            name="insight"
+            tooltip={question?.displayName() ?? card?.name ?? t`View Question`}
+          />
+        </QuestionLink>
       )}
       <ObjectDetailFn
         {...props}
@@ -325,7 +326,7 @@ export function ObjectDetailWrapper({
         closeObjectDetail={closeObjectDetail}
         isDataApp={isDataApp}
       />
-      {shouldShowPagination && (
+      {hasPagination && (
         <PaginationFooter
           start={currentObjectIndex}
           end={currentObjectIndex}
@@ -460,18 +461,6 @@ export function ObjectDetailBody({
     </ObjectDetailBodyWrapper>
   );
 }
-
-const QuestionLink = ({ title, cardId }: { title: string; cardId: number }) => (
-  <Link
-    to={`/question/${cardId}`}
-    style={{ position: "absolute", top: 10, right: 10, zIndex: 1 }}
-    className="text-right text-brand cursor-pointer"
-  >
-    <Tooltip tooltip={title}>
-      <Icon name="insight" size={16} />
-    </Tooltip>
-  </Link>
-);
 
 export default connect(
   mapStateToProps,
