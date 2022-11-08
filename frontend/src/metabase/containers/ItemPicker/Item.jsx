@@ -15,24 +15,24 @@ function Item({
   canSelect,
   hasChildren,
   onChange,
-  onChangeParentId,
+  onChangeOpenCollectionId,
 }) {
   const handleClick = useMemo(() => {
     if (canSelect) {
       return () => onChange(item);
     }
     if (hasChildren) {
-      return () => onChangeParentId(item.id);
+      return () => onChangeOpenCollectionId(item.id);
     }
     return;
-  }, [item, canSelect, hasChildren, onChange, onChangeParentId]);
+  }, [item, canSelect, hasChildren, onChange, onChangeOpenCollectionId]);
 
   const handleExpand = useCallback(
     event => {
       event.stopPropagation();
-      onChangeParentId(item.id);
+      onChangeOpenCollectionId(item.id);
     },
-    [item, onChangeParentId],
+    [item, onChangeOpenCollectionId],
   );
 
   const iconProps = useMemo(

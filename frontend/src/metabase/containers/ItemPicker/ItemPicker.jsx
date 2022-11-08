@@ -55,7 +55,7 @@ function getEntityLoaderType(state, props) {
 
 class ItemPicker extends React.Component {
   state = {
-    parentId: "root",
+    openCollectionId: "root",
     searchMode: false,
     searchString: false,
   };
@@ -110,19 +110,19 @@ class ItemPicker extends React.Component {
   };
 
   handleCollectionOpen = collectionId => {
-    this.setState({ parentId: collectionId });
+    this.setState({ openCollectionId: collectionId });
   };
 
   getSearchQuery = () => {
     const { models } = this.props;
-    const { searchString, parentId } = this.state;
+    const { searchString, openCollectionId } = this.state;
 
     const query = {};
 
     if (searchString) {
       query.q = searchString;
     } else {
-      query.collection = parentId;
+      query.collection = openCollectionId;
     }
 
     if (models.length === 1) {
@@ -134,11 +134,11 @@ class ItemPicker extends React.Component {
 
   renderHeader = () => {
     const { collectionsById, showSearch = true } = this.props;
-    const { parentId, searchMode } = this.state;
+    const { openCollectionId, searchMode } = this.state;
 
-    const collection = collectionsById[parentId];
+    const collection = collectionsById[openCollectionId];
     const crumbs = getCrumbs(collection, collectionsById, id =>
-      this.setState({ parentId: id }),
+      this.setState({ openCollectionId: id }),
     );
 
     if (searchMode) {
@@ -181,13 +181,13 @@ class ItemPicker extends React.Component {
       className,
       showScroll = true,
     } = this.props;
-    const { parentId, searchString } = this.state;
+    const { openCollectionId, searchString } = this.state;
 
     const modelsIncludeNonCollections = models.some(
       model => model !== "collection",
     );
 
-    const collection = collectionsById[parentId];
+    const collection = collectionsById[openCollectionId];
 
     let allCollections = (collection && collection.children) || [];
 
@@ -258,7 +258,7 @@ class ItemPicker extends React.Component {
                     canSelect={canSelect}
                     hasChildren={hasChildren}
                     onChange={this.handleCollectionSelected}
-                    onChangeParentId={this.handleCollectionOpen}
+                    onChangeOpenCollectionId={this.handleCollectionOpen}
                   />
                 ) : null;
               })}
