@@ -11,7 +11,6 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
 import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
-import GoogleAuthForm from "metabase/admin/settings/components/GoogleAuthForm";
 
 PLUGIN_AUTH_PROVIDERS.push(providers => {
   const googleProvider = {
@@ -46,6 +45,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
+    component: SettingsGoogleForm,
     settings: [
       {
         key: "google-auth-client-id",
@@ -59,7 +59,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
         placeholder: "mycompany.com",
       },
     ],
-    component: GoogleAuthForm ?? SettingsGoogleForm,
   },
 }));
 
