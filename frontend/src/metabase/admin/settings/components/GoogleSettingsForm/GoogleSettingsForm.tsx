@@ -38,12 +38,18 @@ const GoogleSettingsSchema = Yup.object({
   [DOMAIN_KEY]: Yup.string(),
 });
 
-export interface GoogleSettingsFormProps {
+interface GoogleSettingsFormOwnProps {
   elements?: SettingDefinition[];
   settingValues?: Partial<GoogleSettings>;
   hasMultipleDomains?: boolean;
+}
+
+interface GoogleSettingsFormDispatchProps {
   onSubmit: (settingValues: GoogleSettings) => void;
 }
+
+export type GoogleSettingsFormProps = GoogleSettingsFormOwnProps &
+  GoogleSettingsFormDispatchProps;
 
 const GoogleSettingsForm = ({
   elements = [],
@@ -150,4 +156,11 @@ const mapDispatchToProps = {
   onSubmit: updateGoogleSettings,
 };
 
-export default connect(null, mapDispatchToProps)(GoogleSettingsForm);
+export default connect<
+  null,
+  GoogleSettingsFormDispatchProps,
+  GoogleSettingsFormOwnProps
+>(
+  null,
+  mapDispatchToProps,
+)(GoogleSettingsForm);

@@ -15,8 +15,8 @@ import GroupMappingsWidget from "metabase/admin/settings/components/widgets/Grou
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 
-import GoogleSettingsForm from "metabase/admin/settings/components/GoogleSettingsForm";
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
+import GoogleSettingsForm from "./components/GoogleSettingsForm";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import SettingsJWTForm from "./components/SettingsJWTForm";
 
