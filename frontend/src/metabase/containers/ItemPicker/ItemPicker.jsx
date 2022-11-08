@@ -125,6 +125,34 @@ class ItemPicker extends React.Component {
     return isSameModel && this.getItemId(item) === this.getItemId(value);
   };
 
+  getCollectionList = () => {
+    const { models, collectionsById } = this.props;
+    const { openCollectionId } = this.state;
+
+    const collection = collectionsById[openCollectionId];
+
+    let allCollections = (collection && collection.children) || [];
+
+    // show root in itself if we can pick it
+    if (
+      collection &&
+      isRootCollection(collection) &&
+      models.includes("collection")
+    ) {
+      allCollections = [collection, ...allCollections];
+    }
+
+    // ensure we only display collections a user can write to
+    allCollections = allCollections.filter(collection =>
+      this.checkCanWriteToCollectionOrItsChildren(collection),
+    );
+
+    return allCollections.map(collection => ({
+      ...collection,
+      model: "collection",
+    }));
+  };
+
   handleSearchInputKeyPress = e => {
     if (e.key === "Enter") {
       this.setState({ searchString: e.target.value });
@@ -278,35 +306,13 @@ class ItemPicker extends React.Component {
       className,
       showScroll = true,
     } = this.props;
-    const { openCollectionId, searchString } = this.state;
+    const { searchString } = this.state;
 
     const modelsIncludeNonCollections = models.some(
       model => model !== "collection",
     );
 
-    const collection = collectionsById[openCollectionId];
-
-    let allCollections = (collection && collection.children) || [];
-
-    // show root in itself if we can pick it
-    if (
-      collection &&
-      isRootCollection(collection) &&
-      models.includes("collection")
-    ) {
-      allCollections = [collection, ...allCollections];
-    }
-
-    // ensure we only display collections a user can write to
-    allCollections = allCollections.filter(collection =>
-      this.checkCanWriteToCollectionOrItsChildren(collection),
-    );
-
-    // code below assumes items have a "model" property
-    allCollections = allCollections.map(collection => ({
-      ...collection,
-      model: "collection",
-    }));
+    const collections = this.getCollectionList();
 
     return (
       <ScrollAwareLoadingAndErrorWrapper
@@ -316,7 +322,7 @@ class ItemPicker extends React.Component {
         <ItemPickerRoot className={className} style={style}>
           {this.renderHeader()}
           <ItemPickerList data-testid="item-picker-list">
-            {!searchString && allCollections.map(this.renderCollectionListItem)}
+            {!searchString && collections.map(this.renderCollectionListItem)}
             {(modelsIncludeNonCollections || searchString) && (
               <Search.ListLoader query={this.getSearchQuery()} wrapped>
                 {({ list }) => (
