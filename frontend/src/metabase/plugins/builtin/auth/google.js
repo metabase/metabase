@@ -10,7 +10,7 @@ import {
 import MetabaseSettings from "metabase/lib/settings";
 
 import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
-// required to fix a circular dependency issue
+// required to fix a circular dependency issue, otherwise the app won't load
 import FormikForm from "metabase/containers/FormikForm";
 import GoogleSettingsForm from "metabase/admin/settings/containers/GoogleSettingsForm";
 
