@@ -6,7 +6,12 @@ import { getColorsForValues } from "metabase/lib/colors/charts";
 import { formatStaticValue } from "metabase/static-viz/lib/format-static-value";
 import { colors } from "metabase/lib/colors/palette";
 import { XYChart } from "../XYChart";
-import { ChartSettings, ChartStyle, Series } from "../XYChart/types";
+import {
+  ChartSettings,
+  ChartStyle,
+  Series,
+  SeriesWithBreakoutValues,
+} from "../XYChart/types";
 import { Colors } from "./types";
 import {
   adjustSettings,
@@ -22,7 +27,7 @@ interface LineAreaBarChartProps {
 }
 
 const LineAreaBarChart = ({
-  series,
+  series: multipleSeries,
   settings,
   getColor,
   colors: instanceColors,
@@ -57,7 +62,7 @@ const LineAreaBarChart = ({
   };
 
   const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;
-  const xValuesCount = getXValuesCount(series);
+  const xValuesCount = getXValuesCount(multipleSeries);
   const chartSize = calculateChartSize(settings, xValuesCount, minTickSize);
   const adjustedSettings = adjustSettings(
     settings,
@@ -66,15 +71,15 @@ const LineAreaBarChart = ({
     chartSize,
   );
 
-  const keys = series
-    .map(singleSeries => {
-      if (singleSeries.seriesKey) {
-        return singleSeries.seriesKey;
+  const keys = multipleSeries
+    .map(series => {
+      if (hasBreakoutValues(series)) {
+        return formatStaticValue(series.name, {
+          column: series.column,
+        });
       }
 
-      return formatStaticValue(singleSeries.name, {
-        column: singleSeries.column,
-      });
+      return series.seriesKey;
     })
     .filter(isNotNull);
   const palette = { ...colors, ...instanceColors };
@@ -84,7 +89,7 @@ const LineAreaBarChart = ({
       })
     : undefined;
   const chartColors = getColorsForValues(keys, seriesColors, palette);
-  const seriesWithColors = series.map((singleSeries, index) => {
+  const seriesWithColors = multipleSeries.map((singleSeries, index) => {
     return {
       ...singleSeries,
       color: chartColors[keys[index]],
@@ -101,5 +106,9 @@ const LineAreaBarChart = ({
     />
   );
 };
+
+function hasBreakoutValues(series: Series): series is SeriesWithBreakoutValues {
+  return Boolean((series as SeriesWithBreakoutValues).column);
+}
 
 export default LineAreaBarChart;

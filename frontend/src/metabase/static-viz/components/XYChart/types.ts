@@ -1,4 +1,5 @@
 import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
+import { DatasetColumn } from "metabase-types/api";
 import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
@@ -15,16 +16,23 @@ export type YAxisPosition = "left" | "right";
 
 export type VisualizationType = "line" | "area" | "bar" | "waterfall";
 
-export type Series = {
+interface BaseSeries {
   name: string;
   color: string;
   data: SeriesData;
   type: VisualizationType;
   yAxisPosition: YAxisPosition;
-  seriesKey?: string;
-  // TODO: fix the type
-  column?: any;
-};
+}
+
+interface SeriesWithoutBreakoutValues extends BaseSeries {
+  seriesKey: string;
+}
+
+export interface SeriesWithBreakoutValues extends BaseSeries {
+  column: DatasetColumn;
+}
+
+export type Series = SeriesWithoutBreakoutValues | SeriesWithBreakoutValues;
 
 export type StackedDatum = [XValue, YValue, YValue];
 
