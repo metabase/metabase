@@ -1,4 +1,4 @@
-import { createContext, Dispatch, SetStateAction } from "react";
+import { createContext } from "react";
 
 export type FormStatus = "idle" | "pending" | "fulfilled" | "rejected";
 
@@ -7,14 +7,8 @@ export interface FormState {
   message?: string;
 }
 
-export interface FormContextType {
-  state: FormState;
-  setState: Dispatch<SetStateAction<FormState>>;
-}
-
-const FormContext = createContext<FormContextType>({
-  state: { status: "idle" },
-  setState: () => undefined,
+const FormContext = createContext<FormState>({
+  status: "idle",
 });
 
 export default FormContext;

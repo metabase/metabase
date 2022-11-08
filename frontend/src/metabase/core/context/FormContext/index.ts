@@ -1,2 +1,2 @@
 export { default } from "./FormContext";
-export type { FormContextType, FormState, FormStatus } from "./FormContext";
+export type { FormState, FormStatus } from "./FormContext";

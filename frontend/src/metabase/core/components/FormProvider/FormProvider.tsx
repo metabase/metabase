@@ -18,7 +18,7 @@ function FormProvider<T, C>({
   onSubmit,
   ...props
 }: FormProviderProps<T, C>): JSX.Element {
-  const { context, handleSubmit } = useFormSubmit({ onSubmit });
+  const { state, handleSubmit } = useFormSubmit({ onSubmit });
   const { initialErrors, handleValidate } = useFormValidation({
     initialValues,
     validationSchema,
@@ -26,7 +26,7 @@ function FormProvider<T, C>({
   });
 
   return (
-    <FormContext.Provider value={context}>
+    <FormContext.Provider value={state}>
       <Formik
         initialValues={initialValues}
         initialErrors={initialErrors}

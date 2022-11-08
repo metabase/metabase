@@ -5,8 +5,7 @@ import FormContext from "metabase/core/context/FormContext";
 
 const useFormErrorMessage = (): string | undefined => {
   const { values, errors } = useFormikContext();
-  const { state } = useContext(FormContext);
-  const { status, message } = state;
+  const { status, message } = useContext(FormContext);
   const [isVisible, setIsVisible] = useState(false);
   const hasErrors = Object.keys(errors).length > 0;
 

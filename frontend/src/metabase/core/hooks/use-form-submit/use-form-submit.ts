@@ -1,12 +1,6 @@
-import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useState } from "react";
 import type { FormikHelpers } from "formik";
-import { FormContextType, FormState } from "metabase/core/context/FormContext";
+import { FormState } from "metabase/core/context/FormContext";
 import { FormError } from "./types";
 
 export interface UseFormSubmitProps<T> {
@@ -14,7 +8,7 @@ export interface UseFormSubmitProps<T> {
 }
 
 export interface UseFormSubmitResult<T> {
-  context: FormContextType;
+  state: FormState;
   handleSubmit: (values: T, helpers: FormikHelpers<T>) => void;
 }
 
@@ -22,7 +16,6 @@ const useFormSubmit = <T>({
   onSubmit,
 }: UseFormSubmitProps<T>): UseFormSubmitResult<T> => {
   const [state, setState] = useState<FormState>({ status: "idle" });
-  const context = useMemo(() => ({ state, setState }), [state, setState]);
 
   const handleSubmit = useCallback(
     async (data: T, helpers: FormikHelpers<T>) => {
@@ -39,7 +32,7 @@ const useFormSubmit = <T>({
   );
 
   return {
-    context,
+    state,
     handleSubmit,
   };
 };
