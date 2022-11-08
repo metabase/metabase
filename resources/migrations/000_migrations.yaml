@@ -13199,6 +13199,117 @@ databaseChangeLog:
                 WHERE c.id = created_ats.collection_id
                   AND c.personal_owner_id IS NULL
               );
+  - changeSet:
+      id: v45.00-051
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of collection_permission_graph_revision.after from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: after
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-052
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of collection_permission_graph_revision.before from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: before
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-053
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of collection_permission_graph_revision.remark from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: remark
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-054
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of permissions_revision.after from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: after
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-055
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of permissions_revision.before from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: before
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-056
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of permissions_revision.remark from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: remark
+            newDataType: ${text.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-057
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of secret.value from blob to longblob
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: secret
+            columnName: value
+            newDataType: longblob
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
