@@ -33,7 +33,7 @@ const defaultConfig = {
 
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
-    require("cypress-grep/src/plugin")(config);
+    require("@cypress/grep/src/plugin")(config);
 
     /********************************************************************
      **                        PREPROCESSOR                            **
