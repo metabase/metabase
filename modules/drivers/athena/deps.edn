@@ -1,27 +1,8 @@
 {:paths
- ["/build/driver/src" "/build/driver/resources"]
+ ["src" "resources"]
 
  :mvn/repos
- {"athena" {:url "file:maven_repository"}}
+ {"athena" {:url "https://s3.amazonaws.com/maven-athena"}}
 
  :deps
- {athena/athena-jdbc {:mvn/version "2.0.33"}}
-
- ;; build the driver with clojure -X:build
- :aliases
- {:build
-  {:extra-deps {metabase/metabase-core {:local/root "../metabase"}
-                metabase/build-drivers {:local/root "../metabase/bin/build-drivers"}}
-   :exec-fn    build-drivers.build-driver/build-driver!
-   :exec-args  {:driver      :athena
-                :project-dir "."
-                :target-dir  "./target"}}
-  :test
-  {:extra-paths ["test_unit"]
-   :extra-deps {metabase/metabase-core {:local/root "../metabase"}
-                metabase/build-drivers {:local/root "../metabase/bin/build-drivers"}
-                io.github.cognitect-labs/test-runner
-                {:git/tag "v0.5.0" :git/sha "b3fd0d2"}}
-   :main-opts ["-m" "cognitect.test-runner"]
-   :exec-fn cognitect.test-runner.api/test
-   :exec-args  {:dirs ["test_unit"]}}}}
+ {com.metabase/athena-jdbc {:mvn/version "2.0.33"}}}

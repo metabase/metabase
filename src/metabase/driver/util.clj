@@ -431,7 +431,23 @@
 
 (def official-drivers
   "The set of all official drivers"
-  #{"bigquery-cloud-sdk" "druid" "googleanalytics" "h2" "mongo" "mysql" "oracle" "postgres" "presto" "presto-jdbc" "redshift" "snowflake" "sparksql" "sqlite" "sqlserver" "vertica"})
+  #{"athena"
+    "bigquery-cloud-sdk"
+    "druid"
+    "googleanalytics"
+    "h2"
+    "mongo"
+    "mysql"
+    "oracle"
+    "postgres"
+    "presto"
+    "presto-jdbc"
+    "redshift"
+    "snowflake"
+    "sparksql"
+    "sqlite"
+    "sqlserver"
+    "vertica"})
 
 (def partner-drivers
   "The set of other drivers in the partnership program"
