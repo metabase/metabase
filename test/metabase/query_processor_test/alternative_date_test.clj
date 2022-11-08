@@ -195,7 +195,7 @@
                  ;; order seems to be nondeterministic
                  (set (mt/rows (mt/dataset just-dates
                                  (qp/process-query
-                                   (assoc (mt/mbql-query just_dates)
+                                   (assoc (mt/mbql-query just-dates)
                                           :middleware {:format-rows? false})))))))))
       (testing "oracle doesn't have a time type"
         (mt/test-drivers #{:oracle}
@@ -205,7 +205,7 @@
                  ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
                  (mt/rows (mt/dataset just-dates
                             (qp/process-query
-                              (assoc (mt/mbql-query just_dates)
+                              (assoc (mt/mbql-query just-dates)
                                      :middleware {:format-rows? false}))))))))
 
       (testing "sqlite returns as strings"
@@ -226,9 +226,9 @@
                   [3 "baz" #t "2012-10-19T10:23:54Z[UTC]" #t "2012-10-19T00:00Z[UTC]" #t "10:23:54"]]
                  ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
                  (mt/rows (mt/dataset string-times
-                                      (qp/process-query
-                                        (assoc (mt/mbql-query times)
-                                               :middleware {:format-rows? false}))))))))
+                            (qp/process-query
+                              (assoc (mt/mbql-query times)
+                                     :middleware {:format-rows? false}))))))))
 
       (testing "mongo only supports datetime"
         (mt/test-drivers #{:mongo}
@@ -236,10 +236,10 @@
                   [(t/instant "2008-10-19T10:23:54Z")]
                   [(t/instant "2012-10-19T10:23:54Z")]]
                (mt/rows (mt/dataset string-times
-                                     (qp/process-query
-                                      (assoc (mt/mbql-query times
-                                                            {:fields [$ts]})
-                                             :middleware {:format-rows? false})))))))))
+                          (qp/process-query
+                           (assoc (mt/mbql-query times
+                                                 {:fields [$ts]})
+                                  :middleware {:format-rows? false})))))))))
 
     (testing "are queryable as dates"
       (testing "a datetime field"
