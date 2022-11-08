@@ -14,39 +14,39 @@ import {
   GoogleForm,
   GoogleFormCaption,
   GoogleFormHeader,
-} from "./GoogleAuthForm.styled";
+} from "./GoogleSettingsForm.styled";
+
+const ENABLED_KEY = "google-auth-enabled";
+const CLIENT_ID_KEY = "google-auth-client-id";
+const DOMAIN_KEY = "google-auth-auto-create-accounts-domain";
 
 const BREADCRUMBS = [
   [t`Authentication`, "/admin/settings/authentication"],
   [t`Google Sign-In`],
 ];
 
-const ENABLED_KEY = "google-auth-enabled";
-const CLIENT_ID_KEY = "google-auth-client-id";
-const DOMAIN_KEY = "google-auth-auto-create-accounts-domain";
-
-const GoogleAuthSchema = Yup.object({
-  [CLIENT_ID_KEY]: Yup.string().required(t`required`),
-  [DOMAIN_KEY]: Yup.string(),
-});
-
-export interface GoogleAuthSettings {
+export interface GoogleSettings {
   [ENABLED_KEY]: boolean;
   [CLIENT_ID_KEY]: string | null;
   [DOMAIN_KEY]: string | null;
 }
 
-export interface GoogleAuthFormProps {
-  settingValues?: Partial<GoogleAuthSettings>;
+const GoogleSettingsSchema = Yup.object({
+  [CLIENT_ID_KEY]: Yup.string().required(t`required`),
+  [DOMAIN_KEY]: Yup.string(),
+});
+
+export interface GoogleSettingsFormProps {
+  settingValues?: Partial<GoogleSettings>;
   hasMultipleDomains?: boolean;
-  onSubmit: (settingValues: GoogleAuthSettings) => void;
+  onSubmit: (settingValues: GoogleSettings) => void;
 }
 
-const GoogleAuthForm = ({
+const GoogleSettingsForm = ({
   settingValues = {},
   hasMultipleDomains,
   onSubmit,
-}: GoogleAuthFormProps): JSX.Element => {
+}: GoogleSettingsFormProps): JSX.Element => {
   const isEnabled = settingValues[ENABLED_KEY];
 
   const initialValues = useMemo(() => {
@@ -54,7 +54,7 @@ const GoogleAuthForm = ({
   }, [settingValues]);
 
   const handleSubmit = useCallback(
-    (values: GoogleAuthSettings) => {
+    (values: GoogleSettings) => {
       return onSubmit(getSubmitValues(values));
     },
     [onSubmit],
@@ -63,7 +63,7 @@ const GoogleAuthForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={GoogleAuthSchema}
+      validationSchema={GoogleSettingsSchema}
       enableReinitialize
       onSubmit={handleSubmit}
     >
@@ -114,18 +114,18 @@ const GoogleAuthForm = ({
   );
 };
 
-const getInitialValues = (values: Partial<GoogleAuthSettings>) => ({
+const getInitialValues = (values: Partial<GoogleSettings>): GoogleSettings => ({
   [ENABLED_KEY]: true,
   [CLIENT_ID_KEY]: values[CLIENT_ID_KEY] || "",
   [DOMAIN_KEY]: values[DOMAIN_KEY] || "",
 });
 
-const getSubmitValues = (values: GoogleAuthSettings) => ({
+const getSubmitValues = (values: GoogleSettings): GoogleSettings => ({
   ...values,
   [DOMAIN_KEY]: values[DOMAIN_KEY] || null,
 });
 
-const getDocsLink = () => {
+const getDocsLink = (): string => {
   return MetabaseSettings.docsUrl(
     "people-and-groups/google-and-ldap",
     "enabling-google-sign-in",
@@ -136,4 +136,4 @@ const mapDispatchToProps = {
   onSubmit: updateGoogleSettings,
 };
 
-export default connect(null, mapDispatchToProps)(GoogleAuthForm);
+export default connect(null, mapDispatchToProps)(GoogleSettingsForm);

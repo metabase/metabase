@@ -10,8 +10,8 @@ import {
 import MetabaseSettings from "metabase/lib/settings";
 
 import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
-import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
-import GoogleAuthForm from "metabase/admin/settings/components/GoogleAuthForm";
+import FormikForm from "metabase/containers/FormikForm";
+import GoogleSettingsForm from "metabase/admin/settings/components/GoogleSettingsForm";
 
 PLUGIN_AUTH_PROVIDERS.push(providers => {
   const googleProvider = {
@@ -46,7 +46,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
-    component: GoogleAuthForm ?? SettingsGoogleForm,
+    component: GoogleSettingsForm ?? FormikForm,
     settings: [],
   },
 }));

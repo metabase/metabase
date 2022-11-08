@@ -15,7 +15,7 @@ import GroupMappingsWidget from "metabase/admin/settings/components/widgets/Grou
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 
-import GoogleAuthForm from "metabase/admin/settings/components/GoogleAuthForm";
+import GoogleSettingsForm from "metabase/admin/settings/components/GoogleSettingsForm";
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import SettingsJWTForm from "./components/SettingsJWTForm";
@@ -279,7 +279,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
-    component: GoogleAuthForm,
+    component: GoogleSettingsForm,
     settings: [],
     getProps: () => ({ hasMultipleDomains: hasPremiumFeature("sso") }),
   },
