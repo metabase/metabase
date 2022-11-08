@@ -95,7 +95,7 @@
     "temporal-extract-units"))
 
 (def DatetimeDiffUnits
-  "Valid units to extract from a temporal."
+  "Valid units for a datetime-diff clause."
   (s/named
     (apply s/enum #{:second :minute :hour :day :week :month :year})
     "temporal-extract-units"))
