@@ -9,7 +9,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 
 const ObjectDetailProperties = {
-  uiName: t`Object Detail`,
+  uiName: t`Detail`,
   identifier: "object",
   iconName: "document",
   noun: t`object`,
