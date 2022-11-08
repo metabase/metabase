@@ -2,29 +2,16 @@
 import React from "react";
 import { t } from "ttag";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
+import { columnFilterDrill } from "metabase-lib/queries/drills/column-filter-drill";
 
 export default function ColumnFilterDrill({ question, clicked }) {
-  const query = question.query();
-  if (
-    !question.isStructured() ||
-    !query.isEditable() ||
-    !clicked ||
-    !clicked.column ||
-    clicked.column.field_ref == null ||
-    clicked.value !== undefined
-  ) {
+  const drill = columnFilterDrill({ question, clicked });
+  if (!drill) {
     return [];
   }
 
-  const { column } = clicked;
-  const initialFilter = new Filter(
-    [],
-    null,
-    query,
-  ).setDimension(column.field_ref, { useDefaultOperator: true });
+  const { query, initialFilter } = drill;
 
   return [
     {
@@ -34,16 +21,14 @@ export default function ColumnFilterDrill({ question, clicked }) {
       buttonType: "horizontal",
       icon: "filter",
       // eslint-disable-next-line react/display-name
-      popover: ({ onChangeCardAndRun, onClose }) => (
+      popover: ({ onChangeCardAndRun, onResize, onClose }) => (
         <FilterPopover
           query={query}
           filter={initialFilter}
           onClose={onClose}
+          onResize={onResize}
           onChangeFilter={filter => {
-            const nextCard = query
-              .filter(filter)
-              .question()
-              .card();
+            const nextCard = query.filter(filter).question().card();
             onChangeCardAndRun({ nextCard });
             onClose();
           }}

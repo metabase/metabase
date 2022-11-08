@@ -2,12 +2,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Popover from "metabase/components/Popover";
-import Icon from "metabase/components/Icon";
-import SearchBar from "./SearchBar";
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
+import Popover from "metabase/components/Popover";
+import Icon from "metabase/components/Icon";
+import SearchBar from "./SearchBar";
 
 export default class SelectionModule extends Component {
   constructor(props, context) {
@@ -95,7 +95,7 @@ export default class SelectionModule extends Component {
 
   _displayCustom(values) {
     const custom = [];
-    this.props.children.forEach(function(element) {
+    this.props.children.forEach(function (element) {
       const newElement = element;
       newElement.props.children = values[newElement.props.content];
       custom.push(element);
@@ -112,7 +112,7 @@ export default class SelectionModule extends Component {
         sourceItems = sourceItems.filter(this.props.expandFilter);
       }
 
-      const items = sourceItems.map(function(item, index) {
+      const items = sourceItems.map(function (item, index) {
         const display = item ? item[this.props.display] || item : item;
         const itemClassName = cx({
           SelectionItem: true,
@@ -226,7 +226,7 @@ export default class SelectionModule extends Component {
 
   render() {
     let selection;
-    this.props.items.forEach(function(item) {
+    this.props.items.forEach(function (item) {
       if (this._itemIsSelected(item)) {
         selection = item[this.props.display];
       }

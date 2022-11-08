@@ -5,15 +5,14 @@ import {
   visitEmbeddedPage,
   filterWidget,
   visitIframe,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
   questionDetails,
   dashboardDetails,
   mapParameters,
 } from "./embedding-dashboard";
-
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
 
@@ -49,7 +48,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       cy.icon("share").click();
-      cy.findByText("Embed this dashboard in an application").click();
+      cy.findByText("Embed in your application").click();
 
       cy.findByRole("heading", { name: "Parameters" })
         .parent()
@@ -107,13 +106,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
       visitIframe();
 
       // verify that the Id parameter doesn't show up but that its value is reflected in the dashcard
-      filterWidget()
-        .contains("Id")
-        .should("not.exist");
+      filterWidget().contains("Id").should("not.exist");
 
-      cy.get(".ScalarValue")
-        .invoke("text")
-        .should("eq", "2");
+      cy.get(".ScalarValue").invoke("text").should("eq", "2");
 
       // verify that disabled filters don't show up
       cy.findByText("Source").should("not.exist");
@@ -127,9 +122,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       cy.button("Add filter").click();
 
-      cy.get(".ScalarValue")
-        .invoke("text")
-        .should("eq", "1");
+      cy.get(".ScalarValue").invoke("text").should("eq", "1");
 
       cy.log(
         "Sanity check: lets make sure we can disable all previously set parameters",
@@ -141,17 +134,13 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       cy.icon("share").click();
-      cy.findByText("Embed this dashboard in an application").click();
+      cy.findByText("Embed in your application").click();
 
       cy.findByText("Locked").click();
-      popover()
-        .contains("Disabled")
-        .click();
+      popover().contains("Disabled").click();
 
       cy.findByText("Editable").click();
-      popover()
-        .contains("Disabled")
-        .click();
+      popover().contains("Disabled").click();
 
       publishChanges(({ request }) => {
         const actual = request.body.embedding_params;
@@ -165,9 +154,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       filterWidget().should("not.exist");
 
-      cy.get(".ScalarValue")
-        .invoke("text")
-        .should("eq", "2,500");
+      cy.get(".ScalarValue").invoke("text").should("eq", "2,500");
     });
   });
 
@@ -239,9 +226,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 });
 
 function openFilterOptions(name) {
-  filterWidget()
-    .contains(name)
-    .click();
+  filterWidget().contains(name).click();
 }
 
 function publishChanges(callback) {

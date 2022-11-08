@@ -6,9 +6,6 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 
-import SharingPane from "./SharingPane";
-import AdvancedEmbedPane from "./AdvancedEmbedPane";
-
 import {
   getSignedPreviewUrl,
   getUnsignedPreviewUrl,
@@ -25,6 +22,8 @@ import {
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import AdvancedEmbedPane from "./AdvancedEmbedPane";
+import SharingPane from "./SharingPane";
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
@@ -34,20 +33,20 @@ const mapStateToProps = (state, props) => ({
   isApplicationEmbeddingEnabled: getIsApplicationEmbeddingEnabled(state, props),
 });
 
-@connect(mapStateToProps)
-export default class EmbedModalContent extends Component {
+class EmbedModalContent extends Component {
   constructor(props) {
     super(props);
+    const displayOptions = {
+      font: null,
+      theme: null,
+      bordered: true,
+      titled: true,
+    };
     this.state = {
       pane: "preview",
       embedType: null,
       embeddingParams: props.resource.embedding_params || {},
-      displayOptions: {
-        theme: null,
-        bordered: true,
-        titled: true,
-      },
-
+      displayOptions,
       parameterValues: {},
     };
   }
@@ -240,6 +239,8 @@ export default class EmbedModalContent extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps)(EmbedModalContent);
 
 export const EmbedTitle = ({ type, onClick }) => (
   <a className="flex align-center" onClick={onClick}>

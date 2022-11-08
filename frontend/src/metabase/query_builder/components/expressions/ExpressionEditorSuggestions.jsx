@@ -3,13 +3,14 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 
 import { color } from "metabase/lib/colors";
-
 import Icon from "metabase/components/Icon";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
-
-import { ListItemStyled, UlStyled } from "./ExpressionEditorSuggestions.styled";
 
 import { isObscured } from "metabase/lib/dom";
+import {
+  ExpressionListItem,
+  ExpressionList,
+  ExpressionPopover,
+} from "./ExpressionEditorSuggestions.styled";
 
 const SuggestionSpan = ({ suggestion, isHighlighted }) => {
   const className = cx("text-dark text-bold hover-child", {
@@ -83,14 +84,16 @@ export default class ExpressionEditorSuggestions extends React.Component {
     }
 
     return (
-      <TippyPopover
-        className="not-rounded border-dark"
+      <ExpressionPopover
         placement="bottom-start"
         sizeToFit
         visible
         reference={target}
         content={
-          <UlStyled data-testid="expression-suggestions-list" className="pb1">
+          <ExpressionList
+            data-testid="expression-suggestions-list"
+            className="pb1"
+          >
             {suggestions.map((suggestion, i) => {
               const isHighlighted = i === highlightedIndex;
               const { icon } = suggestion;
@@ -98,10 +101,10 @@ export default class ExpressionEditorSuggestions extends React.Component {
 
               const key = `$suggstion-${i}`;
               const listItem = (
-                <ListItemStyled
+                <ExpressionListItem
                   onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
                   isHighlighted={isHighlighted}
-                  className="flex align-center px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit"
+                  className="hover-parent hover--inherit"
                 >
                   <Icon
                     name={icon}
@@ -113,12 +116,12 @@ export default class ExpressionEditorSuggestions extends React.Component {
                     suggestion={suggestion}
                     isHighlighted={isHighlighted}
                   />
-                </ListItemStyled>
+                </ExpressionListItem>
               );
 
               return <React.Fragment key={key}>{listItem}</React.Fragment>;
             })}
-          </UlStyled>
+          </ExpressionList>
         }
       />
     );

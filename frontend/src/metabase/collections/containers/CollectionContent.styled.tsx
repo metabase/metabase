@@ -18,8 +18,5 @@ export const CollectionTable = styled.div<CollectionTableProps>`
 `;
 
 export const CollectionEmptyContent = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: start;
-  margin-top: 3rem;
+  margin-top: calc(20vh - 3.5rem);
 `;

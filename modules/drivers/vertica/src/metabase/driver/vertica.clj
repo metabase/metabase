@@ -97,6 +97,8 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :vertica (partial date-trunc :week) (cast-timestamp expr)))
 
+(defmethod sql.qp/date [:vertica :week-of-year-iso] [_driver _ expr] (hsql/call :week_iso expr))
+
 (defmethod sql.qp/date [:vertica :day-of-week]
   [_ _ expr]
   (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
@@ -123,11 +125,17 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
+  (hsql/call :timestampadd unit)
+  ;; using `timestampadd` instead of `+ (INTERVAL)` because vertica add inteval for month, or year
+  ;; by adding the equivalent number of days, not adding the unit compoinent.
+  ;; For example `select date '2004-02-02' + interval '1 year' will return `2005-02-01` because it's adding
+  ;; 365 days under the hood and 2004 is a leap year. Whereas other dbs will return `2006-02-02`.
+  ;; So we use timestampadd to make the behavior consistent with other dbs
   (let [acceptable-types (case unit
-                           (:millisecond :second :minute :hour) #{"time" "timetz" "timestamp" "timestamptz"}
-                           (:day :week :month :quarter :year)   #{"date" "timestamp" "timestamptz"})
+                          (:millisecond :second :minute :hour) #{"time" "timetz" "timestamp" "timestamptz"}
+                          (:day :week :month :quarter :year)   #{"date" "timestamp" "timestamptz"})
         hsql-form        (hx/cast-unless-type-in "timestamp" acceptable-types hsql-form)]
-    (hx/+ hsql-form (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit))))))
+   (hsql/call :timestampadd unit amount hsql-form)))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica `database`.

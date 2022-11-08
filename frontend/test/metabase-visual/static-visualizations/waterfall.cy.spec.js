@@ -4,13 +4,13 @@ import {
   openEmailPage,
   sendSubscriptionsEmail,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { USERS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
 
-describe("static visualizations", () => {
+describe("static visualizations", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -32,7 +32,7 @@ describe("static visualizations", () => {
       sendSubscriptionsEmail(`${admin.first_name} ${admin.last_name}`);
 
       openEmailPage(dashboardName).then(() => {
-        cy.percySnapshot();
+        cy.createPercySnapshot();
       });
     });
   });
@@ -46,7 +46,9 @@ function createWaterfallQuestion({ showTotal } = {}) {
         "SELECT * FROM ( VALUES ('Stage 1', 10), ('Stage 2', 30), ('Stage 3', -50), ('Stage 4', -10), ('Stage 5', 80), ('Stage 6', 10), ('Stage 7', 15))",
       "template-tags": {},
     },
-    visualization_settings: {},
+    visualization_settings: {
+      "graph.show_values": true,
+    },
     display: "waterfall",
     database: SAMPLE_DB_ID,
   };

@@ -157,11 +157,8 @@
       ;; attempt to acquire the lock. Returns immediately if lock is is already held.
       (when (.tryLock restore-cache-lock)
         (try
-          ;; don't try to restore the cache before the application DB is ready, it's not going to work...
-          (when-let [db-is-set-up? (resolve 'metabase.db/db-is-set-up?)]
-            (when (db-is-set-up?)
-              (reset! last-update-check (System/currentTimeMillis))
-              (when (cache-out-of-date?)
-                (restore-cache!))))
+          (reset! last-update-check (System/currentTimeMillis))
+          (when (cache-out-of-date?)
+            (restore-cache!))
           (finally
             (.unlock restore-cache-lock)))))))

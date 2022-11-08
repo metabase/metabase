@@ -1,16 +1,19 @@
+import { merge } from "icepick";
+
 export type NumberFormatOptions = {
-  number_style?: string;
+  number_style?: "currency" | "decimal" | "scientific" | "percentage";
   currency?: string;
-  currency_style?: string;
+  currency_style?: "symbol" | "code" | "name";
   number_separators?: ".,";
   decimals?: number;
   scale?: number;
   prefix?: string;
   suffix?: string;
+  compact?: boolean;
 };
 
 const DEFAULT_OPTIONS = {
-  number_style: "decimal",
+  number_style: "decimal" as NumberFormatOptions["number_style"],
   currency: undefined,
   currency_style: "symbol",
   number_separators: ".,",
@@ -30,24 +33,65 @@ export const formatNumber = (number: number, options?: NumberFormatOptions) => {
     scale,
     prefix,
     suffix,
-  } = { ...DEFAULT_OPTIONS, ...options };
+    compact,
+  } = handleSmallNumberFormat(number, { ...DEFAULT_OPTIONS, ...options });
 
-  const format = new Intl.NumberFormat("en", {
-    style: number_style !== "scientific" ? number_style : "decimal",
-    notation: number_style !== "scientific" ? "standard" : "scientific",
-    currency: currency,
-    currencyDisplay: currency_style,
-    useGrouping: true,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals != null ? decimals : 2,
-  });
+  function createFormat(compact?: boolean) {
+    if (compact) {
+      return new Intl.NumberFormat("en", {
+        style: number_style !== "scientific" ? number_style : "decimal",
+        notation: "compact",
+        compactDisplay: "short",
+        currency: currency,
+        currencyDisplay: currency_style,
+        useGrouping: true,
+        maximumFractionDigits: decimals != null ? decimals : 2,
+      });
+    }
 
+    return new Intl.NumberFormat("en", {
+      style: number_style !== "scientific" ? number_style : "decimal",
+      notation: number_style !== "scientific" ? "standard" : "scientific",
+      currency: currency,
+      currencyDisplay: currency_style,
+      useGrouping: true,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals != null ? decimals : 2,
+    });
+  }
+
+  const format = createFormat(compact);
+
+  const separatorMap = {
+    ",": grouping_separator || "",
+    ".": decimal_separator,
+  };
   const formattedNumber = format
     .format(number * scale)
-    .replace(/\./g, decimal_separator)
-    .replace(/,/g, grouping_separator ?? "");
+    .replace(/,|\./g, separator => separatorMap[separator as "." | ","]);
 
   return `${prefix}${formattedNumber}${suffix}`;
+};
+
+// Simple hack to handle small decimal numbers (0-1)
+function handleSmallNumberFormat<T>(value: number, options: T): T {
+  const hasAtLeastThreeDecimalPoints = Math.abs(value) < 0.01;
+  if (hasAtLeastThreeDecimalPoints && Math.abs(value) > 0) {
+    options = maybeMerge(options, {
+      compact: true,
+      decimals: 4,
+    });
+  }
+
+  return options;
+}
+
+const maybeMerge = <T, S1>(collection: T, object: S1) => {
+  if (collection == null) {
+    return collection;
+  }
+
+  return merge(collection, object);
 };
 
 export const formatPercent = (percent: number) =>

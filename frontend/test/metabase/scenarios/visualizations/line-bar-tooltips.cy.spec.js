@@ -1,4 +1,4 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -430,8 +430,8 @@ function setupDashboard(cardId, addedSeriesCardId) {
               card_id: cardId,
               row: 0,
               col: 0,
-              sizeX: 18,
-              sizeY: 12,
+              size_x: 18,
+              size_y: 12,
               parameter_mappings: [],
               series: addedSeriesCardId ? [{ id: addedSeriesCardId }] : [],
             },
@@ -461,10 +461,7 @@ function showTooltipForFirstBarInSeries(series_index) {
 }
 
 function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1)
-    .closest("td")
-    .siblings("td")
-    .findByText(val2);
+  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }
 
 function testTooltipText(rowPairs = []) {
@@ -482,9 +479,7 @@ function openDashCardVisualizationOptions() {
 }
 
 function updateColumnTitle(originalText, updatedText) {
-  cy.findByDisplayValue(originalText)
-    .clear()
-    .type(updatedText);
+  cy.findByDisplayValue(originalText).clear().type(updatedText).blur();
 }
 
 function saveDashCardVisualizationOptions() {

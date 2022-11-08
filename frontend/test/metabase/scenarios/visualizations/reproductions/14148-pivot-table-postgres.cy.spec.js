@@ -2,11 +2,11 @@ import {
   restore,
   withDatabase,
   visitQuestionAdhoc,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const PG_DB_ID = 2;
 
-describe("issue 14148", () => {
+describe("issue 14148", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

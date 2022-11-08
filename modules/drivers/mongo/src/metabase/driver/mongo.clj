@@ -21,11 +21,9 @@
             [monger.core :as mg]
             [monger.db :as mdb]
             monger.json
-            [schema.core :as s]
             [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           org.bson.BsonUndefined
            org.bson.types.ObjectId))
 
 ;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
@@ -55,31 +53,37 @@
                   :ok))
        1.0)))
 
-(defmethod driver/humanize-connection-error-message :mongo
+(defmethod driver/humanize-connection-error-message
+  :mongo
   [_ message]
   (condp re-matches message
     #"^Timed out after \d+ ms while waiting for a server .*$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^host and port should be specified in host:port format$"
-    (driver.common/connection-error-messages :invalid-hostname)
+    :invalid-hostname
 
     #"^Password can not be null when the authentication mechanism is unspecified$"
-    (driver.common/connection-error-messages :password-required)
+    :password-required
 
     #"^org.apache.sshd.common.SshException: No more authentication methods available$"
-    (driver.common/connection-error-messages :ssh-tunnel-auth-fail)
+    :ssh-tunnel-auth-fail
 
     #"^java.net.ConnectException: Connection refused$"
-    (driver.common/connection-error-messages :ssh-tunnel-connection-fail)
+    :ssh-tunnel-connection-fail
 
     #".*javax.net.ssl.SSLHandshakeException: PKIX path building failed.*"
-    (driver.common/connection-error-messages :certificate-not-trusted)
+    :certificate-not-trusted
 
     #".*MongoSocketReadException: Prematurely reached end of stream.*"
-    (driver.common/connection-error-messages :requires-ssl)
+    :requires-ssl
 
-    #".*"                               ; default
+    #".* KeyFactory not available"
+    :unsupported-ssl-key-type
+
+    #"java.security.InvalidKeyException: invalid key format"
+    :invalid-key-format
+
     message))
 
 
@@ -132,13 +136,13 @@
                                  (find-nested-fields field-value nested-fields)
                                  nested-fields)))))
 
-;; TODO - use `driver.common/class->base-type` to implement this functionality
-(s/defn ^:private ^Class most-common-object-type :- (s/maybe Class)
+;; TODO - use [[metabase.driver.common/class->base-type]] to implement this functionality
+(defn- most-common-object-type
   "Given a sequence of tuples like [Class <number-of-occurances>] return the Class with the highest number of
   occurances. The basic idea here is to take a sample of values for a Field and then determine the most common type
   for its values, and use that as the Metabase base type. For example if we have a Field called `zip_code` and it's a
   number 90% of the time and a string the other 10%, we'll just call it a `:type/Number`."
-  [field-types :- [(s/pair (s/maybe Class) "Class", s/Int "Int")]]
+  ^Class [field-types]
   (->> field-types
        (sort-by second)
        last
@@ -152,14 +156,14 @@
 (defn- describe-table-field [field-kw field-info idx]
   (let [most-common-object-type  (most-common-object-type (vec (:types field-info)))
         [nested-fields idx-next]
-          (reduce
-           (fn [[nested-fields idx] nested-field]
-             (let [[nested-field idx-next] (describe-table-field nested-field
-                                                                 (nested-field (:nested-fields field-info))
-                                                                 idx)]
-               [(conj nested-fields nested-field) idx-next]))
-           [#{} (inc idx)]
-           (keys (:nested-fields field-info)))]
+        (reduce
+         (fn [[nested-fields idx] nested-field]
+           (let [[nested-field idx-next] (describe-table-field nested-field
+                                                               (nested-field (:nested-fields field-info))
+                                                               idx)]
+             [(conj nested-fields nested-field) idx-next]))
+         [#{} (inc idx)]
+         (keys (:nested-fields field-info)))]
     [(cond-> {:name              (name field-kw)
               :database-type     (some-> most-common-object-type .getName)
               :base-type         (class->base-type most-common-object-type)
@@ -217,12 +221,20 @@
                  :native-parameters]]
   (defmethod driver/supports? [:mongo feature] [_ _] true))
 
+(defn- db-major-version
+  [db]
+  (some-> (get-in db [:details :version])
+          (str/split #"\.")
+          first
+          Integer/parseInt))
+
 (defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
-  (let [version (some-> (get-in db [:details :version])
-                        (str/split #"\.")
-                        first
-                        Integer/parseInt)]
-    (and (some? version) (<= 4 version))))
+  (let [version (db-major-version db)]
+    (and (some? version) (>= version 4))))
+
+(defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
+  (let [version (db-major-version db)]
+    (and (some? version) (>= version 5))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
@@ -280,3 +292,66 @@
 (defmethod driver/db-start-of-week :mongo
   [_]
   :sunday)
+
+(comment
+  (require '[clojure.java.io :as io]
+           '[metabase.driver.util :as driver.u]
+           '[monger.credentials :as mcred])
+  (import javax.net.ssl.SSLSocketFactory)
+
+  ;; The following forms help experimenting with the behaviour of Mongo
+  ;; servers with different configurations. They can be used to check if
+  ;; the environment has been set up correctly (or at least according to
+  ;; the expectations), as well as the exceptions thrown in various
+  ;; constellations.
+
+  ;; Test connection to Mongo with client and server SSL authentication.
+  (let [ssl-socket-factory
+        (driver.u/ssl-socket-factory
+         :private-key (-> "ssl/mongo/metabase.key" io/resource slurp)
+         :password "passw"
+         :own-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
+         :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
+        connection-options
+        (mg/mongo-options {:ssl-enabled true
+                           :ssl-invalid-host-name-allowed false
+                           :socket-factory ssl-socket-factory})
+        credentials
+        (mcred/create "metabase" "admin" "metasample123")]
+    (with-open [connection (mg/connect (mg/server-address "127.0.0.1")
+                                       connection-options
+                                       credentials)]
+      (mg/get-db-names connection)))
+
+  ;; Test what happens if the client only support server authentication.
+  (let [server-auth-ssl-socket-factory
+        (driver.u/ssl-socket-factory
+         :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
+        server-auth-connection-options
+        (mg/mongo-options {:ssl-enabled true
+                           :ssl-invalid-host-name-allowed false
+                           :socket-factory server-auth-ssl-socket-factory
+                           :server-selection-timeout 200})
+        credentials
+        (mcred/create "metabase" "admin" "metasample123")]
+    (with-open [server-auth-connection
+                (mg/connect (mg/server-address "127.0.0.1")
+                            server-auth-connection-options
+                            credentials)]
+      (mg/get-db-names server-auth-connection)))
+
+  ;; Test what happens if the client support only server authentication
+  ;; with well known (default) CAs.
+  (let [unauthenticated-connection-options
+        (mg/mongo-options {:ssl-enabled true
+                           :ssl-invalid-host-name-allowed false
+                           :socket-factory (SSLSocketFactory/getDefault)
+                           :server-selection-timeout 200})
+        credentials
+        (mcred/create "metabase" "admin" "metasample123")]
+    (with-open [unauthenticated-connection
+                (mg/connect (mg/server-address "127.0.0.1")
+                            unauthenticated-connection-options
+                            credentials)]
+      (mg/get-db-names unauthenticated-connection)))
+  :.)

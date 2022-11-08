@@ -1,9 +1,8 @@
 import React from "react";
-import { t, jt } from "ttag";
-import cx from "classnames";
+import { jt, t } from "ttag";
 import { inflect } from "inflection";
 
-import { ForeignKey } from "metabase-types/api/foreignKey";
+import { ForeignKey } from "metabase-types/api";
 
 import IconBorder from "metabase/components/IconBorder";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -11,7 +10,10 @@ import Icon from "metabase/components/Icon";
 
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 
-import { ObjectRelationships } from "./ObjectDetail.styled";
+import {
+  ObjectRelationContent,
+  ObjectRelationships,
+} from "./ObjectDetail.styled";
 
 export interface RelationshipsProps {
   objectName: string;
@@ -41,7 +43,7 @@ export function Relationships({
   return (
     <ObjectRelationships>
       <div className="text-bold text-medium">
-        {jt`This ${(
+        {jt`${(
           <span className="text-dark" key={objectName}>
             {objectName}
           </span>
@@ -63,12 +65,6 @@ export function Relationships({
   );
 }
 
-const chevron = (
-  <IconBorder className="flex-align-right">
-    <Icon name="chevronright" size={10} />
-  </IconBorder>
-);
-
 interface RelationshipProps {
   fk: ForeignKey;
   fkCountInfo: { status: number; value: number } | null;
@@ -84,7 +80,7 @@ function Relationship({
 }: RelationshipProps) {
   const fkCountValue = fkCountInfo?.value || 0;
   const isLoaded = fkCountInfo?.status === 1;
-  const fkClickable = isLoaded && fkCountInfo.value;
+  const fkClickable = isLoaded && Boolean(fkCountInfo.value);
   const originTableName = fk.origin.table.display_name;
 
   const relationName = inflect(originTableName, fkCountValue);
@@ -97,15 +93,10 @@ function Relationship({
       </span>
     ) : null;
 
-  const classes = cx("flex align-center my2 pb2 border-bottom", {
-    "text-brand-hover cursor-pointer text-dark": fkClickable,
-    "text-medium": !fkClickable,
-  });
-
   return (
     <li data-testid={`fk-relation-${originTableName.toLowerCase()}`}>
-      <div
-        className={classes}
+      <ObjectRelationContent
+        isClickable={fkClickable}
         onClick={fkClickable ? () => foreignKeyClicked(fk) : undefined}
       >
         <div>
@@ -115,8 +106,12 @@ function Relationship({
             {via}
           </h5>
         </div>
-        {!!fkClickable && chevron}
-      </div>
+        {fkClickable && (
+          <IconBorder className="flex-align-right">
+            <Icon name="chevronright" size={10} />
+          </IconBorder>
+        )}
+      </ObjectRelationContent>
     </li>
   );
 }

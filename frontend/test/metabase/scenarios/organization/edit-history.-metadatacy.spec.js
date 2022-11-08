@@ -2,7 +2,7 @@ import {
   restore,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
 describe("scenarios > collection items metadata", () => {
@@ -88,11 +88,9 @@ function changeDashboard() {
 
 function changeQuestion() {
   cy.intercept("PUT", "/api/card/**").as("updateQuestion");
-  cy.findByTestId("saved-question-header-button").click();
+  cy.findByTestId("saved-question-header-title").click();
   cy.findByTestId("edit-details-button").click();
-  cy.findByLabelText("Description")
-    .click()
-    .type("Very insightful");
+  cy.findByLabelText("Description").click().type("Very insightful");
   cy.button("Save").click();
   cy.wait("@updateQuestion");
 }

@@ -10,9 +10,8 @@ import DashboardData from "metabase/dashboard/hoc/DashboardData";
 
 const DashboardWithData = DashboardData(Dashboard);
 
+import { getAccentColors } from "metabase/lib/colors/groups";
 import { AuditMode } from "../lib/mode";
-
-import { harmony } from "metabase/lib/colors";
 
 const AuditDashboard = ({ cards, ...props }) => (
   <DashboardWithData
@@ -22,11 +21,11 @@ const AuditDashboard = ({ cards, ...props }) => (
       ordered_cards: cards.map(([{ x, y, w, h }, dc]) => ({
         col: x,
         row: y,
-        sizeX: w,
-        sizeY: h,
+        size_x: w,
+        size_y: h,
         visualization_settings: {
           // use the legacy "graph.colors" settings with color harmony to force brand color, etc
-          "graph.colors": harmony,
+          "graph.colors": getAccentColors({ harmony: true }),
           // we want to hide the background to help make the charts feel
           // like they're part of the page, so turn off the background
           "dashcard.background": false,

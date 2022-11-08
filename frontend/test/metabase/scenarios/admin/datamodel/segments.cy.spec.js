@@ -1,5 +1,11 @@
 // Ported from `segments.e2e.spec.js`
-import { restore, popover, modal } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  modal,
+  filter,
+  filterField,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -25,9 +31,18 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.visit("/admin/datamodel/segments");
       cy.findByText("New segment").click();
       cy.findByText("Select a table").click();
-      popover().within(() => {
+
+      // Ugly hack to prevent failures that started after https://github.com/metabase/metabase/pull/24682 has been merged.
+      // For unknon reasons, popover doesn't open with expanded list of all Sample Database tables. Rather. it shows
+      // Sample Database (collapsed) only. We need to click on it to expand it.
+      // This conditional mechanism prevents failures even if that popover opens expanded in the future.
+      cy.get(".List-section").then($list => {
+        if ($list.length !== 5) {
+          cy.findByText("Sample Database").click();
+        }
         cy.findByText("Orders").click();
       });
+
       cy.findByText("Add filters to narrow your answer").click();
 
       cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
@@ -102,22 +117,16 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.visit("/reference/segments/1/questions");
       cy.get(".full .Button").click();
       cy.findAllByText("37.65");
-      cy.findAllByText("Filter")
-        .first()
-        .click();
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.contains("Product ID").click();
+
+      filter();
+      filterField("Product ID", {
+        value: "14",
       });
-      cy.findByText("Cancel");
-      cy.findByPlaceholderText("Enter an ID")
-        .click()
-        .type("14", { delay: 100 });
-      cy.findByText("Add filter").click();
+      cy.findByTestId("apply-filters").click();
+
       cy.findByText("Product ID is 14");
       cy.findByText("Save").click();
-      cy.findAllByText("Save")
-        .last()
-        .click();
+      cy.findAllByText("Save").last().click();
 
       // Check list
       cy.visit("/reference/segments/1/questions");
@@ -144,26 +153,16 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.url().should("match", /segment\/1$/);
       cy.contains("Edit Your Segment");
       cy.contains(/Total\s+is less than/).click();
-      popover()
-        .contains("Less than")
-        .click();
-      popover()
-        .contains("Greater than")
-        .click();
-      popover()
-        .find("input")
-        .type("{SelectAll}10");
-      popover()
-        .contains("Update filter")
-        .click();
+      popover().contains("Less than").click();
+      popover().contains("Greater than").click();
+      popover().find("input").type("{SelectAll}10");
+      popover().contains("Update filter").click();
 
       // confirm that the preview updated
       cy.contains("18758 rows");
 
       // update name and description, set a revision note, and save the update
-      cy.get('[name="name"]')
-        .clear()
-        .type("Orders > 10");
+      cy.get('[name="name"]').clear().type("Orders > 10");
       cy.get('[name="description"]')
         .clear()
         .type("All orders with a total over $10.");
@@ -182,12 +181,8 @@ describe("scenarios > admin > datamodel > segments", () => {
         .find(".Icon-ellipsis")
         .click();
       cy.contains("Retire Segment").click();
-      modal()
-        .find("textarea")
-        .type("delete it");
-      modal()
-        .contains("button", "Retire")
-        .click();
+      modal().find("textarea").type("delete it");
+      modal().contains("button", "Retire").click();
     });
   });
 });

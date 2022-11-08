@@ -1,6 +1,10 @@
+---
+title: Using or migrating from an H2 application database
+---
+
 # Using or migrating from an H2 application database
 
-You have installed Metabase, but:
+You've installed Metabase, but:
 
 - You're trying to migrate the application database from H2 to another database and something has gone wrong,
 - You're trying to downgrade rather than upgrade,
@@ -15,11 +19,11 @@ You have installed Metabase, but:
 **Steps to take:**
 
 1. To check what you're using as the app database, go to **Admin Panel**, open the **Troubleshooting** tab, scroll down to "Diagnostic Info", and look for the `application-database` key in the JSON it displays.
-2. See [Migrating from H2][migrate] for instructions on how to migrate to a more robust app database.
+2. See [Migrating from H2](../installation-and-operation/migrating-from-h2.md) for instructions on how to migrate to a more robust app database.
 
 ## Are you trying to migrate the application database from H2 to something else?
 
-**Root cause:** You are trying to [migrate][migrate] the app database from H2 to a production database such as PostgreSQL or MySQL/MariaDB using the `load-from-h2` command, but this has failed because the database filename is incorrect with an error message like:
+**Root cause:** You are trying to [migrate](../installation-and-operation/migrating-from-h2.md) the app database from H2 to a production database such as PostgreSQL or MySQL/MariaDB using the `load-from-h2` command, but this has failed because the database filename is incorrect with an error message like:
 
 ```
 Command failed with exception: Unsupported database file version or invalid file header in file <YOUR FILENAME>
@@ -125,8 +129,7 @@ Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to co
 2.  Go to the **Admin Panel** and increase the timeout setting for the app database.
 3.  Move Metabase to a faster server (in particular, a server with faster disks).
 
-[backup]: ../operations-guide/backing-up-metabase-application-data.md
+[backup]: ../installation-and-operation/backing-up-metabase-application-data.md
 [enterprise]: https://www.metabase.com/pricing
-[migrate]: ../operations-guide/migrating-from-h2.md
-[serialization-docs]: ../enterprise-guide/serialization.md
-[serialization-learn]: /learn/administration/serialization.html
+[serialization-docs]: ../installation-and-operation/serialization.md
+[serialization-learn]: https://www.metabase.com/learn/administration/serialization

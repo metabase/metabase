@@ -1,3 +1,7 @@
+---
+title: Guide to writing a Metabase driver
+---
+
 # Guide to writing a Metabase driver
 
 So here's the scenario: you love Metabase. It's changed your life. But you have some data in a Visual Fox Pro '98 database and you need to make charts with it, and it might be a while before the core Metabase team writes a driver for Visual Fox Pro '98. No problem! Writing a driver can be fun.
@@ -6,8 +10,8 @@ So here's the scenario: you love Metabase. It's changed your life. But you have 
 
 Before you start building a driver from scratch, see if one already exists that you could contribute to:
 
-- [Officially supported databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#officially-supported-databases)
-- [Community databases](https://www.metabase.com/docs/latest/developers-guide-drivers.html#how-to-use-a-community-built-driver)
+- [Officially supported databases](../../databases/connecting.md#connecting-to-supported-databases)
+- [Community databases](../partner-and-community-drivers.md#community-drivers)
 
 ## Setting up
 
@@ -17,7 +21,7 @@ Having an in-depth understanding of Clojure is less important when writing JDBC-
 
 ## Writing a driver
 
-Try to avoid skipping right to whichever page you think will give you the code you'll need to copy-pasta. While Metabase drivers are often fairly small (some as little as fifty lines of code), you should put some careful thought into deciding what goes into those fifty lines. You'll have an easier time writing the driver, and end up with a better one. 
+Try to avoid skipping right to whichever page you think will give you the code you'll need to copy-pasta. While Metabase drivers are often fairly small (some as little as fifty lines of code), you should put some careful thought into deciding what goes into those fifty lines. You'll have an easier time writing the driver, and end up with a better one.
 
 1. [Driver basics](basics.md)
 2. [Plugin manifests](plugins.md)
@@ -32,4 +36,4 @@ Try to avoid skipping right to whichever page you think will give you the code y
 
 ## Driver development announcements
 
-Occasionally, we may make changes to Metabase that impact database drivers. We'll try to give everyone as much of a heads up as possible. For notifications regarding potential driver changes, subscribe to the [Metabase Community Authors mailing list](http://eepurl.com/gQcIO9). 
+Occasionally, we may make changes to Metabase that impact database drivers. We'll try to give everyone as much of a heads up as possible. For notifications regarding potential driver changes, subscribe to the [Metabase Community Authors mailing list](http://eepurl.com/gQcIO9).

@@ -3,7 +3,8 @@ import {
   visitQuestionAdhoc,
   popover,
   visitDashboard,
-} from "__support__/e2e/cypress";
+  openSeriesSettings,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -35,6 +36,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     cy.findByText("Settings").click();
+    openSeriesSettings("Count");
     cy.findByText("Right").click();
     cy.get(Y_AXIS_RIGHT_SELECTOR);
   });
@@ -155,21 +157,20 @@ describe("scenarios > visualizations > line chart", () => {
 
     cy.findByText("Settings").click();
 
-    cy.findByTestId("sidebar-left").within(() => {
-      // Make sure we can update input with some existing value
-      cy.findByDisplayValue("cat1")
-        .type(" new")
-        .blur();
+    // Make sure we can update input with some existing value
+    openSeriesSettings("cat1", true);
+    popover().within(() => {
+      cy.findByDisplayValue("cat1").type(" new").blur();
       cy.findByDisplayValue("cat1 new");
-
-      // Now do the same for the input with no value
-      cy.findByDisplayValue("")
-        .type("cat2")
-        .blur();
-      cy.findByDisplayValue("cat2");
-
-      cy.button("Done").click();
+      cy.wait(500);
     });
+    // Now do the same for the input with no value
+    openSeriesSettings("Unknown", true);
+    popover().within(() => {
+      cy.get("input[type=text]").type("cat2").blur();
+      cy.findByDisplayValue("cat2");
+    });
+    cy.button("Done").click();
 
     cy.findAllByTestId("legend-item")
       .should("contain", "cat1 new")
@@ -196,9 +197,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.get(`.sub._0`)
-      .find("circle")
-      .should("have.length", 2);
+    cy.get(`.sub._0`).find("circle").should("have.length", 2);
   });
 
   describe("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
@@ -333,8 +332,8 @@ describe("scenarios > visualizations > line chart", () => {
               card_id: firstCardId,
               row: 0,
               col: 0,
-              sizeX: 18,
-              sizeY: 12,
+              size_x: 18,
+              size_y: 12,
               series: [
                 {
                   id: secondCardId,
@@ -366,9 +365,7 @@ describe("scenarios > visualizations > line chart", () => {
       series.forEach(serie => {
         const [old_name, new_name] = serie;
 
-        cy.findByDisplayValue(old_name)
-          .clear()
-          .type(new_name);
+        cy.findByDisplayValue(old_name).clear().type(new_name);
       });
 
       cy.get(".Modal")
@@ -419,21 +416,14 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     it("should display correct axis labels (metabase#12782)", () => {
-      cy.get(".x-axis-label")
-        .invoke("text")
-        .should("eq", "Created At");
-      cy.get(".y-axis-label")
-        .invoke("text")
-        .should("eq", "Average of Price");
+      cy.get(".x-axis-label").invoke("text").should("eq", "Created At");
+      cy.get(".y-axis-label").invoke("text").should("eq", "Average of Price");
     });
   });
 });
 
 function testPairedTooltipValues(val1, val2) {
-  cy.contains(val1)
-    .closest("td")
-    .siblings("td")
-    .findByText(val2);
+  cy.contains(val1).closest("td").siblings("td").findByText(val2);
 }
 
 function showTooltipForFirstCircleInSeries(series_index) {

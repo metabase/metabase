@@ -3,7 +3,7 @@ import {
   setupSMTP,
   mockSlackConfigured,
   visitQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const channels = { slack: mockSlackConfigured, email: setupSMTP };
 
@@ -12,6 +12,7 @@ describe("scenarios > alert", () => {
     restore();
     cy.signInAsAdmin();
   });
+
   describe("with nothing set", () => {
     it("should prompt you to add email/slack credentials", () => {
       visitQuestion(1);
@@ -35,7 +36,7 @@ describe("scenarios > alert", () => {
   });
 
   Object.entries(channels).forEach(([channel, setup]) => {
-    describe(`with ${channel} set up`, () => {
+    describe(`with ${channel} set up`, { tags: "@external" }, () => {
       beforeEach(setup);
 
       it("educational screen should show for the first alert, but not for the second", () => {

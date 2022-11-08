@@ -30,8 +30,8 @@
 
 (deftest ^:parallel host-up?-test
   (testing "host-up?"
-    (mt/are+ [s expected] (= expected
-                             (u/host-up? s))
+    (are [s expected] (= expected
+                         (u/host-up? s))
       "localhost"  true
       "nosuchhost" false))
   (testing "host-port-up?"
@@ -39,8 +39,8 @@
            (u/host-port-up? "nosuchhost" 8005)))))
 
 (deftest ^:parallel url?-test
-  (mt/are+ [s expected] (= expected
-                        (u/url? s))
+  (are [s expected] (= expected
+                       (u/url? s))
     "http://google.com"                                                                      true
     "https://google.com"                                                                     true
     "https://amazon.co.uk"                                                                   true
@@ -74,8 +74,8 @@
     "http:/"                                                                                 false))
 
 (deftest ^:parallel state?-test
-  (mt/are+ [s expected] (= expected
-                        (u/state? s))
+  (are [x expected] (= expected
+                       (u/state? x))
     "louisiana"      true
     "north carolina" true
     "WASHINGTON"     true
@@ -87,8 +87,8 @@
     (Object.)        false))
 
 (deftest ^:parallel qualified-name-test
-  (mt/are+ [k expected] (= expected
-                        (u/qualified-name k))
+  (are [k expected] (= expected
+                       (u/qualified-name k))
     :keyword                          "keyword"
     :namespace/keyword                "namespace/keyword"
     ;; `qualified-name` should return strings as-is
@@ -102,18 +102,6 @@
   (testing "we shouldn't ignore non-nil values -- `u/qualified-name` should throw an Exception if `name` would"
     (is (thrown? ClassCastException
                  (u/qualified-name false)))))
-
-(deftest ^:parallel rpartial-test
-  (is (= 3
-         ((u/rpartial - 5) 8)))
-  (is (= -7
-         ((u/rpartial - 5 10) 8))))
-
-(deftest ^:parallel key-by-test
-  (is (= {1 {:id 1, :name "Rasta"}
-          2 {:id 2, :name "Lucky"}}
-         (u/key-by :id [{:id 1, :name "Rasta"}
-                        {:id 2, :name "Lucky"}]))))
 
 (deftest ^:parallel remove-diacritical-marks-test
   (doseq [[s expected] {"üuuü" "uuuu"
@@ -164,8 +152,8 @@
              (map ex-data (u/full-exception-chain e)))))))
 
 (deftest ^:parallel select-nested-keys-test
-  (mt/are+ [m keyseq expected] (= expected
-                                  (u/select-nested-keys m keyseq))
+  (are [m keyseq expected] (= expected
+                              (u/select-nested-keys m keyseq))
     {:a 100, :b {:c 200, :d 300}}              [:a [:b :d] :c]   {:a 100, :b {:d 300}}
     {:a 100, :b {:c 200, :d 300}}              [:b]              {:b {:c 200, :d 300}}
     {:a 100, :b {:c 200, :d 300}}              [[:b :c :d]]      {:b {:c 200, :d 300}}
@@ -180,8 +168,8 @@
     {}                                         [:c]              {}))
 
 (deftest ^:parallel base64-string?-test
-  (mt/are+ [s expected]    (= expected
-                        (u/base64-string? s))
+  (are [s expected]    (= expected
+                          (u/base64-string? s))
     "ABc="         true
     "ABc/+asdasd=" true
     100            false
@@ -210,8 +198,8 @@
              :non-nil #{:d :e :f})))))
 
 (deftest ^:parallel order-of-magnitude-test
-  (mt/are+ [n expected] (= expected
-                        (u/order-of-magnitude n))
+  (are [n expected] (= expected
+                       (u/order-of-magnitude n))
     0.01  -2
     0.5   -1
     4     0
@@ -234,16 +222,16 @@
          (u/snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))))
 
 (deftest ^:parallel one-or-many-test
-  (mt/are+ [input expected] (= expected
-                            (u/one-or-many input))
+  (are [input expected] (= expected
+                           (u/one-or-many input))
     nil   nil
     [nil] [nil]
     42    [42]
     [42]  [42]))
 
 (deftest ^:parallel topological-sort-test
-  (mt/are+ [input expected] (= expected
-                            (u/topological-sort identity input))
+  (are [input expected] (= expected
+                           (u/topological-sort identity input))
     {:b []
      :c [:a]
      :e [:d]
@@ -265,8 +253,8 @@
            (u/upper-case-en "id")))))
 
 (deftest ^:parallel parse-currency-test
-  (mt/are+ [s expected] (= expected
-                        (u/parse-currency s))
+  (are [s expected] (= expected
+                       (u/parse-currency s))
     nil             nil
     ""              nil
     "   "           nil
@@ -301,8 +289,8 @@
     (is (nil? (u/or-with even? 1 3 5)))))
 
 (deftest ^:parallel ip-address?-test
-  (mt/are+ [x expected] (= expected
-                           (u/ip-address? x))
+  (are [x expected] (= expected
+                       (u/ip-address? x))
     "8.8.8.8"              true
     "185.233.100.23"       true
     "500.1.1.1"            false
@@ -322,7 +310,7 @@
     (let [limit 5
           rf    (u/sorted-take limit compare)]
       (reduce (fn [q x]
-                (let [q' (rf q x)]
+                (let [_q' (rf q x)]
                   ;; a bit internal but this is really what we're after: bounded size while we look for the biggest
                   ;; elements
                   (is (<= (count q) limit))
@@ -349,28 +337,39 @@
                     (u/sorted-take size kompare)
                     coll)))))
 (deftest ^:parallel email->domain-test
-  (are [domain email] (is (= domain
-                             (u/email->domain email))
-                          (format "Domain of email address '%s'" email))
+  (are [domain email] (= domain
+                         (u/email->domain email))
     nil              nil
     "metabase.com"   "cam@metabase.com"
     "metabase.co.uk" "cam@metabase.co.uk"
     "metabase.com"   "cam.saul+1@metabase.com"))
 
 (deftest ^:parallel email-in-domain-test
-  (are [in-domain? email domain] (is (= in-domain?
-                                        (u/email-in-domain? email domain))
-                                     (format "Is email '%s' in domain '%s'?" email domain))
+  (are [in-domain? email domain] (= in-domain?
+                                    (u/email-in-domain? email domain))
     true  "cam@metabase.com"          "metabase.com"
     false "cam.saul+1@metabase.co.uk" "metabase.com"
     true  "cam.saul+1@metabase.com"   "metabase.com"))
 
 (deftest ^:parallel round-to-precision-test
-  (are [exp figs n]
-       (is (= exp (u/round-to-precision figs n)))
+  (are [exp figs n] (= exp
+                       (u/round-to-precision figs n))
        1.0     1 1.234
        1.2     2 1.234
        1.3     2 1.278
        1.3     2 1.251
        12300.0 3 12345.67
        0.00321 3 0.003209817))
+
+(defspec pick-first-test 100
+  (prop/for-all [coll (gen/list gen/int)]
+    (let [result (u/pick-first pos? coll)]
+      (or (and (nil? result)
+               (every? (complement pos?) coll))
+          (let [[x ys] result
+                [non-pos [m & rest]] (split-with (complement pos?) coll)]
+            (and (vector? result)
+                 (= (count result) 2)
+                 (pos? x)
+                 (= x m)
+                 (= ys (concat non-pos rest))))))))

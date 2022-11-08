@@ -3,7 +3,7 @@ import {
   visitDashboard,
   editDashboard,
   saveDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const Q1 = {
   name: "21665 Q1",

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import moment from "moment";
+import moment from "moment-timezone";
 import { ComponentStory } from "@storybook/react";
 import TimeInput from "./TimeInput";
 

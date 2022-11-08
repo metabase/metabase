@@ -47,7 +47,7 @@
     (when-let [site-url (or origin x-forwarded-host host)]
       (log/info (trs "Setting Metabase site URL to {0}" site-url))
       (try
-        (public-settings/site-url site-url)
+        (public-settings/site-url! site-url)
         (catch Throwable e
           (log/warn e (trs "Failed to set site-url")))))))
 

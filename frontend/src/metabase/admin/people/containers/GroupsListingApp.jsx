@@ -1,18 +1,28 @@
 import React from "react";
+import _ from "underscore";
 import { connect } from "react-redux";
 
+import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import Group from "metabase/entities/groups";
-import GroupsListing from "../components/GroupsListing";
-import { getGroupsWithoutMetabot } from "../selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import GroupsListing from "../components/GroupsListing";
 
-@Group.loadList({ reload: true })
-@connect((state, props) => ({
-  groups: getGroupsWithoutMetabot(state, props),
+const mapStateToProps = (state, props) => ({
+  groups: Group.selectors.getList(state, props),
   isAdmin: getUserIsAdmin(state),
-}))
-export default class GroupsListingApp extends React.Component {
+});
+
+const mapDispatchToProps = {
+  delete: PLUGIN_GROUP_MANAGERS.deleteGroup ?? Group.actions.delete,
+};
+
+class GroupsListingApp extends React.Component {
   render() {
     return <GroupsListing {...this.props} />;
   }
 }
+
+export default _.compose(
+  Group.loadList({ reload: true }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(GroupsListingApp);

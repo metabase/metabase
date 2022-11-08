@@ -3,7 +3,7 @@ import {
   filterWidget,
   popover,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -49,8 +49,8 @@ describe("scenarios > dashboard > filters", () => {
         const { card_id, dashboard_id } = dashboardCard;
 
         const updatedCardDetails = {
-          sizeX: 16,
-          sizeY: 10,
+          size_x: 16,
+          size_y: 10,
           parameter_mappings: [
             {
               parameter_id: filter.id,
@@ -79,7 +79,7 @@ describe("scenarios > dashboard > filters", () => {
   it("should work properly when connected to the explicitly joined field", () => {
     filterWidget().click();
 
-    cy.findByPlaceholderText(/^Search by/).type("Awe");
+    cy.findByPlaceholderText("Search the list").type("Awe");
 
     selectFromDropdown(["Awesome Concrete Shoes", "Awesome Iron Hat"]);
 

@@ -45,8 +45,7 @@ export default [
           updated_at: "2022-04-11T15:27:00.066",
           cache_ttl: null,
           details: {
-            db:
-              "/home/ryan/projects/metabase/resources/sample-database.db;USER=GUEST;PASSWORD=guest",
+            db: "/home/ryan/projects/metabase/resources/sample-database.db;USER=GUEST;PASSWORD=guest",
           },
           is_sample: true,
           id: 1,
@@ -201,8 +200,7 @@ export default [
           updated_at: "2022-04-11T15:27:00.066",
           cache_ttl: null,
           details: {
-            db:
-              "/home/ryan/projects/metabase/resources/sample-database.db;USER=GUEST;PASSWORD=guest",
+            db: "/home/ryan/projects/metabase/resources/sample-database.db;USER=GUEST;PASSWORD=guest",
           },
           is_sample: true,
           id: 1,

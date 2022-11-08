@@ -1,9 +1,9 @@
 import {
-  describeOSS,
+  isOSS,
   describeEE,
   restore,
   setupMetabaseCloud,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 describe("scenarios > admin > troubleshooting > help", () => {
   beforeEach(() => {
@@ -21,8 +21,10 @@ describe("scenarios > admin > troubleshooting > help", () => {
   });
 });
 
-describeOSS("scenarios > admin > troubleshooting > help", () => {
+describe("scenarios > admin > troubleshooting > help", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
+
     restore();
     cy.signInAsAdmin();
   });

@@ -1,4 +1,4 @@
-import { restore, setupSMTP, visitQuestion } from "__support__/e2e/cypress";
+import { restore, setupSMTP, visitQuestion } from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -36,7 +36,7 @@ const rawTestCases = [
   },
 ];
 
-describe("scenarios > alert > types", () => {
+describe("scenarios > alert > types", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/alert").as("savedAlert");
 
@@ -69,14 +69,13 @@ describe("scenarios > alert > types", () => {
 
       cy.findByText("Settings").click();
       cy.findByText("Line options");
+      cy.findByText("Display").click();
 
       setGoal("7000");
 
       // Save question
       cy.findByText("Save").click();
-      cy.get(".Modal")
-        .button("Save")
-        .click();
+      cy.get(".Modal").button("Save").click();
       cy.findByText("Save question").should("not.exist");
 
       openAlertModal();
@@ -122,13 +121,9 @@ function openAlertModal() {
 
 function setGoal(goal) {
   // Enable the toggle
-  cy.findByText("Goal line")
-    .next()
-    .click();
+  cy.findByText("Goal line").next().click();
 
-  cy.findByDisplayValue("0")
-    .clear()
-    .type(goal);
+  cy.findByDisplayValue("0").clear().type(goal);
 
   cy.button("Done").click();
 }

@@ -2,8 +2,8 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
-import { TYPE } from "metabase/lib/types";
 import testDataset from "__support__/testDataset";
+import { TYPE } from "metabase-lib/types/constants";
 
 const objectDetailCard = {
   card: {
@@ -63,7 +63,7 @@ describe("ObjectDetailsTable", () => {
       render(
         <DetailsTable
           data={objectDetailCard.data}
-          zoomedRow={undefined}
+          zoomedRow={objectDetailCard.data.rows[0]}
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
           settings={{}}
@@ -78,7 +78,7 @@ describe("ObjectDetailsTable", () => {
       render(
         <DetailsTable
           data={invalidObjectDetailCard.data}
-          zoomedRow={undefined}
+          zoomedRow={invalidObjectDetailCard.data.rows[0]}
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
           settings={{}}

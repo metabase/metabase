@@ -1,6 +1,12 @@
+import { updateIn } from "icepick";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
+
+import {
+  API_UPDATE_QUESTION,
+  SOFT_RELOAD_CARD,
+} from "metabase/query_builder/actions";
 
 import Collections, {
   getCollectionType,
@@ -42,6 +48,11 @@ const Questions = createEntity({
           Collections.actions.fetchList({ tree: true }, { reload: true }),
         );
 
+        const card = result?.payload?.question;
+        if (card) {
+          dispatch.action(API_UPDATE_QUESTION, card);
+        }
+
         return result;
       };
     },
@@ -55,11 +66,14 @@ const Questions = createEntity({
         },
         opts,
       ),
+
+    setCollectionPreview: ({ id }, collection_preview, opts) =>
+      Questions.actions.update({ id }, { collection_preview }, opts),
   },
 
   objectSelectors: {
     getName: question => question && question.name,
-    getUrl: question => question && Urls.question(question),
+    getUrl: (question, opts) => question && Urls.question(question, opts),
     getColor: () => color("text-medium"),
     getCollection: question =>
       question && normalizedCollection(question.collection),
@@ -67,6 +81,17 @@ const Questions = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
+    if (type === SOFT_RELOAD_CARD) {
+      const { id } = payload;
+      const latestReview = payload.moderation_reviews?.find(x => x.most_recent);
+
+      if (latestReview) {
+        return updateIn(state, [id], question => ({
+          ...question,
+          moderated_status: latestReview.status,
+        }));
+      }
+    }
     return state;
   },
 
@@ -79,12 +104,16 @@ const Questions = createEntity({
     "display",
     "description",
     "visualization_settings",
+    "parameters",
+    "parameter_mappings",
     "archived",
     "enable_embedding",
     "embedding_params",
     "collection_id",
     "collection_position",
+    "collection_preview",
     "result_metadata",
+    "is_write",
   ],
 
   getAnalyticsMetadata([object], { action }, getState) {
@@ -95,7 +124,7 @@ const Questions = createEntity({
   forms,
 });
 
-function getIcon(question) {
+export function getIcon(question) {
   if (question.dataset || question.model === "dataset") {
     return { name: "model" };
   }

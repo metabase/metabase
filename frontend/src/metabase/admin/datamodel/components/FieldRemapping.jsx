@@ -3,22 +3,26 @@ import React from "react";
 
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
-import SelectButton from "metabase/core/components/SelectButton";
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import FieldList from "metabase/query_builder/components/FieldList";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
-import SelectSeparator from "../components/SelectSeparator";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
-import Question from "metabase-lib/lib/Question";
-import { FieldMappingContainer } from "./FieldRemapping.styled";
+import { isEntityName, isFK } from "metabase-lib/types/utils/isa";
+import {
+  hasSourceField,
+  getFieldTargetId,
+} from "metabase-lib/queries/utils/field-ref";
+import SelectSeparator from "../components/SelectSeparator";
+import {
+  FieldMappingContainer,
+  FieldMappingRoot,
+  FieldSelectButton,
+  ForeignKeyList,
+} from "./FieldRemapping.styled";
 
 const MAP_OPTIONS = {
   original: { type: "original", name: t`Use original value` },
@@ -56,9 +60,9 @@ export default class FieldRemapping extends React.Component {
     throw new Error(t`Unrecognized mapping type`);
   };
 
-  hasForeignKeys = () =>
-    this.props.field.semantic_type === "type/FK" &&
-    this.getForeignKeys().length > 0;
+  hasForeignKeys = () => {
+    return isFK(this.props.field) && this.getForeignKeys().length > 0;
+  };
 
   hasMappableNumeralValues = () => {
     const { field } = this.props;
@@ -94,10 +98,7 @@ export default class FieldRemapping extends React.Component {
     const fkTargetFields = fks[0] && fks[0].dimensions.map(dim => dim.field());
 
     if (fkTargetFields) {
-      // TODO Atte Keinänen 7/11/17: Should there be `isName(field)` in Field.js?
-      const nameField = fkTargetFields.find(
-        field => field.semantic_type === "type/Name",
-      );
+      const nameField = fkTargetFields.find(field => isEntityName(field));
       return nameField ? nameField.id : null;
     } else {
       throw new Error(
@@ -182,18 +183,12 @@ export default class FieldRemapping extends React.Component {
   };
 
   onForeignKeyFieldChange = async foreignKeyClause => {
-    const {
-      table,
-      field,
-      fetchTableMetadata,
-      updateFieldDimension,
-    } = this.props;
+    const { table, field, fetchTableMetadata, updateFieldDimension } =
+      this.props;
 
     this.clearEditingStates();
 
-    // TODO Atte Keinänen 7/10/17: Use Dimension class when migrating to metabase-lib
-    const dimension = Dimension.parseMBQL(foreignKeyClause);
-    if (dimension && dimension instanceof FieldDimension && dimension.fk()) {
+    if (hasSourceField(foreignKeyClause)) {
       MetabaseAnalytics.trackStructEvent(
         "Data Model",
         "Update FK Remapping Target",
@@ -203,7 +198,7 @@ export default class FieldRemapping extends React.Component {
         {
           type: "external",
           name: field.display_name,
-          human_readable_field_id: dimension.field().id,
+          human_readable_field_id: getFieldTargetId(foreignKeyClause),
         },
       );
 
@@ -220,34 +215,9 @@ export default class FieldRemapping extends React.Component {
     return updateFieldValues({ id: field.id }, Array.from(remappings));
   };
 
-  // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
-  isValidFKRemappingTarget = dimension =>
-    !(
-      dimension.defaultDimension() instanceof FieldDimension &&
-      dimension.temporalUnit()
-    );
-
   getForeignKeys = () => {
-    const { table, field } = this.props;
-
-    // this method has a little odd structure due to using fieldOptions(); basically filteredFKs should
-    // always be an array with a single value
-    const metadata = table.metadata;
-    const fieldOptions = Question.create({
-      metadata,
-      databaseId: table.db.id,
-      tableId: table.id,
-    })
-      .query()
-      .fieldOptions();
-    const unfilteredFks = fieldOptions.fks;
-    const filteredFKs = unfilteredFks.filter(fk => fk.field.id === field.id);
-
-    return filteredFKs.map(filteredFK => ({
-      field: filteredFK.field,
-      dimension: filteredFK.dimension,
-      dimensions: filteredFK.dimensions.filter(this.isValidFKRemappingTarget),
-    }));
+    const { field, metadata } = this.props;
+    return metadata.field(field.id).remappingOptions();
   };
 
   onFkPopoverDismiss = () => {
@@ -292,25 +262,21 @@ export default class FieldRemapping extends React.Component {
                 key="foreignKeyName"
                 ref={this.fkPopover}
                 triggerElement={
-                  <SelectButton
+                  <FieldSelectButton
                     hasValue={hasFKMappingValue}
-                    className={cx({
-                      "border-error": dismissedInitialFkTargetPopover,
-                      "border-dark": !dismissedInitialFkTargetPopover,
-                    })}
+                    hasError={dismissedInitialFkTargetPopover}
                   >
                     {fkMappingField ? (
                       fkMappingField.display_name
                     ) : (
                       <span className="text-medium">{t`Choose a field`}</span>
                     )}
-                  </SelectButton>
+                  </FieldSelectButton>
                 }
                 isInitiallyOpen={isChoosingInitialFkTarget}
                 onClose={this.onFkPopoverDismiss}
               >
-                <FieldList
-                  className="text-purple"
+                <ForeignKeyList
                   field={fkMappingField}
                   fieldOptions={{
                     count: 0,
@@ -434,7 +400,7 @@ export class ValueRemappings extends React.Component {
     const { editingRemappings } = this.state;
 
     return (
-      <div className="bordered rounded py2 px4 border-dark">
+      <FieldMappingRoot>
         <div className="flex align-center my1 pb2 border-bottom">
           <h3>{t`Original value`}</h3>
           <h3 className="ml-auto">{t`Mapped value`}</h3>
@@ -461,7 +427,7 @@ export class ValueRemappings extends React.Component {
             {t`Save`}
           </ButtonWithStatus>
         </div>
-      </div>
+      </FieldMappingRoot>
     );
   }
 }

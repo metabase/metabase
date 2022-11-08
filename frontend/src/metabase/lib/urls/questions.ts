@@ -3,13 +3,13 @@ import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 
-import Question, { QuestionCreatorOpts } from "metabase-lib/lib/Question";
 import { Card as BaseCard } from "metabase-types/types/Card";
+import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
 
 import { appendSlug, extractQueryParams } from "./utils";
 
-type Card = BaseCard & {
-  id?: string;
+type Card = Partial<BaseCard> & {
+  id?: number | string;
   card_id?: string;
   name?: string;
   model?: "card" | "dataset";
@@ -22,11 +22,17 @@ type QuestionUrlBuilderParams = {
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
+  isModelDetail?: boolean;
 };
 
 export function question(
   card: Card | null,
-  { hash = "", query = "", objectId }: QuestionUrlBuilderParams = {},
+  {
+    hash = "",
+    query = "",
+    objectId,
+    isModelDetail = false,
+  }: QuestionUrlBuilderParams = {},
 ) {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
@@ -34,6 +40,7 @@ export function question(
 
   if (query && typeof query === "object") {
     query = extractQueryParams(query)
+      .filter(([key, value]) => value !== undefined)
       .map(kv => kv.map(encodeURIComponent).join("="))
       .join("&");
   }
@@ -46,13 +53,13 @@ export function question(
     query = "?" + query;
   }
 
+  const isModel = card?.dataset || card?.model === "dataset";
+  let path = isModel ? "model" : "question";
   if (!card || !card.id) {
-    return `/question${query}${hash}`;
+    return `/${path}${query}${hash}`;
   }
 
   const { card_id, id, name } = card;
-  let path = card?.dataset || card?.model === "dataset" ? "model" : "question";
-
   /**
    * If the question has been added to the dashboard we're reading the dashCard's properties.
    * In that case `card_id` is the actual question's id, while `id` corresponds with the dashCard itself.
@@ -84,7 +91,7 @@ export function serializedQuestion(card: Card, opts = {}) {
 }
 
 type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
-  mode?: "view" | "notebook";
+  mode?: "view" | "notebook" | "query";
   creationType?: string;
   objectId?: number | string;
 };
@@ -95,12 +102,16 @@ export function newQuestion({
   objectId,
   ...options
 }: NewQuestionUrlBuilderParams = {}) {
-  const url = Question.create(options).getUrl({
+  const question = Question.create(options);
+  const url = question.getUrl({
     creationType,
     query: objectId ? { objectId } : undefined,
   });
+
+  const entity = question.isDataset() ? "model" : "question";
+
   if (mode) {
-    return url.replace(/^\/question/, `/question\/${mode}`);
+    return url.replace(/^\/(question|model)/, `/${entity}\/${mode}`);
   } else {
     return url;
   }
@@ -110,9 +121,18 @@ export function dataset(...args: Parameters<typeof question>) {
   return question(...args);
 }
 
-export function publicQuestion(uuid: string, type: string | null = null) {
+export function publicQuestion(
+  uuid: string,
+  type: string | null = null,
+  query?: string,
+) {
   const siteUrl = MetabaseSettings.get("site-url");
-  return `${siteUrl}/public/question/${uuid}` + (type ? `.${type}` : ``);
+  const searchQuery = query ? `?${query}` : "";
+  return (
+    `${siteUrl}/public/question/${uuid}` +
+    (type ? `.${type}` : "") +
+    searchQuery
+  );
 }
 
 export function embedCard(token: string, type: string | null = null) {

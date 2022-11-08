@@ -1,21 +1,20 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import { t } from "ttag";
+import _ from "underscore";
 import { ModalFooter } from "metabase/components/ModalContent";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import Button from "metabase/core/components/Button";
 import GroupSelect from "metabase/admin/people/components/GroupSelect";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
-import { t } from "ttag";
 import { PermissionsApi, SettingsApi } from "metabase/services";
-import { isSpecialGroup } from "metabase/lib/groups";
-
-import _ from "underscore";
+import { isDefaultGroup } from "metabase/lib/groups";
 
 import SettingToggle from "./SettingToggle";
 
-const groupIsMappable = group => !isSpecialGroup(group);
+const groupIsMappable = group => !isDefaultGroup(group);
 
 export default class GroupMappingsWidget extends React.Component {
   constructor(props, context) {
@@ -110,13 +109,8 @@ export default class GroupMappingsWidget extends React.Component {
   };
 
   render() {
-    const {
-      showEditModal,
-      showAddRow,
-      groups,
-      mappings,
-      saveError,
-    } = this.state;
+    const { showEditModal, showAddRow, groups, mappings, saveError } =
+      this.state;
 
     return (
       <div className="flex align-center">

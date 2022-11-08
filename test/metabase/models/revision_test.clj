@@ -1,8 +1,10 @@
 (ns metabase.models.revision-test
   (:require [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
-            [metabase.models.revision :as revision]
+            [metabase.models.interface :as mi]
+            [metabase.models.revision :as revision :refer [Revision]]
             [metabase.test :as mt]
+            [toucan.db :as db]
             [toucan.models :as models]))
 
 (def ^:private reverted-to
@@ -10,17 +12,22 @@
 
 (models/defmodel ^:private FakedCard :report_card)
 
-(extend-type FakedCardInstance
-  revision/IRevisioned
-  (serialize-instance [_ _ obj]
-    (assoc obj :serialized true))
-  (revert-to-revision! [_ _ _ serialized-instance]
-    (reset! reverted-to (dissoc serialized-instance :serialized)))
-  (diff-map [_ o1 o2]
-    {:o1 o1, :o2 o2})
-  (diff-str [_ o1 o2]
-    (when o1
-      (str "BEFORE=" o1 ",AFTER=" o2))))
+(defmethod revision/serialize-instance FakedCard
+  [_model _id obj]
+  (into {} (assoc obj :serialized true)))
+
+(defmethod revision/revert-to-revision! FakedCard
+  [_model _id _user-id serialized-instance]
+  (reset! reverted-to (dissoc serialized-instance :serialized)))
+
+(defmethod revision/diff-map FakedCard
+  [_model o1 o2]
+  {:o1 (when o1 (into {} o1)), :o2 (when o2 (into {} o2))})
+
+(defmethod revision/diff-str FakedCard
+  [_model o1 o2]
+  (when o1
+    (str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))))
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
   (revision/push-revision!
@@ -44,35 +51,40 @@
   (testing (str "Check that pattern matching allows specialization and that string only reflects the keys that have "
                 "changed")
     (is (= "renamed this Card from \"Tips by State\" to \"Spots by State\"."
-           (revision/default-diff-str Card
-                                      {:name "Tips by State", :private false}
-                                      {:name "Spots by State", :private false})))
+           ((get-method revision/diff-str :default)
+            Card
+            {:name "Tips by State", :private false}
+            {:name "Spots by State", :private false})))
 
     (is (= "made this Card private."
-           (revision/default-diff-str Card
-                                      {:name "Spots by State", :private false}
-                                      {:name "Spots by State", :private true})))))
+           ((get-method revision/diff-str :default)
+            Card
+            {:name "Spots by State", :private false}
+            {:name "Spots by State", :private true})))))
 
 (deftest fallback-description-test
   (testing "Check the fallback sentence fragment for key without specialized sentence fragment"
     (is (= "changed priority from \"Important\" to \"Regular\"."
-           (revision/default-diff-str Card
-                                      {:priority "Important"}
-                                      {:priority "Regular"})))))
+           ((get-method revision/diff-str :default)
+            Card
+            {:priority "Important"}
+            {:priority "Regular"})))))
 
 (deftest multiple-changes-test
   (testing "Check that 2 changes are handled nicely"
     (is (= "made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
-           (revision/default-diff-str Card
-                                      {:name "Tips by State", :private false}
-                                      {:name "Spots by State", :private true}))))
+           ((get-method revision/diff-str :default)
+            Card
+            {:name "Tips by State", :private false}
+            {:name "Spots by State", :private true}))))
 
   (testing "Check that several changes are handled nicely"
     (is (= (str "changed priority from \"Important\" to \"Regular\", made this Card private and renamed it from "
                 "\"Tips by State\" to \"Spots by State\".")
-           (revision/default-diff-str Card
-                                      {:name "Tips by State", :private false, :priority "Important"}
-                                      {:name "Spots by State", :private true, :priority "Regular"})))))
+           ((get-method revision/diff-str :default)
+            Card
+            {:name "Tips by State", :private false, :priority "Important"}
+            {:name "Spots by State", :private true, :priority "Regular"})))))
 
 ;;; # REVISIONS + PUSH-REVISION!
 
@@ -86,10 +98,11 @@
   (testing "Test that we can add a revision"
     (mt/with-temp Card [{card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day", :message "yay!")
-      (is (= [(revision/map->RevisionInstance
+      (is (= [(mi/instance
+               Revision
                {:model        "FakedCard"
                 :user_id      (mt/user->id :rasta)
-                :object       {:name "Tips Created by Day", :serialized true}
+                :object       (mi/instance FakedCard {:name "Tips Created by Day", :serialized true})
                 :is_reversion false
                 :is_creation  false
                 :message      "yay!"})]
@@ -101,17 +114,19 @@
     (mt/with-temp Card [{card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day")
       (push-fake-revision! card-id, :name "Spots Created by Day")
-      (is (= [(revision/map->RevisionInstance
+      (is (= [(mi/instance
+               Revision
                {:model        "FakedCard"
                 :user_id      (mt/user->id :rasta)
-                :object       {:name "Spots Created by Day", :serialized true}
+                :object       (mi/instance FakedCard {:name "Spots Created by Day", :serialized true})
                 :is_reversion false
                 :is_creation  false
                 :message      nil})
-              (revision/map->RevisionInstance
+              (mi/instance
+               Revision
                {:model        "FakedCard"
                 :user_id      (mt/user->id :rasta)
-                :object       {:name "Tips Created by Day", :serialized true}
+                :object       (mi/instance FakedCard {:name "Tips Created by Day", :serialized true})
                 :is_reversion false
                 :is_creation  false
                 :message      nil})]
@@ -151,7 +166,8 @@
   (testing "Check that revisions+details pulls in user info and adds description"
     (mt/with-temp Card [{card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day")
-      (is (= [(revision/map->RevisionInstance
+      (is (= [(mi/instance
+               Revision
                {:is_reversion false,
                 :is_creation  false,
                 :message      nil,
@@ -167,7 +183,8 @@
     (mt/with-temp Card [{card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day")
       (push-fake-revision! card-id, :name "Spots Created by Day")
-      (is (= [(revision/map->RevisionInstance
+      (is (= [(mi/instance
+               Revision
                {:is_reversion false,
                 :is_creation  false,
                 :message      nil
@@ -176,7 +193,8 @@
                                :o2 {:name "Spots Created by Day", :serialized true}}
                 :description  (str "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER="
                                    "{:name \"Spots Created by Day\", :serialized true}")})
-              (revision/map->RevisionInstance
+              (mi/instance
+               Revision
                {:is_reversion false,
                 :is_creation  false,
                 :message      nil
@@ -204,11 +222,11 @@
       (revision/push-revision! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Tips Created by Day"})
       (revision/push-revision! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Spots Created by Day"})
       (is (= "Spots Created By Day"
-             (:name (Card card-id))))
+             (:name (db/select-one Card :id card-id))))
       (let [[_ {old-revision-id :id}] (revision/revisions Card card-id)]
         (revision/revert! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id)
         (is (= "Tips Created by Day"
-               (:name (Card card-id))))))))
+               (:name (db/select-one Card :id card-id))))))))
 
 (deftest reverting-should-add-revision-test
   (testing "Check that reverting to a previous revision adds an appropriate revision"
@@ -217,26 +235,30 @@
       (push-fake-revision! card-id, :name "Spots Created by Day")
       (let [[_ {old-revision-id :id}] (revision/revisions FakedCard card-id)]
         (revision/revert! :entity FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id)
-        (is (= [(revision/map->RevisionInstance
-                 {:model        "FakedCard"
-                  :user_id      (mt/user->id :rasta)
-                  :object       {:name "Tips Created by Day", :serialized true}
-                  :is_reversion true
-                  :is_creation  false
-                  :message      nil})
-                (revision/map->RevisionInstance
-                 {:model        "FakedCard",
-                  :user_id      (mt/user->id :rasta)
-                  :object       {:name "Spots Created by Day", :serialized true}
-                  :is_reversion false
-                  :is_creation  false
-                  :message      nil})
-                (revision/map->RevisionInstance
-                 {:model        "FakedCard",
-                  :user_id      (mt/user->id :rasta)
-                  :object       {:name "Tips Created by Day", :serialized true}
-                  :is_reversion false
-                  :is_creation  false
-                  :message      nil})]
-               (->> (revision/revisions FakedCard card-id)
-                    (map #(dissoc % :timestamp :id :model_id)))))))))
+        (is (partial=
+             [(mi/instance
+               Revision
+               {:model        "FakedCard"
+                :user_id      (mt/user->id :rasta)
+                :object       {:name "Tips Created by Day", :serialized true}
+                :is_reversion true
+                :is_creation  false
+                :message      nil})
+              (mi/instance
+               Revision
+               {:model        "FakedCard",
+                :user_id      (mt/user->id :rasta)
+                :object       {:name "Spots Created by Day", :serialized true}
+                :is_reversion false
+                :is_creation  false
+                :message      nil})
+              (mi/instance
+               Revision
+               {:model        "FakedCard",
+                :user_id      (mt/user->id :rasta)
+                :object       {:name "Tips Created by Day", :serialized true}
+                :is_reversion false
+                :is_creation  false
+                :message      nil})]
+             (->> (revision/revisions FakedCard card-id)
+                  (map #(dissoc % :timestamp :id :model_id)))))))))

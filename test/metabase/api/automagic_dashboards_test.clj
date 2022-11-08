@@ -6,7 +6,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.automagic-dashboards :refer :all]
+            [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
             [metabase.test.domain-entities :as test.de]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.transforms :as transforms.test]
@@ -122,8 +122,8 @@
 
 (def ^:private segment
   (delay
-   {:table_id   (mt/id :venues)
-    :definition {:filter [:> [:field-id (mt/id :venues :price)] 10]}}))
+    {:table_id   (mt/id :venues)
+     :definition {:filter [:> [:field-id (mt/id :venues :price)] 10]}}))
 
 (deftest comparisons-test
   (tt/with-temp Segment [{segment-id :id} @segment]
@@ -146,6 +146,33 @@
                       (->> [:= [:field-id (mt/id :venues :price)] 15]
                            (#'magic/encode-base64-json))
                       segment-id]))))))
+
+(deftest compare-nested-query-test
+  (testing "Ad-hoc X-Rays should work for queries have Card source queries (#15655)"
+    (mt/dataset sample-dataset
+      (let [card-query      (mt/native-query {:query "select * from people"})
+            result-metadata (get-in (qp/process-query card-query) [:data :results_metadata :columns]) ]
+        (mt/with-temp* [Collection [{collection-id :id}]
+                        Card       [{card-id :id} {:name            "15655_Q1"
+                                                   :collection_id   collection-id
+                                                   :dataset_query   card-query
+                                                   :result_metadata result-metadata}]]
+          (let [query      {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (format "card__%d" card-id)
+                                       :breakout     [[:field "SOURCE" {:base-type :type/Text}]]
+                                       :aggregation  [[:count]]}}
+                cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
+            (testing "X-Ray"
+              (is (some? (api-call "adhoc/%s/cell/%s"
+                                   (map #'magic/encode-base64-json [query cell-query])
+                                   #(revoke-collection-permissions! collection-id)))))
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+            (testing "Compare"
+              (is (some? (api-call "adhoc/%s/cell/%s/compare/table/%s"
+                                   (concat (map #'magic/encode-base64-json [query cell-query])
+                                           [(format "card__%d" card-id)])
+                                   #(revoke-collection-permissions! collection-id)))))))))))
 
 
 ;;; ------------------- Transforms -------------------

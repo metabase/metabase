@@ -1,8 +1,8 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.test :as t]
+  (:require [clojure.test :as t]
             [medley.core :as m]
+            [metabase.db.connection :as mdb.connection]
             [metabase.http-client :as client]
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -10,6 +10,7 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
             [metabase.util :as u]
+            [metabase.util.password :as u.password]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -64,9 +65,9 @@
              active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
-  (or (User :email email)
+  (or (db/select-one User :email email)
       (locking create-user-lock
-        (or (User :email email)
+        (or (db/select-one User :email email)
             (db/insert! User
               :email        email
               :first_name   first
@@ -89,7 +90,7 @@
 
     (user->id)        ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn
      ([]
       (zipmap usernames (map user->id usernames)))
@@ -165,18 +166,6 @@
         (binding [*retrying-authentication*  true]
           (apply client-fn username args))))))
 
-(s/defn ^:deprecated user->client :- (s/pred fn?)
-  "Returns a `metabase.http-client/client` partially bound with the credentials for User with `username`.
-   In addition, it forces lazy creation of the User if needed.
-
-     ((user->client) :get 200 \"meta/table\")
-
-  DEPRECATED -- use `user-http-request` instead, which has proper `:arglists` metadata which makes it a bit easier to
-  use when writing code."
-  [username :- TestUserName]
-  (fetch-user username) ; force creation of the user if not already created
-  (partial client-fn username))
-
 (defn user-http-request
   "A version of our test HTTP client that issues the request with credentials for a given User. User may be either a
   redefined test User name, e.g. `:rasta`, or any User or User ID. (Because we don't have the User's original
@@ -196,7 +185,7 @@
         (throw (ex-info "User does not exist" {:user user})))
       (try
         (db/execute! {:update User
-                      :set    {:password      (creds/hash-bcrypt user-email)
+                      :set    {:password      (u.password/hash-bcrypt user-email)
                                :password_salt ""}
                       :where  [:= :id user-id]})
         (apply client/client {:username user-email, :password user-email} args)
@@ -240,6 +229,6 @@
   `(do-with-group-for-user ~group :rasta (fn [~group-binding] ~@body)))
 
 (defmacro with-group-for-user
-  "Like `with-group`, but for any test user (by passing in a test username keyword e.g. `:rasta`) or User ID."
+  "Like [[with-group]], but for any test user (by passing in a test username keyword e.g. `:rasta`) or User ID."
   [[group-binding test-user-name-or-user-id group] & body]
   `(do-with-group-for-user ~group ~test-user-name-or-user-id (fn [~group-binding] ~@body)))

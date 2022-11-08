@@ -1,11 +1,8 @@
-# Synchronizing with the database
+---
+title: Troubleshooting syncs and scans
+---
 
-<div class='doc-toc' markdown=1>
-- [Metabase can't sync, fingerprint, or scan](#cant-sync-fingerprint-scan)
-- [Metabase isn't showing all of the values I expect to see](#not-showing-all-values)
-- [I cannot force Metabase to sync or scan using the API](#cant-force-with-api)
-- [Sync and scan take a very long time to run](#sync-scan-long-time)
-</div>
+# Troubleshooting syncs and scans
 
 Metabase needs to know what's in your database in order to show tables and fields, populate dropdown menus, and suggest good visualizations, but loading all the data would be very slow (or simply impossible if you have a lot of data). It therefore does three things:
 
@@ -13,9 +10,9 @@ Metabase needs to know what's in your database in order to show tables and field
 
 2. Metabase *fingerprints* the column the first time it synchronizes. Fingerprinting fetches the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. Metabase only fingerprints each column once, unless the administrator explicitly tells it to fingerprint the column again, or in the rare event that a new release of Metabase changes the fingerprinting logic.
 
-3. A *scan* is similar to fingerprinting, but is done every 24 hours (unless it's configured to run less often or disabled).  Scanning looks at the first 5000 distinct records ordered ascending, when a field is set to "A list of all values" in the Data Model, which is used to display options in dropdowns. If the textual result of scanning a column is more than 10 kilobytes long, for example, we display a search box instead of a dropdown.
+3. A *scan* is similar to fingerprinting. Metabase will scan a database by default every 24 hours (though you can configure Metabase to run a scan less frequently, or disable scanning entirely). When you set a field to "A list of all values" in the [Data Model](../data-modeling/metadata-editing.md), which is used to display options in dropdown menus, scanning looks at the first 1,000 distinct records (ordered ascending). For each field scanned, Metabase stores only the first 100 kilobytes of text. If more values exist, Metabase displays the stored values in the dropdown menus, and only triggers a database search query to look for more values when people type in the search box for that filter widget.
 
-<h2 id="cant-sync-fingerprint-scan">Metabase can't sync, fingerprint, or scan</h2>
+## Metabase can't sync, fingerprint, or scan
 
 If the credentials Metabase is using to connect to the database don't give it privileges to read the tables, the first sign will often be a failure to sync, which would then also stop fingerprint and scan.
 
@@ -36,7 +33,7 @@ LIMIT 1
 
 Note that we only get the first 10,000 documents when scanning a MongoDB collection, so if you're not seeing some new fields, those fields might not exist in the documents we looked at. Please see [this discussion][metabase-mongo-missing] for more details.
 
-<h2 id="not-showing-all-values">Metabase isn't showing all of the values I expect to see</h2>
+## Metabase isn't showing all of the values I expect to see
 
 **How to detect this:**
 
@@ -51,7 +48,7 @@ Note that we only get the first 10,000 documents when scanning a MongoDB collect
 4. Set **Field Type** to "Category" and **Filtering on this field** to "A list of all values."
 5. Click the button **Re-scan this field** in the bottom.
 
-<h2 id="cant-force-with-api">I cannot force Metabase to sync or scan using the API</h2>
+## I cannot force Metabase to sync or scan using the API
 
 Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API][api-learn] to force sync or scan to take place right away. [Our API][metabase-api] provides two ways to do this:
 
@@ -68,21 +65,21 @@ Metabase syncs and scans regularly, but if the database administrator has just c
 3. Check the error message returned from Metabase.
 4. Check the credentials you're using to authenticate and make sure they identify your script as a user with administrative privileges.
 
-<h2 id="sync-scan-long-time">Sync and scan take a very long time to run</h2>
+## Sync and scan take a very long time to run
 
 **How to detect this:** Sync and scan take a long time to complete.
 
-**How to fix this:** 
+**How to fix this:**
 1. For sync, delays are usually caused by a large database with hundreds of schema, thousands of table and with hundreds of columns in each table. If you only need a subset of those tables or columns in Metabase, then restricting the privileges used to connect to the database will make sure that Metabase can only sync a limited subset of the database.
 2. Scanning normally takes longer than sync, but you can reduce the number of fields Metabase will scan by changing the number of fields that have the **Filtering on this field** option set to "A list of all values". Setting fields to either "Search box" or "Plain input box" will exclude those fields from scans.
 
 You can "fix" this by disabling scan entirely by going to the database in the Admin Panel and telling Metabase, "This is a large database," and then going to the Scheduling tab. However, sync is necessary: without it, Metabase won't know what tables exist or what columns they contain.
 
-[api-learn]: /learn/administration/metabase-api.html
-[bugs]: ./bugs.html
-[community-db-drivers]: ../developers-guide-drivers.html
-[etl]: /glossary/etl
-[metabase-api]: ../api-documentation.html
-[metabase-mongo-missing]: ../administration-guide/databases/mongodb.html#i-added-fields-to-my-database-but-dont-see-them-in-metabase
-[sync-frequency]: ../administration-guide/01-managing-databases.html#choose-when-metabase-syncs-and-scans
-[troubleshooting-db-connection]: ./datawarehouse.html
+[api-learn]: https://www.metabase.com/learn/administration/metabase-api
+[bugs]: ./bugs.md
+[community-db-drivers]: ../developers-guide/partner-and-community-drivers.md
+[etl]: https://www.metabase.com/glossary/etl
+[metabase-api]: ../api-documentation.md
+[metabase-mongo-missing]: ../databases/connections/mongodb.md#i-added-fields-to-my-database-but-dont-see-them-in-metabase
+[sync-frequency]: ../databases/connecting.md#scheduling-database-syncs
+[troubleshooting-db-connection]: ./db-connection.md

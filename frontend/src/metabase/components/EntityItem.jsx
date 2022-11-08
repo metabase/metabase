@@ -4,12 +4,11 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import EntityMenu from "metabase/components/EntityMenu";
-import Swapper from "metabase/components/Swapper";
+import Swapper from "metabase/core/components/Swapper";
 import CheckBox from "metabase/core/components/CheckBox";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
-import { isItemPinned } from "metabase/collections/utils";
+import { isFullyParametrized, isItemPinned } from "metabase/collections/utils";
 
 import {
   EntityIconWrapper,
@@ -17,7 +16,6 @@ import {
   EntityItemSpinner,
   EntityItemWrapper,
   EntityMenuContainer,
-  PinButton,
 } from "./EntityItem.styled";
 
 function EntityIconCheckBox({
@@ -32,7 +30,7 @@ function EntityIconCheckBox({
   onToggleSelected,
   ...props
 }) {
-  const iconSize = variant === "small" ? 12 : 18;
+  const iconSize = variant === "small" ? 12 : 16;
   const handleClick = e => {
     e.preventDefault();
     onToggleSelected();
@@ -49,7 +47,6 @@ function EntityIconCheckBox({
     >
       {selectable ? (
         <Swapper
-          startSwapped={selected || showCheckbox}
           defaultElement={
             <Icon
               name={icon.name}
@@ -58,6 +55,7 @@ function EntityIconCheckBox({
             />
           }
           swappedElement={<CheckBox checked={selected} size={iconSize} />}
+          isSwapped={selected || showCheckbox}
         />
       ) : (
         <Icon
@@ -83,28 +81,43 @@ function EntityItemName({ name, variant }) {
 }
 
 function EntityItemMenu({
-  isBookmarked,
   item,
+  isBookmarked,
+  isPreviewShown,
+  isPreviewAvailable,
   onPin,
   onMove,
   onCopy,
   onArchive,
   onToggleBookmark,
+  onTogglePreview,
   className,
   analyticsContext,
 }) {
   const isPinned = isItemPinned(item);
-  const showPinnedAction = onPin && isPinned;
-  const showUnpinnedAction = onPin && !isPinned;
+  const isParametrized = isFullyParametrized(item);
 
   const actions = useMemo(
     () =>
       [
-        showPinnedAction && {
+        onPin && {
           title: isPinned ? t`Unpin` : t`Pin this`,
           icon: "pin",
           action: onPin,
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
+        },
+        onTogglePreview && {
+          title: isPreviewShown
+            ? t`Don’t show visualization`
+            : t`Show visualization`,
+          icon: isPreviewShown ? "eye_crossed_out" : "eye",
+          action: onTogglePreview,
+          tooltip:
+            !isPreviewAvailable && !isParametrized
+              ? t`Open this question and fill in its variables to see it.`
+              : undefined,
+          disabled: !isPreviewAvailable,
+          event: `${analyticsContext};Entity Item;Preview Item;${item.model}`,
         },
         onMove && {
           title: t`Move`,
@@ -132,16 +145,19 @@ function EntityItemMenu({
         },
       ].filter(action => action),
     [
-      isBookmarked,
-      onToggleBookmark,
-      showPinnedAction,
-      isPinned,
-      onPin,
-      analyticsContext,
       item.model,
+      isPinned,
+      isParametrized,
+      isBookmarked,
+      isPreviewShown,
+      isPreviewAvailable,
+      onPin,
       onMove,
       onCopy,
       onArchive,
+      onTogglePreview,
+      onToggleBookmark,
+      analyticsContext,
     ],
   );
   if (actions.length === 0) {
@@ -149,11 +165,6 @@ function EntityItemMenu({
   }
   return (
     <EntityMenuContainer align="center">
-      {showUnpinnedAction && (
-        <Tooltip tooltip={t`Pin this`}>
-          <PinButton icon="pin" onClick={onPin} />
-        </Tooltip>
-      )}
       <EntityMenu
         className={cx(className, "hover-child")}
         triggerIcon="ellipsis"

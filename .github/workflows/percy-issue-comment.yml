@@ -14,12 +14,17 @@ jobs:
       branch_name: ${{ fromJson(steps.fetch_pr.outputs.data).head.ref }}
       commit_sha: ${{ fromJson(steps.fetch_pr.outputs.data).head.sha }}
     steps:
+      - uses: tibdex/github-app-token@v1.6.0
+        id: generate-token
+        with:
+          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
       - id: is_organization_member
         uses: JamesSingleton/is-organization-member@1.0.0
         with:
           organization: metabase
           username: ${{ github.event.issue.user.login }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.generate-token.outputs.token }}
       - run: |
           result=${{ steps.is_organization_member.outputs.result }}
           if [ $result == false ]; then
@@ -41,39 +46,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build:
-    runs-on: ubuntu-20.04
-    needs: pr_info
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        edition: [oss]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          ref: ${{ needs.pr_info.outputs.branch_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-
-      - run: ./bin/build
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-
   percy:
     timeout-minutes: 30
     runs-on: buildjet-4vcpu-ubuntu-2004
-    needs: [build, pr_info]
+    needs: [pr_info]
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      MB_EDITION: ee
+      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -85,11 +66,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
-
-      - uses: actions/download-artifact@v2
-        name: Retrieve uberjar artifact
-        with:
-          name: metabase-oss-uberjar
+      - run: ./bin/build
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties

@@ -1,17 +1,12 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import DatabaseStep, { DatabaseStepProps } from "./DatabaseStep";
 import { DatabaseDetails, DatabaseInfo } from "metabase-types/store";
+import DatabaseStep, { DatabaseStepProps } from "./DatabaseStep";
 
 const ComponentMock = () => <div />;
 
 jest.mock("metabase/entities/databases", () => ({
   forms: { setup: jest.fn() },
-  Form: ComponentMock,
-}));
-
-jest.mock("metabase/entities/users", () => ({
-  forms: { setup_invite: jest.fn() },
   Form: ComponentMock,
 }));
 

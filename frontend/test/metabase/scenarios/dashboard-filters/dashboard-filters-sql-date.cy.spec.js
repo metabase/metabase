@@ -7,95 +7,83 @@ import {
   setFilter,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
-import { DASHBOARD_SQL_DATE_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
+import {
+  DASHBOARD_SQL_DATE_FILTERS,
+  questionDetails,
+} from "./dashboard-filters-sql-date";
 
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+describe("scenarios > dashboard > filters > SQL > date", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
 
-const { PEOPLE } = SAMPLE_DATABASE;
+    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { card_id, dashboard_id } }) => {
+        visitQuestion(card_id);
 
-Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
-  ([filter, { value, representativeResult, sqlFilter }]) => {
-    describe("scenarios > dashboard > filters > SQL > date", () => {
-      beforeEach(() => {
-        restore();
-        cy.signInAsAdmin();
-
-        const questionDetails = getQuestionDetails(sqlFilter);
-
-        cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-          ({ body: { card_id, dashboard_id } }) => {
-            visitQuestion(card_id);
-
-            visitDashboard(dashboard_id);
-          },
-        );
-
-        editDashboard();
-        setFilter("Time", filter);
-
-        cy.findByText("Select…").click();
-        popover()
-          .contains("Filter")
-          .click();
-      });
-
-      it(`should work for "${filter}" when set through the filter widget`, () => {
-        saveDashboard();
-
-        filterWidget().click();
-
-        dateFilterSelector({
-          filterType: filter,
-          filterValue: value,
-        });
-
-        cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
-        });
-      });
-
-      it(`should work for "${filter}" when set as the default filter`, () => {
-        cy.findByText("Default value")
-          .next()
-          .click();
-
-        dateFilterSelector({
-          filterType: filter,
-          filterValue: value,
-        });
-
-        saveDashboard();
-
-        cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
-        });
-      });
-    });
-  },
-);
-
-function getQuestionDetails(filter) {
-  return {
-    name: "SQL with Field Filter",
-    native: {
-      query:
-        "select PEOPLE.NAME, PEOPLE.CREATED_AT from people where {{filter}} limit 10",
-      "template-tags": {
-        filter: {
-          id: "7136f057-cfa6-e6fb-40c1-02046a1df9fb",
-          name: "filter",
-          "display-name": "Filter",
-          type: "dimension",
-          dimension: ["field", PEOPLE.CREATED_AT, null],
-          "widget-type": filter,
-        },
+        visitDashboard(dashboard_id);
       },
-    },
-  };
-}
+    );
+
+    editDashboard();
+  });
+
+  it(`should work when set through the filter widget`, () => {
+    Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(([filter]) => {
+      cy.log(`Make sure we can connect ${filter} filter`);
+      setFilter("Time", filter);
+
+      cy.findByText("Select…").click();
+      popover().contains(filter).click();
+    });
+
+    saveDashboard();
+
+    Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
+      ([filter, { value, representativeResult }], index) => {
+        filterWidget().eq(index).click();
+        dateFilterSelector({
+          filterType: filter,
+          filterValue: value,
+        });
+
+        cy.log(`Make sure ${filter} filter returns correct result`);
+        cy.get(".Card").within(() => {
+          cy.contains(representativeResult);
+        });
+
+        clearFilter(index);
+      },
+    );
+  });
+
+  it(`should work when set as the default filter`, () => {
+    setFilter("Time", "Month and Year");
+
+    cy.findByText("Default value").next().click();
+    DateFilter.setMonthAndYear({
+      month: "October",
+      year: "2017",
+    });
+
+    cy.findByText("Select…").click();
+    popover().contains("Month and Year").click();
+    saveDashboard();
+
+    // The default value should immediately be applied
+    cy.get(".Card").within(() => {
+      cy.contains("Hudson Borer");
+    });
+
+    // Make sure we can override the default value
+    cy.findByText("October, 2017").click();
+    popover().contains("August").click();
+    cy.findByText("Oda Brakus");
+  });
+});
 
 function dateFilterSelector({ filterType, filterValue } = {}) {
   switch (filterType) {
@@ -128,4 +116,9 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
     default:
       throw new Error("Wrong filter type!");
   }
+}
+
+function clearFilter(index) {
+  filterWidget().eq(index).find(".Icon-close").click();
+  cy.wait("@dashcardQuery2");
 }

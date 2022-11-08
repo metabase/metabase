@@ -42,6 +42,7 @@ export type RenderTrigger = (
 type RenderTriggerArgs = {
   visible: boolean;
   onClick: () => void;
+  closePopover: () => void;
 };
 
 function ControlledPopoverWithTrigger({
@@ -65,9 +66,14 @@ function ControlledPopoverWithTrigger({
   };
 
   const computedTrigger = _.isFunction(renderTrigger) ? (
-    renderTrigger({ visible, onClick: handleTriggerClick })
+    renderTrigger({
+      visible,
+      onClick: handleTriggerClick,
+      closePopover: onClose,
+    })
   ) : (
     <TriggerButton
+      type="button"
       disabled={disabled}
       className={cx(
         triggerClasses,

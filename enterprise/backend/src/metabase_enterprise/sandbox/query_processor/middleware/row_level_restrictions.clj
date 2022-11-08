@@ -4,6 +4,7 @@
   for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api :refer [*current-user* *current-user-id* *current-user-permissions-set*]]
             [metabase.db.connection :as mdb.connection]
@@ -21,7 +22,7 @@
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -57,7 +58,7 @@
      ;; User does have segmented access
      (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/table-segmented-query-path table)))))
 
-(defn- assert-one-gtap-per-table
+(defn assert-one-gtap-per-table
   "Make sure all referenced Tables have at most one GTAP."
   [gtaps]
   (doseq [[table-id gtaps] (group-by :table_id gtaps)
@@ -87,7 +88,7 @@
   (when-let [gtaps (some->> (query->all-table-ids query)
                             ((comp seq filter) table-should-have-segmented-permissions?)
                             tables->gtaps)]
-    (u/key-by :table_id gtaps)))
+    (m/index-by :table_id gtaps)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -178,7 +179,7 @@
 (s/defn ^:private reconcile-metadata :- (su/non-empty [su/Map])
   "Combine the metadata in `source-query-metadata` with the `table-metadata` from the Table being sandboxed."
   [source-query-metadata :- (su/non-empty [su/Map]) table-metadata]
-  (let [col-name->table-metadata (u/key-by :name table-metadata)]
+  (let [col-name->table-metadata (m/index-by :name table-metadata)]
     (vec
      (for [col   source-query-metadata
            :let  [table-col (get col-name->table-metadata (:name col))]
@@ -261,7 +262,7 @@
   (if card-id
     (qp.store/cached card-id
       (query-perms/perms-set (db/select-one-field :dataset_query Card :id card-id), :throw-exceptions? true))
-    #{(perms/table-query-path (Table table-id))}))
+    #{(perms/table-query-path (db/select-one Table :id table-id))}))
 
 (defn- gtaps->perms-set [gtaps]
   (set (mapcat gtap->perms-set gtaps)))
@@ -323,13 +324,26 @@
           (assoc ::original-metadata (expected-cols original-query))
           (update-in [::qp.perms/perms :gtaps] (fn [perms] (into (set perms) (gtaps->perms-set (vals table-id->gtap)))))))))
 
+(def ^:private default-recursion-limit 20)
+(def ^:private ^:dynamic *recursion-limit* default-recursion-limit)
+
 (defn apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of segmented permission GTAPs."
   [query]
   (or (when-let [table-id->gtap (when *current-user-id*
                                   (query->table-id->gtap query))]
-        (gtapped-query query table-id->gtap))
+        (let [gtapped-query (gtapped-query query table-id->gtap)]
+          (if (not= query gtapped-query)
+            ;; Applying GTAPs to the query may have introduced references to tables that are also sandboxed,
+            ;; so we need to recursively appby the middleware until new queries are not returned.
+            (if (= *recursion-limit* 0)
+              (throw (ex-info (trs "Reached recursion limit of {0} in \"apply-sandboxing\" middleware"
+                                   default-recursion-limit)
+                              query))
+              (binding [*recursion-limit* (dec *recursion-limit*)]
+                (apply-sandboxing gtapped-query)))
+            gtapped-query)))
       query))
 
 
@@ -340,7 +354,7 @@
   final results metadata coming back matches what we'd get if the query was not running with a GTAP."
   [original-metadata metadata]
   (letfn [(merge-cols [cols]
-            (let [col-name->expected-col (u/key-by :name original-metadata)]
+            (let [col-name->expected-col (m/index-by :name original-metadata)]
               (for [col cols]
                 (merge
                  col

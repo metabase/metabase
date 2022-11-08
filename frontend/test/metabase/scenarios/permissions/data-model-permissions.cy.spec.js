@@ -4,7 +4,12 @@ import {
   describeEE,
   assertPermissionForItem,
   modifyPermission,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
+
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DATA_MODEL_PERMISSION_INDEX = 3;
@@ -23,7 +28,7 @@ describeEE("scenarios > admin > permissions", () => {
   });
 
   it("allows data model permission for a table in database", () => {
-    cy.visit("/admin/permissions/data/database/1");
+    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     // Change permission
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Granular");
@@ -66,7 +71,7 @@ describeEE("scenarios > admin > permissions", () => {
   });
 
   it("allows changing data model permission for an entire database", () => {
-    cy.visit("/admin/permissions/data/database/1");
+    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     // Change data model permission
     modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
@@ -94,7 +99,7 @@ describeEE("scenarios > admin > permissions", () => {
   });
 
   it("shows `Field access denied` for foreign keys from tables user does not have access to (metabase#21762)", () => {
-    cy.visit("/admin/permissions/data/database/1");
+    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     // Change data model permission
     modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Granular");
@@ -106,7 +111,7 @@ describeEE("scenarios > admin > permissions", () => {
 
     // Check limited access as a non-admin user
     cy.signIn("none");
-    cy.visit("/admin/datamodel/database/1/table/2");
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}`);
 
     // Find foreign key from table the user does not have access to
     cy.findByTestId("column-USER_ID").within(() => {

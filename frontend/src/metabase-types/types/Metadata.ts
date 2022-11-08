@@ -1,3 +1,8 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 // Legacy "tableMetadata" etc
 
 import { Database, DatabaseId } from "metabase-types/types/Database";
@@ -89,7 +94,7 @@ export type FieldOptions = {
   };
 };
 
-// import Dimension from "metabase-lib/lib/Dimension";
+// import Dimension from "metabase-lib/Dimension";
 type Dimension = any;
 
 export type DimensionOptions = {

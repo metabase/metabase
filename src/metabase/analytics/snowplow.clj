@@ -16,29 +16,30 @@
            [com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder]
            [com.snowplowanalytics.snowplow.tracker.http ApacheHttpClientAdapter ApacheHttpClientAdapter$Builder]
            com.snowplowanalytics.snowplow.tracker.payload.SelfDescribingJson
+           [org.apache.http.client.config CookieSpecs RequestConfig]
            org.apache.http.impl.client.HttpClients
            org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
 
 (defsetting analytics-uuid
-  (str (deferred-tru "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase.")
-       " "
-       (deferred-tru "This is a public setting since some analytics events are sent prior to initial setup."))
+  (deferred-tru
+    (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
+         "This is a public setting since some analytics events are sent prior to initial setup."))
   :visibility :public
   :setter     :none
   :type       ::public-settings/uuid-nonce)
 
 (defsetting snowplow-available
-  (str (deferred-tru "Boolean indicating whether a Snowplow collector is available to receive analytics events.")
-       " "
-       (deferred-tru "Should be set via environment variable in Cypress tests or during local development."))
+  (deferred-tru
+    (str "Boolean indicating whether a Snowplow collector is available to receive analytics events. "
+         "Should be set via environment variable in Cypress tests or during local development."))
   :type       :boolean
   :visibility :public
   :default    config/is-prod?)
 
 (defsetting snowplow-enabled
-  (str (deferred-tru "Boolean indicating whether analytics events are being sent to Snowplow.")
-       " "
-       (deferred-tru "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
+  (deferred-tru
+    (str "Boolean indicating whether analytics events are being sent to Snowplow. "
+         "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
   :type   :boolean
   :setter :none
   :getter (fn [] (and (snowplow-available)
@@ -66,7 +67,6 @@
 (defsetting instance-creation
   (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
   :visibility :public
-  :type       :timestamp
   :setter     :none
   :getter     (fn []
                 (when-not (db/exists? Setting :key "instance-creation")
@@ -76,20 +76,26 @@
                   (let [value (or (first-user-creation) (t/offset-date-time))]
                     (setting/set-value-of-type! :timestamp :instance-creation value)
                     (track-event! ::new-instance-created)))
-                (setting/get-value-of-type :timestamp :instance-creation)))
+                (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation))))
 
 (def ^:private emitter
   "Returns an instance of a Snowplow emitter"
   (let [emitter* (delay
-                   (let [client (-> (HttpClients/custom)
+                   (let [request-config (-> (RequestConfig/custom)
+                                            ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
+                                            ;; header in request response (PR #24579)
+                                            (.setCookieSpec CookieSpecs/STANDARD)
+                                            (.build))
+                         client (-> (HttpClients/custom)
                                     (.setConnectionManager (PoolingHttpClientConnectionManager.))
+                                    (.setDefaultRequestConfig request-config)
                                     (.build))
                          builder (-> (ApacheHttpClientAdapter/builder)
                                      (.httpClient client)
                                      (.url (snowplow-url)))
                          adapter (.build ^ApacheHttpClientAdapter$Builder builder)
                          batch-emitter-builder (-> (BatchEmitter/builder)
-                                                   (.bufferSize 1)
+                                                   (.batchSize 1)
                                                    (.httpClientAdapter adapter))]
                      (.build ^BatchEmitter$Builder batch-emitter-builder)))]
      (fn [] @emitter*)))
@@ -118,17 +124,18 @@
    ::dashboard "1-0-0"
    ::database  "1-0-0"
    ::instance  "1-1-0"
-   ::timeline  "1-0-0"})
+   ::timeline  "1-0-0"
+   ::task      "1-0-0"})
 
 (defn- context
   "Common context included in every analytics event"
   []
   (new SelfDescribingJson
        (str "iglu:com.metabase/instance/jsonschema/" (schema->version ::instance))
-       {"id"             (analytics-uuid),
-        "version"        {"tag" (:tag (public-settings/version))},
+       {"id"             (analytics-uuid)
+        "version"        {"tag" (:tag (public-settings/version))}
         "token_features" (m/map-keys name (public-settings/token-features))
-        "created_at"     (u.date/format (instance-creation))}))
+        "created_at"     (instance-creation)}))
 
 (defn- normalize-kw
   [kw]
@@ -160,13 +167,14 @@
    ::question-added-to-dashboard    ::dashboard
    ::database-connection-successful ::database
    ::database-connection-failed     ::database
-   ::new-event-created              ::timeline})
+   ::new-event-created              ::timeline
+   ::new-task-history               ::task})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector
   is available."
   [event-kw & [user-id data]]
-  (when (and (public-settings/anon-tracking-enabled) (snowplow-available))
+  (when (snowplow-enabled)
     (try
       (let [schema (event->schema event-kw)
             ^Unstructured$Builder builder (-> (. Unstructured builder)

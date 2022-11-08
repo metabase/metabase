@@ -1,17 +1,20 @@
 import {
   restore,
-  popover,
   modal,
   openNativeEditor,
   visitQuestionAdhoc,
   summarize,
   sidebar,
-} from "__support__/e2e/cypress";
+  filter,
+  filterField,
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
+    cy.intercept("POST", "api/dataset").as("dataset");
+    cy.intercept("POST", "api/card").as("card");
     restore();
     cy.signInAsNormalUser();
   });
@@ -31,50 +34,51 @@ describe("scenarios > question > native", () => {
   it("displays an error when running selected text", () => {
     openNativeEditor().type(
       "select * from orders" +
-      "{leftarrow}".repeat(3) + // move left three
+        "{leftarrow}".repeat(3) + // move left three
         "{shift}{leftarrow}".repeat(19), // highlight back to the front
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains('Table "ORD" not found');
   });
 
-  it("should show referenced cards in the template tag sidebar", () => {
-    openNativeEditor()
-      // start typing a question referenced
-      .type("select * from {{#}}", {
-        parseSpecialCharSequences: false,
-      });
+  it("should handle template tags", () => {
+    openNativeEditor().type("select * from PRODUCTS where RATING > {{Stars}}", {
+      parseSpecialCharSequences: false,
+    });
+    cy.get("input[placeholder*='Stars']").type("3");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset");
+    cy.contains("Showing 168 rows");
+  });
 
-    cy.contains("Question #…")
+  it("should modify parameters accordingly when tags are modified", () => {
+    openNativeEditor().type("select * from PRODUCTS where CATEGORY = {{cat}}", {
+      parseSpecialCharSequences: false,
+    });
+    cy.findByTestId("sidebar-right")
+      .findByText("Required?")
       .parent()
-      .parent()
-      .contains("Pick a question or a model")
-      .click({ force: true });
-
-    // selecting a question should update the query
-    popover()
-      .contains("Orders")
+      .find("input")
       .click();
-
-    cy.contains("select * from {{#1}}");
-
-    // run query and see that a value from the results appears
+    cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
     cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("37.65");
+    cy.wait("@dataset");
 
-    // update the text of the query to reference question 2
-    // :visible is needed because there is an unused .ace_content present in the DOM
-    cy.get(".ace_content:visible").type("{leftarrow}{leftarrow}{backspace}2");
+    cy.contains("Save").click();
 
-    // sidebar should show updated question title and name
-    cy.contains("Question #2")
-      .parent()
-      .parent()
-      .contains("Orders, Count");
+    modal().within(() => {
+      cy.findByLabelText("Name").type("Products on Category");
+      cy.findByText("Save").click();
 
-    // run query again and see new result
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("18,760");
+      cy.wait("@card").should(xhr => {
+        const requestBody = xhr.request?.body;
+        expect(requestBody?.parameters?.length).to.equal(1);
+        const parameter = requestBody.parameters[0];
+        expect(parameter.default).to.equal("Gizmo");
+      });
+    });
+
+    cy.findByText("Not now").click();
   });
 
   it("can save a question with no rows", () => {
@@ -118,25 +122,20 @@ describe("scenarios > question > native", () => {
 
     cy.findByText("This has a value");
 
-    FILTERS.forEach(filter => {
+    FILTERS.forEach(operator => {
       cy.log("Apply a filter");
-      cy.findAllByText("Filter")
-        .first()
-        .click();
-      cy.get(".List-item-title")
-        .contains("V")
-        .click();
-      cy.findByText("Is").click();
-      popover().within(() => {
-        cy.findByText(filter).click();
+      filter();
+      filterField("V", {
+        operator,
+        value: "This has a value",
       });
-      cy.findByPlaceholderText("Enter some text").type("This has a value");
-      cy.findByText("Add filter").click();
+
+      cy.findByTestId("apply-filters").click();
 
       cy.log(
-        `**Mid-point assertion for "${filter}" filter| FAILING in v0.36.6**`,
+        `**Mid-point assertion for "${operator}" filter| FAILING in v0.36.6**`,
       );
-      cy.findByText(`V ${filter.toLowerCase()} This has a value`);
+      cy.findByText(`V ${operator.toLowerCase()} This has a value`);
       cy.findByText("No results!").should("not.exist");
 
       cy.log(
@@ -160,38 +159,69 @@ describe("scenarios > question > native", () => {
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
     openNativeEditor().type("select 1 as visible, 2 as hidden");
-    cy.get(".NativeQueryEditor .Icon-play")
-      .as("runQuery")
-      .click();
+    cy.get(".NativeQueryEditor .Icon-play").as("runQuery").click();
     cy.findByText("Settings").click();
     cy.findByTestId("sidebar-left")
       .as("sidebar")
       .contains(/hidden/i)
-      .siblings(".Icon-close")
+      .siblings(".Icon-eye_filled")
       .click();
     cy.get("@editor").type("{movetoend}, 3 as added");
     cy.get("@runQuery").click();
     cy.get("@sidebar").contains(/added/i);
   });
 
-  it("should link correctly from the variables sidebar (metabase#16212)", () => {
-    cy.createNativeQuestion({
-      name: "test-question",
-      native: { query: 'select 1 as "a", 2 as "b"' },
-    }).then(({ body: { id: questionId } }) => {
-      openNativeEditor().type(`{{#${questionId}}}`, {
+  it("should recognize template tags and save them as parameters", () => {
+    openNativeEditor().type(
+      "select * from PRODUCTS where CATEGORY={{cat}} and RATING >= {{stars}}",
+      {
         parseSpecialCharSequences: false,
+      },
+    );
+    cy.get("input[placeholder*='Cat']").type("Gizmo");
+    cy.get("input[placeholder*='Stars']").type("3");
+
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset");
+
+    cy.contains("Save").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").type("SQL Products");
+      cy.findByText("Save").click();
+
+      // parameters[] should reflect the template tags
+      cy.wait("@card").should(xhr => {
+        const requestBody = xhr.request?.body;
+        expect(requestBody?.parameters?.length).to.equal(2);
       });
-      cy.get(".NativeQueryEditor .Icon-play").click();
-      cy.get(".Visualization").within(() => {
-        cy.findByText("a");
-        cy.findByText("b");
-        cy.findByText("1");
-        cy.findByText("2");
-      });
-      cy.findByRole("link", { name: `Question #${questionId}` })
-        .should("have.attr", "href")
-        .and("eq", `/question/${questionId}-test-question`);
     });
+    cy.findByText("Not now").click();
+
+    // Now load the question again and parameters[] should still be there
+    cy.intercept("GET", "/api/card/4").as("cardQuestion");
+    cy.visit("/question/4?cat=Gizmo&stars=3");
+    cy.wait("@cardQuestion").should(xhr => {
+      const responseBody = xhr.response?.body;
+      expect(responseBody?.parameters?.length).to.equal(2);
+    });
+  });
+
+  it("should not autorun ad-hoc native queries by default", () => {
+    visitQuestionAdhoc(
+      {
+        display: "scalar",
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "SELECT 1",
+          },
+          database: SAMPLE_DB_ID,
+        },
+      },
+      { autorun: false },
+    );
+
+    cy.findByText("Here's where your results will appear").should("be.visible");
   });
 });

@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import "./Calendar.css";
 
 import cx from "classnames";
-import moment, { Moment } from "moment";
+import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+import { CalendarDay } from "./Calendar.styled";
 
 export type SelectAll = "after" | "before";
 
@@ -17,12 +17,13 @@ type Props = {
   selected?: Moment;
   selectedEnd?: Moment;
   selectAll?: SelectAll | null;
-  onChange: (
+  onChange?: (
     start: string,
     end: string | null,
     startMoment: Moment,
     endMoment?: Moment | null,
   ) => void;
+  onChangeDate?: (date: string, dateMoment: Moment) => void;
   isRangePicker?: boolean;
   primaryColor?: string;
 };
@@ -76,18 +77,19 @@ export default class Calendar extends Component<Props, State> {
 
   onClickDay = (date: Moment) => {
     const { selected, selectedEnd, isRangePicker } = this.props;
+
     if (!isRangePicker || !selected || selectedEnd) {
-      this.props.onChange(date.format("YYYY-MM-DD"), null, date, null);
+      this.props.onChange?.(date.format("YYYY-MM-DD"), null, date, null);
     } else if (!selectedEnd) {
       if (date.isAfter(selected)) {
-        this.props.onChange(
+        this.props.onChange?.(
           selected.format("YYYY-MM-DD"),
           date.format("YYYY-MM-DD"),
           selected,
           date,
         );
       } else {
-        this.props.onChange(
+        this.props.onChange?.(
           date.format("YYYY-MM-DD"),
           selected.format("YYYY-MM-DD"),
           date,
@@ -95,6 +97,8 @@ export default class Calendar extends Component<Props, State> {
         );
       }
     }
+
+    this.props.onChangeDate?.(date.format("YYYY-MM-DD"), date);
   };
 
   previous = () => {
@@ -130,6 +134,7 @@ export default class Calendar extends Component<Props, State> {
   }
 
   renderDayNames() {
+    // translator: weekdays abbreviations
     const names = [t`Su`, t`Mo`, t`Tu`, t`We`, t`Th`, t`Fr`, t`Sa`];
     return (
       <div className="Calendar-day-names Calendar-week py1">
@@ -145,9 +150,7 @@ export default class Calendar extends Component<Props, State> {
   renderWeeks(current?: Moment) {
     current = current || moment();
     const weeks = [];
-    const date = moment(current)
-      .startOf("month")
-      .day("Sunday");
+    const date = moment(current).startOf("month").day("Sunday");
     let done = false;
     let monthIndex = date.month();
     let count = 0;
@@ -161,6 +164,7 @@ export default class Calendar extends Component<Props, State> {
           onClickDay={this.onClickDay}
           isRangePicker={this.props.isRangePicker}
           selected={this.props.selected}
+          primaryColor={this.props.primaryColor}
           selectedEnd={this.props.selectedEnd}
           selectAll={this.props.selectAll}
         />,
@@ -176,6 +180,7 @@ export default class Calendar extends Component<Props, State> {
   renderCalender(current?: Moment, side?: "left" | "right") {
     return (
       <div
+        data-testid="calendar"
         className={cx("Calendar", {
           "Calendar--range":
             (this.props.isRangePicker &&
@@ -224,32 +229,35 @@ class Week extends Component<WeekProps> {
     for (let i = 0; i < 7; i++) {
       const isSelected =
         date.isSame(selected, "day") ||
-        (isRangePicker && date.isSame(selectedEnd, "day"));
-      let inRange = false;
+        (isRangePicker &&
+          selectedEnd?.isAfter(selected) &&
+          date.isSame(selectedEnd, "day"));
+      let isInRange = false;
       if (
         selected &&
         date.isAfter(selected, "day") &&
         selectedEnd &&
         selectedEnd.isAfter(date, "day")
       ) {
-        inRange = true;
+        isInRange = true;
       } else if (selectAll === "after") {
-        inRange = !!(selected && date.isAfter(selected, "day"));
+        isInRange = !!(selected && date.isAfter(selected, "day"));
       } else if (selectAll === "before") {
-        inRange = !!(selected && selected.isAfter(date, "day"));
+        isInRange = !!(selected && selected.isAfter(date, "day"));
       }
-      const bgColor = isSelected ? primaryColor : alpha(primaryColor, 0.1);
       const isEnd = selectAll === "before" && date.isSame(selected, "day");
+      const isSelectedStart =
+        !isEnd && selected && date.isSame(selected, "day");
+      const isSelectedEnd =
+        isEnd || (selectedEnd && date.isSame(selectedEnd, "day"));
       const classes = cx("Calendar-day cursor-pointer text-centered", {
         "Calendar-day--this-month": date.month() === month.month(),
-        "Calendar-day--selected":
-          !isEnd && selected && date.isSame(selected, "day"),
-        "Calendar-day--selected-end":
-          isEnd || (selectedEnd && date.isSame(selectedEnd, "day")),
+        "Calendar-day--selected": isSelectedStart,
+        "Calendar-day--selected-end": isSelectedEnd,
         "Calendar-day--week-start": i === 0,
         "Calendar-day--week-end": i === 6,
         "Calendar-day--in-range":
-          (selectAll && inRange) ||
+          (selectAll && isInRange) ||
           (!(date.isSame(selected, "day") || date.isSame(selectedEnd, "day")) &&
             (date.isSame(selected, "day") ||
               date.isSame(selectedEnd, "day") ||
@@ -258,17 +266,18 @@ class Week extends Component<WeekProps> {
                 date.isAfter(selected, "day")))),
       });
       days.push(
-        <span
+        <CalendarDay
           key={date.toString()}
           className={classes}
           onClick={this.props.onClickDay.bind(null, date)}
-          style={{
-            backgroundColor: isSelected || inRange ? bgColor : undefined,
-            color: !isSelected && inRange ? primaryColor : undefined,
-          }}
+          isInRange={isInRange}
+          isSelected={isSelected}
+          isSelectedStart={isSelectedStart}
+          isSelectedEnd={isSelectedEnd}
+          primaryColor={this.props.primaryColor}
         >
           {date.date()}
-        </span>,
+        </CalendarDay>,
       );
       date = moment(date).add(1, "d");
     }

@@ -44,23 +44,32 @@
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
-(s/defn ->field
+(s/defn ->field :- (s/maybe (mi/InstanceOf Field))
   "Return `Field` instance for a given ID or name in the context of root."
-  [root id-or-name :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString mbql.s/Field)]
-  (let [id-or-name (if (sequential? id-or-name)
-                     (filters/field-reference->id id-or-name)
-                     id-or-name)]
-    (if (->> root :source (instance? (type Table)))
-      (Field id-or-name)
-      (when-let [field (->> root
-                            :source
-                            :result_metadata
-                            (m/find-first (comp #{id-or-name} :name)))]
-        (-> field
-            (update :base_type keyword)
-            (update :semantic_type keyword)
-            field/map->FieldInstance
-            (classify/run-classifiers {}))))))
+  [{{result-metadata :result_metadata} :source, :as root}
+   field-id-or-name-or-clause :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString mbql.s/Field)]
+  (let [id-or-name (if (sequential? field-id-or-name-or-clause)
+                     (filters/field-reference->id field-id-or-name-or-clause)
+                     field-id-or-name-or-clause)]
+    (or
+     ;; Handle integer Field IDs.
+     (when (integer? id-or-name)
+       (db/select-one Field :id id-or-name))
+     ;; handle field string names. Only if we have result metadata. (Not sure why)
+     (when (string? id-or-name)
+       (when-not result-metadata
+         (log/warn (trs "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name.")))
+       (when-let [field (m/find-first #(= (:name %) id-or-name)
+                                      result-metadata)]
+         (as-> field field
+           (update field :base_type keyword)
+           (update field :semantic_type keyword)
+           (mi/instance Field field)
+           (classify/run-classifiers field {}))))
+     ;; otherwise this isn't returning something, and that's probably an error. Log it.
+     (log/warn (str (trs "Cannot resolve Field {0} in automagic analysis context" field-id-or-name-or-clause)
+                    \newline
+                    (u/pprint-to-str root))))))
 
 (def ^{:arglists '([root])} source-name
   "Return the (display) name of the soruce of a given root object."
@@ -93,14 +102,14 @@
   (cond
     (mbql.u/ga-metric-or-segment? metric) (-> args first str (subs 3) str/capitalize)
     (adhoc-metric? metric)                (-> op qp.util/normalize-token op->name)
-    (saved-metric? metric)                (-> args first Metric :name)
+    (saved-metric? metric)                (->> args first (db/select-one Metric :id) :name)
     :else                                 (second args)))
 
 (defn metric-op
   "Return the name op of the metric"
   [[op & args :as metric]]
   (if (saved-metric? metric)
-    (-> args first Metric (get-in [:definition :aggregation 0 0]))
+    (get-in (db/select-one Metric :id (first args)) [:definition :aggregation 0 0])
     op))
 
 (defn- join-enumeration
@@ -149,9 +158,9 @@
   respect to that entity. It is called a root because the automated dashboard uses productions to recursively create a
   tree of dashboard cards to fill the dashboards. This multimethod is for turning a given entity into a root."
   {:arglists '([entity])}
-  type)
+  mi/model)
 
-(defmethod ->root (type Table)
+(defmethod ->root Table
   [table]
   {:entity       table
    :full-name    (if (ga-table? table)
@@ -163,9 +172,9 @@
    :url          (format "%stable/%s" public-endpoint (u/the-id table))
    :rules-prefix ["table"]})
 
-(defmethod ->root (type Segment)
+(defmethod ->root Segment
   [segment]
-  (let [table (-> segment :table_id Table)]
+  (let [table (->> segment :table_id (db/select-one Table :id))]
     {:entity          segment
      :full-name       (tru "{0} in the {1} segment" (:display_name table) (:name segment))
      :short-name      (:display_name table)
@@ -176,9 +185,9 @@
      :url             (format "%ssegment/%s" public-endpoint (u/the-id segment))
      :rules-prefix    ["table"]}))
 
-(defmethod ->root (type Metric)
+(defmethod ->root Metric
   [metric]
-  (let [table (-> metric :table_id Table)]
+  (let [table (->> metric :table_id (db/select-one Table :id))]
     {:entity       metric
      :full-name    (if (:id metric)
                      (tru "{0} metric" (:name metric))
@@ -191,7 +200,7 @@
      :url          (format "%smetric/%s" public-endpoint (:id metric))
      :rules-prefix ["metric"]}))
 
-(defmethod ->root (type Field)
+(defmethod ->root Field
   [field]
   (let [table (field/table field)]
     {:entity       field
@@ -234,9 +243,9 @@
                              source-question
                              (assoc :entity_type :entity/GenericTable))
     (native-query? card) (-> card (assoc :entity_type :entity/GenericTable))
-    :else                (-> card table-id Table)))
+    :else                (->> card table-id (db/select-one Table :id))))
 
-(defmethod ->root (type Card)
+(defmethod ->root Card
   [card]
   (let [source (source card)]
     {:entity       card
@@ -250,7 +259,7 @@
                       "table"
                       "question")]}))
 
-(defmethod ->root (type Query)
+(defmethod ->root Query
   [query]
   (let [source (source query)]
     {:entity       query
@@ -273,7 +282,7 @@
     :arglists '([template-type model])
     :private true}
   ->reference (fn [template-type model]
-                [template-type (type model)]))
+                [template-type (mi/model model)]))
 
 (defn- optimal-datetime-resolution
   [field]
@@ -293,7 +302,7 @@
         :year)
       :day)))
 
-(defmethod ->reference [:mbql (type Field)]
+(defmethod ->reference [:mbql Field]
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
   (let [reference (mbql.normalize/normalize
                    (cond
@@ -313,34 +322,34 @@
       :else
       reference)))
 
-(defmethod ->reference [:string (type Field)]
+(defmethod ->reference [:string Field]
   [_ {:keys [display_name full-name link]}]
   (cond
     full-name full-name
     link      (format "%s → %s"
-                      (-> link Field :display_name (str/replace #"(?i)\sid$" ""))
+                      (-> (db/select-one Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
                       display_name)
     :else     display_name))
 
-(defmethod ->reference [:string (type Table)]
+(defmethod ->reference [:string Table]
   [_ {:keys [display_name full-name]}]
   (or full-name display_name))
 
-(defmethod ->reference [:string (type Metric)]
+(defmethod ->reference [:string Metric]
   [_ {:keys [name full-name]}]
   (or full-name name))
 
-(defmethod ->reference [:mbql (type Metric)]
+(defmethod ->reference [:mbql Metric]
   [_ {:keys [id definition]}]
   (if id
     [:metric id]
     (-> definition :aggregation first)))
 
-(defmethod ->reference [:native (type Field)]
+(defmethod ->reference [:native Field]
   [_ field]
   (field/qualified-name field))
 
-(defmethod ->reference [:native (type Table)]
+(defmethod ->reference [:native Table]
   [_ {:keys [name]}]
   name)
 
@@ -512,7 +521,7 @@
         subform))
     {:type     :query
      :database (-> context :root :database)
-     :query    (cond-> {:source-table (if (->> context :source (instance? (type Table)))
+     :query    (cond-> {:source-table (if (->> context :source (mi/instance-of? Table))
                                         (-> context :source u/the-id)
                                         (->> context :source u/the-id (str "card__")))}
                  (seq filters)
@@ -695,9 +704,9 @@
 (defmulti
   ^{:private  true
     :arglists '([context entity])}
-  inject-root (fn [_ entity] (type entity)))
+  inject-root (fn [_ instance] (mi/model instance)))
 
-(defmethod inject-root (type Field)
+(defmethod inject-root Field
   [context field]
   (let [field (assoc field
                 :link   (->> context
@@ -719,7 +728,7 @@
                                      :score   rules/max-score}]])
                    (into {}))))))
 
-(defmethod inject-root (type Metric)
+(defmethod inject-root Metric
   [context metric]
   (update context :metrics assoc "this" {:metric (->reference :mbql metric)
                                          :name   (:name metric)
@@ -733,10 +742,10 @@
   [root, rule :- rules/Rule]
   {:pre [(:source root)]}
   (let [source        (:source root)
-        tables        (concat [source] (when (instance? (type Table) source)
+        tables        (concat [source] (when (mi/instance-of? Table source)
                                          (linked-tables source)))
         engine        (source->engine source)
-        table->fields (if (instance? (type Table) source)
+        table->fields (if (mi/instance-of? Table source)
                         (comp (->> (db/select Field
                                      :table_id        [:in (map u/the-id tables)]
                                      :visibility_type "normal"
@@ -749,12 +758,12 @@
                         (->> source
                              :result_metadata
                              (map (fn [field]
-                                    (-> field
-                                        (update :base_type keyword)
-                                        (update :semantic_type keyword)
-                                        field/map->FieldInstance
-                                        (classify/run-classifiers {})
-                                        (assoc :engine engine))))
+                                    (as-> field field
+                                      (update field :base_type keyword)
+                                      (update field :semantic_type keyword)
+                                      (mi/instance Field field)
+                                      (classify/run-classifiers field {})
+                                      (assoc field :engine engine))))
                              constantly))]
     (as-> {:source       (assoc source :fields (table->fields source))
            :root         root
@@ -844,7 +853,7 @@
 
 (defn- drilldown-fields
   [context]
-  (when (and (->> context :root :source (instance? (type Table)))
+  (when (and (->> context :root :source (mi/instance-of? Table))
              (-> context :root :entity ga-table? not))
     (->> context
          :dimensions
@@ -863,7 +872,7 @@
                 :title       (tru "Compare with {0}" (:comparison-name segment))
                 :description ""})
              (when ((some-fn :query-filter :cell-query) root)
-               [{:url         (if (->> root :source (instance? (type Table)))
+               [{:url         (if (->> root :source (mi/instance-of? Table))
                                 (str (:url root) "/compare/table/" (-> root :source u/the-id))
                                 (str (:url root) "/compare/adhoc/"
                                      (encode-base64-json
@@ -917,50 +926,50 @@
       {})))
 
 (def ^:private related-selectors
-  {(type Table)   (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
-                        sideways [[:linking-to :linked-from] [:tables]]
-                        compare  [[:compare]]]
-                    {:zoom-in [down down down down]
-                     :related [sideways sideways]
-                     :compare [compare compare]})
-   (type Segment) (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
-                        sideways [[:linking-to] [:tables]]
-                        up       [[:table]]
-                        compare  [[:compare]]]
-                    {:zoom-in  [down down down]
-                     :zoom-out [up]
-                     :related  [sideways sideways]
-                     :compare  [compare compare]})
-   (type Metric)  (let [down     [[:drilldown-fields]]
-                        sideways [[:metrics :segments]]
-                        up       [[:table]]
-                        compare  [[:compare]]]
-                    {:zoom-in  [down down]
-                     :zoom-out [up]
-                     :related  [sideways sideways sideways]
-                     :compare  [compare compare]})
-   (type Field)   (let [sideways [[:fields]]
-                        up       [[:table] [:metrics :segments]]
-                        compare  [[:compare]]]
-                    {:zoom-out [up]
-                     :related  [sideways sideways]
-                     :compare  [compare]})
-   (type Card)    (let [down     [[:drilldown-fields]]
-                        sideways [[:metrics] [:similar-questions :dashboard-mates]]
-                        up       [[:table]]
-                        compare  [[:compare]]]
-                    {:zoom-in  [down down]
-                     :zoom-out [up]
-                     :related  [sideways sideways sideways]
-                     :compare  [compare compare]})
-   (type Query)   (let [down     [[:drilldown-fields]]
-                        sideways [[:metrics] [:similar-questions]]
-                        up       [[:table]]
-                        compare  [[:compare]]]
-                    {:zoom-in  [down down]
-                     :zoom-out [up]
-                     :related  [sideways sideways sideways]
-                     :compare  [compare compare]})})
+  {Table   (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
+                 sideways [[:linking-to :linked-from] [:tables]]
+                 compare  [[:compare]]]
+             {:zoom-in [down down down down]
+              :related [sideways sideways]
+              :compare [compare compare]})
+   Segment (let [down     [[:indepth] [:segments :metrics] [:drilldown-fields]]
+                 sideways [[:linking-to] [:tables]]
+                 up       [[:table]]
+                 compare  [[:compare]]]
+             {:zoom-in  [down down down]
+              :zoom-out [up]
+              :related  [sideways sideways]
+              :compare  [compare compare]})
+   Metric  (let [down     [[:drilldown-fields]]
+                 sideways [[:metrics :segments]]
+                 up       [[:table]]
+                 compare  [[:compare]]]
+             {:zoom-in  [down down]
+              :zoom-out [up]
+              :related  [sideways sideways sideways]
+              :compare  [compare compare]})
+   Field   (let [sideways [[:fields]]
+                 up       [[:table] [:metrics :segments]]
+                 compare  [[:compare]]]
+             {:zoom-out [up]
+              :related  [sideways sideways]
+              :compare  [compare]})
+   Card    (let [down     [[:drilldown-fields]]
+                 sideways [[:metrics] [:similar-questions :dashboard-mates]]
+                 up       [[:table]]
+                 compare  [[:compare]]]
+             {:zoom-in  [down down]
+              :zoom-out [up]
+              :related  [sideways sideways sideways]
+              :compare  [compare compare]})
+   Query   (let [down     [[:drilldown-fields]]
+                 sideways [[:metrics] [:similar-questions]]
+                 up       [[:table]]
+                 compare  [[:compare]]]
+             {:zoom-in  [down down]
+              :zoom-out [up]
+              :related  [sideways sideways sideways]
+              :compare  [compare compare]})})
 
 (s/defn ^:private related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
@@ -970,7 +979,7 @@
               (drilldown-fields context)
               (related-entities root)
               (comparisons root))
-       (fill-related max-related (related-selectors (-> root :entity type)))))
+       (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
 
 (defn- filter-referenced-fields
   "Return a map of fields referenced in filter clause."
@@ -1014,54 +1023,64 @@
                :transient_filters (:query-filter context)
                :param_fields      (->> context :query-filter (filter-referenced-fields root))))))
 
-(defmulti
-  ^{:doc "Create a transient dashboard analyzing given entity."
-    :arglists '([entity opts])}
-  automagic-analysis (fn [entity _]
-                       (type entity)))
 
-(defmethod automagic-analysis (type Table)
+(defmulti automagic-analysis
+  "Create a transient dashboard analyzing given entity."
+  {:arglists '([entity opts])}
+  (fn [entity _]
+    (mi/model entity)))
+
+(defmethod automagic-analysis Table
   [table opts]
   (automagic-dashboard (merge (->root table) opts)))
 
-(defmethod automagic-analysis (type Segment)
+(defmethod automagic-analysis Segment
   [segment opts]
   (automagic-dashboard (merge (->root segment) opts)))
 
-(defmethod automagic-analysis (type Metric)
+(defmethod automagic-analysis Metric
   [metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(defn- collect-metrics
+(s/defn ^:private collect-metrics :- (s/maybe [(mi/InstanceOf Metric)])
   [root question]
   (map (fn [aggregation-clause]
          (if (-> aggregation-clause
                  first
                  qp.util/normalize-token
                  (= :metric))
-           (-> aggregation-clause second Metric)
+           (->> aggregation-clause second (db/select-one Metric :id))
            (let [table-id (table-id question)]
-             (metric/map->MetricInstance {:definition {:aggregation  [aggregation-clause]
-                                                       :source-table table-id}
-                                          :name       (metric->description root aggregation-clause)
-                                          :table_id   table-id}))))
+             (mi/instance Metric {:definition {:aggregation  [aggregation-clause]
+                                               :source-table table-id}
+                                  :name       (metric->description root aggregation-clause)
+                                  :table_id   table-id}))))
        (get-in question [:dataset_query :query :aggregation])))
 
-(defn- collect-breakout-fields
+(s/defn ^:private collect-breakout-fields :- (s/maybe [(mi/InstanceOf Field)])
   [root question]
-  (map (comp (partial ->field root)
-             first
-             filters/collect-field-references)
-       (get-in question [:dataset_query :query :breakout])))
+  (for [breakout     (get-in question [:dataset_query :query :breakout])
+        field-clause (take 1 (filters/collect-field-references breakout))
+        :let         [field (->field root field-clause)]
+        :when        field]
+    field))
 
 (defn- decompose-question
   [root question opts]
-  (map #(automagic-analysis % (assoc opts
-                                :source       (:source root)
-                                :query-filter (:query-filter root)
-                                :database     (:database root)))
-       (concat (collect-metrics root question)
-               (collect-breakout-fields root question))))
+  (letfn [(analyze [x]
+            (try
+              (automagic-analysis x (assoc opts
+                                           :source       (:source root)
+                                           :query-filter (:query-filter root)
+                                           :database     (:database root)))
+              (catch Throwable e
+                (throw (ex-info (tru "Error decomposing question: {0}" (ex-message e))
+                                {:root root, :question question, :object x}
+                                e)))))]
+    (into []
+          (comp cat (map analyze))
+          [(collect-metrics root question)
+           (collect-breakout-fields root question)])))
 
 (defn- pluralize
   [x]
@@ -1188,7 +1207,7 @@
     (update dashboard :ordered_cards #(map (partial splice-in join-statement) %))
     dashboard))
 
-(defmethod automagic-analysis (type Card)
+(defmethod automagic-analysis Card
   [card {:keys [cell-query] :as opts}]
   (let [root     (->root card)
         cell-url (format "%squestion/%s/cell/%s" public-endpoint
@@ -1213,7 +1232,7 @@
                                {:transient_name title
                                 :name           title}))))))))
 
-(defmethod automagic-analysis (type Query)
+(defmethod automagic-analysis Query
   [query {:keys [cell-query] :as opts}]
   (let [root     (->root query)
         cell-query (when cell-query (mbql.normalize/normalize-fragment [:query :filter] cell-query))
@@ -1241,7 +1260,7 @@
                                {:transient_name  title
                                 :name            title}))))))))
 
-(defmethod automagic-analysis (type Field)
+(defmethod automagic-analysis Field
   [field opts]
   (automagic-dashboard (merge (->root field) opts)))
 

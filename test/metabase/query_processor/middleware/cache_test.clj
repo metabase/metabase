@@ -278,8 +278,7 @@
         (testing "Cached results should exist"
           (is (= true
                  (i/cached-results cache/*backend* query-hash 100
-                   (fn respond [input-stream]
-                     (some? input-stream))))))
+                   some?))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
@@ -322,37 +321,41 @@
                         :status     :completed}
                        (dissoc cached-result :data))
                     "Results should be cached")
-                ;; remove metadata checksums because they can be different between runs when using an encryption key
-                (is (= (-> original-result
-                           (m/dissoc-in [:data :results_metadata :checksum]))
-                       (-> cached-result
-                           (dissoc :cached :updated_at)
-                           (m/dissoc-in [:data :results_metadata :checksum])))
+                (is (= original-result (dissoc cached-result :cached :updated_at))
                     "Cached result should be in the same format as the uncached result, except for added keys"))))))))
   (testing "Cached results don't impact average execution time"
-    (let [query                         (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
-                                               :cache-ttl 5000)
-          q-hash                        (qp.util/query-hash query)
-          call-count                    (atom 0)
-          called-promise                (promise)
-          save-query-execution-original (var-get #'process-userland-query/save-query-execution!*)]
-      (with-redefs [process-userland-query/save-query-execution!* (fn [& args]
-                                                                    (swap! call-count inc)
-                                                                    (apply save-query-execution-original args)
-                                                                    (deliver called-promise true))
-                    cache/min-duration-ms                         (constantly 0)]
+    (let [query                               (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
+                                                     :cache-ttl 5000)
+          q-hash                              (qp.util/query-hash query)
+          save-query-execution-count          (atom 0)
+          update-avg-execution-count          (atom 0)
+          called-promise                      (promise)
+          save-query-execution-original       (var-get #'process-userland-query/save-query-execution!*)
+          save-query-update-avg-time-original query/save-query-and-update-average-execution-time!]
+      (with-redefs [process-userland-query/save-query-execution!*       (fn [& args]
+                                                                          (swap! save-query-execution-count inc)
+                                                                          (apply save-query-execution-original args)
+                                                                          (deliver called-promise true))
+                    query/save-query-and-update-average-execution-time! (fn [& args]
+                                                                          (swap! update-avg-execution-count inc)
+                                                                          (apply save-query-update-avg-time-original args))
+                    cache/min-duration-ms                               (constantly 0)]
         (with-mock-cache [save-chan]
           (db/delete! Query :query_hash q-hash)
           (is (not (:cached (qp/process-userland-query query (context.default/default-context)))))
           (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
           (u/deref-with-timeout called-promise 500)
-          (is (= 1 @call-count))
+          (is (= 1 @save-query-execution-count))
+          (is (= 1 @update-avg-execution-count))
           (let [avg-execution-time (query/average-execution-time-ms q-hash)]
             (is (number? avg-execution-time))
             ;; rerun query getting cached results
             (is (:cached (qp/process-userland-query query (context.default/default-context))))
             (mt/wait-for-result save-chan)
-            (is (= 1 @call-count) "Saving execution times of a cache lookup")
+            (is (= 2 @save-query-execution-count)
+                "Saving execution times of a cache lookup")
+            (is (= 1 @update-avg-execution-count)
+                "Cached query execution should not update average query duration")
             (is (= avg-execution-time (query/average-execution-time-ms q-hash)))))))))
 
 (deftest insights-from-cache-test

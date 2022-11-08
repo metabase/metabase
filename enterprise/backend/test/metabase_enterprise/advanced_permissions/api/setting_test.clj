@@ -7,7 +7,7 @@
             [metabase.integrations.slack :as slack]
             [metabase.models :refer [Card Dashboard]]
             [metabase.models.permissions :as perms]
-            [metabase.models.setting-test :refer [test-setting-1 test-setting-2]]
+            [metabase.models.setting-test :as models.setting-test]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -18,9 +18,8 @@
 
 (deftest setting-api-test
   (testing "/api/setting"
-    (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
+    (mt/with-user-in-groups [group {:name "New Group"}
+                             user  [group]]
       (letfn [(get-setting [user status]
                 (testing (format "get setting with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :get status "setting")))
@@ -33,8 +32,8 @@
                 (testing (format "update multiple settings setting with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :put status "setting" {:test-setting-1 "ABC", :test-setting-2 "DEF"})))]
         ;; we focus on permissions in these tests, so set default value to make it easier to test
-        (test-setting-1 "ABC")
-        (test-setting-2 "DEF")
+        (models.setting-test/test-setting-1! "ABC")
+        (models.setting-test/test-setting-2! "DEF")
 
         (testing "if `advanced-permissions` is disabled, require admins"
           (premium-features-test/with-premium-features #{}
@@ -74,8 +73,9 @@
                                                                     :email-smtp-security :tls
                                                                     :email-smtp-username "munchkin"
                                                                     :email-smtp-password "gobble gobble"
-                                                                    :email-from-address  "eating@hungry.com"}))))
-
+                                                                    :email-from-address  "eating@hungry.com"
+                                                                    :email-from-name     "Eating"
+                                                                    :email-reply-to      ["reply-to@hungry.com"]}))))
               (delete-email-setting [user status]
                 (testing (format "delete email setting with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :delete status "email")))
@@ -128,7 +128,7 @@
 
               (get-manifest [user status]
                 (testing (format "get slack manifest %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "slack/manifest" )))]
+                  (mt/user-http-request user :get status "slack/manifest")))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
           (premium-features-test/with-premium-features #{}
@@ -179,6 +179,31 @@
               (update-ldap-settings user 200)
               (update-ldap-settings :crowberto 200))))))))
 
+(deftest google-api-test
+  (testing "/api/google"
+    (mt/with-user-in-groups
+      [group {:name "New Group"}
+       user  [group]]
+      (letfn [(update-google-settings [user status]
+                (testing (format "update google settings with %s user" (mt/user-descriptor user))
+                  (mt/user-http-request user :put status "google/settings"
+                                        {:google-auth-client-id "test-client-id.apps.googleusercontent.com"
+                                         :google-auth-enabled true})))]
+        (testing "if `advanced-permissions` is disabled, require admin status"
+          (premium-features-test/with-premium-features #{}
+            (update-google-settings user 403)
+            (update-google-settings :crowberto 200)))
+
+        (testing "if `advanced-permissions` is enabled"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "still fail if user's group doesn't have `setting` permission"
+              (update-google-settings user 403)
+              (update-google-settings :crowberto 200))
+
+            (testing "succeed if user's group has `setting` permission"
+              (perms/grant-application-permissions! group :setting)
+              (update-google-settings user 200)
+              (update-google-settings :crowberto 200))))))))
 
 (deftest geojson-api-test
   (testing "/api/geojson"
@@ -322,3 +347,62 @@
                 (get-public-cards user 200)
                 (get-embeddable-cards user 200)
                 (delete-public-card user 204)))))))))
+
+(deftest persistence-test
+  (testing "/api/persist"
+    (mt/with-user-in-groups [group {:name "New Group"}
+                             user [group]]
+      (letfn [(enable-persist [user status]
+                (testing (format "persist/enable with %s user" (mt/user-descriptor user))
+                  (mt/user-http-request user :post status "persist/enable")))
+              (disable-persist [user status]
+                (testing (format "persist/disable with %s user" (mt/user-descriptor user))
+                  (mt/user-http-request user :post status "persist/disable")))
+              (set-interval [user status]
+                (testing (format "persist/set-refresh-schedule with %s user"
+                                 (mt/user-descriptor user))
+                  (mt/user-http-request user :post status
+                                        "persist/set-refresh-schedule"
+                                        {"cron" "0 0 0/1 * * ? *"})))]
+
+        (testing "if `advanced-permissions` is disabled, require admins,"
+          (enable-persist :crowberto 204)
+          (enable-persist user 403)
+          (enable-persist :rasta 403)
+
+          (disable-persist :crowberto 204)
+          (disable-persist user 403)
+          (disable-persist :rasta 403)
+
+          (set-interval :crowberto 204)
+          (set-interval user 403)
+          (set-interval :rasta 403))
+
+        (testing "if `advanced-permissions` is enabled"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "still fail if user's group doesn't have `setting` permission,"
+              (enable-persist :crowberto 204)
+              (enable-persist user 403)
+              (enable-persist :rasta 403)
+
+              (disable-persist :crowberto 204)
+              (disable-persist user 403)
+              (disable-persist :rasta 403)
+
+              (set-interval :crowberto 204)
+              (set-interval user 403)
+              (set-interval :rasta 403))
+
+            (testing "succeed if user's group has `setting` permission,"
+              (perms/grant-application-permissions! group :setting)
+              (enable-persist :crowberto 204)
+              (enable-persist user 204)
+              (enable-persist :rasta 403)
+
+              (disable-persist :crowberto 204)
+              (disable-persist user 204)
+              (disable-persist :rasta 403)
+
+              (set-interval :crowberto 204)
+              (set-interval user 204)
+              (set-interval :rasta 403))))))))

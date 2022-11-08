@@ -6,6 +6,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
@@ -85,7 +86,7 @@
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
-(defmethod tx/format-name :bigquery-cloud-sdk [_ table-or-field-name]
+(defmethod ddl.i/format-name :bigquery-cloud-sdk [_ table-or-field-name]
   (u/snake-key table-or-field-name))
 
 (defn- create-dataset! [^String dataset-id]
@@ -127,15 +128,15 @@
    table-id           :- su/NonBlankString
    field-name->type   :- {ValidFieldName (apply s/enum valid-field-types)}]
   (u/ignore-exceptions
-   (delete-table! dataset-id table-id)
-   (let [tbl-id (TableId/of dataset-id table-id)
-         schema (Schema/of (u/varargs Field (for [[^String field-name field-type] field-name->type]
-                                              (Field/of
-                                                field-name
-                                                (LegacySQLTypeName/valueOf (name field-type))
-                                                (u/varargs Field [])))))
-         tbl    (TableInfo/of tbl-id (StandardTableDefinition/of schema))]
-     (.create (bigquery) tbl (u/varargs BigQuery$TableOption))))
+   (delete-table! dataset-id table-id))
+  (let [tbl-id (TableId/of dataset-id table-id)
+        schema (Schema/of (u/varargs Field (for [[^String field-name field-type] field-name->type]
+                                             (Field/of
+                                               field-name
+                                               (LegacySQLTypeName/valueOf (name field-type))
+                                               (u/varargs Field [])))))
+        tbl    (TableInfo/of tbl-id (StandardTableDefinition/of schema))]
+    (.create (bigquery) tbl (u/varargs BigQuery$TableOption)))
   ;; now verify that the Table was created
   (.listTables (bigquery) dataset-id (u/varargs BigQuery$TableListOption))
   (println (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id)))

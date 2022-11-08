@@ -20,6 +20,11 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
   // the last updated range when brushing
   let range = null;
 
+  // remove deprecated createSVGPoint to fix d3.mouse firefox bug (metabase#24912)
+  if (SVGSVGElement.prototype.createSVGPoint) {
+    SVGSVGElement.prototype.createSVGPoint = undefined;
+  }
+
   // start
   parent.brush().on("brushstart.custom", () => {
     // reset "range"
@@ -59,7 +64,7 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
     moveToBack(parent.select(".brush").node());
     // remove the escape keydown listener
     window.removeEventListener("keydown", onKeyDown, true);
-    // reset the fitler and redraw
+    // reset the filter and redraw
     child.filterAll();
     parent.redraw();
 
@@ -78,7 +83,7 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
     }
   };
 
-  parent.on("pretransition.custom", function(chart) {
+  parent.on("pretransition.custom", function (chart) {
     // move brush to the back so tootips/clicks still work
     moveToBack(chart.select(".brush").node());
     // remove the handles since we can't adjust them anyway

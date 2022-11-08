@@ -1,31 +1,4 @@
-import {
-  restore,
-  openOrdersTable,
-  describeEE,
-  summarize,
-} from "__support__/e2e/cypress";
-
-// Define colors that we use for whitelabeling
-// If rbg values exist, it's because we explicit test those
-const colors = {
-  primary: { hex: "8B572A", rgb: [139, 87, 42] },
-  nav: { hex: "284E07", rgb: [40, 78, 7] },
-  accent1: { hex: "417505" },
-  accent2: { hex: "7ED321" },
-  additional1: { hex: "B8E986" },
-  additional2: { hex: "50E3C2" },
-  additional3: { hex: "4A90E2" },
-  additional4: { hex: "082CBE" },
-  additional5: { hex: "F8E71C", rgb: [248, 231, 28] },
-};
-
-function changeThemeColor(location, colorhex) {
-  cy.get("td")
-    .eq(location)
-    .click();
-  cy.get(`div[title='#${colorhex}']`).click();
-  cy.findByText("Done").click();
-}
+import { describeEE, restore } from "__support__/e2e/helpers";
 
 function checkFavicon() {
   cy.request("/api/setting/application-favicon-url")
@@ -47,56 +20,13 @@ describeEE("formatting > whitelabel", () => {
     cy.signInAsAdmin();
   });
 
-  describe("admin", () => {
-    it("should be able to set colors using color-picker dialog", () => {
-      cy.visit("/admin/settings/whitelabel");
-
-      cy.log("Select color with squares");
-      changeThemeColor(1, colors.primary.hex);
-
-      cy.log("Select color by entering rgb value");
-      cy.get("td")
-        .eq(5)
-        .click();
-      cy.get(".sketch-picker")
-        .find("input")
-        .eq(1)
-        .clear()
-        .type(colors.nav.rgb[0]);
-      cy.get(".sketch-picker")
-        .find("input")
-        .eq(2)
-        .clear()
-        .type(colors.nav.rgb[1]);
-      cy.get(".sketch-picker")
-        .find("input")
-        .eq(3)
-        .clear()
-        .type(colors.nav.rgb[2]);
-      cy.findByText("Done").click();
-
-      cy.log("Select color by typing hex code");
-      cy.get("td")
-        .eq(29)
-        .click();
-      cy.get(".sketch-picker")
-        .find("input")
-        .first()
-        .clear()
-        .type(colors.additional4.hex);
-      cy.findByText("Done").click();
-    });
-  });
-
   describe("company name", () => {
     const COMPANY_NAME = "Test Co";
 
     beforeEach(() => {
       cy.log("Change company name");
       cy.visit("/admin/settings/whitelabel");
-      cy.findByLabelText("Application Name")
-        .clear()
-        .type(COMPANY_NAME);
+      cy.findByLabelText("Application Name").clear().type(COMPANY_NAME);
       // Helps scroll the page up in order to see "Saved" notification
       cy.findByText("Application Name").click();
       cy.findByText("Saved");
@@ -133,36 +63,6 @@ describeEE("formatting > whitelabel", () => {
 
       cy.visit("/admin/settings/general");
       cy.contains(`The name used for this instance of ${COMPANY_NAME}.`);
-    });
-  });
-
-  describe("company color theme", () => {
-    beforeEach(() => {
-      cy.request("PUT", "/api/setting/application-colors", {
-        value: {
-          accent1: `#${colors.accent1.hex}`,
-          accent2: `#${colors.accent2.hex}`,
-          accent3: `#${colors.additional1.hex}`,
-          accent4: `#${colors.additional2.hex}`,
-          accent5: `#${colors.additional3.hex}`,
-          accent6: `#${colors.additional4.hex}`,
-          accent7: `#${colors.additional5.hex}`,
-          brand: `#${colors.primary.hex}`,
-          nav: `#${colors.nav.hex}`,
-        },
-      });
-    });
-
-    it.skip("should show color changes reflected in q visualizations (metabase-enterprise #470)", () => {
-      // *** Test should pass when issue #470 is resolved
-      cy.signInAsNormalUser();
-      openOrdersTable();
-      summarize();
-      cy.findByText("Price").click();
-      cy.findByText("Done").click();
-
-      cy.get(`div[fill='#${colors.primary.hex};']`);
-      cy.get(`rect[fill='#509EE3']`).should("not.exist");
     });
   });
 
@@ -205,9 +105,7 @@ describeEE("formatting > whitelabel", () => {
       cy.findByLabelText("Favicon").type(
         "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
       );
-      cy.get("ul")
-        .eq(2)
-        .click("right");
+      cy.get("ul").eq(1).click("right");
       cy.findByText("Saved");
       checkFavicon();
     });
@@ -219,4 +117,61 @@ describeEE("formatting > whitelabel", () => {
         .should("have.length", 1);
     });
   });
+
+  describe("loading message", () => {
+    it("should update loading message", () => {
+      cy.visit("/question/1");
+      cy.findByText("Doing science...");
+
+      const runningQueryMessage = "Running query...";
+      changeLoadingMessage(runningQueryMessage);
+      cy.visit("/question/1");
+      cy.findByText(runningQueryMessage);
+
+      const loadingResultsMessage = "Loading results...";
+      changeLoadingMessage(loadingResultsMessage);
+      cy.visit("/question/1");
+      cy.findByText(loadingResultsMessage);
+    });
+  });
+
+  describe("metabot", () => {
+    it("should toggle metabot visibility", () => {
+      cy.visit("/");
+      cy.findByAltText("Metabot");
+
+      cy.visit("/admin/settings/whitelabel");
+      cy.findByText("Display our little friend on the homepage").click();
+
+      cy.visit("/");
+      cy.findByAltText("Metabot").should("not.exist");
+    });
+  });
+
+  describe("font", () => {
+    const font = "Open Sans";
+    beforeEach(() => {
+      cy.log("Change Application Font");
+      cy.signInAsAdmin();
+      setApplicationFontTo(font);
+    });
+
+    it("should apply correct font", () => {
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.get("body").should("have.css", "font-family", `"${font}", sans-serif`);
+    });
+  });
 });
+
+function changeLoadingMessage(message) {
+  cy.visit("/admin/settings/whitelabel");
+  cy.findByTestId("loading-message-select-button").click();
+  cy.findByText(message).click();
+}
+
+function setApplicationFontTo(font) {
+  cy.request("PUT", "/api/setting/application-font", {
+    value: font,
+  });
+}

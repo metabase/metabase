@@ -114,16 +114,10 @@
     (testing "\nEven if a query fails we still expect a 202 response from the API"
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
       ;; that it exists and contains the substring "Syntax error in SQL statement"
-      (let [check-error-message (fn [output]
-                                  (update output :error (fn [error-message]
-                                                          (some->>
-                                                           error-message
-                                                           (re-find #"Syntax error in SQL statement")
-                                                           boolean))))
-            query               {:database (mt/id)
-                                 :type     "native"
-                                 :native   {:query "foobar"}}
-            result              (mt/user-http-request :rasta :post 202 "dataset" query)]
+      (let [query  {:database (mt/id)
+                    :type     "native"
+                    :native   {:query "foobar"}}
+            result (mt/user-http-request :rasta :post 202 "dataset" query)]
         (testing "\nAPI Response"
           (is (schema= {:data        (s/eq {:rows []
                                             :cols []})
@@ -215,7 +209,7 @@
   (testing "POST /api/dataset/:format"
     (testing "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints (#9831)"
       ;; even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
-      (with-redefs [qp.constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+      (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
         (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                            :query (json/generate-string
                                                    {:database (mt/id)
@@ -251,7 +245,7 @@
 (deftest non--download--queries-should-still-get-the-default-constraints
   (testing (str "non-\"download\" queries should still get the default constraints "
                 "(this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)")
-    (with-redefs [qp.constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
       (let [{row-count :row_count, :as result}
             (mt/user-http-request :rasta :post 202 "dataset"
                                   {:database (mt/id)
@@ -270,9 +264,8 @@
       (is (schema= {:status   (s/eq "failed")
                     :error    (s/eq "You do not have permissions to run this query.")
                     s/Keyword s/Any}
-                   (mt/suppress-output
-                     (mt/user-http-request :rasta :post "dataset"
-                                           (mt/mbql-query venues {:limit 1}))))))))
+                   (mt/user-http-request :rasta :post "dataset"
+                                         (mt/mbql-query venues {:limit 1})))))))
 
 (deftest compile-test
   (testing "POST /api/dataset/native"
@@ -297,17 +290,16 @@
                                         :filter [:= $date "2015-11-13"]})))))
 
       (testing "\nshould require that the user have ad-hoc native perms for the DB"
-        (mt/suppress-output
-          (mt/with-temp-copy-of-db
-            ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            (perms/grant-permissions! (perms-group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
-            (is (schema= {:permissions-error? (s/eq true)
-                          :message            (s/eq "You do not have permissions to run this query.")
-                          s/Any               s/Any}
-                         (mt/user-http-request :rasta :post "dataset/native"
-                                               (mt/mbql-query venues
-                                                 {:fields [$id $name]}))))))))))
+        (mt/with-temp-copy-of-db
+          ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+          (perms/grant-permissions! (perms-group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
+          (is (schema= {:permissions-error? (s/eq true)
+                        :message            (s/eq "You do not have permissions to run this query.")
+                        s/Any               s/Any}
+                       (mt/user-http-request :rasta :post "dataset/native"
+                                             (mt/mbql-query venues
+                                               {:fields [$id $name]})))))))))
 
 (deftest report-timezone-test
   (mt/test-driver :postgres

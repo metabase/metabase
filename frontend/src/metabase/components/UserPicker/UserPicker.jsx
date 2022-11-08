@@ -24,7 +24,7 @@ const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
     : null;
 
   const options = useMemo(() => {
-    return users.map(user => ({ label: user.common_name, value: user }));
+    return users.map(user => ({ value: user }));
   }, [users]);
 
   const idKey = useCallback(value => {
@@ -32,7 +32,7 @@ const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
   }, []);
 
   const valueRenderer = useCallback(value => {
-    return value.common_name || value.email;
+    return value.common_name;
   }, []);
 
   const optionRenderer = useCallback(option => {
@@ -78,8 +78,8 @@ const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
   );
 };
 
-const includesIgnoreCase = (s1, s2) => {
-  return s1.toLowerCase().includes(s2.toLowerCase());
+const includesIgnoreCase = (sourceText, searchText) => {
+  return sourceText.toLowerCase().includes(searchText.toLowerCase());
 };
 
 UserPicker.propTypes = propTypes;

@@ -25,7 +25,7 @@
   precede it in the subname."
   {:arglists '([host port db]), :added "0.39.0"}
   [host port db]
-  (str "//" host ":" port (if-not (str/blank? db) (str "/" db) "/")))
+  (str "//" (when-not (str/blank? host) (str host ":" port)) (if-not (str/blank? db) (str "/" db) "/")))
 
 (defmethod spec :postgres
   [_ {:keys [host port db]

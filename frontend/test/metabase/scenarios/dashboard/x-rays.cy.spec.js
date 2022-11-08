@@ -6,19 +6,13 @@ import {
   summarize,
   visualize,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > x-rays", () => {
   beforeEach(() => {
@@ -76,9 +70,6 @@ describe("scenarios > x-rays", () => {
 
   ["X-ray", "Compare to the rest"].forEach(action => {
     it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
-      // TODO: Remove this when #15655 gets fixed
-      cy.skipOn(action === "Compare to the rest");
-
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
 
       cy.createNativeQuestion({
@@ -96,9 +87,7 @@ describe("scenarios > x-rays", () => {
       cy.intercept("POST", "/api/dataset").as("postDataset");
 
       cy.button("Done").click();
-      cy.get(".bar")
-        .first()
-        .click({ force: true });
+      cy.get(".bar").first().click({ force: true });
       cy.findByText(action).click();
 
       cy.wait("@xray").then(xhr => {
@@ -111,7 +100,7 @@ describe("scenarios > x-rays", () => {
 
       cy.findByTextEnsureVisible("A look at the number of 15655");
 
-      cy.findByRole("heading", { name: /^A closer look at the number of/ });
+      cy.findByRole("heading", { name: /^A look at the number of/ });
       cy.get(".DashCard");
     });
 
@@ -131,9 +120,7 @@ describe("scenarios > x-rays", () => {
         display: "bar",
       });
 
-      cy.get(".bar")
-        .first()
-        .click();
+      cy.get(".bar").first().click();
       cy.findByText(action).click();
       cy.wait("@xray");
       cy.contains("null").should("not.exist");

@@ -1,4 +1,4 @@
-import { restore, visitIframe } from "__support__/e2e/cypress";
+import { restore, visitIframe } from "__support__/e2e/helpers";
 
 describe("locked parameters in embedded question (metabase#20634)", () => {
   beforeEach(() => {
@@ -27,7 +27,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
 
   it("should let the user lock parameters to specific values", () => {
     cy.icon("share").click();
-    cy.findByText("Embed this question in an application").click();
+    cy.findByText("Embed in your application").click();
 
     cy.get(".Modal--full").within(() => {
       // select the dropdown next to the Text parameter so that we can set the value to "Locked"

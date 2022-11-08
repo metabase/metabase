@@ -3,12 +3,11 @@ import {
   popover,
   filterWidget,
   visitQuestionAdhoc,
-} from "__support__/e2e/cypress";
-
-import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -46,9 +45,7 @@ describe("issue 15460", () => {
 
   it("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {
     // Set the filter value by picking the value from the dropdown
-    filterWidget()
-      .contains(filter["display-name"])
-      .click();
+    filterWidget().contains(filter["display-name"]).click();
 
     popover().within(() => {
       cy.findByText("Doohickey").click();

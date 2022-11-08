@@ -1,4 +1,4 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/helpers";
 
 describe("issue 20393", () => {
   beforeEach(() => {
@@ -12,20 +12,12 @@ describe("issue 20393", () => {
     // add a date parameter to the dashboard
     cy.icon("pencil").click();
     cy.icon("filter").click();
-    popover()
-      .contains("Time")
-      .click();
-    popover()
-      .contains("All Options")
-      .click();
+    popover().contains("Time").click();
+    popover().contains("All Options").click();
 
     // map the date parameter to the card
-    cy.get(".DashCard")
-      .contains("Select")
-      .click();
-    popover()
-      .contains("CREATED_AT")
-      .click();
+    cy.get(".DashCard").contains("Select").click();
+    popover().contains("CREATED_AT").click();
 
     // save the dashboard
     cy.findByText("Save").click();

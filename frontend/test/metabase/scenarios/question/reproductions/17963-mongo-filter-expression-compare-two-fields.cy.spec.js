@@ -3,9 +3,9 @@ import {
   popover,
   visualize,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
-describe("issue 17963", () => {
+describe("issue 17963", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();
@@ -18,9 +18,7 @@ describe("issue 17963", () => {
   it("should be able to compare two fields using filter expression (metabase#17963)", () => {
     cy.findByText("Add filters to narrow your answer").click();
 
-    popover()
-      .contains("Custom Expression")
-      .click();
+    popover().contains("Custom Expression").click();
 
     typeAndSelect([
       { string: "dis", field: "Discount" },
@@ -44,8 +42,6 @@ function typeAndSelect(arr) {
   arr.forEach(({ string, field }) => {
     cy.get(".ace_text-input").type(string);
 
-    popover()
-      .contains(field)
-      .click();
+    popover().contains(field).click();
   });
 }

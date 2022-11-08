@@ -4,6 +4,7 @@ import { State } from "metabase-types/store";
 import Groups from "metabase/entities/groups";
 import { diffDataPermissions } from "metabase/admin/permissions/utils/graph";
 import { Group } from "metabase-types/api";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
 const getDatabasesWithTables = createSelector(
   (state: State) => state.entities.databases,
@@ -17,7 +18,7 @@ const getDatabasesWithTables = createSelector(
 
     return databasesList.map(database => {
       const databaseTables = tablesList.filter(
-        table => table.db_id === database.id,
+        table => table.db_id === database.id && !isVirtualCardId(table.id),
       );
 
       return {

@@ -1,6 +1,6 @@
-import { restore, setupSMTP } from "__support__/e2e/cypress";
+import { restore, setupSMTP } from "__support__/e2e/helpers";
 
-describe("scenarios > pulse", () => {
+describe("scenarios > pulse", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -11,9 +11,7 @@ describe("scenarios > pulse", () => {
   it("should create a new pulse", () => {
     cy.visit("/pulse/create");
 
-    cy.findByPlaceholderText("Important metrics")
-      .click()
-      .type("pulse title");
+    cy.findByPlaceholderText("Important metrics").click().type("pulse title");
 
     cy.contains("Select a question").click();
     cy.contains("Orders, Count").click();

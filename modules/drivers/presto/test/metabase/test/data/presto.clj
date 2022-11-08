@@ -6,6 +6,7 @@
             [honeysql.helpers :as hh]
             [metabase.config :as config]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.presto :as presto]
             [metabase.driver.presto-common :as presto-common]
             [metabase.driver.sql.util :as sql.u]
@@ -28,7 +29,7 @@
 (def ^:private test-catalog-name "test-data")
 
 (defmethod tx/dbdef->connection-details :presto
-  [_ context {:keys [database-name]}]
+  [_driver _context _dbdef]
   {:host    (tx/db-test-env-var-or-throw :presto :host "localhost")
    :port    (tx/db-test-env-var-or-throw :presto :port "8080")
    :user    (tx/db-test-env-var-or-throw :presto :user "metabase")
@@ -37,9 +38,9 @@
 
 (defmethod sql.tx/qualified-name-components :presto
   ;; use the default schema from the in-memory connector
-  ([_ db-name]                       [test-catalog-name "default"])
-  ([_ db-name table-name]            [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name)])
-  ([_ db-name table-name field-name] [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name) field-name]))
+  ([_driver _db-name]                      [test-catalog-name "default"])
+  ([_driver db-name table-name]            [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name)])
+  ([_driver db-name table-name field-name] [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name) field-name]))
 
 (defn- field-base-type->dummy-value [field-type]
   ;; we need a dummy value for every base-type to make a properly typed SELECT statement
@@ -71,7 +72,7 @@
             (sql.tx/qualify-and-quote driver database-name table-name)
             (str/join \, dummy-values)
             (str/join \, (for [column columns]
-                           (sql.u/quote-name driver :field (tx/format-name driver column)))))))
+                           (sql.u/quote-name driver :field (ddl.i/format-name driver column)))))))
 
 (defmethod sql.tx/drop-table-if-exists-sql :presto
   [driver {:keys [database-name]} {:keys [table-name]}]
@@ -93,7 +94,7 @@
       (unprepare/unprepare :presto (cons query params)))))
 
 (defmethod tx/create-db! :presto
-  [driver {:keys [table-definitions database-name] :as dbdef} & {:keys [skip-drop-db?]}]
+  [driver {:keys [table-definitions] :as dbdef} & {:keys [skip-drop-db?]}]
   (let [details  (tx/dbdef->connection-details driver :db dbdef)
         execute! (partial #'presto/execute-query-for-sync details)]
     (doseq [tabledef table-definitions
@@ -129,7 +130,7 @@
       (execute! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef))
       (println "[Presto] [ok]"))))
 
-(defmethod tx/format-name :presto
+(defmethod ddl.i/format-name :presto
   [_ s]
   (str/lower-case s))
 

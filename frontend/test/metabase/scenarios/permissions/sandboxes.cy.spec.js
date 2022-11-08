@@ -14,7 +14,7 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
@@ -42,9 +42,7 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("should add key attributes to an existing user", () => {
-      cy.icon("ellipsis")
-        .last()
-        .click();
+      cy.icon("ellipsis").last().click();
       cy.findByText("Edit user").click();
       cy.findByText("Add an attribute").click();
       cy.findByPlaceholderText("Key").type("User ID");
@@ -56,7 +54,7 @@ describeEE("formatting > sandboxes", () => {
       cy.findByText("Invite someone").click();
       cy.findByPlaceholderText("Johnny").type("John");
       cy.findByPlaceholderText("Appleseed").type("Smith");
-      cy.findByPlaceholderText("youlooknicetoday@email.com").type(
+      cy.findByPlaceholderText("nicetoseeyou@email.com").type(
         "john@smith.test",
       );
       cy.findByText("Add an attribute").click();
@@ -219,13 +217,9 @@ describeEE("formatting > sandboxes", () => {
           .contains(/Orders?/)
           .click();
 
-        cy.get(".List-section-header")
-          .contains("User")
-          .click();
+        cy.get(".List-section-header").contains("User").click();
 
-        cy.get(".List-item")
-          .contains("ID")
-          .click();
+        cy.get(".List-item").contains("ID").click();
       });
 
       visualize();
@@ -327,9 +321,8 @@ describeEE("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.server();
-        cy.route("POST", "/api/card/*/query").as("cardQuery");
-        cy.route("POST", "/api/dataset").as("dataset");
+        cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+        cy.intercept("POST", "/api/dataset").as("dataset");
 
         // Find saved question in "Our analytics"
         cy.visit("/collection/root");
@@ -339,9 +332,7 @@ describeEE("formatting > sandboxes", () => {
         // Drill-through
         cy.get(".Visualization").within(() => {
           // Click on the first bar in a graph (Category: "Doohickey")
-          cy.get(".bar")
-            .eq(0)
-            .click({ force: true });
+          cy.get(".bar").eq(0).click({ force: true });
         });
         cy.findByText("View these Orders").click();
 
@@ -403,9 +394,8 @@ describeEE("formatting > sandboxes", () => {
       cy.signOut();
       cy.signInAsSandboxedUser();
 
-      cy.server();
-      cy.route("POST", "/api/card/*/query").as("cardQuery");
-      cy.route("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+      cy.intercept("POST", "/api/dataset").as("dataset");
 
       // Find saved question in "Our analytics"
       cy.visit("/collection/root");
@@ -415,9 +405,7 @@ describeEE("formatting > sandboxes", () => {
       // Drill-through
       cy.get(".Visualization").within(() => {
         // Click on the first bar in a graph (Category: "Doohickey")
-        cy.get(".bar")
-          .eq(0)
-          .click({ force: true });
+        cy.get(".bar").eq(0).click({ force: true });
       });
       cy.findByText("View these Orders").click();
 
@@ -442,9 +430,6 @@ describeEE("formatting > sandboxes", () => {
        * that uses a query builder instead of SQL based questions.
        */
       it("should be able to sandbox using query builder saved questions", () => {
-        cy.server();
-        cy.route("POST", "/api/dataset").as("dataset");
-
         cy.log("Create 'Orders'-based question using QB");
         cy.createQuestion({
           name: "520_Orders",
@@ -486,9 +471,7 @@ describeEE("formatting > sandboxes", () => {
           callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
 
-        cy.get(".cellData")
-          .contains("Awesome Concrete Shoes")
-          .click();
+        cy.get(".cellData").contains("Awesome Concrete Shoes").click();
         cy.findByText(/View details/i).click();
 
         cy.log(
@@ -515,9 +498,8 @@ describeEE("formatting > sandboxes", () => {
       // which is a bug fixed in ssue metabase#14302
       ["normal" /* , "workaround" */].forEach(test => {
         it(`${test.toUpperCase()} version:\n advanced sandboxing should not ignore data model features like object detail of FK (metabase-enterprise#520)`, () => {
-          cy.server();
-          cy.route("POST", "/api/card/*/query").as("cardQuery");
-          cy.route("PUT", "/api/card/*").as("questionUpdate");
+          cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+          cy.intercept("PUT", "/api/card/*").as("questionUpdate");
 
           cy.createNativeQuestion({
             name: "EE_520_Q1",
@@ -588,9 +570,7 @@ describeEE("formatting > sandboxes", () => {
           cy.log(
             "It should show remapped Display Values instead of Product ID",
           );
-          cy.get(".cellData")
-            .contains("Awesome Concrete Shoes")
-            .click();
+          cy.get(".cellData").contains("Awesome Concrete Shoes").click();
           cy.findByText(/View details/i).click();
 
           cy.log(
@@ -620,9 +600,6 @@ describeEE("formatting > sandboxes", () => {
       });
 
       it("simple sandboxing should work (metabase#14629)", () => {
-        cy.server();
-        cy.route("POST", "/api/dataset").as("dataset");
-
         cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
@@ -704,9 +681,8 @@ describeEE("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        cy.server();
-        cy.route("POST", "/api/card/*/query").as("cardQuery");
-        cy.route("POST", "/api/dataset").as("dataset");
+        cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+        cy.intercept("POST", "/api/dataset").as("dataset");
 
         cy.visit("/collection/root");
         cy.findByText(QUESTION_NAME).click();
@@ -715,9 +691,7 @@ describeEE("formatting > sandboxes", () => {
         // Drill-through
         cy.get(".Visualization").within(() => {
           // Click on the second bar in a graph (Category: "Widget")
-          cy.get(".bar")
-            .eq(1)
-            .click({ force: true });
+          cy.get(".bar").eq(1).click({ force: true });
         });
         cy.findByText("View these Orders").click();
 
@@ -733,9 +707,8 @@ describeEE("formatting > sandboxes", () => {
       const ERROR_MESSAGE =
         "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.";
 
-      cy.server();
-      cy.route("POST", "/api/mt/gtap").as("sandboxTable");
-      cy.route("GET", "/api/permissions/group").as("tablePermissions");
+      cy.intercept("POST", "/api/mt/gtap").as("sandboxTable");
+      cy.intercept("GET", "/api/permissions/group").as("tablePermissions");
 
       // Question with differently-typed columns than the sandboxed table
       cy.createNativeQuestion({
@@ -743,7 +716,9 @@ describeEE("formatting > sandboxes", () => {
         native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
       });
 
-      cy.visit("/admin/permissions/data/database/1/schema/PUBLIC/table/2");
+      cy.visit(
+        `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+      );
       cy.wait("@tablePermissions");
       cy.icon("eye")
         .eq(1) // No better way of doing this, undfortunately (see table above)
@@ -756,9 +731,9 @@ describeEE("formatting > sandboxes", () => {
       cy.findByText(QUESTION_NAME).click();
       cy.button("Save").click();
 
-      cy.wait("@sandboxTable").then(xhr => {
-        expect(xhr.status).to.eq(400);
-        expect(xhr.response.body.message).to.eq(ERROR_MESSAGE);
+      cy.wait("@sandboxTable").then(({ response }) => {
+        expect(response.statusCode).to.eq(400);
+        expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
       cy.get(".Modal").scrollTo("bottom");
       cy.findByText(ERROR_MESSAGE);
@@ -784,8 +759,7 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it("should be able to remove columns via QB sidebar / settings (metabase#14841)", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/dataset").as("dataset");
 
       cy.sandboxTable({
         table_id: ORDERS_ID,
@@ -810,16 +784,11 @@ describeEE("formatting > sandboxes", () => {
         .should("be.visible")
         .within(() => {
           // Remove the "Subtotal" column from within sidebar
-          cy.findByText("Subtotal")
-            .parent()
-            .find(".Icon-close")
-            .click();
+          cy.findByText("Subtotal").parent().find(".Icon-eye_filled").click();
         });
       cy.button("Done").click();
       // Rerun the query
-      cy.icon("play")
-        .last()
-        .click();
+      cy.icon("play").last().click();
 
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
@@ -913,8 +882,7 @@ describeEE("formatting > sandboxes", () => {
     it.skip("sandboxed user should be able to send pulses to Slack (metabase#14844)", () => {
       cy.viewport(1400, 1000);
 
-      cy.server();
-      cy.route("GET", "/api/collection/*").as("collection");
+      cy.intercept("GET", "/api/collection/*").as("collection");
 
       cy.sandboxTable({
         table_id: ORDERS_ID,
@@ -937,9 +905,6 @@ describeEE("formatting > sandboxes", () => {
     });
 
     it.skip("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
@@ -960,10 +925,7 @@ describeEE("formatting > sandboxes", () => {
       cy.contains("37.65");
     });
 
-    it.skip("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-
+    it("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
       remapDisplayValueToFK({
         display_value: ORDERS.USER_ID,
         name: "User ID",
@@ -1016,32 +978,36 @@ describeEE("formatting > sandboxes", () => {
       // Add positive assertion once this issue is fixed
     });
 
-    it("sandboxed user should receive sandboxed dashboard subscription", () => {
-      cy.intercept("POST", "/api/pulse/test").as("emailSent");
+    it(
+      "sandboxed user should receive sandboxed dashboard subscription",
+      { tags: "@external" },
+      () => {
+        cy.intercept("POST", "/api/pulse/test").as("emailSent");
 
-      setupSMTP();
+        setupSMTP();
 
-      cy.sandboxTable({
-        table_id: ORDERS_ID,
-        attribute_remappings: {
-          attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
-        },
-      });
+        cy.sandboxTable({
+          table_id: ORDERS_ID,
+          attribute_remappings: {
+            attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
+          },
+        });
 
-      cy.signInAsSandboxedUser();
-      visitDashboard(1);
-      cy.icon("subscription").click();
-      cy.findByText("Email it").click();
-      cy.findByPlaceholderText("Enter user names or email addresses").click();
-      cy.findByText("User 1").click();
-      cy.findByText("Send email now").click();
-      cy.wait("@emailSent");
-      cy.request("GET", "http://localhost:80/email").then(({ body }) => {
-        expect(body[0].html).to.include("Orders in a dashboard");
-        expect(body[0].html).to.include("37.65");
-        expect(body[0].html).not.to.include("148.23"); // Order for user with ID 3
-      });
-    });
+        cy.signInAsSandboxedUser();
+        visitDashboard(1);
+        cy.icon("subscription").click();
+        cy.findByText("Email it").click();
+        cy.findByPlaceholderText("Enter user names or email addresses").click();
+        cy.findByText("User 1").click();
+        cy.findByText("Send email now").click();
+        cy.wait("@emailSent");
+        cy.request("GET", "http://localhost:80/email").then(({ body }) => {
+          expect(body[0].html).to.include("Orders in a dashboard");
+          expect(body[0].html).to.include("37.65");
+          expect(body[0].html).not.to.include("148.23"); // Order for user with ID 3
+        });
+      },
+    );
   });
 });
 

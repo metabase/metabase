@@ -4,8 +4,8 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
+import { getColorsForValues } from "metabase/lib/colors/charts";
 import { nestedSettings } from "./nested";
-import { getColorsForValues } from "metabase/lib/colors";
 
 export function keyForSingleSeries(single) {
   // _seriesKey is sometimes set by transformSeries
@@ -20,10 +20,10 @@ export function seriesSetting({
   ...def
 } = {}) {
   const settingId = "series_settings";
-  const colorSettingId = `${settingId}.colors`;
+  const colorSettingId = "series_settings.colors";
 
   const COMMON_SETTINGS = {
-    // title, display, and color don't need widgets because they're handled direclty in ChartNestedSettingSeries
+    // title, and color don't need widgets because they're handled direclty in ChartNestedSettingSeries
     title: {
       getDefault: (single, settings, { series, settings: vizSettings }) => {
         const legacyTitles = vizSettings["graph.series_labels"];
@@ -37,6 +37,22 @@ export function seriesSetting({
       },
     },
     display: {
+      widget: "segmentedControl",
+      title: t`Display type`,
+      props: {
+        options: [
+          { value: "line", icon: "line" },
+          { value: "area", icon: "area" },
+          { value: "bar", icon: "bar" },
+        ],
+      },
+      getHidden: (single, settings, { series }) => {
+        return (
+          !["line", "area", "bar", "combo"].includes(single.card.display) ||
+          settings["stackable.stack_type"] != null
+        );
+      },
+
       getDefault: (single, settings, { series }) => {
         if (single.card.display === "combo") {
           const index = series.indexOf(single);
@@ -109,9 +125,10 @@ export function seriesSetting({
       readDependencies: ["display"],
     },
     axis: {
-      title: t`Which axis?`,
+      title: t`Y-axis position`,
       widget: "segmentedControl",
       default: null,
+      getHidden: (single, settings) => single.card.display === "row",
       props: {
         options: [
           { name: t`Auto`, value: null },
@@ -119,6 +136,7 @@ export function seriesSetting({
           { name: t`Right`, value: "right" },
         ],
       },
+      readDependencies: ["display"],
     },
     show_series_values: {
       title: t`Show values for this series`,
@@ -133,18 +151,20 @@ export function seriesSetting({
     },
   };
 
-  function getSettingDefintionsForSingleSeries(series, object, settings) {
+  function getSettingDefinitionsForSingleSeries(series, object, settings) {
     return COMMON_SETTINGS;
   }
 
   return {
     ...nestedSettings(settingId, {
+      getHidden: ([{ card }], settings, { isDashboard }) =>
+        !isDashboard || card?.display === "waterfall",
+      getSection: (series, settings, { isDashboard }) =>
+        isDashboard ? t`Display` : t`Style`,
       objectName: "series",
-      getHidden: ([{ card }], settings, extraProps) =>
-        card.display === "waterfall",
       getObjects: (series, settings) => series,
       getObjectKey: keyForSingleSeries,
-      getSettingDefintionsForObject: getSettingDefintionsForSingleSeries,
+      getSettingDefinitionsForObject: getSettingDefinitionsForSingleSeries,
       component: ChartNestedSettingSeries,
       readDependencies: [colorSettingId, ...readDependencies],
       noPadding: true,

@@ -7,25 +7,28 @@ import {
   scaleTime,
 } from "@visx/scale";
 import {
+  getX,
+  getY,
+} from "metabase/static-viz/components/XYChart/utils/series";
+import type {
+  ContinuousDomain,
+  Range,
+} from "metabase/visualizations/shared/types/scale";
+import type {
   SeriesDatum,
   XAxisType,
-  ContiniousDomain,
-  Range,
   Series,
   YAxisType,
   HydratedSeries,
   StackedDatum,
+  XScale,
 } from "metabase/static-viz/components/XYChart/types";
-import {
-  getX,
-  getY,
-} from "metabase/static-viz/components/XYChart/utils/series";
 
 export const createXScale = (
   series: Series[],
   range: Range,
   axisType: XAxisType,
-) => {
+): XScale => {
   const hasBars = series.some(series => series.type === "bar");
   const isOrdinal = axisType === "ordinal";
 
@@ -40,7 +43,7 @@ export const createXScale = (
     const xScale = scaleBand({
       domain,
       range,
-      padding: 0.1,
+      padding: 0.2,
     });
 
     return {
@@ -88,7 +91,7 @@ export const createXScale = (
 const calculateYDomain = (
   series: HydratedSeries[],
   goalValue?: number,
-): ContiniousDomain => {
+): ContinuousDomain => {
   const values = series
     .flatMap<SeriesDatum | StackedDatum>(
       series => series.stackedData ?? series.data,
@@ -128,7 +131,7 @@ export const calculateYDomains = (
 };
 
 export const createYScale = (
-  domain: ContiniousDomain,
+  domain: ContinuousDomain,
   range: Range,
   axisType: YAxisType,
 ) => {
@@ -156,8 +159,8 @@ export const createYScale = (
 export const createYScales = (
   range: Range,
   axisType: YAxisType,
-  leftYDomain?: ContiniousDomain,
-  rightYDomain?: ContiniousDomain,
+  leftYDomain?: ContinuousDomain,
+  rightYDomain?: ContinuousDomain,
 ) => {
   return {
     yScaleLeft: leftYDomain ? createYScale(leftYDomain, range, axisType) : null,

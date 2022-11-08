@@ -11,6 +11,8 @@
             [metabase.driver.util :as driver.u]
             [metabase.events :as events]
             [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.query-processor.interface :as qp.i]
@@ -288,31 +290,29 @@
   [database-or-id]
   (db/select Table, :db_id (u/the-id database-or-id), :active true, :visibility_type nil))
 
+(defmulti name-for-logging
+  "Return an appropriate string for logging an object in sync logging messages. Should be something like
 
-;; The `name-for-logging` function is used all over the sync code to make sure we have easy access to consistently
-;; formatted descriptions of various objects.
+    \"postgres Database 'test-data'\"
 
-(defprotocol ^:private NameForLogging
-  (name-for-logging [this]
-    "Return an appropriate string for logging an object in sync logging messages. Should be something like \"postgres
-  Database 'test-data'\""))
+  This function is used all over the sync code to make sure we have easy access to consistently formatted descriptions
+  of various objects."
+  {:arglists '([instance])}
+  mi/model)
 
-(extend-protocol NameForLogging
-  i/DatabaseInstance
-  (name-for-logging [{database-name :name, id :id, engine :engine,}]
-    (trs "{0} Database {1} ''{2}''" (name engine) (or id "") database-name))
+(defmethod name-for-logging Database
+  [{database-name :name, id :id, engine :engine,}]
+  (trs "{0} Database {1} ''{2}''" (name engine) (or id "") database-name))
 
-  i/TableInstance
-  (name-for-logging [{schema :schema, id :id, table-name :name}]
-    (trs "Table {0} ''{1}''" (or id "") (str (when (seq schema) (str schema ".")) table-name)))
+(defmethod name-for-logging Table [{schema :schema, id :id, table-name :name}]
+  (trs "Table {0} ''{1}''" (or id "") (str (when (seq schema) (str schema ".")) table-name)))
 
-  i/FieldInstance
-  (name-for-logging [{field-name :name, id :id}]
-    (trs "Field {0} ''{1}''" (or id "") field-name))
+(defmethod name-for-logging Field [{field-name :name, id :id}]
+  (trs "Field {0} ''{1}''" (or id "") field-name))
 
-  i/ResultColumnMetadataInstance
-  (name-for-logging [{field-name :name}]
-    (trs "Field ''{0}''" field-name)))
+;;; this is used for result metadata stuff.
+(defmethod name-for-logging :default [{field-name :name}]
+  (trs "Field ''{0}''" field-name))
 
 (defn calculate-hash
   "Calculate a cryptographic hash on `clj-data` and return that hash as a string"
@@ -458,13 +458,17 @@
    database  :- i/DatabaseInstance
    {:keys [steps] :as sync-md} :- SyncOperationMetadata]
   (try
-    (db/insert-many! TaskHistory
-      (cons (create-task-history operation database sync-md)
-            (for [[step-name step-info] steps
-                  :let                  [task-details (dissoc step-info :start-time :end-time :log-summary-fn)]]
-              (assoc (create-task-history step-name database step-info)
-                :task_details (when (seq task-details)
-                                task-details)))))
+    (->> (for [[step-name step-info] steps
+               :let                  [task-details (dissoc step-info :start-time :end-time :log-summary-fn)]]
+           (assoc (create-task-history step-name database step-info)
+                  :task_details (when (seq task-details)
+                                  task-details)))
+         (cons (create-task-history operation database sync-md))
+         ;; Using `insert!` instead of `insert-many!` here to make sure
+         ;; `post-insert` is triggered
+         (map #(db/insert! TaskHistory %))
+         (map :id)
+         doall)
     (catch Throwable e
       (log/warn e (trs "Error saving task history")))))
 

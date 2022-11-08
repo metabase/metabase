@@ -5,7 +5,12 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
-} from "__support__/e2e/cypress";
+  getFullName,
+} from "__support__/e2e/helpers";
+
+import { USERS } from "__support__/e2e/cypress_data";
+
+const { admin } = USERS;
 
 describe("scenarios > organization > timelines > collection", () => {
   beforeEach(() => {
@@ -91,7 +96,11 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByRole("button", { name: "calendar icon" }).click();
+
+      // New event modal
+      cy.get(".Modal").within(() => {
+        cy.findByRole("button", { name: "calendar icon" }).click();
+      });
       cy.findByText("15").click();
       cy.findByText("Done").click();
       cy.findByText("Create").click();
@@ -127,15 +136,15 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByRole("button", { name: "calendar icon" }).click();
+
+      // New event modal
+      cy.get(".Modal").within(() => {
+        cy.findByRole("button", { name: "calendar icon" }).click();
+      });
       cy.findByText("15").click();
       cy.findByText("Add time").click();
-      cy.findByLabelText("Hours")
-        .clear()
-        .type("10");
-      cy.findByLabelText("Minutes")
-        .clear()
-        .type("20");
+      cy.findByLabelText("Hours").clear().type("10");
+      cy.findByLabelText("Minutes").clear().type("20");
       cy.findByText("Done").click();
       cy.findByText("Create").click();
       cy.wait("@createEvent");
@@ -152,7 +161,11 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByRole("button", { name: "calendar icon" }).click();
+
+      // New event modal
+      cy.get(".Modal").within(() => {
+        cy.findByRole("button", { name: "calendar icon" }).click();
+      });
       cy.findByText("15").click();
       cy.findByText("Add time").click();
       cy.findByText("Done").click();
@@ -170,9 +183,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       openMenu("RC1");
       cy.findByText("Edit event").click();
-      cy.findByLabelText("Event name")
-        .clear()
-        .type("RC2");
+      cy.findByLabelText("Event name").clear().type("RC2");
       cy.button("Update").click();
       cy.wait("@updateEvent");
 
@@ -349,9 +360,7 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
       cy.findByText("Edit timeline details").click();
-      cy.findByLabelText("Name")
-        .clear()
-        .type("Launches");
+      cy.findByLabelText("Name").clear().type("Launches");
       cy.findByText("Update").click();
       cy.wait("@updateTimeline");
 
@@ -360,7 +369,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
     it("should move a timeline", () => {
       cy.createTimelineWithEvents({
-        timeline: { name: "Our analytics events", default: true },
+        timeline: { name: "Events", default: true },
         events: [{ name: "RC1" }],
       });
 
@@ -369,12 +378,15 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Move timeline").click();
 
       getModal().within(() => {
-        cy.findByText("First collection").click();
+        cy.findByText("My personal collection").click();
         cy.button("Move").click();
         cy.wait("@updateTimeline");
       });
 
-      cy.findByText("First collection events").should("be.visible");
+      cy.findByText("Our analytics events").should("be.visible");
+      cy.findByText(`${getFullName(admin)}'s Personal Collection`).should(
+        "be.visible",
+      );
     });
 
     it("should archive a timeline and undo", () => {
@@ -491,20 +503,16 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.wait("@createTimeline");
       cy.icon("close").click();
 
-      cy.icon("pencil").click();
-      cy.findByText("Edit this collection").click();
-      cy.findByLabelText("Name")
+      cy.findByDisplayValue("First collection")
         .clear()
-        .type("1st collection");
-      cy.button("Update").click();
+        .type("1st collection")
+        .blur();
       cy.wait("@updateCollection");
 
       cy.icon("calendar").click();
       openMenu("1st collection events");
       cy.findByText("Edit timeline details").click();
-      cy.findByLabelText("Name")
-        .clear()
-        .type("Releases");
+      cy.findByLabelText("Name").clear().type("Releases");
       cy.button("Update").click();
       cy.wait("@updateTimeline");
       cy.findByText("Releases");

@@ -4,7 +4,8 @@ import { SessionApi, UtilApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadLocalization } from "metabase/lib/i18n";
-import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
+import { deleteSession } from "metabase/lib/auth";
+import * as Urls from "metabase/lib/urls";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUser } from "metabase/selectors/user";
@@ -42,42 +43,38 @@ export const refreshSession = createThunkAction(
 export const LOGIN = "metabase/auth/LOGIN";
 export const login = createThunkAction(
   LOGIN,
-  (data: LoginData, redirectUrl = "/") => async (dispatch: any) => {
-    await SessionApi.create(data);
-    await dispatch(refreshSession());
-    trackLogin();
+  (data: LoginData, redirectUrl = "/") =>
+    async (dispatch: any) => {
+      await SessionApi.create(data);
+      await dispatch(refreshSession());
+      trackLogin();
 
-    dispatch(push(redirectUrl));
-  },
+      dispatch(push(redirectUrl));
+    },
 );
 
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
 export const loginGoogle = createThunkAction(
   LOGIN_GOOGLE,
-  (token: string, redirectUrl = "/") => async (dispatch: any) => {
-    try {
+  (token: string, redirectUrl = "/") =>
+    async (dispatch: any) => {
       await SessionApi.createWithGoogleAuth({ token });
       await dispatch(refreshSession());
       trackLoginGoogle();
 
       dispatch(push(redirectUrl));
-    } catch (error) {
-      await clearGoogleAuthCredentials();
-      throw error;
-    }
-  },
+    },
 );
 
 export const LOGOUT = "metabase/auth/LOGOUT";
-export const logout = createThunkAction(LOGOUT, () => {
+export const logout = createThunkAction(LOGOUT, (redirectUrl: string) => {
   return async (dispatch: any) => {
     await deleteSession();
-    await clearGoogleAuthCredentials();
     await dispatch(clearCurrentUser());
     await dispatch(refreshLocale());
     trackLogout();
 
-    dispatch(push("/auth/login"));
+    dispatch(push(Urls.login(redirectUrl)));
     window.location.reload(); // clears redux state and browser caches
   };
 });
@@ -100,13 +97,18 @@ export const resetPassword = createThunkAction(
   },
 );
 
-export const VALIDATE_PASSWORD = "metabase/auth/VALIDATE_PASSWORD";
-export const validatePassword = createThunkAction(
-  VALIDATE_PASSWORD,
-  (password: string) => async () => {
+export const validatePassword = async (password: string) => {
+  const error = MetabaseSettings.passwordComplexityDescription(password);
+  if (error) {
+    return error;
+  }
+
+  try {
     await UtilApi.password_check({ password });
-  },
-);
+  } catch (error) {
+    return getIn(error, ["data", "errors", "password"]);
+  }
+};
 
 export const VALIDATE_PASSWORD_TOKEN = "metabase/auth/VALIDATE_TOKEN";
 export const validatePasswordToken = createThunkAction(

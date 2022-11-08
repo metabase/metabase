@@ -1,4 +1,21 @@
+---
+title: Driver interface changelog
+---
+
 # Driver Interface Changelog
+
+## Metabase 0.45.0
+
+- `metabase.driver.sql-jdbc.connection/details->connection-spec-for-testing-connection` has been removed in Metabase
+  0.45.0, because it leaked SSH tunnels. See [#24445](https://github.com/metabase/metabase/issues/24445). If you are
+  using this function, please update your code to use
+  `metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection` instead, which properly cleans up
+  after itself.
+
+### New methods
+
+- `metabase.driver.sql-jdbc.sync.describe-table-fields` has been added. Implement this method if you want to override
+  the default behavior for fetching field metadata (such as types) for a table.
 
 ## Metabase 0.43.0
 
@@ -119,7 +136,7 @@ The following methods and vars are slated for removal in Metabase 0.45.0 unless 
 
 ## Older versions
 
-Prior to 0.42.0, this information was tracked in our Wiki. You can find changes for versions prior to 0.42.0 in the
+Before 0.42.0, this information was tracked in our Wiki. You can find changes for versions before 0.42.0 in the
 table below:
 
 | Version | Wiki page |

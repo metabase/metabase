@@ -1,5 +1,5 @@
 // Imported from drillthroughs.e2e.spec.js
-import { restore, visitDashboard } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -95,8 +95,8 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               // Add previously created question to the new dashboard
               cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
                 cardId: CARD_ID,
-                sizeX: 16,
-                sizeY: 12,
+                size_x: 16,
+                size_y: 12,
               });
 
               visitDashboard(DASHBOARD_ID);
@@ -167,8 +167,8 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
                     card_id: QUESTION_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 10,
-                    sizeY: 8,
+                    size_x: 10,
+                    size_y: 8,
                     parameter_mappings: [
                       {
                         parameter_id: "91bace6e",
@@ -207,9 +207,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 // This class shows up only when card title is already re-rendered.
 // That's why we don't have to wait for a specific XHR, but this works only for SCALAR questions.
 function clickScalarCardTitle(card_name) {
-  cy.get(".Scalar-title")
-    .contains(card_name)
-    .click();
+  cy.findByTestId("scalar-title").contains(card_name).click();
 }
 
 function addCardToNewDashboard(dashboard_name, card_id) {
@@ -218,8 +216,8 @@ function addCardToNewDashboard(dashboard_name, card_id) {
       // Add a card to it (with predefined size 6,4 simply for readability)
       cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
         cardId: card_id,
-        sizeX: 6,
-        sizeY: 4,
+        size_x: 6,
+        size_y: 4,
       });
       // Visit newly created dashboard
       visitDashboard(DASHBOARD_ID);

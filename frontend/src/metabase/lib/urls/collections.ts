@@ -1,13 +1,23 @@
 import slugg from "slugg";
 
-import { Collection, CollectionId } from "metabase-types/api";
+import {
+  Collection as BaseCollection,
+  CollectionId,
+  RegularCollectionId,
+} from "metabase-types/api";
 
+import { dataApp } from "./dataApps";
 import { appendSlug, extractEntityId } from "./utils";
 
 export const newCollection = (collectionId: CollectionId) =>
   `/collection/${collectionId}/new_collection`;
 
 export const otherUsersPersonalCollections = () => "/collection/users";
+
+type Collection = Pick<
+  BaseCollection,
+  "id" | "name" | "originalName" | "personal_owner_id" | "app_id"
+>;
 
 function slugifyPersonalCollection(collection: Collection) {
   // Current user's personal collection name is replaced with "Your personal collection"
@@ -36,6 +46,21 @@ export function collection(collection?: Collection) {
   if (isSystemCollection) {
     const id = collection && collection.id ? collection.id : "root";
     return `/collection/${id}`;
+  }
+
+  // Data app is another kind of Metabase entity build on top of a collection
+  // Each app has a 1:1 relation with a collection
+  // (this collection isn't shown in Metabase though, the app serves as a "wrapper")
+  // When building collection URLs we should take `app_id` into account
+  if (typeof collection.app_id === "number") {
+    return dataApp(
+      {
+        id: collection.id as RegularCollectionId,
+        app_id: collection.app_id,
+        collection: collection as BaseCollection,
+      },
+      { mode: "preview" },
+    );
   }
 
   const isPersonalCollection = typeof collection.personal_owner_id === "number";

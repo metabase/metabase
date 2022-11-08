@@ -1,6 +1,7 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require [clojure.test :refer :all]
+            [metabase.api.user :as api.user]
             [metabase.http-client :as client]
             [metabase.models :refer [Card Collection Dashboard LoginHistory
                                      PermissionsGroup PermissionsGroupMembership User]]
@@ -34,6 +35,7 @@
       :is_active        true
       :last_login       false
       :ldap_auth        false
+      :sso_source       nil
       :login_attributes nil
       :updated_at       true
       :locale           nil})))
@@ -253,7 +255,7 @@
       (mt/with-temp* [LoginHistory [_ {:user_id   (mt/user->id :rasta)
                                        :device_id (str (java.util.UUID/randomUUID))
                                        :timestamp #t "2021-03-18T19:52:41.808482Z"}]
-                      Card [card1 {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+                      Card [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -271,8 +273,8 @@
                    mt/boolean-ids-and-timestamps
                    (dissoc :is_qbnewb :last_login))))))
     (testing "check that `has_question_and_dashboard` is `true`."
-      (mt/with-temp* [Dashboard [dash1 {:name "dash1" :creator_id (mt/user->id :rasta)}]
-                      Card      [card1 {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+      (mt/with-temp* [Dashboard [_ {:name "dash1" :creator_id (mt/user->id :rasta)}]
+                      Card      [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -377,14 +379,6 @@
 (deftest create-user-validate-input-test
   (testing "POST /api/user"
     (testing "Test input validations"
-      (is (= {:errors {:first_name "value must be a non-blank string."}}
-             (mt/user-http-request :crowberto :post 400 "user"
-                                   {})))
-
-      (is (= {:errors {:last_name "value must be a non-blank string."}}
-             (mt/user-http-request :crowberto :post 400 "user"
-                                   {:first_name "whatever"})))
-
       (is (= {:errors {:email "value must be a valid email address."}}
              (mt/user-http-request :crowberto :post 400 "user"
                                    {:first_name "whatever"
@@ -418,7 +412,7 @@
                                  :user_group_memberships (group-or-ids->user-group-memberships
                                                           [(perms-group/all-users) group-1 group-2])})
           (is (= #{"All Users" "Group 1" "Group 2"}
-                 (user-test/user-group-names (User :email email)))))))
+                 (user-test/user-group-names (db/select-one User :email email)))))))
 
     (testing (str "If you forget the All Users group it should fail, because you cannot have a User that's not in the "
                   "All Users group. The whole API call should fail and no user should be created, even though the "
@@ -506,7 +500,7 @@
                                            :last_name    "Era"
                                            :email        "cam.era@metabase.com"
                                            :is_superuser true}]
-                      Collection [coll]]
+                      Collection [_]]
         (letfn [(user [] (into {} (-> (db/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
                                       (hydrate :personal_collection_id :personal_collection_name)
                                       (dissoc :id :personal_collection_id :common_name))))]
@@ -564,6 +558,109 @@
                                           :login_attributes {:test "value"}})
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
+
+(deftest updated-user-name-test
+  (testing "Test that `metabase.api.user/updated-user-name` works as intended."
+    (let [names     {:first_name "Test" :last_name "User"} ;; in a real user map, `:first_name` and `:last_name` will always be present
+          nonames   {:first_name nil :last_name nil}
+          firstname {:first_name "Test" :last_name nil}
+          lastname  {:first_name nil :last_name "User"}]
+      ;; starting with names
+      (is (nil? (#'api.user/updated-user-name names {})))
+      (is (nil? (#'api.user/updated-user-name names {:first_name "Test"})))
+      (is (nil? (#'api.user/updated-user-name names {:last_name "User"})))
+      (is (nil? (#'api.user/updated-user-name names {:first_name "Test" :last_name "User"})))
+      (is (= {:first_name "T" :last_name "U"} (#'api.user/updated-user-name names {:first_name "T" :last_name "U"})))
+      (is (= {:first_name "Test" :last_name "U"} (#'api.user/updated-user-name names {:last_name "U"})))
+      (is (= {:first_name "T" :last_name "User"} (#'api.user/updated-user-name names {:first_name "T"})))
+      ;; starting with 'nil' names
+      (is (nil? (#'api.user/updated-user-name nonames {})))
+      (is (nil? (#'api.user/updated-user-name nonames {:first_name nil})))
+      (is (nil? (#'api.user/updated-user-name nonames {:last_name nil})))
+      (is (nil? (#'api.user/updated-user-name nonames {:first_name nil :last_name nil})))
+      (is (= {:first_name "T" :last_name "U"} (#'api.user/updated-user-name nonames {:first_name "T" :last_name "U"})))
+      (is (= {:first_name nil :last_name "U"} (#'api.user/updated-user-name nonames {:last_name "U"})))
+      (is (= {:first_name "T" :last_name nil} (#'api.user/updated-user-name nonames {:first_name "T"})))
+      ;; starting with one name nil
+      (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test" :last_name nil})))
+      (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test"})))
+      (is (nil? (#'api.user/updated-user-name lastname {:first_name nil :last_name "User"})))
+      (is (nil? (#'api.user/updated-user-name lastname {:last_name "User"}))))))
+
+(deftest update-first-name-last-name-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that we can update a user's first and last names"
+      (mt/with-temp User [{user-id :id} {:first_name   "Blue Ape"
+                                         :last_name    "Ron"
+                                         :email        "blueronny@metabase.com"
+                                         :is_superuser true}]
+        (letfn [(change-user-via-api! [m]
+                  (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
+                      (hydrate :personal_collection_id :personal_collection_name)
+                      (dissoc :user_group_memberships :personal_collection_id :email :is_superuser)
+                      (#(apply (partial dissoc %) (keys @user-defaults)))
+                      mt/boolean-ids-and-timestamps))]
+          (testing "Name keys ommitted does not update the user"
+            (is (= {:first_name               "Blue Ape"
+                    :last_name                "Ron"
+                    :common_name              "Blue Ape Ron"
+                    :personal_collection_name "Blue Ape Ron's Personal Collection"}
+                   (change-user-via-api! {}))))
+          (testing "Name keys having the same values does not update the user"
+            (is (= {:first_name               "Blue Ape"
+                    :last_name                "Ron"
+                    :common_name              "Blue Ape Ron"
+                    :personal_collection_name "Blue Ape Ron's Personal Collection"}
+                   (change-user-via-api! {:first_name "Blue Ape"
+                                          :last_name  "Ron"}))))
+          (testing "Name keys explicitly set to `nil` updates the user"
+            (is (= {:first_name               nil
+                    :last_name                nil
+                    :common_name              "blueronny@metabase.com"
+                    :personal_collection_name "blueronny@metabase.com's Personal Collection"}
+                   (change-user-via-api! {:first_name nil
+                                          :last_name  nil}))))
+          (testing "Nil keys compare correctly with nil names and cause no change."
+            (is (= {:first_name               nil
+                    :last_name                nil
+                    :common_name              "blueronny@metabase.com"
+                    :personal_collection_name "blueronny@metabase.com's Personal Collection"}
+                   (change-user-via-api! {:first_name nil
+                                          :last_name  nil}))))
+          (testing "First/last_name keys are sent but one is unchanged, updates only the altered key for the user"
+            (is (= {:first_name               nil
+                    :last_name                "Apron"
+                    :common_name              "Apron"
+                    :personal_collection_name "Apron's Personal Collection"}
+                   (change-user-via-api! {:first_name nil
+                                          :last_name  "Apron"}))))
+          (testing "Both new name keys update the user"
+            (is (= {:first_name               "Blue"
+                    :last_name                nil
+                    :common_name              "Blue"
+                    :personal_collection_name "Blue's Personal Collection"}
+                   (change-user-via-api! {:first_name "Blue"
+                                          :last_name  nil})))))))))
+
+(deftest update-sso-user-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that we do not update a user's first and last names if they are an SSO user."
+      (mt/with-temp User [{user-id :id} {:first_name   "SSO"
+                                         :last_name    "User"
+                                         :email        "sso-user@metabase.com"
+                                         :sso_source   "jwt"
+                                         :is_superuser true}]
+        (letfn [(change-user-via-api! [expected-status m]
+                  (mt/user-http-request :crowberto :put expected-status (str "user/" user-id) m))]
+          (testing "`:first_name` changes are rejected"
+            (is (= {:errors {:first_name "Editing first name is not allowed for SSO users."}}
+                   (change-user-via-api! 400 {:first_name "NOT-SSO"}))))
+          (testing "`:last_name` changes are rejected"
+            (is (= {:errors {:last_name "Editing last name is not allowed for SSO users."}}
+                   (change-user-via-api! 400 {:last_name "USER"}))))
+          (testing "New names that are the same as existing names succeed because there is no change."
+            (is (partial= {:first_name "SSO" :last_name  "User"}
+                          (change-user-via-api! 200 {:first_name "SSO" :last_name  "User"})))))))))
 
 (deftest update-email-check-if-already-used-test
   (testing "PUT /api/user/:id"
@@ -810,11 +907,12 @@
 
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")
-      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
+      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                         google-auth-enabled    true]
         (mt/with-temp User [user {:google_auth true}]
           (db/update! User (u/the-id user)
             :is_active false)
-          (mt/with-temporary-setting-values [google-auth-client-id nil]
+          (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :google_auth false}
                    (mt/derecordize (db/select-one [User :is_active :google_auth] :id (u/the-id user)))))))))))
@@ -910,7 +1008,7 @@
       (testing "shouldn't be allowed to set someone else's status"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403
-                                     (format "user/%d/modal/endpoint"
+                                     (format "user/%d/modal/%s"
                                              (mt/user->id :trashbird)
                                              endpoint))))))))
 

@@ -20,11 +20,7 @@ export class Dashboard extends Component {
         noBackground
       >
         {() => (
-          <DashboardGrid
-            dashboard={dashboard}
-            {...props}
-            className={"spread"}
-          />
+          <DashboardGrid dashboard={dashboard} {...props} className="spread" />
         )}
       </LoadingAndErrorWrapper>
     );

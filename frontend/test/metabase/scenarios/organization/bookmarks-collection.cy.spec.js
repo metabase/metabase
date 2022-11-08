@@ -1,4 +1,10 @@
-import { restore, popover, navigationSidebar } from "__support__/e2e/cypress";
+import {
+  getCollectionIdFromSlug,
+  restore,
+  popover,
+  navigationSidebar,
+  visitCollection,
+} from "__support__/e2e/helpers";
 import { USERS, SAMPLE_DB_TABLES } from "__support__/e2e/cypress_data";
 
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
@@ -27,19 +33,28 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.icon("bookmark").should("not.exist");
   });
 
-  it("can add and remove bookmarks from collection from its page", () => {
-    cy.visit("/collection/1");
+  it("can add, update bookmark name when collection name is updated, and remove bookmarks from collection from its page", () => {
+    getCollectionIdFromSlug("first_collection", id => {
+      visitCollection(id);
+    });
 
     // Add bookmark
     cy.icon("bookmark").click();
 
     navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/);
-      cy.findByText(adminPersonalCollectionName);
+      cy.findAllByText("First collection").should("have.length", 2);
 
       // Once there is a list of bookmarks,
       // we add a heading to the list of collections below the list of bookmarks
       getSectionTitle("Collections");
+    });
+
+    // Rename bookmarked collection
+    cy.findByTestId("collection-name-heading").click().type(" 2").blur();
+
+    navigationSidebar().within(() => {
+      cy.findAllByText("First collection 2").should("have.length", 2);
     });
 
     // Remove bookmark
@@ -48,9 +63,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
     });
 
     navigationSidebar().within(() => {
-      cy.findByText(adminPersonalCollectionName).should("not.exist");
-
-      getSectionTitle(/Bookmarks/).should("not.exist");
+      cy.findAllByText("First collection 2").should("have.length", 1);
     });
   });
 
@@ -171,11 +184,10 @@ function bookmarkThenArchive(name) {
 }
 
 function pin(name) {
-  cy.get("td")
-    .contains(name)
-    .closest("tr")
-    .find(".Icon-pin")
-    .click();
+  openEllipsisMenuFor(name);
+  popover().within(() => {
+    cy.findByText("Pin this").click();
+  });
 }
 
 function archive(name) {

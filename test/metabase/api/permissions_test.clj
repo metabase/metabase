@@ -1,6 +1,7 @@
 (ns metabase.api.permissions-test
   "Tests for `/api/permissions` endpoints."
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.api.permissions :as api.permissions]
             [metabase.models :refer [Database PermissionsGroup PermissionsGroupMembership Table User]]
             [metabase.models.permissions :as perms]
@@ -39,12 +40,12 @@
                               :name         (s/eq "Administrators")
                               :member_count su/IntGreaterThanZero}
                              (get id->group (:id (perms-group/admin)))))))]
-      (let [id->group (u/key-by :id (fetch-groups))]
+      (let [id->group (m/index-by :id (fetch-groups))]
         (check-default-groups-returned id->group))
 
       (testing "should return empty groups"
         (mt/with-temp PermissionsGroup [group]
-          (let [id->group (u/key-by :id (fetch-groups))]
+          (let [id->group (m/index-by :id (fetch-groups))]
             (check-default-groups-returned id->group)
             (testing "empty group should be returned"
               (is (schema= {:id           su/IntGreaterThanZero
@@ -70,7 +71,7 @@
   (testing "GET /permissions/group/:id"
     (let [{:keys [members]} (mt/user-http-request
                              :crowberto :get 200 (format "permissions/group/%d" (:id (perms-group/all-users))))
-          id->member        (u/key-by :user_id members)]
+          id->member        (m/index-by :user_id members)]
       (is (schema= {:first_name    (s/eq "Crowberto")
                     :last_name     (s/eq "Corv")
                     :email         (s/eq "crowberto@metabase.com")
@@ -115,50 +116,52 @@
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
-      (mt/with-temp PermissionsGroup [group]
-        (mt/user-http-request
-         :crowberto :put 200 "permissions/graph"
-         (assoc-in (perms/data-perms-graph)
-                   [:groups (u/the-id group) (mt/id) :data :schemas]
-                   {"PUBLIC" {(mt/id :venues) :all}}))
-        (is (= {(mt/id :venues) :all}
-               (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))
-
-      (testing "Table-specific perms"
+      ;; do not inline db-id, the DB should exist when we query the data-perms-graph
+      (let [db-id (mt/id :venues)]
         (mt/with-temp PermissionsGroup [group]
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
            (assoc-in (perms/data-perms-graph)
                      [:groups (u/the-id group) (mt/id) :data :schemas]
-                     {"PUBLIC" {(mt/id :venues) {:read :all, :query :segmented}}}))
-          (is (= {(mt/id :venues) {:read  :all
-                                   :query :segmented}}
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"]))))))
+                     {"PUBLIC" {db-id :all}}))
+          (is (= {db-id :all}
+                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))))
+
+      (testing "Table-specific perms"
+        ;; do not inline db-id, the DB should exist when we query the data-perms-graph
+        (let [db-id (mt/id :venues)]
+          (mt/with-temp PermissionsGroup [group]
+            (mt/user-http-request
+             :crowberto :put 200 "permissions/graph"
+             (assoc-in (perms/data-perms-graph)
+                       [:groups (u/the-id group) (mt/id) :data :schemas]
+                       {"PUBLIC" {db-id {:read :all, :query :segmented}}}))
+            (is (= {db-id {:read  :all
+                           :query :segmented}}
+                   (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas "PUBLIC"])))))))
 
     (testing "permissions for new db"
-      (let [new-id (inc (mt/id))]
-        (mt/with-temp* [PermissionsGroup [group]
-                        Database         [{db-id :id}]
-                        Table            [_ {:db_id db-id}]]
-          (mt/user-http-request
-           :crowberto :put 200 "permissions/graph"
-           (assoc-in (perms/data-perms-graph)
-                     [:groups (u/the-id group) db-id :data :schemas]
-                     :all))
-          (is (= :all
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas]))))))
+      (mt/with-temp* [PermissionsGroup [group]
+                      Database         [{db-id :id}]
+                      Table            [_ {:db_id db-id}]]
+        (mt/user-http-request
+         :crowberto :put 200 "permissions/graph"
+         (assoc-in (perms/data-perms-graph)
+                   [:groups (u/the-id group) db-id :data :schemas]
+                   :all))
+        (is (= :all
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))
 
     (testing "permissions for new db with no tables"
-      (let [new-id (inc (mt/id))]
-        (mt/with-temp* [PermissionsGroup [group]
-                        Database         [{db-id :id}]]
-          (mt/user-http-request
-           :crowberto :put 200 "permissions/graph"
-           (assoc-in (perms/data-perms-graph)
-                     [:groups (u/the-id group) db-id :data :schemas]
-                     :all))
-          (is (= :all
-                 (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas]))))))))
+      (mt/with-temp* [PermissionsGroup [group]
+                      Database         [{db-id :id}]]
+        (mt/user-http-request
+         :crowberto :put 200 "permissions/graph"
+         (assoc-in (perms/data-perms-graph)
+                   [:groups (u/the-id group) db-id :data :schemas]
+                   :all))
+        (is (= :all
+               (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas])))))))
 
 
 ;;; +---------------------------------------------- permissions membership apis -----------------------------------------------------------+

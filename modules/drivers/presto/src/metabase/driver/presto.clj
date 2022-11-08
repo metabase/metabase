@@ -7,9 +7,9 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
             [metabase.driver.presto-common :as presto-common]
             [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.context :as qp.context]
@@ -18,12 +18,21 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [metabase.util.ssh :as ssh]
             [schema.core :as s]))
 
 (driver/register! :presto, :parent :presto-common)
+
+(defmethod sql.qp/cast-temporal-string [:presto :Coercion/ISO8601->DateTime]
+  [_ _coercion-strategy expr]
+  (hx/->timestamp expr))
+
+(defmethod sql.qp/cast-temporal-string [:presto :Coercion/ISO8601->Date]
+  [_ _coercion-strategy expr]
+  (hx/->date expr))
 
 ;;; Presto API helpers
 
@@ -189,7 +198,7 @@
 
 (s/defn ^:private database->all-schemas :- #{su/NonBlankString}
   "Return a set of all schema names in this `database`."
-  [driver {{:keys [catalog schema] :as details} :details :as database}]
+  [driver {{:keys [catalog] :as details} :details :as _database}]
   (let [sql            (presto-common/describe-catalog-sql driver catalog)
         {:keys [rows]} (execute-query-for-sync details sql)]
     (set (map first rows))))
@@ -203,7 +212,7 @@
     (catch Throwable _
       false)))
 
-(defn- describe-schema [driver {{:keys [catalog user] :as details} :details :as db} {:keys [schema]}]
+(defn- describe-schema [driver {{:keys [catalog] :as details} :details :as _db} {:keys [schema]}]
   (let [sql (presto-common/describe-schema-sql driver catalog schema)]
     (set (for [[table-name & _] (:rows (execute-query-for-sync details sql))
                :when            (have-select-privilege? driver details schema table-name)]
@@ -230,10 +239,8 @@
 
 (defmethod driver/execute-reducible-query :presto
   [driver
-   {database-id                  :database
-    :keys                        [settings]
+   {:keys                        [settings]
     {sql :query, params :params} :native
-    query-type                   :type
     :as                          outer-query}
    context
    respond]
@@ -249,13 +256,12 @@
   [_ message]
   (condp re-matches message
     #"^java.net.ConnectException: Connection refused.*$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^clojure.lang.ExceptionInfo: Catalog .* does not exist.*$"
-    (driver.common/connection-error-messages :database-name-incorrect)
+    :database-name-incorrect
 
     #"^java.net.UnknownHostException.*$"
-    (driver.common/connection-error-messages :invalid-hostname)
+    :invalid-hostname
 
-    #".*"                               ; default
     message))

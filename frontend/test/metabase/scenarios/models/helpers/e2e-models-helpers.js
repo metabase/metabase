@@ -1,4 +1,9 @@
-import { popover, modal } from "__support__/e2e/cypress";
+import {
+  popover,
+  modal,
+  openQuestionActions,
+  interceptIfNotPreviouslyDefined,
+} from "__support__/e2e/helpers";
 
 export function assertQuestionIsBasedOnModel({
   questionName,
@@ -35,40 +40,33 @@ export function saveQuestionBasedOnModel({ modelId, name }) {
   modal().within(() => {
     cy.findByText(/Replace original question/i).should("not.exist");
     if (name) {
-      cy.findByLabelText("Name")
-        .clear()
-        .type(name);
+      cy.findByLabelText("Name").clear().type(name);
     }
     cy.findByText("Save").click();
   });
 
   assertCreatedNestedQuery(modelId);
 
-  modal()
-    .findByText("Not now")
-    .click();
+  modal().findByText("Not now").click();
 }
 
 export function selectDimensionOptionFromSidebar(name) {
-  cy.get("[data-testid=dimension-list-item]")
-    .contains(name)
-    .click();
+  cy.get("[data-testid=dimension-list-item]").contains(name).click();
 }
 
 export function openDetailsSidebar() {
-  cy.findByTestId("saved-question-header-button").click();
+  cy.findByTestId("saved-question-header-title").click();
 }
 
 export function getDetailsSidebarActions() {
   return cy.findByTestId("question-action-buttons");
 }
 
-// Requires model details sidebar to be open
+// Requires model actions to be open
 export function assertIsModel() {
-  getDetailsSidebarActions().within(() => {
+  popover().within(() => {
     cy.icon("model").should("not.exist");
   });
-  cy.findByText("Model management");
   cy.findByText("Sample Database").should("not.exist");
 
   // For native
@@ -76,37 +74,38 @@ export function assertIsModel() {
   cy.get("ace_content").should("not.exist");
 }
 
-// Requires question details sidebar to be open
+// Requires question actions to be open
 export function assertIsQuestion() {
-  getDetailsSidebarActions().within(() => {
+  popover().within(() => {
     cy.icon("model");
   });
-  cy.findByText("Model management").should("not.exist");
   cy.findByText("Sample Database");
 }
 
 export function turnIntoModel() {
-  openDetailsSidebar();
-  getDetailsSidebarActions().within(() => {
+  interceptIfNotPreviouslyDefined({
+    method: "PUT",
+    url: "/api/card/*",
+    alias: "cardUpdate",
+  });
+
+  openQuestionActions();
+  popover().within(() => {
     cy.icon("model").click();
   });
   modal().within(() => {
     cy.button("Turn this into a model").click();
   });
+  cy.wait("@cardUpdate");
 }
 
 export function selectFromDropdown(option, clickOpts) {
-  popover()
-    .last()
-    .findByText(option)
-    .click(clickOpts);
+  popover().last().findByText(option).click(clickOpts);
 }
 
 export function startQuestionFromModel(modelName) {
   cy.findByText("New").click();
-  cy.findByText("Question")
-    .should("be.visible")
-    .click();
+  cy.findByText("Question").should("be.visible").click();
   cy.findByText("Models").click();
   cy.findByText(modelName).click();
 }

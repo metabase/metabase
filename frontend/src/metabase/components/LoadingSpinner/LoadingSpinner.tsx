@@ -21,4 +21,6 @@ const LoadingSpinner = ({ className, size = 32, borderWidth = 4 }: Props) => (
   </SpinnerRoot>
 );
 
-export default LoadingSpinner;
+export default Object.assign(LoadingSpinner, {
+  Root: SpinnerRoot,
+});

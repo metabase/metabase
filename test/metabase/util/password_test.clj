@@ -77,3 +77,13 @@
         (testing (pr-str (list 'is-valid? input))
           (is (= expected
                  (u.password/is-valid? input))))))))
+
+(deftest ^:parallel hash-bcrypt-tests
+  ;; these functions were copied from cemerick/friend and just call out to org.mindrot.jbcrypt.BCrypt so these tests
+  ;; are a bit perfunctory
+  (let [salt (str (java.util.UUID/randomUUID))
+        password (str salt "some-secure-password")
+        hashed   (u.password/hash-bcrypt password)]
+    (is (not= password hashed))
+    (testing "Can verify our hashed passwords"
+     (is (u.password/bcrypt-verify password hashed) "Password did not verify"))))

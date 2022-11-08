@@ -4,7 +4,7 @@
   "collection_position": null,
   "ordered_cards": [
     {
-      "sizeX": 7,
+      "size_x": 7,
       "series": [],
       "collection_authority_level": null,
       "card": {
@@ -98,11 +98,11 @@
       "visualization_settings": {},
       "dashboard_id": 8,
       "created_at": "2021-09-21T11:08:50.29",
-      "sizeY": 7,
+      "size_y": 7,
       "row": 0
     },
     {
-      "sizeX": 4,
+      "size_x": 4,
       "series": [],
       "collection_authority_level": null,
       "card": {
@@ -197,11 +197,11 @@
       "visualization_settings": {},
       "dashboard_id": 8,
       "created_at": "2021-09-24T13:54:37.176",
-      "sizeY": 4,
+      "size_y": 4,
       "row": 0
     },
     {
-      "sizeX": 7,
+      "size_x": 7,
       "series": [],
       "collection_authority_level": null,
       "card": {
@@ -312,7 +312,7 @@
       "visualization_settings": {},
       "dashboard_id": 8,
       "created_at": "2021-09-29T14:35:53.807",
-      "sizeY": 7,
+      "size_y": 7,
       "row": 0
     }
   ],

@@ -3,16 +3,15 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
-import { getScrollX, getScrollY } from "metabase/lib/dom";
-
 import { CSSTransitionGroup } from "react-transition-group";
 import { Motion, spring } from "react-motion";
+import _ from "underscore";
+import { getScrollX, getScrollY } from "metabase/lib/dom";
 
 import SandboxedPortal from "metabase/components/SandboxedPortal";
+import routeless from "metabase/hoc/Routeless";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import ModalContent from "./ModalContent";
-
-import _ from "underscore";
 
 function getModalContent(props) {
   if (
@@ -60,7 +59,7 @@ export class WindowModal extends Component {
   _modalComponent() {
     const className = cx(
       this.props.className,
-      ...["small", "medium", "wide", "tall"]
+      ...["small", "medium", "wide", "tall", "fit"]
         .filter(type => this.props[type])
         .map(type => `Modal--${type}`),
     );
@@ -122,8 +121,6 @@ export class WindowModal extends Component {
     );
   }
 }
-
-import routeless from "metabase/hoc/Routeless";
 
 export class FullPageModal extends Component {
   constructor(props) {

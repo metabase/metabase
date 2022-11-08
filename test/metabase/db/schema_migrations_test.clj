@@ -13,18 +13,31 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
-   [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table]]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            Database
+            Field
+            Permissions
+            PermissionsGroup
+            Pulse
+            Setting
+            Table
+            User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.user :refer [User]]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.db :as db])
-  (:import java.sql.Connection
-           java.util.UUID))
+  (:import
+   (java.sql Connection)
+   (java.util UUID)))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -38,7 +51,7 @@
         (db/simple-insert! Field (assoc mock-field :name "Field 1"))
         (db/simple-insert! Field (assoc mock-field :name "Field 2")))
       (testing "sanity check: Fields should not have a `:database_position` column yet"
-        (is (not (contains? (Field 1) :database_position))))
+        (is (not (contains? (db/select-one Field :id 1) :database_position))))
       ;; now run migration 165
       (migrate!)
       (testing "Fields should get `:database_position` equal to their IDs"
@@ -70,7 +83,7 @@
         (migrate!)
         (doseq [e [e1 e2]]
           (is (= true
-                 (db/exists? User :email (u/lower-case-en e1)))))))))
+                 (db/exists? User :email (u/lower-case-en e)))))))))
 
 (deftest semantic-type-migration-tests
   (testing "updates each of the coercion types"
@@ -555,7 +568,7 @@
                         :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
                         :where     [:= :pg.name perms-group/all-users-group-name]}))))))
 
-(deftest grant-subscription-permission-tests
+(deftest grant-subscription-permission-test
   (testing "Migration v43.00-047: Grant the 'All Users' Group permissions to create/edit subscriptions and alerts"
     (impl/test-migrations ["v43.00-047" "v43.00-048"] [migrate!]
         (migrate!)
@@ -565,8 +578,8 @@
                                           :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
                                           :where     [:= :p.object "/general/subscription/"]}))))))))
 
-(deftest grant-subscription-permission-tests
-  (testing "Migration v43.00-057: Rename general permissios to application permissions"
+(deftest rename-general-permissions-to-application-test
+  (testing "Migration v43.00-057: Rename general permissions to application permissions"
     (impl/test-migrations ["v43.00-057" "v43.00-058"] [migrate!]
       (letfn [(get-perms [object] (set (map :name (db/query {:select    [:pg.name]
                                                              :from      [[Permissions :p]]
@@ -575,3 +588,162 @@
         (is (= #{"All Users"} (get-perms "/general/subscription/")))
         (migrate!)
         (is (= #{"All Users"} (get-perms "/application/subscription/")))))))
+
+(deftest add-parameter-to-cards-test
+  (testing "Migration v44.00-022: Add parameters to report_card"
+    (impl/test-migrations ["v44.00-022" "v44.00-024"] [migrate!]
+      (let [user-id
+            (db/simple-insert! User {:first_name  "Howard"
+                                     :last_name   "Hughes"
+                                     :email       "howard@aircraft.com"
+                                     :password    "superstrong"
+                                     :date_joined :%now})
+            database-id (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
+            card-id (db/simple-insert! Card {:name                   "My Saved Question"
+                                             :created_at             :%now
+                                             :updated_at             :%now
+                                             :creator_id             user-id
+                                             :display                "table"
+                                             :dataset_query          "{}"
+                                             :visualization_settings "{}"
+                                             :database_id            database-id
+                                             :collection_id          nil})]
+       (migrate!)
+       (is (= nil
+              (:parameters (first (db/simple-select Card {:where [:= :id card-id]})))))))))
+
+(deftest add-parameter-mappings-to-cards-test
+  (testing "Migration v44.00-024: Add parameter_mappings to cards"
+    (impl/test-migrations ["v44.00-024" "v44.00-026"] [migrate!]
+      (let [user-id
+            (db/simple-insert! User {:first_name  "Howard"
+                                     :last_name   "Hughes"
+                                     :email       "howard@aircraft.com"
+                                     :password    "superstrong"
+                                     :date_joined :%now})
+            database-id
+            (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
+            card-id
+            (db/simple-insert! Card {:name                   "My Saved Question"
+                                     :created_at             :%now
+                                     :updated_at             :%now
+                                     :creator_id             user-id
+                                     :display                "table"
+                                     :dataset_query          "{}"
+                                     :visualization_settings "{}"
+                                     :database_id            database-id
+                                     :collection_id          nil})]
+        (migrate!)
+        (is (= nil
+               (:parameter_mappings (first (db/simple-select Card {:where [:= :id card-id]})))))))))
+
+(deftest grant-all-users-root-snippets-collection-readwrite-perms-test
+  (letfn [(perms-path [] "/collection/namespace/snippets/root/")
+          (all-users-group-id []
+            (-> (db/query {:select [:id], :from [PermissionsGroup],
+                           :where [:= :name perms-group/all-users-group-name]})
+                first
+                :id))
+          (get-perms [] (map :name (db/query {:select    [:pg.name]
+                                              :from      [[Permissions :p]]
+                                              :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                                              :where     [:= :p.object (perms-path)]})))]
+    (testing "Migration v44.00-033: create a Root Snippets Collection entry for All Users\n"
+      (testing "Should run for new OSS instances"
+        (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
+                              (migrate!)
+                              (is (= ["All Users"] (get-perms)))))
+
+      (testing "Should run for new EE instances"
+        (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
+                              (db/simple-insert! Setting {:key "premium-embedding-token"
+                                                          :value "fake-key"})
+                              (migrate!)
+                              (is (= ["All Users"] (get-perms)))))
+
+      (testing "Should not run for existing OSS instances"
+        (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
+                              (create-raw-user! "ngoc@metabase.com")
+                              (migrate!)
+                              (is (= [] (get-perms)))))
+
+      (testing "Should not run for existing EE instances"
+        (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
+                              (create-raw-user! "ngoc@metabase.com")
+                              (db/simple-insert! Setting {:key "premium-embedding-token"
+                                                          :value "fake-key"})
+                              (migrate!)
+                              (is (= [] (get-perms)))))
+
+      (testing "Should not fail if permissions already exist"
+        (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
+                              (db/execute! {:insert-into Permissions
+                                            :values      [{:object   (perms-path)
+                                                           :group_id (all-users-group-id)}]})
+                              (migrate!)
+                              (is (= ["All Users"] (get-perms))))))))
+
+(deftest make-database-details-not-null-test
+  (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"
+    (impl/test-migrations ["v45.00-042" "v45.00-043"] [migrate!]
+      (let [database-id (db/simple-insert! Database (-> (dissoc (mt/with-temp-defaults Database) :details)
+                                                        (assoc :engine "h2")))]
+        (is (partial= {:details nil}
+                      (db/select-one Database :id database-id)))
+        (migrate!)
+        (is (partial= {:details {}}
+                      (db/select-one Database :id database-id)))))))
+
+(deftest populate-collection-created-at-test
+  (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
+    (impl/test-migrations ["v45.00-048" "v45.00-050"] [migrate!]
+      (let [database-id              (db/simple-insert! Database {:details   "{}"
+                                                                  :engine    "h2"
+                                                                  :is_sample false
+                                                                  :name      "populate-collection-created-at-test-db"})
+            user-id                  (db/simple-insert! User {:first_name  "Cam"
+                                                              :last_name   "Era"
+                                                              :email       "cam@example.com"
+                                                              :password    "123456"
+                                                              :date_joined #t "2022-10-20T02:09Z"})
+            personal-collection-id   (db/simple-insert! Collection {:name              "Cam Era's Collection"
+                                                                    :personal_owner_id user-id
+                                                                    :color             "#ff0000"
+                                                                    :slug              "personal_collection"})
+            impersonal-collection-id (db/simple-insert! Collection {:name  "Regular Collection"
+                                                                    :color "#ff0000"
+                                                                    :slug  "regular_collection"})
+            empty-collection-id      (db/simple-insert! Collection {:name  "Empty Collection"
+                                                                    :color "#ff0000"
+                                                                    :slug  "empty_collection"})
+            _                        (db/simple-insert! Card {:collection_id          impersonal-collection-id
+                                                              :name                   "Card 1"
+                                                              :display                "table"
+                                                              :dataset_query          "{}"
+                                                              :visualization_settings "{}"
+                                                              :creator_id             user-id
+                                                              :database_id            database-id
+                                                              :created_at             #t "2022-10-20T02:09Z"
+                                                              :updated_at             #t "2022-10-20T02:09Z"})
+            _                        (db/simple-insert! Card {:collection_id          impersonal-collection-id
+                                                              :name                   "Card 2"
+                                                              :display                "table"
+                                                              :dataset_query          "{}"
+                                                              :visualization_settings "{}"
+                                                              :creator_id             user-id
+                                                              :database_id            database-id
+                                                              :created_at             #t "2021-10-20T02:09Z"
+                                                              :updated_at             #t "2022-10-20T02:09Z"})]
+        (migrate!)
+        (testing "A personal Collection should get created_at set by to the date_joined from its owner"
+          (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
+                 (t/offset-date-time (db/select-one-field :created_at Collection :id personal-collection-id)))))
+        (testing "A non-personal Collection should get created_at set to its oldest object"
+          (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
+                 (t/offset-date-time (db/select-one-field :created_at Collection :id impersonal-collection-id)))))
+        (testing "Empty Collection should not have been updated"
+          (let [empty-collection-created-at (t/offset-date-time (db/select-one-field :created_at Collection :id empty-collection-id))]
+            (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
+                      empty-collection-created-at))
+            (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
+                      empty-collection-created-at))))))))

@@ -287,7 +287,7 @@
                                (#'ga.execute/add-col-metadata query col))
                      rows    [["Toucan Sighting" 1000]]
                      context {:timeout 500
-                              :runf    (fn [query rff context]
+                              :runf    (fn [_query rff context]
                                          (let [metadata {:cols cols}]
                                            (qp.context/reducef rff context metadata rows)))}
                      qp      (fn [query]
@@ -360,7 +360,7 @@
                   Table    [table {:db_id (u/the-id db)}]
                   Field    [field {:table_id (u/the-id table)}]]
     (let [cnt (->> (mt/user-http-request
-                    :crowberto :post 202 "card"
+                    :crowberto :post 200 "card"
                     {:name                   "Metabase Websites, Sessions and 1 Day Active Users, Grouped by Date (day)"
                      :display                :table
                      :visualization_settings {}

@@ -1,4 +1,8 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  ensureDcChartVisibility,
+} from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("visual tests > visualizations > bar", () => {
@@ -28,7 +32,8 @@ describe("visual tests > visualizations > bar", () => {
       },
     });
 
-    cy.percySnapshot();
+    ensureDcChartVisibility();
+    cy.createPercySnapshot();
   });
 
   it("with an invalid SQL query and a long error message", () => {
@@ -52,6 +57,6 @@ describe("visual tests > visualizations > bar", () => {
       },
     });
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });

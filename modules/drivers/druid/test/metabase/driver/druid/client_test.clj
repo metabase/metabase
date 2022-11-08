@@ -4,8 +4,8 @@
             [metabase.driver.druid.client :as druid.client]
             [metabase.driver.util :as driver.u]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.context.default :as default]
             [metabase.test :as mt]
-            [metabase.test.util.log :as tu.log]
             [metabase.timeseries-query-processor-test.util :as tqpt]))
 
 (deftest query-cancelation-test
@@ -29,6 +29,18 @@
             (is (= ::cancel
                    (mt/wait-for-result cancel-chan 2000)))))))))
 
+(deftest query-timeout-test
+  (mt/test-driver :druid
+    (tqpt/with-flattened-dbdef
+      (let [query (mt/mbql-query checkins)
+            executed-query (atom nil)]
+        (with-redefs [druid.client/do-query-with-cancellation (fn [_chan _details query]
+                                                                (reset! executed-query query)
+                                                                [])]
+          (qp/process-query-sync query)
+          (is (partial= {:context {:timeout default/query-timeout-ms}}
+                        @executed-query)))))))
+
 (deftest ssh-tunnel-test
   (mt/test-driver
    :druid
@@ -50,8 +62,7 @@
                          ;; doesn't wrap every exception in an SshdException
                          :tunnel-port    21212
                          :tunnel-user    "bogus"}]
-            (tu.log/suppress-output
-             (driver.u/can-connect-with-details? engine details :throw-exceptions)))
+            (driver.u/can-connect-with-details? engine details :throw-exceptions))
           (catch Throwable e
             (loop [^Throwable e e]
               (or (when (instance? java.net.ConnectException e)

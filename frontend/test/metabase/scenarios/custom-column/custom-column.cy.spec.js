@@ -9,7 +9,7 @@ import {
   enterCustomColumnDetails,
   getBinningButtonForDimension,
   filter,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -48,14 +48,10 @@ describe("scenarios > question > custom column", () => {
     cy.button("Done").click();
 
     cy.findByText("Summarize").click();
-    popover()
-      .findByText("Count of rows")
-      .click();
+    popover().findByText("Count of rows").click();
 
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .findByText("Half Price")
-      .click();
+    popover().findByText("Half Price").click();
 
     cy.get("[data-testid='step-summarize-0-0']")
       .findByText("Half Price")
@@ -64,10 +60,7 @@ describe("scenarios > question > custom column", () => {
       name: "Half Price",
     }).click();
 
-    popover()
-      .last()
-      .findByText("10 bins")
-      .click();
+    popover().last().findByText("10 bins").click();
 
     cy.findByText("Half Price: 10 bins").should("be.visible");
   });
@@ -83,14 +76,10 @@ describe("scenarios > question > custom column", () => {
     cy.button("Done").click();
 
     cy.findByText("Summarize").click();
-    popover()
-      .findByText("Count of rows")
-      .click();
+    popover().findByText("Count of rows").click();
 
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .findByText("Product Date")
-      .click();
+    popover().findByText("Product Date").click();
 
     cy.get("[data-testid='step-summarize-0-0']")
       .findByText("Product Date")
@@ -99,10 +88,7 @@ describe("scenarios > question > custom column", () => {
       name: "Product Date",
     }).click();
 
-    popover()
-      .last()
-      .findByText("Month of Year")
-      .click();
+    popover().last().findByText("Month of Year").click();
 
     cy.findByText("Product Date: Month of year").should("be.visible");
   });
@@ -118,26 +104,17 @@ describe("scenarios > question > custom column", () => {
     cy.button("Done").click();
 
     cy.findByText("Summarize").click();
-    popover()
-      .findByText("Count of rows")
-      .click();
+    popover().findByText("Count of rows").click();
 
     cy.findByText("Pick a column to group by").click();
-    popover()
-      .findByText("UserLAT")
-      .click();
+    popover().findByText("UserLAT").click();
 
-    cy.get("[data-testid='step-summarize-0-0']")
-      .findByText("UserLAT")
-      .click();
+    cy.get("[data-testid='step-summarize-0-0']").findByText("UserLAT").click();
     getBinningButtonForDimension({
       name: "UserLAT",
     }).click();
 
-    popover()
-      .last()
-      .findByText("Bin every 10 degrees")
-      .click();
+    popover().last().findByText("Bin every 10 degrees").click();
 
     cy.findByText("UserLAT: 10°").should("be.visible");
   });
@@ -154,10 +131,7 @@ describe("scenarios > question > custom column", () => {
 
     summarize();
 
-    cy.findByText("Group by")
-      .parent()
-      .findByText("Math")
-      .trigger("mouseenter");
+    cy.findByText("Group by").parent().findByText("Math").trigger("mouseenter");
 
     popover().contains("Math");
     popover().contains("No description");
@@ -348,7 +322,7 @@ describe("scenarios > question > custom column", () => {
     cy.findAllByText("57911");
   });
 
-  it.skip("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
+  it("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
     const CC_NAME = "Double the fun";
 
     cy.createQuestion(
@@ -371,10 +345,7 @@ describe("scenarios > question > custom column", () => {
       { visitQuestion: true },
     );
     // Test displays collapsed filter - click on number 1 to expand and show the filter name
-    cy.icon("filter")
-      .parent()
-      .contains("1")
-      .click();
+    cy.icon("filter").parent().contains("1").click();
 
     cy.findByText(/Subtotal is greater than 0/i)
       .parent()
@@ -445,9 +416,7 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Join data").should("not.exist");
 
     cy.log("Reported failing on 0.38.1-SNAPSHOT (6d77f099)");
-    cy.get("[class*=NotebookCellItem]")
-      .contains(CE_NAME)
-      .should("not.exist");
+    cy.get("[class*=NotebookCellItem]").contains(CE_NAME).should("not.exist");
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
@@ -507,9 +476,7 @@ describe("scenarios > question > custom column", () => {
     });
     summarize({ mode: "notebook" });
     cy.findByText("Sum of ...").click();
-    popover()
-      .findByText("MyCC [2021]")
-      .click();
+    popover().findByText("MyCC [2021]").click();
     cy.findAllByTestId("notebook-cell-item")
       .contains("Sum of MyCC [2021]")
       .click();
@@ -537,6 +504,33 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("No discount");
   });
 
+  it("should be able to add a date range filter to a custom column", () => {
+    visitQuestionAdhoc({
+      display: "table",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: { CustomDate: ["field", ORDERS.CREATED_AT, null] },
+        },
+      },
+    });
+
+    cy.findByText("CustomDate").click();
+
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Specific dates...").click();
+      enterDateFilter("12/10/2018", 0);
+      enterDateFilter("01/05/2019", 1);
+      cy.button("Add filter").click();
+    });
+
+    cy.wait("@dataset");
+    cy.findByText("Showing 463 rows").should("be.visible");
+  });
+
   it("should work with relative date filter applied to a custom column (metabase#16273)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
@@ -549,9 +543,7 @@ describe("scenarios > question > custom column", () => {
     cy.button("Done").click();
 
     filter({ mode: "notebook" });
-    popover()
-      .contains("MiscDate")
-      .click();
+    popover().contains("MiscDate").click();
     cy.findByText("Relative dates...").click();
     cy.findByText("Past").click();
     // The popover shows up with the default value selected - previous 30 days.
@@ -576,18 +568,12 @@ describe("scenarios > question > custom column", () => {
 
     // next focus: a link
     cy.realPress("Tab");
-    cy.focused()
-      .should("have.attr", "class")
-      .and("contain", "link");
-    cy.focused()
-      .should("have.attr", "target")
-      .and("eq", "_blank");
+    cy.focused().should("have.attr", "class").and("contain", "link");
+    cy.focused().should("have.attr", "target").and("eq", "_blank");
 
     // next focus: the textbox for the name
     cy.realPress("Tab");
-    cy.focused()
-      .should("have.attr", "value")
-      .and("eq", "");
+    cy.focused().should("have.attr", "value").and("eq", "");
     cy.focused()
       .should("have.attr", "placeholder")
       .and("eq", "Something nice and descriptive");
@@ -595,9 +581,7 @@ describe("scenarios > question > custom column", () => {
     // Shift+Tab twice and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
     cy.realPress(["Shift", "Tab"]);
-    cy.focused()
-      .should("have.attr", "class")
-      .and("eq", "ace_text-input");
+    cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
   });
 
   it("should allow tabbing away from, then back to editor, while formatting expression and placing caret after reformatted expression", () => {
@@ -628,16 +612,12 @@ describe("scenarios > question > custom column", () => {
     cy.realPress("Tab");
 
     // Focus remains on the expression editor
-    cy.focused()
-      .should("have.attr", "class")
-      .and("eq", "ace_text-input");
+    cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
 
     // Tab twice to focus on the name box
     cy.realPress("Tab");
     cy.realPress("Tab");
-    cy.focused()
-      .should("have.attr", "value")
-      .and("eq", "");
+    cy.focused().should("have.attr", "value").and("eq", "");
     cy.focused()
       .should("have.attr", "placeholder")
       .and("eq", "Something nice and descriptive");
@@ -645,8 +625,15 @@ describe("scenarios > question > custom column", () => {
     // Shift+Tab twice and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
     cy.realPress(["Shift", "Tab"]);
-    cy.focused()
-      .should("have.attr", "class")
-      .and("eq", "ace_text-input");
+    cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
   });
 });
+
+const enterDateFilter = (value, index = 0) => {
+  cy.findAllByTestId("specific-date-picker")
+    .eq(index)
+    .findByRole("textbox")
+    .clear()
+    .type(value)
+    .blur();
+};

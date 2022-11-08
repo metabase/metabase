@@ -75,7 +75,7 @@
       permissions but no matching GTAP exists.
 
     * Segmented permissions can also be used to enforce column-level permissions -- any column not returned by the
-      underlying GTAP query is not allowed to be references by the parent query thru other means such as filter clauses.
+      underlying GTAP query is not allowed to be referenced by the parent query thru other means such as filter clauses.
       See [[metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check]].
 
     * GTAPs are not allowed to add columns not present in the original Table, or change their effective type to
@@ -94,13 +94,11 @@
 
   ### Determining CRUD permissions in the REST API
 
-  REST API permissions checks are generally done in various `metabase.api.*` namespaces. Methods for determine whether
-  the current User can perform various CRUD actions are defined by
-  the [[metabase.models.interface/IObjectPermissions]] protocol; this protocol
-  defines [[metabase.models.interface/can-read?]] (in the API sense, not in the run-query sense)
-  and [[metabase.models.interface/can-write?]] as well as the newer [[metabase.models.interface/can-create?]] and
-  [[metabase.models.interface/can-update?]] methods. Implementations for these methods live in `metabase.model.*`
-  namespaces.
+  REST API permissions checks are generally done in various `metabase.api.*` namespaces. Whether the current User can
+  perform various CRUD actions are defined by [[metabase.models.interface/can-read?]] (in the API sense, not in the
+  run-query sense) and [[metabase.models.interface/can-write?]] as well as the
+  newer [[metabase.models.interface/can-create?]] and [[metabase.models.interface/can-update?]] methods.
+  Implementations for these methods live in `metabase.model.*` namespaces.
 
   The implementation of these methods is up to individual models. The majority of implementations check whether
   [[metabase.api.common/*current-user-permissions-set*]] includes permissions for a given path (action)
@@ -114,8 +112,6 @@
   endpoints (\"read\" it) if they have any permissions starting with `/db/1/`, for example `/db/1/` itself (full
   permissions) `/db/1/native/` (ad-hoc SQL query permissions) or permissions, or
   `/db/1/schema/PUBLIC/table/2/query/` (run ad-hoc queries against Table 2 permissions).
-
-  See documentation for [[metabase.models.interface/IObjectPermissions]] for more details.
 
   ### Determining query permissions
 
@@ -185,7 +181,7 @@
             [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.regex :as u.regex]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -587,17 +583,13 @@
                     {:metabase.models.collection.root/is-root? true
                      :namespace                                collection-namespace}))})))
 
-(def IObjectPermissionsForParentCollection
-  "Implementation of `IObjectPermissions` for objects that have a `collection_id`, and thus, a parent Collection.
-   Using this will mean the current User is allowed to read or write these objects if they are allowed to read or
-  write their parent Collection."
-  (merge mi/IObjectPermissionsDefaults
-         ;; TODO - we use these same partial implementations of `can-read?` and `can-write?` all over the place for
-         ;; different models. Consider making them a mixin of some sort. (I was going to do this but I couldn't come
-         ;; up with a good name for the Mixin. - Cam)
-         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set-for-parent-collection}))
+(doto ::use-parent-collection-perms
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
+(defmethod mi/perms-objects-set ::use-parent-collection-perms
+  [instance read-or-write]
+  (perms-objects-set-for-parent-collection instance read-or-write))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -614,8 +606,7 @@
                                        (:object permissions))))))
 
 (defn- pre-update [_]
-  (throw (Exception. (str (deferred-tru "You cannot update a permissions entry!")
-                          (deferred-tru "Delete it and create a new one.")))))
+  (throw (Exception. (tru "You cannot update a permissions entry! Delete it and create a new one."))))
 
 (defn- pre-delete [permissions]
   (log/debug (u/colorize 'red (trs "Revoking permissions for group {0}: {1}"
@@ -623,7 +614,7 @@
                                    (:object permissions))))
   (assert-not-admin-group permissions))
 
-(u/strict-extend (class Permissions)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Permissions)
   models/IModel (merge models/IModelDefaults
                        {:pre-insert pre-insert
                         :pre-update pre-update
@@ -841,6 +832,15 @@
                [group-or-id database-or-id schema-name table-or-id])}
   [group-or-id & path-components]
   (delete-related-permissions! group-or-id (apply data-perms-path path-components)))
+
+(defn revoke-download-perms!
+  "Revoke all full and limited download permissions for `group-or-id` to object with `path-components`."
+  {:arglists '([group-id db-id]
+               [group-id db-id schema-name]
+               [group-id db-id schema-name table-or-id])}
+  [group-or-id & path-components]
+  (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :full) path-components))
+  (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :limited) path-components)))
 
 (defn grant-permissions!
   "Grant permissions for `group-or-id`. Two-arity grants any arbitrary Permissions `path`. With > 2 args, grants the
@@ -1117,6 +1117,7 @@
                  (when-not (premium-features/has-feature? :advanced-permissions)
                    (throw (ee-permissions-exception :block)))
                  (revoke-data-perms! group-id db-id)
+                 (revoke-download-perms! group-id db-id)
                  (grant-permissions! group-id (database-block-perms-path db-id)))
         (when (map? schemas)
           (delete-block-perms-for-this-db!)
@@ -1154,10 +1155,10 @@
   made in the interim. Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ex-info (str (deferred-tru "Looks like someone else edited the permissions and your data is out of date.")
-                         " "
-                         (deferred-tru "Please fetch new data and try again."))
-             {:status-code 409}))))
+    (throw (ex-info (tru
+                      (str "Looks like someone else edited the permissions and your data is out of date. "
+                           "Please fetch new data and try again."))
+                    {:status-code 409}))))
 
 (defn save-perms-revision!
   "Save changes made to permission graph for logging/auditing purposes.
@@ -1195,7 +1196,8 @@
   ([new-graph :- StrictPermissionsGraph]
    (let [old-graph (data-perms-graph)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
-         old       (or old {})]
+         old       (or old {})
+         new       (or new {})]
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)

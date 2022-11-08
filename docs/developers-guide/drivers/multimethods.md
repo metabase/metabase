@@ -1,3 +1,7 @@
+---
+title: Implementing multimethods for your driver
+---
+
 # Implementing multimethods for your driver
 
 Implementing multimethods lets you take advantage of Metabase's existing driver code by extending those methods to work for your particular database.
@@ -9,7 +13,6 @@ Let's first focus on the main driver file for our Fox Pro '98 `src/metabase/driv
 (ns com.mycompany.metabase.driver.foxpro98
   (:require [metabase.driver :as driver]))
 
-;; NOTE FOR CAM: this should be in the plugin manifest, no?
 ;; Can you include a different method here as an example?
 (defmethod driver/display-name :foxpro98 [_]
   "Visual FoxPro '98")
@@ -32,7 +35,7 @@ All core Metabase drivers live in `metabase.driver.<name-goes-here>` namespaces.
 
 ### Many drivers are further broken out into additional namespaces
 
-Especially larger drivers. Commonly, a driver will have a `query-processor` namespace (e.g., `com.mycompany.metabase.driver.foxpro98.query-processor`) that contains the logic for converting MBQL queries (queries built using Metabase's graphical query builder) into native queries (like SQL). The query processor is often the most complicated part of a driver, so keeping that logic separate can help make things easier to work with. Some drivers also have a separate `sync` namespace that has implementations for methods used by Metabase's [database synchronization](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#database-syncing).
+Especially larger drivers. Commonly, a driver will have a `query-processor` namespace (e.g., `com.mycompany.metabase.driver.foxpro98.query-processor`) that contains the logic for converting MBQL queries (queries built using Metabase's graphical query builder) into native queries (like SQL). The query processor is often the most complicated part of a driver, so keeping that logic separate can help make things easier to work with. Some drivers also have a separate `sync` namespace that has implementations for methods used by Metabase's [database synchronization](../../databases/connecting.md#syncing-and-scanning-databases).
 
 ## Driver initialization
 
@@ -73,7 +76,7 @@ Many drivers share implementation details, and writing complete implementations 
 
 You can define a driver parent by listing the parent in the [plugin manifest](plugins.md).
 
-Parents like `:sql-jdbc` are intended as a common abstract "base class" for drivers that can share much of their implementation; in the case of `:sql-jdbc`, it's intended for SQL-based drivers that use a JDBC driver under the hood.`:sql-jdbc` and other parents provide implementations for many of the methods needed to power the four main features of a Metabase driver. In fact, `:sql-jdbc` provides implementations of things like `driver/execute-query`, so a driver using it as a parent does not need to provide one itself. However, various parent drivers define their own multimethods to implement.
+Parents like `:sql-jdbc` are intended as a common abstract "base class" for drivers that can share much of their implementation; in the case of `:sql-jdbc`, it's intended for SQL-based drivers that use a JDBC driver under the hood.`:sql-jdbc` and other parents provide implementations for many of the methods needed to power the four main features of a Metabase driver. In fact, `:sql-jdbc` provides implementations of things like `driver/execute-prepared-statement!`, so a driver using it as a parent does not need to provide one itself. However, various parent drivers define their own multimethods to implement.
 
 ## Notable parent drivers
 

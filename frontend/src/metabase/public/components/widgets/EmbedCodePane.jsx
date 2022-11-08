@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import CodeSample from "./CodeSample";
 import { t, jt } from "ttag";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   getPublicEmbedOptions,
   getSignedEmbedOptions,
   getSignTokenOptions,
 } from "../../lib/code";
+import CodeSample from "./CodeSample";
 
 import "metabase/lib/ace/theme-metabase";
 
@@ -56,12 +56,14 @@ export default class EmbedCodePane extends Component {
                   this._embedSample.setOption(option.embedOption);
                 }
               }}
+              dataTestId="embed-backend"
             />
             <CodeSample
               className="mt2"
               ref={embedSample => (this._embedSample = embedSample)}
               title={t`Then insert this code snippet in your HTML template or single page app.`}
               options={getSignedEmbedOptions({ iframeUrl })}
+              dataTestId="embed-frontend"
             />
           </div>
         ) : (

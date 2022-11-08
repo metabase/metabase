@@ -67,6 +67,7 @@ class EntityMenu extends Component {
           hasBackground={false}
           horizontalAttachments={["left", "right"]}
           targetOffsetY={targetOffsetY || 0}
+          ignoreTrigger
         >
           {/* Note: @kdoh 10/12/17
            * React Motion has a flow type problem with children see
@@ -103,13 +104,13 @@ class EntityMenu extends Component {
                 >
                   <Card>
                     {menuItemContent || (
-                      <ol className="py1" style={{ minWidth: 210 }}>
+                      <ol className="p1" style={{ minWidth: 184 }}>
                         {items.map(item => {
                           if (!item) {
                             return null;
                           } else if (item.content) {
                             return (
-                              <li key={item.title}>
+                              <li key={item.title} data-testid={item.testId}>
                                 <EntityMenuItem
                                   icon={item.icon}
                                   title={item.title}
@@ -121,25 +122,28 @@ class EntityMenu extends Component {
                                       ),
                                     )
                                   }
+                                  tooltip={item.tooltip}
                                 />
                               </li>
                             );
                           } else {
                             return (
-                              <li key={item.title}>
+                              <li key={item.title} data-testid={item.testId}>
                                 <EntityMenuItem
                                   icon={item.icon}
                                   title={item.title}
                                   externalLink={item.externalLink}
                                   action={
                                     item.action &&
-                                    (() => {
-                                      item.action();
+                                    (e => {
+                                      item.action(e);
                                       this.toggleMenu();
                                     })
                                   }
-                                  event={item.event && item.event}
+                                  event={item.event}
                                   link={item.link}
+                                  tooltip={item.tooltip}
+                                  disabled={item.disabled}
                                   onClose={() => {
                                     this.toggleMenu();
                                     item?.onClose?.();

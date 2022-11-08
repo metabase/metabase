@@ -94,7 +94,7 @@
     (into
      {}
      (comp
-      (map (fn [[param-name {widget-type :widget-type, tag-type :type}] ]
+      (map (fn [[param-name {widget-type :widget-type, tag-type :type}]]
              ;; Field Filter parameters have a `:type` of `:dimension` and the widget type that should be used is
              ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
              ;; `:widget-type` if available but fall back to `:type` if not.
@@ -177,7 +177,7 @@
   options."
   [card-id export-format
    & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache]
-      :or   {constraints qp.constraints/default-query-constraints
+      :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
@@ -188,7 +188,7 @@
                    (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
                      (binding [qp.perms/*card-id* card-id]
                        (qp-runner query info context)))))
-        card  (api/read-check (db/select-one [Card :id :name :dataset_query :database_id
+        card  (api/read-check (db/select-one [Card :id :name :dataset_query :database_id :is_write
                                               :cache_ttl :collection_id :dataset :result_metadata]
                                              :id card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
@@ -204,6 +204,7 @@
                 (and (:dataset card) (seq (:result_metadata card)))
                 (assoc :metadata/dataset-metadata (:result_metadata card)))]
     (api/check-not-archived card)
+    (api/check-is-readonly card)
     (when (seq parameters)
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id

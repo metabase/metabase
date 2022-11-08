@@ -3,35 +3,20 @@ import React from "react";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import User from "metabase/entities/users";
-import { clearTemporaryPassword } from "../people";
-import { getUserTemporaryPassword } from "../selectors";
 
 import MetabaseSettings from "metabase/lib/settings";
 
 import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
+import { getUserTemporaryPassword } from "../selectors";
+import { clearTemporaryPassword } from "../people";
 import { ButtonContainer } from "./UserPasswordResetModal.styled";
 
-@User.load({
-  id: (state, props) => props.params.userId,
-  wrapped: true,
-})
-@connect(
-  (state, props) => ({
-    emailConfigured: MetabaseSettings.isEmailConfigured(),
-    temporaryPassword: getUserTemporaryPassword(state, {
-      userId: props.params.userId,
-    }),
-  }),
-  {
-    onClose: goBack,
-    clearTemporaryPassword,
-  },
-)
-export default class UserPasswordResetModal extends React.Component {
+class UserPasswordResetModal extends React.Component {
   componentWillUnmount() {
     this.props.clearTemporaryPassword(this.props.params.userId);
   }
@@ -39,7 +24,7 @@ export default class UserPasswordResetModal extends React.Component {
     const { user, emailConfigured, temporaryPassword, onClose } = this.props;
     return temporaryPassword ? (
       <ModalContent
-        title={t`${user.first_name}'s password has been reset`}
+        title={t`${user.common_name}'s password has been reset`}
         footer={<Button primary onClick={onClose}>{t`Done`}</Button>}
         onClose={onClose}
       >
@@ -49,7 +34,7 @@ export default class UserPasswordResetModal extends React.Component {
       </ModalContent>
     ) : (
       <ModalContent
-        title={t`Reset ${user.getName()}'s password?`}
+        title={t`Reset ${user.common_name}'s password?`}
         onClose={onClose}
       >
         <p>{t`Are you sure you want to do this?`}</p>
@@ -59,10 +44,10 @@ export default class UserPasswordResetModal extends React.Component {
             ml="auto"
             onClick={async () => {
               if (emailConfigured) {
-                await user.passwordResetEmail();
+                await user.resetPasswordEmail();
                 onClose();
               } else {
-                await user.passwordResetManual();
+                await user.resetPasswordManual();
               }
             }}
             danger
@@ -74,3 +59,22 @@ export default class UserPasswordResetModal extends React.Component {
     );
   }
 }
+
+export default _.compose(
+  User.load({
+    id: (state, props) => props.params.userId,
+    wrapped: true,
+  }),
+  connect(
+    (state, props) => ({
+      emailConfigured: MetabaseSettings.isEmailConfigured(),
+      temporaryPassword: getUserTemporaryPassword(state, {
+        userId: props.params.userId,
+      }),
+    }),
+    {
+      onClose: goBack,
+      clearTemporaryPassword,
+    },
+  ),
+)(UserPasswordResetModal);

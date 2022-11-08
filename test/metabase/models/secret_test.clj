@@ -4,7 +4,8 @@
             [metabase.models.secret :as secret :refer [Secret]]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [metabase.util.encryption-test :as encryption-test])
+            [metabase.util.encryption-test :as encryption-test]
+            [toucan.db :as db])
   (:import [java.io DataInputStream File]
            java.nio.charset.StandardCharsets))
 
@@ -30,7 +31,7 @@
          (is (= name (:name secret)))
          (is (= kind (:kind secret)))
          (is (mt/secret-value-equals? value (:value secret)))
-         (let [loaded (Secret id)]
+         (let [loaded (db/select-one Secret :id id)]
            (is (= name (:name loaded)))
            (is (= kind (:kind loaded)))
            (is (mt/secret-value-equals? value (:value loaded))))))))
@@ -43,6 +44,53 @@
     (testing " when there is an encryption key in place"
       (encryption-test/with-secret-key (resolve 'encryption-test/secret)
         (check-secret)))))
+
+(deftest get-secret-string-test
+  (testing "get-secret-string from value only"
+    (is (= "titok"
+           (secret/get-secret-string {:secret-prop-value "titok"} "secret-prop"))))
+
+  (testing "get-secret-string from value only from the database"
+    (mt/with-temp Secret [{id :id} {:name       "private-key"
+                                    :kind       ::secret/pem-cert
+                                    :value      "titok"
+                                    :creator_id (mt/user->id :crowberto)}]
+      (is (= "titok"
+             (secret/get-secret-string {:secret-prop-id id} "secret-prop")))))
+
+  (testing "get-secret-string from uploaded value"
+    (mt/with-temp Secret [{id :id} {:name       "private-key"
+                                    :kind       ::secret/pem-cert
+                                    :value      (let [encoder (java.util.Base64/getEncoder)]
+                                                  (str "data:application/octet-stream;base64,"
+                                                       (.encodeToString encoder
+                                                                        (.getBytes "titok" "UTF-8"))))
+                                    :creator_id (mt/user->id :crowberto)}]
+      (is (= "titok"
+             (secret/get-secret-string
+              {:secret-prop-id      id
+               :secret-prop-options "uploaded"}
+              "secret-prop")))))
+
+  (mt/with-temp-file [file "-key.pem"]
+    (spit file "titok")
+    (testing "get-secret-string from local file in value"
+      (is (= "titok"
+             (secret/get-secret-string
+              {:secret-prop-path    file
+               :secret-prop-options "local"}
+              "secret-prop"))))
+
+    (testing "get-secret-string from local file in the database"
+      (mt/with-temp Secret [{id :id} {:name       "private-key"
+                                      :kind       ::secret/pem-cert
+                                      :value      file
+                                      :creator_id (mt/user->id :crowberto)}]
+        (is (= "titok"
+              (secret/get-secret-string
+               {:secret-prop-id      id
+                :secret-prop-options "local"}
+               "secret-prop")))))))
 
 (deftest value->file!-test
   (testing "value->file! works for a secret value"
@@ -67,29 +115,69 @@
                                                  :source "file-path"
                                                  :value  (.getAbsolutePath tmp-file)}]]]
         (testing (format " with a %s value" value-kind)
-          (mt/with-temp Secret [{:keys [id value] :as secret} (assoc secret-map :creator_id (mt/user->id :crowberto))]
+          (mt/with-temp Secret [{:keys [value] :as secret} (assoc secret-map :creator_id (mt/user->id :crowberto))]
             (let [val-file (secret/value->file! secret nil)]
               (is (value-matches? (or exp-val value)
                                   (let [result (byte-array (.length val-file))]
                                     (with-open [in (DataInputStream. (io/input-stream val-file))]
                                       (.readFully in result))
-                                    result))))))))))
+                                    result)))))))))
+  (testing "value->file! returns the same file for secrets"
+    (testing "for file paths"
+      (let [file-secret-val "dingbat"
+            ^File tmp-file  (doto (File/createTempFile "value-to-file-test_" ".txt")
+                              (.deleteOnExit))]
+        (spit tmp-file file-secret-val)
+        (mt/with-temp* [Secret [secret {:name   "file based secret"
+                                        :kind   :perm-cert
+                                        :source "file-path"
+                                        :value  (.getAbsolutePath tmp-file)}]]
+          (is (instance? java.io.File (secret/value->file! secret nil)))
+          (is (= (secret/value->file! secret nil)
+                 (secret/value->file! secret nil))
+              "Secret did not return the same file"))))
+    (testing "for upload files (#23034)"
+      (mt/with-temp* [Secret [secret {:name   "file based secret"
+                                      :kind   :perm-cert
+                                      :source nil
+                                      :value  (.getBytes "super secret")}]]
+        (is (instance? java.io.File (secret/value->file! secret nil)))
+        (is (= (secret/value->file! secret nil)
+               (secret/value->file! secret nil))
+            "Secret did not return the same file")))))
 
-(deftest ssl-root-cert-base
+(defn- decode-ssl-db-property [content mime-type property]
+  (let [value-key (keyword (str property "-value"))
+        options-key (keyword (str property "-options"))]
+    (:value (secret/db-details-prop->secret-map
+                  {:ssl true
+                   :ssl-mode "verify-ca"
+                   value-key (format "data:%s;base64,%s" mime-type (u/encode-base64 content))
+                   options-key "uploaded"
+                   :port 5432,
+                   :advanced-options false
+                   :dbname "the-bean-base"
+                   :host "localhost"
+                   :tunnel-enabled false
+                   :engine :postgres
+                   :user "human-bean"}
+                  property))))
+
+(deftest ssl-cert-base
   (testing "db-details-prop->secret-map"
-    (testing "decodes root cert value properly (#20319)"
-      (is (= "<Certificate text goes here>"
-             (:value (secret/db-details-prop->secret-map
-                      {:ssl true
-                       :ssl-mode "verify-ca"
-                       :ssl-root-cert-value (str "data:application/x-x509-ca-cert;base64,"
-                                                 (u/encode-base64 "<Certificate text goes here>"))
-                       :ssl-root-cert-options "uploaded"
-                       :port 5432,
-                       :advanced-options false
-                       :dbname "the-bean-base"
-                       :host "localhost"
-                       :tunnel-enabled false
-                       :engine :postgres
-                       :user "human-bean"}
-                      "ssl-root-cert")))))))
+    (let [content "<Certificate text goes here>"
+          mime-types ["application/x-x509-ca-cert" "application/octet-stream"]]
+      (testing "decodes root cert value properly (#20319, #22626)"
+        (doseq [property ["ssl-root-cert" "ssl-client-cert"]
+                mime-type mime-types]
+          (testing (format "property %s with mime-type %s" property mime-type)
+            (is (= content
+                   (decode-ssl-db-property content mime-type property))))))
+      (testing "decodes client key value properly (#22626)"
+        (doseq [property ["ssl-key"]
+                mime-type mime-types]
+          (testing (format "property %s with mime-type %s" property mime-type)
+            (let [decoded (decode-ssl-db-property content mime-type property)]
+              (is (instance? (Class/forName "[B") decoded))
+              (is (= content
+                     (String. decoded "UTF-8"))))))))))

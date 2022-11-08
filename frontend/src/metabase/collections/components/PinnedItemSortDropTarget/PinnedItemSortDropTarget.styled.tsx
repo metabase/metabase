@@ -17,9 +17,9 @@ export type PinDropTargetRenderArgs = PinDropTargetProps & {
   highlighted: boolean;
 };
 
-export const StyledPinDropTarget = styled(PinnedItemSortDropTarget)<
-  PinDropTargetProps
->`
+export const StyledPinDropTarget = styled(
+  PinnedItemSortDropTarget,
+)<PinDropTargetProps>`
   position: absolute !important;
   top: 0;
   bottom: 0;

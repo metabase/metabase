@@ -1,17 +1,34 @@
 import _ from "underscore";
 import { t } from "ttag";
 import { createSelector } from "reselect";
+import { getIn } from "icepick";
 import { Group } from "metabase-types/api";
 import { isAdminGroup } from "metabase/lib/groups";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
-import { getOrderedGroups } from "metabase/admin/permissions/selectors/data-permissions/groups";
+import {
+  getAdminGroup,
+  getOrderedGroups,
+} from "metabase/admin/permissions/selectors/data-permissions/groups";
+import { getDefaultGroupHasHigherAccessText } from "metabase/admin/permissions/selectors/confirmations";
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
-import { getIn } from "icepick";
 import { ApplicationPermissionsState } from "./types/state";
 import {
   ApplicationPermissionKey,
   ApplicationPermissions,
+  ApplicationPermissionValue,
 } from "./types/permissions";
+
+export function getPermissionWarning(
+  value: ApplicationPermissionValue,
+  defaultGroupValue: ApplicationPermissionValue,
+  defaultGroup: Group,
+) {
+  if (defaultGroupValue === "yes" && value === "no") {
+    return getDefaultGroupHasHigherAccessText(defaultGroup);
+  }
+
+  return null;
+}
 
 export const canManageSubscriptions = (state: ApplicationPermissionsState) =>
   state.currentUser.permissions?.can_access_subscription ?? false;
@@ -35,24 +52,38 @@ const getPermission = (
   permissions: ApplicationPermissions,
   isAdmin: boolean,
   groupId: number,
+  defaultGroup: Group,
   permissionKey: ApplicationPermissionKey,
-) => ({
-  permission: permissionKey,
-  isDisabled: isAdmin,
-  disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
-  value: getApplicationPermission(permissions, groupId, permissionKey),
-  options: [
-    APPLICATION_PERMISSIONS_OPTIONS.yes,
-    APPLICATION_PERMISSIONS_OPTIONS.no,
-  ],
-});
+) => {
+  const value = getApplicationPermission(permissions, groupId, permissionKey);
+  const defaultGroupValue = getApplicationPermission(
+    permissions,
+    defaultGroup.id,
+    permissionKey,
+  );
+
+  const warning = getPermissionWarning(value, defaultGroupValue, defaultGroup);
+
+  return {
+    permission: permissionKey,
+    isDisabled: isAdmin,
+    warning,
+    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    value: getApplicationPermission(permissions, groupId, permissionKey),
+    options: [
+      APPLICATION_PERMISSIONS_OPTIONS.yes,
+      APPLICATION_PERMISSIONS_OPTIONS.no,
+    ],
+  };
+};
 
 export const getApplicationPermissionEditor = createSelector(
   (state: ApplicationPermissionsState) =>
     state.plugins.applicationPermissionsPlugin?.applicationPermissions,
   getOrderedGroups,
-  (permissions, groups: Group[][]) => {
-    if (!permissions || groups == null) {
+  getAdminGroup,
+  (permissions, groups: Group[][], defaultGroup?: Group) => {
+    if (!permissions || groups == null || !defaultGroup) {
       return null;
     }
 
@@ -63,9 +94,27 @@ export const getApplicationPermissionEditor = createSelector(
         id: group.id,
         name: group.name,
         permissions: [
-          getPermission(permissions, isAdmin, group.id, "setting"),
-          getPermission(permissions, isAdmin, group.id, "monitoring"),
-          getPermission(permissions, isAdmin, group.id, "subscription"),
+          getPermission(
+            permissions,
+            isAdmin,
+            group.id,
+            defaultGroup,
+            "setting",
+          ),
+          getPermission(
+            permissions,
+            isAdmin,
+            group.id,
+            defaultGroup,
+            "monitoring",
+          ),
+          getPermission(
+            permissions,
+            isAdmin,
+            group.id,
+            defaultGroup,
+            "subscription",
+          ),
         ],
       };
     });

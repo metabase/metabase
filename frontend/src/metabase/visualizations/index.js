@@ -3,7 +3,7 @@ import _ from "underscore";
 
 const visualizations = new Map();
 const aliases = new Map();
-visualizations.get = function(key) {
+visualizations.get = function (key) {
   return (
     Map.prototype.get.call(this, key) ||
     aliases.get(key) ||
@@ -98,6 +98,11 @@ export const extractRemappings = series => {
 export function getMaxMetricsSupported(display) {
   const visualization = visualizations.get(display);
   return visualization.maxMetricsSupported || Infinity;
+}
+
+export function getMaxDimensionsSupported(display) {
+  const visualization = visualizations.get(display);
+  return visualization.maxDimensionsSupported || 2;
 }
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column

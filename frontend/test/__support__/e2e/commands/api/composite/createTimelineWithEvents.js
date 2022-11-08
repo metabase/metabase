@@ -1,4 +1,4 @@
-import { cypressWaitAll } from "__support__/e2e/cypress";
+import { cypressWaitAll } from "__support__/e2e/helpers";
 
 Cypress.Commands.add("createTimelineWithEvents", ({ timeline, events }) => {
   return cy.createTimeline(timeline).then(({ body: timeline }) => {

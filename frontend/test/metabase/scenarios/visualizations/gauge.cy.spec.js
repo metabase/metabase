@@ -1,4 +1,4 @@
-import { restore, visitDashboard } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -26,8 +26,8 @@ describe("scenarios > visualizations > gauge chart", () => {
               card_id,
               row: 0,
               col: 0,
-              sizeX: 4,
-              sizeY: 4,
+              size_x: 4,
+              size_y: 4,
               parameter_mappings: [],
             },
           ],

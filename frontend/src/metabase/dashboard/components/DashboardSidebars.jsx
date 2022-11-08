@@ -4,12 +4,13 @@ import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
-import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
+import DashboardInfoSidebar from "./DashboardInfoSidebar";
+import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
+import { AddActionSidebar } from "./AddActionSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
@@ -19,7 +20,6 @@ DashboardSidebars.propTypes = {
   addCardToDashboard: PropTypes.func.isRequired,
   editingParameter: PropTypes.object,
   isEditingParameter: PropTypes.bool.isRequired,
-  showAddQuestionSidebar: PropTypes.bool.isRequired,
   clickBehaviorSidebarDashcard: PropTypes.object, // only defined when click-behavior sidebar is open
   onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
@@ -28,6 +28,7 @@ DashboardSidebars.propTypes = {
   setParameter: PropTypes.func.isRequired,
   setParameterName: PropTypes.func.isRequired,
   setParameterDefaultValue: PropTypes.func.isRequired,
+  setParameterIsMultiSelect: PropTypes.func.isRequired,
   dashcardData: PropTypes.object,
   setParameterFilteringParameters: PropTypes.func.isRequired,
   isSharing: PropTypes.bool.isRequired,
@@ -40,6 +41,8 @@ DashboardSidebars.propTypes = {
     props: PropTypes.object,
   }).isRequired,
   closeSidebar: PropTypes.func.isRequired,
+  setDashboardAttribute: PropTypes.func,
+  saveDashboardAndCards: PropTypes.func,
 };
 
 export function DashboardSidebars({
@@ -49,25 +52,23 @@ export function DashboardSidebars({
   removeParameter,
   addCardToDashboard,
   editingParameter,
-  isEditingParameter,
-  showAddQuestionSidebar,
   clickBehaviorSidebarDashcard,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
-  setEditingParameter,
   setParameter,
   setParameterName,
   setParameterDefaultValue,
+  setParameterIsMultiSelect,
   dashcardData,
   setParameterFilteringParameters,
-  isSharing,
-  isEditing,
   isFullscreen,
   onCancel,
   params,
   sidebar,
   closeSidebar,
+  setDashboardAttribute,
+  saveDashboardAndCards,
 }) {
   const handleAddCard = useCallback(
     cardId => {
@@ -90,6 +91,16 @@ export function DashboardSidebars({
         <AddCardSidebar
           initialCollection={dashboard.collection_id}
           onSelect={handleAddCard}
+        />
+      );
+    case SIDEBAR_NAME.addActionForm:
+    case SIDEBAR_NAME.addActionButton:
+      return (
+        <AddActionSidebar
+          dashboard={dashboard}
+          displayType={
+            sidebar.name === SIDEBAR_NAME.addActionForm ? "form" : "button"
+          }
         />
       );
     case SIDEBAR_NAME.clickBehavior:
@@ -130,6 +141,9 @@ export function DashboardSidebars({
           setDefaultValue={value =>
             setParameterDefaultValue(editingParameterId, value)
           }
+          setIsMultiSelect={value =>
+            setParameterIsMultiSelect(editingParameterId, value)
+          }
           setFilteringParameters={ids =>
             setParameterFilteringParameters(editingParameterId, ids)
           }
@@ -142,6 +156,14 @@ export function DashboardSidebars({
           dashboard={dashboard}
           params={params}
           onCancel={onCancel}
+        />
+      );
+    case SIDEBAR_NAME.info:
+      return (
+        <DashboardInfoSidebar
+          dashboard={dashboard}
+          saveDashboardAndCards={saveDashboardAndCards}
+          setDashboardAttribute={setDashboardAttribute}
         />
       );
     default:

@@ -3,7 +3,7 @@ import {
   popover,
   openPeopleTable,
   summarize,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { LONGITUDE_OPTIONS } from "./constants";
 
@@ -76,12 +76,8 @@ function getTitle(title) {
 }
 
 function assertOnXYAxisLabels() {
-  cy.get(".y-axis-label")
-    .invoke("text")
-    .should("eq", "Count");
-  cy.get(".x-axis-label")
-    .invoke("text")
-    .should("eq", "Longitude");
+  cy.get(".y-axis-label").invoke("text").should("eq", "Count");
+  cy.get(".x-axis-label").invoke("text").should("eq", "Longitude");
 }
 
 function assertOnXAxisTicks(values) {

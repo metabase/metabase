@@ -2,36 +2,43 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import Icon from "metabase/components/Icon";
 
-const MainPane = ({ databases, show }) => (
-  <div>
-    <p className="mt2 mb3 text-spaced">
-      {t`Browse the contents of your databases, tables, and columns. Pick a database to get started.`}
-    </p>
-    <ul>
-      {databases &&
-        databases
-          .filter(db => !db.is_saved_questions)
-          .filter(db => db.tables && db.tables.length > 0)
-          .map(database => (
-            <li className="mb2" key={database.id}>
-              <a
-                onClick={() => show("database", database)}
-                className="p1 flex align-center no-decoration bg-medium-hover"
+import Databases from "metabase/entities/databases";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import {
+  NodeListItemLink,
+  NodeListItemName,
+  NodeListItemIcon,
+} from "./NodeList.styled";
+import { PaneContent } from "./Pane.styled";
+
+const MainPane = ({ databases, onClose, onItemClick }) => (
+  <SidebarContent title={t`Data Reference`} onClose={onClose}>
+    <PaneContent>
+      <p className="mt2 mb3 text-spaced">
+        {t`Browse the contents of your databases, tables, and columns. Pick a database to get started.`}
+      </p>
+      <ul>
+        {databases &&
+          databases.map(database => (
+            <li key={database.id}>
+              <NodeListItemLink
+                onClick={() => onItemClick("database", database)}
               >
-                <Icon name="database" className="pr1 text-medium" size={14} />
-                <h3 className="text-wrap">{database.name}</h3>
-              </a>
+                <NodeListItemIcon name="database" />
+                <NodeListItemName>{database.name}</NodeListItemName>
+              </NodeListItemLink>
             </li>
           ))}
-    </ul>
-  </div>
+      </ul>
+    </PaneContent>
+  </SidebarContent>
 );
 
 MainPane.propTypes = {
-  show: PropTypes.func.isRequired,
   databases: PropTypes.array,
+  onClose: PropTypes.func.isRequired,
+  onItemClick: PropTypes.func.isRequired,
 };
 
-export default MainPane;
+export default Databases.loadList()(MainPane);

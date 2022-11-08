@@ -10,19 +10,13 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
@@ -153,8 +147,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
                     card_id: Q1_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 16,
-                    sizeY: 12,
+                    size_x: 16,
+                    size_y: 12,
                     series: [
                       {
                         id: Q2_ID,
@@ -235,8 +229,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
                     card_id: Q1_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 16,
-                    sizeY: 12,
+                    size_x: 16,
+                    size_y: 12,
                     series: [
                       {
                         id: Q2_ID,
@@ -295,19 +289,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("CA People").click();
     cy.contains("Hudson Borer");
     summarize();
-    cy.contains("Summarize by")
-      .parent()
-      .parent()
-      .contains("City")
-      .click();
+    cy.contains("Summarize by").parent().parent().contains("City").click();
 
     // wait for chart to load
     cy.wait("@dataset");
     cy.contains("Count by City");
     // drill into the first bar
-    cy.get(".bar")
-      .first()
-      .click({ force: true });
+    cy.get(".bar").first().click({ force: true });
     cy.contains("View this CA People").click();
 
     // check that filter is applied and person displayed
@@ -332,9 +320,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("January, 2019");
 
     // drill into a recent week
-    cy.get(".dot")
-      .eq(-4)
-      .click({ force: true });
+    cy.get(".dot").eq(-4).click({ force: true });
     cy.contains("View these Orders").click();
 
     // check that filter is applied and rows displayed
@@ -359,9 +345,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("Equal to").click();
     });
     cy.findByText("Greater than").click();
-    cy.findByPlaceholderText("Enter a number")
-      .click()
-      .type("1");
+    cy.findByPlaceholderText("Enter a number").click().type("1");
     cy.findByText("Add filter").click();
 
     visualize();
@@ -430,9 +414,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     });
 
-    cy.get(".bar")
-      .last()
-      .trigger("mousemove");
+    cy.get(".bar").last().trigger("mousemove");
     popover().findByText("12");
   });
 
@@ -496,9 +478,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         visitQuestion(QUESTION_ID);
 
         // Initial visualization has rendered and we can now drill-through
-        cy.get(".Visualization .bar")
-          .eq(4)
-          .click({ force: true });
+        cy.get(".Visualization .bar").eq(4).click({ force: true });
         cy.findByText(/View these People/i).click();
 
         // We should see the resulting dataset of that drill-through
@@ -559,7 +539,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     // count number of distinct values in the Discount column
     cy.findByText("Discount ($)").click();
-    cy.findByText("Distincts").click();
+    cy.findByText("Distinct values").click();
 
     // there should be 0 distinct values since they are all null
     cy.get(".TableInteractive-cellWrapper").contains("0");
@@ -587,8 +567,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
                 card_id: QUESTION_ID,
                 row: 0,
                 col: 0,
-                sizeX: 16,
-                sizeY: 10,
+                size_x: 16,
+                size_y: 10,
                 series: [],
                 visualization_settings: {
                   click_behavior: {
@@ -630,9 +610,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       });
 
       // Drill-through the last bar (Widget)
-      cy.get(".bar")
-        .last()
-        .click({ force: true });
+      cy.get(".bar").last().click({ force: true });
       cy.findByText("View these Products").click();
     });
 
@@ -650,7 +628,5 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 });
 
 function clickLineDot({ index } = {}) {
-  cy.get(".Visualization .dot")
-    .eq(index)
-    .click({ force: true });
+  cy.get(".Visualization .dot").eq(index).click({ force: true });
 }

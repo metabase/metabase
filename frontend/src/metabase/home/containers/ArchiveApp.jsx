@@ -2,8 +2,8 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
-import ArchivedItem from "../../components/ArchivedItem";
 import Button from "metabase/core/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
@@ -14,9 +14,10 @@ import VirtualizedList from "metabase/components/VirtualizedList";
 import Search from "metabase/entities/search";
 import listSelect from "metabase/hoc/ListSelect";
 
-import { openNavbar } from "metabase/redux/app";
+import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { isSmallScreen } from "metabase/lib/dom";
+import { isSmallScreen, getMainElement } from "metabase/lib/dom";
+import ArchivedItem from "../../components/ArchivedItem";
 
 import {
   ArchiveBarContent,
@@ -28,6 +29,7 @@ import {
 } from "./ArchiveApp.styled";
 
 const mapStateToProps = (state, props) => ({
+  isNavbarOpen: getIsNavbarOpen(state),
   isAdmin: getUserIsAdmin(state, props),
 });
 
@@ -37,14 +39,12 @@ const mapDispatchToProps = {
 
 const ROW_HEIGHT = 68;
 
-@Search.loadList({
-  query: { archived: true },
-  reload: true,
-  wrapped: true,
-})
-@listSelect({ keyForItem: item => `${item.model}:${item.id}` })
-@connect(mapStateToProps, mapDispatchToProps)
-export default class ArchiveApp extends Component {
+class ArchiveApp extends Component {
+  constructor(props) {
+    super(props);
+    this.mainElement = getMainElement();
+  }
+
   componentDidMount() {
     if (!isSmallScreen()) {
       this.props.openNavbar();
@@ -54,6 +54,7 @@ export default class ArchiveApp extends Component {
   render() {
     const {
       isAdmin,
+      isNavbarOpen,
       list,
       reload,
 
@@ -74,6 +75,7 @@ export default class ArchiveApp extends Component {
           >
             {list.length > 0 ? (
               <VirtualizedList
+                scrollElement={this.mainElement}
                 items={list}
                 rowHeight={ROW_HEIGHT}
                 renderItem={({ item }) => (
@@ -112,7 +114,10 @@ export default class ArchiveApp extends Component {
             )}
           </Card>
         </ArchiveBody>
-        <BulkActionBar showing={selected.length > 0}>
+        <BulkActionBar
+          isNavbarOpen={isNavbarOpen}
+          showing={selected.length > 0}
+        >
           <ArchiveBarContent>
             <SelectionControls {...this.props} />
             <BulkActionControls {...this.props} />
@@ -123,6 +128,16 @@ export default class ArchiveApp extends Component {
     );
   }
 }
+
+export default _.compose(
+  Search.loadList({
+    query: { archived: true },
+    reload: true,
+    wrapped: true,
+  }),
+  listSelect({ keyForItem: item => `${item.model}:${item.id}` }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(ArchiveApp);
 
 const BulkActionControls = ({ selected, reload }) => (
   <span>

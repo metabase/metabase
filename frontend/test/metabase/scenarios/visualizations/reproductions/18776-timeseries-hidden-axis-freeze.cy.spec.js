@@ -1,4 +1,4 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const questionDetails = {

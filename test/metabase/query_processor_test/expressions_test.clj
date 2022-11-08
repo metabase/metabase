@@ -85,8 +85,6 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
-(def ^:private limited-char-drivers #{:bigquery-cloud-sdk})
-
 (deftest dont-return-expressions-if-fields-is-explicit-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     ;; bigquery doesn't let you have hypthens in field, table, etc names
@@ -183,7 +181,7 @@
 (defmacro ^:private calculate-bird-scarcity [formula & [filter-clause]]
   `(mt/dataset ~'daily-bird-counts
      (mt/$ids ~'bird-count
-       (calculate-bird-scarcity* ~formula ~filter-clause))))
+              (calculate-bird-scarcity* ~formula ~filter-clause))))
 
 (deftest nulls-and-zeroes-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
@@ -338,7 +336,10 @@
 ;; This is not an issue limited to expressions, but using expressions is the most straightforward
 ;; way to reproducing it.
 (deftest no-lazyness-test
-  (let [{:keys [num-fields], :as dataset-def} (no-laziness-dataset-definition 300)]
+  ;; Sometimes Kondo thinks this is unused, depending on the state of the cache -- see comments in
+  ;; [[hooks.metabase.test.data]] for more information. It's definitely used to.
+  #_{:clj-kondo/ignore [:unused-binding]}
+  (let [dataset-def (no-laziness-dataset-definition 300)]
     (mt/dataset dataset-def
       (let [query (mt/mbql-query lots-of-fields
                     {:expressions {:c [:+
@@ -429,7 +430,6 @@
       (mt/dataset test-data
         (let [r-word  "r_word"
               no-sp   "no_spaces"
-              id      (mt/id :venues :id)
               results (mt/run-mbql-query venues
                         {:expressions  {r-word [:regex-match-first [:field-id (mt/id :venues :name)] "^R[^ ]+"]
                                         no-sp  [:replace [:field-id (mt/id :venues :name)] " " ""]}

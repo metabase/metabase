@@ -1,7 +1,8 @@
 import React, { forwardRef, Ref, useCallback } from "react";
 import { t } from "ttag";
-import moment, { Moment } from "moment";
+import moment, { Moment } from "moment-timezone";
 import Tooltip from "metabase/components/Tooltip";
+
 import {
   InputClearButton,
   InputClearIcon,
@@ -16,12 +17,20 @@ export interface TimeInputProps {
   value: Moment;
   is24HourMode?: boolean;
   autoFocus?: boolean;
+  hasClearButton?: boolean;
   onChange?: (value: Moment) => void;
   onClear?: (value: Moment) => void;
 }
 
 const TimeInput = forwardRef(function TimeInput(
-  { value, is24HourMode, autoFocus, onChange, onClear }: TimeInputProps,
+  {
+    value,
+    is24HourMode,
+    autoFocus,
+    hasClearButton = true,
+    onChange,
+    onClear,
+  }: TimeInputProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
   const hoursText = value.format(is24HourMode ? "HH" : "hh");
@@ -104,14 +113,16 @@ const TimeInput = forwardRef(function TimeInput(
           </InputMeridiemButton>
         </InputMeridiemContainer>
       )}
-      <Tooltip tooltip={t`Remove time`}>
-        <InputClearButton
-          aria-label={t`Remove time`}
-          onClick={handleClearClick}
-        >
-          <InputClearIcon name="close" />
-        </InputClearButton>
-      </Tooltip>
+      {hasClearButton && (
+        <Tooltip tooltip={t`Remove time`}>
+          <InputClearButton
+            aria-label={t`Remove time`}
+            onClick={handleClearClick}
+          >
+            <InputClearIcon name="close" />
+          </InputClearButton>
+        </Tooltip>
+      )}
     </InputRoot>
   );
 });

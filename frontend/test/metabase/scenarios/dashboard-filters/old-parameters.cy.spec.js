@@ -1,4 +1,4 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
+import { restore, popover, visitDashboard } from "__support__/e2e/helpers";
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -40,8 +40,8 @@ describe("scenarios > dashboard > OLD parameters", () => {
                   card_id,
                   row: 0,
                   col: 0,
-                  sizeX: 8,
-                  sizeY: 6,
+                  size_x: 8,
+                  size_y: 6,
                   parameter_mappings: [
                     {
                       card_id,
@@ -100,8 +100,8 @@ describe("scenarios > dashboard > OLD parameters", () => {
                   card_id,
                   row: 0,
                   col: 0,
-                  sizeX: 8,
-                  sizeY: 6,
+                  size_x: 8,
+                  size_y: 6,
                   parameter_mappings: [
                     {
                       card_id,
@@ -169,8 +169,8 @@ describe("scenarios > dashboard > OLD parameters", () => {
                   card_id,
                   row: 0,
                   col: 0,
-                  sizeX: 8,
-                  sizeY: 6,
+                  size_x: 8,
+                  size_y: 6,
                   parameter_mappings: [
                     {
                       card_id,

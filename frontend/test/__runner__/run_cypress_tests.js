@@ -2,30 +2,35 @@ const { printBold } = require("./cypress-runner-utils");
 const runCypress = require("./cypress-runner-run-tests");
 const getVersion = require("./cypress-runner-get-version");
 const generateSnapshots = require("./cypress-runner-generate-snapshots");
+const CypressBackend = require("./cypress-runner-backend");
 
-// Use require for BackendResource to run it after the mock afterAll has been set
-const BackendResource = require("./backend.js").BackendResource;
+const e2eHost = process.env["E2E_HOST"];
 
-const server = BackendResource.get({ dbKey: "" });
-const baseUrl = server.host;
+const server = CypressBackend.createServer();
+const baseUrl = e2eHost || server.host;
 
 const init = async () => {
-  printBold("Metabase version info");
-  await getVersion();
+  if (!e2eHost) {
+    printBold("Metabase version info");
+    await getVersion();
 
-  printBold("Starting backend");
-  await BackendResource.start(server);
+    printBold("Starting backend");
+    await CypressBackend.start(server);
 
-  printBold("Generating snapshots");
-  await generateSnapshots(baseUrl, cleanup);
+    printBold("Generating snapshots");
+    await generateSnapshots(baseUrl, cleanup);
+  }
 
   printBold("Starting Cypress");
   await runCypress(baseUrl, cleanup);
 };
 
 const cleanup = async (exitCode = 0) => {
-  printBold("Cleaning up...");
-  await BackendResource.stop(server);
+  if (!e2eHost) {
+    printBold("Cleaning up...");
+    await CypressBackend.stop(server);
+  }
+
   process.exit(exitCode);
 };
 

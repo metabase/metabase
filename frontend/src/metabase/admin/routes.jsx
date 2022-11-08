@@ -1,13 +1,17 @@
 import React from "react";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
+import { routerActions } from "react-router-redux";
+import { UserAuthWrapper } from "redux-auth-wrapper";
 
 import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_ADMIN_TOOLS,
 } from "metabase/plugins";
 
+import { getSetting } from "metabase/selectors/settings";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
@@ -15,7 +19,6 @@ import {
   createAdminRedirect,
 } from "metabase/admin/utils";
 
-import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
 import AdminApp from "metabase/admin/app/components/AdminApp";
 import NewUserModal from "metabase/admin/people/containers/NewUserModal";
 import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
@@ -44,6 +47,10 @@ import FieldApp from "metabase/admin/datamodel/containers/FieldApp";
 import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp";
 
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
+import {
+  ModelCacheRefreshJobs,
+  ModelCacheRefreshJobModal,
+} from "metabase/admin/tasks/containers/ModelCacheRefreshJobs";
 import TasksApp from "metabase/admin/tasks/containers/TasksApp";
 import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
@@ -58,6 +65,29 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
 
 // Permissions
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
+
+// Tools
+import Tools from "metabase/admin/tools/containers/Tools";
+import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
+
+const UserCanAccessTools = UserAuthWrapper({
+  predicate: isEnabled => isEnabled,
+  failureRedirectPath: "/admin",
+  authSelector: state => {
+    if (PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0) {
+      return true;
+    }
+    const isModelPersistenceEnabled = getSetting(
+      state,
+      "persisted-models-enabled",
+    );
+    const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
+    return !hasLoadedSettings || isModelPersistenceEnabled;
+  },
+  wrapperDisplayName: "UserCanAccessTools",
+  allowRedirectBack: false,
+  redirectAction: routerActions.replace,
+});
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route
@@ -171,6 +201,23 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       {/* PERMISSIONS */}
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}
+      </Route>
+
+      <Route
+        path="tools"
+        component={UserCanAccessTools(createAdminRouteGuard("tools"))}
+      >
+        <Route title={t`Tools`} component={Tools}>
+          <IndexRedirect to={PLUGIN_ADMIN_TOOLS.INDEX_ROUTE} />
+          <Route
+            path="model-caching"
+            title={t`Model Caching Log`}
+            component={ModelCacheRefreshJobs}
+          >
+            <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
+          </Route>
+          {PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES}
+        </Route>
       </Route>
 
       {/* PLUGINS */}

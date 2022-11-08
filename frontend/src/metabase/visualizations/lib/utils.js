@@ -3,7 +3,7 @@ import d3 from "d3";
 import { t } from "ttag";
 import crossfilter from "crossfilter";
 
-import { isDimension, isMetric, isDate } from "metabase/lib/schema_metadata";
+import { isDimension, isMetric, isDate } from "metabase-lib/types/utils/isa";
 
 export const MAX_SERIES = 100;
 
@@ -186,9 +186,8 @@ export function colorShade(hex, shade = 0) {
   if (!match) {
     return hex;
   }
-  const components = (match[1] != null
-    ? match.slice(1, 4)
-    : match.slice(4, 7)
+  const components = (
+    match[1] != null ? match.slice(1, 4) : match.slice(4, 7)
   ).map(d => parseInt(d, 16));
   const min = Math.min(...components);
   const max = Math.max(...components);
@@ -390,4 +389,10 @@ export const preserveExistingColumnsOrder = (prevColumns, newColumns) => {
   }
 
   return mergedColumnsResult;
+};
+
+export const moveElement = (array, oldIndex, newIndex) => {
+  const arrayCopy = [...array];
+  arrayCopy.splice(newIndex, 0, arrayCopy.splice(oldIndex, 1)[0]);
+  return arrayCopy;
 };

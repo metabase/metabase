@@ -7,7 +7,7 @@ import {
   setFilter,
   visitQuestion,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -38,9 +38,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
     });
 
     it("when set as the default filter", () => {
-      cy.findByText("Default value")
-        .next()
-        .click();
+      cy.findByText("Default value").next().click();
       addWidgetStringFilter("15");
 
       saveDashboard();
@@ -68,9 +66,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
     });
 
     it("when set as the default filter", () => {
-      cy.findByText("Default value")
-        .next()
-        .click();
+      cy.findByText("Default value").next().click();
       addWidgetStringFilter("4");
 
       saveDashboard();
@@ -113,7 +109,5 @@ function prepareDashboardWithFilterConnectedTo(rowId) {
   setFilter("ID");
 
   cy.findByText("Select…").click();
-  popover()
-    .contains("Filter")
-    .click();
+  popover().contains("Filter").click();
 }

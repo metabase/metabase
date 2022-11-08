@@ -1,7 +1,7 @@
 import React from "react";
 
-import { Route } from "metabase/hoc/Title";
 import { t } from "ttag";
+import { Route } from "metabase/hoc/Title";
 
 import PublicNotFound from "metabase/public/components/PublicNotFound";
 

@@ -1,5 +1,5 @@
 import React from "react";
-import _ from "underscore";
+
 import { action } from "@storybook/addon-actions";
 import { ComponentStory } from "@storybook/react";
 import PinnedItemCard from "./PinnedItemCard";
@@ -13,6 +13,7 @@ const collection = {
   can_write: true,
   id: 1,
   name: "Collection Foo",
+  description: null,
   archived: false,
 };
 
@@ -38,7 +39,7 @@ Question.args = {
     setArchived: action("setArchived"),
     setPinned: action("setPinned"),
     copy: true,
-    setCollection: true,
+    setCollection: action("setCollection"),
   },
   onCopy,
   onMove,

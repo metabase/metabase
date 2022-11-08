@@ -25,12 +25,15 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
+            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.query-processor.util.persisted-cache :as qp.persisted]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -45,7 +48,8 @@
    :database        mbql.s/DatabaseID
    :source-metadata [mbql.s/SourceQueryMetadata]
 
-   (s/optional-key :source-query/dataset?) s/Bool})
+   (s/optional-key :source-query/dataset?) s/Bool
+   (s/optional-key :persisted-info/native) s/Str})
 
 (def ^:private MapWithResolvedSourceQuery
   (s/constrained
@@ -94,42 +98,71 @@
         (log/info (trs "Trimming trailing comment from card with id {0}" card-id))
         trimmed-string))))
 
+(defn- sub-cached-field-refs
+  "Change field refs by id into field refs by name."
+  [metadata]
+  (map (fn [m]
+         ;; is it ok to clobber expressions like this? I think so.
+         (assoc m :field_ref [:field (:name m) {:base-type (:base_type m)}]))
+       metadata))
+
 (s/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
-  "Return the source query info for Card with `card-id`."
-  [card-id :- su/IntGreaterThanZero]
-  (let [card
-        (or (db/select-one [Card :dataset_query :database_id :result_metadata :dataset]
-              :id card-id)
-            (throw (ex-info (tru "Card {0} does not exist." card-id)
-                            {:card-id card-id})))
+  "Return the source query info for Card with `card-id`. Pass true as the optional second arg `log?` to enable
+  logging. (The circularity check calls this and will print more than desired)"
+  ([card-id :- su/IntGreaterThanZero]
+   (card-id->source-query-and-metadata card-id false))
+  ([card-id :- su/IntGreaterThanZero log? :- s/Bool]
+   (let [;; todo: we need to cache this. We are running this in preprocess, compile, and then again
+         card           (or (db/select-one Card :id card-id)
+                            (throw (ex-info (tru "Card {0} does not exist." card-id)
+                             {:card-id card-id})))
+         persisted-info (db/select-one PersistedInfo :card_id card-id)
 
-        {{mbql-query                   :query
-          database-id                  :database
-          {template-tags :template-tags
-           :as           native-query} :native} :dataset_query
-         result-metadata                        :result_metadata
-         dataset?                               :dataset}
-        card
+         {{mbql-query                   :query
+           database-id                  :database
+           {template-tags :template-tags
+            :as           native-query} :native} :dataset_query
+          result-metadata                        :result_metadata
+          dataset?                               :dataset}
+         card
 
-        source-query
-        (or mbql-query
-            (when native-query
-              ;; rename `:query` to `:native` because source queries have a slightly different shape
-              (let [native-query (set/rename-keys native-query {:query :native})]
-                (cond-> native-query
-                  ;; trim trailing comments from SQL, but not other types of native queries
-                  (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
-                  (empty? template-tags)           (dissoc :template-tags))))
-            (throw (ex-info (tru "Missing source query in Card {0}" card-id)
-                            {:card card})))]
-    ;; log the query at this point, it's useful for some purposes
-    (log/debug (trs "Fetched source query from Card {0}:" card-id)
-               "\n"
-               (u/pprint-to-str 'yellow source-query))
-    (cond-> {:source-query    source-query
-             :database        database-id
-             :source-metadata (seq (map mbql.normalize/normalize-source-metadata result-metadata))}
-      dataset? (assoc :source-query/dataset? dataset?))))
+         persisted? (qp.persisted/can-substitute? card persisted-info)
+
+         source-query (cond
+                        mbql-query
+                        mbql-query
+
+                        native-query
+                        ;; rename `:query` to `:native` because source queries have a slightly different shape
+                        (let [native-query (set/rename-keys native-query {:query :native})]
+                          (cond-> native-query
+                            ;; trim trailing comments from SQL, but not other types of native queries
+                            (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
+                            (empty? template-tags)           (dissoc :template-tags)))
+
+                        :else
+                        (throw (ex-info (tru "Missing source query in Card {0}" card-id)
+                                        {:card card})))]
+     (when (and persisted? log?)
+       (log/info (trs "Found substitute cached query for card {0} from {1}.{2}"
+                      card-id
+                      (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
+                      (:table_name card))))
+
+     ;; log the query at this point, it's useful for some purposes
+     (log/debug (trs "Fetched source query from Card {0}:" card-id)
+                "\n"
+                (u/pprint-to-str 'yellow source-query))
+
+     (cond-> {:source-query    (cond-> source-query
+                                 ;; This will be applied, if still appropriate, by the peristence middleware
+                                 persisted?
+                                 (assoc :persisted-info/native
+                                        (qp.persisted/persisted-info-native-query persisted-info)))
+              :database        database-id
+              :source-metadata (cond-> (seq (map mbql.normalize/normalize-source-metadata result-metadata))
+                                 persisted? sub-cached-field-refs)}
+       dataset? (assoc :source-query/dataset? dataset?)))))
 
 (s/defn ^:private source-table-str->card-id :- su/IntGreaterThanZero
   [source-table-str :- mbql.s/source-table-card-id-regex]
@@ -151,7 +184,7 @@
 (s/defn ^:private resolve-one :- MapWithResolvedSourceQuery
   [{:keys [source-table], :as m} :- {:source-table mbql.s/source-table-card-id-regex, s/Keyword s/Any}]
   (let [card-id                   (-> source-table source-table-str->card-id)
-        source-query-and-metadata (-> card-id card-id->source-query-and-metadata)]
+        source-query-and-metadata (-> card-id (card-id->source-query-and-metadata true))]
     (merge
      (dissoc m :source-table)
      ;; record the `card-id` we've resolved here. We'll include it in `:info` for permissions purposes later

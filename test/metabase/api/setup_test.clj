@@ -1,6 +1,7 @@
 (ns metabase.api.setup-test
   "Tests for /api/setup endpoints."
   (:require [clojure.core.async :as a]
+            [clojure.spec.alpha :as s]
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.analytics.snowplow-test :as snowplow-test]
@@ -18,7 +19,7 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [schema.core :as s]
+            [schema.core :as schema]
             [toucan.db :as db]))
 
 ;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
@@ -45,6 +46,8 @@
       (thunk))
     (finally
       (db/delete! User :email (get-in request-body [:user :email]))
+      (when-let [invited (get-in request-body [:invite :name])]
+        (db/delete! User :email invited))
       (when-let [db-name (get-in request-body [:database :name])]
         (db/delete! Database :name db-name)))))
 
@@ -63,7 +66,7 @@
      (fn []
        (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
          (testing "API response should return a Session UUID"
-           (is (schema= {:id (s/pred mt/is-uuid-string? "UUID string")}
+           (is (schema= {:id (schema/pred mt/is-uuid-string? "UUID string")}
                         (client/client :post 200 "setup" request-body))))
          ;; reset our setup token
          (setup/create-token!)
@@ -85,11 +88,11 @@
 
           (testing "Should record :user-joined Activity (#12933)"
             (let [user-id (u/the-id (db/select-one-id User :email email))]
-              (is (schema= {:topic    (s/eq :user-joined)
-                            :model_id (s/eq user-id)
-                            :user_id  (s/eq user-id)
-                            :model    (s/eq "user")
-                            s/Keyword s/Any}
+              (is (schema= {:topic         (schema/eq :user-joined)
+                            :model_id      (schema/eq user-id)
+                            :user_id       (schema/eq user-id)
+                            :model         (schema/eq "user")
+                            schema/Keyword schema/Any}
                            (wait-for-result #(db/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
 
 (deftest invite-user-test
@@ -105,7 +108,7 @@
             (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}
                          :user {:first_name invitor-first-name}
                          :site_name "Metabase"}
-              (let [invited-user (User :email email)]
+              (let [invited-user (db/select-one User :email email)]
                 (is (= (:first_name invited-user) first-name))
                 (is (= (:last_name invited-user) last-name))
                 (is (:is_superuser invited-user))
@@ -185,10 +188,10 @@
                                   :name    db-name
                                   :details (:details (mt/db))}}
             (testing ":database-create events should have been fired"
-              (is (schema= {:topic (s/eq :database-create)
-                            :item  {:id       su/IntGreaterThanZero
-                                    :name     (s/eq db-name)
-                                    s/Keyword s/Any}}
+              (is (schema= {:topic (schema/eq :database-create)
+                            :item  {:id            su/IntGreaterThanZero
+                                    :name          (schema/eq db-name)
+                                    schema/Keyword schema/Any}}
                            (mt/wait-for-result chan 100))))
 
             (testing "Database should be synced"
@@ -209,15 +212,27 @@
                                                                     :name    (mt/random-name)
                                                                     :details {}})))))))))
 
-(defn- setup! [f & args]
-  (let [body {:token (setup/create-token!)
-              :prefs {:site_name "Metabase Test"}
-              :user  {:first_name (mt/random-name)
-                      :last_name  (mt/random-name)
-                      :email      (mt/random-email)
-                      :password   "anythingUP12!!"}}
-        body (apply f body args)]
-    (do-with-setup* body #(client/client :post 400 "setup" body))))
+(s/def ::setup!-args
+  (s/cat :expected-status (s/? integer?)
+            :f               any?
+            :args            (s/* any?)))
+
+(defn- setup!
+  {:arglists '([expected-status? f & args])}
+  [& args]
+  (let [parsed (s/conform ::setup!-args args)]
+    (when (= parsed ::s/invalid)
+      (throw (ex-info (str "Invalid setup! args: " (s/explain-str ::setup!-args args))
+                      (s/explain-data ::setup!-args args))))
+    (let [{:keys [expected-status f args]} parsed
+          body                             {:token (setup/create-token!)
+                                            :prefs {:site_name "Metabase Test"}
+                                            :user  {:first_name (mt/random-name)
+                                                    :last_name  (mt/random-name)
+                                                    :email      (mt/random-email)
+                                                    :password   "anythingUP12!!"}}
+          body                             (apply f body args)]
+      (do-with-setup* body #(client/client :post (or expected-status 400) "setup" body)))))
 
 (deftest setup-validation-test
   (testing "POST /api/setup validation"
@@ -243,13 +258,14 @@
                      (setup! assoc-in [:prefs :site_locale] "en-EN")))))
 
     (testing "user"
-      (testing "first name"
-        (is (= {:errors {:first_name "value must be a non-blank string."}}
-               (setup! m/dissoc-in [:user :first_name]))))
+      (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
+        (testing "first name may be nil"
+          (is (:id (setup! 200 m/dissoc-in [:user :first_name])))
+          (is (:id (setup! 200 assoc-in [:user :first_name] nil))))
 
-      (testing "last name"
-        (is (= {:errors {:last_name "value must be a non-blank string."}}
-               (setup! m/dissoc-in [:user :last_name]))))
+        (testing "last name may be nil"
+          (is (:id (setup! 200 m/dissoc-in [:user :last_name])))
+          (is (:id (setup! 200 assoc-in [:user :last_name] nil)))))
 
       (testing "email"
         (testing "missing"
@@ -289,28 +305,27 @@
 (deftest create-superuser-only-once-test
   (testing "POST /api/setup"
     (testing "Check that we cannot create a new superuser via setup-token when a user exists"
-      (let [token (setup/create-token!)
-            body  {:token token
-                   :prefs {:site_locale "es_MX"
-                           :site_name   (mt/random-name)}
-                   :user  {:first_name (mt/random-name)
-                           :last_name  (mt/random-name)
-                           :email      (mt/random-email)
-                           :password   "p@ssword1"}}]
-        (with-redefs [setup/has-user-setup (let [value (atom false)]
-                                             (fn
-                                               ([] @value)
-                                               ([t-or-f] (reset! value t-or-f))))]
-          (mt/discard-setting-changes
-              [site-name site-locale anon-tracking-enabled admin-email]
-            (client/client :post 200 "setup" body))
-
+      (let [token          (setup/create-token!)
+            body           {:token token
+                            :prefs {:site_locale "es_MX"
+                                    :site_name   (mt/random-name)}
+                            :user  {:first_name (mt/random-name)
+                                    :last_name  (mt/random-name)
+                                    :email      (mt/random-email)
+                                    :password   "p@ssword1"}}
+            has-user-setup (atom false)]
+        (with-redefs [setup/has-user-setup (fn [] @has-user-setup)]
+          (is (not (setup/has-user-setup)))
+          (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
+            (is (schema= {:id client/UUIDString}
+                         (client/client :post 200 "setup" body))))
           ;; In the non-test context, this is 'set' iff there is one or more users, and doesn't have to be toggled
-          (setup/has-user-setup true)
-
-          (mt/discard-setting-changes
-              [site-name site-locale anon-tracking-enabled admin-email]
-            (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))
+          (reset! has-user-setup true)
+          (is (setup/has-user-setup))
+          ;; use do-with-setup* to delete the random user that was created
+          (do-with-setup* body
+            #(is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
+                   (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))))
 
 (deftest transaction-test
   (testing "POST /api/setup/"
@@ -336,7 +351,7 @@
                                                          (fn [& args]
                                                            (apply orig args)
                                                            (throw (ex-info "Oops!" {}))))]
-             (is (schema= {:message (s/eq "Oops!"), s/Keyword s/Any}
+             (is (schema= {:message (schema/eq "Oops!"), schema/Keyword schema/Any}
                           (client/client :post 500 "setup" body))))
            (testing "New user shouldn't exist"
              (is (= false
@@ -373,7 +388,8 @@
              (client/client :post 400 "setup/validate" {:token (setup/setup-token)}))))
 
     (testing "should validate that database connection works"
-      (is (= {:errors {:dbname "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"}}
+      (is (= {:errors {:db "check your connection string"},
+              :message "Database cannot be found."}
              (client/client :post 400 "setup/validate" {:token   (setup/setup-token)
                                                         :details {:engine  "h2"
                                                                   :details {:db "file:///tmp/fake.db"}}}))))

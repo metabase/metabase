@@ -2,13 +2,13 @@
 
 import React from "react";
 import PropTypes from "prop-types";
-import Card from "metabase/components/Card";
+import cx from "classnames";
+import { t, jt } from "ttag";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
 import Link from "metabase/core/components/Link";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import cx from "classnames";
-import { t, jt } from "ttag";
+import { ChannelCard } from "metabase/sharing/components/NewPulseSidebar.styled";
 
 function NewPulseSidebar({
   onCancel,
@@ -23,11 +23,12 @@ function NewPulseSidebar({
         <h4>{t`Create a dashboard subscription`}</h4>
       </div>
       <div className="my1 mx4">
-        <Card
+        <ChannelCard
           flat
           className={cx("mt1 mb3", {
-            "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit": emailConfigured,
+            "hover-parent hover--inherit": emailConfigured,
           })}
+          isConfigured={emailConfigured}
           onClick={onNewEmailPulse}
         >
           <div className="px3 pt3 pb2">
@@ -55,19 +56,20 @@ function NewPulseSidebar({
               {!emailConfigured &&
                 jt`You'll need to ${(
                   <Link key="link" to="/admin/settings/email" className="link">
-                    set up email
+                    {t`set up email`}
                   </Link>
                 )} first.`}
               {emailConfigured &&
                 t`You can send this dashboard regularly to users or email addresses.`}
             </Text>
           </div>
-        </Card>
-        <Card
+        </ChannelCard>
+        <ChannelCard
           flat
           className={cx({
-            "cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit": slackConfigured,
+            "hover-parent hover--inherit": slackConfigured,
           })}
+          isConfigured={slackConfigured}
           onClick={onNewSlackPulse}
         >
           <div className="px3 pt3 pb2">
@@ -93,14 +95,14 @@ function NewPulseSidebar({
               {!slackConfigured &&
                 jt`First, you'll have to ${(
                   <Link key="link" to="/admin/settings/slack" className="link">
-                    configure Slack
+                    {t`configure Slack`}
                   </Link>
                 )}.`}
               {slackConfigured &&
                 t`Pick a channel and a schedule, and Metabase will do the rest.`}
             </Text>
           </div>
-        </Card>
+        </ChannelCard>
       </div>
     </Sidebar>
   );

@@ -1,7 +1,8 @@
 // NOTE: this file is used on the frontend and backend and there are some
 // limitations. See frontend/src/metabase-shared/color_selector for details
 
-import { alpha, getColorScale, roundColor } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
+import { getColorScale, getSafeColor } from "metabase/lib/colors/scales";
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
@@ -9,23 +10,30 @@ const GRADIENT_ALPHA = 0.75;
 
 // for simplicity wheb typing assume all values are numbers, since you can only pick numeric columns
 
-export function makeCellBackgroundGetter(rows, cols, settings) {
-  const formats = settings["table.column_formatting"] || [];
-  const pivot = settings["table.pivot"];
+export function makeCellBackgroundGetter(
+  rows,
+  cols,
+  formattingSettings,
+  isPivoted,
+) {
   let formatters = {};
   let rowFormatters = [];
   const colIndexes = getColumnIndexesByName(cols);
   try {
-    const columnExtents = computeColumnExtents(formats, rows, colIndexes);
-    formatters = compileFormatters(formats, columnExtents);
-    rowFormatters = compileRowFormatters(formats, columnExtents);
+    const columnExtents = computeColumnExtents(
+      formattingSettings,
+      rows,
+      colIndexes,
+    );
+    formatters = compileFormatters(formattingSettings, columnExtents);
+    rowFormatters = compileRowFormatters(formattingSettings, columnExtents);
   } catch (e) {
     console.error("Unexpected error compiling column formatters: ", e);
   }
   if (Object.keys(formatters).length === 0 && rowFormatters.length === 0) {
     return () => null;
   } else {
-    return function(value, rowIndex, colName) {
+    return function (value, rowIndex, colName) {
       if (formatters[colName]) {
         // const value = rows[rowIndex][colIndexes[colName]];
         for (let i = 0; i < formatters[colName].length; i++) {
@@ -37,7 +45,7 @@ export function makeCellBackgroundGetter(rows, cols, settings) {
         }
       }
       // don't highlight row for pivoted tables
-      if (!pivot) {
+      if (!isPivoted) {
         for (let i = 0; i < rowFormatters.length; i++) {
           const rowFormatter = rowFormatters[i];
           const color = rowFormatter(rows[rowIndex], colIndexes);
@@ -73,11 +81,11 @@ export const OPERATOR_FORMATTER_FACTORIES = {
     typeof value === "number" && v >= value ? color : null,
   ">": (value, color) => v =>
     typeof value === "number" && v > value ? color : null,
-  "=": (value, color) => v => (v === value ? color : null),
+  "=": (value, color) => v => v === value ? color : null,
   "!=": (value, color) => v =>
     !isEmptyString(value) && v !== value ? color : null,
-  "is-null": (_value, color) => v => (v === null ? color : null),
-  "not-null": (_value, color) => v => (v !== null ? color : null),
+  "is-null": (_value, color) => v => v === null ? color : null,
+  "not-null": (_value, color) => v => v !== null ? color : null,
   contains: (value, color) => v =>
     canCompareSubstrings(value, v) && v.indexOf(value) >= 0 ? color : null,
   "does-not-contain": (value, color) => v =>
@@ -133,7 +141,7 @@ export function compileFormatter(
       [min, max],
       format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
     ).clamp(true);
-    return value => roundColor(scale(value));
+    return value => getSafeColor(scale(value));
   } else {
     console.warn("Unknown format type", format.type);
     return () => null;

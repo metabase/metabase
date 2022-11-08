@@ -4,16 +4,12 @@ import { t } from "ttag";
 
 import cx from "classnames";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/core/components/Button";
 import Snippets from "metabase/entities/snippets";
+import { SnippetButton } from "./SnippetRow.styled";
 
 const ICON_SIZE = 16;
 
-@Snippets.load({
-  id: (state, props) => props.item.id,
-  wrapped: true,
-})
-class SnippetRow extends React.Component {
+class SnippetRowInner extends React.Component {
   constructor(props) {
     super(props);
     this.state = { isOpen: false };
@@ -74,7 +70,7 @@ class SnippetRow extends React.Component {
               {content}
             </pre>
             {canWrite && (
-              <Button
+              <SnippetButton
                 onClick={
                   snippet.archived
                     ? () => snippet.update({ archived: false })
@@ -82,11 +78,10 @@ class SnippetRow extends React.Component {
                 }
                 borderless
                 medium
-                className="text-brand text-white-hover bg-light bg-brand-hover mt1"
                 icon={snippet.archived ? "unarchive" : "pencil"}
               >
                 {snippet.archived ? t`Unarchive` : t`Edit`}
-              </Button>
+              </SnippetButton>
             )}
           </div>
         )}
@@ -94,5 +89,10 @@ class SnippetRow extends React.Component {
     );
   }
 }
+
+const SnippetRow = Snippets.load({
+  id: (state, props) => props.item.id,
+  wrapped: true,
+})(SnippetRowInner);
 
 export default SnippetRow;

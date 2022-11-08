@@ -6,64 +6,9 @@
             [metabase.test-runner.parallel :as test-runner.parallel]
             [potemkin :as p]
             [schema.core :as s])
-  (:import java.io.PrintStream
-           [org.apache.commons.io.output NullOutputStream NullWriter]
-           [org.apache.logging.log4j Level LogManager]
+  (:import [org.apache.logging.log4j Level LogManager]
            [org.apache.logging.log4j.core Appender LifeCycle LogEvent Logger LoggerContext]
            [org.apache.logging.log4j.core.config Configuration LoggerConfig]))
-
-;; make sure [[clojure.tools.logging]] is using the Log4j2 factory, otherwise the swaps we attempt to do here don't seem
-;; to work.
-(when-not (= (log.impl/name log/*logger-factory*) "org.apache.logging.log4j")
-  (alter-var-root #'log/*logger-factory* (constantly (log.impl/log4j2-factory)))
-  (log/infof "Setting clojure.tools.logging factory to %s" `log.impl/log4j2-factory))
-
-(def ^:private ^:deprecated logger->original-level
-  (delay
-    (let [loggers (.getLoggers ^LoggerContext (LogManager/getContext false))]
-      (into {} (for [^Logger logger loggers]
-                 [logger (.getLevel logger)])))))
-
-(def ^:private ^:dynamic *suppressed* false)
-
-(defn ^:deprecated do-with-suppressed-output
-  "Impl for [[suppress-output]] macro; don't use this directly."
-  [f]
-  (if *suppressed*
-    (f)
-    (binding [*suppressed* true]
-      ;; yes, swapping out *out*/*err*, swapping out System.out/System.err, and setting all the log levels to OFF is
-      ;; really necessary to suppress everyting (!)
-      (let [orig-out (System/out)
-            orig-err (System/err)]
-        (with-open [null-stream (PrintStream. (NullOutputStream.))
-                    null-writer (NullWriter.)]
-          (try
-            (System/setOut null-stream)
-            (System/setErr null-stream)
-            (doseq [[^Logger logger] @logger->original-level]
-              (.setLevel logger Level/OFF))
-            (binding [*out* null-writer
-                      *err* null-writer]
-              (f))
-            (finally
-              (System/setOut orig-out)
-              (System/setErr orig-err)
-              (doseq [[^Logger logger, ^Level old-level] @logger->original-level]
-                (.setLevel logger old-level)))))))))
-
-(defmacro ^:deprecated suppress-output
-  "Execute `body` with all logging/`*out*`/`*err*` messages suppressed. Useful for avoiding cluttering up test output
-  for tests with stacktraces and error messages from tests that are supposed to fail.
-
-  DEPRECATED -- you don't need to do this anymore. Tests now have a default log level of `FATAL` which means error
-  logging will be suppressed by default. This macro predates the current test logging levels. You can remove usages of
-  this macro.
-
-  If you want to suppress log messages for REPL usage you can use [[with-log-level]] instead."
-  {:style/indent 0}
-  [& body]
-  `(do-with-suppressed-output (fn [] ~@body)))
 
 (def ^:private keyword->Level
   {:off   Level/OFF
@@ -107,7 +52,6 @@
 (defn- effective-ns-logger
   "Get the logger that will be used for the namespace named by `a-namespace`."
   ^LoggerConfig [a-namespace]
-  (assert (= (log.impl/name log/*logger-factory*) "org.apache.logging.log4j"))
   (let [^Logger logger (log.impl/get-logger log/*logger-factory* (logger-name a-namespace))]
     (.get logger)))
 
@@ -282,7 +226,6 @@
          (fn [logs#]
            ~@body
            (logs#)))))))
-
 
 
 ;;;; tests

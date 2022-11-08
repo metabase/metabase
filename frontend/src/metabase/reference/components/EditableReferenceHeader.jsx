@@ -3,13 +3,13 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
 import { t } from "ttag";
-import S from "./ReferenceHeader.css";
 import L from "metabase/components/List.css";
 
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Button from "metabase/core/components/Button";
+import S from "./ReferenceHeader.css";
 
 const EditableReferenceHeader = ({
   entity = {},
@@ -46,6 +46,9 @@ const EditableReferenceHeader = ({
           <InputBlurChange
             className={S.headerTextInput}
             type="text"
+            name={
+              hasDisplayName ? displayNameFormField.name : nameFormField.name
+            }
             placeholder={entity.name}
             onChange={
               hasDisplayName

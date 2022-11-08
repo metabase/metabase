@@ -29,12 +29,12 @@
 
 (deftest list-test
   (testing "Superusers can query TaskHistory, should return DB results"
-    (let [[task-hist-1 task-hist-2] (generate-tasks 2)
+    (let [[task-hist-1 _task-hist-2] (generate-tasks 2)
           task-hist-1 (assoc task-hist-1 :duration 100)
           task-hist-2 (assoc task-hist-1 :duration 200 :task_details {:some "complex", :data "here"})
           task-names (set (map :task [task-hist-1 task-hist-2]))]
-      (mt/with-temp* [TaskHistory [task-1 task-hist-1]
-                      TaskHistory [task-2 task-hist-2]]
+      (mt/with-temp* [TaskHistory [_ task-hist-1]
+                      TaskHistory [_ task-hist-2]]
         (is (= (set (map (fn [task-hist]
                            (merge default-task-history (select-keys task-hist [:task :duration :task_details])))
                          [task-hist-2 task-hist-1]))
@@ -47,8 +47,8 @@
                 "later `:ended_at` date and should be returned first")
     (let [[task-hist-1 task-hist-2 :as task-histories] (generate-tasks 2)
           task-names                                   (set (map :task task-histories))]
-      (mt/with-temp* [TaskHistory [task-1 task-hist-1]
-                      TaskHistory [task-2 task-hist-2]]
+      (mt/with-temp* [TaskHistory [_ task-hist-1]
+                      TaskHistory [_ task-hist-2]]
         (is (= (map (fn [{:keys [task]}]
                       (assoc default-task-history :task task))
                     [task-hist-2 task-hist-1])
@@ -69,10 +69,10 @@
   (testing "Check that paging information is applied when provided and included in the response"
     (db/delete! TaskHistory)
     (let [[task-hist-1 task-hist-2 task-hist-3 task-hist-4] (generate-tasks 4)]
-      (mt/with-temp* [TaskHistory [task-1 task-hist-1]
-                      TaskHistory [task-2 task-hist-2]
-                      TaskHistory [task-3 task-hist-3]
-                      TaskHistory [task-4 task-hist-4]]
+      (mt/with-temp* [TaskHistory [_ task-hist-1]
+                      TaskHistory [_ task-hist-2]
+                      TaskHistory [_ task-hist-3]
+                      TaskHistory [_ task-hist-4]]
         (is (= {:total 4, :limit 2, :offset 0
                 :data  (map (fn [{:keys [task]}]
                               (assoc default-task-history :task task))

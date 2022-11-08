@@ -1,8 +1,10 @@
 (ns metabase.models.native-query-snippet-test
   (:require [clojure.test :refer :all]
             [metabase.models :refer [Collection NativeQuerySnippet]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import java.time.LocalDateTime))
 
 (deftest disallow-updating-creator-id-test
   (testing "You shouldn't be allowed to update the creator_id of a NativeQuerySnippet"
@@ -56,3 +58,12 @@
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
              (db/update! NativeQuerySnippet snippet-id :collection_id dest-collection-id)))))))
+
+(deftest identity-hash-test
+  (testing "Native query snippet hashes are composed of the name and the collection's hash"
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection         [coll    {:name "field-db" :namespace :snippets :location "/" :created_at now}]
+                      NativeQuerySnippet [snippet {:name "my snippet" :collection_id (:id coll) :created_at now}]]
+        (is (= "7ac51ad0"
+               (serdes.hash/raw-hash ["my snippet" (serdes.hash/identity-hash coll) now])
+               (serdes.hash/identity-hash snippet)))))))

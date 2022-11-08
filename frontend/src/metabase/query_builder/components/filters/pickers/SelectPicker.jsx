@@ -8,7 +8,7 @@ import ListSearchField from "metabase/components/ListSearchField";
 import { capitalize } from "metabase/lib/formatting";
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 
-import cx from "classnames";
+import { SelectPickerButton } from "./SelectPicker.styled";
 
 export default class SelectPicker extends Component {
   constructor(props) {
@@ -132,19 +132,12 @@ export default class SelectPicker extends Component {
                   className="half"
                   style={{ padding: "0.15em" }}
                 >
-                  <button
-                    style={{ height: "95px" }}
-                    className={cx(
-                      "full rounded bordered border-purple text-centered text-bold",
-                      {
-                        "text-purple bg-white": values[0] !== option.key,
-                        "text-white bg-purple": values[0] === option.key,
-                      },
-                    )}
+                  <SelectPickerButton
+                    isSelected={values[0] === option.key}
                     onClick={() => this.selectValue(option.key, true)}
                   >
                     {this.nameForOption(option)}
-                  </button>
+                  </SelectPickerButton>
                 </div>
               ))}
             </div>

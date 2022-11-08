@@ -24,8 +24,8 @@
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
 #_(def ^:private AttributeRemappings
-  (su/with-api-error-message (s/maybe {su/NonBlankString su/NonBlankString})
-    "value must be a valid attribute remappings map (attribute name -> remapped name)"))
+   (su/with-api-error-message (s/maybe {su/NonBlankString su/NonBlankString})
+     "value must be a valid attribute remappings map (attribute name -> remapped name)"))
 
 (api/defendpoint POST "/"
   "Create a new GTAP."
@@ -44,7 +44,7 @@
   "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the
   paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
   one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints."
-  [id :as {{:keys [card_id attribute_remappings], :as body} :body}]
+  [id :as {{:keys [card_id #_attribute_remappings], :as body} :body}]
   {card_id              (s/maybe su/IntGreaterThanZero)
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
   (api/check-404 (GroupTableAccessPolicy id))

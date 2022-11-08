@@ -2,9 +2,10 @@ import {
   restore,
   describeEE,
   mockSessionProperty,
-  modal,
+  popover,
   visitDashboard,
-} from "__support__/e2e/cypress";
+  rightSidebar,
+} from "__support__/e2e/helpers";
 
 describeEE("scenarios > dashboard > caching", () => {
   beforeEach(() => {
@@ -17,43 +18,48 @@ describeEE("scenarios > dashboard > caching", () => {
     cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
     visitDashboard(1);
 
-    openEditingModalForm();
-    modal().within(() => {
-      cy.findByText("More options").click();
-      cy.findByPlaceholderText("24")
-        .clear()
-        .type("48")
-        .blur();
-      cy.button("Update").click();
+    openDashboardInfo();
+
+    rightSidebar().within(() => {
+      cy.findByText(/Cache Configuration/).click();
+    });
+
+    popover().within(() => {
+      cy.findByPlaceholderText("24").clear().type("48").blur();
+      cy.button("Save changes").click();
     });
 
     cy.wait("@updateDashboard");
     cy.reload();
 
-    openEditingModalForm();
-    modal().within(() => {
-      cy.findByText("More options").click();
-      cy.findByDisplayValue("48")
-        .clear()
-        .type("0")
-        .blur();
-      cy.button("Update").click();
+    openDashboardInfo();
+
+    rightSidebar().within(() => {
+      cy.findByText(/Cache Configuration/).click();
+    });
+
+    popover().within(() => {
+      cy.findByDisplayValue("48").clear().type("0").blur();
+      cy.button("Save changes").click();
     });
 
     cy.wait("@updateDashboard");
     cy.reload();
 
-    openEditingModalForm();
-    modal().within(() => {
-      cy.findByText("More options").click();
+    openDashboardInfo();
+
+    rightSidebar().within(() => {
+      cy.findByText(/Cache Configuration/).click();
+    });
+
+    popover().within(() => {
       cy.findByPlaceholderText("24");
     });
   });
 });
 
-function openEditingModalForm() {
+function openDashboardInfo() {
   cy.get("main header").within(() => {
-    cy.icon("ellipsis").click();
+    cy.icon("info").click();
   });
-  cy.findByText("Edit dashboard details").click();
 }

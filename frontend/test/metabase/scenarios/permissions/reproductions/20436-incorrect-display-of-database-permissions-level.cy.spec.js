@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/helpers";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -45,13 +45,9 @@ describe("issue 20436", () => {
 });
 
 function changePermissions(from, to) {
-  cy.findAllByText(from)
-    .first()
-    .click();
+  cy.findAllByText(from).first().click();
 
-  popover()
-    .contains(to)
-    .click();
+  popover().contains(to).click();
 }
 
 function saveChanges() {

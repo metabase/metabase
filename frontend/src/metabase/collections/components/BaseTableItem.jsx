@@ -1,23 +1,26 @@
 import React, { useState, useCallback } from "react";
 import PropTypes from "prop-types";
-import moment from "moment";
+import moment from "moment-timezone";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
+import Ellipsified from "metabase/core/components/Ellipsified";
 import EntityItem from "metabase/components/EntityItem";
 import DateTime from "metabase/components/DateTime";
 import Tooltip from "metabase/components/Tooltip";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
 import { color } from "metabase/lib/colors";
+import { getFullName } from "metabase/lib/user";
 
 import {
   ItemCell,
   EntityIconCheckBox,
   ItemLink,
   TableItemSecondaryField,
+  DescriptionIcon,
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
@@ -31,7 +34,6 @@ BaseTableItem.propTypes = {
   isSelected: PropTypes.bool,
   isPinned: PropTypes.bool,
   linkProps: PropTypes.object,
-  hasBottomBorder: PropTypes.bool,
   onCopy: PropTypes.func,
   onMove: PropTypes.func,
   onDrop: PropTypes.func,
@@ -49,12 +51,10 @@ export function BaseTableItem({
   isSelected,
   isPinned,
   linkProps = {},
-  hasBottomBorder = true,
   onCopy,
   onMove,
   onDrop,
   onToggleSelected,
-  ...props
 }) {
   const [isHoveringOverRow, setIsHoveringOverRow] = useState(false);
 
@@ -70,9 +70,7 @@ export function BaseTableItem({
 
     // We don't keep last edit info for pulses
     // TODO Remove ternary when Pulses are gone (metabase#16519-1)
-    const lastEditedBy = lastEditInfo
-      ? `${lastEditInfo.first_name} ${lastEditInfo.last_name}`
-      : "";
+    const lastEditedBy = getLastEditedBy(lastEditInfo);
     const lastEditedAt = lastEditInfo
       ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
       : "";
@@ -85,7 +83,7 @@ export function BaseTableItem({
 
     const icon = { name: item.getIcon().name };
     if (item.model === "card") {
-      icon.color = color("bg-dark");
+      icon.color = color("text-light");
     }
 
     // Table row can be wrapped with ItemDragSource,
@@ -117,17 +115,25 @@ export function BaseTableItem({
           />
         </ItemCell>
         <ItemCell data-testid={`${testId}-name`}>
-          <ItemLink {...linkProps} to={item.getUrl()}>
+          <ItemLink {...linkProps} to={item.getUrl({ isModelDetail: true })}>
             <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
+              size={16}
               status={item.moderated_status}
             />
+            {item.description && (
+              <DescriptionIcon
+                name="info"
+                size={16}
+                tooltip={item.description}
+              />
+            )}
           </ItemLink>
         </ItemCell>
         <ItemCell data-testid={`${testId}-last-edited-by`}>
-          <TableItemSecondaryField>{lastEditedBy}</TableItemSecondaryField>
+          <Ellipsified>{lastEditedBy}</Ellipsified>
         </ItemCell>
-        <ItemCell data-testid={`${testId}-last-edited-at`}>
+        <ItemCell data-testid={`${testId}-last-edited-at`} data-server-date>
           {lastEditInfo && (
             <Tooltip tooltip={<DateTime value={lastEditInfo.timestamp} />}>
               <TableItemSecondaryField>{lastEditedAt}</TableItemSecondaryField>
@@ -178,6 +184,15 @@ export function BaseTableItem({
       {renderRow()}
     </ItemDragSource>
   );
+}
+
+function getLastEditedBy(lastEditInfo) {
+  if (!lastEditInfo) {
+    return "";
+  }
+
+  const name = getFullName(lastEditInfo);
+  return name || lastEditInfo.email;
 }
 
 export default BaseTableItem;

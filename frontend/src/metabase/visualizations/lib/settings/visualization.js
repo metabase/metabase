@@ -1,12 +1,11 @@
+import { t } from "ttag";
+import { getVisualizationRaw } from "metabase/visualizations";
+import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
 import {
   getComputedSettings,
   getSettingsWidgets,
   getPersistableDefaultSettings,
 } from "../settings";
-
-import { getVisualizationRaw } from "metabase/visualizations";
-import { normalizeFieldRef } from "metabase/lib/dataset";
-import { t } from "ttag";
 
 const COMMON_SETTINGS = {
   "card.title": {
@@ -93,12 +92,14 @@ export function getSettingsWidgetsForSeries(
   const settingsDefs = getSettingDefintionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
   const computedSettings = getComputedSettingsForSeries(series);
+
   return getSettingsWidgets(
     settingsDefs,
     storedSettings,
     computedSettings,
     series,
     onChangeSettings,
+    { isDashboard },
   ).filter(
     widget =>
       widget.dashboard === undefined || widget.dashboard === isDashboard,

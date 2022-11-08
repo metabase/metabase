@@ -6,6 +6,13 @@ on:
       - 'master'
       - 'release-**'
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "**_test.clj"
+      - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
+      - "frontend/test/__support__/e2e/**"
+      - "frontend/test/__runner__/*cypress*"
 
 jobs:
   fe-linter-prettier:
@@ -54,7 +61,7 @@ jobs:
         flags: front-end
 
   fe-tests-timezones:
-    runs-on: buildjet-2vcpu-ubuntu-2004
+    runs-on: ubuntu-20.04
     timeout-minutes: 14
     steps:
     - uses: actions/checkout@v3

@@ -5,17 +5,16 @@ import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 
+import cx from "classnames";
+import Icon from "metabase/components/Icon";
+import IconBorder from "metabase/components/IconBorder";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import AggregationWidget from "./AggregationWidget";
 import BreakoutWidget from "./BreakoutWidget";
 import ExtendedOptions from "./ExtendedOptions";
 import FilterWidgetList from "./filters/FilterWidgetList";
 import FilterPopover from "./filters/FilterPopover";
-import Icon from "metabase/components/Icon";
-import IconBorder from "metabase/components/IconBorder";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
-
-import cx from "classnames";
 
 export default class GuiQueryEditor extends React.Component {
   constructor(props) {
@@ -95,11 +94,9 @@ export default class GuiQueryEditor extends React.Component {
           <FilterWidgetList
             query={query}
             filters={filters}
-            removeFilter={index =>
-              query.removeFilter(index).update(setDatasetQuery)
-            }
+            removeFilter={index => setDatasetQuery(query.removeFilter(index))}
             updateFilter={(index, filter) =>
-              query.updateFilter(index, filter).update(setDatasetQuery)
+              setDatasetQuery(query.updateFilter(index, filter))
             }
           />
         );
@@ -136,9 +133,7 @@ export default class GuiQueryEditor extends React.Component {
             <FilterPopover
               isNew
               query={query}
-              onChangeFilter={filter =>
-                query.filter(filter).update(setDatasetQuery)
-              }
+              onChangeFilter={filter => setDatasetQuery(query.filter(filter))}
               onClose={() => this.filterPopover.current.close()}
             />
           </PopoverWithTrigger>
@@ -148,12 +143,8 @@ export default class GuiQueryEditor extends React.Component {
   }
 
   renderAggregation() {
-    const {
-      query,
-      features,
-      setDatasetQuery,
-      supportMultipleAggregations,
-    } = this.props;
+    const { query, features, setDatasetQuery, supportMultipleAggregations } =
+      this.props;
 
     if (!features.aggregation) {
       return;
@@ -177,16 +168,14 @@ export default class GuiQueryEditor extends React.Component {
       for (const [index, aggregation] of aggregations.entries()) {
         aggregationList.push(
           <AggregationWidget
-            className="View-section-aggregation QueryOption p1"
+            className="QueryOption p1"
             key={"agg" + index}
             aggregation={aggregation}
             query={query}
             onChangeAggregation={aggregation =>
               aggregation
-                ? query
-                    .updateAggregation(index, aggregation)
-                    .update(setDatasetQuery)
-                : query.removeAggregation(index).update(setDatasetQuery)
+                ? setDatasetQuery(query.updateAggregation(index, aggregation))
+                : setDatasetQuery(query.removeAggregation(index))
             }
             showMetrics={false}
             showRawData
@@ -240,14 +229,14 @@ export default class GuiQueryEditor extends React.Component {
       breakoutList.push(
         <BreakoutWidget
           key={"breakout" + (breakout ? index : "-new")}
-          className="View-section-breakout QueryOption p1"
+          className="QueryOption p1"
           breakout={breakout}
           query={query}
           breakoutOptions={query.breakoutOptions(breakout)}
           onChangeBreakout={breakout =>
             breakout
-              ? query.updateBreakout(index, breakout).update(setDatasetQuery)
-              : query.removeBreakout(index).update(setDatasetQuery)
+              ? setDatasetQuery(query.updateBreakout(index, breakout))
+              : setDatasetQuery(query.removeBreakout(index))
           }
         >
           {this.renderAdd(index === 0 ? t`Add a grouping` : null)}

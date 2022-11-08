@@ -27,7 +27,6 @@ for (const key of req.keys()) {
 import WelcomePage from "metabase/internal/pages/WelcomePage";
 import TypePage from "metabase/internal/pages/TypePage";
 import IconsPage from "metabase/internal/pages/IconsPage";
-import ColorsPage from "metabase/internal/pages/ColorsPage";
 import ComponentsPage from "metabase/internal/pages/ComponentsPage";
 import ModalsPage from "metabase/internal/pages/ModalsPage";
 import StaticVizPage from "metabase/internal/pages/StaticVizPage";
@@ -44,7 +43,6 @@ export default (
         <Route path="welcome" component={WelcomePage} />
         <Route path="type" component={TypePage} />
         <Route path="icons" component={IconsPage} />
-        <Route path="colors" component={ColorsPage} />
         <Route path="components/:componentName" component={ComponentsPage} />
         <Route path="modals" component={ModalsPage} />
         <Route path="static-viz" component={StaticVizPage} />

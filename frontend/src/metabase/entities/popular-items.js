@@ -13,7 +13,8 @@ export const getName = item => {
 
 export const getIcon = item => {
   const entity = getEntity(item);
-  return entity.objectSelectors.getIcon(item.model_object);
+  const options = { variant: "secondary" };
+  return entity.objectSelectors.getIcon(item.model_object, options);
 };
 
 const PopularItems = createEntity({

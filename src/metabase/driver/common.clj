@@ -17,49 +17,6 @@
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
-(def connection-error-messages
-  "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
-  {:cannot-connect-check-host-and-port
-   (str (deferred-tru "Hmm, we couldn''t connect to the database.")
-        " "
-        (deferred-tru "Make sure your host and port settings are correct"))
-
-   :ssh-tunnel-auth-fail
-   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-        " "
-        (deferred-tru "Check the username, password."))
-
-   :ssh-tunnel-connection-fail
-   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-        " "
-        (deferred-tru "Check the hostname and port."))
-
-   :database-name-incorrect
-   (deferred-tru "Looks like the database name is incorrect.")
-
-   :invalid-hostname
-   (str (deferred-tru "It looks like your host is invalid.")
-        " "
-        (deferred-tru "Please double-check it and try again."))
-
-   :password-incorrect
-   (deferred-tru "Looks like your password is incorrect.")
-
-   :password-required
-   (deferred-tru "Looks like you forgot to enter your password.")
-
-   :username-incorrect
-   (deferred-tru "Looks like your username is incorrect.")
-
-   :username-or-password-incorrect
-   (deferred-tru "Looks like the username or password is incorrect.")
-
-   :certificate-not-trusted
-   (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")
-
-   :requires-ssl
-   (deferred-tru "Server appears to require SSL - please enable SSL above")})
-
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 
 (def default-host-details
@@ -175,9 +132,9 @@
    :type         :boolean
    :default      true
    :display-name (deferred-tru "Rerun queries for simple explorations")
-   :description  (str (deferred-tru "We execute the underlying query when you explore data using Summarize or Filter.")
-                      " "
-                      (deferred-tru "This is on by default but you can turn it off if performance is slow."))
+   :description  (deferred-tru
+                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
+                        "This is on by default but you can turn it off if performance is slow."))
    :visible-if   {"advanced-options" true}})
 
 (def let-user-control-scheduling
@@ -193,9 +150,9 @@
   `let-user-control-scheduling` is enabled."
   {:name "schedules.metadata_sync"
    :display-name (deferred-tru "Database syncing")
-   :description  (str (deferred-tru "This is a lightweight process that checks for updates to this database’s schema.")
-                      " "
-                      (deferred-tru "In most cases, you should be fine leaving this set to sync hourly."))
+   :description  (deferred-tru
+                   (str "This is a lightweight process that checks for updates to this database’s schema. "
+                        "In most cases, you should be fine leaving this set to sync hourly."))
    :visible-if   {"let-user-control-scheduling" true}})
 
 (def cache-field-values-schedule
@@ -203,17 +160,32 @@
   `let-user-control-scheduling` is enabled."
   {:name "schedules.cache_field_values"
    :display-name (deferred-tru "Scanning for Filter Values")
-   :description  (str (deferred-tru "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.")
-                      " "
-                      (deferred-tru "When should Metabase automatically scan and cache field values?"))
+   :description  (deferred-tru
+                   (str "Metabase can scan the values present in each field in this database to enable checkbox "
+                        "filters in dashboards and questions. This can be a somewhat resource-intensive process, "
+                        "particularly if you have a very large database. When should Metabase automatically scan "
+                        "and cache field values?"))
    :visible-if   {"let-user-control-scheduling" true}})
+
+(def json-unfolding
+  "Map representing the `json-unfolding` option in a DB connection form"
+  {:name         "json-unfolding"
+   :display-name (deferred-tru "Unfold JSON Columns")
+   :type         :boolean
+   :visible-if   {"advanced-options" true}
+   :description  (deferred-tru
+                   (str "We unfold JSON columns into component fields."
+                        "This is on by default but you can turn it off if performance is slow."))
+   :default      true})
 
 (def refingerprint
   "Map representing the `refingerprint` option in a DB connection form."
   {:name         "refingerprint"
    :type         :boolean
    :display-name (deferred-tru "Periodically refingerprint tables")
-   :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
+   :description  (deferred-tru
+                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
+                        "behavior, like improved auto-binning on your bar charts."))
    :visible-if   {"advanced-options" true}})
 
 (def default-advanced-options
@@ -248,7 +220,9 @@
    :type   :info
    :getter (fn []
              (when-let [ips (public-settings/cloud-gateway-ips)]
-               (str (deferred-tru "If your database is behind a firewall, you may need to allow connections from our Metabase Cloud IP addresses:")
+               (str (deferred-tru
+                      (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
+                           "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
                     "\n"
                     (str/join " - " ips))))})
 
@@ -286,7 +260,7 @@
       (time/to-time-zone (time.coerce/from-date parsed-date) joda-tz))))
 
 (defn ^:deprecated create-db-time-formatters
-  "Creates date formatters from `DATE-FORMAT-STR` that will preserve the offset/timezone information. Will return a
+  "Creates date formatters from `date-format-str` that will preserve the offset/timezone information. Will return a
   JodaTime date formatter and a core Java SimpleDateFormat. Results of this are threadsafe and can safely be def'd."
   [date-format-str]
   [(.withOffsetParsed ^DateTimeFormatter (time.format/formatter date-format-str))
@@ -301,22 +275,22 @@
         (parse formatter time-str))))
 
 (defmulti ^:deprecated current-db-time-native-query
-  "Return a native query that will fetch the current time (presumably as a string) used by the `current-db-time`
+  "Return a native query that will fetch the current time (presumably as a string) used by the [[current-db-time]]
   implementation below.
 
-  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
-  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
+  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
+  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmulti ^:deprecated current-db-time-date-formatters
-  "Return JODA time date formatters to parse the current time returned by `current-db-time-native-query`. Used by
-  `current-db-time` implementation below. You can use `create-db-time-formatters` provided by this namespace to create
+  "Return JODA time date formatters to parse the current time returned by [[current-db-time-native-query`]] Used by
+  `current-db-time` implementation below. You can use [[create-db-time-formatters]] provided by this namespace to create
   formatters for a date format string.
 
-  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
-  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
+  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
+  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -335,8 +309,8 @@
     (let [native-query    (current-db-time-native-query driver)
           date-formatters (current-db-time-date-formatters driver)
           time-str        (try
-                            ;; need to initialize the store since we're calling `execute-reducible-query` directly
-                            ;; instead of going thru normal QP pipeline
+                            ;; need to initialize the store since we're calling [[driver/execute-reducible-query]]
+                            ;; directly instead of going thru normal QP pipeline
                             (qp.store/with-store
                               (qp.store/fetch-and-store-database! (u/the-id database))
                               (let [query {:database (u/the-id database), :native {:query native-query}}
@@ -435,20 +409,40 @@
 (def ^:private ^clojure.lang.PersistentVector days-of-week
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
+(def ^:dynamic *start-of-week*
+  "Used to override the [[metabase.public-settings/start-of-week]] settings.
+  Primarily being used to calculate week-of-year in US modes where the start-of-week is always Sunday.
+  More in (defmethod date [:sql :week-of-year-us])."
+  nil)
+
 (s/defn start-of-week->int :- (s/pred (fn [n] (and (integer? n) (<= 0 n 6)))
                                       "Start of week integer")
   "Returns the int value for the current [[metabase.public-settings/start-of-week]] Setting value, which ranges from
   `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
   {:added "0.42.0"}
   []
-  (.indexOf days-of-week (setting/get-value-of-type :keyword :start-of-week)))
+  (.indexOf days-of-week (or *start-of-week* (setting/get-value-of-type :keyword :start-of-week))))
 
-(s/defn start-of-week-offset :- s/Int
-  "Return the offset for start of week to have the week start on [[metabase.public-settings/start-of-week]] given
-  `driver`."
-  [driver]
-  (let [db-start-of-week     (.indexOf days-of-week (driver/db-start-of-week driver))
+(defn start-of-week-offset-for-day
+  "Like [[start-of-week-offset]] but takes a `start-of-week` keyword like `:sunday` rather than ` driver`. Returns the
+  offset (as a negative number) needed to adjust a day of week in the range 1..7 with `start-of-week` as one to a day
+  of week in the range 1..7 with [[metabase.public-settings/start-of-week]] as 1."
+  [start-of-week]
+  (let [db-start-of-week     (.indexOf days-of-week start-of-week)
         target-start-of-week (start-of-week->int)
         delta                (int (- target-start-of-week db-start-of-week))]
     (* (Integer/signum delta)
        (- 7 (Math/abs delta)))))
+
+(s/defn start-of-week-offset :- s/Int
+  "Return the offset needed to adjust a day of the week (in the range 1..7) returned by the `driver`, with `1`
+  corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.public-settings/start-of-week]] in
+  results.
+
+  e.g.
+
+  If `:my-driver` returns [[driver/db-start-of-week]] as `:sunday` (1 is Sunday, 2 is Monday, and so forth),
+  and [[metabase.public-settings/start-of-week]] is `:monday` (the results should have 1 as Monday, 2 as Tuesday... 7 is
+  Sunday), then the offset should be `-1`, because `:monday` returned by the driver (`2`) minus `1` = `1`."
+  [driver]
+  (start-of-week-offset-for-day (driver/db-start-of-week driver)))

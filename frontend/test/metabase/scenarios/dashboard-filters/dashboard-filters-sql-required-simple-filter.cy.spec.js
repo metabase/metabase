@@ -5,7 +5,7 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 
 const questionDetails = {
   name: "Return input value",
@@ -113,21 +113,13 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 });
 
 function removeWidgetFilterValue() {
-  filterWidget()
-    .find(".Icon-close")
-    .click();
+  filterWidget().find(".Icon-close").click();
 }
 
 function openFilterOptions(filterDisplayName) {
-  cy.findByText(filterDisplayName)
-    .parent()
-    .find(".Icon-gear")
-    .click();
+  cy.findByText(filterDisplayName).parent().find(".Icon-gear").click();
 }
 
 function removeDefaultFilterValue(value) {
-  cy.findByDisplayValue(value)
-    .parent()
-    .find(".Icon-close")
-    .click();
+  cy.findByDisplayValue(value).parent().find(".Icon-close").click();
 }

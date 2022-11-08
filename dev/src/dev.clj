@@ -5,13 +5,10 @@
             [honeysql.core :as hsql]
             [metabase.api.common :as api]
             [metabase.core :as mbc]
-            [metabase.core.initialization-status :as init-status]
-            [metabase.db :as mdb]
             [metabase.db.connection :as mdb.connection]
             [metabase.db.setup :as mdb.setup]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.plugins :as plugins]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server :as server]
             [metabase.server.handler :as handler]
@@ -38,12 +35,9 @@
 
 (defn start!
   []
-  (when-not @initialized?
-    (init!))
   (server/start-web-server! #'handler/app)
-  (mdb/setup-db!)
-  (plugins/load-plugins!)
-  (init-status/set-complete!))
+  (when-not @initialized?
+    (init!)))
 
 (defn stop!
   []

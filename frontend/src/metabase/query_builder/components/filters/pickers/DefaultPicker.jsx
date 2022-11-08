@@ -4,21 +4,19 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
 
-import NumberPicker from "./NumberPicker";
-import SelectPicker from "./SelectPicker";
-import TextPicker from "./TextPicker";
-
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+
+import { getCurrencySymbol } from "metabase/lib/formatting";
 
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
-  isCurrency,
-} from "metabase/lib/schema_metadata";
-
-import { getCurrencySymbol } from "metabase/lib/formatting";
-
-import { keyForColumn } from "metabase/lib/dataset";
+} from "metabase-lib/operators/utils";
+import { isCurrency } from "metabase-lib/types/utils/isa";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import TextPicker from "./TextPicker";
+import SelectPicker from "./SelectPicker";
+import NumberPicker from "./NumberPicker";
 
 import {
   BetweenLayoutContainer,
@@ -28,14 +26,14 @@ import {
 } from "./DefaultPicker.styled";
 
 const defaultPickerPropTypes = {
-  filter: PropTypes.object,
+  filter: PropTypes.array,
   setValue: PropTypes.func,
   setValues: PropTypes.func,
   onCommit: PropTypes.func,
   className: PropTypes.string,
-  isSidebar: PropTypes.bool,
   minWidth: PropTypes.number,
   maxWidth: PropTypes.number,
+  checkedColor: PropTypes.string,
 };
 
 const defaultLayoutPropTypes = {
@@ -51,7 +49,7 @@ export default function DefaultPicker({
   className,
   minWidth,
   maxWidth,
-  isSidebar,
+  checkedColor,
 }) {
   const operator = filter.operator();
   if (!operator) {
@@ -66,12 +64,9 @@ export default function DefaultPicker({
   const isBetweenLayout =
     operator.name === "between" && operatorFields.length === 2;
 
-  const visualizationSettings = filter
-    ?.query()
-    ?.question()
-    ?.settings();
+  const visualizationSettings = filter?.query()?.question()?.settings();
 
-  const key = keyForColumn(dimension.column());
+  const key = getColumnKey(dimension.column());
   const columnSettings = visualizationSettings?.column_settings?.[key];
 
   const fieldMetadata = field?.metadata?.fields[field?.id];
@@ -136,6 +131,7 @@ export default function DefaultPicker({
             disableSearch={disableSearch}
             minWidth={minWidth}
             maxWidth={maxWidth}
+            checkedColor={checkedColor}
           />
         );
       } else if (operatorField.type === "text") {
@@ -178,7 +174,7 @@ export default function DefaultPicker({
 
   return (
     <DefaultPickerContainer
-      limitHeight={!isSidebar}
+      limitHeight
       className={cx(className, "PopoverBody--marginBottom")}
     >
       {layout}

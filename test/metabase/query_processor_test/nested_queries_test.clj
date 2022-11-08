@@ -3,6 +3,7 @@
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [java-time :as t]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.mbql.schema :as mbql.s]
@@ -146,44 +147,48 @@
                     :breakout     [$venue_id->venues.price $user_id]
                     :limit        5}))))))))
 
-(deftest nested-with-aggregations-at-both-levels
-  (testing "Aggregations in both nested and outer query have correct metadata (#19403)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-      (mt/dataset sample-dataset
-        (mt/with-temp* [Card [{card-id :id :as card}
-                              {:dataset_query
-                               (mt/$ids :products
-                                        {:type     :query
-                                         :database (mt/id)
-                                         :query    {:source-table $$products
-                                                    :aggregation
-                                                    [[:aggregation-options
-                                                      [:sum $price]
-                                                      {:name "sum"}]
-                                                     [:aggregation-options
-                                                      [:max $rating]
-                                                      {:name "max"}]]
-                                                    :breakout     $category
-                                                    :order-by     [[:asc $category]]}})}]]
-          (is (= {:cols [{:name "count" :display_name "Count"}
-                         {:name "avg" :display_name "Average of Sum of Price"}]
-                  :rows [[4 2787]]}
-                 (-> (mt/format-rows-by [int int]
-                       (qp/process-query {:type     :query
-                                          :database (mt/id)
-                                          :query    {:source-table (str "card__" card-id)
-                                                     :aggregation  [[:aggregation-options
-                                                                     [:count]
-                                                                     {:name "count"}]
-                                                                    [:aggregation-options
-                                                                     [:avg
-                                                                      [:field
-                                                                       "sum"
-                                                                       {:base-type :type/Float}]]
-                                                                     {:name "avg"}]]}}))
-                     :data
-                     (select-keys [:cols :rows])
-                     (update :cols #(map (fn [c] (select-keys c [:name :display_name])) %))))))))))
+(deftest nested-with-aggregations-at-both-levels-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    (mt/dataset sample-dataset
+      (doseq [dataset? [true false]]
+        (testing (format "Aggregations in both nested and outer query for %s have correct metadata (#19403) and (#23248)"
+                         (if dataset? "questions" "models"))
+          (mt/with-temp* [Card [{card-id :id :as card}
+                                {:dataset dataset?
+                                 :dataset_query
+                                 (mt/$ids :products
+                                          {:type     :query
+                                           :database (mt/id)
+                                           :query    {:source-table $$products
+                                                      :aggregation
+                                                      [[:aggregation-options
+                                                        [:sum $price]
+                                                        {:name "sum"}]
+                                                       [:aggregation-options
+                                                        [:max $rating]
+                                                        {:name "max"}]]
+                                                      :breakout     $category
+                                                      :order-by     [[:asc $category]]}})}]]
+            (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
+                                         {:name "count" :display_name "Count"}]
+                                  :rows [[11149 4]]}}
+                          (mt/format-rows-by [int int]
+                            (qp/process-query (merge {:type     :query
+                                                      :database (mt/id)
+                                                      :query    {:source-table (str "card__" card-id)
+                                                                 :aggregation  [[:aggregation-options
+                                                                                 [:sum
+                                                                                  [:field
+                                                                                   "sum"
+                                                                                   {:base-type :type/Float}]]
+                                                                                 {:name "sum"}]
+                                                                                [:aggregation-options
+                                                                                 [:count]
+                                                                                 {:name "count"}]]}}
+                                                     (when dataset?
+                                                       {:info {:metadata/dataset-metadata (:result_metadata card)}}))))))))))))
+
+
 
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -227,6 +232,31 @@
   ([card k v & {:as more}]
    (query-with-source-card card (merge {k v} more))))
 
+(deftest multilevel-nested-questions-with-joins
+  (testing "Multilevel nested questions with joins work (#22859)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Card [inner-card
+                              {:dataset_query
+                               (mt/mbql-query reviews
+                                 {:fields [$id]
+                                  :joins [{:source-table $$products
+                                           :alias "P"
+                                           :fields [&P.products.id &P.products.ean]
+                                           :condition [:= $product_id &P.products.id]}]})}]
+                        Card [outer-card
+                              {:dataset_query
+                               (mt/mbql-query orders
+                                 {:fields [$id]
+                                  :joins [{:source-table (str "card__" (:id inner-card))
+                                           :alias "RP"
+                                           :fields [&RP.reviews.id &RP.products.id &RP.products.ean]
+                                           :condition [:= $product_id &RP.products.id]}]})}]]
+          (is (= :completed
+                 (-> (query-with-source-card outer-card :limit 1)
+                     qp/process-query
+                     :status))))))))
+
 (deftest source-card-id-test
   (testing "Make sure we can run queries using source table `card__id` format."
     ;; This is the format that is actually used by the frontend; it gets translated to the normal `source-query`
@@ -240,6 +270,20 @@
                     (mt/$ids venues
                       {:aggregation [:count]
                        :breakout    [$price]}))))))))))
+
+(deftest grouped-expression-in-card-test
+  (testing "Nested grouped expressions work (#23862)."
+    (mt/with-temp Card [card {:dataset_query
+                              (mt/mbql-query venues
+                                {:aggregation [[:count]]
+                                 :breakout [[:expression "Price level"]]
+                                 :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
+                                 :limit 2})}]
+      (is (= [["budget"    81]
+              ["expensive" 19]]
+             (mt/rows
+              (qp/process-query
+               (query-with-source-card card))))))))
 
 (deftest card-id-native-source-queries-test
   (let [run-native-query
@@ -619,7 +663,7 @@
                         Collection [dest-card-collection]]
           (perms/grant-collection-read-permissions!      (perms-group/all-users) source-card-collection)
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
-          (is (some? (save-card-via-API-with-native-source-query! 202 (mt/db) source-card-collection dest-card-collection)))))
+          (is (some? (save-card-via-API-with-native-source-query! 200 (mt/db) source-card-collection dest-card-collection)))))
 
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
@@ -864,7 +908,7 @@
       (letfn [(ean-metadata [result]
                 (as-> result result
                   (get-in result [:data :results_metadata :columns])
-                  (u/key-by :name result)
+                  (m/index-by :name result)
                   (get result "EAN")
                   (select-keys result [:name :display_name :base_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"

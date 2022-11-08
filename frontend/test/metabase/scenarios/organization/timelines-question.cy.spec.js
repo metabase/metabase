@@ -3,7 +3,7 @@ import {
   visitQuestion,
   sidebar,
   visitQuestionAdhoc,
-} from "__support__/e2e/cypress";
+} from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -102,9 +102,7 @@ describe("scenarios > organization > timelines > question", () => {
       sidebar().within(() => cy.icon("ellipsis").click());
       cy.findByText("Edit event").click();
 
-      cy.findByLabelText("Event name")
-        .clear()
-        .type("RC2");
+      cy.findByLabelText("Event name").clear().type("RC2");
       cy.findByText("Update").click();
       cy.wait("@updateEvent");
 

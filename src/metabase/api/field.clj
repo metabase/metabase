@@ -50,7 +50,7 @@
 (api/defendpoint GET "/:id"
   "Get `Field` with ID."
   [id]
-  (let [field (-> (api/check-404 (Field id))
+  (let [field (-> (api/check-404 (db/select-one Field :id id))
                   (hydrate [:table :db] :has_field_values :dimensions :name_field))]
     ;; Normal read perms = normal access.
     ;;
@@ -143,7 +143,7 @@
             :non-nil #{:display_name :settings})))))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (hydrate (Field id) :dimensions)
+    (u/prog1 (hydrate (db/select-one Field :id id) :dimensions)
       (when (not= effective-type (:effective_type field))
         (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))
 
@@ -170,7 +170,7 @@
                  (and (= dimension-type "external")
                       human_readable_field_id))
              [400 "Foreign key based remappings require a human readable field id"])
-  (if-let [dimension (Dimension :field_id id)]
+  (if-let [dimension (db/select-one Dimension :field_id id)]
     (db/update! Dimension (u/the-id dimension)
       {:type                    dimension-type
        :name                    dimension-name
@@ -180,7 +180,7 @@
                  :type                    dimension-type
                  :name                    dimension-name
                  :human_readable_field_id human_readable_field_id}))
-  (Dimension :field_id id))
+  (db/select-one Dimension :field_id id))
 
 (api/defendpoint DELETE "/:id/dimension"
   "Remove the dimension associated to field at ID"
@@ -200,22 +200,23 @@
 (defn field->values
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
-  [{has-field-values-type :has_field_values, field-id :id, :as field}]
+  [{has-field-values-type :has_field_values, field-id :id, has_more_values :has_more_values, :as field}]
   ;; if there's a human-readable remapping, we need to do all sorts of nonsense to make this work and return pairs of
   ;; `[original remapped]`. The code for this exists in the [[search-values]] function below. So let's just use
   ;; [[search-values]] without a search term to fetch all values.
   (if-let [human-readable-field-id (when (= has-field-values-type :list)
                                      (db/select-one-field :human_readable_field_id Dimension :field_id (u/the-id field)))]
-    {:values   (search-values (api/check-404 field)
-                              (api/check-404 (Field human-readable-field-id)))
-     :field_id field-id}
+    {:values          (search-values (api/check-404 field)
+                                     (api/check-404 (db/select-one Field :id human-readable-field-id)))
+     :field_id        field-id
+     :has_more_values has_more_values}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
 (defn- check-perms-and-return-field-values
   "Impl for `GET /api/field/:id/values` endpoint; check whether current user has read perms for Field with `id`, and, if
   so, return its values."
   [field-id]
-  (let [field (api/check-404 (Field field-id))]
+  (let [field (api/check-404 (db/select-one Field :id field-id))]
     (api/check-403 (params.field-values/current-user-can-fetch-field-values? field))
     (field->values field)))
 
@@ -257,6 +258,7 @@
   [field-or-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
     (db/insert! FieldValues
+      :type :full
       :field_id (u/the-id field-or-id)
       :values (map first value-pairs)
       :human_readable_values (when human-readable-values?
@@ -271,7 +273,7 @@
     (api/check (field-values/field-should-have-field-values? field)
       [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                 "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
-    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
+    (if-let [field-value-id (db/select-one-id FieldValues, :field_id id :type :full)]
       (update-field-values! field-value-id value-pairs)
       (create-field-values! field value-pairs)))
   {:status :success})
@@ -280,21 +282,20 @@
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [id]
-  (let [field (api/write-check (Field id))]
+  (let [field (api/write-check (db/select-one Field :id id))]
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (field-values/create-or-update-field-values! field)))
+      (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (field-values/clear-field-values! (api/write-check (Field id)))
+  (field-values/clear-field-values-for-field! (api/write-check (db/select-one Field :id id)))
   {:status :success})
-
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
@@ -378,8 +379,8 @@
   `metabase.api.field/search-values` for a more detailed explanation."
   [id search-id value]
   {value su/NonBlankString}
-  (let [field        (api/check-404 (Field id))
-        search-field (api/check-404 (Field search-id))]
+  (let [field        (api/check-404 (db/select-one Field :id id))
+        search-field (api/check-404 (db/select-one Field :id search-id))]
     (throw-if-no-read-or-segmented-perms field)
     (throw-if-no-read-or-segmented-perms search-field)
     (search-values field search-field value mw.offset-paging/*limit*)))
@@ -432,6 +433,6 @@
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (-> id Field api/read-check related/related))
+  (-> (db/select-one Field :id id) api/read-check related/related))
 
 (api/define-routes)

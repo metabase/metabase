@@ -1,14 +1,8 @@
-# Running Metabase on Docker
+---
+title: Running Metabase on Docker
+---
 
-<div class='doc-toc' markdown=1>
-- [Metabase container exits without starting the server](#container-exits-without-starting-server)
-- [Metabase container is running but the server is not](#container-running-but-server-is-not)
-- [Not connecting to a remote application database](#not-connecting-to-remote-app-db)
-- [The Metabase server isn't able to connect to a MySQL or PostgreSQL database](#metabase-cant-connect-to-mysql-or-postgresql)
-- [The Metabase application database is not being persisted](#app-db-not-being-persisted)
-- [The internal port isn't being remapped correctly](#internal-port-not-remapped-correctly)
-- [Metabase can't write or read to/from a file or directory](#cant-write-read-file-or-dir)
-</div>
+# Running Metabase on Docker
 
 Docker simplifies many aspects of running Metabase, but there are some pitfalls to keep in mind. If you have trouble with Metabase under Docker, try going through the troubleshooting process below, then look below for details about the specific issue you've found.
 
@@ -31,7 +25,7 @@ And to get the logs for the Metabase container:
 docker logs -f CONTAINER_NAME
 ```
 
-<h2 id="container-exits-without-starting-server">Metabase container exits without starting the server</h2>
+## Metabase container exits without starting the server
 
 **How to detect this:** Run `docker ps` to see if the Metabase container is currently running. If it is, move on to the next step.
 
@@ -47,7 +41,7 @@ Look for the container that exited most recently and make a note of the containe
 Docker logs CONTAINER_ID
 ```
 
-<h2 id="container-running-but-server-is-not">Metabase container is running but the server is not</h2>
+## Metabase container is running but the server is not
 
 **How to detect this:** Run `docker ps` to make sure the container is running. The server should be logging to the Docker container logs. Check this by running:
 
@@ -88,7 +82,7 @@ If the container is being terminated before it finished starting, the problem co
 
 If the container is _not_ being terminated from the outside, but is failing to start anyway, this problem is probably not specific to Docker. If you're using a Metabase-supplied image, please [open a GitHub issue](https://github.com/metabase/metabase/issues/new/choose).
 
-<h2 id="not-connecting-to-remote-app-db">Not connecting to a remote application database</h2>
+## Not connecting to a remote application database
 
 **How to detect this:** If this is a new Metabase instance, then the database you specified via the environment variables will be empty. If this is an existing Metabase instance with incorrect environment parameters, the server will create a new H2 embedded database to use for application data and you’ll see lines similar to these in the log:
 
@@ -105,7 +99,7 @@ If the container is _not_ being terminated from the outside, but is failing to s
 docker inspect some-postgres -f '{% raw %}{{ .Config.Env }}{% endraw %}'
 ```
 
-<h2 id="metabase-cant-connect-to-mysql-or-postgresql">The Metabase server isn't able to connect to a MySQL or PostgreSQL database</h2>
+## The Metabase server isn't able to connect to a MySQL or PostgreSQL database
 
 **How to detect this:** The logs for the Docker container return an error message after the "Verifying Database Connection" line.
 
@@ -131,13 +125,13 @@ nc -v your-db-host 5432
 
 These steps will help you determine whether this the problem is with the network or with authentication.
 
-<h2 id="app-db-not-being-persisted">The Metabase application database is not being persisted</h2>
+## The Metabase application database is not being persisted
 
 **How to detect this:** This is occurring if you are getting the Setup screen every time you start the application. The most common cause is not giving the Docker container a persistent filesystem mount to put the application database in.
 
 **How to fix this:** Make sure you are giving the container a [persistent volume][persistent-volume].
 
-<h2 id="internal-port-not-remapped-correctly">The internal port isn't being remapped correctly</h2>
+## The internal port isn't being remapped correctly
 
 **How to detect this:** Run `docker ps` and look at the port mapping, then run `curl http://localhost:port-number-here/api/health`. This should return a JSON response that looks like:
 
@@ -147,7 +141,7 @@ These steps will help you determine whether this the problem is with the network
 
 **How to fix this:** Make sure to include `-p 3000:3000` or similar port remapping in the `docker run` command you use to start the Metabase container image.
 
-<h2 id="cant-write-read-file-or-dir">Metabase can't write or read to/from a file or directory</h2>
+## Metabase can't write or read to/from a file or directory
 
 **How to detect this:** A message in the logs will clearly indicate an IOError or "Permission denied" from Java, or errors from SQLite containing `org.sqlite.core.NativeDB._open_utf8`.
 
@@ -158,5 +152,5 @@ These steps will help you determine whether this the problem is with the network
 
 If you're running Metabase from the JAR in any Unix-like operating system, you can see which user is running Metabase by opening a terminal and typing `ps -uA | grep metabase`.
 
-[configuring-application-database]: ../operations-guide/configuring-application-database.html
-[persistent-volume]: ../operations-guide/running-metabase-on-docker.html#mounting-a-mapped-file-storage-volume
+[configuring-application-database]: ../installation-and-operation/configuring-application-database.md
+[persistent-volume]: ../installation-and-operation/running-metabase-on-docker.md#mounting-a-mapped-file-storage-volume

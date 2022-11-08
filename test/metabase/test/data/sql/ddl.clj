@@ -4,6 +4,7 @@
             [honeysql.format :as hformat]
             [honeysql.helpers :as hh]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
@@ -49,12 +50,11 @@
     (doseq [tabledef table-definitions]
       (add! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef)
             (sql.tx/create-table-sql driver dbdef tabledef)))
-
     ;; Add the SQL for adding FK constraints
-    (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
-      (doseq [{:keys [fk], :as fielddef} field-definitions]
-        (when fk
-          (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef)))))
+    (doseq [{:keys [field-definitions], :as tabledef} table-definitions
+            {:keys [fk], :as fielddef}                field-definitions]
+      (when fk
+        (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef))))
     ;; Add the SQL for adding table comments
     (doseq [{:keys [table-comment], :as tabledef} table-definitions]
       (when table-comment
@@ -84,7 +84,7 @@
                     (sql.qp/->honeysql driver value)))
         h-cols  (for [column columns]
                   (sql.qp/->honeysql driver
-                    (hx/identifier :field (tx/format-name driver (u/qualified-name column)))))]
+                    (hx/identifier :field (ddl.i/format-name driver (u/qualified-name column)))))]
     ;; explanation for the hack that follows
     ;; hh/columns has a varargs check to make sure you call it in a varargs manner, which means it checks whether the
     ;; first non-accumulator (i.e. not the map it's building) argument is a collection, and throws if so

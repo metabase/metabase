@@ -1,21 +1,5 @@
 import { t } from "ttag";
-import _ from "underscore";
-
-import { Collection, CollectionId } from "metabase-types/api";
-
-export type Item = {
-  name: string;
-  description: string | null;
-  collection_position?: number | null;
-  id: number;
-  getIcon: () => { name: string };
-  getUrl: () => string;
-  setArchived: (isArchived: boolean) => void;
-  setPinned: (isPinned: boolean) => void;
-  copy?: boolean;
-  setCollection?: boolean;
-  model: string;
-};
+import { Collection, CollectionItem } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -75,8 +59,30 @@ export function isRootCollection(collection: Collection): boolean {
   return collection.id === "root";
 }
 
-export function isItemPinned(item: Item) {
+export function isItemPinned(item: CollectionItem) {
   return item.collection_position != null;
+}
+
+export function isItemQuestion(item: CollectionItem) {
+  return item.model === "card";
+}
+
+export function isPreviewShown(item: CollectionItem) {
+  return isPreviewEnabled(item) && isFullyParametrized(item);
+}
+
+export function isPreviewEnabled(item: CollectionItem) {
+  return item.collection_preview ?? true;
+}
+
+export function isFullyParametrized(item: CollectionItem) {
+  return item.fully_parametrized ?? true;
+}
+
+export function coerceCollectionId(
+  collectionId: number | null | undefined,
+): string | number {
+  return collectionId == null ? "root" : collectionId;
 }
 
 // API requires items in "root" collection be persisted with a "null" collection ID

@@ -1,9 +1,4 @@
 import { createSelector } from "reselect";
-import _ from "underscore";
-
-import { isMetaBotGroup } from "metabase/lib/groups";
-
-import Group from "metabase/entities/groups";
 
 export const getMemberships = state => state.admin.people.memberships;
 
@@ -26,15 +21,6 @@ export const getMembershipsByUser = createSelector(
       acc[membership.user_id].push(membership);
       return acc;
     }, {}),
-);
-
-export const getGroupsWithoutMetabot = createSelector(
-  [Group.selectors.getList],
-  groups => groups.filter(group => !isMetaBotGroup(group)),
-);
-
-export const getIs = createSelector([Group.selectors.getList], groups =>
-  groups.filter(group => !isMetaBotGroup(group)),
 );
 
 export const getUserMemberships = createSelector(

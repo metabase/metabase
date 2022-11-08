@@ -1,15 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
-
-import Icon from "metabase/components/Icon";
-
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import ChartSettingSelect from "./ChartSettingSelect";
-
-import { keyForColumn } from "metabase/lib/dataset";
+import {
+  SettingsIcon,
+  ChartSettingFieldPickerRoot,
+} from "./ChartSettingFieldPicker.styled";
 
 const ChartSettingFieldPicker = ({
   value,
@@ -20,48 +18,58 @@ const ChartSettingFieldPicker = ({
   className,
   columns,
   showColumnSetting,
+  showDragHandle,
+  columnHasSettings,
 }) => {
   let columnKey;
   if (value && showColumnSetting && columns) {
     const column = _.findWhere(columns, { name: value });
-    if (column) {
-      columnKey = keyForColumn(column);
+    if (column && columnHasSettings(column)) {
+      columnKey = getColumnKey(column);
     }
   }
   return (
-    <div className={cx(className, "flex align-center")}>
+    <ChartSettingFieldPickerRoot
+      className={className}
+      disabled={options.length === 1 && options[0].value === value}
+      data-testid="chartsettings-field-picker"
+    >
+      {showDragHandle && (
+        <SettingsIcon name="grabber2" size={12} noPointer noMargin />
+      )}
       <ChartSettingSelect
-        className="flex-full"
         value={value}
         options={options}
         onChange={onChange}
         placeholder={t`Select a field`}
         placeholderNoOptions={t`No valid fields`}
         isInitiallyOpen={value === undefined}
+        hiddenIcons
       />
       {columnKey && (
-        <Icon
-          name="gear"
-          className="ml1 text-medium text-brand-hover cursor-pointer"
-          onClick={() => {
-            onShowWidget({
-              id: "column_settings",
-              props: {
-                initialKey: columnKey,
+        <SettingsIcon
+          name="ellipsis"
+          onClick={e => {
+            onShowWidget(
+              {
+                id: "column_settings",
+                props: {
+                  initialKey: columnKey,
+                },
               },
-            });
+              e.target,
+            );
           }}
         />
       )}
-      <Icon
-        data-testid={`remove-${value}`}
-        name="close"
-        className={cx("ml1 text-medium text-brand-hover cursor-pointer", {
-          "disabled hidden": !onRemove,
-        })}
-        onClick={onRemove}
-      />
-    </div>
+      {onRemove && (
+        <SettingsIcon
+          data-testid={`remove-${value}`}
+          name="close"
+          onClick={onRemove}
+        />
+      )}
+    </ChartSettingFieldPickerRoot>
   );
 };
 

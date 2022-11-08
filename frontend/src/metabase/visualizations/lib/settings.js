@@ -137,12 +137,18 @@ function getSettingWidget(
     ...settingDef,
     id: settingId,
     value: value,
+    section: settingDef.getSection
+      ? settingDef.getSection(object, computedSettings, extra)
+      : settingDef.section,
     title: settingDef.getTitle
       ? settingDef.getTitle(object, computedSettings, extra)
       : settingDef.title,
     hidden: settingDef.getHidden
       ? settingDef.getHidden(object, computedSettings, extra)
       : settingDef.hidden || false,
+    marginBottom: settingDef.getMarginBottom
+      ? settingDef.getMarginBottom(object, computedSettings, extra)
+      : settingDef.marginBottom,
     disabled: settingDef.getDisabled
       ? settingDef.getDisabled(object, computedSettings, extra)
       : settingDef.disabled || false,

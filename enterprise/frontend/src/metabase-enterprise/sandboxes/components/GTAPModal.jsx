@@ -6,10 +6,7 @@ import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import MappingEditor from "./MappingEditor";
-
 import QuestionPicker from "metabase/containers/QuestionPicker";
-import QuestionParameterTargetWidget from "../containers/QuestionParameterTargetWidget";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -19,15 +16,14 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { GTAPApi } from "metabase/services";
 
-import { UNKNOWN_ERROR_MESSAGE } from "metabase/components/form/FormMessage";
-
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 import QuestionLoader from "metabase/containers/QuestionLoader";
 
-import Dimension from "metabase-lib/lib/Dimension";
-
 import { getParentPath } from "metabase/hoc/ModalRoute";
+
+import QuestionParameterTargetWidget from "../containers/QuestionParameterTargetWidget";
 import { updateTableSandboxingPermission } from "../actions";
+import MappingEditor from "./MappingEditor";
 
 const mapStateToProps = () => ({});
 const mapDispatchToProps = {
@@ -35,9 +31,7 @@ const mapDispatchToProps = {
   updateTableSandboxingPermission,
 };
 
-@withRouter
-@connect(mapStateToProps, mapDispatchToProps)
-export default class GTAPModal extends React.Component {
+class GTAPModal extends React.Component {
   state = {
     gtap: null,
     attributesOptions: null,
@@ -109,7 +103,7 @@ export default class GTAPModal extends React.Component {
         ? error.data
           ? error.data.message || JSON.stringify(error.data)
           : JSON.stringify(error)
-        : UNKNOWN_ERROR_MESSAGE;
+        : t`Unknown error encountered`;
       this.setState({ error: message });
       throw new Error(message);
     }
@@ -164,8 +158,7 @@ export default class GTAPModal extends React.Component {
                     options={[
                       { name: "Filter by a column in the table", value: true },
                       {
-                        name:
-                          "Use a saved question to create a custom view for this table",
+                        name: "Use a saved question to create a custom view for this table",
                         value: false,
                       },
                     ]}
@@ -251,6 +244,11 @@ export default class GTAPModal extends React.Component {
     );
   }
 }
+
+export default _.compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(GTAPModal);
 
 const AttributePicker = ({ value, onChange, attributesOptions }) => (
   <div style={{ minWidth: 200 }}>
@@ -400,6 +398,8 @@ const TargetName = ({ gtap, target }) => {
         </span>
       );
     } else if (target[0] === "dimension") {
+      const fieldRef = target[1];
+
       return (
         <QuestionLoader
           questionId={gtap.card_id}
@@ -407,16 +407,18 @@ const TargetName = ({ gtap, target }) => {
             gtap.card_id == null ? rawDataQuestionForTable(gtap.table_id) : null
           }
         >
-          {({ question }) =>
-            question && (
+          {({ question }) => {
+            if (!question) {
+              return null;
+            }
+
+            const dimension = question.query().parseFieldReference(fieldRef);
+            return (
               <span>
-                <strong>
-                  {Dimension.parseMBQL(target[1], question.metadata()).render()}
-                </strong>{" "}
-                field
+                <strong>{dimension.render()}</strong> field
               </span>
-            )
-          }
+            );
+          }}
         </QuestionLoader>
       );
     }

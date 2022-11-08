@@ -89,11 +89,11 @@ describe("LineAreaBarRenderer-bar", () => {
   let element;
   const qsa = selector => [...element.querySelectorAll(selector)];
 
-  beforeEach(function() {
+  beforeEach(function () {
     element = createFixture();
   });
 
-  afterEach(function() {
+  afterEach(function () {
     cleanupFixture(element);
   });
 
@@ -204,29 +204,6 @@ describe("LineAreaBarRenderer-bar", () => {
       call => getDataKeyValues(call[0])[1].value,
     );
     expect(values).toEqual(["0.1%", "99.9%"]);
-  });
-
-  it(`should render an bar normalized chart with just one series`, () => {
-    const onHoverChange = jest.fn();
-    renderLineAreaBar(
-      element,
-      [
-        MainSeries(
-          "bar",
-          { "stackable.stack_type": "normalized" },
-          { value: 3 },
-        ),
-      ],
-      { onHoverChange },
-    );
-
-    dispatchUIEvent(qsa(".bar, .dot")[0], "mousemove");
-
-    const { calls } = onHoverChange.mock;
-    expect(getDataKeyValues(calls[0][0])).toEqual([
-      { key: "Category", value: "A" },
-      { key: "% Sum", value: "100%" },
-    ]);
   });
 
   it("should replace the aggregation name with the series name", () => {

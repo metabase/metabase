@@ -1,15 +1,12 @@
-# Running Metabase
+---
+title: Running Metabase
+---
 
-<div class='doc-toc' markdown=1>
-- [WARNING: sun.reflect.Reflection.getCallerClass is not supported](#warning-sunreflectreflectiongetcallerclass-is-not-supported)
-- [Metabase fails to start due to Heap Space OutOfMemoryErrors](#heap-space-outofmemoryerrors)
-- [Diagnosing memory issues causing OutOfMemoryErrors](#diagnosing-outofmemoryerrors)
-- [Metabase cannot read or write from a file or folder (IOError)](#cannot-read-write-ioerror)
-</div>
+# Running Metabase
 
 Metabase runs on the Java Virtual Machine (JVM), and depending on how it's configured, it may use the server's filesystem to store some information. Problems with either the JVM or the filesystem can therefore prevent Metabase from running.
 
-<h2 id="warning-sunreflectreflectiongetcallerclass-is-not-supported">WARNING: sun.reflect.Reflection.getCallerClass is not supported.</h2>
+## WARNING: sun.reflect.Reflection.getCallerClass is not supported
 
 Don't worry about it. 
 
@@ -19,7 +16,7 @@ WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impac
 
 If you see the above error, ignore it. Your Metabase is perfectly healthy and performing as it should.
 
-<h2 id="heap-space-outofmemoryerrors">Metabase fails to start due to Heap Space OutOfMemoryErrors</h2>
+## Metabase fails to start due to Heap Space OutOfMemoryErrors
 
 The JVM can normally figure out how much RAM is available on the system and automatically set a sensible upper bound for heap memory usage. On certain shared hosting environments, however, this doesn't always work as desired. The usual symptom of this is an error message like:
 
@@ -41,7 +38,7 @@ You can also use the environment variable `JAVA_OPTS` to set JVM args instead of
 docker run -d -p 3000:3000 -e "JAVA_OPTS=-Xmx2g" metabase/metabase
 ```
 
-<h2 id="diagnosing-outofmemoryerrors">Diagnosing memory issues causing OutOfMemoryErrors</h2>
+## Diagnosing memory issues causing OutOfMemoryErrors
 
 If the Metabase instance starts and runs for a significant amount of time before running out of memory, there might be a specific event, such as a large query, triggering the `OutOfMemoryError`. One way to diagnose where the memory is being used is to enable heap dumps when an `OutOfMemoryError` is triggered. To enable this, you need to add two flags to the `java` invocation:
 
@@ -51,8 +48,8 @@ java -Xmx2g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/path/to/a/director
 
 The `-XX:HeapDumpPath` flag specifies where to put the dump---the current directory is the default. When an `OutOfMemoryError` occurs, it will dump an `hprof` file to the directory specified. These can be very large (i.e., the size of the `-Xmx` argument) so ensure your disk has enough space. These `hprof` files can be read with many different tools, such as `jhat` (which is included with the JDK) or the [Eclipse Memory Analyzer Tool][eclipse-memory-analyzer].
 
-<h2 id="cannot-read-write-ioerror">Metabase cannot read or write from a file or folder (IOError)</h2>
+## Metabase cannot read or write from a file or folder (IOError)
 
-If you see an error regarding file permissions, like Metabase being unable to read a SQLite database or a custom GeoJSON map file, check out the section "Metabase can't read to/from a file or directory" in our [Docker troubleshooting guide](./docker.html).
+If you see an error regarding file permissions, like Metabase being unable to read a SQLite database or a custom GeoJSON map file, check out the section "Metabase can't read to/from a file or directory" in our [Docker troubleshooting guide](./docker.md).
 
 [eclipse-memory-analyzer]: https://www.eclipse.org/mat/

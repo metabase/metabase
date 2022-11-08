@@ -1,3 +1,7 @@
+---
+title: Frontend
+---
+
 # Frontend
 
 ## Entity Loaders
@@ -141,10 +145,6 @@ Pass a form definition to the `form` prop:
 />
 ```
 
-If `<Form>` doesn't have any children elements then it will use the [`metabase/components/StandardLayout`](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/components/StandardLayout) component to provide a default form layout.
-
-The schema for this object is defined in [`Form.jsx`](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/containers/Form.jsx#L41-L60).
-
 `fields` and `initial` (for initial values) can be provided directly or as functions that dynamically compute them based on the current form state and additional props.
 
 ```javascript
@@ -157,7 +157,7 @@ The schema for this object is defined in [`Form.jsx`](https://github.com/metabas
 
 ### Custom Layout
 
-Form definition can also be provided via `<FormField>` React elements (exported from the same `metabase/containers/Form` module), which will also serve as the layout (this uses the [`metabase/components/CustomLayout`](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/components/CustomLayout))
+Form definition can also be provided via `<FormField>` React elements (exported from the same `metabase/containers/Form` module), which will also serve as the layout.
 
 ```javascript
 import Form, { FormField, FormFooter } from "metabase/containers/Form";
@@ -400,7 +400,7 @@ function getFoo(a, b, c) {
 }
 ```
 
-- Be conservative with what comments you add to the codebase. Comments shouldn't be used as reminders or as TODOs--record those by creating a new issue in Github. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
+- Be conservative with what comments you add to the codebase. Comments shouldn't be used as reminders or as todos--record those by creating a new issue in Github. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
 
 ```javascript
 

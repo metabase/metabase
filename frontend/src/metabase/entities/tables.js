@@ -1,4 +1,7 @@
 import { t } from "ttag";
+import _ from "underscore";
+import { createSelector } from "reselect";
+import { updateIn } from "icepick";
 import { createEntity, notify } from "metabase/lib/entities";
 import {
   createThunkAction,
@@ -7,12 +10,9 @@ import {
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/lib/redux";
-import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-
-import { createSelector } from "reselect";
 
 import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
@@ -23,12 +23,11 @@ import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 
 import { GET, PUT } from "metabase/lib/api";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
-} from "metabase/lib/saved-questions";
-
-import { getMetadata } from "metabase/selectors/metadata";
+} from "metabase-lib/metadata/utils/saved-questions";
 
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>
@@ -90,28 +89,31 @@ const Tables = createEntity({
         entityQuery => Tables.getQueryKey(entityQuery),
       ),
       withNormalize(TableSchema),
-    )(({ id }, options = {}) => (dispatch, getState) =>
-      MetabaseApi.table_query_metadata({
-        tableId: id,
-        ...options.params,
-      }),
+    )(
+      ({ id }, options = {}) =>
+        (dispatch, getState) =>
+          MetabaseApi.table_query_metadata({
+            tableId: id,
+            ...options.params,
+          }),
     ),
 
     // like fetchMetadata but also loads tables linked by foreign key
     fetchMetadataAndForeignTables: createThunkAction(
       FETCH_TABLE_METADATA,
-      ({ id }, options = {}) => async (dispatch, getState) => {
-        await dispatch(Tables.actions.fetchMetadata({ id }, options));
-        // fetch foreign key linked table's metadata as well
-        const table = Tables.selectors[
-          options.selectorName || "getObjectUnfiltered"
-        ](getState(), { entityId: id });
-        await Promise.all(
-          getTableForeignKeyTableIds(table).map(id =>
-            dispatch(Tables.actions.fetchMetadata({ id }, options)),
-          ),
-        );
-      },
+      ({ id }, options = {}) =>
+        async (dispatch, getState) => {
+          await dispatch(Tables.actions.fetchMetadata({ id }, options));
+          // fetch foreign key linked table's metadata as well
+          const table = Tables.selectors[
+            options.selectorName || "getObjectUnfiltered"
+          ](getState(), { entityId: id });
+          await Promise.all(
+            getTableForeignKeyTableIds(table).map(id =>
+              dispatch(Tables.actions.fetchMetadata({ id }, options)),
+            ),
+          );
+        },
     ),
 
     fetchForeignKeys: compose(
@@ -127,10 +129,10 @@ const Tables = createEntity({
       return { id: entityObject.id, fks: fks };
     }),
 
-    setFieldOrder: compose(
-      withAction(UPDATE_TABLE_FIELD_ORDER),
-    )(({ id }, fieldOrder) => (dispatch, getState) =>
-      updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
+    setFieldOrder: compose(withAction(UPDATE_TABLE_FIELD_ORDER))(
+      ({ id }, fieldOrder) =>
+        (dispatch, getState) =>
+          updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
     ),
   },
 
@@ -140,7 +142,7 @@ const Tables = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === Questions.actionTypes.CREATE) {
+    if (type === Questions.actionTypes.CREATE && !error) {
       const card = payload.question;
       const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);
 
@@ -154,7 +156,7 @@ const Tables = createEntity({
       };
     }
 
-    if (type === Questions.actionTypes.UPDATE) {
+    if (type === Questions.actionTypes.UPDATE && !error) {
       const card = payload.question;
       const virtualQuestionId = getQuestionVirtualTableId(card);
 
@@ -164,6 +166,20 @@ const Tables = createEntity({
       }
 
       if (state[virtualQuestionId]) {
+        const virtualQuestion = state[virtualQuestionId];
+        if (
+          virtualQuestion.display_name !== card.name ||
+          virtualQuestion.moderated_status !== card.moderated_status ||
+          virtualQuestion.description !== card.description
+        ) {
+          state = updateIn(state, [virtualQuestionId], table => ({
+            ...table,
+            display_name: card.name,
+            moderated_status: card.moderated_status,
+            description: card.description,
+          }));
+        }
+
         return state;
       }
 
@@ -184,7 +200,7 @@ const Tables = createEntity({
       }
     }
 
-    if (type === Metrics.actionTypes.CREATE) {
+    if (type === Metrics.actionTypes.CREATE && !error) {
       const { table_id: tableId, id: metricId } = payload.metric;
       const table = state[tableId];
       if (table) {
@@ -195,7 +211,7 @@ const Tables = createEntity({
       }
     }
 
-    if (type === Segments.actionTypes.UPDATE) {
+    if (type === Segments.actionTypes.UPDATE && !error) {
       const { table_id: tableId, archived, id: segmentId } = payload.segment;
       const table = state[tableId];
       if (archived && table && table.segments) {
@@ -228,7 +244,9 @@ const Tables = createEntity({
   objectSelectors: {
     getUrl: table =>
       Urls.tableRowsQuery(table.database_id, table.table_id, null),
-    getIcon: table => ({ name: "table" }),
+    getIcon: (table, { variant = "primary" } = {}) => ({
+      name: variant === "primary" ? "table" : "database",
+    }),
     getColor: table => color("accent2"),
   },
 

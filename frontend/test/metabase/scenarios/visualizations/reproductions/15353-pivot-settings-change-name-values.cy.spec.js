@@ -1,4 +1,4 @@
-import { restore, sidebar } from "__support__/e2e/cypress";
+import { restore, sidebar } from "__support__/e2e/helpers";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -25,15 +25,9 @@ describe("issue 15353", () => {
 
   it("should be able to change field name used for values (metabase#15353)", () => {
     cy.findByTestId("viz-settings-button").click();
-    sidebar()
-      .contains("Count")
-      .click();
+    sidebar().contains("Count").siblings(".Icon-ellipsis").click();
 
-    cy.findByText("See options…").click();
-
-    cy.findByDisplayValue("Count")
-      .type(" renamed")
-      .blur();
+    cy.findByDisplayValue("Count").type(" renamed").blur();
 
     cy.wait("@pivotDataset");
 

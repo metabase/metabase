@@ -16,10 +16,8 @@ export type ConfirmationState = {
 };
 
 export const useConfirmation = () => {
-  const [
-    confirmationState,
-    setConfirmationState,
-  ] = useState<ConfirmationState | null>(null);
+  const [confirmationState, setConfirmationState] =
+    useState<ConfirmationState | null>(null);
 
   const handleClose = () => {
     setConfirmationState(null);

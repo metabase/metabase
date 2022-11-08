@@ -6,20 +6,20 @@ import {
 } from "metabase/admin/people/people";
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { refreshCurrentUser } from "metabase/redux/user";
+import Groups from "metabase/entities/groups";
 import {
   getRevokeManagerGroupsRedirect,
   getRevokeManagerPeopleRedirect,
+  getRevokedAllGroupManagersPath,
 } from "./utils";
 
 export const CONFIRM_DELETE_MEMBERSHIP =
   "metabase-enterprise/group_managers/CONFIRM_DELETE_MEMBERSHIP";
 export const confirmDeleteMembership = createThunkAction(
   CONFIRM_DELETE_MEMBERSHIP,
-  (membershipId, currentUserMemberships, view) => async (
-    dispatch,
-    getState,
-  ) => {
+  (membershipId, currentUserMemberships, view) => async (dispatch, getState) => {
     await dispatch(deleteMembership(membershipId));
+    await dispatch(refreshCurrentUser());
 
     const adminPaths = getAdminPaths(getState());
 
@@ -30,7 +30,6 @@ export const confirmDeleteMembership = createThunkAction(
 
     if (redirectUrl) {
       await dispatch(push(redirectUrl));
-      await dispatch(refreshCurrentUser());
     }
   },
 );
@@ -41,6 +40,7 @@ export const confirmUpdateMembership = createThunkAction(
   CONFIRM_UPDATE_MEMBERSHIP,
   (membership, currentUserMemberships, view) => async (dispatch, getState) => {
     await dispatch(updateMembership(membership));
+    await dispatch(refreshCurrentUser());
 
     const adminPaths = getAdminPaths(getState());
 
@@ -51,7 +51,24 @@ export const confirmUpdateMembership = createThunkAction(
 
     if (redirectUrl) {
       await dispatch(push(redirectUrl));
-      await dispatch(refreshCurrentUser());
+    }
+  },
+);
+
+export const DELETE_GROUP = "metabase-enterprise/group_managers/DELETE_GROUP";
+export const deleteGroup = createThunkAction(
+  DELETE_GROUP,
+  group => async (dispatch, getState) => {
+    const groups = Groups.selectors.getList(getState());
+    const isLastGroup = groups.length === 1;
+
+    await dispatch(Groups.actions.delete({ id: group.id }));
+    await dispatch(refreshCurrentUser());
+
+    if (isLastGroup) {
+      const adminPaths = getAdminPaths(getState());
+      const redirectUrl = getRevokedAllGroupManagersPath(adminPaths);
+      await dispatch(push(redirectUrl));
     }
   },
 );

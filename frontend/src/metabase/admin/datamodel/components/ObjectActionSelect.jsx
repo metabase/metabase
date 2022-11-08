@@ -1,14 +1,14 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
 
+import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import { t } from "ttag";
+import { capitalize } from "metabase/lib/formatting";
 import ObjectRetireModal from "./ObjectRetireModal";
 
-import { capitalize } from "metabase/lib/formatting";
+import { ActionLink } from "./ObjectActionSelect.styled";
 
 export default class ObjectActionsSelect extends Component {
   constructor(props) {
@@ -34,22 +34,21 @@ export default class ObjectActionsSelect extends Component {
         <PopoverWithTrigger
           triggerElement={
             <span className="text-light text-brand-hover">
-              <Icon name={"ellipsis"} />
+              <Icon name="ellipsis" />
             </span>
           }
         >
           <ul className="UserActionsSelect">
             <li>
-              <Link
+              <ActionLink
                 to={"/admin/datamodel/" + objectType + "/" + object.id}
                 data-metabase-event={"Data Model;" + objectType + " Edit Page"}
-                className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer"
               >
                 {t`Edit`} {capitalize(objectType)}
-              </Link>
+              </ActionLink>
             </li>
             <li>
-              <Link
+              <ActionLink
                 to={
                   "/admin/datamodel/" +
                   objectType +
@@ -58,10 +57,9 @@ export default class ObjectActionsSelect extends Component {
                   "/revisions"
                 }
                 data-metabase-event={"Data Model;" + objectType + " History"}
-                className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer"
               >
                 {t`Revision History`}
-              </Link>
+              </ActionLink>
             </li>
             <li className="mt1 border-top">
               <ModalWithTrigger

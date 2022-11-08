@@ -6,6 +6,7 @@
             [clojure.tools.logging :as log]
             [clojure.tools.reader.edn :as edn]
             [metabase.plugins.classloader :as classloader]
+            [metabase.util.i18n.plural :as i18n.plural]
             [potemkin.types :as p.types])
   (:import java.text.MessageFormat
            java.util.Locale
@@ -91,7 +92,7 @@
    Return `nil` if no fallback Locale can be found or the input is invalid.
 
     (fallback-locale \"en_US\") ; -> #locale\"en\"
-    (fallback-locale \"pt\") ; -> #locale\"pt_BR\"
+    (fallback-locale \"pt\")    ; -> #locale\"pt_BR\"
     (fallback-locale \"pt_PT\") ; -> #locale\"pt_BR\""
   ^Locale [locale-or-name]
   (when-let [a-locale (locale locale-or-name)]
@@ -117,34 +118,47 @@
   "Fetch a map of original untranslated message format string -> translated message format string for `locale-or-name`
   by reading the corresponding EDN resource file. Does not include translations for parent locale(s). Memoized.
 
-    (translations \"es\") ;-> {\"Username\" \"Nombre Usuario\", ...}"
+    (translations \"es\") ;-> {:headers  { ... }
+                               :messages {\"Username\" \"Nombre Usuario\", ...}}"
   (comp (memoize translations*) locale))
 
 (defn- translated-format-string*
   "Find the translated version of `format-string` for `locale-or-name`, or `nil` if none can be found.
-  Does not search 'parent' (language-only) translations."
-  ^String [locale-or-name format-string]
+  Does not search 'parent' (language-only) translations.
+
+  `n` is a number used for translations with plural forms, used to compute the index of the translation to
+  return."
+  ^String [locale-or-name format-string n]
   (when (seq format-string)
     (when-let [locale (locale locale-or-name)]
       (when-let [translations (translations locale)]
-        (get translations format-string)))))
+        (when-let [string-or-strings (get-in translations [:messages format-string])]
+          (if (string? string-or-strings)
+            ;; Only a singular form defined; ignore `n`
+            string-or-strings
+            (if-let [plural-forms-header (get-in translations [:headers "Plural-Forms"])]
+              (get string-or-strings (i18n.plural/index plural-forms-header n))
+              ;; Fall-back to singular if no header is present
+              (first string-or-strings))))))))
 
 (defn- translated-format-string
   "Find the translated version of `format-string` for `locale-or-name`, or `nil` if none can be found. Searches parent
   (language-only) translations if none exist for a language + country locale."
-  ^String [locale-or-name format-string]
+  ^String [locale-or-name format-string {:keys [n format-string-pl]}]
   (when-let [a-locale (locale locale-or-name)]
     (or (when (= (.getLanguage a-locale) "en")
-          format-string)
-        (translated-format-string* a-locale format-string)
+          (if (or (nil? n) (= n 1))
+            format-string
+            format-string-pl))
+        (translated-format-string* a-locale format-string n)
         (when-let [fallback-locale (fallback-locale a-locale)]
           (log/tracef "No translated string found, trying fallback locale %s" (pr-str fallback-locale))
-          (translated-format-string* fallback-locale format-string))
+          (translated-format-string* fallback-locale format-string n))
         format-string)))
 
-(defn- message-format ^MessageFormat [locale-or-name ^String format-string]
+(defn- message-format ^MessageFormat [locale-or-name ^String format-string pluralization-opts]
   (or (when-let [a-locale (locale locale-or-name)]
-        (when-let [^String translated (translated-format-string a-locale format-string)]
+        (when-let [^String translated (translated-format-string a-locale format-string pluralization-opts)]
           (MessageFormat. translated a-locale)))
       (MessageFormat. format-string)))
 
@@ -156,24 +170,33 @@
   original untranslated `format-string`) if no matching bundles/translations exist, or if translation fails for some
   other reason.
 
+  `n` is used for strings with plural forms and essentially represents the quantity of items being described by the
+  translated string. Defaults to 1 (the singular form).
+
   Will attempt to translate `format-string`, but if for some reason we're not able to (such as a typo in the
   translated version of the string), log the failure but return the original (untranslated) string. This is a
   workaround for translations that, due to a typo, will fail to parse using Java's message formatter.
 
     (translate \"es-MX\" \"must be {0} characters or less\" 140) ; -> \"deben tener 140 caracteres o menos\""
-  [locale-or-name ^String format-string & args]
-  (when (seq format-string)
-    (try
-      (.format (message-format locale-or-name format-string) (to-array args))
-      (catch Throwable e
-        ;; Not translating this string to prevent an unfortunate stack overflow. If this string happened to be the one
-        ;; that had the typo, we'd just recur endlessly without logging an error.
-        (log/errorf e "Unable to translate string %s to %s" (pr-str format-string) (str locale-or-name))
-        (try
-          (.format (MessageFormat. format-string) (to-array args))
-          (catch Throwable _
-            (log/errorf e "Invalid format string %s" (pr-str format-string))
-            format-string))))))
+  ([locale-or-name ^String format-string]
+   (translate locale-or-name format-string []))
+
+  ([locale-or-name ^String format-string args]
+   (translate locale-or-name format-string args {}))
+
+  ([locale-or-name ^String format-string args pluralization-opts]
+   (when (seq format-string)
+     (try
+       (.format (message-format locale-or-name format-string pluralization-opts) (to-array args))
+       (catch Throwable e
+         ;; Not translating this string to prevent an unfortunate stack overflow. If this string happened to be the one
+         ;; that had the typo, we'd just recur endlessly without logging an error.
+         (log/errorf e "Unable to translate string %s to %s" (pr-str format-string) (str locale-or-name))
+         (try
+           (.format (MessageFormat. format-string) (to-array args))
+           (catch Throwable _
+             (log/errorf e "Invalid format string %s" (pr-str format-string))
+             format-string)))))))
 
 ;; We can't fetch the system locale until the application DB has been initiailized. Once that's done, we don't need to
 ;; do the check anymore -- swapping out the getter fn with the simpler one speeds things up substantially
@@ -199,7 +222,7 @@
       (let [site-locale (@site-locale-from-setting-fn)]
         (reset! cached-site-locale site-locale)
         site-locale)
-      (catch Exception e @cached-site-locale))))
+      (catch Exception _ @cached-site-locale))))
 
 (defmethod print-method Locale
   [locale ^java.io.Writer writer]

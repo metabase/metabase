@@ -1,4 +1,4 @@
-import { restore, navigationSidebar } from "__support__/e2e/cypress";
+import { restore, navigationSidebar } from "__support__/e2e/helpers";
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
 
 describe("Bookmarks in a collection page", () => {
@@ -17,7 +17,7 @@ describe("Bookmarks in a collection page", () => {
       getSectionTitle(/Bookmarks/);
     });
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });
 

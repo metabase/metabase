@@ -8,9 +8,8 @@
 @import "./components/icons.css";
 @import "./components/list.css";
 @import "./components/modal.css";
-@import "./components/select.css";
 @import "./components/table.css";
-@import "./components/token.css";
+@import "./components/tippy.css";
 @import "./components/grabber.css";
 
 @import "./containers/entity_search.css";
@@ -19,7 +18,5 @@
 @import "./card.css";
 @import "./dashboard.css";
 @import "./home.css";
-@import "./login.css";
 @import "./pulse.css";
 @import "./query_builder.css";
-@import "./setup.css";

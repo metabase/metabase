@@ -26,6 +26,7 @@
    :created_at              true
    :updated_at              true
    :archived                false
+   :entity_id               true
    :definition              nil})
 
 (defn- user-details [user]
@@ -37,6 +38,7 @@
   (-> (into {} metric)
       (dissoc :id :table_id)
       (update :creator #(into {} %))
+      (update :entity_id boolean)
       (assoc :created_at (some? created_at)
              :updated_at (some? updated_at))))
 

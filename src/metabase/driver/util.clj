@@ -11,14 +11,96 @@
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [deferred-tru trs]]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
-           [java.security.cert CertificateFactory X509Certificate]
-           java.security.KeyStore
-           java.util.Base64
+           [java.security KeyFactory KeyStore PrivateKey]
+           [java.security.cert Certificate CertificateFactory X509Certificate]
+           java.security.spec.PKCS8EncodedKeySpec
            javax.net.SocketFactory
-           [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
+           [javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager]))
+
+(def ^:private connection-error-messages
+  "Generic error messages that drivers should return in their implementation
+  of [[metabase.driver/humanize-connection-error-message]]."
+  {:cannot-connect-check-host-and-port
+   {:message (deferred-tru
+              (str "Hmm, we couldn''t connect to the database."
+                   " "
+                   "Make sure your Host and Port settings are correct"))
+    :errors  {:host (deferred-tru "check your host settings")
+              :port (deferred-tru "check your port settings")}}
+
+   :ssh-tunnel-auth-fail
+   {:message (deferred-tru
+              (str "We couldn''t connect to the SSH tunnel host."
+                   " "
+                   "Check the Username and Password."))
+    :errors  {:tunnel-user (deferred-tru "check your username")
+              :tunnel-pass (deferred-tru "check your password")}}
+
+   :ssh-tunnel-connection-fail
+   {:message (deferred-tru
+              (str "We couldn''t connect to the SSH tunnel host."
+                   " "
+                   "Check the Host and Port."))
+    :errors  {:tunnel-host (deferred-tru "check your host settings")
+              :tunnel-port (deferred-tru "check your port settings")}}
+
+   :database-name-incorrect
+   {:message (deferred-tru "Looks like the Database name is incorrect.")
+    :errors  {:dbname (deferred-tru "check your database name settings")}}
+
+   :invalid-hostname
+   {:message (deferred-tru
+               (str "It looks like your Host is invalid."
+                    " "
+                    "Please double-check it and try again."))
+    :errors  {:host (deferred-tru "check your host settings")}}
+
+   :password-incorrect
+   {:message (deferred-tru "Looks like your Password is incorrect.")
+    :errors  {:password (deferred-tru "check your password")}}
+
+   :password-required
+   {:message (deferred-tru "Looks like you forgot to enter your Password.")
+    :errors  {:password (deferred-tru "check your password")}}
+
+   :username-incorrect
+   {:message (deferred-tru "Looks like your Username is incorrect.")
+    :errors  {:user (deferred-tru "check your username")}}
+
+   :username-or-password-incorrect
+   {:message (deferred-tru "Looks like the Username or Password is incorrect.")
+    :errors  {:user     (deferred-tru "check your username")
+              :password (deferred-tru "check your password")}}
+
+   :certificate-not-trusted
+   {:message (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")}
+
+   :unsupported-ssl-key-type
+   {:message (deferred-tru "Unsupported client SSL key type - are you using an RSA key?")}
+
+   :invalid-key-format
+   {:message (deferred-tru "Invalid client SSL key - did you select the correct file?")}
+
+   :requires-ssl
+   {:message (deferred-tru "Server appears to require SSL - please enable SSL below")
+    :errors  {:ssl (deferred-tru "please enable SSL")}}
+
+   :implicitly-relative-db-file-path
+   {:message (deferred-tru "Implicitly relative file paths are not allowed.")
+    :errors  {:db (deferred-tru "check your connection string")}}
+
+   :db-file-not-found
+   {:message (deferred-tru "Database cannot be found.")
+    :errors  {:db (deferred-tru "check your connection string")}}})
+
+(defn- tr-connection-error-messages [error-type-kw]
+  (when-let [message (connection-error-messages error-type-kw)]
+    (cond-> message
+      (contains? message :message) (update :message str)
+      (contains? message :errors)  (update :errors update-vals str))))
 
 (comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
@@ -36,6 +118,11 @@
                 3000
                 10000))
 
+(defn- connection-error? [^Throwable throwable]
+  (and (some? throwable)
+       (or (instance? java.net.ConnectException throwable)
+           (recur (.getCause throwable)))))
+
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
   1`. Specify optional param `throw-exceptions` if you want to handle any exceptions thrown yourself (e.g., so you
@@ -52,10 +139,18 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (throw (if-let [message (some->> (.getMessage e)
-                                         (driver/humanize-connection-error-message driver)
-                                         str)]
-                 (Exception. message e)
+        (throw (if-let [humanized-message (some->> (.getMessage e)
+                                                   (driver/humanize-connection-error-message driver))]
+                 (let [error-data (cond
+                                    (keyword? humanized-message)
+                                    (tr-connection-error-messages humanized-message)
+
+                                    (connection-error? e)
+                                    (tr-connection-error-messages :cannot-connect-check-host-and-port)
+
+                                    :else
+                                    {:message humanized-message})]
+                   (ex-info (str (:message error-data)) error-data e))
                  e))))
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
@@ -262,8 +357,8 @@
                                                                       (into #{} (keys acc)))]
                                (if (empty? cyclic-props)
                                  (recur transitive-props next-acc)
-                                 (-> "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
-                                     (trs driver cyclic-props)
+                                 (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
+                                          driver cyclic-props)
                                      (ex-info {:type               qp.error-type/driver
                                                :driver             driver
                                                :cyclic-visible-ifs cyclic-props})
@@ -273,6 +368,12 @@
                 (seq v-ifs*)
                 (assoc :visible-if v-ifs*))))
          final-props)))
+
+(defn decode-uploaded
+  "Decode `uploaded-data` as an uploaded field.
+  Optionally strip the Base64 MIME prefix."
+  ^bytes [uploaded-data]
+  (u/decode-base64-to-bytes (str/replace uploaded-data #"^data:[^;]+;base64," "")))
 
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
@@ -310,7 +411,7 @@
                                             (:treat-before-posting textfile-prop)))))
                          value      (let [^String v (val-kw acc)]
                                       (case (get-treat)
-                                        "base64" (.decode (Base64/getDecoder) v)
+                                        "base64" (decode-uploaded v)
                                         v))]
                      (cond-> (assoc acc val-kw value)
                        ;; keywords here are associated to nil, rather than being dissoced, because they will be merged
@@ -334,7 +435,7 @@
 
 (def partner-drivers
   "The set of other drivers in the partnership program"
-  #{"firebolt"})
+  #{"exasol" "firebolt" "starburst"})
 
 (defn driver-source
   "Return the source type of the driver: official, partner, or community"
@@ -377,12 +478,47 @@
   [^X509Certificate cert]
   (.. cert getSubjectX500Principal getName))
 
-(defn generate-keystore-with-cert
-  "Generates a `KeyStore` with custom certificates added"
-  ^KeyStore [cert-string]
+(defn- key-type [key-string]
+  (when-let [m (re-find #"^-----BEGIN (?:(\p{Alnum}+) )?PRIVATE KEY-----\n" key-string)]
+    (m 1)))
+
+(defn- parse-rsa-key
+  "Parses an RSA private key from the PEM string `key-string`."
+  ^PrivateKey [key-string]
+  (let [algorithm (or (key-type key-string) "RSA")
+        key-base64 (-> key-string
+                       (str/replace #"^-----BEGIN (?:(\p{Alnum}+) )?PRIVATE KEY-----\n" "")
+                       (str/replace #"\n-----END (?:(\p{Alnum}+) )?PRIVATE KEY-----\s*$" "")
+                       (str/replace #"\s" ""))
+        decoded (u/decode-base64-to-bytes key-base64)
+        key-factory (KeyFactory/getInstance algorithm)] ; TODO support other algorithms
+    (.generatePrivate key-factory (PKCS8EncodedKeySpec. decoded))))
+
+(defn- parse-certificates
+  "Parses a collection of X509 certificates from the string `cert-string`."
+  [^String cert-string]
   (let [cert-factory (CertificateFactory/getInstance "X.509")
-        cert-stream (ByteArrayInputStream. (.getBytes ^String cert-string "UTF-8"))
-        certs (.generateCertificates cert-factory cert-stream)
+        cert-stream (ByteArrayInputStream. (.getBytes cert-string "UTF-8"))]
+    (.generateCertificates cert-factory cert-stream)))
+
+(defn generate-identity-store
+  "Generates a `KeyStore` for the identity with key parsed from `key-string` protected by `password`
+  and the certificate parsed from `cert-string` ."
+  ^KeyStore [key-string password cert-string]
+  (let [private-key (parse-rsa-key key-string)
+        certificates (parse-certificates cert-string)]
+    (doto (KeyStore/getInstance (KeyStore/getDefaultType))
+      (.load nil nil)
+      (.setKeyEntry (dn-for-cert (first certificates))
+                    private-key
+                    (char-array password)
+                    (into-array Certificate certificates)))))
+
+(defn generate-trust-store
+  "Generates a `KeyStore` with built-in and custom certificates. The custom certificates are parsed from
+  `cert-store`."
+  ^KeyStore [cert-string]
+  (let [certs (parse-certificates cert-string)
         keystore (doto (KeyStore/getInstance (KeyStore/getDefaultType))
                    (.load nil nil))
         ;; this TrustManagerFactory is used for cloning the default certs into the new TrustManagerFactory
@@ -398,16 +534,26 @@
 
     keystore))
 
-(defn socket-factory-for-cert
-  "Generates an `SocketFactory` with the custom certificates added"
-  ^SocketFactory [cert-string]
-  (let [keystore (generate-keystore-with-cert cert-string)
-        ;; this is the final TrustManagerFactory used to initialize the SSLContext
-        trust-manager-factory (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))
-        ssl-context (SSLContext/getInstance "TLS")]
-    (.init trust-manager-factory keystore)
-    (.init ssl-context nil (.getTrustManagers trust-manager-factory) nil)
+(defn- key-managers [private-key password own-cert]
+  (let [key-store (generate-identity-store private-key password own-cert)
+        key-manager-factory (KeyManagerFactory/getInstance (KeyManagerFactory/getDefaultAlgorithm))]
+    (.init key-manager-factory key-store (char-array password))
+    (.getKeyManagers key-manager-factory)))
 
+(defn- trust-managers [trust-cert]
+  (let [trust-store (generate-trust-store trust-cert)
+        trust-manager-factory (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))]
+    (.init trust-manager-factory trust-store)
+    (.getTrustManagers trust-manager-factory)))
+
+(defn ssl-socket-factory
+  "Generates an `SocketFactory` with the custom certificates added"
+  ^SocketFactory [& {:keys [private-key own-cert trust-cert]}]
+  (let [ssl-context (SSLContext/getInstance "TLS")]
+    (.init ssl-context
+           (when (and private-key own-cert) (key-managers private-key (str (random-uuid)) own-cert))
+           (when trust-cert (trust-managers trust-cert))
+           nil)
     (.getSocketFactory ssl-context)))
 
 (def default-sensitive-fields

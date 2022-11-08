@@ -40,7 +40,7 @@ export default function getFieldsForMongo(details, defaults, id) {
           (!useConnectionString && field["name"] === "conn-uri")
         ),
     )
-    .map(function(field) {
+    .map(function (field) {
       if (field["name"] === "conn-uri" && id) {
         field.type = "password";
       }

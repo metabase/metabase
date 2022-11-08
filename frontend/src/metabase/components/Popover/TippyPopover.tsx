@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback, useRef } from "react";
 import PropTypes from "prop-types";
 import * as TippyReact from "@tippyjs/react";
 import * as tippy from "tippy.js";
-import * as popper from "@popperjs/core";
 import cx from "classnames";
 import { merge } from "icepick";
 
@@ -12,6 +11,7 @@ import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 
 import { DEFAULT_Z_INDEX } from "./constants";
+import { sizeToFitModifierFn, SizeToFitOptions } from "./SizeToFitModifier";
 
 const TippyComponent = TippyReact.default;
 type TippyProps = TippyReact.TippyProps;
@@ -21,11 +21,10 @@ export interface ITippyPopoverProps extends TippyProps {
   disableContentSandbox?: boolean;
   lazy?: boolean;
   flip?: boolean;
-  sizeToFit?: boolean;
+  sizeToFit?: boolean | SizeToFitOptions;
   onClose?: () => void;
 }
 
-const PAGE_PADDING = 10;
 const OFFSET: [number, number] = [0, 5];
 
 const propTypes = {
@@ -48,33 +47,15 @@ function getPopperOptions({
       modifiers: [
         {
           name: "flip",
-          enabled: flip,
+          enabled: flip && !sizeToFit,
         },
         {
           name: "sizeToFit",
           phase: "beforeWrite",
-          enabled: sizeToFit,
-          requiresIfExists: ["offset", "flip"],
-          fn: ({
-            state,
-            options,
-          }: popper.ModifierArguments<Record<string, unknown>>) => {
-            const {
-              placement,
-              rects: {
-                popper: { height },
-              },
-            } = state;
-            if (placement.startsWith("top") || placement.startsWith("bottom")) {
-              const overflow = popper.detectOverflow(state, options);
-              const distanceFromEdge = placement.startsWith("top")
-                ? overflow.top
-                : overflow.bottom;
-
-              const maxHeight = height - distanceFromEdge - PAGE_PADDING;
-              state.styles.popper.maxHeight = `${maxHeight}px`;
-            }
-          },
+          enabled: sizeToFit !== false,
+          requiresIfExists: ["offset"],
+          fn: sizeToFitModifierFn,
+          options: typeof sizeToFit === "object" ? sizeToFit : undefined,
         },
       ],
     },
@@ -103,10 +84,8 @@ function TippyPopover({
   const shouldShowContent = mounted && content != null;
   const isControlled = props.visible != null;
 
-  const {
-    setupCloseHandler,
-    removeCloseHandler,
-  } = useSequencedContentCloseHandler();
+  const { setupCloseHandler, removeCloseHandler } =
+    useSequencedContentCloseHandler();
 
   const handleShow = useCallback(
     (instance: TippyInstance) => {

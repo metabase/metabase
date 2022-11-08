@@ -4,7 +4,8 @@ import {
   popover,
   visitDashboard,
   modal,
-} from "__support__/e2e/cypress";
+  rightSidebar,
+} from "__support__/e2e/helpers";
 
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -35,19 +36,27 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             });
 
             it("should be able to change title and description", () => {
-              cy.findByText("Edit dashboard details").click();
-              cy.location("pathname").should("eq", "/dashboard/1/details");
-              cy.findByLabelText("Name")
+              cy.findByTestId("dashboard-name-heading")
                 .click()
-                .type("1");
-              cy.findByLabelText("Description")
-                .click()
-                .type("Foo");
-              clickButton("Update");
+                .type("1")
+                .blur();
               assertOnRequest("updateDashboard");
-              cy.findByText("Orders in a dashboard1");
-              cy.icon("info").click();
-              cy.findByText("Foo");
+
+              cy.get("main header").within(() => {
+                cy.icon("info").click();
+              });
+
+              rightSidebar().within(() => {
+                cy.findByPlaceholderText("Add description")
+                  .click()
+                  .type("Foo")
+                  .blur();
+              });
+
+              assertOnRequest("updateDashboard");
+
+              cy.reload();
+              cy.findByDisplayValue("Orders in a dashboard1");
             });
 
             it("should be able to duplicate a dashboard", () => {
@@ -67,30 +76,30 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               cy.findByText(`Orders in a dashboard - Duplicate`);
             });
 
-            describe("move", () => {
-              beforeEach(() => {
-                popover().within(() => {
-                  cy.findByText("Move").click();
-                });
-                cy.location("pathname").should("eq", "/dashboard/1/move");
-                modal().within(() => {
-                  cy.findByText("First collection").click();
-                  clickButton("Move");
-                });
+            it("should be able to move/undo move a dashboard (metabase#13059)", () => {
+              cy.findByTestId("app-bar").contains("Our analytics");
+
+              popover().within(() => {
+                cy.findByText("Move").click();
+              });
+              cy.location("pathname").should("eq", "/dashboard/1/move");
+
+              modal().within(() => {
+                cy.findByText("First collection").click();
+                clickButton("Move");
               });
 
-              it("should be able to move/undo move a dashboard", () => {
-                assertOnRequest("updateDashboard");
-                // Why do we use "Dashboard moved to" here (without its location, btw) vs. "Moved dashboard" for the same action?
-                cy.findByText("Dashboard moved to");
-                cy.findByText("Undo").click();
-                assertOnRequest("updateDashboard");
-              });
+              assertOnRequest("updateDashboard");
+              cy.contains("37.65");
+              // it should update dashboard's collection after the move without the page reload (metabase#13059)
+              cy.findByTestId("app-bar").contains("First collection");
 
-              it.skip("should update dashboard's collection after the move without page reload (metabase#13059)", () => {
-                cy.contains("37.65");
-                cy.get(".DashboardHeader a").contains("First collection");
-              });
+              // Why do we use "Dashboard moved to" here (without its location, btw) vs. "Moved dashboard" for the same action?
+              cy.findByText("Dashboard moved to");
+              cy.findByText("Undo").click();
+              assertOnRequest("updateDashboard");
+
+              cy.findByTestId("app-bar").contains("Our analytics");
             });
 
             it("should be able to archive/unarchive a dashboard", () => {
@@ -117,28 +126,20 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             visitDashboard(1);
 
             cy.get("main header").within(() => {
-              cy.icon("ellipsis")
-                .should("be.visible")
-                .click();
+              cy.icon("ellipsis").should("be.visible").click();
             });
           });
 
           it("should not be offered to edit dashboard details or archive the dashboard for dashboard in collections they have `read` access to (metabase#15280)", () => {
-            popover()
-              .findByText("Edit dashboard details")
-              .should("not.exist");
+            popover().findByText("Edit dashboard details").should("not.exist");
 
-            popover()
-              .findByText("Archive")
-              .should("not.exist");
+            popover().findByText("Archive").should("not.exist");
           });
 
           it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
             const { first_name, last_name } = USERS[user];
 
-            popover()
-              .findByText("Duplicate")
-              .click();
+            popover().findByText("Duplicate").click();
             cy.findByTestId("select-button").findByText(
               `${first_name} ${last_name}'s Personal Collection`,
             );
@@ -150,9 +151,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
 });
 
 function clickButton(name) {
-  cy.findByRole("button", { name })
-    .should("not.be.disabled")
-    .click();
+  cy.findByRole("button", { name }).should("not.be.disabled").click();
 }
 
 function assertOnRequest(xhr_alias) {

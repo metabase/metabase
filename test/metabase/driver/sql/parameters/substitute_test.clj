@@ -13,7 +13,8 @@
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))
@@ -82,7 +83,7 @@
   information about"
   []
   (params/map->FieldFilter
-   {:field (Field (mt/id :checkins :date))
+   {:field (db/select-one Field :id (mt/id :checkins :date))
     :value {:type  :date/single
             :value (t/offset-date-time "2019-09-20T19:52:00.000-07:00")}}))
 
@@ -165,7 +166,7 @@
           (testing operator
             (is (= expected
                    (substitute query {"param" (params/map->FieldFilter
-                                               {:field (Field (mt/id :venues field))
+                                               {:field (db/select-one Field :id (mt/id :venues field))
                                                 :value {:type  operator
                                                         :value value}})})))))))))
 
@@ -617,6 +618,11 @@
               ;; TIMEZONE FIXME — Busted
               (= driver/*driver* :vertica)
               "2018-04-17T00:00:00-07:00"
+
+              ;; TIMEZONE FIXME - bigquery doesn't support SET TIMEZONE, so the CAST to date below is going to make a UTC date,
+              ;; and then get converted back to reporting TZ (TODO: where?). But it's not clear if this behavior is actually relevant/an issue.
+              (= driver/*driver* :bigquery-cloud-sdk)
+              "2018-04-17T17:00:00-07:00"
 
               (qp.test/supports-report-timezone? driver/*driver*)
               "2018-04-18T00:00:00-07:00"

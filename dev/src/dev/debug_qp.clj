@@ -4,6 +4,7 @@
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [clojure.walk :as walk]
+            [lambdaisland.deep-diff2 :as ddiff]
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -171,13 +172,82 @@
 
 (defn- print-diff [before after]
   (assert (not= before after))
-  (let [[only-in-before only-in-after] (data/diff before after)]
-    (when *print-full?*
-      (println (u/pprint-to-str 'cyan (format-output after))))
-    (when (seq only-in-before)
-      (println (u/colorize 'red (str "-\n" (u/pprint-to-str (format-output only-in-before))))))
-    (when (seq only-in-after)
-      (println (u/colorize 'green (str "+\n" (u/pprint-to-str (format-output only-in-after))))))))
+  (ddiff/pretty-print (ddiff/diff before after)
+                      ;; the default printer is very (too?) colorful.
+                      ;; this is one that strips color except for the diffs:
+                      (ddiff/printer {:color-scheme
+                                      {:lambdaisland.deep-diff2.printer-impl/deletion  [:red]
+                                       :lambdaisland.deep-diff2.printer-impl/insertion [:green]
+                                       :lambdaisland.deep-diff2.printer-impl/other     [:white]
+                                       :delimiter       nil
+                                       :tag             nil
+                                       :nil             nil
+                                       :boolean         nil
+                                       :number          nil
+                                       :string          nil
+                                       :character       nil
+                                       :keyword         nil
+                                       :symbol          nil
+                                       :function-symbol nil
+                                       :class-delimiter nil
+                                       :class-name      nil}}))
+  (println))
+
+(defn- print-transform-result [before after]
+  (when *print-full?*
+    (println (u/pprint-to-str 'cyan (format-output after))))
+  (print-diff before after))
+
+(defn- print-error [location middleware-var e]
+  (println (format "Error %s in %s:\n%s"
+                   location
+                   middleware-var
+                   (u/pprint-to-str 'red (Throwable->map e)))))
+
+(defmulti print-formatted-event
+  "Writes the debugger event to the standard output. Uses colors and
+  deep diffing to show changes made by middlewares.
+
+  This is the default printer of `process-query-debug`."
+  first)
+
+(defmethod print-formatted-event ::transformed-query
+  [[_ middleware-var before after]]
+  (println (format "[pre] %s transformed query:" middleware-var))
+  (print-transform-result before after))
+
+(defmethod print-formatted-event ::pre-process-query-error
+  [[_ middleware-var e]]
+  (print-error "pre-processing query" middleware-var e))
+
+(defmethod print-formatted-event ::transformed-metadata
+  [[_ middleware-var before after]]
+  (println (format "[post] %s transformed metadata:" middleware-var))
+  (print-transform-result before after))
+
+(defmethod print-formatted-event ::post-process-metadata-error
+  [[_ middleware-var e]]
+  (print-error "post-processing result metadata" middleware-var e))
+
+(defmethod print-formatted-event ::post-process-result-error
+  [[_ middleware-var e]]
+  (print-error "post-processing result" middleware-var e))
+
+(defmethod print-formatted-event ::transformed-result
+  [[_ middleware-var before after]]
+  (println (format "[post] %s transformed result:" middleware-var))
+  (print-transform-result before after))
+
+(defmethod print-formatted-event ::error-reduce-row
+  [[_ middleware-var e]]
+  (print-error "reducing row" middleware-var e))
+
+(defmethod print-formatted-event ::transformed-row
+  [[_ middleware-var before after]]
+  (println (format "[post] %s transformed row" middleware-var))
+  (print-transform-result before after))
+
+(def ^:private ^:dynamic *printer* print-formatted-event)
 
 (defn- debug-query-changes [middleware-var middleware]
   (fn [next-middleware]
@@ -186,8 +256,7 @@
         ((middleware
           (fn [query-after rff context]
             (when-not (= query-before query-after)
-              (println (format "[pre] %s transformed query:" middleware-var))
-              (print-diff query-before query-after))
+              (*printer* [::transformed-query middleware-var query-before query-after]))
             (when *validate-query?*
               (try
                 (mbql.s/validate-query query-after)
@@ -205,9 +274,7 @@
         (catch Throwable e
           (when (::our-error? (ex-data e))
             (throw e))
-          (println (format "Error pre-processing query in %s:\n%s"
-                           middleware-var
-                           (u/pprint-to-str 'red (Throwable->map e))))
+          (*printer* [::pre-process-query-error middleware-var e])
           (throw (ex-info "Error pre-processing query"
                           {::our-error? true
                            :middleware  middleware-var
@@ -235,9 +302,7 @@
            (catch Throwable e
              (when (::our-error? (ex-data e))
                (throw e))
-             (println (format "Error post-processing result metadata in %s:\n%s"
-                              middleware-var
-                              (u/pprint-to-str 'red (Throwable->map e))))
+             (*printer* [::post-process-metadata-error middleware-var e])
              (throw (ex-info "Error post-processing result metadata"
                              {::our-error? true
                               :middleware  middleware-var
@@ -246,8 +311,7 @@
      (fn after-rff-xform [rff]
        (fn [metadata-after]
          (when-not (= @before metadata-after)
-           (println (format "[post] %s transformed metadata:" middleware-var))
-           (print-diff @before metadata-after))
+           (*printer* [::transformed-metadata middleware-var @before metadata-after]))
          (rff metadata-after))))))
 
 (defn- debug-rfs [middleware-var middleware before-xform after-xform]
@@ -278,9 +342,7 @@
             (catch Throwable e
               (when (::our-error? (ex-data e))
                 (throw e))
-              (println (format "Error post-processing result in %s:\n%s"
-                               middleware-var
-                               (u/pprint-to-str 'red (Throwable->map e))))
+              (*printer* [::post-process-result-error middleware-var e])
               (throw (ex-info "Error post-processing result"
                               {::our-error? true
                                :middleware  middleware-var
@@ -292,8 +354,7 @@
          ([] (rf))
          ([result]
           (when-not (= @before result)
-            (println (format "[post] %s transformed result:" middleware-var))
-            (print-diff @before result))
+            (*printer* [::transformed-result middleware-var @before result]))
           (rf result))
          ([result row] (rf result row)))))))
 
@@ -314,9 +375,7 @@
             (catch Throwable e
               (when (::our-error? (ex-data e))
                 (throw e))
-              (println (format "Error reducing row in %s:\n%s"
-                               middleware-var
-                               (u/pprint-to-str 'red (Throwable->map e))))
+              (*printer* [::error-reduce-row middleware-var e])
               (throw (ex-info "Error reducing row"
                               {::our-error? true
                                :middleware  middleware-var
@@ -330,9 +389,76 @@
           (rf result))
          ([result row]
           (when-not (= @before row)
-            (println (format "[post] %s transformed row" middleware-var))
-            (print-diff @before row))
+            (*printer* [::transformed-row @before row]))
           (rf result row)))))))
+
+(defn- default-debug-middleware
+  "The default set of middleware applied to queries ran via [[process-query-debug]].
+  Analogous to [[qp/default-middleware]]."
+  []
+  (into
+   []
+   (comp cat (keep identity))
+   [@#'qp/execution-middleware
+    @#'qp/compile-middleware
+    @#'qp/post-processing-middleware
+    ;; Normally, pre-processing middleware are applied to the query left-to-right, but in debug mode we convert each
+    ;; one into a transducing middleware and compose them, which causes them to be applied right-to-left. So we need
+    ;; to reverse the order here.
+    (reverse @#'qp/pre-processing-middleware)
+    @#'qp/around-middleware]))
+
+(defn- alter-pre-processing-middleware
+  "Takes a pre-processing middleware function, and converts it to a transducing middleware with the signature:
+
+    (f (f query rff context)) -> (f query rff context)"
+  [middleware]
+  (fn [qp-or-query]
+    (if (map? qp-or-query)
+      ;; If we're passed a map, this means the middleware var is still being called on a query directly. This happens
+      ;; if pre-processing middleware calls other pre-processing middleware, such as [[upgrade-field-literals]] which
+      ;; calls [[resolve-fields]]. Fallback to the original middleware function in this case.
+      (middleware qp-or-query)
+      (fn [query rff context]
+        (qp-or-query
+         (middleware query)
+         rff
+         context)))))
+
+(defn- alter-post-processing-middleware
+  "Takes a pre-processing middleware function, and converts it to a transducing middleware with the signature:
+
+    (f (f query rff context)) -> (f query rff context)"
+  [middleware]
+  (fn [qp]
+    (fn [query rff context]
+      (qp query (middleware query rff) context))))
+
+(defn- with-altered-middleware-fn
+  "Implementation function for [[with-altered-middleware]]. Temporarily alters the root bindings for pre- and
+  post-processing middleware vars, changing them to transducing middleware which can individually be wrapped with
+  debug middleware in [[process-query-debug]]."
+  [f]
+  (let [pre-processing-middleware-vars  @#'qp/pre-processing-middleware
+        post-processing-middleware-vars @#'qp/post-processing-middleware
+        pre-processing-original-fns     (zipmap pre-processing-middleware-vars
+                                                (map deref pre-processing-middleware-vars))
+        post-processing-original-fns    (zipmap post-processing-middleware-vars
+                                                (map deref post-processing-middleware-vars))]
+    (try
+      (mapv #(alter-var-root % alter-pre-processing-middleware) pre-processing-middleware-vars)
+      (mapv #(alter-var-root % alter-post-processing-middleware) post-processing-middleware-vars)
+      (f)
+      (finally
+        (mapv (fn [[middleware-var middleware-fn]]
+                (alter-var-root middleware-var (constantly middleware-fn)))
+              (merge pre-processing-original-fns post-processing-original-fns))))))
+
+(defmacro ^:private with-altered-middleware
+  "Temporarily redefines pre-processing and post-processing middleware vars to equivalent transducing middlewares,
+  so that [[process-query-debug]] can print the transformations for each middleware individually."
+  [& body]
+  `(with-altered-middleware-fn (fn [] ~@body)))
 
 (defn process-query-debug
   "Process a query using a special QP that wraps all of the normal QP middleware and prints any transformations done
@@ -350,25 +476,30 @@
 
   * `:validate-query?` -- whether to validate the query after each preprocessing step, so you can figure out who's
     breaking it. (TODO -- `mbql-to-native` middleware currently leaves the old mbql `:query` in place,
-    which cases query to fail at that point -- manually comment that behavior out if needed"
-  [query & {:keys [print-full? print-metadata? print-names? validate-query? context]
-            :or   {print-full? true, print-metadata? false, print-names? true, validate-query? false}}]
+    which cases query to fail at that point -- manually comment that behavior out if needed
+
+  * :printer -- the function to process the debug events, defaults to `print-formatted-event`"
+  [query & {:keys [print-full? print-metadata? print-names? validate-query? printer context]
+            :or   {print-full? true, print-metadata? false, print-names? true, validate-query? false
+                   printer print-formatted-event}}]
   (binding [*print-full?*               print-full?
             *print-metadata?*           print-metadata?
             *print-names?*              print-names?
             *validate-query?*           validate-query?
+            *printer*                   printer
             pprint/*print-right-margin* 80]
-    (let [middleware (for [middleware-var qp/default-middleware
-                           :when          middleware-var]
-                       (->> middleware-var
-                            (debug-query-changes middleware-var)
-                            (debug-metadata-changes middleware-var)
-                            (debug-result-changes middleware-var)
-                            (debug-row-changes middleware-var)))
-          qp         (qp.reducible/sync-qp (#'qp/base-qp middleware))]
-      (if context
-        (qp query context)
-        (qp query)))))
+    (with-altered-middleware
+      (let [middleware (for [middleware-var (default-debug-middleware)
+                             :when          middleware-var]
+                         (->> middleware-var
+                              (debug-query-changes middleware-var)
+                              (debug-metadata-changes middleware-var)
+                              (debug-result-changes middleware-var)
+                              (debug-row-changes middleware-var)))
+            qp         (qp.reducible/sync-qp (#'qp/base-qp middleware))]
+        (if context
+          (qp query context)
+          (qp query))))))
 
 
 ;;;; [[to-mbql-shorthand]]

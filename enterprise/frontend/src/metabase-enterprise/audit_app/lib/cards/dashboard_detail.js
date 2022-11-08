@@ -16,8 +16,7 @@ export const revisionHistory = dashboardId => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn:
-        "metabase-enterprise.audit-app.pages.dashboard-detail/revision-history",
+      fn: "metabase-enterprise.audit-app.pages.dashboard-detail/revision-history",
       args: [dashboardId],
     },
     visualization_settings: {

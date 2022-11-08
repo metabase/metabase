@@ -4,13 +4,13 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import cx from "classnames";
 
+import _ from "underscore";
 import { IFRAMED } from "metabase/lib/dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
 import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import EmbedFrame from "../components/EmbedFrame";
 import title from "metabase/hoc/Title";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
@@ -33,8 +33,7 @@ import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
 } from "metabase/services";
-
-import _ from "underscore";
+import EmbedFrame from "../components/EmbedFrame";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -56,12 +55,9 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ dashboard }) => dashboard && dashboard.name)
-@DashboardControls
 // NOTE: this should use DashboardData HoC
-export default class PublicDashboard extends Component {
-  async UNSAFE_componentWillMount() {
+class PublicDashboard extends Component {
+  _initialize = async () => {
     const {
       initialize,
       fetchDashboard,
@@ -85,14 +81,22 @@ export default class PublicDashboard extends Component {
       console.error(error);
       setErrorPage(error);
     }
+  };
+
+  async componentDidMount() {
+    this._initialize();
   }
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues)) {
+  async componentDidUpdate(prevProps) {
+    if (this.props.dashboardId !== prevProps.dashboardId) {
+      return this._initialize();
+    }
+
+    if (!_.isEqual(this.props.parameterValues, prevProps.parameterValues)) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
   }
@@ -131,7 +135,7 @@ export default class PublicDashboard extends Component {
           {() => (
             <DashboardGrid
               {...this.props}
-              className={"spread"}
+              className="spread"
               mode={PublicMode}
               metadata={this.props.metadata}
               navigateToNewCardFromDashboard={() => {}}
@@ -142,3 +146,9 @@ export default class PublicDashboard extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ dashboard }) => dashboard && dashboard.name),
+  DashboardControls,
+)(PublicDashboard);

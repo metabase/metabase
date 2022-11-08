@@ -1,13 +1,14 @@
 import { t } from "ttag";
+import { assocIn } from "icepick";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { areaRenderer } from "../lib/LineAreaBarRenderer";
-import { assocIn } from "icepick";
 
+import { GRAPH_GOAL_SETTINGS } from "../lib/settings/goal";
 import {
   GRAPH_DATA_SETTINGS,
   LINE_SETTINGS,
   STACKABLE_SETTINGS,
-  GRAPH_GOAL_SETTINGS,
+  GRAPH_TREND_SETTINGS,
   GRAPH_COLORS_SETTINGS,
   GRAPH_AXIS_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
@@ -23,6 +24,7 @@ export default class AreaChart extends LineAreaBarChart {
     ...LINE_SETTINGS,
     ...STACKABLE_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
+    ...GRAPH_TREND_SETTINGS,
     ...GRAPH_COLORS_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
     ...GRAPH_DISPLAY_VALUES_SETTINGS,

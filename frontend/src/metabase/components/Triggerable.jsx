@@ -1,18 +1,18 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
+import cx from "classnames";
+import styled from "@emotion/styled";
 import { isObscured } from "metabase/lib/dom";
 
 import Tooltip from "./Tooltip";
-
-import cx from "classnames";
-import styled from "@emotion/styled";
 
 const Trigger = styled.a``;
 
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
-export default ComposedComponent =>
+
+const Triggerable = ComposedComponent =>
   class extends Component {
     static displayName =
       "Triggerable[" +
@@ -170,6 +170,7 @@ export default ComposedComponent =>
             isOpen={isOpen}
             onClose={this.onClose}
             target={() => this.target()}
+            sizeToFit
           >
             {children}
           </ComposedComponent>
@@ -177,3 +178,7 @@ export default ComposedComponent =>
       );
     }
   };
+
+export default Object.assign(Triggerable, {
+  Trigger,
+});

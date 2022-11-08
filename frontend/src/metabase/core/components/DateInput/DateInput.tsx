@@ -9,7 +9,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import moment, { Moment } from "moment";
+import moment, { Moment } from "moment-timezone";
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 
@@ -19,7 +19,7 @@ const TIME_FORMAT_24 = "HH:mm";
 
 export type DateInputAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
-  "value" | "onChange"
+  "size" | "value" | "onChange"
 >;
 
 export interface DateInputProps extends DateInputAttributes {

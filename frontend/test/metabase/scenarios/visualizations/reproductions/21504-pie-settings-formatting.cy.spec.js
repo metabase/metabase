@@ -1,4 +1,4 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -27,6 +27,7 @@ describe("issue 21504", () => {
     });
 
     cy.findByText("Settings").click();
+    cy.findByText("Display").click();
     cy.findByText("April, 2016").should("be.visible");
   });
 });

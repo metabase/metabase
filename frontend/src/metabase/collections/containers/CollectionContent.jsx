@@ -13,8 +13,8 @@ import { getIsBookmarked } from "metabase/collections/selectors";
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 
 import BulkActions from "metabase/collections/components/BulkActions";
-import CollectionEmptyState from "metabase/components/CollectionEmptyState";
-import Header from "metabase/collections/components/CollectionHeader/CollectionHeader";
+import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
+import Header from "metabase/collections/containers/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
@@ -63,7 +63,6 @@ function CollectionContent({
   createBookmark,
   deleteBookmark,
   isAdmin,
-  isRoot,
   metadata,
   isNavbarOpen,
   openNavbar,
@@ -76,13 +75,8 @@ function CollectionContent({
     sort_direction: "asc",
   });
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
-  const {
-    selected,
-    toggleItem,
-    toggleAll,
-    getIsSelected,
-    clear,
-  } = useListSelect(itemKeyFn);
+  const { selected, toggleItem, toggleAll, getIsSelected, clear } =
+    useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
 
   useOnMount(() => {
@@ -156,9 +150,12 @@ function CollectionContent({
     setSelectedAction("copy");
   };
 
-  const handleClickBookmark = () => {
-    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
-    toggleBookmark(collectionId, "collection");
+  const handleCreateBookmark = () => {
+    createBookmark(collectionId, "collection");
+  };
+
+  const handleDeleteBookmark = () => {
+    deleteBookmark(collectionId, "collection");
   };
 
   const unpinnedQuery = {
@@ -191,16 +188,15 @@ function CollectionContent({
           <CollectionRoot>
             <CollectionMain>
               <Header
-                onClickBookmark={handleClickBookmark}
-                isBookmarked={isBookmarked}
-                isRoot={isRoot}
-                isAdmin={isAdmin}
-                collectionId={collectionId}
                 collection={collection}
+                isAdmin={isAdmin}
+                isBookmarked={isBookmarked}
                 isPersonalCollectionChild={isPersonalCollectionChild(
                   collection,
                   collectionList,
                 )}
+                onCreateBookmark={handleCreateBookmark}
+                onDeleteBookmark={handleDeleteBookmark}
               />
               <PinnedItemOverview
                 bookmarks={bookmarks}
@@ -242,7 +238,7 @@ function CollectionContent({
                   if (isEmpty && !loadingUnpinnedItems) {
                     return (
                       <CollectionEmptyContent>
-                        <CollectionEmptyState />
+                        <CollectionEmptyState collectionId={collectionId} />
                       </CollectionEmptyContent>
                     );
                   }

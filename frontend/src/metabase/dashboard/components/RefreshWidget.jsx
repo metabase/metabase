@@ -1,16 +1,19 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import styles from "./RefreshWidget.css";
 
+import { t } from "ttag";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
-import Icon from "metabase/components/Icon";
 import ClockIcon from "metabase/components/icons/ClockIcon";
 import CountdownIcon from "metabase/components/icons/CountdownIcon";
-import { t } from "ttag";
-import cx from "classnames";
 
 import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
+import {
+  RefreshOptionIcon,
+  RefreshOptionItem,
+  RefreshWidgetPopover,
+  RefreshWidgetTitle,
+} from "./RefreshWidget.styled";
 
 const OPTIONS = [
   { name: t`Off`, period: null },
@@ -57,9 +60,11 @@ export default class RefreshWidget extends Component {
         triggerElement={
           elapsed == null ? (
             <Tooltip tooltip={t`Auto-refresh`}>
-              <DashboardHeaderButton>
-                <ClockIcon width={18} height={18} className={className} />
-              </DashboardHeaderButton>
+              <DashboardHeaderButton
+                icon={
+                  <ClockIcon width={16} height={16} className={className} />
+                }
+              />
             </Tooltip>
           ) : (
             <Tooltip
@@ -72,21 +77,22 @@ export default class RefreshWidget extends Component {
                 Math.round(remaining % 60)
               }
             >
-              <DashboardHeaderButton>
-                <CountdownIcon
-                  width={18}
-                  height={18}
-                  className="text-green"
-                  percent={Math.min(0.95, (period - elapsed) / period)}
-                />
-              </DashboardHeaderButton>
+              <DashboardHeaderButton
+                icon={
+                  <CountdownIcon
+                    width={16}
+                    height={16}
+                    percent={Math.min(0.95, (period - elapsed) / period)}
+                  />
+                }
+              />
             </Tooltip>
           )
         }
         targetOffsetY={10}
       >
-        <div className={styles.popover}>
-          <div className={styles.title}>Auto Refresh</div>
+        <RefreshWidgetPopover>
+          <RefreshWidgetTitle>{t`Auto Refresh`}</RefreshWidgetTitle>
           <RefreshOptionList>
             {OPTIONS.map(option => (
               <RefreshOption
@@ -101,7 +107,7 @@ export default class RefreshWidget extends Component {
               />
             ))}
           </RefreshOptionList>
-        </div>
+        </RefreshWidgetPopover>
       </PopoverWithTrigger>
     );
   }
@@ -110,14 +116,13 @@ export default class RefreshWidget extends Component {
 const RefreshOptionList = ({ children }) => <ul>{children}</ul>;
 
 const RefreshOption = ({ name, period, selected, onClick }) => (
-  <li
-    className={cx(styles.option, styles[period == null ? "off" : "on"], {
-      [styles.selected]: selected,
-    })}
+  <RefreshOptionItem
+    isEnabled={period != null}
+    isSelected={selected}
     onClick={onClick}
   >
-    <Icon name="check" size={14} />
-    <span className={styles.name}>{name.split(" ")[0]}</span>
-    <span className={styles.nameSuffix}> {name.split(" ")[1]}</span>
-  </li>
+    <RefreshOptionIcon name="check" size={14} />
+    <span>{name.split(" ")[0]}</span>
+    <span>{name.split(" ")[1]}</span>
+  </RefreshOptionItem>
 );

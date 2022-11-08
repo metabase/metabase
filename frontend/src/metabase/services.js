@@ -1,14 +1,12 @@
-import _ from "underscore";
-
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import Question from "metabase-lib/lib/Question";
-import { FieldDimension } from "metabase-lib/lib/Dimension";
+
+import Question from "metabase-lib/Question";
+import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
+import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
-
-import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
 export const ActivityApi = {
   list: GET("/api/activity"),
@@ -48,39 +46,16 @@ export const StoreApi = {
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
 export function maybeUsePivotEndpoint(api, card, metadata) {
-  function canonicalFieldRef(ref) {
-    // Field refs between the query and setting might differ slightly.
-    // This function trims binned dimensions to just the field-id
-    const dimension = FieldDimension.parseMBQL(ref);
-    if (!dimension) {
-      return ref;
-    }
-    return dimension.withoutOptions("binning").mbql();
-  }
-
   const question = new Question(card, metadata);
 
   function wrap(api) {
     return (params, ...rest) => {
-      const setting = question.setting("pivot_table.column_split");
-      const breakout =
-        (question.isStructured() && question.query().breakouts()) || [];
-      const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
-        setting,
-        fieldRefs =>
-          fieldRefs
-            .map(field_ref =>
-              breakout.findIndex(b =>
-                _.isEqual(canonicalFieldRef(b), canonicalFieldRef(field_ref)),
-              ),
-            )
-            .filter(index => index !== -1),
-      );
+      const { pivot_rows, pivot_cols } = getPivotColumnSplit(question);
       return api({ ...params, pivot_rows, pivot_cols }, ...rest);
     };
   }
   if (
-    card.display !== "pivot" ||
+    question.display() !== "pivot" ||
     !question.isStructured() ||
     // if we have metadata for the db, check if it supports pivots
     (question.database() && !question.database().supportsPivots())
@@ -116,7 +91,10 @@ export const CardApi = {
   create: POST("/api/card"),
   get: GET("/api/card/:cardId"),
   update: PUT("/api/card/:id"),
-  delete: DELETE("/api/card/:cardId"),
+  delete: DELETE("/api/card/:id"),
+  persist: POST("/api/card/:id/persist"),
+  unpersist: POST("/api/card/:id/unpersist"),
+  refreshModelCache: POST("/api/card/:id/refresh"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
   bookmark: {
@@ -177,6 +155,15 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph"),
 };
 
+export const DataAppsApi = {
+  list: GET("/api/app"),
+  create: POST("/api/app"),
+  update: PUT("/api/app/:id"),
+
+  scaffoldNewApp: POST("/api/app/scaffold"),
+  scaffoldNewPages: POST("/api/app/:id/scaffold"),
+};
+
 const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
 
 export const PublicApi = {
@@ -228,6 +215,10 @@ export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
 };
 
+export const GoogleApi = {
+  updateSettings: PUT("/api/google/settings"),
+};
+
 export const TimelineApi = {
   list: GET("/api/timeline"),
   listForCollection: GET("/api/collection/:collectionId/timelines"),
@@ -258,11 +249,17 @@ export const MetabaseApi = {
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
-    "/api/database/:dbId/autocomplete_suggestions?search=:prefix",
+    "/api/database/:dbId/autocomplete_suggestions?:matchStyle=:query",
+  ),
+  db_card_autocomplete_suggestions: GET(
+    "/api/database/:dbId/card_autocomplete_suggestions",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
+  db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
   db_rescan_values: POST("/api/database/:dbId/rescan_values"),
   db_discard_values: POST("/api/database/:dbId/discard_values"),
+  db_persist: POST("/api/database/:dbId/persist"),
+  db_unpersist: POST("/api/database/:dbId/unpersist"),
   db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
@@ -272,47 +269,7 @@ export const MetabaseApi = {
   // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
   table_query_metadata: GET(
     "/api/table/:tableId/query_metadata",
-    async table => {
-      // HACK: inject GA metadata that we don't have intergrated on the backend yet
-      if (table && table.db && table.db.engine === "googleanalytics") {
-        const GA = await getGAMetadata();
-        table.fields = table.fields.map(field => ({
-          ...field,
-          ...GA.fields[field.name],
-        }));
-        table.metrics.push(
-          ...GA.metrics.map(metric => ({
-            ...metric,
-            table_id: table.id,
-            googleAnalyics: true,
-          })),
-        );
-        table.segments.push(
-          ...GA.segments.map(segment => ({
-            ...segment,
-            table_id: table.id,
-            googleAnalyics: true,
-          })),
-        );
-      }
-
-      if (table && table.fields) {
-        // replace dimension_options IDs with objects
-        for (const field of table.fields) {
-          if (field.dimension_options) {
-            field.dimension_options = field.dimension_options.map(
-              id => table.dimension_options[id],
-            );
-          }
-          if (field.default_dimension_option) {
-            field.default_dimension_option =
-              table.dimension_options[field.default_dimension_option];
-          }
-        }
-      }
-
-      return table;
-    },
+    injectTableMetadata,
   ),
   // table_sync_metadata:        POST("/api/table/:tableId/sync"),
   table_rescan_values: POST("/api/table/:tableId/rescan_values"),
@@ -422,6 +379,14 @@ export const PermissionsApi = {
   deleteGroup: DELETE("/api/permissions/group/:id"),
 };
 
+export const PersistedModelsApi = {
+  get: GET("/api/persist/:id"),
+  getForModel: GET("/api/persist/card/:id"),
+  enablePersistence: POST("/api/persist/enable"),
+  disablePersistence: POST("/api/persist/disable"),
+  setRefreshSchedule: POST("/api/persist/set-refresh-schedule"),
+};
+
 export const SetupApi = {
   create: POST("/api/setup"),
   validate_db: POST("/api/setup/validate"),
@@ -509,3 +474,22 @@ function setParamsEndpoints(prefix) {
     prefix + "/dashboard/:dashId/params/:paramId/search/:query",
   );
 }
+
+export const ActionsApi = {
+  list: GET("/api/action"),
+  create: POST("/api/action/row/create"),
+  update: POST("/api/action/row/update"),
+  delete: POST("/api/action/row/delete"),
+  bulkUpdate: POST("/api/action/bulk/update/:tableId"),
+  bulkDelete: POST("/api/action/bulk/delete/:tableId"),
+  execute: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute/:slug",
+  ),
+};
+
+export const ModelActionsApi = {
+  connectActionToModel: POST("/api/model-action"),
+  createImplicitAction: POST("/api/model-action"),
+  updateConnection: PUT("/api/model-action/:id"),
+  disconnectActionFromModel: POST("/api/model-action"),
+};

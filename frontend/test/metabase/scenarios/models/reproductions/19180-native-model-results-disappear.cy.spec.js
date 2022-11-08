@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/helpers";
 
 const QUESTION = {
   native: { query: "select * from products" },
@@ -18,7 +18,6 @@ describe("issue 19180", () => {
           cy.visit(`/model/${QUESTION_ID}/query`);
           cy.wait("@cardQuery");
           cy.button("Cancel").click();
-          cy.wait("@cardQuery");
           cy.get(".TableInteractive");
           cy.findByText("Here's where your results will appear").should(
             "not.exist",

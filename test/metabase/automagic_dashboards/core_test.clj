@@ -8,7 +8,7 @@
             [metabase.automagic-dashboards.rules :as rules]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Collection Database Field Metric Table]]
-            [metabase.models.field :as field]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.query :as query :refer [Query]]
@@ -27,11 +27,11 @@
 
 (deftest ->reference-test
   (is (= [:field 1 nil]
-         (->> (assoc (field/->FieldInstance) :id 1)
+         (->> (assoc (mi/instance Field) :id 1)
               (#'magic/->reference :mbql))))
 
   (is (= [:field 2 {:source-field 1}]
-         (->> (assoc (field/->FieldInstance) :id 1 :fk_target_field_id 2)
+         (->> (assoc (mi/instance Field) :id 1 :fk_target_field_id 2)
               (#'magic/->reference :mbql))))
 
   (is (= 42
@@ -44,15 +44,14 @@
 (deftest rule-matching-test
   (is (= [:entity/UserTable :entity/GenericTable :entity/*]
          (->> (mt/id :users)
-              Table
+              (db/select-one Table :id)
               (#'magic/->root)
               (#'magic/matching-rules (rules/get-rules ["table"]))
               (map (comp first :applies_to)))))
 
   (testing "Test fallback to GenericTable"
     (is (= [:entity/GenericTable :entity/*]
-           (->> (-> (mt/id :users)
-                    Table
+           (->> (-> (db/select-one Table :id (mt/id :users))
                     (assoc :entity_type nil)
                     (#'magic/->root))
                 (#'magic/matching-rules (rules/get-rules ["table"]))
@@ -68,7 +67,8 @@
    ;; that size limiting works.
    (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show :all}))
      (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show :all}) card-count))
-   (when (or (nil? (#{(type Query) (type Card)} (type entity)))
+   (when (or (and (not (mi/instance-of? Query entity))
+                  (not (mi/instance-of? Card entity)))
              (#'magic/table-like? entity))
      (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show 1}))
        ;; 1 for the actual card returned + 1 for the visual display card = 2
@@ -86,7 +86,7 @@
 
     (automagic-dashboards.test/with-dashboard-cleanup
       (is (= 1
-             (->> (magic/automagic-analysis (Table (mt/id :venues)) {:show 1})
+             (->> (magic/automagic-analysis (db/select-one Table :id (mt/id :venues)) {:show 1})
                   :ordered_cards
                   (filter :card)
                   count))))))
@@ -94,7 +94,7 @@
 (deftest weird-characters-in-names-test
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
-      (-> (Table (mt/id :venues))
+      (-> (db/select-one Table :id (mt/id :venues))
           (assoc :display_name "%Venues")
           (test-automagic-analysis 7)))))
 
@@ -128,7 +128,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (Card card-id) 7))))))
+          (test-automagic-analysis (db/select-one Card :id card-id) 7))))))
 
 (deftest query-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -142,7 +142,7 @@
                                                          :database (mt/id)}}]]
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
-          (test-automagic-analysis (Card card-id) 17))))))
+          (test-automagic-analysis (db/select-one Card :id card-id) 17))))))
 
 (deftest native-query-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -155,7 +155,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (Card card-id) 2))))))
+          (test-automagic-analysis (db/select-one Card :id card-id) 2))))))
 
 (defn- result-metadata-for-query [query]
   (first
@@ -182,7 +182,7 @@
         (mt/with-test-user :rasta
           (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (test-automagic-analysis (Card card-id) 7)))))))
+            (test-automagic-analysis (db/select-one Card :id card-id) 7)))))))
 
 (deftest native-query-with-cards-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -203,7 +203,7 @@
         (mt/with-test-user :rasta
           (automagic-dashboards.test/with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-            (test-automagic-analysis (Card card-id) 8)))))))
+            (test-automagic-analysis (db/select-one Card :id card-id) 8)))))))
 
 (deftest card-breakout-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -218,7 +218,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (Card card-id) 17))))))
+          (test-automagic-analysis (db/select-one Card :id card-id) 17))))))
 
 (deftest figure-out-table-id-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -231,7 +231,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-automagic-analysis (Card card-id) 2))))))
+          (test-automagic-analysis (db/select-one Card :id card-id) 2))))))
 
 (deftest card-cell-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -245,8 +245,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (-> card-id
-              Card
+          (-> (db/select-one Card :id card-id)
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
 
@@ -262,8 +261,7 @@
       (mt/with-test-user :rasta
         (automagic-dashboards.test/with-dashboard-cleanup
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (-> card-id
-              Card
+          (-> (db/select-one Card :id card-id)
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
 
@@ -348,7 +346,7 @@
                                                     "first Table")]
                                   s/Keyword s/Any}
                                  "first result")]
-                         (magic/candidate-tables (Database db-id))))))))))
+                         (magic/candidate-tables (db/select-one Database :id db-id))))))))))
 
 (deftest call-count-test
   (mt/with-temp* [Database [{db-id :id}]
@@ -359,7 +357,7 @@
       ;; make sure the current user permissions set is already fetched so it's not included in the DB call count below
       @api/*current-user-permissions-set*
       (automagic-dashboards.test/with-dashboard-cleanup
-        (let [database (Database db-id)]
+        (let [database (db/select-one Database :id db-id)]
           (db/with-call-counting [call-count]
             (magic/candidate-tables database)
             (is (= 4
@@ -383,7 +381,7 @@
         (is (= {:list-like?  true
                 :link-table? false
                 :num-fields 2}
-               (-> (#'magic/enhance-table-stats [(Table table-id)])
+               (-> (#'magic/enhance-table-stats [(db/select-one Table :id table-id)])
                    first
                    :stats)))))))
 
@@ -398,7 +396,7 @@
         (is (= {:list-like?  false
                 :link-table? true
                 :num-fields 3}
-               (-> (#'magic/enhance-table-stats [(Table table-id)])
+               (-> (#'magic/enhance-table-stats [(db/select-one Table :id table-id)])
                    first
                    :stats)))))))
 
@@ -484,8 +482,7 @@
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
 
 (deftest temporal-humanization-test
-  (let [tz    "UTC"
-        dt    #t "1990-09-09T12:30"
+  (let [dt    #t "1990-09-09T12:30"
         t-str "1990-09-09T12:30:00"]
     (doseq [[unit expected] {:minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
                              :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
@@ -517,7 +514,7 @@
 (deftest handlers-test
   (testing "Make sure we have handlers for all the units available"
     (doseq [unit (disj (set (concat u.date/extract-units u.date/truncate-units))
-                       :iso-day-of-year :millisecond)]
+                       :iso-day-of-year :second-of-minute :millisecond)]
       (testing unit
         (is (some? (#'magic/humanize-datetime "1990-09-09T12:30:00" unit)))))))
 
@@ -551,7 +548,8 @@
 (deftest filter-referenced-fields-test
   (testing "X-Ray should work if there's a filter in the question (#19241)"
     (mt/dataset sample-dataset
-      (let [query (query/map->QueryInstance
+      (let [query (mi/instance
+                   Query
                    {:database-id   (mt/id)
                     :table-id      (mt/id :products)
                     :dataset_query {:database (mt/id)
@@ -563,10 +561,10 @@
                                                               [:field (mt/id :products :category) nil]
                                                               "Doohickey"]}}})]
         (testing `magic/filter-referenced-fields
-          (is (= {(mt/id :products :category)   (Field (mt/id :products :category))
-                  (mt/id :products :created_at) (Field (mt/id :products :created_at))}
+          (is (= {(mt/id :products :category)   (db/select-one Field :id (mt/id :products :category))
+                  (mt/id :products :created_at) (db/select-one Field :id (mt/id :products :created_at))}
                  (#'magic/filter-referenced-fields
-                  {:source   (Table (mt/id :products))
+                  {:source   (db/select-one Table :id (mt/id :products))
                    :database (mt/id)
                    :entity   query}
                   [:and
@@ -581,7 +579,7 @@
           ;; VERY IMPORTANT! Make sure the Table is FULLY synced (so it gets classified correctly), otherwise the
           ;; automagic Dashboards won't work (the normal quick sync we do for tests doesn't include everything that's
           ;; needed)
-          (sync/sync-table! (Table (mt/id :products)))
+          (sync/sync-table! (db/select-one Table :id (mt/id :products)))
           (let [query     {:database (mt/id)
                            :type     :query
                            :query    {:source-table (mt/id :products)

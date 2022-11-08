@@ -16,8 +16,6 @@
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -124,8 +122,8 @@
             ["The Apple Pan"]
             ["Wurstküche"]
             ["Brite Spot Family Restaurant"]]
-           (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                     [(Field (mt/id :venues :name))]
+           (take 5 (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                     [(db/select-one Field :id (mt/id :venues :name))]
                      (constantly conj)))))))
 
 
@@ -169,8 +167,7 @@
                            ;; doesn't wrap every exception in an SshdException
                            :tunnel-port    21212
                            :tunnel-user    "bogus"}]
-              (tu.log/suppress-output
-               (driver.u/can-connect-with-details? engine details :throw-exceptions)))
+              (driver.u/can-connect-with-details? engine details :throw-exceptions))
             (catch Throwable e
               (loop [^Throwable e e]
                 (or (when (instance? java.net.ConnectException e)
@@ -179,8 +176,8 @@
 
 (deftest db-default-timezone-test
   (mt/test-driver :presto
-    (is (= "UTC"
-           (tu/db-timezone-id)))))
+    (is (= nil
+           (driver/db-default-timezone :presto-jdbc (mt/db))))))
 
 (deftest query-cancelation-test
   (mt/test-driver :presto

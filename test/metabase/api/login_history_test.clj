@@ -20,7 +20,7 @@
   (testing "GET /api/login-history/current"
     (let [session-id (str (java.util.UUID/randomUUID))]
       (mt/with-temp* [User         [user]
-                      Session      [session {:id session-id, :user_id (u/the-id user)}]
+                      Session      [_ {:id session-id, :user_id (u/the-id user)}]
                       LoginHistory [_ {:timestamp          #t "2021-03-18T19:52:41.808482Z"
                                        :user_id            (u/the-id user)
                                        :device_id          "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"
@@ -77,7 +77,7 @@
                         :device_description (s/eq "Browser (Chrome/Windows)")
                         :ip_address         (s/eq "52.206.149.9")
                         :active             (s/eq false)
-                        :location           (s/eq "Ashburn, Virginia, United States")
+                        :location           (s/eq "Ashburn, United States")
                         :timezone           (s/eq "ET")}
                        "Virginia")]
                      (mt/client session-id :get 200 "login-history/current")))))))

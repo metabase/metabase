@@ -6,11 +6,11 @@
 
 (models/defmodel MetricImportantField :metric_important_field)
 
-(u/strict-extend (class MetricImportantField)
+(doto MetricImportantField
+  (derive ::mi/read-policy.always-allow)
+  (derive ::mi/write-policy.superuser))
+
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class MetricImportantField)
   models/IModel
   (merge models/IModelDefaults
-         {:types (constantly {:definition :json})})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:can-read?  (constantly true)
-          :can-write? mi/superuser?}))
+         {:types (constantly {:definition :json})}))

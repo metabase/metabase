@@ -3,12 +3,12 @@
 import React from "react";
 
 import cx from "classnames";
-import _ from "underscore";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListSearchField from "metabase/components/ListSearchField";
+import { ListCellItem } from "./AccordionListCell.styled";
 
 export const AccordionListCell = ({
   style,
@@ -34,6 +34,7 @@ export const AccordionListCell = ({
   showItemArrows,
   itemTestId,
   getItemClassName,
+  getItemStyles,
   searchInputProps,
   hasCursor,
 }) => {
@@ -50,7 +51,7 @@ export const AccordionListCell = ({
         </div>
       );
     } else {
-      const icon = renderSectionIcon(section, sectionIndex);
+      const icon = renderSectionIcon(section);
       const extra = renderSectionExtra(section, sectionIndex);
       const name = section.name;
       content = (
@@ -110,14 +111,15 @@ export const AccordionListCell = ({
   } else if (type === "item") {
     const isSelected = itemIsSelected(item, itemIndex);
     const isClickable = itemIsClickable(item, itemIndex);
-    const icon = renderItemIcon(item, itemIndex, isSelected);
-    const name = renderItemName(item, itemIndex, isSelected);
-    const description = renderItemDescription(item, itemIndex, isSelected);
+    const icon = renderItemIcon(item);
+    const name = renderItemName(item);
+    const description = renderItemDescription(item);
     content = (
-      <div
+      <ListCellItem
         data-testid={itemTestId}
         role="option"
         aria-selected={isSelected}
+        isClickable={isClickable}
         className={cx(
           "List-item flex mx1",
           {
@@ -128,6 +130,7 @@ export const AccordionListCell = ({
           },
           getItemClassName(item, itemIndex),
         )}
+        style={getItemStyles(item, itemIndex)}
       >
         <span
           className={cx(
@@ -156,7 +159,7 @@ export const AccordionListCell = ({
             <Icon name="chevronright" size={8} />
           </div>
         )}
-      </div>
+      </ListCellItem>
     );
 
     if (renderItemWrapper) {

@@ -44,8 +44,7 @@
                [group-id db-id schema-name]
                [group-id db-id schema-name table-or-id])}
   [group-id & path-components]
-  (apply (partial revoke-permissions! :download :full group-id) path-components)
-  (apply (partial revoke-permissions! :download :limited group-id) path-components))
+  (apply (partial perms/revoke-download-perms! group-id) path-components))
 
 (defn- update-table-download-permissions!
   [group-id db-id schema table-id new-table-perms]

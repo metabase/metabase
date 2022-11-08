@@ -1,5 +1,4 @@
 import React, { useEffect, useCallback, useRef, KeyboardEvent } from "react";
-import _ from "underscore";
 
 import { Collection } from "metabase-types/api";
 
@@ -85,13 +84,14 @@ const SidebarCollectionLink = React.forwardRef<HTMLLIElement, Props>(
 
     const icon = getCollectionIcon(collection);
     const isRegularCollection = PLUGIN_COLLECTIONS.isRegularCollection(
-      (collection as unknown) as Collection,
+      collection as unknown as Collection,
     );
 
     return (
       <CollectionNodeRoot
         role="treeitem"
         depth={depth}
+        aria-selected={isSelected}
         isSelected={isSelected}
         hovered={isHovered}
         onClick={onToggleExpand}
@@ -123,7 +123,7 @@ const DroppableSidebarCollectionLink = React.forwardRef<
   { item, ...props }: TreeNodeProps,
   ref,
 ) {
-  const collection = (item as unknown) as Collection;
+  const collection = item as unknown as Collection;
   return (
     <div data-testid="sidebar-collection-link-root">
       <CollectionDropTarget collection={collection}>
