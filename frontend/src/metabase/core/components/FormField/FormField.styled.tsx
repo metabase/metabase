@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 import { FieldAlignment, FieldOrientation } from "./types";
 
 export const FieldLabelError = styled.span`
@@ -31,8 +32,6 @@ export interface FormCaptionProps {
 }
 
 export const FieldCaption = styled.div<FormCaptionProps>`
-  display: flex;
-  align-items: center;
   margin-left: ${props =>
     props.orientation === "horizontal" &&
     props.alignment === "start" &&
@@ -41,7 +40,6 @@ export const FieldCaption = styled.div<FormCaptionProps>`
     props.orientation === "horizontal" &&
     props.alignment === "end" &&
     "0.5rem"};
-  margin-bottom: 0.5rem;
 `;
 
 export const FieldLabel = styled.label`
@@ -50,6 +48,30 @@ export const FieldLabel = styled.label`
   font-weight: 900;
 `;
 
+export const FieldLabelContainer = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5em;
+`;
+
 export const FieldDescription = styled.div`
   margin-bottom: 0.5rem;
+`;
+
+export const FieldInfoIcon = styled(Icon)`
+  color: ${color("bg-dark")};
+  margin-left: 0.5rem;
+  width: 0.75rem;
+  height: 0.75rem;
+
+  &:hover {
+    color: ${() => color("brand")};
+  }
+`;
+
+export const FieldInfoLabel = styled.div`
+  color: ${color("text-medium")};
+  font-size: 0.75rem;
+  margin-left: auto;
+  cursor: default;
 `;

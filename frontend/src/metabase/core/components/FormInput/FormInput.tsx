@@ -5,7 +5,10 @@ import Input, { InputProps } from "metabase/core/components/Input";
 import FormField from "metabase/core/components/FormField";
 
 export interface FormInputProps
-  extends Omit<InputProps, "value" | "error" | "onChange" | "onBlur"> {
+  extends Omit<
+    InputProps,
+    "value" | "error" | "fullWidth" | "onChange" | "onBlur"
+  > {
   name: string;
   title?: string;
   description?: ReactNode;
@@ -16,7 +19,7 @@ const FormInput = forwardRef(function FormInput(
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [field, meta] = useField(name);
+  const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
 
   return (
     <FormField
@@ -26,16 +29,17 @@ const FormInput = forwardRef(function FormInput(
       title={title}
       description={description}
       htmlFor={id}
-      error={meta.touched ? meta.error : undefined}
+      error={touched ? error : undefined}
     >
       <Input
         {...props}
         id={id}
         name={name}
-        value={field.value}
-        error={meta.touched && meta.error != null}
-        onChange={field.onChange}
-        onBlur={field.onBlur}
+        value={value}
+        error={touched && error != null}
+        fullWidth
+        onChange={onChange}
+        onBlur={onBlur}
       />
     </FormField>
   );

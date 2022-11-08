@@ -70,7 +70,6 @@ const ResetPasswordForm = ({
             placeholder={t`Shhh...`}
             autoComplete="new-password"
             autoFocus
-            fullWidth
           />
           <FormInput
             name="password_confirm"
@@ -78,7 +77,6 @@ const ResetPasswordForm = ({
             title={t`Confirm your password`}
             placeholder={t`Shhh... but one more time so we get it right`}
             autoComplete="new-password"
-            fullWidth
           />
           <FormSubmitButton title={t`Save new password`} primary fullWidth />
           <FormErrorMessage />

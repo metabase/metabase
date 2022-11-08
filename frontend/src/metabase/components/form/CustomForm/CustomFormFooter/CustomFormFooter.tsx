@@ -37,6 +37,9 @@ function CustomFormFooter({
   );
 }
 
+/**
+ * @deprecated
+ */
 const CustomFormFooterLegacyContext = (
   props: CustomFormFooterProps,
   { isModal: isContextModal }: LegacyContextProps,
