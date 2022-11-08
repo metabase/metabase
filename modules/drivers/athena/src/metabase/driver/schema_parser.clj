@@ -1,6 +1,8 @@
 (ns metabase.driver.schema-parser
-  (:require [metabase.driver.hive-parser :as hsp]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))
+  (:require
+   [clojure.string :as str]
+   [metabase.driver.hive-parser :as hsp]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))
 
 (defn- column->base-type [column-type]
   (sql-jdbc.sync/database-type->base-type :athena (keyword (re-find #"\w+" column-type))))
@@ -33,10 +35,10 @@
   {:name (:name field-info) :base-type :type/Array :database-type "array" :database-position database-position})
 
 (defn- is-struct-type-field? [field-info]
-  (clojure.string/starts-with? (:type field-info) "struct"))
+  (str/starts-with? (:type field-info) "struct"))
 
 (defn- is-array-type-field? [field-info]
-  (clojure.string/starts-with? (:type field-info) "array"))
+  (str/starts-with? (:type field-info) "array"))
 
 (defn parse-schema
   "Parse specific Athena types"

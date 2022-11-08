@@ -1,32 +1,29 @@
 (ns metabase.driver.athena
   (:refer-clojure :exclude [second])
-  (:require [metabase.driver.schema-parser :as schema-parser]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.string :as string]
-            [clojure.tools.logging :as log]
-            [clojure.set :as set]
-            [medley.core :as m]
-            [metabase.query-processor]
-            [metabase.models
-             [field :as field :refer [Field]]]
-            [metabase.driver.query-processor :as qp]
-            [honeysql
-             [core :as hsql]]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc
-             [common :as sql-jdbc.common]
-             [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [i18n :refer [trs]]]
-            [metabase.util :as u])
-  (:import [java.sql DatabaseMetaData Timestamp]
-           (java.time OffsetDateTime ZonedDateTime)))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [clojure.string :as string]
+   [clojure.tools.logging :as log]
+   [honeysql.core :as hsql]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.query-processor :as qp]
+   [metabase.driver.schema-parser :as schema-parser]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.i18n :refer [trs]])
+  (:import
+   (java.sql DatabaseMetaData Timestamp)
+   (java.time OffsetDateTime ZonedDateTime)))
 
 (driver/register! :athena, :parent #{:sql-jdbc, ::legacy/use-legacy-classes-for-read-and-set})
 

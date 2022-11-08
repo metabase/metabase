@@ -1,10 +1,8 @@
 (ns metabase.driver.query-processor
-  (:require [clojure.string :as str]
-            [metabase.query-processor
-             [store :as qp.store]]
-            [metabase.util
-             [honeysql-extensions :as hx]]
-            [metabase.driver.sql.query-processor :as sql.qp]))
+  (:require
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.honeysql-extensions :as hx]))
 
 (defn get-parent-qualifiers [field-identifier]
   (:components field-identifier))
