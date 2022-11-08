@@ -1,10 +1,10 @@
 (ns metabase.driver.athena-test
   (:require [clojure.test :refer :all]
-            [metabase.driver.athena :refer [endpoint-for-region sync-table-with-nested-field sync-table-without-nested-field]]))
+            [metabase.driver.athena :as athena]))
 
 (def nested_schema_str
-  "key                 	int                 	from deserializer
-data                	struct<name:string> 	from deserializer")
+  "key                  int                   from deserializer
+data                  struct<name:string>   from deserializer")
 
 (def nested_schema
   [{:col_name "key", :data_type "int"}
@@ -21,28 +21,28 @@ data                	struct<name:string> 	from deserializer")
            #{{:name "key", :base-type :type/Integer, :database-type "int", :database-position 0}
              {:name "data", :base-type :type/Dictionary, :database-type "struct"
               :nested-fields #{{:name "name", :base-type :type/Text, :database-type "string", :database-position 1}}, :database-position 1}}
-           (sync-table-with-nested-field "test" "test" "test")))))
+           (athena/sync-table-with-nested-field "test" "test" "test")))))
 
   (testing "sync without nested fields"
     (is (=
          #{{:name "id", :base-type :type/Text, :database-type "string", :database-position 0}
            {:name "ts", :base-type :type/Text, :database-type "string", :database-position 1}}
-         (sync-table-without-nested-field :athena flat_schema_columns)))))
+         (athena/sync-table-without-nested-field :athena flat_schema_columns)))))
 
 (deftest endpoint
   (testing "AWS Endpoint URL"
     (is (=
          ".amazonaws.com"
-         (endpoint-for-region "us-east-1")))
+         (athena/endpoint-for-region "us-east-1")))
 
     (is (=
          ".amazonaws.com"
-         (endpoint-for-region "us-west-2")))
+         (athena/endpoint-for-region "us-west-2")))
 
     (is (=
          ".amazonaws.com.cn"
-         (endpoint-for-region "cn-north-1")))
+         (athena/endpoint-for-region "cn-north-1")))
 
     (is (=
          ".amazonaws.com.cn"
-         (endpoint-for-region "cn-northwest-1")))))
+         (athena/endpoint-for-region "cn-northwest-1")))))

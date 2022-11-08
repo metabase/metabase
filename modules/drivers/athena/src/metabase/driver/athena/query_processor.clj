@@ -1,16 +1,16 @@
-(ns metabase.driver.query-processor
+(ns metabase.driver.athena.query-processor
   (:require
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.honeysql-extensions :as hx]))
 
-(defn get-parent-qualifiers [field-identifier]
+(defn- get-parent-qualifiers [field-identifier]
   (:components field-identifier))
 
-(defn format-field-identifier [field-identifier]
+(defn- format-field-identifier [field-identifier]
   (apply hx/identifier :field field-identifier))
 
-(defn get-field-full-name [qualifiers field-name parent-id]
+(defn- get-field-full-name [qualifiers field-name parent-id]
   (if (nil? parent-id)
     (concat qualifiers [field-name])
     (concat (get-parent-qualifiers (sql.qp/->honeysql :athena [:field-id parent-id])) [field-name])))
@@ -20,7 +20,6 @@
                      [sql.qp/*table-alias*]
                      (let [{schema :schema, table-name :name} (qp.store/table table-id)]
                        [schema table-name]))]
-    (->>
-     (get-field-full-name qualifiers field-name parent-id)
-     (format-field-identifier)
-     (sql.qp/cast-field-if-needed driver field))))
+    (->> (get-field-full-name qualifiers field-name parent-id)
+         format-field-identifier
+         (sql.qp/cast-field-if-needed driver field))))

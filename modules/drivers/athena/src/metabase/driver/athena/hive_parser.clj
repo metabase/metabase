@@ -1,4 +1,4 @@
-(ns metabase.driver.hive-parser
+(ns metabase.driver.athena.hive-parser
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]

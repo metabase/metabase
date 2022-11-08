@@ -1,7 +1,7 @@
-(ns metabase.driver.schema-parser
+(ns metabase.driver.athena.schema-parser
   (:require
    [clojure.string :as str]
-   [metabase.driver.hive-parser :as hsp]
+   [metabase.driver.athena.hive-parser :as athena.hive-parser]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))
 
 (defn- column->base-type [column-type]
@@ -24,7 +24,7 @@
 
 (defn- parse-struct-type-field [field-info database-position]
   (let [root-field-name (:name field-info)
-        schema (hsp/hive-schema->map (:type field-info))]
+        schema (athena.hive-parser/hive-schema->map (:type field-info))]
     {:name root-field-name
      :base-type :type/Dictionary
      :database-type "struct"
@@ -45,6 +45,14 @@
   [field-info]
   (cond
     ; :TODO Should we also validate maps?
-    (is-struct-type-field? field-info) (parse-struct-type-field field-info (:database-position field-info))
-    (is-array-type-field? field-info) (parse-array-type-field field-info (:database-position field-info))
-    :else {:name (:name field-info) :base-type (column->base-type (:type field-info)) :database-type (:type field-info) :database-position (:database-position field-info)}))
+    (is-struct-type-field? field-info)
+    (parse-struct-type-field field-info (:database-position field-info))
+
+    (is-array-type-field? field-info)
+    (parse-array-type-field field-info (:database-position field-info))
+
+    :else
+    {:name              (:name field-info)
+     :base-type         (column->base-type (:type field-info))
+     :database-type     (:type field-info)
+     :database-position (:database-position field-info)}))

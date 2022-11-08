@@ -1,6 +1,6 @@
-(ns metabase.driver.hive-parser-test
+(ns metabase.driver.athena.hive-parser-test
   (:require [clojure.test :refer :all]
-            [metabase.driver.hive-parser :refer [hive-schema->map]]))
+            [metabase.driver.athena.hive-parser :refer [hive-schema->map]]))
 
 (deftest parser
   (testing "Parse schema"
@@ -27,6 +27,3 @@
     (is (=
          {:mediacategory "string" :mediakey "string" :mediaurl "string" :order "bigint"}
          (hive-schema->map "struct<mediacategory: string, mediakey: string, mediaurl: string, order: bigint>")))
-
-    
-

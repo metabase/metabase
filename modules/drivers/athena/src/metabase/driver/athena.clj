@@ -3,17 +3,17 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
-   [clojure.string :as string]
+   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.driver.query-processor :as qp]
-   [metabase.driver.schema-parser :as schema-parser]
+   [metabase.driver.athena.query-processor :as athena.qp]
+   [metabase.driver.athena.schema-parser :as athena.schema-parser]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
+   [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util.unprepare :as unprepare]
@@ -25,7 +25,7 @@
    (java.sql DatabaseMetaData Timestamp)
    (java.time OffsetDateTime ZonedDateTime)))
 
-(driver/register! :athena, :parent #{:sql-jdbc, ::legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :athena, :parent #{:sql-jdbc, ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
@@ -46,7 +46,7 @@
   "Returns the endpoint URL for a specific region"
   [region]
   (cond
-    (string/starts-with? region "cn-") ".amazonaws.com.cn"
+    (str/starts-with? region "cn-") ".amazonaws.com.cn"
     :else ".amazonaws.com"))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena [_ {:keys [region access_key secret_key s3_staging_dir workgroup db catalog], :as details}]
@@ -60,9 +60,9 @@
         :workgroup        workgroup
         :AwsRegion        region
         }
-       (when (string/blank? access_key)
+       (when (str/blank? access_key)
          {:AwsCredentialsProviderClass "com.simba.athena.amazonaws.auth.DefaultAWSCredentialsProviderChain"})
-       (when-not (string/blank? catalog)
+       (when-not (str/blank? catalog)
          {:MetadataRetrievalMethod "ProxyAPI"
           :Catalog catalog})
        (dissoc details :db :catalog))
@@ -141,7 +141,7 @@
 (defmethod sql.qp/date [:athena :month-of-year]   [_ _ expr] (hsql/call :month expr))
 (defmethod sql.qp/date [:athena :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
 
-(defmethod sql.qp/->honeysql [:athena (class Field)] [driver field] (qp/->honeysql driver field))
+(defmethod sql.qp/->honeysql [:athena (class Field)] [driver field] (athena.qp/->honeysql driver field))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:athena :seconds] [_ _ expr] (hsql/call :from_unixtime expr))
 
@@ -180,15 +180,15 @@
   [database query]
   (log/infof "Running Athena query : '%s'..." query)
   (try
-    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database) (string/replace query ";" " ") {:raw? true})
+    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database) (str/replace query ";" " ") {:raw? true})
     (catch Exception e
       (log/error (u/format-color 'red "Failed to execute query: %s %s" query (.getMessage e))))))
 
 (defn- describe-database->clj
   "Workaround for wrong getColumnCount response by the driver"
   [rs]
-  {:name (string/trim (:col_name rs))
-   :type (string/trim (:data_type rs))})
+  {:name (str/trim (:col_name rs))
+   :type (str/trim (:data_type rs))})
 
 (defn remove-invalid-columns
   [result]
@@ -196,17 +196,17 @@
        (remove #(= (:col_name %) ""))
        (remove #(= (:col_name %) nil))
        (remove #(= (:data_type %) nil))
-       (remove #(string/starts-with? (:col_name %) "#")) ; remove comment
+       (remove #(str/starts-with? (:col_name %) "#")) ; remove comment
        (distinct) ; driver can return twice the partitioning fields
        (map describe-database->clj)))
 
 (defn sync-table-with-nested-field [database schema table-name]
   (->> (run-query database (str "DESCRIBE `" schema "`.`" table-name "`;"))
-       (remove-invalid-columns)
+       remove-invalid-columns
        (map-indexed #(merge %2 {:database-position %1}))
-       (map schema-parser/parse-schema)
-       (doall)
-       (set)))
+       (map athena.schema-parser/parse-schema)
+       doall
+       set))
 
 (defn sync-table-without-nested-field [driver columns]
   (set
@@ -218,7 +218,7 @@
        :database-type     database-type
        :base-type         (database-type->base-type-or-warn driver database-type)
        :database-position idx}
-      (when (not (string/blank? remarks))
+      (when (not (str/blank? remarks))
         {:field-comment remarks})))))
 ;; Not all tables in the Data Catalog are guaranted to be compatible with Athena
 ;; If an exception is thrown, log and throw an error
@@ -269,7 +269,7 @@
              (let [remarks (:remarks table)]
                {:name        (:table_name table)
                 :schema      (:table_schem schema)
-                :description (when-not (string/blank? remarks)
+                :description (when-not (str/blank? remarks)
                                remarks)}))))))
 
 ;; You may want to exclude a specific database - this can be done here
