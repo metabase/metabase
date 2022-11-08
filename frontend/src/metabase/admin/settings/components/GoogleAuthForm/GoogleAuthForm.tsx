@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -11,7 +10,6 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { updateGoogleSettings } from "metabase/admin/settings/settings";
-import { SettingDefinition } from "metabase-types/api";
 import {
   GoogleForm,
   GoogleFormCaption,
@@ -23,30 +21,33 @@ const BREADCRUMBS = [
   [t`Google Sign-In`],
 ];
 
+const ENABLED_KEY = "google-auth-enabled";
+const CLIENT_ID_KEY = "google-auth-client-id";
+const DOMAIN_KEY = "google-auth-auto-create-accounts-domain";
+
 const GoogleAuthSchema = Yup.object({
-  "google-auth-client-id": Yup.string().required(t`required`),
-  "google-auth-auto-create-accounts-domain": Yup.string(),
+  [CLIENT_ID_KEY]: Yup.string().required(t`required`),
+  [DOMAIN_KEY]: Yup.string(),
 });
 
 export interface GoogleAuthSettings {
-  "google-auth-enabled": boolean;
-  "google-auth-client-id": string | null;
-  "google-auth-auto-create-accounts-domain": string | null;
+  [ENABLED_KEY]: boolean;
+  [CLIENT_ID_KEY]: string | null;
+  [DOMAIN_KEY]: string | null;
 }
 
 export interface GoogleAuthFormProps {
-  elements?: SettingDefinition[];
   settingValues?: Partial<GoogleAuthSettings>;
+  hasMultipleDomains?: boolean;
   onSubmit: (settingValues: GoogleAuthSettings) => void;
 }
 
 const GoogleAuthForm = ({
-  elements = [],
   settingValues = {},
+  hasMultipleDomains,
   onSubmit,
 }: GoogleAuthFormProps): JSX.Element => {
-  const settings = _.indexBy(elements, "key");
-  const isEnabled = settingValues["google-auth-enabled"];
+  const isEnabled = settingValues[ENABLED_KEY];
 
   const initialValues = useMemo(() => {
     return getInitialValues(settingValues);
@@ -81,18 +82,24 @@ const GoogleAuthForm = ({
             )}.`}
           </GoogleFormCaption>
           <FormInput
-            {...getProps(settings["google-auth-client-id"])}
-            name="google-auth-client-id"
+            name={CLIENT_ID_KEY}
             title={t`Client ID`}
             placeholder={t`{your-client-id}.apps.googleusercontent.com`}
             fullWidth
           />
           <FormInput
-            {...getProps(settings["google-auth-auto-create-accounts-domain"])}
-            name="google-auth-auto-create-accounts-domain"
+            name={DOMAIN_KEY}
             title={t`Domain`}
-            description={t`Allow users to sign up on their own if their Google account email address is from:`}
-            placeholder="mycompany.com"
+            description={
+              hasMultipleDomains
+                ? t`Allow users to sign up on their own if their Google account email address is from one of the domains you specify here:`
+                : t`Allow users to sign up on their own if their Google account email address is from:`
+            }
+            placeholder={
+              hasMultipleDomains
+                ? "mycompany.com, example.com.br, otherdomain.co.uk"
+                : "mycompany.com"
+            }
             fullWidth
           />
           <FormSubmitButton
@@ -108,26 +115,15 @@ const GoogleAuthForm = ({
 };
 
 const getInitialValues = (values: Partial<GoogleAuthSettings>) => ({
-  "google-auth-enabled": true,
-  "google-auth-client-id": values["google-auth-client-id"] || "",
-  "google-auth-auto-create-accounts-domain":
-    values["google-auth-auto-create-accounts-domain"] || "",
+  [ENABLED_KEY]: true,
+  [CLIENT_ID_KEY]: values[CLIENT_ID_KEY] || "",
+  [DOMAIN_KEY]: values[DOMAIN_KEY] || "",
 });
 
 const getSubmitValues = (values: GoogleAuthSettings) => ({
   ...values,
-  "google-auth-auto-create-accounts-domain":
-    values["google-auth-auto-create-accounts-domain"] || null,
+  [DOMAIN_KEY]: values[DOMAIN_KEY] || null,
 });
-
-const getProps = (setting?: SettingDefinition) => {
-  if (setting?.is_env_setting) {
-    return {
-      readOnly: true,
-      placeholder: t`Using ${setting.env_name}`,
-    };
-  }
-};
 
 const getDocsLink = () => {
   return MetabaseSettings.docsUrl(

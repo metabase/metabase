@@ -46,20 +46,8 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
-    settings: [
-      {
-        key: "google-auth-client-id",
-        required: true,
-        autoFocus: true,
-      },
-      {
-        key: "google-auth-auto-create-accounts-domain",
-        description:
-          "Allow users to sign up on their own if their Google account email address is from:",
-        placeholder: "mycompany.com",
-      },
-    ],
     component: GoogleAuthForm ?? SettingsGoogleForm,
+    settings: [],
   },
 }));
 

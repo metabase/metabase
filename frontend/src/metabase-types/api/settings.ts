@@ -38,14 +38,6 @@ export type TokenStatus = {
   status?: TokenStatusStatus;
 };
 
-export interface SettingDefinition {
-  key: string;
-  description: string | null;
-  env_name: string;
-  is_env_setting: boolean;
-  default: unknown;
-}
-
 export interface Settings {
   "application-font": string;
   "application-font-files": FontFile[] | null;
