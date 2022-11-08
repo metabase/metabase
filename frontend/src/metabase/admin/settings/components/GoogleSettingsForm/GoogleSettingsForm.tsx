@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
+import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import FormProvider from "metabase/core/components/FormProvider";
@@ -10,6 +11,7 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { updateGoogleSettings } from "metabase/admin/settings/settings";
+import { SettingDefinition } from "metabase-types/api";
 import {
   GoogleForm,
   GoogleFormCaption,
@@ -37,17 +39,23 @@ const GoogleSettingsSchema = Yup.object({
 });
 
 export interface GoogleSettingsFormProps {
+  elements?: SettingDefinition[];
   settingValues?: Partial<GoogleSettings>;
   hasMultipleDomains?: boolean;
   onSubmit: (settingValues: GoogleSettings) => void;
 }
 
 const GoogleSettingsForm = ({
+  elements = [],
   settingValues = {},
   hasMultipleDomains,
   onSubmit,
 }: GoogleSettingsFormProps): JSX.Element => {
   const isEnabled = settingValues[ENABLED_KEY];
+
+  const settings = useMemo(() => {
+    return _.indexBy(elements, "key");
+  }, [elements]);
 
   const initialValues = useMemo(() => {
     return getInitialValues(settingValues);
@@ -86,6 +94,7 @@ const GoogleSettingsForm = ({
             title={t`Client ID`}
             placeholder={t`{your-client-id}.apps.googleusercontent.com`}
             fullWidth
+            {...getSettingOverrides(settings[CLIENT_ID_KEY])}
           />
           <FormInput
             name={DOMAIN_KEY}
@@ -101,6 +110,7 @@ const GoogleSettingsForm = ({
                 : "mycompany.com"
             }
             fullWidth
+            {...getSettingOverrides(settings[DOMAIN_KEY])}
           />
           <FormSubmitButton
             title={isEnabled ? `Save changes` : t`Save and enable`}
@@ -124,6 +134,12 @@ const getSubmitValues = (values: GoogleSettings): GoogleSettings => ({
   ...values,
   [DOMAIN_KEY]: values[DOMAIN_KEY] || null,
 });
+
+const getSettingOverrides = (setting?: SettingDefinition) => {
+  if (setting?.is_env_setting) {
+    return { placeholder: t`Using ${setting.env_name}`, readOnly: true };
+  }
+};
 
 const getDocsLink = (): string => {
   return MetabaseSettings.docsUrl(
