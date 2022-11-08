@@ -93,7 +93,6 @@ const GoogleSettingsForm = ({
             name={CLIENT_ID_KEY}
             title={t`Client ID`}
             placeholder={t`{your-client-id}.apps.googleusercontent.com`}
-            fullWidth
             {...getSettingOverrides(settings[CLIENT_ID_KEY])}
           />
           <FormInput
@@ -109,11 +108,10 @@ const GoogleSettingsForm = ({
                 ? "mycompany.com, example.com.br, otherdomain.co.uk"
                 : "mycompany.com"
             }
-            fullWidth
             {...getSettingOverrides(settings[DOMAIN_KEY])}
           />
           <FormSubmitButton
-            title={isEnabled ? `Save changes` : t`Save and enable`}
+            title={isEnabled ? t`Save changes` : t`Save and enable`}
             primary
             disabled={!dirty}
           />
