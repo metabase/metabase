@@ -48,7 +48,9 @@ export interface Settings {
   "email-configured?": boolean;
   engines: Record<string, Engine>;
   "is-hosted?": boolean;
+  "google-auth-enabled": boolean;
   "google-auth-client-id": string | null;
+  "google-auth-auto-create-accounts-domain": string | null;
   "deprecation-notice-version": string | undefined;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
