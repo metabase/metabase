@@ -80,7 +80,6 @@ const EventForm = ({
             title={t`Event name`}
             placeholder={t`Product launch`}
             autoFocus
-            fullWidth
           />
           <FormDateInput
             name="timestamp"
@@ -88,7 +87,6 @@ const EventForm = ({
             hasTime={values.time_matters}
             dateFormat={dateSettings?.date_style}
             timeFormat={dateSettings?.time_style}
-            fullWidth
             onHasTimeChange={value => setFieldValue("time_matters", value)}
           />
           <FormTextArea
