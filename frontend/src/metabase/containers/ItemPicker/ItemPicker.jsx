@@ -240,10 +240,39 @@ class ItemPicker extends React.Component {
     return null;
   };
 
+  renderCollectionContentListItem = item => {
+    const { models, onChange } = this.props;
+    const { searchString } = this.state;
+    const hasPermission = this.checkHasWritePermissionForItem(item);
+
+    if (
+      hasPermission &&
+      // only include desired models (TODO: ideally the endpoint would handle this)
+      models.includes(item.model) &&
+      // remove collections unless we're searching
+      // (so a user can navigate through collections)
+      (item.model !== "collection" || !!searchString)
+    ) {
+      return (
+        <Item
+          key={item.id}
+          item={item}
+          name={item.getName()}
+          color={item.getColor()}
+          icon={item.getIcon().name}
+          selected={this.checkIsItemSelected(item)}
+          canSelect={hasPermission}
+          onChange={onChange}
+        />
+      );
+    }
+
+    return null;
+  };
+
   render() {
     const {
       models,
-      onChange,
       collectionsById,
       style,
       className,
@@ -291,36 +320,7 @@ class ItemPicker extends React.Component {
             {(modelsIncludeNonCollections || searchString) && (
               <Search.ListLoader query={this.getSearchQuery()} wrapped>
                 {({ list }) => (
-                  <div>
-                    {list.map(item => {
-                      const hasPermission = this.checkHasWritePermissionForItem(
-                        item,
-                        models,
-                      );
-                      if (
-                        hasPermission &&
-                        // only include desired models (TODO: ideally the endpoint would handle this)
-                        models.includes(item.model) &&
-                        // remove collections unless we're searching
-                        // (so a user can navigate through collections)
-                        (item.model !== "collection" || !!searchString)
-                      ) {
-                        return (
-                          <Item
-                            key={item.id}
-                            item={item}
-                            name={item.getName()}
-                            color={item.getColor()}
-                            icon={item.getIcon().name}
-                            selected={this.checkIsItemSelected(item)}
-                            canSelect={hasPermission}
-                            onChange={onChange}
-                          />
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
+                  <div>{list.map(this.renderCollectionContentListItem)}</div>
                 )}
               </Search.ListLoader>
             )}
