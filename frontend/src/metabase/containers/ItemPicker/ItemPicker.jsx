@@ -210,12 +210,41 @@ class ItemPicker extends React.Component {
     );
   };
 
+  renderCollectionListItem = collection => {
+    const { models, getCollectionIcon } = this.props;
+
+    const hasChildren = this.checkCollectionMaybeHasChildren(collection);
+
+    // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
+    const canSelect = models.includes("collection") && collection.can_write;
+
+    const icon = getCollectionIcon(collection);
+
+    if (canSelect || hasChildren) {
+      return (
+        <Item
+          key={`collection-${collection.id}`}
+          item={collection}
+          name={collection.name}
+          color={color(icon.color) || getCollectionIconColor()}
+          icon={icon}
+          selected={canSelect && this.checkIsItemSelected(collection)}
+          canSelect={canSelect}
+          hasChildren={hasChildren}
+          onChange={this.handleCollectionSelected}
+          onChangeOpenCollectionId={this.handleCollectionOpen}
+        />
+      );
+    }
+
+    return null;
+  };
+
   render() {
     const {
       models,
       onChange,
       collectionsById,
-      getCollectionIcon,
       style,
       className,
       showScroll = true,
@@ -258,38 +287,7 @@ class ItemPicker extends React.Component {
         <ItemPickerRoot className={className} style={style}>
           {this.renderHeader()}
           <ItemPickerList data-testid="item-picker-list">
-            {!searchString &&
-              allCollections.map(collection => {
-                const hasChildren =
-                  this.checkCollectionMaybeHasChildren(collection);
-
-                // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
-                const canSelect =
-                  models.includes("collection") && collection.can_write;
-
-                const icon = getCollectionIcon(collection);
-
-                if (canSelect || hasChildren) {
-                  return (
-                    <Item
-                      key={`collection-${collection.id}`}
-                      item={collection}
-                      name={collection.name}
-                      color={color(icon.color) || getCollectionIconColor()}
-                      icon={icon}
-                      selected={
-                        canSelect && this.checkIsItemSelected(collection)
-                      }
-                      canSelect={canSelect}
-                      hasChildren={hasChildren}
-                      onChange={this.handleCollectionSelected}
-                      onChangeOpenCollectionId={this.handleCollectionOpen}
-                    />
-                  );
-                }
-
-                return null;
-              })}
+            {!searchString && allCollections.map(this.renderCollectionListItem)}
             {(modelsIncludeNonCollections || searchString) && (
               <Search.ListLoader query={this.getSearchQuery()} wrapped>
                 {({ list }) => (
