@@ -159,7 +159,7 @@
     (col-info-for-field-clause {} expression)
 
     (mbql.u/is-clause? :coalesce expression)
-    (u/select-non-nil-keys (infer-expression-type (second expression)) type-info-columns)
+    (select-keys (infer-expression-type (second expression)) type-info-columns)
 
     (mbql.u/is-clause? :length expression)
     {:base_type :type/BigInteger}
@@ -173,7 +173,7 @@
                     (or (not (mbql.u/is-clause? :value expression))
                         (let [[_ value] expression]
                           (not= value nil))))
-           (u/select-non-nil-keys (infer-expression-type expression) type-info-columns)))
+           (select-keys (infer-expression-type expression) type-info-columns)))
        clauses))
 
     (datetime-arithmetics? expression)
