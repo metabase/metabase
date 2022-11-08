@@ -69,13 +69,11 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
             title={t`First name`}
             placeholder={t`Johnny`}
             autoFocus
-            fullWidth
           />
           <FormInput
             name="last_name"
             title={t`Last name`}
             placeholder={t`Appleseed`}
-            fullWidth
           />
         </UserFieldGroup>
         <FormInput
@@ -83,27 +81,23 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
           type="email"
           title={t`Email`}
           placeholder="nicetoseeyou@email.com"
-          fullWidth
         />
         <FormInput
           name="site_name"
           title={t`Company or team name`}
           placeholder={t`Department of Awesome`}
-          fullWidth
         />
         <FormInput
           name="password"
           type="password"
           title={t`Create a password`}
           placeholder={t`Shhh...`}
-          fullWidth
         />
         <FormInput
           name="password_confirm"
           type="password"
           title={t`Confirm your password`}
           placeholder={t`Shhh... but one more time so we get it right`}
-          fullWidth
         />
         <FormSubmitButton title={t`Next`} primary />
       </UserFormRoot>

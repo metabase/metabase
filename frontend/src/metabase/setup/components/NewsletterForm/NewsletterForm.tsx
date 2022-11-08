@@ -67,7 +67,6 @@ const NewsletterForm = ({
               type="email"
               placeholder="nicetoseeyou@email.com"
               autoFocus
-              fullWidth
             />
             <FormSubmitButton title={t`Subscribe`} />
           </EmailForm>
