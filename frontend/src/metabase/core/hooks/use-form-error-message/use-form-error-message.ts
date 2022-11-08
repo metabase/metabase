@@ -1,11 +1,12 @@
-import { useLayoutEffect, useState } from "react";
+import { useContext, useLayoutEffect, useState } from "react";
 import { useFormikContext } from "formik";
 import { t } from "ttag";
-import useFormState from "metabase/core/hooks/use-form-state";
+import FormContext from "metabase/core/context/FormContext";
 
 const useFormErrorMessage = (): string | undefined => {
   const { values, errors } = useFormikContext();
-  const { status, message } = useFormState();
+  const { state } = useContext(FormContext);
+  const { status, message } = state;
   const [isVisible, setIsVisible] = useState(false);
   const hasErrors = Object.keys(errors).length > 0;
 
