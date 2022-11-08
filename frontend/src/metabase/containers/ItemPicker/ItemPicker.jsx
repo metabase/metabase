@@ -13,13 +13,11 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { getCrumbs } from "metabase/lib/collections";
 import { color } from "metabase/lib/colors";
 
-// NOTE: replacing these with Collections.ListLoader etc currently fails due to circular dependency
-import EntityListLoader, {
-  entityListLoader,
-} from "metabase/entities/containers/EntityListLoader";
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 
 import Collections from "metabase/entities/collections";
+import Search from "metabase/entities/search";
 
 import { isRootCollection } from "metabase/collections/utils";
 
@@ -265,11 +263,7 @@ class ItemPicker extends React.Component {
                 ) : null;
               })}
             {(modelsIncludeNonCollections || searchString) && (
-              <EntityListLoader
-                entityType="search"
-                entityQuery={this.getSearchQuery()}
-                wrapped
-              >
+              <Search.ListLoader query={this.getSearchQuery()} wrapped>
                 {({ list }) => (
                   <div>
                     {list.map(item => {
@@ -302,7 +296,7 @@ class ItemPicker extends React.Component {
                     })}
                   </div>
                 )}
-              </EntityListLoader>
+              </Search.ListLoader>
             )}
           </ItemPickerList>
         </div>
