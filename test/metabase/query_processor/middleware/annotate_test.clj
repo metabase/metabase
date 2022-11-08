@@ -437,15 +437,18 @@
 ;;; |                                           Other MBQL col info tests                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- infered-col-type
-  [expr]
-  (-> (add-column-info (mt/mbql-query venues {:expressions {"expr" expr}
-                                              :fields      [[:expression "expr"]]
-                                              :limit       10})
-                       {})
-      :cols
-      first
-      (select-keys [:base_type :semantic_type])))
+(defmacro infered-col-type
+  ([expr]
+   `(infered-col-type ~expr venues))
+
+  ([expr table]
+   `(-> (add-column-info (mt/mbql-query ~table {:expressions {"expr" ~expr}
+                                                 :fields      [[:expression "expr"]]
+                                                 :limit       10})
+                         {})
+        :cols
+        first
+        (select-keys [:base_type :semantic_type]))))
 
 (deftest computed-columns-inference
   (letfn [(infer [expr] (-> (mt/mbql-query venues
@@ -533,7 +536,13 @@
          (infered-col-type  [:coalesce "foo" "bar"])))
   (is (= {:base_type     :type/Text
           :semantic_type :type/Name}
-         (infered-col-type  [:coalesce [:field (mt/id :venues :name) nil] "bar"]))))
+         (infered-col-type  [:coalesce [:field (mt/id :venues :name) nil] "bar"])))
+  (is (= {:base_type :type/Date
+          :semantic_type nil}
+         (infered-col-type [:datetime-add $date 2 :month] checkins)))
+  (is (= {:base_type :type/DateTime
+          :semantic_type nil}
+         (infered-col-type [:datetime-add $last_login 2 :month] users))))
 
 (deftest unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"

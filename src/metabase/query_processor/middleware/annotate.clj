@@ -159,6 +159,9 @@
            (select-keys (infer-expression-type expression) type-info-columns)))
        clauses))
 
+    (mbql.u/is-clause? #{:datetime-add :datetime-subtract} expression)
+    (select-keys (infer-expression-type (second expression)) type-info-columns)
+
     (mbql.u/datetime-arithmetics? expression)
     {:base_type :type/DateTime}
 
