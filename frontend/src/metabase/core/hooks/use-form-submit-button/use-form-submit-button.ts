@@ -17,8 +17,7 @@ const useFormSubmitButton = ({
   isDisabled = false,
 }: UseFormSubmitButtonProps): UseFormSubmitButtonResult => {
   const { isValid, isSubmitting } = useFormikContext();
-  const { state } = useContext(FormContext);
-  const { status } = state;
+  const { status } = useContext(FormContext);
   const isRecent = useIsRecent(status, STATUS_TIMEOUT);
 
   return {
