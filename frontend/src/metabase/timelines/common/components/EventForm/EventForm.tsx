@@ -11,7 +11,11 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import { Timeline, TimelineEventData } from "metabase-types/api";
+import {
+  FormattingSettings,
+  Timeline,
+  TimelineEventData,
+} from "metabase-types/api";
 import FormArchiveButton from "../FormArchiveButton";
 import { EventFormFooter } from "./EventForm.styled";
 
@@ -29,22 +33,31 @@ const EventSchema = Yup.object({
   timeline_id: Yup.number(),
 });
 
-export interface EventFormProps {
+export interface EventFormOwnProps {
   initialValues: TimelineEventData;
   timelines?: Timeline[];
+  formattingSettings?: FormattingSettings;
   onSubmit: (data: TimelineEventData) => void;
   onArchive?: () => void;
   onCancel?: () => void;
 }
 
+export interface EventFormStateProps {
+  formattingSettings?: FormattingSettings;
+}
+
+export type EventFormProps = EventFormOwnProps & EventFormStateProps;
+
 const EventForm = ({
   initialValues,
   timelines = [],
+  formattingSettings,
   onSubmit,
   onArchive,
   onCancel,
 }: EventFormProps): JSX.Element => {
   const isNew = initialValues.id == null;
+  const dateSettings = formattingSettings?.["type/Temporal"];
 
   const iconOptions = useMemo(() => {
     return getTimelineIcons();
@@ -73,6 +86,8 @@ const EventForm = ({
             name="timestamp"
             title={t`Date`}
             hasTime={values.time_matters}
+            dateFormat={dateSettings?.date_style}
+            timeFormat={dateSettings?.time_style}
             fullWidth
             onHasTimeChange={value => setFieldValue("time_matters", value)}
           />

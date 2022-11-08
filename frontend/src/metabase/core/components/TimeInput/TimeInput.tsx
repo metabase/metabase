@@ -15,7 +15,7 @@ import {
 
 export interface TimeInputProps {
   value: Moment;
-  is24HourMode?: boolean;
+  timeFormat?: string;
   autoFocus?: boolean;
   hasClearButton?: boolean;
   onChange?: (value: Moment) => void;
@@ -25,7 +25,7 @@ export interface TimeInputProps {
 const TimeInput = forwardRef(function TimeInput(
   {
     value,
-    is24HourMode,
+    timeFormat,
     autoFocus,
     hasClearButton = true,
     onChange,
@@ -33,6 +33,7 @@ const TimeInput = forwardRef(function TimeInput(
   }: TimeInputProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
+  const is24HourMode = timeFormat === "HH:mm";
   const hoursText = value.format(is24HourMode ? "HH" : "hh");
   const minutesText = value.format("mm");
   const isAm = value.hours() < 12;
