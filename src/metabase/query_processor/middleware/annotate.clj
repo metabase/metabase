@@ -122,13 +122,12 @@
                     join-alias)]
     (format "%s → %s" qualifier field-display-name)))
 
-;; TODO: some of these clauses might return :type/Date instead of :type/DateTime, depending on the unit
 (defn- datetime-arithmetics?
-  "Helper for [[infer-expression-type]]. Detects some cases when a given clause returns a :type/DateTime type."
+  "Helper for [[infer-expression-type]]. Returns true if a given clause returns a :type/DateTime type."
   [clause]
   (mbql.match/match-one clause
 
-    :relative-datetime
+    #{:datetime-add :datetime-subtract :relative-datetime}
     true
 
     [:field _ (_ :guard :temporal-unit)]
@@ -176,12 +175,6 @@
                           (not= value nil))))
            (u/select-non-nil-keys (infer-expression-type expression) type-info-columns)))
        clauses))
-
-    (mbql.u/is-clause? #{:datetime-add :datetime-subtract} expression)
-    (let [[_ datetime-expression _ unit] expression]
-      (if (#{:second :minute :hour} unit)
-        {:base_type :type/DateTime}
-        (u/select-non-nil-keys (infer-expression-type datetime-expression) type-info-columns)))
 
     (datetime-arithmetics? expression)
     {:base_type :type/DateTime}
