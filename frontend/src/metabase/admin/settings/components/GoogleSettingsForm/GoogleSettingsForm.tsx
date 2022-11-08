@@ -36,7 +36,7 @@ const GoogleSettingsSchema = Yup.object({
   [DOMAIN_KEY]: Yup.string(),
 });
 
-interface GoogleSettingsFormProps {
+export interface GoogleSettingsFormProps {
   elements?: SettingDefinition[];
   settingValues?: Partial<GoogleSettings>;
   hasMultipleDomains?: boolean;
