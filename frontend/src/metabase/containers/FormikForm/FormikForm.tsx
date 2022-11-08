@@ -83,6 +83,9 @@ function getGeneralErrorMessage(error: ServerErrorResponse) {
   }
 }
 
+/**
+ * @deprecated
+ */
 function Form<Values extends BaseFieldValues>({
   form,
   fields,

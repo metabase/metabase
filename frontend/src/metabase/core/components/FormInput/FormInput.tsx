@@ -13,10 +13,10 @@ export interface FormInputProps
 
 const FormInput = forwardRef(function FormInput(
   { name, className, style, title, description, ...props }: FormInputProps,
-  ref: Ref<HTMLInputElement>,
+  ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [field, meta] = useField(name);
+  const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
 
   return (
     <FormField
@@ -26,16 +26,16 @@ const FormInput = forwardRef(function FormInput(
       title={title}
       description={description}
       htmlFor={id}
-      error={meta.touched ? meta.error : undefined}
+      error={touched ? error : undefined}
     >
       <Input
         {...props}
         id={id}
         name={name}
-        value={field.value}
-        error={meta.touched && meta.error != null}
-        onChange={field.onChange}
-        onBlur={field.onBlur}
+        value={value}
+        error={touched && error != null}
+        onChange={onChange}
+        onBlur={onBlur}
       />
     </FormField>
   );

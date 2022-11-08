@@ -38,6 +38,9 @@ interface CustomFormSectionProps extends SectionProps {
   collapsible?: boolean;
 }
 
+/**
+ * @deprecated
+ */
 function CustomFormSection({ collapsible, ...props }: CustomFormSectionProps) {
   const Section = collapsible ? CollapsibleSection : StandardSection;
   return <Section {...props} />;
