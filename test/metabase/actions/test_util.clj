@@ -138,9 +138,11 @@
                                                                                               :required     false}}}}
                                            :name          "Query Example"
                                            :parameters    [{:id "id"
+                                                            :slug "id"
                                                             :type "number"
                                                             :target [:variable [:template-tag "id"]]}
                                                            {:id "name"
+                                                            :slug "name"
                                                             :type "text"
                                                             :required false
                                                             :target [:variable [:template-tag "name"]]}]
