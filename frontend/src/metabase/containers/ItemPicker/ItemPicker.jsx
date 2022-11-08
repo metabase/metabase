@@ -262,21 +262,24 @@ class ItemPicker extends React.Component {
 
                 const icon = getCollectionIcon(collection);
 
-                // only show if collection can be selected or has children
-                return canSelect || hasChildren ? (
-                  <Item
-                    key={`collection-${collection.id}`}
-                    item={collection}
-                    name={collection.name}
-                    color={color(icon.color) || getCollectionIconColor()}
-                    icon={icon}
-                    selected={canSelect && isSelected(collection)}
-                    canSelect={canSelect}
-                    hasChildren={hasChildren}
-                    onChange={this.handleCollectionSelected}
-                    onChangeOpenCollectionId={this.handleCollectionOpen}
-                  />
-                ) : null;
+                if (canSelect || hasChildren) {
+                  return (
+                    <Item
+                      key={`collection-${collection.id}`}
+                      item={collection}
+                      name={collection.name}
+                      color={color(icon.color) || getCollectionIconColor()}
+                      icon={icon}
+                      selected={canSelect && isSelected(collection)}
+                      canSelect={canSelect}
+                      hasChildren={hasChildren}
+                      onChange={this.handleCollectionSelected}
+                      onChangeOpenCollectionId={this.handleCollectionOpen}
+                    />
+                  );
+                }
+
+                return null;
               })}
             {(modelsIncludeNonCollections || searchString) && (
               <Search.ListLoader query={this.getSearchQuery()} wrapped>
