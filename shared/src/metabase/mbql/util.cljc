@@ -468,7 +468,7 @@
     [:field _ (_ :guard :temporal-unit)]
     true
 
-    #{:+ :-}
+    #{:+}
     (some (partial is-clause? :interval) (rest clause))
 
     _ false))
