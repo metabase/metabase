@@ -318,5 +318,6 @@
                                   context
                                   "progress"
                                   (json/generate-string {:value value :goal goal})
-                                  (json/generate-string settings)))]
+                                  (json/generate-string settings)
+                                  (json/generate-string {})))]
       (validate-svg-string :progress svg-string))))

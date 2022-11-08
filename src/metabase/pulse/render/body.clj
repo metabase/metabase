@@ -495,8 +495,7 @@
   (let [viz-settings (merge viz-settings (:visualization_settings dashcard))
         value        (ffirst rows)
         goal         (:progress.goal viz-settings)
-        ;; See issue #19248 on GH for why it's the second color
-        color        (or (:progress.color viz-settings) (second colors))
+        color        (:progress.color viz-settings)
         settings     (assoc
                       (->js-viz (first cols) (first cols) viz-settings)
                       :color color)

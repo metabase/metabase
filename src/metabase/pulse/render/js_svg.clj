@@ -171,7 +171,8 @@
   [value goal settings]
   (let [js-res (js/execute-fn-name (context) "progress"
                                    (json/generate-string {:value value :goal goal})
-                                   (json/generate-string settings))
+                                   (json/generate-string settings)
+                                   (json/generate-string (:colors settings)))
         svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 
