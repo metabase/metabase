@@ -69,7 +69,6 @@ Metabase's reference documentation.
 #### SQL and native queries
 
 - [The SQL editor](./questions/native-editor/writing-sql.md)
-- [Data reference](./questions/native-editor/data-model-reference.md)
 - [SQL parameters](./questions/native-editor/sql-parameters.md)
 - [Referencing models and saved questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
 - [SQL snippets](./questions/native-editor/sql-snippets.md)
@@ -105,6 +104,7 @@ Metabase's reference documentation.
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
 - [History](./exploration-and-organization/history.md)
+- [Data reference](./exploration-and-organization/data-model-reference.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
 - [X-rays](./exploration-and-organization/x-rays.md)
 
