@@ -89,7 +89,7 @@ export const getFormField = (
 ) => {
   if (
     fieldSettings.fieldInstance &&
-    !isEditableField(fieldSettings.fieldInstance, parameter)
+    !isEditableField(fieldSettings.fieldInstance, parameter as Parameter)
   ) {
     return undefined;
   }

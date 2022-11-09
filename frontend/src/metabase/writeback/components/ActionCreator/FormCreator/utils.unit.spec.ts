@@ -141,10 +141,8 @@ describe("writeback > ActionCreator > FormCreator > utils", () => {
     });
 
     it("sets required prop", () => {
-      const fields = [
-        createField({ name: "test-field", database_required: true }),
-      ];
-      const params = [createParameter({ id: "test-field" })];
+      const fields = [createField({ name: "test-field" })];
+      const params = [createParameter({ id: "test-field", required: true })];
       const [id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
@@ -153,10 +151,8 @@ describe("writeback > ActionCreator > FormCreator > utils", () => {
     });
 
     it("sets required prop", () => {
-      const fields = [
-        createField({ name: "test-field", database_required: false }),
-      ];
-      const params = [createParameter({ id: "test-field" })];
+      const fields = [createField({ name: "test-field" })];
+      const params = [createParameter({ id: "test-field", required: false })];
       const [id, settings] = getFirstEntry(
         generateFieldSettingsFromParameters(params, fields),
       );
