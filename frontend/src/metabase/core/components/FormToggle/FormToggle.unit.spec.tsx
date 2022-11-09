@@ -5,7 +5,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FormToggle from "./FormToggle";
 
-const TestSchema = Yup.object().shape({
+const testSchema = Yup.object().shape({
   value: Yup.boolean().isTrue("error"),
 });
 
@@ -21,7 +21,7 @@ const TestFormToggle = ({
   return (
     <Formik
       initialValues={{ value: initialValue }}
-      validationSchema={TestSchema}
+      validationSchema={testSchema}
       onSubmit={onSubmit}
     >
       <Form>

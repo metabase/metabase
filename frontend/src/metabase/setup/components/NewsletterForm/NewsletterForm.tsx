@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import FormProvider from "metabase/core/components/FormProvider";
@@ -18,7 +18,7 @@ import {
   EmailFormInput,
 } from "./NewsletterForm.styled";
 
-const NewsletterSchema = Yup.object({
+const newsletterSchema = Yup.object({
   email: Yup.string()
     .required(t`required`)
     .email(t`must be a valid email address`),
@@ -33,8 +33,12 @@ const NewsletterForm = ({
   initialEmail = "",
   onSubscribe,
 }: NewsletterFormProps): JSX.Element => {
-  const initialValues = { email: initialEmail };
   const [isSubscribed, setIsSubscribed] = useState(false);
+
+  const initialValues = useMemo(
+    () => ({ email: initialEmail }),
+    [initialEmail],
+  );
 
   const handleSubmit = useCallback(
     async ({ email }: SubscribeInfo) => {
@@ -58,7 +62,7 @@ const NewsletterForm = ({
       {!isSubscribed && (
         <FormProvider
           initialValues={initialValues}
-          validationSchema={NewsletterSchema}
+          validationSchema={newsletterSchema}
           onSubmit={handleSubmit}
         >
           <EmailForm>

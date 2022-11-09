@@ -8,7 +8,7 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { UserInfo } from "metabase-types/store";
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
 
-const DEFAULT_VALUES: UserInfo = {
+const defaultValues: UserInfo = {
   first_name: "",
   last_name: "",
   email: "",
@@ -17,7 +17,7 @@ const DEFAULT_VALUES: UserInfo = {
   password_confirm: "",
 };
 
-const UserSchema = Yup.object({
+const USER_SCHEMA = Yup.object({
   first_name: Yup.string().max(
     100,
     ({ max }) => t`must be ${max} characters or less`,
@@ -57,8 +57,8 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
 
   return (
     <FormProvider
-      initialValues={user ?? DEFAULT_VALUES}
-      validationSchema={UserSchema}
+      initialValues={user ?? defaultValues}
+      validationSchema={USER_SCHEMA}
       validationContext={validationContext}
       onSubmit={onSubmit}
     >

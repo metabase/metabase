@@ -14,7 +14,7 @@ import { TimelineData } from "metabase-types/api";
 import FormArchiveButton from "../FormArchiveButton";
 import { TimelineFormFooter } from "./TimelineForm.styled";
 
-const TimelineSchema = Yup.object({
+const timelineSchema = Yup.object({
   name: Yup.string()
     .required(t`required`)
     .max(255, ({ max }) => t`must be ${max} characters or less`),
@@ -44,7 +44,7 @@ const TimelineForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={TimelineSchema}
+      validationSchema={timelineSchema}
       onSubmit={onSubmit}
     >
       {({ dirty }) => (

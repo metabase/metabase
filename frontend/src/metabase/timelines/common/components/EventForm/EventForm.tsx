@@ -15,7 +15,7 @@ import { Timeline, TimelineEventData } from "metabase-types/api";
 import FormArchiveButton from "../FormArchiveButton";
 import { EventFormFooter } from "./EventForm.styled";
 
-const EventSchema = Yup.object({
+const eventSchema = Yup.object({
   name: Yup.string()
     .required(t`required`)
     .max(255, ({ max }) => t`must be ${max} characters or less`),
@@ -57,7 +57,7 @@ const EventForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={EventSchema}
+      validationSchema={eventSchema}
       onSubmit={onSubmit}
     >
       {({ dirty, values, setFieldValue }) => (

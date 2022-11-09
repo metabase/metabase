@@ -13,7 +13,7 @@ import {
   PasswordFormTitle,
 } from "./ForgotPasswordForm.styled";
 
-const ForgotPasswordSchema = Yup.object({
+const forgotPasswordSchema = Yup.object({
   email: Yup.string()
     .required(t`required`)
     .email(t`must be a valid email address`),
@@ -43,7 +43,7 @@ const ForgotPasswordForm = ({
       <PasswordFormTitle>{t`Forgot password`}</PasswordFormTitle>
       <FormProvider
         initialValues={initialValues}
-        validationSchema={ForgotPasswordSchema}
+        validationSchema={forgotPasswordSchema}
         onSubmit={handleSubmit}
       >
         <Form>

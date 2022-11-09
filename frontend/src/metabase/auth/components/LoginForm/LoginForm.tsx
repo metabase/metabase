@@ -9,7 +9,7 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { LoginData } from "../../types";
 
-const LoginSchema = Yup.object().shape({
+const loginSchema = Yup.object().shape({
   username: Yup.string()
     .required(t`required`)
     .when("$isLdapEnabled", {
@@ -50,7 +50,7 @@ const LoginForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={LoginSchema}
+      validationSchema={loginSchema}
       validationContext={validationContext}
       onSubmit={onSubmit}
     >

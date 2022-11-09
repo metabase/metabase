@@ -14,7 +14,12 @@ import {
   PasswordFormTitle,
 } from "./ResetPasswordForm.styled";
 
-const ResetPasswordSchema = Yup.object({
+const defaultValues: ResetPasswordData = {
+  password: "",
+  password_confirm: "",
+};
+
+const resetPasswordSchema = Yup.object({
   password: Yup.string()
     .required(t`required`)
     .test(async (value = "", context) => {
@@ -35,11 +40,6 @@ const ResetPasswordForm = ({
   onValidatePassword,
   onSubmit,
 }: ResetPasswordFormProps): JSX.Element => {
-  const initialValues = useMemo(
-    () => ({ password: "", password_confirm: "" }),
-    [],
-  );
-
   const passwordDescription = useMemo(
     () => MetabaseSettings.passwordComplexityDescription(),
     [],
@@ -57,8 +57,8 @@ const ResetPasswordForm = ({
         {t`To keep your data secure, passwords ${passwordDescription}`}
       </PasswordFormMessage>
       <FormProvider
-        initialValues={initialValues}
-        validationSchema={ResetPasswordSchema}
+        initialValues={defaultValues}
+        validationSchema={resetPasswordSchema}
         validationContext={validationContext}
         onSubmit={onSubmit}
       >

@@ -10,7 +10,7 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { User } from "metabase-types/api";
 import { UserPasswordData } from "../../types";
 
-const UserPasswordSchema = Yup.object({
+const userPasswordSchema = Yup.object({
   old_password: Yup.string().required(t`required`),
   password: Yup.string()
     .required(t`required`)
@@ -54,7 +54,7 @@ const UserPasswordForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={UserPasswordSchema}
+      validationSchema={userPasswordSchema}
       validationContext={validationContext}
       onSubmit={handleSubmit}
     >

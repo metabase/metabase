@@ -11,11 +11,11 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { LocaleData, User } from "metabase-types/api";
 import { UserProfileData } from "../../types";
 
-const SsoProfileSchema = Yup.object({
+const ssoProfileSchema = Yup.object({
   locale: Yup.string().nullable(true),
 });
 
-const LocalProfileSchema = SsoProfileSchema.shape({
+const localProfileSchema = ssoProfileSchema.shape({
   first_name: Yup.string().max(
     100,
     ({ max }) => t`must be ${max} characters or less`,
@@ -52,7 +52,7 @@ const UserProfileForm = ({
   return (
     <FormProvider
       initialValues={user}
-      validationSchema={isSsoUser ? SsoProfileSchema : LocalProfileSchema}
+      validationSchema={isSsoUser ? ssoProfileSchema : localProfileSchema}
       enableReinitialize
       onSubmit={handleSubmit}
     >

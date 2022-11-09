@@ -5,11 +5,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import FormSelect from "./FormSelect";
 
-const TestSchema = Yup.object().shape({
+const testSchema = Yup.object().shape({
   value: Yup.string().notOneOf(["bar"], "error"),
 });
 
-const TEST_OPTIONS = [
+const testOptions = [
   { name: "Line", value: "line" },
   { name: "Area", value: "area" },
   { name: "Bar", value: "bar" },
@@ -24,14 +24,14 @@ const TestFormSelect = ({ initialValue, onSubmit }: TestFormSelectProps) => {
   return (
     <Formik
       initialValues={{ value: initialValue }}
-      validationSchema={TestSchema}
+      validationSchema={testSchema}
       onSubmit={onSubmit}
     >
       <Form>
         <FormSelect
           name="value"
           title="Label"
-          options={TEST_OPTIONS}
+          options={testOptions}
           placeholder="Choose"
         />
         <button type="submit">Submit</button>
