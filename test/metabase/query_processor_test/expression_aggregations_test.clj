@@ -155,7 +155,7 @@
              (mt/formatted-rows [int int]
                (mt/run-mbql-query users
                  {:aggregation [[:* [:count] 2]]
-                  :breakout    [[:datetime-field $last_login :month-of-year]]
+                  :breakout    [!month-of-year.last_login]
                   :order-by    [[:asc [:aggregation 0]]]})))))))
 
 (deftest math-inside-the-aggregation-test

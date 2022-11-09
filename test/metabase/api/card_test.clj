@@ -1272,8 +1272,8 @@
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                     {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:datetime-field (mt/id :checkins :date) "hour"]
-                                                                                                  [:datetime-field (mt/id :checkins :date) "minute"]])}))}
+                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}
            {:message        "Adding an additional breakout will cause the alert to be removed if a goal is set"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}
@@ -1288,8 +1288,8 @@
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                     {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:datetime-field (mt/id :checkins :date) "hour"]
-                                                                                                  [:datetime-field (mt/id :checkins :date) "minute"]])}))}]]
+                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
     (testing message
       (mt/with-temp* [Card                  [card  card]
                       Pulse                 [pulse {:alert_condition  "rows"

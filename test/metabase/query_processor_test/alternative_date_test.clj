@@ -46,7 +46,7 @@
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset sad-toucan-incidents
       (let [query (mt/mbql-query incidents
-                     {:filter   [:= [:datetime-field $timestamp :day] "2015-06-02"]
+                     {:filter   [:= !day.timestamp "2015-06-02"]
                       :order-by [[:asc $timestamp]]})]
         ;; There's a race condition with this test. If we happen to grab a connection that is in a session with the
         ;; timezone set to pacific, we'll get 9 results even when the above if statement is true. It seems to be pretty
@@ -233,13 +233,13 @@
           (is (= 1
                  (count (mt/rows (mt/dataset string-times
                                    (mt/run-mbql-query times
-                                     {:filter   [:= [:datetime-field $ts :day] "2008-10-19"]}))))))))
+                                     {:filter   [:= !day.ts "2008-10-19"]}))))))))
       (testing "a date field"
         (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
           (is (= 1
                  (count (mt/rows (mt/dataset string-times
                                    (mt/run-mbql-query times
-                                     {:filter   [:= [:datetime-field $d :day] "2008-10-19"]})))))))))))
+                                     {:filter   [:= !day.d "2008-10-19"]})))))))))))
 
 (mt/defdataset yyyymmddhhss-times
   [["times" [{:field-name "name"
