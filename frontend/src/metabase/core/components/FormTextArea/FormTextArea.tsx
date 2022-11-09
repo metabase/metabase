@@ -1,4 +1,10 @@
-import React, { forwardRef, ReactNode, Ref } from "react";
+import React, {
+  ChangeEvent,
+  forwardRef,
+  ReactNode,
+  Ref,
+  useCallback,
+} from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import TextArea, { TextAreaProps } from "metabase/core/components/TextArea";
@@ -27,7 +33,13 @@ const FormTextArea = forwardRef(function FormTextArea(
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
+  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
+
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) =>
+      setValue(event.target.value || null),
+    [setValue],
+  );
 
   return (
     <FormField
@@ -45,9 +57,9 @@ const FormTextArea = forwardRef(function FormTextArea(
         {...props}
         id={id}
         name={name}
-        value={value}
+        value={value ?? ""}
         error={touched && error != null}
-        onChange={onChange}
+        onChange={handleChange}
         onBlur={onBlur}
       />
     </FormField>

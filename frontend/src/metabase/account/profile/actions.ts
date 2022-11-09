@@ -7,10 +7,10 @@ import { UserProfileData } from "./types";
 export const UPDATE_USER = "metabase/account/profile/UPDATE_USER";
 export const updateUser = createThunkAction(
   UPDATE_USER,
-  (user: User, data: UserProfileData) => async (dispatch: Dispatch) => {
-    await dispatch(Users.actions.update({ ...data, id: user.id }));
+  (user: User, values: UserProfileData) => async (dispatch: Dispatch) => {
+    await dispatch(Users.actions.update(values));
 
-    if (user.locale !== data.locale) {
+    if (user.locale !== values.locale) {
       window.location.reload();
     }
   },

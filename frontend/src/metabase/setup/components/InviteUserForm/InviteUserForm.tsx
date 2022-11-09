@@ -8,7 +8,13 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { InviteInfo, UserInfo } from "metabase-types/store";
 import { UserFieldGroup } from "./InviteUserForm.styled";
 
-const InviteUserSchema = Yup.object({
+const DEFAULT_VALUES: InviteInfo = {
+  first_name: "",
+  last_name: "",
+  email: "",
+};
+
+const INVITE_USER_SCHEMA = Yup.object({
   first_name: Yup.string().max(
     100,
     ({ max }) => t`must be ${max} characters or less`,
@@ -37,21 +43,12 @@ const InviteUserForm = ({
   invite,
   onSubmit,
 }: InviteUserFormProps): JSX.Element => {
-  const initialValues = useMemo(() => {
-    return getInitialValues(invite);
-  }, [invite]);
-
-  const handleSubmit = useCallback(
-    (values: InviteInfo) => onSubmit(getSubmitValues(values)),
-    [onSubmit],
-  );
-
   return (
     <FormProvider
-      initialValues={initialValues}
-      validationSchema={InviteUserSchema}
+      initialValues={invite ?? DEFAULT_VALUES}
+      validationSchema={INVITE_USER_SCHEMA}
       validationContext={user}
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
     >
       <Form>
         <UserFieldGroup>
@@ -76,23 +73,6 @@ const InviteUserForm = ({
       </Form>
     </FormProvider>
   );
-};
-
-const getInitialValues = (invite?: InviteInfo): InviteInfo => {
-  return {
-    email: "",
-    ...invite,
-    first_name: invite?.first_name || "",
-    last_name: invite?.last_name || "",
-  };
-};
-
-const getSubmitValues = (invite: InviteInfo): InviteInfo => {
-  return {
-    ...invite,
-    first_name: invite.first_name || null,
-    last_name: invite.last_name || null,
-  };
 };
 
 export default InviteUserForm;

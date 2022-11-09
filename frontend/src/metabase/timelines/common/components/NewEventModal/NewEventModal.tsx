@@ -48,7 +48,7 @@ const NewEventModal = ({
   const handleSubmit = useCallback(
     async (values: TimelineEventData) => {
       const timeline = timelines.find(t => t.id === values.timeline_id);
-      await onSubmit(getSubmitValues(values), collection, timeline);
+      await onSubmit(values, collection, timeline);
       onSubmitSuccess?.();
     },
     [collection, timelines, onSubmit, onSubmitSuccess],
@@ -90,10 +90,5 @@ const getInitialValues = (
     question_id: cardId,
   };
 };
-
-const getSubmitValues = (values: TimelineEventData): TimelineEventData => ({
-  ...values,
-  description: values.description || null,
-});
 
 export default NewEventModal;

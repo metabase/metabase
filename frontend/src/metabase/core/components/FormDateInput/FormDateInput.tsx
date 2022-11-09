@@ -29,7 +29,7 @@ const FormDateInput = forwardRef(function FormDateInput(
   }, [value]);
 
   const handleChange = useCallback(
-    (date?: Moment) => {
+    (date: Moment | undefined) => {
       setValue(date?.toISOString(true));
     },
     [setValue],

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
@@ -7,6 +7,15 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { UserInfo } from "metabase-types/store";
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
+
+const DEFAULT_VALUES: UserInfo = {
+  first_name: "",
+  last_name: "",
+  email: "",
+  site_name: "",
+  password: "",
+  password_confirm: "",
+};
 
 const UserSchema = Yup.object({
   first_name: Yup.string().max(
@@ -39,10 +48,6 @@ interface UserFormProps {
 }
 
 const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
-  const initialValues = useMemo(() => {
-    return getInitialValues(user);
-  }, [user]);
-
   const validationContext = useMemo(
     () => ({
       onValidatePassword: _.memoize(onValidatePassword),
@@ -50,17 +55,12 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
     [onValidatePassword],
   );
 
-  const handleSubmit = useCallback(
-    (values: UserInfo) => onSubmit(getSubmitValues(values)),
-    [onSubmit],
-  );
-
   return (
     <FormProvider
-      initialValues={initialValues}
+      initialValues={user ?? DEFAULT_VALUES}
       validationSchema={UserSchema}
       validationContext={validationContext}
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
     >
       <UserFormRoot>
         <UserFieldGroup>
@@ -103,26 +103,6 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
       </UserFormRoot>
     </FormProvider>
   );
-};
-
-const getInitialValues = (user?: UserInfo): UserInfo => {
-  return {
-    email: "",
-    site_name: "",
-    password: "",
-    password_confirm: "",
-    ...user,
-    first_name: user?.first_name || "",
-    last_name: user?.last_name || "",
-  };
-};
-
-const getSubmitValues = (user: UserInfo): UserInfo => {
-  return {
-    ...user,
-    first_name: user.first_name || null,
-    last_name: user.last_name || null,
-  };
 };
 
 export default UserForm;

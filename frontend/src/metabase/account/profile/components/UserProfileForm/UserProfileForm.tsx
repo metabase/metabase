@@ -33,7 +33,7 @@ export interface UserProfileFormProps {
   user: User;
   locales: LocaleData[] | null;
   isSsoUser: boolean;
-  onSubmit: (user: User, data: UserProfileData) => void;
+  onSubmit: (user: User, values: UserProfileData) => void;
 }
 
 const UserProfileForm = ({
@@ -42,17 +42,16 @@ const UserProfileForm = ({
   isSsoUser,
   onSubmit,
 }: UserProfileFormProps): JSX.Element => {
-  const initialValues = useMemo(() => getInitialValues(user), [user]);
   const localeOptions = useMemo(() => getLocaleOptions(locales), [locales]);
 
   const handleSubmit = useCallback(
-    (data: UserProfileData) => onSubmit(user, getSubmitValues(data)),
+    (values: UserProfileData) => onSubmit(user, values),
     [user, onSubmit],
   );
 
   return (
     <FormProvider
-      initialValues={initialValues}
+      initialValues={user}
       validationSchema={isSsoUser ? SsoProfileSchema : LocalProfileSchema}
       enableReinitialize
       onSubmit={handleSubmit}
@@ -90,23 +89,6 @@ const UserProfileForm = ({
       )}
     </FormProvider>
   );
-};
-
-const getInitialValues = (user: User): UserProfileData => {
-  return {
-    first_name: user.first_name || "",
-    last_name: user.last_name || "",
-    email: user.email,
-    locale: user.locale,
-  };
-};
-
-const getSubmitValues = (data: UserProfileData): UserProfileData => {
-  return {
-    ...data,
-    first_name: data.first_name || null,
-    last_name: data.last_name || null,
-  };
 };
 
 const getLocaleOptions = (locales: LocaleData[] | null) => {
