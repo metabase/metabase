@@ -10,6 +10,12 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { User } from "metabase-types/api";
 import { UserPasswordData } from "../../types";
 
+const defaultValues: UserPasswordData = {
+  old_password: "",
+  password: "",
+  password_confirm: "",
+};
+
 const userPasswordSchema = Yup.object({
   old_password: Yup.string().required(t`required`),
   password: Yup.string()
@@ -34,11 +40,6 @@ const UserPasswordForm = ({
   onValidatePassword,
   onSubmit,
 }: UserPasswordFormProps): JSX.Element => {
-  const initialValues = useMemo(
-    () => ({ old_password: "", password: "", password_confirm: "" }),
-    [],
-  );
-
   const validationContext = useMemo(
     () => ({ onValidatePassword: _.memoize(onValidatePassword) }),
     [onValidatePassword],
@@ -53,7 +54,7 @@ const UserPasswordForm = ({
 
   return (
     <FormProvider
-      initialValues={initialValues}
+      initialValues={defaultValues}
       validationSchema={userPasswordSchema}
       validationContext={validationContext}
       onSubmit={handleSubmit}
