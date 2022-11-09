@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
 import InputBase from "metabase/core/components/Input";
 import Button from "metabase/core/components/Button";
+import Icon from "metabase/components/Icon";
 
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const FormCreatorWrapper = styled.div`
@@ -37,9 +38,13 @@ export const Input = styled(InputBase)`
 `;
 
 export const EmptyFormPlaceholderWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
   text-align: center;
-  max-width: 20rem;
-  margin: 5rem auto;
+  padding: 5rem;
 `;
 
 export const EditButton = styled(Button)`
@@ -55,4 +60,33 @@ export const FormSettingsPreviewContainer = styled.div`
   flex-direction: column;
   gap: ${space(1)};
   min-width: 12rem;
+`;
+
+export const ExplainerText = styled.p`
+  font-weight: 400;
+  color: ${color("text-medium")};
+  margin: ${space(2)} auto;
+`;
+
+export const ExampleButton = styled.button`
+  font-weight: bold;
+  cursor: pointer;
+  margin: ${space(2)};
+  color: ${color("brand")};
+  :hover {
+    color: ${lighten("brand", 0.1)};
+  }
+`;
+
+export const IconContainer = styled.div`
+  display: inline-block;
+  padding: 1.25rem;
+  position: relative;
+  color: ${color("brand")};
+`;
+
+export const TopRightIcon = styled(Icon)`
+  position: absolute;
+  top: 0;
+  right: 0;
 `;

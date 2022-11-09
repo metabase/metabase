@@ -27,8 +27,10 @@ import { FormCreator } from "./FormCreator";
 
 import {
   ActionCreatorBodyContainer,
+  EditorContainer,
   ModalRoot,
-  ModalFooter,
+  ModalActions,
+  ModalLeft,
 } from "./ActionCreator.styled";
 
 import { newQuestion } from "./utils";
@@ -60,7 +62,6 @@ function ActionCreatorComponent({
   question: passedQuestion,
   actionId,
   modelId,
-  push,
   onClose,
 }: ActionCreatorProps) {
   const [question, setQuestion] = useState(
@@ -102,35 +103,52 @@ function ActionCreatorComponent({
 
   const isNew = !actionId && !(question.card() as SavedCard).id;
 
+  const handleExampleClick = () => {
+    const sampleQuery =
+      "UPDATE my_table_name\nSET my_column_name = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
+    setQuestion(
+      question.setQuery(query.setQueryText(query.queryText() + sampleQuery)),
+    );
+  };
+
   return (
     <>
       <Modal onClose={onClose} formModal={false} wide>
         <ModalRoot>
-          <ActionCreatorHeader
-            type="query"
-            name={question.displayName() ?? t`New Action`}
-            onChangeName={newName =>
-              setQuestion(q => q.setDisplayName(newName))
-            }
-          />
-
           <ActionCreatorBodyContainer>
-            <QueryActionEditor question={question} setQuestion={setQuestion} />
+            <ModalLeft>
+              <ActionCreatorHeader
+                type="query"
+                name={question.displayName() ?? t`New Action`}
+                onChangeName={newName =>
+                  setQuestion(q => q.setDisplayName(newName))
+                }
+              />
+              <EditorContainer>
+                <QueryActionEditor
+                  question={question}
+                  setQuestion={setQuestion}
+                />
+              </EditorContainer>
+              <ModalActions>
+                <Button onClick={onClose} borderless>
+                  Cancel
+                </Button>
+                <Button primary onClick={() => setShowSaveModal(true)}>
+                  Save
+                </Button>
+              </ModalActions>
+            </ModalLeft>
+
             <FormCreator
               tags={query?.templateTagsWithoutSnippets()}
               formSettings={
                 question?.card()?.visualization_settings as ActionFormSettings
               }
               onChange={setFormSettings}
+              onExampleClick={handleExampleClick}
             />
           </ActionCreatorBodyContainer>
-
-          <ModalFooter>
-            <Button onClick={onClose}>Cancel</Button>
-            <Button primary onClick={() => setShowSaveModal(true)}>
-              Save
-            </Button>
-          </ModalFooter>
         </ModalRoot>
       </Modal>
       {showSaveModal && (

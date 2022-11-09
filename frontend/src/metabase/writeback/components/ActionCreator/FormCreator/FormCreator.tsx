@@ -9,12 +9,13 @@ import { getDefaultFormSettings, getDefaultFieldSettings } from "./utils";
 import { FormField } from "./FormField";
 import { OptionEditor } from "./OptionEditor";
 
+import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
+
 import {
   FormItemWrapper,
   FormCreatorWrapper,
   FormItemName,
   FormSettings,
-  EmptyFormPlaceholderWrapper,
   FormSettingsPreviewContainer,
   EditButton,
 } from "./FormCreator.styled";
@@ -23,10 +24,12 @@ export function FormCreator({
   tags,
   formSettings: passedFormSettings,
   onChange,
+  onExampleClick,
 }: {
   tags: TemplateTag[];
   formSettings?: ActionFormSettings;
   onChange: (formSettings: ActionFormSettings) => void;
+  onExampleClick: () => void;
 }) {
   const [formSettings, setFormSettings] = useState<ActionFormSettings>(
     passedFormSettings?.fields ? passedFormSettings : getDefaultFormSettings(),
@@ -63,7 +66,7 @@ export function FormCreator({
           }
         />
       ))}
-      {!tags.length && <EmptyFormPlaceholder />}
+      {!tags.length && <EmptyFormPlaceholder onExampleClick={onExampleClick} />}
     </FormCreatorWrapper>
   );
 }
@@ -121,15 +124,5 @@ function FormItem({
         />
       </FormSettings>
     </FormItemWrapper>
-  );
-}
-
-function EmptyFormPlaceholder() {
-  return (
-    <EmptyFormPlaceholderWrapper>
-      <img src="/app/assets/img/metabot.svg" />
-      <p>{t`To start creating a form, write your query on the left with {{ parameter_names }}.`}</p>
-      <p>{t`They'll show up as form fields here`}</p>
-    </EmptyFormPlaceholderWrapper>
   );
 }

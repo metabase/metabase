@@ -14,7 +14,7 @@ export const Container = styled.div`
   justify-content: space-between;
   width: 100%;
   background-color: ${color("white")};
-  border-top: 1px solid ${color("border")};
+  border-bottom: 1px solid ${color("border")};
   padding: ${space(2)} ${space(3)};
 `;
 
