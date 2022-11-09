@@ -14,7 +14,7 @@
   {:name                         su/NonBlankString
    :schema                       (s/maybe su/NonBlankString)
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
-   (s/optional-key :description) (s/maybe su/NonBlankString)})
+   (s/optional-key :description) (s/maybe s/Str)})
 
 (def DatabaseMetadata
   "Schema for the expected output of `describe-database`."
@@ -41,10 +41,10 @@
 
 (def TableMetadata
   "Schema for the expected output of `describe-table`."
-  {:name   su/NonBlankString
-   :schema (s/maybe su/NonBlankString)
-   :fields #{TableMetadataField}
-   (s/optional-key :description)   (s/maybe su/NonBlankString)})
+  {:name                         su/NonBlankString
+   :schema                       (s/maybe su/NonBlankString)
+   :fields                       #{TableMetadataField}
+   (s/optional-key :description) (s/maybe s/Str)})
 
 (def NestedFCMetadata
   "Schema for the expected output of `describe-nested-field-columns`."
