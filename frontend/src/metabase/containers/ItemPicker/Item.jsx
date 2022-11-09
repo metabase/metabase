@@ -52,7 +52,11 @@ function Item({
         <Icon size={22} {...iconProps} color={selected ? "white" : color} />
         <ItemTitle>{name}</ItemTitle>
         {hasChildren && (
-          <ExpandButton canSelect={canSelect} onClick={handleExpand}>
+          <ExpandButton
+            canSelect={canSelect}
+            onClick={handleExpand}
+            data-testid="expand-btn"
+          >
             <Icon name="chevronright" />
           </ExpandButton>
         )}
