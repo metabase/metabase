@@ -67,7 +67,10 @@
    :Image                 {:Name   (c/docker-tag)
                            :Update "true"}
    :Ports                 [{:ContainerPort "3000"}]
-   :Logging               "/var/log/metabase"})
+   :Logging               "/var/log/metabase"
+   :Volumes [{:HostDirectory "/opt/plugins"
+              :ContainerDirectory "/plugins"}]
+   })
 
 (defn- create-archive! []
   (u/step (format "Create metabase-aws-eb.zip for Docker image %s" (c/docker-tag))

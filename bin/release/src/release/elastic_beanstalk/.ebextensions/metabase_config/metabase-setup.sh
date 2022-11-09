@@ -94,9 +94,18 @@ install_papertrail () {
     [[ "$PAPERTRAIL_HOSTNAME" ]] && pt_local_host
 }
 
+copy_plugins () {
+    mkdir /opt/plugins
+    cp .ebextensions/metabase_plugins/*.jar /opt/plugins
+    chmod -R 777 /opt/plugins
+}
+
 case $1 in
 set_up_env_vars)
     set_up_env_vars
+    ;;
+copy_plugins)
+    copy_plugins
     ;;
 install_papertrail)
     install_papertrail
