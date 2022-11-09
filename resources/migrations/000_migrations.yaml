@@ -12016,6 +12016,11 @@ databaseChangeLog:
 ## Metabase 45
 ##
 
+# Note on rollback: migrations for v45 onwards should always include a rollback key unless they are supported
+# by Liquibase Auto Rollback. Most common changes are supported. See docs here:
+#
+#  https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
+
   - changeSet:
       id: v45.00-001
       author: snoe
@@ -12794,6 +12799,7 @@ databaseChangeLog:
               ALTER TABLE report_dashboardcard
               CHANGE created_at
               created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do, but required for sql
 
   - changeSet:
       id: v45.00-034
@@ -12824,6 +12830,7 @@ databaseChangeLog:
               ALTER TABLE report_dashboardcard
               CHANGE updated_at
               updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do
 
   - changeSet:
       id: v45.00-036
@@ -12932,6 +12939,7 @@ databaseChangeLog:
               ALTER TABLE metabase_database
               CHANGE created_at
               created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do
 
   - changeSet:
       id: v45.00-040
@@ -12962,6 +12970,7 @@ databaseChangeLog:
               ALTER TABLE metabase_database
               CHANGE updated_at
               updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do
 
   # It was probably an oversight, but while we validated Database `details` in the API layer it was not a required/NOT
   # NULL column in the application Database itself. No problem; let's add it now that we've noticed it.
@@ -12982,6 +12991,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               UPDATE metabase_database SET details = '{}' WHERE details IS NULL;
+      rollback: # nothing to do, since a '{}' is okay for v44
 
   - changeSet:
       id: v45.00-043
@@ -13113,6 +13123,7 @@ databaseChangeLog:
                 WHERE c.personal_owner_id = u.id
               )
               WHERE c.personal_owner_id IS NOT NULL;
+      rollback: # nothing to roll back, but required for sql change types
 
   # seed Collection created_at based on the max created at of child objects
   #
@@ -13199,6 +13210,8 @@ databaseChangeLog:
                 WHERE c.id = created_ats.collection_id
                   AND c.personal_owner_id IS NULL
               );
+      rollback: # rollback is a no-op for most seed migrations, but required for sql change type
+
   - changeSet:
       id: v45.00-051
       author: qnkhuat
@@ -13210,6 +13223,11 @@ databaseChangeLog:
             tableName: collection_permission_graph_revision
             columnName: after
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: after
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13226,6 +13244,11 @@ databaseChangeLog:
             tableName: collection_permission_graph_revision
             columnName: before
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: before
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13242,6 +13265,11 @@ databaseChangeLog:
             tableName: collection_permission_graph_revision
             columnName: remark
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: remark
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13258,6 +13286,11 @@ databaseChangeLog:
             tableName: permissions_revision
             columnName: after
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: after
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13274,6 +13307,11 @@ databaseChangeLog:
             tableName: permissions_revision
             columnName: before
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: before
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13290,6 +13328,11 @@ databaseChangeLog:
             tableName: permissions_revision
             columnName: remark
             newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: remark
+            newDataType: text
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13306,6 +13349,11 @@ databaseChangeLog:
             tableName: secret
             columnName: value
             newDataType: longblob
+      rollback:
+        - modifyDataType:
+            tableName: secret
+            columnName: value
+            newDataType: ${blob.type}
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -13320,6 +13368,11 @@ databaseChangeLog:
 # 1) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
+#
+#   1a) Ensure your changes are compatible with Liquibase rollback. See comments starting with
+#       0.45 migrations for more notes. Rollback to 0.44 and forwards to the latest migration is tested
+#       automatically and the migrations linter will check for the presence of rollback where required as
+#       much as possible.
 #
 # 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
 #    migration so someone else doesn't steal your ID number
