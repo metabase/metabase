@@ -149,12 +149,13 @@ function ActionCreatorComponent({
                 </Button>
               </ModalActions>
             </ModalLeft>
-            {isDataRefOpen ? (
-              <DataReferenceInline
-                isOpen={isDataRefOpen}
-                onClose={closeDataRef}
-              />
-            ) : (
+
+            <DataReferenceInline
+              isOpen={isDataRefOpen}
+              onClose={closeDataRef}
+            />
+
+            {!isDataRefOpen && (
               <FormCreator
                 tags={query?.templateTagsWithoutSnippets()}
                 formSettings={
