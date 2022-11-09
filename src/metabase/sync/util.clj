@@ -388,7 +388,9 @@
                          (apply sync-fn database args)
                          (catch Throwable e
                            (if *log-exceptions-and-continue?*
-                             {:throwable e}
+                             (do
+                               ((log/warn e (trs "Error running step ''{0}'' for {1}" step-name (name-for-logging database))))
+                               {:throwable e})
                              (throw (ex-info (format "Error in sync step %s: %s" step-name (ex-message e)) {} e)))))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
