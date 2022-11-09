@@ -372,9 +372,10 @@
                                                                   "target" ["dimension", ["field", pk-field-id nil]]}]
                                             :card_id ["scaffold-target-id" "card" ident-type page-ident "detail"]
                                             :scaffold-target ["dashcard" ident-type page-ident]}
-                                           {:size_y 1 :size_x 3 :row 0 :col 0
+                                           {:size_y 1 :size_x 2 :row 0 :col 0
                                             :visualization_settings {"virtual_card" {"display" "action"}
-                                                                     "button.label" (i18n/tru "← Back to list"),
+                                                                     "button.label" (i18n/tru "Back to list")
+                                                                     "button.variant" "default"
                                                                      "click_behavior" {"type" "link" "linkType" "page" "targetId" ["scaffold-target-id" "page" ident-type page-ident "list"]}}}]
 
                                     (seq actions)
