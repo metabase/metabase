@@ -231,7 +231,7 @@
                                      :middleware {:format-rows? false}))))))))
 
       (testing "mongo only supports datetime"
-        (mt/test-driver :mongo
+        (mt/test-drivers #{:mongo}
           (mt/dataset string-times
             (is (= [[(t/instant "2004-10-19T10:23:54Z")]
                     [(t/instant "2008-10-19T10:23:54Z")]
@@ -244,14 +244,12 @@
                   clojure.lang.ExceptionInfo
                   #"MongoDB does not support parsing strings as dates. Try parsing to a datetime instead"
                   (qp/process-query
-                    (mt/mbql-query times
-                                   {:fields [$d]}))))
+                    (mt/mbql-query times {:fields [$d]}))))
             (is (thrown-with-msg?
                   clojure.lang.ExceptionInfo
                   #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
                   (qp/process-query
-                    (mt/mbql-query times
-                                   {:fields [$t]}))))))))
+                    (mt/mbql-query times {:fields [$t]}))))))))
 
     (testing "are queryable as dates"
       (mt/dataset string-times
