@@ -24,6 +24,7 @@ const ChartSettingsWidgetPopover = ({
   currentWidgetKey,
 }: ChartSettingsWidgetPopoverProps) => {
   const sections = useRef<Record<React.Key, Widget[]>>({});
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     sections.current = _.groupBy(widgets, "section");
@@ -38,12 +39,21 @@ const ChartSettingsWidgetPopover = ({
   const sectionNames = Object.keys(sections.current) || [];
   const hasMultipleSections = sectionNames.length > 1;
 
+  const onClose = () => {
+    const activeElement = document.activeElement as HTMLElement;
+    if (activeElement && contentRef.current?.contains(activeElement)) {
+      activeElement.blur();
+    }
+    handleEndShowWidget();
+  };
+
   return (
     <TippyPopover
+      hideOnClick
       reference={anchor}
       content={
         widgets.length > 0 ? (
-          <PopoverRoot noTopPadding={hasMultipleSections}>
+          <PopoverRoot noTopPadding={hasMultipleSections} ref={contentRef}>
             {hasMultipleSections && (
               <PopoverTabs
                 value={currentSection}
@@ -62,7 +72,7 @@ const ChartSettingsWidgetPopover = ({
         ) : null
       }
       visible={!!anchor}
-      onClose={handleEndShowWidget}
+      onClose={onClose}
       placement="right"
       offset={[10, 10]}
       popperOptions={{
