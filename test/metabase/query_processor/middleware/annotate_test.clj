@@ -518,11 +518,11 @@
 
 (deftest temporal-extract-test
   (is (= {:base_type :type/DateTime}
-         (infered-col-type [:datetime-add (mt/id :checkins :date) 2 :month])))
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :month])))
   (is (= {:base_type :type/DateTime}
-         (infered-col-type [:datetime-add (mt/id :checkins :date) 2 :hour])))
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :hour])))
   (is (= {:base_type :type/DateTime}
-         (infered-col-type [:datetime-add (mt/id :users :last_login) 2 :month]))))
+         (infered-col-type [:datetime-add [:field (mt/id :users :last_login) nil] 2 :month]))))
 
 (deftest test-string-extracts
   (is (= {:base_type :type/Text}
