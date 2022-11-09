@@ -49,7 +49,7 @@ To specify default values for more than one filter, separate the filters with am
 your_embedding_url?breakfast=Scrambled_eggs&lunch=Grilled_cheese
 ```
 
-You can set multiple default values for a filter by separating the _values_ with ampersands (&):
+You can set multiple default values for a filter by separating the `key=value` pairs with ampersands (&):
 
 ```
 your_embedding_url?breakfast=Scrambled_eggs&breakfast=Bacon

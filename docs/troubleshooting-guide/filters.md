@@ -13,23 +13,21 @@ It's always a good idea to start with a quick sanity check:
 
 ## Dashboard filters
 
-1. Go to your dashboard.
-2. Click the **pencil** icon to go into edit mode.
-3. Click the **gear** icon beside your filter widget.
-4. Make sure you've selected a column for your filter under **Column to filter on**.
-5. If you can't find the right **Column to filter on**, or you're getting "No Results" when you apply the filter:
-   - Go to the _original question_.
+1. Click the **pencil** icon to go into edit mode.
+2. Click the **gear** icon beside your filter widget.
+3. Make sure you've selected a column for your filter under **Column to filter on**.
+4. If you can't find the right **Column to filter on**, or you're getting "No Results" when you apply the filter:
+   - Exit edit mode and click on a dashboard card to go to the _original question_.
    - Follow the troubleshooting steps under [Question filters](#question-filters).
 
 ## Question filters
 
-1. Go to your question.
-2. Make sure the question includes the column you want to filter on.
-3. Check that the column actually contains the value(s) you're filtering on. You can do this by:
+1. Make sure the question includes the column you want to filter on.
+2. Check that the column actually contains the value(s) you're filtering on. You can do this by:
    - sorting number or date columns,
    - creating a "contains" filter for string columns, or
    - asking your database admin.
-4. Ask your Metabase admin to help you check if:
+3. Ask your Metabase admin to help you check if:
    - Metabase is [up to date](../databases/connecting.md#manually-syncing-tables-and-columns) with your database,
    - the column is [visible](../data-modeling/metadata-editing.md#column-visibility) in Metabase,
    - you have the correct [data permissions](../permissions/data.md) to access the column.
@@ -43,7 +41,7 @@ If you're having trouble filtering on a:
 
 **Explanation**
 
-When we first set up a filter, we need to link the filter to a column. Our filter won't work at all if we make the wrong assumptions about column's values or data type. Or, the filter might suddenly stop working if the column gets changed.
+When we first set up a filter, we need to link the filter to a column. If we make the wrong assumptions about a column's values or data type, the filter won't work at all. If a column changes, the filter might suddenly stop working.
 
 For example, let's say we want to create a filter named "Select Product ID" linked to a column named **Product ID**. The filter won't work if any of these things happen:
 

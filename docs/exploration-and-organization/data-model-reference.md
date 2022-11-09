@@ -32,4 +32,4 @@ If you click on a column you’re interested in, you’ll see a description of i
 
 ## Foreign keys
 
-You can find a list of table relationships ([foreign keys](https://www.metabase.com/glossary/foreign_key)) under **Connected to these tables**. Metabase will display this section in the sidebar if a Metabase admin has documented the relationship between your current table and another table in the database. If a foreign key relationship exists in your database, but doesn't show up in your Metabase, your Metabase admin will need to update your [Metabase data model](../data-modeling/metadata-editing.md).
+You can find a list of table relationships ([foreign keys](https://www.metabase.com/glossary/foreign_key)) under **Connected to these tables**. If a Metabase admin has documented the relationship between your current table and another table in the database, Metabase will display this section in the sidebar. If a foreign key relationship exists in your database, but doesn't show up in your Metabase, your Metabase admin will need to update your [Metabase data model](../data-modeling/metadata-editing.md).
