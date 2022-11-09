@@ -26,7 +26,7 @@ const EditTimelineModal = ({
 }: EditTimelineModalProps): JSX.Element => {
   const handleSubmit = useCallback(
     async (values: TimelineData) => {
-      await onSubmit({ ...timeline, ...values });
+      await onSubmit({ ...timeline, ...values, default: false });
       onSubmitSuccess?.();
     },
     [timeline, onSubmit, onSubmitSuccess],
