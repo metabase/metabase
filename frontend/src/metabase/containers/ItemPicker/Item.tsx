@@ -3,22 +3,20 @@ import _ from "underscore";
 
 import Icon, { IconProps } from "metabase/components/Icon";
 
+import type { PickerItem, PickerItemId } from "./types";
+
 import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
 
-type IItem = {
-  id: number | string;
-};
-
 interface Props {
-  item: IItem;
+  item: PickerItem;
   name: string;
   icon: string | IconProps;
   color: string;
   selected: boolean;
   canSelect: boolean;
-  hasChildren: boolean;
-  onChange: (item: IItem) => void;
-  onChangeOpenCollectionId: (id: number | string) => void;
+  hasChildren?: boolean;
+  onChange: (item: PickerItem) => void;
+  onChangeOpenCollectionId?: (id: PickerItemId) => void;
 }
 
 function Item({
@@ -37,7 +35,7 @@ function Item({
       return () => onChange(item);
     }
     if (hasChildren) {
-      return () => onChangeOpenCollectionId(item.id);
+      return () => onChangeOpenCollectionId?.(item.id);
     }
     return;
   }, [item, canSelect, hasChildren, onChange, onChangeOpenCollectionId]);
@@ -45,7 +43,7 @@ function Item({
   const handleExpand = useCallback(
     event => {
       event.stopPropagation();
-      onChangeOpenCollectionId(item.id);
+      onChangeOpenCollectionId?.(item.id);
     },
     [item, onChangeOpenCollectionId],
   );
