@@ -12,7 +12,7 @@ export const getColorsForValues = (
       keys,
       getAccentColors({ light: false, dark: false }, palette),
       existingMapping,
-      getPreferredColor,
+      (color: string) => getPreferredColor(color, palette),
     );
   } else {
     return getOrderBasedMapping(
@@ -22,7 +22,7 @@ export const getColorsForValues = (
         palette,
       ),
       existingMapping,
-      getPreferredColor,
+      (color: string) => getPreferredColor(color, palette),
     );
   }
 };
