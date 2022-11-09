@@ -597,8 +597,8 @@
 
 (defn- join-series
   [names types row-seqs y-axis-positions y-col]
-  (for [[idx [card-name card-type rows y-axis-position]]
-        (map-indexed vector (map vector names types row-seqs y-axis-positions))]
+  (for [[idx card-name card-type rows y-axis-position]
+        (map vector (range) names types row-seqs y-axis-positions)]
     {:name          card-name
      :type          card-type
      :data          rows
