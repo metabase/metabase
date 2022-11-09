@@ -572,7 +572,7 @@
                                             line-eid    :entity_id}  {:name          "Populated Timeline"
                                                                       :collection_id coll-id
                                                                       :creator_id    ann-id}]
-                       TimelineEvent      [{e1-id       :id}         {:name          "First Event"
+                       TimelineEvent      [_                         {:name          "First Event"
                                                                       :creator_id    ann-id
                                                                       :timestamp     #t "2020-04-11T00:00Z"
                                                                       :timeline_id   line-id}]]
@@ -592,37 +592,24 @@
                      (set (serdes.base/serdes-dependencies ser)))))))
 
         (testing "with events"
-          (let [ser   (serdes.base/extract-one "Timeline" {} (db/select-one 'Timeline :id line-id))]
+          (let [ser   (serdes.base/extract-one "Timeline" {} (db/select-one 'Timeline :id line-id))
+                stamp "2020-04-11T00:00:00Z"]
             (is (schema= {:serdes/meta   (s/eq [{:model "Timeline" :id line-eid}])
                           :collection_id (s/eq coll-eid)
                           :creator_id    (s/eq "ann@heart.band")
                           :created_at    OffsetDateTime
+                          :events        [{:timestamp   (s/eq stamp)
+                                           :creator_id  (s/eq "ann@heart.band")
+                                           :created_at  OffsetDateTime
+                                           s/Keyword    s/Any}]
                           s/Keyword      s/Any}
                          ser))
             (is (not (contains? ser :id)))
+            (is (not (contains? (-> ser :events first) :id)))
 
             (testing "depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
-                     (set (serdes.base/serdes-dependencies ser))))))))
-
-      (testing "timeline events"
-        (let [ser   (serdes.base/extract-one "TimelineEvent" {} (db/select-one 'TimelineEvent :id e1-id))
-              stamp "2020-04-11T00:00:00Z"]
-            (is (schema= {:serdes/meta (s/eq [{:model "Timeline" :id line-eid}
-                                              {:model "TimelineEvent"
-                                               :id    stamp
-                                               :label "First Event"}])
-                          :timestamp   (s/eq stamp)
-                          :timeline_id (s/eq line-eid)
-                          :creator_id  (s/eq "ann@heart.band")
-                          :created_at  OffsetDateTime
-                          s/Keyword    s/Any}
-                         ser))
-            (is (not (contains? ser :id)))
-
-            (testing "depend on the Timeline"
-              (is (= #{[{:model "Timeline" :id line-eid}]}
-                     (set (serdes.base/serdes-dependencies ser))))))))))
+                     (set (serdes.base/serdes-dependencies ser)))))))))))
 
 (deftest segments-test
   (ts/with-empty-h2-app-db
