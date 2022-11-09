@@ -39,6 +39,7 @@ export const ModalRoot = styled.div`
 `;
 
 export const ModalLeft = styled.div`
+  position: relative;
   display: flex;
   flex-direction: column;
   border-right: 1px solid ${color("border")};

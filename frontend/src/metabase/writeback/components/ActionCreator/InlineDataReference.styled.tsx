@@ -30,7 +30,7 @@ export const DataReferenceContainer = styled.div<{ isOpen: boolean }>`
 
 export const TriggerButton = styled(Button)`
   position: absolute;
-  top: 10px;
+  top: 76px;
   right: 10px;
   z-index: 10;
 `;

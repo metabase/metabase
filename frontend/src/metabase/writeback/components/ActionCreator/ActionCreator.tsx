@@ -126,6 +126,7 @@ function ActionCreatorComponent({
         <ModalRoot>
           <ActionCreatorBodyContainer>
             <ModalLeft>
+              <DataReferenceTriggerButton onClick={toggleDataRef} />
               <ActionCreatorHeader
                 type="query"
                 name={question.displayName() ?? t`New Action`}
@@ -148,15 +149,21 @@ function ActionCreatorComponent({
                 </Button>
               </ModalActions>
             </ModalLeft>
-
-            <FormCreator
-              tags={query?.templateTagsWithoutSnippets()}
-              formSettings={
-                question?.card()?.visualization_settings as ActionFormSettings
-              }
-              onChange={setFormSettings}
-              onExampleClick={handleExampleClick}
-            />
+            {isDataRefOpen ? (
+              <DataReferenceInline
+                isOpen={isDataRefOpen}
+                onClose={closeDataRef}
+              />
+            ) : (
+              <FormCreator
+                tags={query?.templateTagsWithoutSnippets()}
+                formSettings={
+                  question?.card()?.visualization_settings as ActionFormSettings
+                }
+                onChange={setFormSettings}
+                onExampleClick={handleExampleClick}
+              />
+            )}
           </ActionCreatorBodyContainer>
         </ModalRoot>
       </Modal>
