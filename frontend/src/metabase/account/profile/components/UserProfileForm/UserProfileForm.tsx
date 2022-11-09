@@ -16,14 +16,12 @@ const ssoProfileSchema = Yup.object({
 });
 
 const localProfileSchema = ssoProfileSchema.shape({
-  first_name: Yup.string().max(
-    100,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
-  last_name: Yup.string().max(
-    100,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
+  first_name: Yup.string()
+    .nullable()
+    .max(100, ({ max }) => t`must be ${max} characters or less`),
+  last_name: Yup.string()
+    .nullable()
+    .max(100, ({ max }) => t`must be ${max} characters or less`),
   email: Yup.string()
     .required(t`required`)
     .email(t`must be a valid email address`),

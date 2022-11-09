@@ -19,10 +19,9 @@ const eventSchema = Yup.object({
   name: Yup.string()
     .required(t`required`)
     .max(255, ({ max }) => t`must be ${max} characters or less`),
-  description: Yup.string().max(
-    255,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
+  description: Yup.string()
+    .nullable()
+    .max(255, ({ max }) => t`must be ${max} characters or less`),
   timestamp: Yup.string().required(`required`),
   time_matters: Yup.boolean(),
   icon: Yup.string().required(`required`),
