@@ -187,7 +187,7 @@
                               {:database (mt/id)
                                :type     :query
                                :query    {:source-table (mt/id :checkins)
-                                          :order-by     [[:asc [:fk-> (mt/id :checkins :user_id) (mt/id :users :id)]]]}}}]
+                                          :order-by     [[:asc [:field (mt/id :users :id) {:source-field (mt/id :checkins :user_id)}]]]}}}]
       (is (= #{"/collection/root/read/"}
              (query-perms/perms-set
               (query-with-source-card card)))))))
