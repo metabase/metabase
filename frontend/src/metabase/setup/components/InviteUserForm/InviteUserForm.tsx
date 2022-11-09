@@ -8,13 +8,13 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { InviteInfo, UserInfo } from "metabase-types/store";
 import { UserFieldGroup } from "./InviteUserForm.styled";
 
-const DEFAULT_VALUES: InviteInfo = {
+const defaultValues: InviteInfo = {
   first_name: "",
   last_name: "",
   email: "",
 };
 
-const INVITE_USER_SCHEMA = Yup.object({
+const inviteUserSchema = Yup.object({
   first_name: Yup.string().max(
     100,
     ({ max }) => t`must be ${max} characters or less`,
@@ -45,8 +45,8 @@ const InviteUserForm = ({
 }: InviteUserFormProps): JSX.Element => {
   return (
     <FormProvider
-      initialValues={invite ?? DEFAULT_VALUES}
-      validationSchema={INVITE_USER_SCHEMA}
+      initialValues={invite ?? defaultValues}
+      validationSchema={inviteUserSchema}
       validationContext={user}
       onSubmit={onSubmit}
     >

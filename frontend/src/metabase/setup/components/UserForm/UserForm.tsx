@@ -17,7 +17,7 @@ const defaultValues: UserInfo = {
   password_confirm: "",
 };
 
-const USER_SCHEMA = Yup.object({
+const userSchema = Yup.object({
   first_name: Yup.string().max(
     100,
     ({ max }) => t`must be ${max} characters or less`,
@@ -58,7 +58,7 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
   return (
     <FormProvider
       initialValues={user ?? defaultValues}
-      validationSchema={USER_SCHEMA}
+      validationSchema={userSchema}
       validationContext={validationContext}
       onSubmit={onSubmit}
     >
