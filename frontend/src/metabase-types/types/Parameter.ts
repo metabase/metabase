@@ -44,6 +44,7 @@ export interface Parameter {
   slug: string;
   sectionId?: string;
   default?: any;
+  required?: boolean;
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
