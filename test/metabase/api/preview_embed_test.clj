@@ -379,8 +379,8 @@
                                                                :parameter_mappings [{:parameter_id "_VENUE_ID_"
                                                                                      :card_id      (u/the-id card)
                                                                                      :target       [:dimension
-                                                                                                    [:field-id
-                                                                                                     (mt/id :venues :id)]]}]}}]
+                                                                                                    [:field
+                                                                                                     (mt/id :venues :id) nil]]}]}}]
             (is (= [[1]]
                    (mt/rows (mt/user-http-request :crowberto :get (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}})
                                                                        "?venue_id=1")))))))))))

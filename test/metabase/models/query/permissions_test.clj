@@ -116,7 +116,7 @@
   (is (= #{(perms/table-query-path (mt/id) "PUBLIC" (mt/id :venues))}
          (query-perms/perms-set
           {:query    {:source-table (mt/id :venues)
-                      :filter       [:> [:field-id (mt/id :venues :id)] 10]}
+                      :filter       [:> [:field (mt/id :venues :id) nil] 10]}
            :type     :query
            :database (mt/id)})))
 
