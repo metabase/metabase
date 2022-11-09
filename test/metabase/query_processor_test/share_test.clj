@@ -25,7 +25,7 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:share
                                  [:and
-                                  [:< [:field-id $price] 4]
+                                  [:< $price 4]
                                   [:or
                                    [:starts-with $name "M"]
                                    [:ends-with $name "t"]]]]]})))))
@@ -45,7 +45,7 @@
     (testing "Share containing a Segment"
       (mt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
                                                :definition {:source-table (mt/id :venues)
-                                                            :filter       [:< [:field-id (mt/id :venues :price)] 4]}}]
+                                                            :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
         (is (= [[0.94]]
                (mt/formatted-rows [2.0]
                  (mt/run-mbql-query venues
@@ -54,7 +54,7 @@
     (testing "Share inside a Metric"
       (mt/with-temp Metric [{metric-id :id} {:table_id   (mt/id :venues)
                                              :definition {:source-table (mt/id :venues)
-                                                          :aggregation  [:share [:< [:field-id (mt/id :venues :price)] 4]]}}]
+                                                          :aggregation  [:share [:< [:field (mt/id :venues :price) nil] 4]]}}]
         (is (= [[0.94]]
                (mt/formatted-rows [2.0]
                  (mt/run-mbql-query venues
@@ -69,12 +69,12 @@
               [5 0.14]]
              (mt/formatted-rows [int 2.0]
                (mt/run-mbql-query venues
-                 {:aggregation [[:share [:< [:field-id (mt/id :venues :price)] 2]]]
-                  :breakout    [[:field-id (mt/id :venues :category_id)]]
+                 {:aggregation [[:share [:< $price 2]]]
+                  :breakout    [[:field $category_id nil]]
                   :limit       4})))))
 
     (testing "Share inside an expression"
       (is (= [[1.47]]
              (mt/formatted-rows [2.0]
                (mt/run-mbql-query venues
-                 {:aggregation [[:+ [:/ [:share [:< [:field-id (mt/id :venues :price)] 4]] 2] 1]]})))))))
+                 {:aggregation [[:+ [:/ [:share [:< $price 4]] 2] 1]]})))))))

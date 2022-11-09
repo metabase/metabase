@@ -310,7 +310,7 @@
                   (qp/compile
                    (mt/mbql-query checkins
                      {:filter   [:time-interval $date -4 :month]
-                      :breakout [[:datetime-field $date :day]]}))))))))))
+                      :breakout [!day.date]}))))))))))
 
 (deftest temporal-arithmetic-test
   (testing "Mixed integer and date arithmetic works with Mongo 5+"

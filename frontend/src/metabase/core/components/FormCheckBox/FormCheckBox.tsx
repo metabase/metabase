@@ -16,7 +16,7 @@ const FormCheckBox = forwardRef(function FormCheckBox(
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [field, meta] = useField(name);
+  const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
 
   return (
     <FormField
@@ -28,15 +28,15 @@ const FormCheckBox = forwardRef(function FormCheckBox(
       alignment="start"
       orientation="horizontal"
       htmlFor={id}
-      error={meta.touched ? meta.error : undefined}
+      error={touched ? error : undefined}
     >
       <CheckBox
         {...props}
         id={id}
         name={name}
-        checked={field.value}
-        onChange={field.onChange}
-        onBlur={field.onBlur}
+        checked={value}
+        onChange={onChange}
+        onBlur={onBlur}
       />
     </FormField>
   );

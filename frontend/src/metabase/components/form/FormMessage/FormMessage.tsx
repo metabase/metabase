@@ -32,6 +32,9 @@ const getMessage = ({
   return getSuccessMessage(formSuccess);
 };
 
+/**
+ * @deprecated
+ */
 export const getErrorMessage = (formError?: Response) => {
   if (formError) {
     if (formError.data && formError.data.message) {
@@ -44,10 +47,16 @@ export const getErrorMessage = (formError?: Response) => {
   }
 };
 
+/**
+ * @deprecated
+ */
 export const getSuccessMessage = (formSuccess?: Response) => {
   return formSuccess?.data?.message;
 };
 
+/**
+ * @deprecated
+ */
 function FormMessage({
   className,
   message,

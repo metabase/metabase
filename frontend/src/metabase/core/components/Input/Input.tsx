@@ -74,14 +74,14 @@ const Input = forwardRef(function Input(
         hasRightIcon={Boolean(rightIcon)}
       />
       {leftIcon && (
-        <Tooltip tooltip={leftIconTooltip} placement="left" offset={[0, 24]}>
+        <Tooltip tooltip={leftIconTooltip} placement="left">
           <InputLeftButton tabIndex={-1} onClick={onLeftIconClick}>
             <Icon name={leftIcon} />
           </InputLeftButton>
         </Tooltip>
       )}
       {rightIcon && (
-        <Tooltip tooltip={rightIconTooltip} placement="right" offset={[0, 24]}>
+        <Tooltip tooltip={rightIconTooltip} placement="right">
           <InputRightButton tabIndex={-1} onClick={onRightIconClick}>
             <Icon name={rightIcon} />
           </InputRightButton>

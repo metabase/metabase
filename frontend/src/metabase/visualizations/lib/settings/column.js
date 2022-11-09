@@ -366,9 +366,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     default: true,
     getHidden: (column, settings, { series }) =>
       settings["number_style"] !== "currency" ||
-      // FIXME: temp stub to unbreak the page
-      // https://metaboat.slack.com/archives/C505ZNNH4/p1665002329746859
-      series?.[0].card.display !== "table",
+      series[0].card.display !== "table",
     readDependencies: ["number_style"],
   },
   number_separators: {

@@ -9,14 +9,25 @@ export interface FormTextAreaProps
   name: string;
   title?: string;
   description?: ReactNode;
+  infoLabel?: string;
+  infoTooltip?: string;
 }
 
 const FormTextArea = forwardRef(function FormTextArea(
-  { name, className, style, title, description, ...props }: FormTextAreaProps,
+  {
+    name,
+    className,
+    style,
+    title,
+    description,
+    infoLabel,
+    infoTooltip,
+    ...props
+  }: FormTextAreaProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [field, meta] = useField(name);
+  const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
 
   return (
     <FormField
@@ -26,16 +37,18 @@ const FormTextArea = forwardRef(function FormTextArea(
       title={title}
       description={description}
       htmlFor={id}
-      error={meta.touched ? meta.error : undefined}
+      error={touched ? error : undefined}
+      infoLabel={infoLabel}
+      infoTooltip={infoTooltip}
     >
       <TextArea
         {...props}
         id={id}
         name={name}
-        value={field.value}
-        error={meta.touched && meta.error != null}
-        onChange={field.onChange}
-        onBlur={field.onBlur}
+        value={value}
+        error={touched && error != null}
+        onChange={onChange}
+        onBlur={onBlur}
       />
     </FormField>
   );

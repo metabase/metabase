@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 
-import { ItemContent, ExpandItemIcon, ItemRoot } from "./ItemPicker.styled";
+import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
 
-const Item = ({
+function Item({
   item,
   name,
   icon,
@@ -15,20 +15,34 @@ const Item = ({
   canSelect,
   hasChildren,
   onChange,
-  onChangeParentId,
-}) => {
-  const iconProps = _.isObject(icon) ? icon : { name: icon };
+  onChangeOpenCollectionId,
+}) {
+  const handleClick = useMemo(() => {
+    if (canSelect) {
+      return () => onChange(item);
+    }
+    if (hasChildren) {
+      return () => onChangeOpenCollectionId(item.id);
+    }
+    return;
+  }, [item, canSelect, hasChildren, onChange, onChangeOpenCollectionId]);
+
+  const handleExpand = useCallback(
+    event => {
+      event.stopPropagation();
+      onChangeOpenCollectionId(item.id);
+    },
+    [item, onChangeOpenCollectionId],
+  );
+
+  const iconProps = useMemo(
+    () => (_.isObject(icon) ? icon : { name: icon }),
+    [icon],
+  );
+
   return (
     <ItemRoot
-      mt={1}
-      p={1}
-      onClick={
-        canSelect
-          ? () => onChange(item)
-          : hasChildren
-          ? () => onChangeParentId(item.id)
-          : null
-      }
+      onClick={handleClick}
       canSelect={canSelect}
       isSelected={selected}
       hasChildren={hasChildren}
@@ -36,20 +50,19 @@ const Item = ({
     >
       <ItemContent>
         <Icon size={22} {...iconProps} color={selected ? "white" : color} />
-        <h4 className="mx1">{name}</h4>
+        <ItemTitle>{name}</ItemTitle>
         {hasChildren && (
-          <ExpandItemIcon
-            name="chevronright"
+          <ExpandButton
             canSelect={canSelect}
-            onClick={e => {
-              e.stopPropagation();
-              onChangeParentId(item.id);
-            }}
-          />
+            onClick={handleExpand}
+            data-testid="expand-btn"
+          >
+            <Icon name="chevronright" />
+          </ExpandButton>
         )}
       </ItemContent>
     </ItemRoot>
   );
-};
+}
 
 export default Item;
