@@ -139,18 +139,6 @@
                            :filter      [:= [:field (mt/id :times :index) nil] 1]
                            :fields      [[:expression "expr"]]}}
 
-               {:title    "Nested interval addition expression"
-                :expected [2005]
-                :query    {:expressions {"expr" [:abs [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]]]}
-                           :filter      [:= [:field (mt/id :times :index) nil] 1]
-                           :fields      [[:expression "expr"]]}}
-
-               {:title    "Interval addition nested in numeric addition"
-                :expected [2006]
-                :query    {:expressions {"expr" [:+ [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]] 1]}
-                           :filter      [:= [:field (mt/id :times :index) nil] 1]
-                           :fields      [[:expression "expr"]]}}
-
                {:title     "Nested with arithmetic"
                 :expected  [4008]
                 :query     {:expressions {"expr" [:* [:get-year [:field (mt/id :times :dt) nil]] 2]}
