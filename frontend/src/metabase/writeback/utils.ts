@@ -53,7 +53,7 @@ export const isEditableField = (field: Field, parameter: Parameter) => {
   if (field.isPK()) {
     // Most of the time PKs are auto-generated,
     // but there are rare cases when they're not
-    // In this case they're marked as `database_required`
+    // In this case they're marked as `required`
     return parameter.required;
   }
 
