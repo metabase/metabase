@@ -147,13 +147,13 @@
 
 
       (isa? coercion :Coercion/ISO8601->Date)
-      (throw (ex-info (tru "Driver Mongo does not support {0}" coercion)
+      (throw (ex-info (tru "MongoDB does not support parsing strings as dates. Try parsing to a datetime instead")
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
 
 
       (isa? coercion :Coercion/ISO8601->Time)
-      (throw (ex-info (tru "Driver Mongo does not support {0}" coercion)
+      (throw (ex-info (tru "MongoDB does not support parsing strings as times. Try parsing to a datetime instead")
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
 
