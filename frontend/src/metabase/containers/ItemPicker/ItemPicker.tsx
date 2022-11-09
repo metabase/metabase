@@ -1,16 +1,12 @@
 import React, { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
-import { t } from "ttag";
 
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import Icon, { IconProps } from "metabase/components/Icon";
+import { IconProps } from "metabase/components/Icon";
 
 import { getCrumbs } from "metabase/lib/collections";
-import { color } from "metabase/lib/colors";
 
 import Collections from "metabase/entities/collections";
-import Search from "metabase/entities/search";
 
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
@@ -19,29 +15,16 @@ import { isRootCollection } from "metabase/collections/utils";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import type { PickerItem, PickerModel, PickerValue } from "./types";
+import type {
+  CollectionPickerItem,
+  PickerItem,
+  PickerModel,
+  PickerValue,
+  SearchQuery,
+} from "./types";
 
-import Item from "./Item";
-import {
-  ItemPickerRoot,
-  ItemPickerHeader,
-  ItemPickerList,
-  ScrollAwareLoadingAndErrorWrapper,
-  SearchInput,
-  SearchToggle,
-} from "./ItemPicker.styled";
-
-type SearchQuery = {
-  q?: string;
-  collection?: Collection["id"];
-  models?: PickerModel[];
-};
-
-interface SearchEntityListLoaderProps {
-  list: PickerItem[];
-}
-
-type CollectionItem = PickerItem & Collection;
+import ItemPickerView from "./ItemPickerView";
+import { ScrollAwareLoadingAndErrorWrapper } from "./ItemPicker.styled";
 
 interface OwnProps {
   value?: PickerValue;
@@ -60,8 +43,6 @@ interface StateProps {
 }
 
 type Props = OwnProps & StateProps;
-
-const getDefaultCollectionIconColor = () => color("text-light");
 
 function canWriteToCollectionOrChildren(collection: Collection) {
   return (
@@ -97,15 +78,14 @@ function ItemPicker({
   models,
   collectionsById,
   className,
-  style,
   showSearch = true,
   showScroll = true,
+  style,
   onChange,
   getCollectionIcon,
 }: Props) {
   const [openCollectionId, setOpenCollectionId] =
     useState<Collection["id"]>("root");
-  const [isSearchEnabled, setIsSearchEnabled] = useState(false);
   const [searchString, setSearchString] = useState("");
 
   const isPickingNotCollection = models.some(model => model !== "collection");
@@ -131,7 +111,7 @@ function ItemPicker({
         model: "collection",
       }));
 
-    return collectionItems as CollectionItem[];
+    return collectionItems as CollectionPickerItem[];
   }, [openCollection, models]);
 
   const crumbs = useMemo(
@@ -168,7 +148,7 @@ function ItemPicker({
   );
 
   const checkCollectionMaybeHasChildren = useCallback(
-    (collection: CollectionItem) => {
+    (collection: CollectionPickerItem) => {
       if (isPickingNotCollection) {
         // Non-collection models (e.g. questions, dashboards)
         // are loaded on-demand so we don't know ahead of time
@@ -205,27 +185,15 @@ function ItemPicker({
     [models, collectionsById],
   );
 
-  const handleSearchInputKeyPress = useCallback(e => {
-    if (e.key === "Enter") {
-      setSearchString(e.target.value);
-    }
-  }, []);
-
-  const handleOpenSearch = useCallback(() => {
-    setIsSearchEnabled(true);
-  }, []);
-
-  const handleCloseSearch = useCallback(() => {
-    setIsSearchEnabled(false);
-    setSearchString("");
-  }, []);
-
-  const handleCollectionSelected = useCallback(
-    (collection: PickerItem) => {
-      if (isRootCollection(collection as unknown as Collection)) {
+  const handleChange = useCallback(
+    (item: PickerItem) => {
+      if (
+        item.model === "collection" &&
+        isRootCollection(item as unknown as Collection)
+      ) {
         onChange({ id: null, model: "collection" });
       } else {
-        onChange(collection);
+        onChange(item);
       }
     },
     [onChange],
@@ -235,138 +203,29 @@ function ItemPicker({
     setOpenCollectionId(collectionId);
   }, []);
 
-  const renderHeader = useCallback(() => {
-    if (isSearchEnabled) {
-      return (
-        <ItemPickerHeader data-testid="item-picker-header">
-          <SearchInput
-            type="search"
-            className="input"
-            placeholder={t`Search`}
-            autoFocus
-            onKeyPress={handleSearchInputKeyPress}
-          />
-          <SearchToggle onClick={handleCloseSearch}>
-            <Icon name="close" />
-          </SearchToggle>
-        </ItemPickerHeader>
-      );
-    }
-
-    return (
-      <ItemPickerHeader data-testid="item-picker-header">
-        <Breadcrumbs crumbs={crumbs} />
-        {showSearch && (
-          <SearchToggle onClick={handleOpenSearch}>
-            <Icon name="search" />
-          </SearchToggle>
-        )}
-      </ItemPickerHeader>
-    );
-  }, [
-    isSearchEnabled,
-    crumbs,
-    showSearch,
-    handleOpenSearch,
-    handleCloseSearch,
-    handleSearchInputKeyPress,
-  ]);
-
-  const renderCollectionListItem = useCallback(
-    (collection: CollectionItem) => {
-      const hasChildren = checkCollectionMaybeHasChildren(collection);
-
-      // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
-      const canSelect = models.includes("collection") && collection.can_write;
-
-      const icon = getCollectionIcon(collection);
-
-      if (canSelect || hasChildren) {
-        return (
-          <Item
-            key={`collection-${collection.id}`}
-            item={collection}
-            name={collection.name}
-            color={
-              icon.color ? color(icon.color) : getDefaultCollectionIconColor()
-            }
-            icon={icon}
-            selected={canSelect && checkIsItemSelected(collection)}
-            canSelect={canSelect}
-            hasChildren={hasChildren}
-            onChange={handleCollectionSelected}
-            onChangeOpenCollectionId={handleCollectionOpen}
-          />
-        );
-      }
-
-      return null;
-    },
-    [
-      models,
-      getCollectionIcon,
-      handleCollectionOpen,
-      handleCollectionSelected,
-      checkIsItemSelected,
-      checkCollectionMaybeHasChildren,
-    ],
-  );
-
-  const renderCollectionContentListItem = useCallback(
-    (item: PickerItem) => {
-      const hasPermission = checkHasWritePermissionForItem(item);
-
-      if (
-        hasPermission &&
-        // only include desired models (TODO: ideally the endpoint would handle this)
-        models.includes(item.model) &&
-        // remove collections unless we're searching
-        // (so a user can navigate through collections)
-        (item.model !== "collection" || !!searchString)
-      ) {
-        return (
-          <Item
-            key={item.id}
-            item={item}
-            name={item.getName()}
-            color={item.getColor()}
-            icon={item.getIcon().name}
-            selected={checkIsItemSelected(item)}
-            canSelect={hasPermission}
-            onChange={onChange}
-          />
-        );
-      }
-
-      return null;
-    },
-    [
-      models,
-      searchString,
-      onChange,
-      checkHasWritePermissionForItem,
-      checkIsItemSelected,
-    ],
-  );
-
   return (
     <ScrollAwareLoadingAndErrorWrapper
       loading={!collectionsById}
       hasScroll={showScroll}
     >
-      <ItemPickerRoot className={className} style={style}>
-        {renderHeader()}
-        <ItemPickerList data-testid="item-picker-list">
-          {!searchString && collections.map(renderCollectionListItem)}
-          {(isPickingNotCollection || searchString) && (
-            <Search.ListLoader query={searchQuery} wrapped>
-              {({ list }: SearchEntityListLoaderProps) => (
-                <div>{list.map(renderCollectionContentListItem)}</div>
-              )}
-            </Search.ListLoader>
-          )}
-        </ItemPickerList>
-      </ItemPickerRoot>
+      <ItemPickerView
+        className={className}
+        models={models}
+        openCollection={openCollection}
+        collections={collections}
+        searchString={searchString}
+        searchQuery={searchQuery}
+        showSearch={showSearch}
+        crumbs={crumbs}
+        onChange={handleChange}
+        onSearchStringChange={setSearchString}
+        onOpenCollectionChange={handleCollectionOpen}
+        checkCollectionMaybeHasChildren={checkCollectionMaybeHasChildren}
+        checkIsItemSelected={checkIsItemSelected}
+        checkHasWritePermissionForItem={checkHasWritePermissionForItem}
+        getCollectionIcon={getCollectionIcon}
+        style={style}
+      />
     </ScrollAwareLoadingAndErrorWrapper>
   );
 }

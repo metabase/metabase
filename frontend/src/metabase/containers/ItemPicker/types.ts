@@ -24,3 +24,11 @@ export type PickerItem = {
   getColor: () => string;
   getIcon: () => IconProps;
 };
+
+export type CollectionPickerItem = PickerItem & Collection;
+
+export type SearchQuery = {
+  q?: string;
+  collection?: Collection["id"];
+  models?: PickerModel[];
+};
