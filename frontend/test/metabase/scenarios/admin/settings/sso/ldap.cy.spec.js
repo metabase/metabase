@@ -22,7 +22,7 @@ describe(
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
 
-      cy.findByText("Changes saved!").should("exist");
+      cy.findByText("Success").should("exist");
     });
 
     it("should update ldap settings", () => {

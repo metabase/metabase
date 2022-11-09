@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.v2.load-test
   (:require [clojure.test :refer :all]
+            [java-time :as t]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as serdes.extract]
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
@@ -7,7 +8,6 @@
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric Pulse
                                      PulseChannel PulseChannelRecipient Segment Table User]]
             [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]))
 
 (defn- no-labels [path]
@@ -105,43 +105,6 @@
                      (:location child-dest)))
               (is (= (format "/%d/%d/" (:id parent-dest) (:id child-dest))
                      (:location grandchild-dest))))))))))
-
-(deftest deserialization-upsert-and-dupe-test
-  (testing "basic collections with their names changing, one without entity_id:"
-    (let [serialized (atom nil)
-          c1a        (atom nil)
-          c2a        (atom nil)
-          c1b        (atom nil)
-          c2b        (atom nil)]
-      (ts/with-source-and-dest-dbs
-        (testing "serializing the two collections"
-          (ts/with-source-db
-            (reset! c1b (ts/create! Collection :name "Renamed Collection 1"))
-            (reset! c2b (ts/create! Collection :name "Collection 2 version 2"))
-            (db/update! Collection (:id @c2b) {:entity_id nil})
-            (reset! c2b (db/select-one Collection :id (:id @c2b)))
-            (is (nil? (:entity_id @c2b)))
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
-
-        (testing "serialization should use identity hashes where no entity_id is defined"
-          (is (= #{(:entity_id @c1b)
-                   (serdes.hash/identity-hash @c2b)}
-                 (ids-by-model @serialized "Collection"))))
-
-        (testing "deserializing, the name change causes a duplicated collection"
-          (ts/with-dest-db
-            (reset! c1a (ts/create! Collection :name "Collection 1" :entity_id (:entity_id @c1b)))
-            (reset! c2a (ts/create! Collection :name "Collection 2 version 1"))
-            (db/update! Collection (:id @c2a) {:entity_id nil})
-            (reset! c2a (db/select-one Collection :id (:id @c2a)))
-            (is (nil? (:entity_id @c2b)))
-
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
-            (is (= 3 (db/count Collection)) "Collection 2 versions get duplicated, since the identity-hash changed")
-            (is (= #{"Renamed Collection 1"
-                     "Collection 2 version 1"
-                     "Collection 2 version 2"}
-                   (set (db/select-field :name Collection))))))))))
 
 (deftest deserialization-database-table-field-test
   (testing "databases, tables and fields are nested in namespaces"
@@ -821,3 +784,49 @@
           (testing "new FieldValues are properly added"
             (is (= (dissoc @fv2s :id :field_id :created_at :updated_at)
                    (dissoc @fv2d :id :field_id :created_at :updated_at)))))))))
+
+(deftest bare-import-test
+  ;; If the dependencies of an entity exist in the receiving database, they don't need to be in the export.
+  ;; This tests that such an import will succeed, and that it still fails when the dependency is not found in
+  ;; either location.
+  (let [db1s       (atom nil)
+        table1s    (atom nil)]
+
+    (testing "loading a bare card"
+      (ts/with-empty-h2-app-db
+        (reset! db1s    (ts/create! Database :name "my-db"))
+        (reset! table1s (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
+        (ts/create! Field :name "STATE" :table_id (:id @table1s))
+        (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
+
+        (testing "depending on existing values works"
+          (let [ingestion (ingestion-in-memory [{:serdes/meta   [{:model "Card" :id "0123456789abcdef_0123"}]
+                                                 :created_at    (t/instant)
+                                                 :creator_id    "glee@rush.yyz"
+                                                 :database_id   "my-db"
+                                                 :dataset_query {:database "my-db"
+                                                                 :type     :query
+                                                                 :query    {:source-table ["my-db" nil "CUSTOMERS"]}}
+                                                 :display       :table
+                                                 :entity_id     "0123456789abcdef_0123"
+                                                 :name          "Some card"
+                                                 :table_id      ["my-db" nil "CUSTOMERS"]
+                                                 :visualization_settings {}}])]
+            (is (some? (serdes.load/load-metabase ingestion)))))
+
+        (testing "depending on nonexisting values fails"
+          (let [ingestion (ingestion-in-memory [{:serdes/meta   [{:model "Card" :id "0123456789abcdef_0123"}]
+                                                 :created_at    (t/instant)
+                                                 :creator_id    "glee@rush.yyz"
+                                                 :database_id   "bad-db"
+                                                 :dataset_query {:database "bad-db"
+                                                                 :type     :query
+                                                                 :query    {:source-table ["bad-db" nil "CUSTOMERS"]}}
+                                                 :display       :table
+                                                 :entity_id     "0123456789abcdef_0123"
+                                                 :name          "Some card"
+                                                 :table_id      ["bad-db" nil "CUSTOMERS"]
+                                                 :visualization_settings {}}])]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"Failed to read file"
+                                  (serdes.load/load-metabase ingestion)))))))))

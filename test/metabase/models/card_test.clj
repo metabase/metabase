@@ -333,7 +333,7 @@
            (mt/with-temp Card [_ {:parameter_mappings {:a :b}}])))
 
      (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "valid-id"
-                                                     :target       [:field-id 1000]}]}]
+                                                     :target       [:field 1000 nil]}]}]
        (is (some? card))))
 
     (testing "updating"
@@ -344,7 +344,7 @@
              (db/update! Card id :parameter_mappings [{:parameter_id 100}])))
 
         (is (some? (db/update! Card id :parameter_mappings [{:parameter_id "new-valid-id"
-                                                             :target       [:field-id 1000]}])))))))
+                                                             :target       [:field 1000 nil]}])))))))
 
 (deftest normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"

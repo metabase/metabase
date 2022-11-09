@@ -9,9 +9,9 @@ export interface InputProps {
   fieldSize?: InputSize;
   hasError?: boolean;
   fullWidth?: boolean;
+  hasSubtitle?: boolean;
   hasLeftIcon?: boolean;
   hasRightIcon?: boolean;
-  subtitle?: string;
 }
 
 export const InputRoot = styled.div<InputProps>`
@@ -72,7 +72,7 @@ export const InputField = styled.input<InputProps>`
     `};
 
   ${props =>
-    props.subtitle &&
+    props.hasSubtitle &&
     css`
       padding-top: 1.75rem;
     `};

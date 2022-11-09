@@ -11,7 +11,7 @@
         ;; filter clause is optional
         :filter      filter
         ;; To ensure stable ordering
-        :order-by    [[:asc [:field-id (data/id :venues :id)]]]
+        :order-by    [[:asc [:field (data/id :venues :id) nil]]]
         :limit       1}
        (mt/run-mbql-query venues)
        mt/rows
@@ -35,22 +35,22 @@
 
 (deftest test-upper
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "RED MEDICINE" (test-string-extract [:upper [:field-id (data/id :venues :name)]])))))
+    (is (= "RED MEDICINE" (test-string-extract [:upper [:field (data/id :venues :name) nil]])))))
 
 (deftest test-lower
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "red medicine" (test-string-extract [:lower [:field-id (data/id :venues :name)]])))))
+    (is (= "red medicine" (test-string-extract [:lower [:field (data/id :venues :name) nil]])))))
 
 (deftest test-substring
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "Red" (test-string-extract [:substring [:field-id (data/id :venues :name)] 1 3])))
-    (is (= "ed Medicine" (test-string-extract [:substring [:field-id (data/id :venues :name)] 2])))
-    (is (= "Red Medicin" (test-string-extract [:substring [:field-id (data/id :venues :name)]
-                                               1 [:- [:length [:field-id (data/id :venues :name)]] 1]])))))
+    (is (= "Red" (test-string-extract [:substring [:field (data/id :venues :name) nil] 1 3])))
+    (is (= "ed Medicine" (test-string-extract [:substring [:field (data/id :venues :name) nil] 2])))
+    (is (= "Red Medicin" (test-string-extract [:substring [:field (data/id :venues :name) nil]
+                                               1 [:- [:length [:field (data/id :venues :name) nil]] 1]])))))
 
 (deftest test-replace
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "Red Baloon" (test-string-extract [:replace [:field-id (data/id :venues :name)] "Medicine" "Baloon"])))))
+    (is (= "Red Baloon" (test-string-extract [:replace [:field (data/id :venues :name) nil] "Medicine" "Baloon"])))))
 
 (deftest test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -64,16 +64,16 @@
 
 (deftest test-regex-match-first
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
-    (is (= "Red" (test-string-extract [:regex-match-first [:field-id (data/id :venues :name)] "(.ed+)"])))))
+    (is (= "Red" (test-string-extract [:regex-match-first [:field (data/id :venues :name) nil] "(.ed+)"])))))
 
 (deftest test-nesting
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "MED" (test-string-extract [:upper [:substring [:trim [:substring [:field-id (data/id :venues :name)] 4]] 1 3]])))))
+    (is (= "MED" (test-string-extract [:upper [:substring [:trim [:substring [:field (data/id :venues :name) nil] 4]] 1 3]])))))
 
 (deftest test-breakout
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= ["20th Century Cafefoo" 1]
-           (->> {:expressions  {"test" [:concat [:field-id (data/id :venues :name)] "foo"]}
+           (->> {:expressions  {"test" [:concat [:field (data/id :venues :name) nil] "foo"]}
                  :breakout     [[:expression "test"]]
                  :aggregation  [[:count]]
                  :limit        1}
@@ -85,15 +85,15 @@
   (mt/test-drivers
     (mt/normal-drivers-with-feature :expressions)
     (is (= "Larry's The Prime Rib" (test-string-extract
-                                    [:replace [:field-id (data/id :venues :name)] "Lawry's" "Larry's"]
-                                    [:= [:field-id (data/id :venues :name)] "Lawry's The Prime Rib"])))))
+                                    [:replace [:field (data/id :venues :name) nil] "Lawry's" "Larry's"]
+                                    [:= [:field (data/id :venues :name) nil] "Lawry's The Prime Rib"])))))
 
 (deftest regex-match-first-escaping-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :expressions :regex)
     (is (= "Taylor's" (test-string-extract
-                       [:regex-match-first [:field-id (data/id :venues :name)] "^Taylor's"]
-                       [:= [:field-id (data/id :venues :name)] "Taylor's Prime Steak House"])))))
+                       [:regex-match-first [:field (data/id :venues :name) nil] "^Taylor's"]
+                       [:= [:field (data/id :venues :name) nil] "Taylor's Prime Steak House"])))))
 
 (deftest regex-extract-in-explict-join-test
   (testing "Should be able to use regex extra in an explict join (#17790)"

@@ -1,28 +1,77 @@
-import React, { forwardRef, Ref } from "react";
-import { useField } from "formik";
-import InputField, {
-  InputFieldProps,
-} from "metabase/core/components/InputField";
+import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
+import Tooltip from "metabase/components/Tooltip";
+import { FieldAlignment, FieldOrientation } from "./types";
+import {
+  FieldCaption,
+  FieldDescription,
+  FieldInfoIcon,
+  FieldInfoLabel,
+  FieldLabel,
+  FieldLabelContainer,
+  FieldLabelError,
+  FieldRoot,
+} from "./FormField.styled";
 
-export interface FormFieldProps
-  extends Omit<InputFieldProps, "error" | "htmlFor"> {
-  name: string;
+export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
+  title?: string;
+  description?: ReactNode;
+  alignment?: FieldAlignment;
+  orientation?: FieldOrientation;
+  error?: string;
+  htmlFor?: string;
+  infoLabel?: string;
+  infoTooltip?: string;
 }
 
 const FormField = forwardRef(function FormField(
-  { name, ...props }: FormFieldProps,
+  {
+    title,
+    description,
+    alignment = "end",
+    orientation = "vertical",
+    error,
+    htmlFor,
+    infoLabel,
+    infoTooltip,
+    children,
+    ...props
+  }: FormFieldProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [, meta] = useField(name);
-  const { error, touched } = meta;
+  const hasError = Boolean(error);
 
   return (
-    <InputField
+    <FieldRoot
       {...props}
       ref={ref}
-      htmlFor={name}
-      error={touched ? error : undefined}
-    />
+      orientation={orientation}
+      hasError={hasError}
+    >
+      {alignment === "start" && children}
+      {(title || description) && (
+        <FieldCaption alignment={alignment} orientation={orientation}>
+          <FieldLabelContainer>
+            {title && (
+              <FieldLabel htmlFor={htmlFor}>
+                {title}
+                {hasError && <FieldLabelError>: {error}</FieldLabelError>}
+              </FieldLabel>
+            )}
+            {(infoLabel || infoTooltip) && (
+              <Tooltip tooltip={infoTooltip} maxWidth="100%">
+                {infoLabel ? (
+                  <FieldInfoLabel>{infoLabel}</FieldInfoLabel>
+                ) : (
+                  <FieldInfoIcon name="info" />
+                )}
+              </Tooltip>
+            )}
+          </FieldLabelContainer>
+          {description && <FieldDescription>{description}</FieldDescription>}
+        </FieldCaption>
+      )}
+      {alignment === "end" && children}
+    </FieldRoot>
   );
 });
 
