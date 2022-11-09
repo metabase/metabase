@@ -1,10 +1,25 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import Icon, { IconProps } from "metabase/components/Icon";
 
 import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
+
+type IItem = {
+  id: number | string;
+};
+
+interface Props {
+  item: IItem;
+  name: string;
+  icon: string | IconProps;
+  color: string;
+  selected: boolean;
+  canSelect: boolean;
+  hasChildren: boolean;
+  onChange: (item: IItem) => void;
+  onChangeOpenCollectionId: (id: number | string) => void;
+}
 
 function Item({
   item,
@@ -16,7 +31,7 @@ function Item({
   hasChildren,
   onChange,
   onChangeOpenCollectionId,
-}) {
+}: Props) {
   const handleClick = useMemo(() => {
     if (canSelect) {
       return () => onChange(item);
