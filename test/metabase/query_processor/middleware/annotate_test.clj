@@ -437,18 +437,15 @@
 ;;; |                                           Other MBQL col info tests                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmacro infered-col-type
-  ([expr]
-   `(infered-col-type ~expr venues))
-
-  ([expr table]
-   `(-> (add-column-info (mt/mbql-query ~table {:expressions {"expr" ~expr}
-                                                 :fields      [[:expression "expr"]]
-                                                 :limit       10})
-                         {})
-        :cols
-        first
-        (select-keys [:base_type :semantic_type]))))
+(defn- infered-col-type
+  [expr]
+  (-> (add-column-info (mt/mbql-query venues {:expressions {"expr" expr}
+                                              :fields      [[:expression "expr"]]
+                                              :limit       10})
+                       {})
+      :cols
+      first
+      (select-keys [:base_type :semantic_type])))
 
 (deftest computed-columns-inference
   (letfn [(infer [expr] (-> (mt/mbql-query venues
@@ -521,11 +518,11 @@
 
 (deftest temporal-extract-test
   (is (= {:base_type :type/DateTime}
-         (infered-col-type [:datetime-add $date 2 :month] checkins)))
+         (infered-col-type [:datetime-add (mt/id :checkins :date) 2 :month])))
   (is (= {:base_type :type/DateTime}
-         (infered-col-type [:datetime-add $date 2 :hour] checkins)))
+         (infered-col-type [:datetime-add (mt/id :checkins :date) 2 :hour])))
   (is (= {:base_type :type/DateTime}
-         (infered-col-type [:datetime-add $last_login 2 :month] users))))
+         (infered-col-type [:datetime-add (mt/id :users :last_login) 2 :month]))))
 
 (deftest test-string-extracts
   (is (= {:base_type :type/Text}
