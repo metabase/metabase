@@ -508,6 +508,22 @@
       (is (= {:base_type :type/Float}
              (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]]]))))))
 
+(deftest ^:parallel datetime-arithmetics?-test
+  (is (#'annotate/datetime-arithmetics? [:+ [:field (mt/id :checkins :date) nil] [:interval -1 :month]]))
+  (is (#'annotate/datetime-arithmetics? [:field (mt/id :checkins :date) {:temporal-unit :month}]))
+  (is (not (#'annotate/datetime-arithmetics? [:+ 1 [:temporal-extract
+                                                    [:+ [:field (mt/id :checkins :date) nil] [:interval -1 :month]]
+                                                    :year]])))
+  (is (not (#'annotate/datetime-arithmetics? [:+ [:field (mt/id :checkins :date) nil] 3]))))
+
+(deftest temporal-extract-test
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :month])))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :hour])))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :users :last_login) nil] 2 :month]))))
+
 (deftest test-string-extracts
   (is (= {:base_type :type/Text}
          (infered-col-type  [:trim "foo"])))
