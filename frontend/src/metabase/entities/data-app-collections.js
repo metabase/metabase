@@ -37,7 +37,7 @@ const DataAppCollections = createEntity({
   },
 
   objectSelectors: {
-    getIcon: () => ({ name: "star" }),
+    getIcon: () => ({ name: "app" }),
   },
 });
 
