@@ -1,10 +1,23 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import Icon, { IconProps } from "metabase/components/Icon";
+
+import type { PickerItem, PickerItemId } from "./types";
 
 import { ItemRoot, ItemContent, ItemTitle, ExpandButton } from "./Item.styled";
+
+interface Props {
+  item: PickerItem;
+  name: string;
+  icon: string | IconProps;
+  color: string;
+  selected: boolean;
+  canSelect: boolean;
+  hasChildren?: boolean;
+  onChange: (item: PickerItem) => void;
+  onChangeOpenCollectionId?: (id: PickerItemId) => void;
+}
 
 function Item({
   item,
@@ -16,13 +29,13 @@ function Item({
   hasChildren,
   onChange,
   onChangeOpenCollectionId,
-}) {
+}: Props) {
   const handleClick = useMemo(() => {
     if (canSelect) {
       return () => onChange(item);
     }
     if (hasChildren) {
-      return () => onChangeOpenCollectionId(item.id);
+      return () => onChangeOpenCollectionId?.(item.id);
     }
     return;
   }, [item, canSelect, hasChildren, onChange, onChangeOpenCollectionId]);
@@ -30,7 +43,7 @@ function Item({
   const handleExpand = useCallback(
     event => {
       event.stopPropagation();
-      onChangeOpenCollectionId(item.id);
+      onChangeOpenCollectionId?.(item.id);
     },
     [item, onChangeOpenCollectionId],
   );
