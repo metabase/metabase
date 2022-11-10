@@ -15,6 +15,8 @@ import {
   NAV_SIDEBAR_WIDTH,
 } from "metabase/nav/constants";
 
+import { DATA_APPS_MAX_WIDTH } from "metabase/lib/dashboard_grid";
+
 // Class names are added here because we still use traditional css,
 // see dashboard.css
 export const DashboardLoadingAndErrorWrapper = styled(
@@ -139,7 +141,8 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
     ${({ isDataApp }) =>
     isDataApp &&
     css`
-      max-width: 1200px;
+      box-sizing: content-box;
+      max-width: ${DATA_APPS_MAX_WIDTH}px;
     `}
 `;
 

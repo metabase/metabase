@@ -7,15 +7,26 @@ export const DATA_APPS_MIN_ROW_HEIGHT = 42;
 export const DATA_APPS_GRID_MARGIN = { desktop: [32, 18], mobile: [6, 10] };
 
 const MOBILE_BREAKPOINT = 752;
+const DATA_APP_MOBILE_BREAKPOINT = MOBILE_BREAKPOINT / 2;
 
 export const GRID_BREAKPOINTS = {
   desktop: MOBILE_BREAKPOINT + 1,
   mobile: MOBILE_BREAKPOINT,
 };
 
+export const DATA_APPS_GRID_BREAKPOINTS = {
+  desktop: DATA_APP_MOBILE_BREAKPOINT + 1,
+  mobile: DATA_APP_MOBILE_BREAKPOINT,
+};
+
 export const GRID_COLUMNS = {
   desktop: GRID_WIDTH,
   mobile: 1,
+};
+
+export const GRID_MARGIN = {
+  desktop: [6, 6],
+  mobile: [6, 10],
 };
 
 export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
