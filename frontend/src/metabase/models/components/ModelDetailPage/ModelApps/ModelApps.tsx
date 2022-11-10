@@ -41,7 +41,7 @@ function ModelApps({ dataApps }: Props) {
       {dataApps.map(dataApp => (
         <li key={dataApp.id}>
           <AppListItem to={Urls.dataApp(dataApp)}>
-            <Icon name="star" />
+            <Icon name="app" />
             <AppTitle>{dataApp.collection.name}</AppTitle>
           </AppListItem>
         </li>
