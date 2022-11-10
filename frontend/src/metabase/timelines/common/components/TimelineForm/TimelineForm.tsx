@@ -56,7 +56,7 @@ const TimelineForm = ({
             autoFocus
             fullWidth
           />
-          <FormTextArea name="description" title={t`Description`} fullWidth />
+          <FormTextArea name="description" title={t`Description`} />
           <FormSelect name="icon" title={t`Default icon`} options={icons} />
           <TimelineFormFooter>
             <FormErrorMessage inline />

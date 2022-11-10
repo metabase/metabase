@@ -63,6 +63,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "application-font-files": [],
   "available-fonts": [],
   "available-locales": null,
+  "custom-formatting": {},
   "enable-public-sharing": false,
   "enable-xrays": false,
   "email-configured?": false,
