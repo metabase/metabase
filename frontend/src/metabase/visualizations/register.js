@@ -21,7 +21,7 @@ import MapViz from "./visualizations/Map";
 import ScatterPlot from "./visualizations/ScatterPlot";
 import Funnel from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
-import ObjectDetail from "./components/ObjectDetail";
+import ObjectDetail from "./visualizations/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
 import ListViz from "./visualizations/List";
 

@@ -1,27 +1,35 @@
 import styled from "@emotion/styled";
 import Modal from "metabase/components/Modal";
+import Link from "metabase/core/components/Link";
 import { breakpointMinMedium } from "metabase/styled-components/theme/media-queries";
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
+import TableFooter from "../TableSimple/TableFooter";
 
-interface ObjectDetailModalProps {
+interface ObjectDetailContainerProps {
   wide: boolean;
 }
 
-export const CenteredLayout = styled.div`
-  display: flex;
-  flex: 1;
-  justify-content: center;
-  align-items: center;
-`;
-
-export const ObjectDetailModal = styled.div<ObjectDetailModalProps>`
-  overflow-y: scroll;
+export const ObjectDetailContainer = styled.div<ObjectDetailContainerProps>`
+  overflow-y: auto;
   height: 100%;
+`;
+export const ObjectDetailWrapperDiv = styled.div`
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 `;
 
 export const ObjectDetailBodyWrapper = styled.div`
   font-size: 1rem;
+  flex: 1;
   overflow-y: auto;
+`;
+
+export const ObjectDetailHeaderWrapper = styled.div`
+  flex-shrink: 0;
+  display: flex;
+  position: relative;
+  border-bottom: 1px solid ${color("border")};
 `;
 
 export const ObjectIdLabel = styled.span`
@@ -74,7 +82,7 @@ export const GridCell = styled.div<GridItemProps>`
 `;
 
 export const RootModal = styled(Modal)`
-  ${ObjectDetailModal} {
+  ${ObjectDetailContainer} {
     overflow: hidden;
     ${breakpointMinMedium} {
       width: ${({ wide }) => (wide ? "64rem" : "48rem")};
@@ -124,5 +132,22 @@ export const ObjectRelationContent = styled.div<ObjectRelationshipContentProps>`
 
   &:hover {
     color: ${props => props.isClickable && color("brand")};
+  }
+`;
+
+export const PaginationFooter = styled(TableFooter)`
+  margin-top: 0.5rem;
+  text-align: right;
+`;
+
+export const QuestionLink = styled(Link)`
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 1;
+  text-align: right;
+  color: ${color("brand")};
+  &:hover {
+    color: ${lighten("brand", 0.1)};
   }
 `;

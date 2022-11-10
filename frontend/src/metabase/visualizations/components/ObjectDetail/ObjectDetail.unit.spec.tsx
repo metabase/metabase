@@ -94,6 +94,7 @@ describe("Object Detail", () => {
         zoomedRowID={0}
         tableForeignKeys={[]}
         tableForeignKeyReferences={[]}
+        showHeader
         settings={{
           column: () => null,
         }}

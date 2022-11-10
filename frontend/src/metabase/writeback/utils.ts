@@ -111,11 +111,18 @@ export const shouldPrefetchValues = (action: WritebackAction) => {
   return action.slug === "update";
 };
 
+const VIZ_TYPES_TO_HIDE_HEADER = ["object"];
+const VIZ_TYPES_TO_HIDE_HEADER_IN_APPS = ["object", "list"];
+
 export const shouldHideDashcardHeader = (
   dashboard: Dashboard,
   dashcard: DashCard,
-): boolean =>
-  !!(
-    dashboard.is_app_page &&
-    ["list", "object"].includes(dashcard?.card?.display ?? "")
-  );
+): boolean => {
+  const headerHiddenVizTypes = dashboard.is_app_page
+    ? VIZ_TYPES_TO_HIDE_HEADER_IN_APPS
+    : VIZ_TYPES_TO_HIDE_HEADER;
+
+  const dashcardDisplayType = dashcard?.card?.display ?? "";
+
+  return headerHiddenVizTypes.includes(dashcardDisplayType);
+};
