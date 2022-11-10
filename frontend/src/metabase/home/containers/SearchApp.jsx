@@ -31,7 +31,7 @@ const SEARCH_FILTERS = [
   {
     name: t`Apps`,
     filter: "app",
-    icon: "star",
+    icon: "app",
   },
   {
     name: t`Dashboards`,
