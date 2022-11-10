@@ -512,38 +512,67 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(defn- largest-range
-  [{:keys [fingerprint]}]
-  (let [{mn :min mx :max} (get-in fingerprint [:type :type/Number])]
-    (- mx mn)))
-
 (defn- overlap
+  "calculate the overlap, a value between 0 and 1, of the ranges of 2 columns.
+  This overlap value can be checked against `axis-group-threshold` to determine when columns can reasonably share a y-axis.
+  Consider two ranges, with min and max values:
+
+   min-a = 0                                 max-a = 43
+     *-----------------------------------------*
+                                                      min-b = 52             max-b = 75
+                                                        *----------------------*
+  The overlap above is 0. The mirror case where col-b is entirely less than col-a, and also has 0 overlap.
+  Otherwise, overlap is calculated as follows:
+
+     min-a = 0                                 max-a = 43
+     *-----------------------------------------*
+     |     min-b = 8                           |             max-b = 59
+     |       *---------------------------------|---------------*
+     |       |                                 |               |
+     |       |- overlap-width = (- 43 8) = 35 -|               |
+     |                                                         |
+     |--------- max-width = (- 59 0) = 59 ---------------------|
+
+  overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59
+
+  Another scenario, with a similar result may look as follows:
+
+     min-a = 0                                                 max-a = 59
+     *---------------------------------------------------------*
+     |     min-b = 8                         max-b = 43        |
+     |       *---------------------------------*               |
+     |       |                                 |               |
+     |       |- overlap-width = (- 43 8) = 35 -|               |
+     |                                                         |
+     |--------- max-width = (- 59 0) = 59 ---------------------|
+
+  overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59
+"
   [col-a col-b]
-  (let [[col-a col-b] (reverse (sort-by largest-range [col-a col-b]))
-        [min-a min-b] (map #(get-in % [:fingerprint :type :type/Number :min]) [col-a col-b])
+  (let [[min-a min-b] (map #(get-in % [:fingerprint :type :type/Number :min]) [col-a col-b])
         [max-a max-b] (map #(get-in % [:fingerprint :type :type/Number :max]) [col-a col-b])
         [a b c d] (sort [min-a min-b max-a max-b])
         max-width (- d a)
         overlap-width (- c b)]
-    (cond
-      ;; the smaller range is completely ahead of the larger range
-      (and (< max-a min-b) (< max-a max-b)) 0
-      ;; the smaller range is completely behind the larger range
-      (and (> min-a min-b) (> min-a max-b)) 0
-      ;; there is some overlap, so what's the percentage overlap of the whole width of both ranges?
-      :else (/ overlap-width max-width))))
+    (if (or (and (< max-a min-b) (< max-a max-b))
+            (and (> min-a min-b) (> min-a max-b)))
+      ;; the smaller range is completely ahead of or behind the larger range
+       0
+      ;; there is some overlap, so what's the overlap of the whole width of both ranges?
+      (/ overlap-width max-width))))
 
 (defn- group-axes
   [cols-meta group-threshold]
   (let [cols-by-type (group-by (juxt :base_type :effective_type :semantic_type) cols-meta)]
     (when (not= (count cols-by-type) (count cols-meta))
-      (let [num? (fn [[k _]] (isa? (first k) :type/Number))
-            number-type-cols (mapcat second (filter num? cols-by-type))
-            other-type-cols (mapcat second (remove num? cols-by-type))
-            first-axis (first number-type-cols)
-            grouped-number-cols (-> (group-by #(> (overlap first-axis %) group-threshold) number-type-cols)
-                                    (update-keys {true :left false :right}))]
-        (merge grouped-number-cols {:bottom other-type-cols})))))
+      (let [num?               (fn [[[col-type]]] (isa? col-type :type/Number))
+            {num-cols   true
+             other-cols false} (-> (group-by num? cols-by-type)
+                                   (update-vals #(mapcat second %)))
+            first-axis         (first num-cols)
+            grouped-num-cols   (-> (group-by #(> (overlap first-axis %) group-threshold) num-cols)
+                                   (update-keys {true :left false :right}))]
+        (merge grouped-num-cols {:bottom other-cols})))))
 
 (defn default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
@@ -585,7 +614,7 @@
                                 :width   :100%})
            :src   (:image-src image-bundle)}]]})
 
-(def ^:dynamic *axis-group-threshold* 0.5)
+(def ^:private axis-group-threshold 0.33)
 
 (defn- render-multiple-lab-chart
   "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
@@ -609,7 +638,7 @@
         colors        (take (count multi-data) colors)
         types         (replace {:scalar :bar} (map :display cards))
         settings      (->ts-viz x-col y-col labels viz-settings)
-        y-pos         (take (count names) (default-y-pos data *axis-group-threshold*))
+        y-pos         (take (count names) (default-y-pos data axis-group-threshold))
         series        (join-series names colors types row-seqs y-pos)]
     (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
 
@@ -666,7 +695,7 @@
                             (nth default-combo-chart-types idx))
           selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
-                            (nth (default-y-pos data *axis-group-threshold*) idx))]
+                            (nth (default-y-pos data axis-group-threshold) idx))]
       {:name          card-name
        :color         card-color
        :type          card-type
@@ -694,7 +723,7 @@
                                    chart-type
                                    (nth default-combo-chart-types idx))
             y-axis-pos         (or (series-setting viz-settings group-key :axis)
-                                   (nth (default-y-pos data *axis-group-threshold*) idx))]
+                                   (nth (default-y-pos data axis-group-threshold) idx))]
         {:name          card-name
          :color         card-color
          :type          card-type
