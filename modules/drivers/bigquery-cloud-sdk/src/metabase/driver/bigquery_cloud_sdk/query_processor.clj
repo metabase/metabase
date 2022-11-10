@@ -291,8 +291,9 @@
         (do
           (log/tracef "Coercing %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (pr-str (temporal-type x)) bigquery-type)
           (let [expr (sql.qp/->honeysql :bigquery-cloud-sdk x)]
-            (if-let [report-zone (when (= bigquery-type :timestamp) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
-              (with-temporal-type (hsql/call :timestamp expr (hx/literal report-zone)) target-type)
+            (if-let [report-zone (when (contains? #{bigquery-type (temporal-type hsql-form)} :timestamp)
+                                   (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
+              (with-temporal-type (hsql/call target-type expr (hx/literal report-zone)) target-type)
               (with-temporal-type (hsql/call bigquery-type expr) target-type))))
 
         :else
