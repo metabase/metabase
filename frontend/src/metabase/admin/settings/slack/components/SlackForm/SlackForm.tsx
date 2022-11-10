@@ -9,7 +9,7 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { SlackSettings } from "metabase-types/api";
 import { SlackFormMessage } from "./SlackForm.styled";
 
-const SlackSchema = Yup.object({
+const SLACK_SCHEMA = Yup.object({
   "slack-app-token": Yup.string().required(t`required`),
   "slack-files-channel": Yup.string().required(t`required`),
 });
@@ -28,7 +28,7 @@ const SlackForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={!isReadOnly ? SlackSchema : undefined}
+      validationSchema={!isReadOnly ? SLACK_SCHEMA : undefined}
       onSubmit={onSubmit}
     >
       <Form>
