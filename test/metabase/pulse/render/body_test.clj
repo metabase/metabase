@@ -122,7 +122,7 @@
                     :base_type       :type/DateTime
                     :semantic_type    nil
                     :visibility_type :normal
-                    :field_ref       [:field-id 321]}
+                    :field_ref       [:field 321 nil]}
                    {:name            "name"
                     :display_name    "Name"
                     :base_type       :type/Text

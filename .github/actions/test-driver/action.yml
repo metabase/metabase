@@ -1,0 +1,25 @@
+name: Test database driver
+inputs:
+  junit-name:
+    required: true
+    default: 'driver'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+    - name: Build static viz frontend
+      run: yarn build-static-viz
+      shell: bash
+    - name: Test database driver
+      run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test
+      shell: bash
+    - name: Publish Test Report (JUnit)
+      uses: mikepenz/action-junit-report@v2
+      if: always()
+      with:
+        report_paths: 'target/junit/**/*_test.xml'
+        check_name: JUnit Test Report ${{ inputs.junit-name }}

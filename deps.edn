@@ -129,7 +129,7 @@
   org.slf4j/slf4j-api                       {:mvn/version "1.7.36"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.7.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
-  org.yaml/snakeyaml                        {:mvn/version "1.30"}               ; YAML parser
+  org.yaml/snakeyaml                        {:mvn/version "1.33"}               ; YAML parser
   potemkin/potemkin                         {:mvn/version "0.4.5"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed

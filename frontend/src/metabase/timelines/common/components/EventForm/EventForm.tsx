@@ -11,7 +11,11 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import { Timeline, TimelineEventData } from "metabase-types/api";
+import {
+  FormattingSettings,
+  Timeline,
+  TimelineEventData,
+} from "metabase-types/api";
 import FormArchiveButton from "../FormArchiveButton";
 import { EventFormFooter } from "./EventForm.styled";
 
@@ -29,7 +33,7 @@ const EventSchema = Yup.object({
   timeline_id: Yup.number(),
 });
 
-export interface EventFormProps {
+export interface EventFormOwnProps {
   initialValues: TimelineEventData;
   timelines?: Timeline[];
   onSubmit: (data: TimelineEventData) => void;
@@ -37,14 +41,22 @@ export interface EventFormProps {
   onCancel?: () => void;
 }
 
+export interface EventFormStateProps {
+  formattingSettings?: FormattingSettings;
+}
+
+export type EventFormProps = EventFormOwnProps & EventFormStateProps;
+
 const EventForm = ({
   initialValues,
   timelines = [],
+  formattingSettings,
   onSubmit,
   onArchive,
   onCancel,
 }: EventFormProps): JSX.Element => {
   const isNew = initialValues.id == null;
+  const dateSettings = formattingSettings?.["type/Temporal"];
 
   const iconOptions = useMemo(() => {
     return getTimelineIcons();
@@ -72,6 +84,8 @@ const EventForm = ({
             name="timestamp"
             title={t`Date`}
             hasTime={values.time_matters}
+            dateFormat={dateSettings?.date_style}
+            timeFormat={dateSettings?.time_style}
             onHasTimeChange={value => setFieldValue("time_matters", value)}
           />
           <FormTextArea
@@ -79,7 +93,6 @@ const EventForm = ({
             title={t`Description`}
             infoLabel={t`Markdown supported`}
             infoTooltip={t`Add links and formatting via markdown`}
-            fullWidth
           />
           <FormSelect name="icon" title={t`Icon`} options={iconOptions} />
           {timelines.length > 1 && (
