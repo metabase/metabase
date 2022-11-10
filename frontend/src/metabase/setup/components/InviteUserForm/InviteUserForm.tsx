@@ -55,12 +55,14 @@ const InviteUserForm = ({
             name="first_name"
             title={t`First name`}
             placeholder={t`Johnny`}
+            nullable
             autoFocus
           />
           <FormInput
             name="last_name"
             title={t`Last name`}
             placeholder={t`Appleseed`}
+            nullable
           />
         </UserFieldGroup>
         <FormInput
