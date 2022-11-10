@@ -31,9 +31,10 @@ export interface GoogleSettings {
   [DOMAIN_KEY]: string | null;
 }
 
-const GoogleSettingsSchema = Yup.object({
-  [CLIENT_ID_KEY]: Yup.string().required(t`required`),
-  [DOMAIN_KEY]: Yup.string(),
+const GOOGLE_SETTINGS_SCHEMA = Yup.object({
+  [ENABLED_KEY]: Yup.boolean().default(false),
+  [CLIENT_ID_KEY]: Yup.string().nullable().default(null),
+  [DOMAIN_KEY]: Yup.string().nullable().default(null),
 });
 
 export interface GoogleSettingsFormProps {
@@ -49,19 +50,18 @@ const GoogleSettingsForm = ({
   hasMultipleDomains,
   onSubmit,
 }: GoogleSettingsFormProps): JSX.Element => {
-  const isEnabled = settingValues[ENABLED_KEY];
-
   const settings = useMemo(() => {
     return _.indexBy(elements, "key");
   }, [elements]);
 
   const initialValues = useMemo(() => {
-    return getInitialValues(settingValues);
+    return GOOGLE_SETTINGS_SCHEMA.cast(settingValues, { stripUnknown: true });
   }, [settingValues]);
 
   const handleSubmit = useCallback(
     (values: GoogleSettings) => {
-      return onSubmit(getSubmitValues(values));
+      const isValid = GOOGLE_SETTINGS_SCHEMA.isValidSync(values);
+      return onSubmit({ ...values, [ENABLED_KEY]: isValid });
     },
     [onSubmit],
   );
@@ -69,11 +69,11 @@ const GoogleSettingsForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={GoogleSettingsSchema}
+      validationSchema={GOOGLE_SETTINGS_SCHEMA}
       enableReinitialize
       onSubmit={handleSubmit}
     >
-      {({ dirty }) => (
+      {({ dirty, values }) => (
         <GoogleForm disabled={!dirty}>
           <Breadcrumbs crumbs={BREADCRUMBS} />
           <GoogleFormHeader>{t`Sign in with Google`}</GoogleFormHeader>
@@ -91,6 +91,7 @@ const GoogleSettingsForm = ({
             name={CLIENT_ID_KEY}
             title={t`Client ID`}
             placeholder={t`{your-client-id}.apps.googleusercontent.com`}
+            nullable
             {...getSettingOverrides(settings[CLIENT_ID_KEY])}
           />
           <FormInput
@@ -106,10 +107,11 @@ const GoogleSettingsForm = ({
                 ? "mycompany.com, example.com.br, otherdomain.co.uk"
                 : "mycompany.com"
             }
+            nullable
             {...getSettingOverrides(settings[DOMAIN_KEY])}
           />
           <FormSubmitButton
-            title={isEnabled ? t`Save changes` : t`Save and enable`}
+            title={getSubmitTitle(values)}
             primary
             disabled={!dirty}
           />
@@ -120,16 +122,18 @@ const GoogleSettingsForm = ({
   );
 };
 
-const getInitialValues = (values: Partial<GoogleSettings>): GoogleSettings => ({
-  [ENABLED_KEY]: true,
-  [CLIENT_ID_KEY]: values[CLIENT_ID_KEY] || "",
-  [DOMAIN_KEY]: values[DOMAIN_KEY] || "",
-});
+const getSubmitTitle = (values: GoogleSettings) => {
+  const isEnabled = values[ENABLED_KEY];
+  const isValid = GOOGLE_SETTINGS_SCHEMA.isValidSync(values);
 
-const getSubmitValues = (values: GoogleSettings): GoogleSettings => ({
-  ...values,
-  [DOMAIN_KEY]: values[DOMAIN_KEY] || null,
-});
+  if (isEnabled && !isValid) {
+    return t`Save and disable`;
+  } else if (!isEnabled && isValid) {
+    return t`Save and enable`;
+  } else {
+    return t`Save changes`;
+  }
+};
 
 const getSettingOverrides = (setting?: SettingDefinition) => {
   if (setting?.is_env_setting) {
