@@ -1,16 +1,12 @@
 import React from "react";
-import _ from "underscore";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
-import { isNotNull } from "metabase/core/utils/array";
-import { getColorsForValues } from "metabase/lib/colors/charts";
-import { formatStaticValue } from "metabase/static-viz/lib/format-static-value";
-import { colors } from "metabase/lib/colors/palette";
+import { colors } from "metabase/lib/colors";
 import { XYChart } from "../XYChart";
 import {
   ChartSettings,
   ChartStyle,
-  Series,
   SeriesWithBreakoutValues,
+  SeriesWithoutBreakoutValues,
 } from "../XYChart/types";
 import { Colors } from "./types";
 import {
@@ -18,9 +14,10 @@ import {
   calculateChartSize,
   getXValuesCount,
 } from "./utils/settings";
+import { getSeriesWithColors } from "./utils/series";
 
 interface LineAreaBarChartProps {
-  series: Series[];
+  series: (SeriesWithBreakoutValues | SeriesWithoutBreakoutValues)[];
   settings: ChartSettings;
   colors: Colors;
   getColor: ColorGetter;
@@ -62,7 +59,13 @@ const LineAreaBarChart = ({
   };
 
   const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;
-  const xValuesCount = getXValuesCount(multipleSeries);
+  const palette = { ...colors, ...instanceColors };
+  const seriesWithColors = getSeriesWithColors(
+    multipleSeries,
+    palette,
+    settings,
+  );
+  const xValuesCount = getXValuesCount(seriesWithColors);
   const chartSize = calculateChartSize(settings, xValuesCount, minTickSize);
   const adjustedSettings = adjustSettings(
     settings,
@@ -70,31 +73,6 @@ const LineAreaBarChart = ({
     minTickSize,
     chartSize,
   );
-
-  const keys = multipleSeries
-    .map(series => {
-      if (hasBreakoutValues(series)) {
-        return formatStaticValue(series.name, {
-          column: series.column,
-        });
-      }
-
-      return series.seriesKey;
-    })
-    .filter(isNotNull);
-  const palette = { ...colors, ...instanceColors };
-  const seriesColors = settings.series_settings
-    ? _.mapObject(settings.series_settings, value => {
-        return value.color;
-      })
-    : undefined;
-  const chartColors = getColorsForValues(keys, seriesColors, palette);
-  const seriesWithColors = multipleSeries.map((singleSeries, index) => {
-    return {
-      ...singleSeries,
-      color: chartColors[keys[index]],
-    };
-  });
 
   return (
     <XYChart
@@ -106,9 +84,5 @@ const LineAreaBarChart = ({
     />
   );
 };
-
-function hasBreakoutValues(series: Series): series is SeriesWithBreakoutValues {
-  return Boolean((series as SeriesWithBreakoutValues).column);
-}
 
 export default LineAreaBarChart;

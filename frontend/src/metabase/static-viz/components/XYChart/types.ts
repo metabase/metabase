@@ -18,13 +18,12 @@ export type VisualizationType = "line" | "area" | "bar" | "waterfall";
 
 interface BaseSeries {
   name: string;
-  color: string;
   data: SeriesData;
   type: VisualizationType;
   yAxisPosition: YAxisPosition;
 }
 
-interface SeriesWithoutBreakoutValues extends BaseSeries {
+export interface SeriesWithoutBreakoutValues extends BaseSeries {
   seriesKey: string;
 }
 
@@ -32,7 +31,9 @@ export interface SeriesWithBreakoutValues extends BaseSeries {
   column: DatasetColumn;
 }
 
-export type Series = SeriesWithoutBreakoutValues | SeriesWithBreakoutValues;
+export interface Series extends BaseSeries {
+  color: string;
+}
 
 export type StackedDatum = [XValue, YValue, YValue];
 
