@@ -373,6 +373,39 @@
             (is (= :completed
                    (:status (qp/process-query query))))))))))
 
+(deftest temporal-type-conversion-test
+  (mt/with-driver :bigquery-cloud-sdk
+    (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (let [temporal-string "2022-01-01"
+            convert         (fn [from-t to-t]
+                              (->> (#'bigquery.qp/->temporal-type to-t (#'bigquery.qp/->temporal-type from-t temporal-string))
+                                   (sql.qp/format-honeysql :bigquery-cloud-sdk)))]
+        (testing "convert from datetime to different temporal types"
+          (testing :time
+            (is (= ["time(datetime(?))" temporal-string]
+                   (convert :datetime :time))))
+          (testing :date
+            (is (= ["date(datetime(?))" temporal-string]
+                   (convert :datetime :date))))
+          (testing :timestamp
+            (is (= ["timestamp(datetime(?), 'US/Pacific')" temporal-string]
+                   (convert :datetime :timestamp)))))
+        (testing "convert from date to different temporal types"
+          (testing :time
+            (is (= ["time(date(?))" temporal-string]
+                   (convert :date :time))))
+          (testing :datetime
+            (is (= ["datetime(date(?))" temporal-string]
+                   (convert :date :datetime))))
+          (testing :timestamp
+            (is (= ["timestamp(date(?), 'US/Pacific')" temporal-string]
+                   (convert :date :timestamp)))))
+        (testing "convert from timestamp to different temporal types"
+          (doseq [to-t [:time :date :datetime]]
+            (testing to-t
+              (is (= [(str (name to-t) "(timestamp(?, 'US/Pacific'), 'US/Pacific')") temporal-string]
+                     (convert :timestamp to-t))))))))))
+
 (deftest reconcile-relative-datetimes-test
   (mt/with-driver :bigquery-cloud-sdk
     (testing "relative-datetime clauses on their own"
