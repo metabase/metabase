@@ -1,6 +1,7 @@
 (ns metabase.analytics.snowplow
   "Functions for sending Snowplow analytics events"
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
             [metabase.config :as config]
@@ -132,15 +133,23 @@
    ::timeline  "1-0-0"
    ::task      "1-0-0"})
 
+(defn app-db-version
+  "Returns the version of the Metabase application database as a string"
+  []
+  (clojure.java.jdbc/with-db-metadata [metadata (db/connection)]
+    (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))))
+
 (defn- context
   "Common context included in every analytics event"
   []
   (new SelfDescribingJson
        (str "iglu:com.metabase/instance/jsonschema/" (schema->version ::instance))
-       {"id"             (analytics-uuid)
-        "version"        {"tag" (:tag (public-settings/version))}
-        "token_features" (m/map-keys name (public-settings/token-features))
-        "created_at"     (instance-creation)}))
+       {"id"                           (analytics-uuid)
+        "version"                      {"tag" (:tag (public-settings/version))}
+        "token_features"               (m/map-keys name (public-settings/token-features))
+        "created_at"                   (instance-creation)
+        "application_database"         (config/config-str :mb-db-type)
+        "application_database_version" (app-db-version)}))
 
 (defn- normalize-kw
   [kw]
