@@ -103,40 +103,39 @@ describe("sortSeries", () => {
 });
 
 describe("calculateStackedItems", () => {
-  const series: Series[] = [
-    {
-      name: "series 1",
-      color: "#509ee3",
-      yAxisPosition: "left",
-      type: "area",
-      data: [
-        ["2020-10-18", 10],
-        ["2020-10-19", -10],
-      ],
-    },
-    {
-      name: "series 2",
-      color: "#a989c5",
-      yAxisPosition: "left",
-      type: "area",
-      data: [
-        ["2020-10-18", 20],
-        ["2020-10-19", -20],
-      ],
-    },
-    {
-      name: "series 3",
-      color: "#ef8c8c",
-      yAxisPosition: "left",
-      type: "area",
-      data: [
-        ["2020-10-18", -30],
-        ["2020-10-19", 30],
-      ],
-    },
-  ];
-
   it("calculates stacked items separating positive and negative values", () => {
+    const series: Series[] = [
+      {
+        name: "series 1",
+        color: "#509ee3",
+        yAxisPosition: "left",
+        type: "area",
+        data: [
+          ["2020-10-18", 10],
+          ["2020-10-19", -10],
+        ],
+      },
+      {
+        name: "series 2",
+        color: "#a989c5",
+        yAxisPosition: "left",
+        type: "area",
+        data: [
+          ["2020-10-18", 20],
+          ["2020-10-19", -20],
+        ],
+      },
+      {
+        name: "series 3",
+        color: "#ef8c8c",
+        yAxisPosition: "left",
+        type: "area",
+        data: [
+          ["2020-10-18", -30],
+          ["2020-10-19", 30],
+        ],
+      },
+    ];
     const stackedSeries = calculateStackedItems(series);
 
     /**
@@ -158,6 +157,68 @@ describe("calculateStackedItems", () => {
       [
         ["2020-10-18", 30, 10],
         ["2020-10-19", -30, -10],
+      ],
+      [
+        ["2020-10-18", -30, 0],
+        ["2020-10-19", 30, 0],
+      ],
+    ]);
+  });
+
+  it("calculates stacked items separating positive and negative values even when data has gaps #20752", () => {
+    const stackedSeriesWithGaps: Series[] = [
+      {
+        name: "series 1",
+        color: "#509ee3",
+        yAxisPosition: "left",
+        type: "area",
+        data: [
+          ["2020-10-18", 10],
+          ["2020-10-19", -10],
+        ],
+      },
+      {
+        name: "series 2",
+        color: "#a989c5",
+        yAxisPosition: "left",
+        type: "area",
+        data: [
+          ["2020-10-19", -20],
+          ["2020-10-20", 20],
+        ],
+      },
+      {
+        name: "series 3",
+        color: "#ef8c8c",
+        yAxisPosition: "left",
+        type: "area",
+        data: [
+          ["2020-10-18", -30],
+          ["2020-10-19", 30],
+        ],
+      },
+    ];
+    const stackedSeries = calculateStackedItems(stackedSeriesWithGaps);
+
+    /**
+     *
+     *  30|  -   3   -
+     *  20|  -   3   2
+     *  10|  1   3   2
+     *     ---------
+     * -10|  3   1   -
+     * -20|  3   2   -
+     * -30|  3   2   -
+     *
+     */
+    expect(stackedSeries.map(s => s.stackedData)).toStrictEqual([
+      [
+        ["2020-10-18", 10, 0],
+        ["2020-10-19", -10, 0],
+      ],
+      [
+        ["2020-10-19", -30, -10],
+        ["2020-10-20", 20, 0],
       ],
       [
         ["2020-10-18", -30, 0],
