@@ -107,6 +107,7 @@ export default class FunnelNormal extends Component {
               column: cols[dimensionIndex],
             },
           ],
+          settings,
         },
       };
     });
