@@ -145,6 +145,24 @@
         (testing title
           (is (= expected (test-temporal-extract query))))))))
 
+(deftest temporal-extraction-with-datetime-arithmetic-expression-tests
+  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract :expressions)
+    (mt/dataset times-mixed
+      (doseq [{:keys [title expected query]}
+              [{:title    "Nested interval addition expression"
+                :expected [2005]
+                :query    {:expressions {"expr" [:abs [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]]]}
+                           :filter      [:= [:field (mt/id :times :index) nil] 1]
+                           :fields      [[:expression "expr"]]}}
+
+               {:title    "Interval addition nested in numeric addition"
+                :expected [2006]
+                :query    {:expressions {"expr" [:+ [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]] 1]}
+                           :filter      [:= [:field (mt/id :times :index) nil] 1]
+                           :fields      [[:expression "expr"]]}}]]
+        (testing title
+          (is (= expected (test-temporal-extract query))))))))
+
 (defmacro with-start-of-week
   "With start of week."
   [start-of-week & body]
