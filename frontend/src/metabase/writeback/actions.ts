@@ -1,9 +1,6 @@
 import { ActionsApi } from "metabase/services";
 
-import DataApps, {
-  getChildNavItems,
-  isTopLevelNavItem,
-} from "metabase/entities/data-apps";
+import DataApps, { getChildNavItems } from "metabase/entities/data-apps";
 import Dashboards from "metabase/entities/dashboards";
 
 import type { DataApp, DataAppPage } from "metabase-types/api";
