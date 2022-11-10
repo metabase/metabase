@@ -603,9 +603,9 @@
      :type          card-type
      :data          rows
      :yAxisPosition y-axis-position
-     :seriesKey     (cond
-                      (= idx 0) (:name y-col)
-                      :else card-name)}))
+     :seriesKey     (if (zero? idx)
+                      (:name y-col)
+                      card-name)}))
 
 (defn- attach-image-bundle
   [image-bundle]
