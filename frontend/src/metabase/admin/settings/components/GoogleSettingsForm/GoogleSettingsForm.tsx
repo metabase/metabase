@@ -31,10 +31,14 @@ export interface GoogleSettings {
   [DOMAIN_KEY]: string | null;
 }
 
-const GOOGLE_SETTINGS_SCHEMA = Yup.object({
+const DRAFT_SCHEMA = Yup.object({
   [ENABLED_KEY]: Yup.boolean().default(false),
   [CLIENT_ID_KEY]: Yup.string().nullable().default(null),
   [DOMAIN_KEY]: Yup.string().nullable().default(null),
+});
+
+const VALID_SCHEMA = DRAFT_SCHEMA.shape({
+  [CLIENT_ID_KEY]: Yup.string().required(t`required`),
 });
 
 export interface GoogleSettingsFormProps {
@@ -55,12 +59,12 @@ const GoogleSettingsForm = ({
   }, [elements]);
 
   const initialValues = useMemo(() => {
-    return GOOGLE_SETTINGS_SCHEMA.cast(settingValues, { stripUnknown: true });
+    return DRAFT_SCHEMA.cast(settingValues, { stripUnknown: true });
   }, [settingValues]);
 
   const handleSubmit = useCallback(
     (values: GoogleSettings) => {
-      const isValid = GOOGLE_SETTINGS_SCHEMA.isValidSync(values);
+      const isValid = VALID_SCHEMA.isValidSync(values);
       return onSubmit({ ...values, [ENABLED_KEY]: isValid });
     },
     [onSubmit],
@@ -69,7 +73,6 @@ const GoogleSettingsForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={GOOGLE_SETTINGS_SCHEMA}
       enableReinitialize
       onSubmit={handleSubmit}
     >
@@ -92,7 +95,7 @@ const GoogleSettingsForm = ({
             title={t`Client ID`}
             placeholder={t`{your-client-id}.apps.googleusercontent.com`}
             nullable
-            {...getSettingOverrides(settings[CLIENT_ID_KEY])}
+            {...getFormFieldProps(settings[CLIENT_ID_KEY])}
           />
           <FormInput
             name={DOMAIN_KEY}
@@ -108,11 +111,10 @@ const GoogleSettingsForm = ({
                 : "mycompany.com"
             }
             nullable
-            {...getSettingOverrides(settings[DOMAIN_KEY])}
+            {...getFormFieldProps(settings[DOMAIN_KEY])}
           />
           <FormSubmitButton
-            title={getSubmitTitle(values)}
-            primary
+            {...getSubmitButtonProps(values)}
             disabled={!dirty}
           />
           <FormErrorMessage />
@@ -122,22 +124,22 @@ const GoogleSettingsForm = ({
   );
 };
 
-const getSubmitTitle = (values: GoogleSettings) => {
-  const isEnabled = values[ENABLED_KEY];
-  const isValid = GOOGLE_SETTINGS_SCHEMA.isValidSync(values);
-
-  if (isEnabled && !isValid) {
-    return t`Save and disable`;
-  } else if (!isEnabled && isValid) {
-    return t`Save and enable`;
-  } else {
-    return t`Save changes`;
+const getFormFieldProps = (setting?: SettingDefinition) => {
+  if (setting?.is_env_setting) {
+    return { placeholder: t`Using ${setting.env_name}`, readOnly: true };
   }
 };
 
-const getSettingOverrides = (setting?: SettingDefinition) => {
-  if (setting?.is_env_setting) {
-    return { placeholder: t`Using ${setting.env_name}`, readOnly: true };
+const getSubmitButtonProps = (values: GoogleSettings) => {
+  const isEnabled = values[ENABLED_KEY];
+  const isValid = VALID_SCHEMA.isValidSync(values);
+
+  if (isEnabled && !isValid) {
+    return { title: t`Save and disable`, danger: true };
+  } else if (!isEnabled && isValid) {
+    return { title: t`Save and enable`, primary: true };
+  } else {
+    return { title: t`Save changes`, primary: true };
   }
 };
 
