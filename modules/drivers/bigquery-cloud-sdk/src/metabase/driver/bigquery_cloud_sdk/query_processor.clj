@@ -293,7 +293,7 @@
           (let [expr (sql.qp/->honeysql :bigquery-cloud-sdk x)]
             (if-let [report-zone (when (contains? #{bigquery-type (temporal-type hsql-form)} :timestamp)
                                    (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
-              (with-temporal-type (hsql/call target-type expr (hx/literal report-zone)) target-type)
+              (with-temporal-type (hsql/call bigquery-type expr (hx/literal report-zone)) target-type)
               (with-temporal-type (hsql/call bigquery-type expr) target-type))))
 
         :else
