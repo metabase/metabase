@@ -1,4 +1,4 @@
-import { useContext, useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 import useFormContext from "metabase/core/hooks/use-form-context";
