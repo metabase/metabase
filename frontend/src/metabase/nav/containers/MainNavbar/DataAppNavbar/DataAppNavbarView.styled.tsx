@@ -22,5 +22,5 @@ export const NavItemsList = styled.ul`
   height: 3rem;
 
   white-space: nowrap;
-  overflow-x: scroll;
+  overflow-x: auto;
 `;
