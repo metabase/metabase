@@ -38,7 +38,7 @@ const FormInput = forwardRef(function FormInput(
 
   const handleChange = useCallback(
     ({ target: { value } }: ChangeEvent<HTMLInputElement>) => {
-      setValue(!value && nullable ? null : value);
+      setValue(value === "" && nullable ? null : value);
     },
     [nullable, setValue],
   );
