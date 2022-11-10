@@ -33,8 +33,6 @@ const defaultConfig = {
 
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
-    require("@cypress/grep/src/plugin")(config);
-
     /********************************************************************
      **                        PREPROCESSOR                            **
      ********************************************************************/
@@ -72,6 +70,9 @@ const defaultConfig = {
         "frontend/test/snapshot-creators/qa-db.cy.snap.js";
     }
 
+    // `grepIntegrationFolder` needs to point to the root!
+    // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
+    config.env.grepIntegrationFolder = "../../../../";
     config.env.grepFilterSpecs = true;
 
     config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
@@ -79,6 +80,8 @@ const defaultConfig = {
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
     config.env.TARGET_VERSION = targetVersion;
+
+    require("@cypress/grep/src/plugin")(config);
 
     return config;
   },
