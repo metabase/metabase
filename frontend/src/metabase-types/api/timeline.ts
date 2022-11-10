@@ -48,7 +48,7 @@ export interface TimelineEventData {
   name: string;
   description: string | null;
   icon: string;
-  timestamp?: string;
+  timestamp: string;
   timezone: string;
   time_matters: boolean;
   archived: boolean;

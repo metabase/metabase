@@ -28,7 +28,7 @@ const NewTimelineModal = ({
 
   const handleSubmit = useCallback(
     async (values: TimelineData) => {
-      await onSubmit(getSubmitValues(values), collection);
+      await onSubmit(values, collection);
       onSubmitSuccess?.();
     },
     [collection, onSubmit, onSubmitSuccess],
@@ -50,16 +50,11 @@ const NewTimelineModal = ({
 
 const getInitialValues = (collection: Collection): TimelineData => ({
   name: "",
-  description: "",
+  description: null,
   collection_id: canonicalCollectionId(collection.id),
   icon: getDefaultTimelineIcon(),
   default: false,
   archived: false,
-});
-
-const getSubmitValues = (values: TimelineData): TimelineData => ({
-  ...values,
-  description: values.description || null,
 });
 
 export default NewTimelineModal;
