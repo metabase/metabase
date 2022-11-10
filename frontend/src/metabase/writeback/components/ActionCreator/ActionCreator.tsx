@@ -105,7 +105,7 @@ function ActionCreatorComponent({
 
   const handleExampleClick = () => {
     const sampleQuery =
-      "UPDATE my_table_name\nSET my_column_name = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
+      "UPDATE products\nSET rating = {{ my_new_value }}\nWHERE id = {{ my_primary_key }}";
     setQuestion(
       question.setQuery(query.setQueryText(query.queryText() + sampleQuery)),
     );
@@ -132,10 +132,10 @@ function ActionCreatorComponent({
               </EditorContainer>
               <ModalActions>
                 <Button onClick={onClose} borderless>
-                  Cancel
+                  {t`Cancel`}
                 </Button>
                 <Button primary onClick={() => setShowSaveModal(true)}>
-                  Save
+                  {t`Save`}
                 </Button>
               </ModalActions>
             </ModalLeft>

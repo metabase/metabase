@@ -17,7 +17,7 @@ export const EmptyFormPlaceholder = ({
   onExampleClick: () => void;
 }) => (
   <EmptyFormPlaceholderWrapper>
-    <IconContainer className="text-brand p2 relative inline-block">
+    <IconContainer>
       <Icon name="sql" size={62} />
       <TopRightIcon name="insight" size={24} />
     </IconContainer>

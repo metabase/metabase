@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -57,6 +57,16 @@ function ModelActionDetails({
     await enableImplicitActionsForModel(modelId);
   };
 
+  const handleItemClick = useCallback(
+    (action: WritebackAction) => {
+      if (!isImplicitAction(action)) {
+        setEditingActionId(action.id);
+        toggleIsActionCreatorVisible();
+      }
+    },
+    [toggleIsActionCreatorVisible],
+  );
+
   if (!actions?.length) {
     return (
       <EmptyStateContainer>
@@ -88,14 +98,7 @@ function ModelActionDetails({
             <ActionListItem
               borderless
               disabled={isImplicitAction(action)}
-              onClick={
-                !isImplicitAction(action)
-                  ? () => {
-                      setEditingActionId(action.id);
-                      toggleIsActionCreatorVisible();
-                    }
-                  : undefined
-              }
+              onClick={() => handleItemClick(action)}
             >
               <Icon name="insight" />
               <ActionTitle>
