@@ -7,7 +7,6 @@ import {
   Container,
   LeftHeader,
   EditableText,
-  SaveButton,
   CompactSelect,
 } from "./ActionCreatorHeader.styled";
 
@@ -17,9 +16,6 @@ type Props = {
 
   type: WritebackActionType;
   onChangeType?: (type: WritebackActionType) => void;
-
-  onSave: () => void;
-  canSave: boolean;
 };
 
 export const ActionCreatorHeader = ({
@@ -27,8 +23,6 @@ export const ActionCreatorHeader = ({
   onChangeName,
   type,
   onChangeType,
-  canSave,
-  onSave,
 }: Props) => {
   const OPTS = [
     { value: "query", name: t`Query`, disabled: true },
@@ -44,13 +38,6 @@ export const ActionCreatorHeader = ({
           <CompactSelect options={OPTS} value={type} onChange={onChangeType} />
         )}
       </LeftHeader>
-      <SaveButton
-        borderless
-        disabled={!canSave}
-        onClick={canSave ? onSave : undefined}
-      >
-        {t`Save`}
-      </SaveButton>
     </Container>
   );
 };

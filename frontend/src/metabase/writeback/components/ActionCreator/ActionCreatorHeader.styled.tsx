@@ -9,12 +9,13 @@ import ButtonBase from "metabase/core/components/Button";
 
 export const Container = styled.div`
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   width: 100%;
   background-color: ${color("white")};
-  border-top: 1px solid ${color("border")};
-  padding: ${space(1)} ${space(3)};
+  border-bottom: 1px solid ${color("border")};
+  padding: ${space(2)} ${space(3)};
 `;
 
 export const LeftHeader = styled.div`
@@ -24,16 +25,6 @@ export const LeftHeader = styled.div`
   & > * ~ * {
     margin-left: ${space(2)};
     margin-right: ${space(2)};
-  }
-`;
-
-export const SaveButton = styled(ButtonBase)<{ disabled: boolean }>`
-  font-weight: 600;
-  color: ${props => (!props.disabled ? color("brand") : color("text-medium"))};
-  background-opacity: 0.25;
-  padding: 0;
-  &:hover {
-    color: ${color("accent0-light")};
   }
 `;
 
