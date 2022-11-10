@@ -25,8 +25,8 @@ const LOCAL_PROFILE_SCHEMA = SSO_PROFILE_SCHEMA.shape({
     .default(null)
     .max(100, ({ max }) => t`must be ${max} characters or less`),
   email: Yup.string()
-    .required(t`required`)
     .default("")
+    .required(t`required`)
     .email(t`must be a valid email address`),
 });
 

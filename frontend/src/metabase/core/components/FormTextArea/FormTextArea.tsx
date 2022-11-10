@@ -11,7 +11,10 @@ import TextArea, { TextAreaProps } from "metabase/core/components/TextArea";
 import FormField from "metabase/core/components/FormField";
 
 export interface FormTextAreaProps
-  extends Omit<TextAreaProps, "value" | "error" | "onChange" | "onBlur"> {
+  extends Omit<
+    TextAreaProps,
+    "value" | "error" | "fullWidth" | "onChange" | "onBlur"
+  > {
   name: string;
   title?: string;
   description?: ReactNode;
@@ -62,6 +65,7 @@ const FormTextArea = forwardRef(function FormTextArea(
         name={name}
         value={value}
         error={touched && error != null}
+        fullWidth
         onChange={handleChange}
         onBlur={onBlur}
       />
