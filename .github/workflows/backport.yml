@@ -28,7 +28,7 @@ jobs:
               echo User ${{ github.event.comment.user.login }} is not a member of Metabase organization
               exit 1
           fi
-      - uses: actions/github-script@v4
+      - uses: actions/github-script@v6
         id: branch_info
         with:
           script: |
@@ -36,19 +36,19 @@ jobs:
             const [_botName, _command, targetBranch] = context.payload.comment.body.split(" ");
             console.log(`Target branch is ${targetBranch}`);
 
-            const { data: originalPullRequest } = await github.pulls.get({
+            const { data: originalPullRequest } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.payload.issue.number,
             });
 
-            const { data: commits } = await github.pulls.listCommits({
+            const { data: commits } = await github.rest.pulls.listCommits({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.payload.issue.number,
             });
 
-            const targetRef = await github.git.getRef({
+            const targetRef = await github.rest.git.getRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: `heads/${targetBranch}`,
@@ -57,14 +57,14 @@ jobs:
             const backportBranch = `backport-${originalPullRequest.head.ref}`
 
             try {
-              await github.git.getRef({
+              await github.rest.git.getRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: `heads/${backportBranch}`,
               });
             } catch(e) {
               if (e.status === 404) {
-                await github.git.createRef({
+                await github.rest.git.createRef({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   ref: `refs/heads/${backportBranch}`,

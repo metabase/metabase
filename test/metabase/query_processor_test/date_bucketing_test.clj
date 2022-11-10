@@ -1113,7 +1113,7 @@
                (qp/compile
                 (mt/mbql-query checkins
                   {:filter   [:time-interval $date -4 :month]
-                   :breakout [[:datetime-field $date :day]]})))))))))
+                   :breakout [!day.date]})))))))))
 
 (deftest field-filter-start-of-week-test
   (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
