@@ -1,6 +1,9 @@
-import { ActionsApi } from "metabase/services";
+import { ActionsApi, DataAppsApi } from "metabase/services";
 
-import DataApps, { getChildNavItems } from "metabase/entities/data-apps";
+import DataApps, {
+  getChildNavItems,
+  EditableDataAppParams,
+} from "metabase/entities/data-apps";
 import Dashboards from "metabase/entities/dashboards";
 
 import type { DataApp, DataAppPage } from "metabase-types/api";
@@ -103,6 +106,25 @@ export const deleteManyRows = (payload: BulkDeletePayload) => {
     },
     { bodyParamName: "body" },
   );
+};
+
+export type ScaffoldNewAppParams = {
+  name: EditableDataAppParams["name"];
+  tables: number[]; // list of table IDs
+};
+
+export const scaffoldDataApp = ({ name, tables }: ScaffoldNewAppParams) => {
+  return async (dispatch: Dispatch) => {
+    const dataApp = await DataAppsApi.scaffoldNewApp({
+      "app-name": name,
+      "table-ids": tables,
+    });
+    dispatch({
+      type: DataApps.actionTypes.CREATE,
+      payload: DataApps.normalize(dataApp),
+    });
+    return dataApp;
+  };
 };
 
 export type ArchiveDataAppPayload = {

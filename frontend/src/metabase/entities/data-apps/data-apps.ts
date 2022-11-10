@@ -13,7 +13,7 @@ import { createNewAppForm, createAppSettingsForm } from "./forms";
 import reducer from "./reducer";
 import { getDataAppIcon } from "./utils";
 
-type EditableDataAppParams = Pick<
+export type EditableDataAppParams = Pick<
   DataApp,
   "dashboard_id" | "options" | "nav_items"
 > &
