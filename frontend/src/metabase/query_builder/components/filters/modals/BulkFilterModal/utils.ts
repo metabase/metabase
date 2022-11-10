@@ -3,15 +3,17 @@ import StructuredQuery, {
   SegmentOption,
   FilterSection,
   isDimensionOption,
-} from "metabase-lib/lib/queries/StructuredQuery";
-import type Filter from "metabase-lib/lib/queries/structured/Filter";
-import type Dimension from "metabase-lib/lib/Dimension";
+} from "metabase-lib/queries/StructuredQuery";
+import type Filter from "metabase-lib/queries/structured/Filter";
+import type Dimension from "metabase-lib/Dimension";
 
 // fix between filters with missing or misordered arguments
 export function fixBetweens(query: StructuredQuery): StructuredQuery {
   const betweenFilters = query
     .filters()
-    .filter(filter => filter.operatorName() === "between");
+    .filter(
+      filter => filter.isStandard() && filter.operatorName() === "between",
+    );
 
   // find the first invalid filter (if any), and fix it recursively
   for (const filter of betweenFilters) {

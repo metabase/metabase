@@ -56,7 +56,7 @@ export function isPersonalCollectionChild(
 }
 
 export function isRootCollection(collection: Collection): boolean {
-  return collection.id === "root";
+  return canonicalCollectionId(collection.id) === null;
 }
 
 export function isItemPinned(item: CollectionItem) {

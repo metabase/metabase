@@ -4,7 +4,7 @@ import { State } from "metabase-types/store";
 import Groups from "metabase/entities/groups";
 import { diffDataPermissions } from "metabase/admin/permissions/utils/graph";
 import { Group } from "metabase-types/api";
-import { isVirtualCardId } from "metabase-lib/lib/metadata/utils/saved-questions";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
 const getDatabasesWithTables = createSelector(
   (state: State) => state.entities.databases,

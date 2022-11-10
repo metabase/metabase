@@ -1,40 +1,63 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
-  (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [clojurewerkz.quartzite.scheduler :as qs]
-            [colorize.core :as colorize]
-            [environ.core :as env]
-            [java-time :as t]
-            [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
-                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup PermissionsGroupMembership
-                                     PersistedInfo Pulse PulseCard PulseChannel Revision Segment Setting
-                                     Table TaskHistory Timeline TimelineEvent User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.setting :as setting]
-            [metabase.models.setting.cache :as setting.cache]
-            [metabase.models.timeline :as timeline]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.task :as task]
-            [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
-            [metabase.test-runner.parallel :as test-runner.parallel]
-            [metabase.test.data :as data]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.initialize :as initialize]
-            [metabase.test.util.log :as tu.log]
-            [metabase.util :as u]
-            [metabase.util.files :as u.files]
-            [potemkin :as p]
-            [toucan.db :as db]
-            [toucan.models :as models]
-            [toucan.util.test :as tt])
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.io :as io]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [colorize.core :as colorize]
+   [environ.core :as env]
+   [java-time :as t]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            DashboardCardSeries
+            Database
+            Dimension
+            Field
+            FieldValues
+            LoginHistory
+            Metric
+            NativeQuerySnippet
+            Permissions
+            PermissionsGroup
+            PermissionsGroupMembership
+            PersistedInfo
+            Pulse
+            PulseCard
+            PulseChannel
+            Revision
+            Segment
+            Setting
+            Table
+            TaskHistory
+            Timeline
+            TimelineEvent
+            User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting]
+   [metabase.models.setting.cache :as setting.cache]
+   [metabase.models.timeline :as timeline]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.task :as task]
+   [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
+   [metabase.test-runner.parallel :as test-runner.parallel]
+   [metabase.test.data :as data]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.initialize :as initialize]
+   [metabase.test.util.log :as tu.log]
+   [metabase.util :as u]
+   [metabase.util.files :as u.files]
+   [toucan.db :as db]
+   [toucan.models :as models]
+   [toucan.util.test :as tt])
   (:import
    (java.io File FileInputStream)
    (java.net ServerSocket)
@@ -47,14 +70,6 @@
          test-runner.assert-exprs/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
-
-;; these are imported because these functions originally lived in this namespace, and some tests might still be
-;; referencing them from here. We can remove the imports once everyone is using `metabase.test` instead of using this
-;; namespace directly.
-(p/import-vars
- [tu.log
-  with-log-level
-  with-log-messages-for-level])
 
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))

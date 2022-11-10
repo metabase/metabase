@@ -9,8 +9,8 @@ import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 import {
   clickBehaviorIsValid,
   getDataFromClicked,
-} from "metabase-lib/lib/parameters/utils/click-behavior";
-import { rangeForValue } from "metabase-lib/lib/queries/utils/dataset";
+} from "metabase-lib/parameters/utils/click-behavior";
+import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
 import {
   isBoolean,
   isCoordinate,
@@ -19,7 +19,7 @@ import {
   isNumber,
   isTime,
   isURL,
-} from "metabase-lib/lib/types/utils/isa";
+} from "metabase-lib/types/utils/isa";
 import { formatEmail } from "./email";
 import { formatTime } from "./time";
 import { formatUrl } from "./url";
@@ -31,10 +31,6 @@ import { formatImage } from "./image";
 
 import { OptionsType } from "./types";
 
-interface MARKDOWN_RENDERERS_PROP_TYPE {
-  children: React.ReactElement;
-  href?: string;
-}
 const MARKDOWN_RENDERERS = {
   // eslint-disable-next-line react/display-name
   a: ({ href, children }: any) => (

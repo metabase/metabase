@@ -1,4 +1,4 @@
-import { DatasetColumn, DatasetData } from "metabase-types/api";
+import { DatasetData } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 import {
   BreakoutChartColumns,
@@ -7,20 +7,16 @@ import {
 import { ColumnFormatter } from "metabase/visualizations/shared/types/format";
 import { getGroupedDataset } from "./data";
 
-jest.mock("metabase-lib/lib/types/utils/isa", () => ({
-  isMetric: jest.fn((column: DatasetColumn) =>
-    ["avg", "count"].includes(column.name),
-  ),
-}));
-
 const columnFormatter: ColumnFormatter = (value: any) => String(value);
 
 const dimensionColumn = createMockColumn({ name: "year" });
 const breakoutColumn = createMockColumn({ name: "category" });
 const countMetricColumn = createMockColumn({
+  base_type: "type/Number",
   name: "count",
 });
 const avgMetricColumn = createMockColumn({
+  base_type: "type/Number",
   name: "avg",
 });
 

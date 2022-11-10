@@ -34,7 +34,7 @@ export function columnSettings({
     objectName: "column",
     getObjects: getColumns,
     getObjectKey: getColumnKey,
-    getSettingDefintionsForObject: getSettingDefintionsForColumn,
+    getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
     useRawSeries: true,
@@ -49,8 +49,8 @@ import {
   isCoordinate,
   isCurrency,
   isDateWithoutTime,
-} from "metabase-lib/lib/types/utils/isa";
-import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
+} from "metabase-lib/types/utils/isa";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
@@ -474,7 +474,7 @@ const COMMON_COLUMN_SETTINGS = {
   },
 };
 
-export function getSettingDefintionsForColumn(series, column) {
+export function getSettingDefinitionsForColumn(series, column) {
   const { visualization } = getVisualizationRaw(series);
   const extraColumnSettings =
     typeof visualization.columnSettings === "function"

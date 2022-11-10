@@ -253,6 +253,26 @@ An example for **BigQuery**, back ticks are needed, like `` FROM `dataset.table`
 
 For **Oracle** it would be `FROM "schema"."table"`.
 
+### Include dependencies in your query
+
+Your main query should be aware of all the tables that your Field Filter variable is pointing to, otherwise you'll get a SQL syntax error. For example, let's say that your main query includes a field filter like this:
+
+```
+SELECT *
+FROM ORDERS
+WHERE {% raw %}{{ product_category }}{% endraw %}
+``` 
+
+Let's say the `{% raw %}{{ product_category }}{% endraw %}` variable refers to another question that uses the `Products` table. For the field filter to work, you'll need to include a join to `Products` in your main query.
+
+```
+SELECT *
+FROM ORDERS o
+JOIN PRODUCTS p
+ON o.product_id = p.id
+WHERE {% raw %}{{ product_category }}{% endraw %}
+```
+
 ## Connecting a SQL question to a dashboard filter
 
 In order for a saved SQL/native question to be usable with a dashboard filter, the question must contain at least one variable.

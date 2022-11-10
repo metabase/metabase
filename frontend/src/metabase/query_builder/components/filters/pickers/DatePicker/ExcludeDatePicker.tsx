@@ -3,8 +3,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import { EXCLUDE_OPTIONS } from "metabase-lib/lib/queries/utils/query-time";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import { EXCLUDE_OPTIONS } from "metabase-lib/queries/utils/query-time";
+import Filter from "metabase-lib/queries/structured/Filter";
 import {
   getInitialDayOfWeekFilter,
   getInitialMonthOfYearFilter,
@@ -16,7 +16,7 @@ import {
   isHourOfDayDateFilter,
   getNotNullDateFilter,
   getIsNullDateFilter,
-} from "metabase-lib/lib/queries/utils/date-filters";
+} from "metabase-lib/queries/utils/date-filters";
 
 import {
   ExcludeCheckBox,

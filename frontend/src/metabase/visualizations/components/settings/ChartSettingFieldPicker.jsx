@@ -2,7 +2,7 @@
 import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { getColumnKey } from "metabase-lib/lib/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import ChartSettingSelect from "./ChartSettingSelect";
 import {
   SettingsIcon,
@@ -32,6 +32,7 @@ const ChartSettingFieldPicker = ({
     <ChartSettingFieldPickerRoot
       className={className}
       disabled={options.length === 1 && options[0].value === value}
+      data-testid="chartsettings-field-picker"
     >
       {showDragHandle && (
         <SettingsIcon name="grabber2" size={12} noPointer noMargin />

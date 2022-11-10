@@ -12,4 +12,5 @@
 (defmethod serdes.hash/identity-hash-fields DashboardCardSeries
   [_dashboard-card-series]
   [(comp serdes.hash/identity-hash dashboard-card)
-   (serdes.hash/hydrated-hash :card)])
+   (serdes.hash/hydrated-hash :card)
+   :position])

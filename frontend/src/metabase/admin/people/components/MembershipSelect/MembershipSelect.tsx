@@ -10,6 +10,7 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 import { Group, Member } from "metabase-types/api";
+import { isNotNull } from "metabase/core/utils/array";
 import GroupSummary from "../GroupSummary";
 import {
   MembershipActionsContainer,
@@ -21,7 +22,7 @@ import {
 const getGroupSections = (groups: Group[]) => {
   const defaultGroup = groups.find(isDefaultGroup);
   const adminGroup = groups.find(isAdminGroup);
-  const pinnedGroups = [defaultGroup, adminGroup].filter(Boolean) as Group[];
+  const pinnedGroups = [defaultGroup, adminGroup].filter(isNotNull);
   const regularGroups = groups.filter(
     group => !isAdminGroup(group) && !isDefaultGroup(group),
   );

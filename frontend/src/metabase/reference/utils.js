@@ -3,7 +3,7 @@ import { assoc, assocIn, chain } from "icepick";
 import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
-import { isTypePK } from "metabase-lib/lib/types/utils/isa";
+import { isTypePK } from "metabase-lib/types/utils/isa";
 
 export const idsToObjectMap = (ids, objects) =>
   ids

@@ -4,9 +4,9 @@ import _ from "underscore";
 import { singularize } from "metabase/lib/formatting";
 
 import { DatasetData, Column } from "metabase-types/types/Dataset";
-import { isPK, isEntityName } from "metabase-lib/lib/types/utils/isa";
-import Question from "metabase-lib/lib/Question";
-import Table from "metabase-lib/lib/metadata/Table";
+import { isPK, isEntityName } from "metabase-lib/types/utils/isa";
+import Question from "metabase-lib/Question";
+import Table from "metabase-lib/metadata/Table";
 
 import { ObjectId } from "./types";
 

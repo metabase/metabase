@@ -2,7 +2,7 @@ import { t } from "ttag";
 import {
   summarizeColumnByTimeDrill,
   summarizeColumnByTimeDrillQuestion,
-} from "metabase-lib/lib/queries/drills/summarize-column-by-time-drill";
+} from "metabase-lib/queries/drills/summarize-column-by-time-drill";
 
 export default ({ question, clicked = {} }) => {
   if (!summarizeColumnByTimeDrill({ question, clicked })) {

@@ -32,7 +32,7 @@ import {
   hasLatitudeAndLongitudeColumns,
   isState,
   isCountry,
-} from "metabase-lib/lib/types/utils/isa";
+} from "metabase-lib/types/utils/isa";
 import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
 import PinMap from "../components/PinMap";
 import ChoroplethMap, {

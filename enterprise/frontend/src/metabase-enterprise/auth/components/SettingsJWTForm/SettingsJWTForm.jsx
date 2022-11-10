@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -8,15 +8,18 @@ import { FormButton } from "./SettingsJWTForm.styled";
 
 const propTypes = {
   settingValues: PropTypes.object.isRequired,
-  updateSettings: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
 };
 
-const SettingsJWTForm = ({ settingValues, updateSettings, ...props }) => {
+const SettingsJWTForm = ({ settingValues, onSubmit, ...props }) => {
   const isEnabled = settingValues["jwt-enabled"];
 
-  const handleAutoEnableSubmit = formData => {
-    return updateSettings({ ...formData, "jwt-enabled": true });
-  };
+  const handleSubmit = useCallback(
+    values => {
+      return onSubmit({ ...values, "jwt-enabled": true });
+    },
+    [onSubmit],
+  );
 
   return (
     <SettingsBatchForm
@@ -24,30 +27,16 @@ const SettingsJWTForm = ({ settingValues, updateSettings, ...props }) => {
       layout={FORM_LAYOUT}
       breadcrumbs={BREADCRUMBS}
       settingValues={settingValues}
-      updateSettings={updateSettings}
-      renderSubmitButton={
-        !isEnabled &&
-        (({ disabled, pristine, onSubmit }) => (
-          <FormButton
-            primary={!disabled}
-            disabled={disabled || pristine}
-            actionFn={() => onSubmit(handleAutoEnableSubmit)}
-            normalText={t`Save and enable`}
-            successText={t`Changes saved!`}
-          />
-        ))
-      }
-      renderExtraButtons={
-        !isEnabled &&
-        (({ disabled, pristine, onSubmit }) => (
-          <FormButton
-            disabled={disabled || pristine}
-            actionFn={() => onSubmit(updateSettings)}
-            normalText={t`Save but don't enable`}
-            successText={t`Changes saved!`}
-          />
-        ))
-      }
+      updateSettings={handleSubmit}
+      renderSubmitButton={({ disabled, pristine, onSubmit }) => (
+        <FormButton
+          primary={!disabled}
+          disabled={disabled || pristine}
+          actionFn={onSubmit}
+          normalText={isEnabled ? t`Save changes` : t`Save and enable`}
+          successText={t`Success`}
+        />
+      )}
     />
   );
 };
@@ -80,7 +69,7 @@ const BREADCRUMBS = [
 ];
 
 const mapDispatchToProps = {
-  updateSettings,
+  onSubmit: updateSettings,
 };
 
 export default connect(null, mapDispatchToProps)(SettingsJWTForm);

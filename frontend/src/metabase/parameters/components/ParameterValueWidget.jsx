@@ -25,11 +25,11 @@ import StringInputWidget from "metabase/parameters/components/widgets/StringInpu
 import {
   getNumberParameterArity,
   getStringParameterArity,
-} from "metabase-lib/lib/parameters/utils/operators";
+} from "metabase-lib/parameters/utils/operators";
 import {
   isDateParameter,
   isNumberParameter,
-} from "metabase-lib/lib/parameters/utils/parameter-type";
+} from "metabase-lib/parameters/utils/parameter-type";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterWidget.css";
