@@ -4,7 +4,9 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
+import { useToggle } from "metabase/hooks/use-toggle";
 import Actions from "metabase/entities/actions";
+import Database from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createQuestionFromAction } from "metabase/writeback/selectors";
 
@@ -24,6 +26,10 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 import { ActionCreatorHeader } from "./ActionCreatorHeader";
 import { QueryActionEditor } from "./QueryActionEditor";
 import { FormCreator } from "./FormCreator";
+import {
+  DataReferenceTriggerButton,
+  DataReferenceInline,
+} from "./InlineDataReference";
 
 import {
   ActionCreatorBodyContainer,
@@ -72,6 +78,9 @@ function ActionCreatorComponent({
   >(undefined);
   const [showSaveModal, setShowSaveModal] = useState(false);
 
+  const [isDataRefOpen, { toggle: toggleDataRef, turnOff: closeDataRef }] =
+    useToggle(false);
+
   useEffect(() => {
     setQuestion(passedQuestion ?? newQuestion(metadata));
 
@@ -117,6 +126,7 @@ function ActionCreatorComponent({
         <ModalRoot>
           <ActionCreatorBodyContainer>
             <ModalLeft>
+              <DataReferenceTriggerButton onClick={toggleDataRef} />
               <ActionCreatorHeader
                 type="query"
                 name={question.displayName() ?? t`New Action`}
@@ -140,14 +150,21 @@ function ActionCreatorComponent({
               </ModalActions>
             </ModalLeft>
 
-            <FormCreator
-              tags={query?.templateTagsWithoutSnippets()}
-              formSettings={
-                question?.card()?.visualization_settings as ActionFormSettings
-              }
-              onChange={setFormSettings}
-              onExampleClick={handleExampleClick}
+            <DataReferenceInline
+              isOpen={isDataRefOpen}
+              onClose={closeDataRef}
             />
+
+            {!isDataRefOpen && (
+              <FormCreator
+                tags={query?.templateTagsWithoutSnippets()}
+                formSettings={
+                  question?.card()?.visualization_settings as ActionFormSettings
+                }
+                onChange={setFormSettings}
+                onExampleClick={handleExampleClick}
+              />
+            )}
           </ActionCreatorBodyContainer>
         </ModalRoot>
       </Modal>
@@ -177,5 +194,6 @@ export const ActionCreator = _.compose(
   Actions.load({
     id: (state: State, props: { actionId?: number }) => props.actionId,
   }),
+  Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(ActionCreatorComponent);
