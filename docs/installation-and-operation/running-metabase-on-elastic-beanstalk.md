@@ -188,6 +188,14 @@ In the Environment Properties section, you'll be able to set or change the varia
 
 ![EB Environment Variables](images/EBEnvVariables.png)
 
+## How to use third-party driver plugins
+
+To install driver plugins from [Partner and community drivers](../developers-guide/partner-and-community-drivers.md) on Elastic Beanstalk:
+- Unzip the metabase-aws-eb.zip you downloaded above
+- Copy the jar files of the plugins into its .ebextensions/metabase_plugins directory
+- Re-zip it, e.g. `cd metabase-aws-eb; zip -r metabase-aws-eb-with-plugins.zip * .ebextensions/ .platform/`
+- Upload your modified metabase-aws-eb-with-plugins.zip application version as per below
+
 ## Notifications
 
 For a simple way to keep tabs on your application, enter an email address in the **Notifications** block to get notifications about your deployment and any changes to your application.

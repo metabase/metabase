@@ -24,6 +24,10 @@ To use a Partner or Community driver on a self-hosted Metabase:
 
 You can change the location of the plugins directory by setting the environment variable `MB_PLUGINS_DIR`.
 
+### AWS Elastic Beanstalk
+
+See [Directions](../installation-and-operation/running-metabase-on-elastic-beanstalk.md#how-to-use-third-party-driver-plugins)
+
 ### Metabase Cloud
 
 Partner drivers, like officially supported drivers, are available out-of-the-box on Metabase cloud. No action needed.
