@@ -12,18 +12,11 @@ export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
 }
 
 const FormSubmitButton = forwardRef(function FormSubmitButton(
-  {
-    title,
-    primary,
-    disabled,
-    success,
-    danger,
-    ...props
-  }: FormSubmitButtonProps,
+  { primary, disabled, ...props }: FormSubmitButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
   const { status, isDisabled } = useFormSubmitButton({ isDisabled: disabled });
-  const submitTitle = getSubmitButtonTitle(status, { ...props, title });
+  const submitTitle = getSubmitButtonTitle(status, props);
 
   return (
     <Button
@@ -31,8 +24,8 @@ const FormSubmitButton = forwardRef(function FormSubmitButton(
       ref={ref}
       type="submit"
       primary={primary && !isDisabled}
-      success={status === "fulfilled" || (success && !isDisabled)}
-      danger={status === "rejected" || (danger && !isDisabled)}
+      success={status === "fulfilled"}
+      danger={status === "rejected"}
       disabled={isDisabled}
     >
       {submitTitle}

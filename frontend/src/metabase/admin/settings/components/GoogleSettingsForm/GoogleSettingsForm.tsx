@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
@@ -31,14 +31,16 @@ export interface GoogleSettings {
   [DOMAIN_KEY]: string | null;
 }
 
-const DRAFT_SCHEMA = Yup.object({
+const GOOGLE_SETTINGS_SCHEMA = Yup.object({
   [ENABLED_KEY]: Yup.boolean().default(false),
-  [CLIENT_ID_KEY]: Yup.string().nullable().default(null),
+  [CLIENT_ID_KEY]: Yup.string()
+    .nullable()
+    .default(null)
+    .when(ENABLED_KEY, {
+      is: true,
+      then: schema => schema.required(t`required`),
+    }),
   [DOMAIN_KEY]: Yup.string().nullable().default(null),
-});
-
-const VALID_SCHEMA = DRAFT_SCHEMA.shape({
-  [CLIENT_ID_KEY]: Yup.string().required(t`required`),
 });
 
 export interface GoogleSettingsFormProps {
@@ -59,24 +61,17 @@ const GoogleSettingsForm = ({
   }, [elements]);
 
   const initialValues = useMemo(() => {
-    return DRAFT_SCHEMA.cast(settingValues, { stripUnknown: true });
+    return GOOGLE_SETTINGS_SCHEMA.cast(settingValues, { stripUnknown: true });
   }, [settingValues]);
-
-  const handleSubmit = useCallback(
-    (values: GoogleSettings) => {
-      const isValid = VALID_SCHEMA.isValidSync(values);
-      return onSubmit({ ...values, [ENABLED_KEY]: isValid });
-    },
-    [onSubmit],
-  );
 
   return (
     <FormProvider
       initialValues={initialValues}
       enableReinitialize
-      onSubmit={handleSubmit}
+      validationSchema={GOOGLE_SETTINGS_SCHEMA}
+      onSubmit={onSubmit}
     >
-      {({ dirty, values }) => (
+      {({ dirty }) => (
         <GoogleForm disabled={!dirty}>
           <Breadcrumbs crumbs={BREADCRUMBS} />
           <GoogleFormHeader>{t`Sign in with Google`}</GoogleFormHeader>
@@ -113,10 +108,7 @@ const GoogleSettingsForm = ({
             nullable
             {...getFormFieldProps(settings[DOMAIN_KEY])}
           />
-          <FormSubmitButton
-            {...getSubmitButtonProps(values)}
-            disabled={!dirty}
-          />
+          <FormSubmitButton title={t`Save changes`} primary disabled={!dirty} />
           <FormErrorMessage />
         </GoogleForm>
       )}
@@ -127,19 +119,6 @@ const GoogleSettingsForm = ({
 const getFormFieldProps = (setting?: SettingDefinition) => {
   if (setting?.is_env_setting) {
     return { placeholder: t`Using ${setting.env_name}`, readOnly: true };
-  }
-};
-
-const getSubmitButtonProps = (values: GoogleSettings) => {
-  const isEnabled = values[ENABLED_KEY];
-  const isValid = VALID_SCHEMA.isValidSync(values);
-
-  if (isEnabled && !isValid) {
-    return { title: t`Save and disable`, danger: true };
-  } else if (!isEnabled && isValid) {
-    return { title: t`Save and enable`, primary: true };
-  } else {
-    return { title: t`Save changes`, primary: true };
   }
 };
 
