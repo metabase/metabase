@@ -63,7 +63,7 @@ const FormTextArea = forwardRef(function FormTextArea(
         {...props}
         id={id}
         name={name}
-        value={value}
+        value={value ?? ""}
         error={touched && error != null}
         fullWidth
         onChange={handleChange}
