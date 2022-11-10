@@ -2,7 +2,6 @@ import React, { forwardRef, Ref, useCallback } from "react";
 import { t } from "ttag";
 import moment, { Moment } from "moment-timezone";
 import Tooltip from "metabase/components/Tooltip";
-
 import {
   InputClearButton,
   InputClearIcon,
@@ -12,6 +11,8 @@ import {
   InputMeridiemContainer,
   InputRoot,
 } from "./TimeInput.styled";
+
+const TIME_FORMAT_12 = "h:mm A";
 
 export interface TimeInputProps {
   value: Moment;
@@ -25,7 +26,7 @@ export interface TimeInputProps {
 const TimeInput = forwardRef(function TimeInput(
   {
     value,
-    timeFormat,
+    timeFormat = TIME_FORMAT_12,
     autoFocus,
     hasClearButton = true,
     onChange,
