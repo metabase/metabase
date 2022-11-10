@@ -493,7 +493,7 @@
 
 (def date-arithmetic-functions
   "Functions to do math with date, datetime."
-  #{:datetime-add :datetime-subtract})
+  #{:+ :datetime-add :datetime-subtract})
 
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
@@ -526,18 +526,18 @@
 
 (def ^:private DateTimeExpressionArg
   (s/conditional
-    (partial is-clause? aggregations)
-    (s/recursive #'Aggregation)
+   (partial is-clause? aggregations)
+   (s/recursive #'Aggregation)
 
-    (partial is-clause? :value)
-    value
+   (partial is-clause? :value)
+   value
 
     ;; Recursively doing date math
-    (partial is-clause? date-arithmetic-functions)
-    (s/recursive #'DatetimeExpression)
+   (partial is-clause? date-arithmetic-functions)
+   (s/recursive #'DatetimeExpression)
 
-    :else
-    Field))
+   :else
+   Field))
 
 (def ^:private ExpressionArg
   (s/conditional
@@ -696,7 +696,7 @@
   unit     ArithmeticDateTimeUnit)
 
 (def ^:private DatetimeExpression*
-  (one-of temporal-extract datetime-add datetime-subtract
+  (one-of + temporal-extract datetime-add datetime-subtract
           ;; SUGAR drivers do not need to implement
           get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))

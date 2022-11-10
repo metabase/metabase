@@ -8,6 +8,7 @@
             [metabase.mbql.predicates :as mbql.preds]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
+            [metabase.mbql.util.match :as mbql.match]
             [metabase.models.humanization :as humanization]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.reducible :as qp.reducible]
@@ -121,6 +122,22 @@
                     join-alias)]
     (format "%s → %s" qualifier field-display-name)))
 
+(defn- datetime-arithmetics?
+  "Helper for [[infer-expression-type]]. Returns true if a given clause returns a :type/DateTime type."
+  [clause]
+  (mbql.match/match-one clause
+
+    #{:datetime-add :datetime-subtract :relative-datetime}
+    true
+
+    [:field _ (_ :guard :temporal-unit)]
+    true
+
+    :+
+    (some (partial mbql.u/is-clause? :interval) (rest clause))
+
+    _ false))
+
 (declare col-info-for-field-clause)
 
 (def type-info-columns
@@ -159,7 +176,7 @@
            (select-keys (infer-expression-type expression) type-info-columns)))
        clauses))
 
-    (mbql.u/datetime-arithmetics? expression)
+    (datetime-arithmetics? expression)
     {:base_type :type/DateTime}
 
     (mbql.u/is-clause? mbql.s/string-expressions expression)
