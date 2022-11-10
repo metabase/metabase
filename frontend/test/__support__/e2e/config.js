@@ -72,6 +72,8 @@ const defaultConfig = {
         "frontend/test/snapshot-creators/qa-db.cy.snap.js";
     }
 
+    config.env.grepFilterSpecs = true;
+
     config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
     config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
