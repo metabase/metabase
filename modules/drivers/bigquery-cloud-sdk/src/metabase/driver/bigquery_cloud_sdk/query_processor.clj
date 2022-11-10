@@ -554,18 +554,19 @@
                  :found   disallowed-types})))
     (case unit
       (:year :month)
-      (let [x'    (->temporal-type :datetime (trunc :day (hx/->timestamp x')))
-            y'    (->temporal-type :datetime (trunc :day (hx/->timestamp y')))
-            unit' (hsql/raw (name unit))
+      (let [; timestamp_diff doesn't support months or years, so convert to datetime to use datetime_diff
+            x'       (hx/->datetime (trunc :day (hx/->timestamp x')))
+            y'       (hx/->datetime (trunc :day (hx/->timestamp y')))
+            raw-unit (hsql/raw (name unit))
             positive-diff (fn [a b] ; precondition: a <= b
                             (hx/-
-                             (hsql/call :datetime_diff b a unit')
+                             (hsql/call :datetime_diff b a raw-unit)
                              (hx/cast
                               :integer
                               (hsql/call
                                :>
-                               (hsql/call :datetime_diff a (hsql/call :date_trunc a unit') (hsql/raw "day"))
-                               (hsql/call :datetime_diff b (hsql/call :date_trunc b unit') (hsql/raw "day"))))))]
+                               (hsql/call :datetime_diff a (hsql/call :date_trunc a raw-unit) (hsql/raw "day"))
+                               (hsql/call :datetime_diff b (hsql/call :date_trunc b raw-unit) (hsql/raw "day"))))))]
         (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
 
       :week
