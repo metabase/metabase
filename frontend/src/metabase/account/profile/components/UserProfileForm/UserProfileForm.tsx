@@ -61,7 +61,7 @@ const UserProfileForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={isSsoUser ? SSO_PROFILE_SCHEMA : LOCAL_PROFILE_SCHEMA}
+      validationSchema={schema}
       enableReinitialize
       onSubmit={handleSubmit}
     >
