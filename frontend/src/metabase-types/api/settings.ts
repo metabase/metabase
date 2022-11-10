@@ -1,8 +1,32 @@
+export interface FormattingSettings {
+  "type/Temporal"?: DateFormattingSettings;
+  "type/Number"?: NumberFormattingSettings;
+  "type/Currency"?: CurrencyFormattingSettings;
+}
+
+export interface DateFormattingSettings {
+  date_style?: string;
+  date_separator?: string;
+  date_abbreviate?: boolean;
+  time_style?: string;
+}
+
+export interface NumberFormattingSettings {
+  number_separators?: string;
+}
+
+export interface CurrencyFormattingSettings {
+  currency?: string;
+  currency_style?: string;
+  currency_in_header?: boolean;
+}
+
 export interface Engine {
   "driver-name": string;
   "superseded-by": string | undefined;
   source: EngineSource;
 }
+
 export interface EngineSource {
   type?: "official" | "community" | "partner";
   contact?: EngineSourceContact;
@@ -43,6 +67,7 @@ export interface Settings {
   "application-font-files": FontFile[] | null;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "custom-formatting": FormattingSettings;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "email-configured?": boolean;
