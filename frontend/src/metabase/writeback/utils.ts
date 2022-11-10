@@ -7,6 +7,7 @@ import type {
 } from "metabase-types/api";
 import type { SavedCard } from "metabase-types/types/Card";
 import type { DashCard } from "metabase-types/types/Dashboard";
+import type { Parameter } from "metabase-types/types/Parameter";
 
 import { TYPE } from "metabase-lib/types/constants";
 import type Database from "metabase-lib/metadata/Database";
@@ -42,7 +43,7 @@ const isAutomaticDateTimeField = (field: Field) => {
   return AUTOMATIC_DATE_TIME_FIELDS.includes(field.semantic_type);
 };
 
-export const isEditableField = (field: Field) => {
+export const isEditableField = (field: Field, parameter: Parameter) => {
   const isRealField = typeof field.id === "number";
   if (!isRealField) {
     // Filters out custom, aggregated columns, etc.
@@ -52,12 +53,12 @@ export const isEditableField = (field: Field) => {
   if (field.isPK()) {
     // Most of the time PKs are auto-generated,
     // but there are rare cases when they're not
-    // In this case they're marked as `database_required`
-    return field.database_required;
+    // In this case they're marked as `required`
+    return parameter.required;
   }
 
   if (isAutomaticDateTimeField(field)) {
-    return field.database_required;
+    return parameter.required;
   }
 
   return true;

@@ -89,7 +89,7 @@ export const getFormField = (
 ) => {
   if (
     fieldSettings.fieldInstance &&
-    !isEditableField(fieldSettings.fieldInstance)
+    !isEditableField(fieldSettings.fieldInstance, parameter as Parameter)
   ) {
     return undefined;
   }
@@ -191,7 +191,7 @@ export const generateFieldSettingsFromParameters = (
       name,
       title: displayName,
       placeholder: displayName,
-      required: !!field?.database_required,
+      required: !!param?.required,
       description: field?.description ?? "",
       fieldType: getFieldType(param),
       inputType: getInputType(param, field),
