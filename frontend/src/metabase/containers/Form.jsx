@@ -56,6 +56,9 @@ const ReduxFormComponent = reduxForm()(
   },
 );
 
+/**
+ * @deprecated
+ */
 class Form extends React.Component {
   _state = {
     submitting: false,
@@ -288,4 +291,9 @@ class Form extends React.Component {
   }
 }
 
-export default connect(makeMapStateToProps)(Form);
+/**
+ * @deprecated
+ */
+const DeprecatedForm = connect(makeMapStateToProps)(Form);
+
+export default DeprecatedForm;

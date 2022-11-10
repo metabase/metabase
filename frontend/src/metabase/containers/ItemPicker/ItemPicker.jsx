@@ -1,279 +1,342 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-import PropTypes from "prop-types";
-import cx from "classnames";
-import { t } from "ttag";
+import React, { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Icon from "metabase/components/Icon";
 
 import { getCrumbs } from "metabase/lib/collections";
 import { color } from "metabase/lib/colors";
 
-// NOTE: replacing these with Collections.ListLoader etc currently fails due to circular dependency
-import EntityListLoader, {
-  entityListLoader,
-} from "metabase/entities/containers/EntityListLoader";
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
-
 import Collections from "metabase/entities/collections";
+import Search from "metabase/entities/search";
+
+import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
+import { isRootCollection } from "metabase/collections/utils";
 
 import Item from "./Item";
-import { ItemPickerHeader, ItemPickerList } from "./ItemPicker.styled";
+import {
+  ItemPickerRoot,
+  ItemPickerHeader,
+  ItemPickerList,
+  ScrollAwareLoadingAndErrorWrapper,
+  SearchInput,
+  SearchToggle,
+} from "./ItemPicker.styled";
 
-const getCollectionIconColor = () => color("text-light");
+const getDefaultCollectionIconColor = () => color("text-light");
 
-const isRoot = collection => collection.id === "root" || collection.id == null;
+function canWriteToCollectionOrChildren(collection) {
+  return (
+    collection.can_write ||
+    collection.children.some(canWriteToCollectionOrChildren)
+  );
+}
 
-class ItemPicker extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      parentId: "root",
-      searchMode: false,
-      searchString: false,
-    };
-  }
-
-  static propTypes = {
-    // undefined = no selection
-    // null = root collection
-    // number = non-root collection id
-    value: PropTypes.number,
-    types: PropTypes.array,
-    showSearch: PropTypes.bool,
-    showScroll: PropTypes.bool,
+function mapStateToProps(state, props) {
+  const entity = props.entity || Collections;
+  return {
+    collectionsById: entity.selectors.getExpandedCollectionsById(state),
+    getCollectionIcon: entity.objectSelectors.getIcon,
   };
+}
 
-  checkHasWritePermissionForItem(item, models) {
-    const { collectionsById } = this.props;
+function getEntityLoaderType(state, props) {
+  return props.entity?.name ?? "collections";
+}
 
-    // if user is selecting a collection, they must have a `write` access to it
-    if (models.has("collection") && item.model === "collection") {
-      return item.can_write;
-    }
-
-    // if user is selecting something else (e.g. dashboard),
-    // they must have `write` access to a collection item belongs to
-    const collection = item.collection_id
-      ? collectionsById[item.collection_id]
-      : collectionsById["root"];
-    return collection.can_write;
+function getItemId(item) {
+  if (!item) {
+    return;
   }
-
-  checkCanWriteToCollectionOrItsChildren(collection) {
-    return (
-      collection.can_write ||
-      collection.children.some(child =>
-        this.checkCanWriteToCollectionOrItsChildren(child),
-      )
-    );
+  if (item.model === "collection") {
+    return item.id === null ? "root" : item.id;
   }
+  return item.id;
+}
 
-  render() {
-    const {
-      value,
-      onChange,
-      collectionsById,
-      getCollectionIcon,
-      style,
-      className,
-      showSearch = true,
-      showScroll = true,
-    } = this.props;
-    const { parentId, searchMode, searchString } = this.state;
+function ItemPicker({
+  value,
+  models,
+  collectionsById,
+  getCollectionIcon,
+  onChange,
+  className,
+  style,
+  showSearch = true,
+  showScroll = true,
+}) {
+  const [openCollectionId, setOpenCollectionId] = useState("root");
+  const [isSearchEnabled, setIsSearchEnabled] = useState(false);
+  const [searchString, setSearchString] = useState("");
 
-    const models = new Set(this.props.models);
-    const modelsIncludeNonCollections =
-      this.props.models.filter(model => model !== "collection").length > 0;
+  const isPickingNotCollection = models.some(model => model !== "collection");
 
-    const collection = collectionsById[parentId];
-    const crumbs = getCrumbs(collection, collectionsById, id =>
-      this.setState({ parentId: id }),
-    );
+  const openCollection = collectionsById[openCollectionId];
 
-    let allCollections = (collection && collection.children) || [];
+  const collections = useMemo(() => {
+    let list = openCollection?.children || [];
 
     // show root in itself if we can pick it
-    if (collection && isRoot(collection) && models.has("collection")) {
-      allCollections = [collection, ...allCollections];
+    if (
+      openCollection &&
+      isRootCollection(openCollection) &&
+      models.includes("collection")
+    ) {
+      list = [openCollection, ...list];
     }
 
-    // ensure we only display collections a user can write to
-    allCollections = allCollections.filter(collection =>
-      this.checkCanWriteToCollectionOrItsChildren(collection),
-    );
-
-    // code below assumes items have a "model" property
-    allCollections = allCollections.map(collection => ({
+    return list.filter(canWriteToCollectionOrChildren).map(collection => ({
       ...collection,
       model: "collection",
     }));
+  }, [openCollection, models]);
 
-    // special case for root collection
-    const getId = item =>
-      item &&
-      (item.model === "collection" && item.id === null ? "root" : item.id);
+  const crumbs = useMemo(
+    () =>
+      getCrumbs(openCollection, collectionsById, id => setOpenCollectionId(id)),
+    [openCollection, collectionsById],
+  );
 
-    const isSelected = item =>
-      item &&
-      value &&
-      getId(item) === getId(value) &&
-      (models.size === 1 || item.model === value.model);
+  const searchQuery = useMemo(() => {
+    const query = {};
+
+    if (searchString) {
+      query.q = searchString;
+    } else {
+      query.collection = openCollectionId;
+    }
+
+    if (models.length === 1) {
+      query.models = models;
+    }
+
+    return query;
+  }, [models, searchString, openCollectionId]);
+
+  const checkIsItemSelected = useCallback(
+    item => {
+      if (!value || !item) {
+        return false;
+      }
+      const isSameModel = item.model === value.model || models.length === 1;
+      return isSameModel && getItemId(item) === getItemId(value);
+    },
+    [value, models],
+  );
+
+  const checkCollectionMaybeHasChildren = useCallback(
+    collection => {
+      if (isPickingNotCollection) {
+        // Non-collection models (e.g. questions, dashboards)
+        // are loaded on-demand so we don't know ahead of time
+        // if they have children, so we have to assume they do
+        return true;
+      }
+
+      if (isRootCollection(collection)) {
+        // Skip root as we don't show root's sub-collections alongside it
+        return false;
+      }
+
+      return collection.children?.length > 0;
+    },
+    [isPickingNotCollection],
+  );
+
+  const checkHasWritePermissionForItem = useCallback(
+    item => {
+      // if user is selecting a collection, they must have a `write` access to it
+      if (models.includes("collection") && item.model === "collection") {
+        return item.can_write;
+      }
+
+      // if user is selecting something else (e.g. dashboard),
+      // they must have `write` access to a collection item belongs to
+      const collection = item.collection_id
+        ? collectionsById[item.collection_id]
+        : collectionsById["root"];
+      return collection.can_write;
+    },
+    [models, collectionsById],
+  );
+
+  const handleSearchInputKeyPress = useCallback(e => {
+    if (e.key === "Enter") {
+      setSearchString(e.target.value);
+    }
+  }, []);
+
+  const handleOpenSearch = useCallback(() => {
+    setIsSearchEnabled(true);
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setIsSearchEnabled(false);
+    setSearchString("");
+  }, []);
+
+  const handleCollectionSelected = useCallback(
+    collection => {
+      if (isRootCollection(collection)) {
+        onChange({ id: null, model: "collection" });
+      } else {
+        onChange(collection);
+      }
+    },
+    [onChange],
+  );
+
+  const handleCollectionOpen = useCallback(collectionId => {
+    setOpenCollectionId(collectionId);
+  }, []);
+
+  const renderHeader = useCallback(() => {
+    if (isSearchEnabled) {
+      return (
+        <ItemPickerHeader data-testid="item-picker-header">
+          <SearchInput
+            type="search"
+            className="input"
+            placeholder={t`Search`}
+            autoFocus
+            onKeyPress={handleSearchInputKeyPress}
+          />
+          <SearchToggle onClick={handleCloseSearch}>
+            <Icon name="close" />
+          </SearchToggle>
+        </ItemPickerHeader>
+      );
+    }
 
     return (
-      <LoadingAndErrorWrapper
-        loading={!collectionsById}
-        className={cx({ "scroll-y": showScroll })}
-      >
-        <div style={style} className={cx(className, "scroll-y")}>
-          {searchMode ? (
-            <ItemPickerHeader
-              className="border-bottom flex align-center"
-              data-testid="item-picker-header"
-            >
-              <input
-                type="search"
-                className="input rounded flex-full"
-                placeholder={t`Search`}
-                autoFocus
-                onKeyPress={e => {
-                  if (e.key === "Enter") {
-                    this.setState({ searchString: e.target.value });
-                  }
-                }}
-              />
-              <Icon
-                name="close"
-                className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
-                onClick={() =>
-                  this.setState({ searchMode: null, searchString: null })
-                }
-              />
-            </ItemPickerHeader>
-          ) : (
-            <ItemPickerHeader
-              className="border-bottom flex align-center"
-              data-testid="item-picker-header"
-            >
-              <Breadcrumbs crumbs={crumbs} />
-              {showSearch && (
-                <Icon
-                  name="search"
-                  className="ml-auto pl2 text-light text-medium-hover cursor-pointer"
-                  onClick={() => this.setState({ searchMode: true })}
-                />
-              )}
-            </ItemPickerHeader>
-          )}
-          <ItemPickerList data-testid="item-picker-list">
-            {!searchString
-              ? allCollections.map(collection => {
-                  const hasChildren =
-                    (collection.children &&
-                      collection.children.length > 0 &&
-                      // exclude root since we show root's subcollections alongside it
-                      !isRoot(collection)) ||
-                    // non-collection models are loaded on-demand so we don't know ahead of time
-                    // if they have children, so we have to assume they do
-                    modelsIncludeNonCollections;
-                  // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
-                  const canSelect =
-                    models.has("collection") && collection.can_write;
-
-                  const icon = getCollectionIcon(collection);
-
-                  // only show if collection can be selected or has children
-                  return canSelect || hasChildren ? (
-                    <Item
-                      key={`collection-${collection.id}`}
-                      item={collection}
-                      name={collection.name}
-                      color={color(icon.color) || getCollectionIconColor()}
-                      icon={icon}
-                      selected={canSelect && isSelected(collection)}
-                      canSelect={canSelect}
-                      hasChildren={hasChildren}
-                      onChange={collection =>
-                        isRoot(collection)
-                          ? // "root" collection should have `null` id
-                            onChange({ id: null, model: "collection" })
-                          : onChange(collection)
-                      }
-                      onChangeParentId={parentId => this.setState({ parentId })}
-                    />
-                  ) : null;
-                })
-              : null}
-            {(modelsIncludeNonCollections || searchString) && (
-              <EntityListLoader
-                entityType="search"
-                entityQuery={{
-                  ...(searchString
-                    ? { q: searchString }
-                    : { collection: parentId }),
-                  ...(models.size === 1 ? { models: Array.from(models) } : {}),
-                }}
-                wrapped
-              >
-                {({ list }) => (
-                  <div>
-                    {list.map(item => {
-                      const hasPermission = this.checkHasWritePermissionForItem(
-                        item,
-                        models,
-                      );
-                      if (
-                        hasPermission &&
-                        // only include desired models (TODO: ideally the endpoint would handle this)
-                        models.has(item.model) &&
-                        // remove collections unless we're searching
-                        // (so a user can navigate through collections)
-                        (item.model !== "collection" || !!searchString)
-                      ) {
-                        return (
-                          <Item
-                            key={item.id}
-                            item={item}
-                            name={item.getName()}
-                            color={item.getColor()}
-                            icon={item.getIcon().name}
-                            selected={isSelected(item)}
-                            canSelect={hasPermission}
-                            onChange={onChange}
-                          />
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                )}
-              </EntityListLoader>
-            )}
-          </ItemPickerList>
-        </div>
-      </LoadingAndErrorWrapper>
+      <ItemPickerHeader data-testid="item-picker-header">
+        <Breadcrumbs crumbs={crumbs} />
+        {showSearch && (
+          <SearchToggle onClick={handleOpenSearch}>
+            <Icon name="search" />
+          </SearchToggle>
+        )}
+      </ItemPickerHeader>
     );
-  }
+  }, [
+    isSearchEnabled,
+    crumbs,
+    showSearch,
+    handleOpenSearch,
+    handleCloseSearch,
+    handleSearchInputKeyPress,
+  ]);
+
+  const renderCollectionListItem = useCallback(
+    collection => {
+      const hasChildren = checkCollectionMaybeHasChildren(collection);
+
+      // NOTE: this assumes the only reason you'd be selecting a collection is to modify it in some way
+      const canSelect = models.includes("collection") && collection.can_write;
+
+      const icon = getCollectionIcon(collection);
+
+      if (canSelect || hasChildren) {
+        return (
+          <Item
+            key={`collection-${collection.id}`}
+            item={collection}
+            name={collection.name}
+            color={color(icon.color) || getDefaultCollectionIconColor()}
+            icon={icon}
+            selected={canSelect && checkIsItemSelected(collection)}
+            canSelect={canSelect}
+            hasChildren={hasChildren}
+            onChange={handleCollectionSelected}
+            onChangeOpenCollectionId={handleCollectionOpen}
+          />
+        );
+      }
+
+      return null;
+    },
+    [
+      models,
+      getCollectionIcon,
+      handleCollectionOpen,
+      handleCollectionSelected,
+      checkIsItemSelected,
+      checkCollectionMaybeHasChildren,
+    ],
+  );
+
+  const renderCollectionContentListItem = useCallback(
+    item => {
+      const hasPermission = checkHasWritePermissionForItem(item);
+
+      if (
+        hasPermission &&
+        // only include desired models (TODO: ideally the endpoint would handle this)
+        models.includes(item.model) &&
+        // remove collections unless we're searching
+        // (so a user can navigate through collections)
+        (item.model !== "collection" || !!searchString)
+      ) {
+        return (
+          <Item
+            key={item.id}
+            item={item}
+            name={item.getName()}
+            color={item.getColor()}
+            icon={item.getIcon().name}
+            selected={checkIsItemSelected(item)}
+            canSelect={hasPermission}
+            onChange={onChange}
+          />
+        );
+      }
+
+      return null;
+    },
+    [
+      models,
+      searchString,
+      onChange,
+      checkHasWritePermissionForItem,
+      checkIsItemSelected,
+    ],
+  );
+
+  return (
+    <ScrollAwareLoadingAndErrorWrapper
+      loading={!collectionsById}
+      hasScroll={showScroll}
+    >
+      <ItemPickerRoot className={className} style={style}>
+        {renderHeader()}
+        <ItemPickerList data-testid="item-picker-list">
+          {!searchString && collections.map(renderCollectionListItem)}
+          {(isPickingNotCollection || searchString) && (
+            <Search.ListLoader query={searchQuery} wrapped>
+              {({ list }) => (
+                <div>{list.map(renderCollectionContentListItem)}</div>
+              )}
+            </Search.ListLoader>
+          )}
+        </ItemPickerList>
+      </ItemPickerRoot>
+    </ScrollAwareLoadingAndErrorWrapper>
+  );
 }
 
 export default _.compose(
   entityObjectLoader({
-    id: () => "root",
-    entityType: (state, props) => props.entity?.name ?? "collections",
+    id: "root",
+    entityType: getEntityLoaderType,
     loadingAndErrorWrapper: false,
   }),
   entityListLoader({
-    entityType: (state, props) => props.entity?.name ?? "collections",
+    entityType: getEntityLoaderType,
     loadingAndErrorWrapper: false,
   }),
-  connect((state, props) => ({
-    collectionsById: (
-      props.entity || Collections
-    ).selectors.getExpandedCollectionsById(state),
-    getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
-  })),
+  connect(mapStateToProps),
 )(ItemPicker);

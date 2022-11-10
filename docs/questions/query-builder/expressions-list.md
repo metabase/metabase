@@ -47,6 +47,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [log](#log)
   - [lower](#lower)
   - [minute](#minute)
+  - [month](#month)
   - [power](#power)
   - [quarter](#quarter)
   - [regexextract](./expressions/regexextract.md)
@@ -59,6 +60,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [substring](./expressions/substring.md)
   - [trim](#trim)
   - [upper](#upper)
+  - [week](#week)
   - [year](#year)
 - [Database limitations](#database-limitations)
 
@@ -272,9 +274,9 @@ Adds some unit of time to a date or timestamp value.
 
 Syntax: `datetimeAdd(column, amount, unit)`.
 
- - column: the column with your date or timestamp values.
- - amount: The number of units to be added.
- - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+- column: the column with your date or timestamp values.
+- amount: The number of units to be added.
+- units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
 
 Example: `datetimeAdd("March 25, 2021, 12:52:37", 1, "month")` would return `April 25, 2021, 12:52:37`.
 
@@ -284,9 +286,9 @@ Subtracts some unit of time from a date or timestamp value.
 
 Syntax: `datetimeSubtract(column, amount, unit)`.
 
- - column: the column with your date or timestamp values.
- - amount: The number of units to be subtracted.
- - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+- column: the column with your date or timestamp values.
+- amount: The number of units to be subtracted.
+- units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
 
 Example: `datetimeSubtract("March 25, 2021, 12:52:37", 1, "month")` would return `February 25, 2021, 12:52:37`.
 
@@ -332,7 +334,7 @@ Related: [ceil](#ceil), [round](#round).
 
 Takes a datetime and returns the hour as an integer (0-23).
 
-Syntax: `hour([datetime column)`.
+Syntax: `hour([datetime column])`.
 
 Example: `hour("March 25, 2021, 12:52:37")` would return `12`.
 
@@ -402,7 +404,7 @@ Related: [upper](#upper).
 
 Takes a datetime and returns the minute as an integer (0-59).
 
-Syntax: `minute([datetime column)`.
+Syntax: `minute(datetime column)`.
 
 Example: `minute("March 25, 2021, 12:52:37")` would return `52`.
 
@@ -410,7 +412,7 @@ Example: `minute("March 25, 2021, 12:52:37")` would return `52`.
 
 Takes a datetime and returns the month number (1-12) as an integer.
 
-Syntax: `month([datetime column)`.
+Syntax: `month(datetime)`.
 
 Example: `month("March 25, 2021, 12:52:37")` would return the month as an integer, `3`.
 
@@ -528,11 +530,25 @@ Syntax: `upper(text)`.
 
 Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would return "HYPER".
 
+### week
+
+Takes a datetime and returns the week as an integer.
+
+Syntax: `week(column, mode)`.
+
+Example: `week("March 25, 2021, 12:52:37")` would return the week as an integer, `12`.
+
+- column: the name of the column of the date or datetime value.
+- mode: Optional.
+  - ISO: (default) Week 1 starts on the Monday before the first Thursday of January.
+  - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
+  - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+
 ### year
 
 Takes a datetime and returns the year as an integer.
 
-Syntax: `year([datetime column)`.
+Syntax: `year([datetime column])`.
 
 Example: `year("March 25, 2021, 12:52:37")` would return the year 2021 as an integer, `2,021`.
 

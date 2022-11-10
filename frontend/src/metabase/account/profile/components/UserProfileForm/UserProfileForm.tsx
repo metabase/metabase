@@ -65,20 +65,17 @@ const UserProfileForm = ({
                 name="first_name"
                 title={t`First name`}
                 placeholder={t`Johnny`}
-                fullWidth
               />
               <FormInput
                 name="last_name"
                 title={t`Last name`}
                 placeholder={t`Appleseed`}
-                fullWidth
               />
               <FormInput
                 name="email"
                 type="email"
                 title={t`Email`}
                 placeholder="nicetoseeyou@email.com"
-                fullWidth
               />
             </>
           )}

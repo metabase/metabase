@@ -60,22 +60,19 @@ const InviteUserForm = ({
             title={t`First name`}
             placeholder={t`Johnny`}
             autoFocus
-            fullWidth
           />
           <FormInput
             name="last_name"
             title={t`Last name`}
             placeholder={t`Appleseed`}
-            fullWidth
           />
         </UserFieldGroup>
         <FormInput
           name="email"
           title={t`Email`}
           placeholder={"nicetoseeyou@email.com"}
-          fullWidth
         />
-        <FormSubmitButton title={`Send invitation`} primary />
+        <FormSubmitButton title={t`Send invitation`} primary />
       </Form>
     </FormProvider>
   );

@@ -506,11 +506,11 @@
   (hsql/call :power (->honeysql driver field) (->honeysql driver power)))
 
 (defn- interval? [expr]
-  (and (vector? expr) (= (first expr) :interval)))
+  (mbql.u/is-clause? :interval expr))
 
 (defmethod ->honeysql [:sql :+]
   [driver [_ & args]]
-  (if (mbql.u/datetime-arithmetics? args)
+  (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
       (reduce (fn [hsql-form [_ amount unit]]
                 (add-interval-honeysql-form driver hsql-form amount unit))

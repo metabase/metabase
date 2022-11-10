@@ -33,7 +33,7 @@ Note that there are some kinds of saved questions that can't be used as source d
 
 ## The query builder
 
-Once you select your data, Metabase will take you the query builder. Say you selected **Raw data** > **Sample databse** > **Orders**, then you'll see something like this:
+Once you select your data, Metabase will take you the query builder. Say you selected **Raw data** > **Sample database** > **Orders**, then you'll see something like this:
 
 ![Metabase query builder](../images/notebook-editor.png)
 
@@ -61,13 +61,7 @@ Filtering just means narrowing things down based on certain criteria. You're pro
 
 ![Filtering](../images/filter-step.png)
 
-When you add a filter step, you can select one or more columns to filter on. Depending on the type of column you pick, you'll get different options, like a calendar for date columns.
-
-Broadly speaking, there are three types of columns, each with their own set of filtering options:
-
-- **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
-- **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, or you can exclude empty cells in that column.
-  - **Date** columns give you a lot of options to filter by specific date ranges, relative date ranges, and more.
+When you add a filter step, you can select one or more columns to filter on. Depending on the [data type](https://www.metabase.com/learn/databases/data-types-overview) of the column you pick, you'll get different [filter types](#filter-types), like a calendar for date columns.
 
 You can add subsequent filter steps after each summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
@@ -76,6 +70,14 @@ Once you're happy with your filter, click **Add filter**, and visualize your res
 ![An active filter](../images/filter-badge.png)
 
 If you want to edit your filter, just click the little purple filter at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
+
+## Filter types
+
+Broadly speaking, there are three types of columns, each with their own set of filtering options:
+
+- **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
+- **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, or you can exclude empty cells in that column.
+- **Date** columns give you a lot of options to filter by specific date ranges, relative date ranges, and more.
 
 ## Filter modal
 

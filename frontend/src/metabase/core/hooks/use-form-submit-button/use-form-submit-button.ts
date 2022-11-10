@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useFormikContext } from "formik";
-import useFormState, { FormStatus } from "metabase/core/hooks/use-form-state";
+import useFormContext, {
+  FormStatus,
+} from "metabase/core/hooks/use-form-context";
 
 const STATUS_TIMEOUT = 5000;
 
@@ -17,7 +19,7 @@ const useFormSubmitButton = ({
   isDisabled = false,
 }: UseFormSubmitButtonProps): UseFormSubmitButtonResult => {
   const { isValid, isSubmitting } = useFormikContext();
-  const { status } = useFormState();
+  const { status } = useFormContext();
   const isRecent = useIsRecent(status, STATUS_TIMEOUT);
 
   return {

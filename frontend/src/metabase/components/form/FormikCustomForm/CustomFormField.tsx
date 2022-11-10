@@ -45,6 +45,9 @@ function getFieldDefinition(
   );
 }
 
+/**
+ * @deprecated
+ */
 function RawCustomFormField(
   props: CustomFormFieldProps & { forwardedRef?: any },
 ) {
@@ -112,8 +115,14 @@ function RawCustomFormField(
   );
 }
 
-export default React.forwardRef<HTMLInputElement, CustomFormFieldProps>(
-  function CustomFormField(props, ref) {
-    return <RawCustomFormField {...props} forwardedRef={ref} />;
-  },
-);
+/**
+ * @deprecated
+ */
+const CustomFormField = React.forwardRef<
+  HTMLInputElement,
+  CustomFormFieldProps
+>(function CustomFormField(props, ref) {
+  return <RawCustomFormField {...props} forwardedRef={ref} />;
+});
+
+export default CustomFormField;

@@ -362,7 +362,7 @@
   (testing "Insights should work on cahced results (#12556)"
     (with-mock-cache [save-chan]
       (let [query (-> checkins
-                      (mt/mbql-query {:breakout    [[:datetime-field (mt/id :checkins :date) :month]]
+                      (mt/mbql-query {:breakout    [!month.date]
                                       :aggregation [[:count]]})
                       (assoc :cache-ttl 100))]
         (qp/process-query query)

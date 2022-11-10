@@ -360,7 +360,7 @@ export default class NativeQuery extends AtomicQuery {
     return this.templateTags()
       .map(tag => {
         if (!tag["display-name"]) {
-          return new ValidationError(t`Missing wiget label: ${tag.name}`);
+          return new ValidationError(t`Missing widget label: ${tag.name}`);
         }
         const dimension = new TemplateTagDimension(
           tag.name,
