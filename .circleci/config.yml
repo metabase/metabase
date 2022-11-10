@@ -38,7 +38,7 @@ executors:
           MB_DB_DBNAME: circle_test
           MB_DB_USER: circle_test
           MB_POSTGRESQL_TEST_USER: circle_test
-      - image: circleci/postgres:9.6-alpine
+      - image: cimg/postgres:9.6.24
         environment:
           POSTGRES_USER: circle_test
           POSTGRES_DB: circle_test
@@ -54,7 +54,7 @@ executors:
           MB_DB_DBNAME: metabase_test
           MB_DB_USER: metabase_test
           MB_POSTGRESQL_TEST_USER: metabase_test
-      - image: circleci/postgres:latest
+      - image: cimg/postgres:15.0
         environment:
           POSTGRES_USER: metabase_test
           POSTGRES_DB: metabase_test
@@ -71,7 +71,7 @@ executors:
           MB_DB_DBNAME: circle_test
           MB_DB_USER: root
           MB_MYSQL_TEST_USER: root
-      - image: circleci/mysql:5.7.23
+      - image: cimg/mysql:5.7.36
 
   mysql-latest:
     working_directory: /home/circleci/metabase/metabase/
@@ -84,9 +84,9 @@ executors:
           MB_DB_DBNAME: circle_test
           MB_DB_USER: root
           MB_MYSQL_TEST_USER: root
-      - image: circleci/mysql:latest
+      - image: cimg/mysql:8.0
 
-  mariadb-10-2:
+  mariadb-10-3:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
@@ -97,7 +97,7 @@ executors:
           MB_DB_DBNAME: circle_test
           MB_DB_USER: root
           MB_MYSQL_TEST_USER: root
-      - image: circleci/mariadb:10.2.23
+      - image: cimg/mariadb:10.3.31
 
   mariadb-latest:
     working_directory: /home/circleci/metabase/metabase/
@@ -110,7 +110,7 @@ executors:
           MB_DB_DBNAME: circle_test
           MB_DB_USER: root
           MB_MYSQL_TEST_USER: root
-      - image: circleci/mariadb:latest
+      - image: cimg/mariadb:10.9
         environment:
           # MYSQL_DATABASE: metabase_test
           # MYSQL_USER: root
@@ -758,7 +758,7 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              version: ["mysql-5-7", "mariadb-10-2", "mariadb-latest"]
+              version: ["mysql-5-7", "mariadb-10-3", "mariadb-latest"]
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
           requires:
