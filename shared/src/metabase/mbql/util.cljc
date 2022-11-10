@@ -458,20 +458,6 @@
   (and (temporal-field? field)
        (not (time-field? field))))
 
-(defn datetime-arithmetics?
-  "Is a given artihmetics clause operating on datetimes?"
-  [clause]
-  (mbql.match/match-one clause
-    #{:datetime-diff :temporal-extract}
-    false
-
-    #{:interval :relative-datetime :datetime-add :datetime-subtract}
-    true
-
-    [:field _ (_ :guard :temporal-unit)]
-    true))
-
-
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
 (defn unique-name-generator
