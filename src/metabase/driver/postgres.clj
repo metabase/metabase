@@ -343,7 +343,6 @@
                               (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))))]
       (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))
 
-    ;; else
     (throw (ex-info (tru "Invalid datetime-diff unit: {0}" unit)
                     {:valid-units [:year :month :week :day :hour :minute :second]
                      :bad-unit unit}))))

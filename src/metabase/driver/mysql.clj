@@ -374,7 +374,6 @@
       (:hour :minute :second)
       (hsql/call :timestampdiff (hsql/raw (name unit)) x y)
 
-      ;; else
       (throw (ex-info (tru "Unsupported datetime-diff unit {0}" unit)
                       {:clause          clause
                        :supported-units [:year :month :week :day :hour :minute :second]})))))
