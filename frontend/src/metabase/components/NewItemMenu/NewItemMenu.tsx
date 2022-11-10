@@ -110,7 +110,7 @@ const NewItemMenu = ({
       },
       {
         title: t`App`,
-        icon: "star",
+        icon: "app",
         action: () => setModal("new-app"),
         event: `${analyticsContext};New App Click;`,
       },
