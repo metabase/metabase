@@ -127,6 +127,28 @@ export const scaffoldDataApp = ({ name, tables }: ScaffoldNewAppParams) => {
   };
 };
 
+export type ScaffoldNewPagesParams = {
+  dataAppId: DataApp["id"];
+  tables: number[]; // list of table IDs
+};
+
+export const scaffoldDataAppPages = ({
+  dataAppId,
+  tables,
+}: ScaffoldNewPagesParams) => {
+  return async (dispatch: Dispatch) => {
+    const dataApp = await DataAppsApi.scaffoldNewPages({
+      id: dataAppId,
+      "table-ids": tables,
+    });
+    dispatch({
+      type: DataApps.actionTypes.UPDATE,
+      payload: DataApps.normalize(dataApp),
+    });
+    return dataApp;
+  };
+};
+
 export type ArchiveDataAppPayload = {
   id: DataApp["id"];
 };
