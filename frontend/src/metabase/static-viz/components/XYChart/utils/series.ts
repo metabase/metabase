@@ -51,27 +51,25 @@ export const sortSeries = (series: Series[], type: XAxisType) => {
 };
 
 export const calculateStackedItems = (multipleSeries: Series[]) => {
-  const dimensionSeriesIndexMap = multipleSeries.reduce(
-    (map, series, seriesIndex) => {
-      series.data.forEach(datum => {
-        const dimension = getX(datum);
-        if (!map[dimension]) {
-          map[dimension] = {};
-        }
-        map[dimension][seriesIndex] = datum;
-      });
-      return map;
-    },
-    {} as {
-      [dimension: string]: {
-        [seriesIndex: number]: SeriesDatum;
-      };
-    },
-  );
+  const dimensionSeriesIndexMap: Record<
+    string,
+    Record<number, SeriesDatum>
+  > = {};
+
+  multipleSeries.forEach((series, seriesIndex) => {
+    series.data.forEach(datum => {
+      const dimension = getX(datum);
+      if (!dimensionSeriesIndexMap[dimension]) {
+        dimensionSeriesIndexMap[dimension] = {};
+      }
+      dimensionSeriesIndexMap[dimension][seriesIndex] = datum;
+    });
+    return dimensionSeriesIndexMap;
+  });
 
   // Stacked charts work only for a single dataset with one dimension
   return multipleSeries.map((series, seriesIndex) => {
-    const stackedData = series.data.map((datum, datumIndex) => {
+    const stackedData = series.data.map(datum => {
       const [x, y] = datum;
 
       let y1 = 0;
