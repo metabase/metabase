@@ -96,7 +96,9 @@ install_papertrail () {
 
 copy_plugins () {
     mkdir /opt/plugins
-    cp .ebextensions/metabase_plugins/*.jar /opt/plugins
+    for file in .ebextensions/metabase_plugins/*.jar; do
+        cp $file /opt/plugins
+    done
     chmod -R 777 /opt/plugins
 }
 
