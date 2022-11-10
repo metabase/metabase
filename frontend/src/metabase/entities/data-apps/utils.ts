@@ -8,7 +8,7 @@ import type {
 } from "metabase-types/api";
 
 export function getDataAppIcon(app?: DataApp) {
-  return { name: "star" };
+  return { name: "app" };
 }
 
 export function isDataAppCollection(collection: Collection) {
