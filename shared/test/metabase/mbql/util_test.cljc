@@ -717,14 +717,6 @@
           (t/is (= expected
                    (mbql.u/query->max-rows-limit query))))))))
 
-(t/deftest ^:parallel datetime-arithmetics?-test
-  (t/is (mbql.u/datetime-arithmetics?
-         [:+ [:field-id 13] [:interval -1 :month]]))
-  (t/is (mbql.u/datetime-arithmetics?
-         [:field "a" {:temporal-unit :month}]))
-  (t/is (not (mbql.u/datetime-arithmetics?
-              [:+ [:field-id 13] 3]))))
-
 (t/deftest ^:parallel expression-with-name-test
   (t/is (= [:+ 1 1]
            (mbql.u/expression-with-name {:expressions  {"two" [:+ 1 1]}
