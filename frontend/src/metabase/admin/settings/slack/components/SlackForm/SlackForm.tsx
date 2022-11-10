@@ -37,7 +37,6 @@ const SlackForm = ({
           title={t`Slack Bot User OAuth Token`}
           placeholder="xoxb-781236542736-2364535789652-GkwFDQoHqzXDVsC6GzqYUypD"
           readOnly={isReadOnly}
-          fullWidth
         />
         {!isReadOnly && (
           <SlackFormMessage>
@@ -50,7 +49,6 @@ const SlackForm = ({
           description={isReadOnly ? SLACK_CHANNEL_DESCRIPTION : undefined}
           placeholder="metabase_files"
           readOnly={isReadOnly}
-          fullWidth
         />
         {!isReadOnly && (
           <>
