@@ -17,7 +17,7 @@
   "Generate a powerset while maintaining the original ordering as much as possible"
   [xs]
   (for [combo (reverse (range (int (Math/pow 2 (count xs)))))]
-    (for [item  (range 0 (count xs))
+    (for [item  (range (count xs))
           :when (not (zero? (bit-and (bit-shift-left 1 item) combo)))]
       (nth xs item))))
 
@@ -201,8 +201,7 @@
       (qp/process-query (dissoc first-query :info) context))))
 
 (defn run-pivot-query
-  "Run the pivot query. Unlike many query execution functions, this takes `context` as the first parameter to support
-   its application via `partial`.
+  "Run the pivot query.
 
    You are expected to wrap this call in `qp.streaming/streaming-response` yourself."
   ([query]
