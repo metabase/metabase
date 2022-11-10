@@ -38,6 +38,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
         ["2020-10-27", 80],
         ["2020-10-28", 95],
       ],
+      seriesKey: "count",
     },
     {
       name: "bar series 1",
@@ -55,6 +56,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
         ["2020-10-27", 20],
         ["2020-10-28", 10],
       ],
+      seriesKey: "bar series 1",
     },
     {
       name: "bar series 2 with a really really really long name",
@@ -72,6 +74,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
         ["2020-10-27", 3],
         ["2020-10-28", 2],
       ],
+      seriesKey: "bar series 2 with a really really really long name",
     },
     {
       name: "area series",
@@ -89,6 +92,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
         ["2020-10-27", 12],
         ["2020-10-28", 15],
       ],
+      seriesKey: "area series",
     },
   ],
 };
@@ -130,6 +134,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_2 = {
         ["2020-10-26", 20],
         ["2020-10-27", 80],
       ],
+      seriesKey: "sum",
     },
     {
       name: "bar series",
@@ -147,6 +152,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_2 = {
         ["2020-10-27", 40],
         ["2020-10-28", 50],
       ],
+      seriesKey: "bar series",
     },
     {
       name: "area series",
@@ -164,6 +170,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_2 = {
         ["2020-10-29", -100],
         ["2020-10-30", -120],
       ],
+      seriesKey: "area series",
     },
   ],
 };
@@ -206,6 +213,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_3 = {
         ["Roderick Herman", 50],
         ["Ruth Dougherty", 75],
       ],
+      seriesKey: "sum",
     },
     {
       name: "bar series 1",
@@ -226,6 +234,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_3 = {
         ["Roderick Herman", 40],
         ["Ruth Dougherty", 65],
       ],
+      seriesKey: "bar series 1",
     },
   ],
 };
@@ -264,6 +273,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
         ["2020-10-22", 45],
         ["2020-10-23", 55],
       ],
+      seriesKey: "sum",
     },
     {
       name: "series 2",
@@ -278,6 +288,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
         ["2020-10-22", 70],
         ["2020-10-23", 65],
       ],
+      seriesKey: "series 2",
     },
     {
       name: "series 3",
@@ -292,6 +303,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
         ["2020-10-22", -45],
         ["2020-10-23", -55],
       ],
+      seriesKey: "series 3",
     },
     {
       name: "series 4",
@@ -306,6 +318,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
         ["2020-10-22", -10],
         ["2020-10-23", -5],
       ],
+      seriesKey: "series 4",
     },
   ],
 };
@@ -330,6 +343,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_5 = {
       yAxisPosition: "left",
       type: "bar",
       data: _.range(48).map(n => [`bar ${n + 1}`, n + 1]),
+      seriesKey: "sum",
     },
   ],
 };
@@ -354,6 +368,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_6 = {
       yAxisPosition: "left",
       type: "bar",
       data: _.range(200).map(n => [`bar ${n + 1}`, n + 1]),
+      seriesKey: "warn",
     },
   ],
 };
@@ -378,6 +393,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_7 = {
       yAxisPosition: "left",
       type: "bar",
       data: _.range(20).map(n => [`bar ${n + 1}`, n + 1]),
+      seriesKey: "loss",
     },
   ],
 };
