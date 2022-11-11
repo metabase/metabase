@@ -1,10 +1,16 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
 
 import { useDataPickerValue } from "metabase/containers/DataPicker";
+
+import {
+  getResponseErrorMessage,
+  GenericErrorResponse,
+} from "metabase/lib/errors";
+
 import {
   scaffoldDataAppPages,
   ScaffoldNewPagesParams,
@@ -20,6 +26,8 @@ import {
   ModalTitle,
   ModalBody,
   ModalFooter,
+  ModalFooterContent,
+  ErrorMessage,
 } from "./ScaffoldDataAppPagesModal.styled";
 
 interface OwnProps {
@@ -48,18 +56,34 @@ function ScaffoldDataAppPagesModal({
   onClose,
 }: Props) {
   const [value, setValue] = useDataPickerValue();
+  const [error, setError] = useState("");
+
   const { tableIds } = value;
 
+  const handleValueChange = useCallback(
+    nextValue => {
+      setValue(nextValue);
+      setError("");
+    },
+    [setValue],
+  );
+
   const handleAdd = useCallback(async () => {
-    const dataApp = await onScaffold({
-      dataAppId,
-      tables: tableIds as number[],
-    });
-    onClose();
-    onAdd(dataApp);
+    try {
+      const dataApp = await onScaffold({
+        dataAppId,
+        tables: tableIds as number[],
+      });
+      onClose();
+      onAdd(dataApp);
+    } catch (error) {
+      const response = error as GenericErrorResponse;
+      setError(getResponseErrorMessage(response));
+    }
   }, [dataAppId, tableIds, onAdd, onScaffold, onClose]);
 
-  const canSubmit = tableIds.length > 0;
+  const hasError = error.length > 0;
+  const canSubmit = tableIds.length > 0 && !hasError;
 
   return (
     <ModalRoot>
@@ -70,12 +94,17 @@ function ScaffoldDataAppPagesModal({
         <DataAppScaffoldingDataPicker value={value} onChange={setValue} />
       </ModalBody>
       <ModalFooter>
-        <Button onClick={onClose}>{t`Cancel`}</Button>
-        <Button
-          primary
-          disabled={!canSubmit}
-          onClick={handleAdd}
-        >{t`Add`}</Button>
+        <ModalFooterContent>
+          {hasError && <ErrorMessage>{error}</ErrorMessage>}
+        </ModalFooterContent>
+        <ModalFooterContent>
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+          <Button
+            primary
+            disabled={!canSubmit}
+            onClick={handleAdd}
+          >{t`Add`}</Button>
+        </ModalFooterContent>
       </ModalFooter>
     </ModalRoot>
   );
