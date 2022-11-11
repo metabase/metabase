@@ -85,10 +85,10 @@ export interface Settings {
   "show-homepage-pin-message": boolean;
   "show-lighthouse-illustration": boolean;
   "show-metabot": boolean;
-  "slack-token": string | undefined;
+  "slack-token": string | null;
   "slack-token-valid?": boolean;
-  "slack-app-token": string | undefined;
-  "slack-files-channel": string | undefined;
+  "slack-app-token": string | null;
+  "slack-files-channel": string | null;
   "token-status": TokenStatus | undefined;
   version: Version;
 }

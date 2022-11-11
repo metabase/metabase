@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import Form from "metabase/core/components/Form";
@@ -8,16 +8,17 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { InviteInfo, UserInfo } from "metabase-types/store";
 import { UserFieldGroup } from "./InviteUserForm.styled";
 
-const InviteUserSchema = Yup.object({
-  first_name: Yup.string().max(
-    100,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
-  last_name: Yup.string().max(
-    100,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
+const INVITE_USER_SCHEMA = Yup.object({
+  first_name: Yup.string()
+    .nullable()
+    .default(null)
+    .max(100, ({ max }) => t`must be ${max} characters or less`),
+  last_name: Yup.string()
+    .nullable()
+    .default(null)
+    .max(100, ({ max }) => t`must be ${max} characters or less`),
   email: Yup.string()
+    .default("")
     .required(t`required`)
     .email(t`must be a valid email address`)
     .notOneOf(
@@ -38,20 +39,15 @@ const InviteUserForm = ({
   onSubmit,
 }: InviteUserFormProps): JSX.Element => {
   const initialValues = useMemo(() => {
-    return getInitialValues(invite);
+    return invite ?? INVITE_USER_SCHEMA.getDefault();
   }, [invite]);
-
-  const handleSubmit = useCallback(
-    (values: InviteInfo) => onSubmit(getSubmitValues(values)),
-    [onSubmit],
-  );
 
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={InviteUserSchema}
+      validationSchema={INVITE_USER_SCHEMA}
       validationContext={user}
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
     >
       <Form>
         <UserFieldGroup>
@@ -59,12 +55,14 @@ const InviteUserForm = ({
             name="first_name"
             title={t`First name`}
             placeholder={t`Johnny`}
+            nullable
             autoFocus
           />
           <FormInput
             name="last_name"
             title={t`Last name`}
             placeholder={t`Appleseed`}
+            nullable
           />
         </UserFieldGroup>
         <FormInput
@@ -76,23 +74,6 @@ const InviteUserForm = ({
       </Form>
     </FormProvider>
   );
-};
-
-const getInitialValues = (invite?: InviteInfo): InviteInfo => {
-  return {
-    email: "",
-    ...invite,
-    first_name: invite?.first_name || "",
-    last_name: invite?.last_name || "",
-  };
-};
-
-const getSubmitValues = (invite: InviteInfo): InviteInfo => {
-  return {
-    ...invite,
-    first_name: invite.first_name || null,
-    last_name: invite.last_name || null,
-  };
 };
 
 export default InviteUserForm;
