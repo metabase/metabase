@@ -1,4 +1,6 @@
 (ns metabase.cmd.env-var-dox
+  "Code to generate docs for environment variables. You can generate
+  docs by running: `clojure -M:ee:run environment-variables-documentation`"
   (:require [clojure.java.classpath :as classpath]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -10,18 +12,6 @@
 (def env-vars-not-to-mess-with
   "Flamber advises that people avoid touching these environment variables."
   (set (edn/read-string (slurp (io/file "src/metabase/cmd/resources/env-vars-to-avoid.edn")))))
-
-(defn- avoid?
-  "Used to filter out environment variables with high foot-gun indices."
-  [env-var]
-  (contains? env-vars-not-to-mess-with (u/screaming-snake-case (name (:name env-var)))))
-
-;;;; Environment variables docs intro
-
-(defn- env-var-docs-intro
-  "Exists just so we can write the intro in Markdown."
-  []
-  (str (slurp "src/metabase/cmd/resources/env-var-intro.md") "\n\n"))
 
 (defn- get-settings
   "Loads all of the metabase namespaces, which loads all of the defsettings,
@@ -35,6 +25,13 @@
     (require ns-symb))
   (seq (into (sorted-map) @setting/registered-settings)))
 
+;;;; Filter functions
+
+(defn- avoid?
+  "Used to filter out environment variables with high foot-gun indices."
+  [env-var]
+  (contains? env-vars-not-to-mess-with (u/screaming-snake-case (name (:name env-var)))))
+
 (defn- setter?
   "Used to filter out environment variables that cannot be set."
   [env-var]
@@ -45,15 +42,7 @@
   [env-var]
   (nil? (:deprecated env-var)))
 
-(defn- prefix-mb
-  "Takes a string and does something incomprehensible to it."
-  [s]
-  (str "MB_" s))
-
-(defn- heading
-  "Takes an integer and a string and creates a markdown heading of level n."
-  [n s]
-  (str (apply str (take n (repeat "#"))) " `" s "`"))
+;;;; Formatting functions
 
 (defn- format-type
   "Helper function to specify the format of an environment variable's type for its documentation."
@@ -71,6 +60,16 @@
                (str "`" (:default env-var) "`")
                "`null`")))))
 
+(defn- format-prefix
+  "Used to build an environment variable."
+  [s]
+  (str "MB_" s))
+
+(defn- format-heading
+  "Takes an integer and a string and creates a Markdown heading of level n."
+  [n s]
+  (str (apply str (take n (repeat "#"))) " `" s "`"))
+
 (defn- format-description
   "Helper function to specify description format for enviromnent variable docs."
   [env-var]
@@ -79,28 +78,33 @@
        ;; Drop brackets used to create source code links
        (#(str/replace % #"\[\[|\]\]" ""))))
 
-(defn env-var-entry
+(defn format-env-var-entry
   "Preps a doc entry for an environment variable as a Markdown section."
   [env-var]
-  (str/join "\n\n" [(heading 3 (prefix-mb (u/screaming-snake-case (name (:name env-var)))))
+  (str/join "\n\n" [(format-heading 3 (format-prefix (u/screaming-snake-case (name (:name env-var)))))
                     (format-type env-var)
                     (format-default env-var)
                     (format-description env-var)]))
 
 (defn format-env-var-docs
-  "Preps environment variable docs as a Markdown string."
+  "Preps relevant environment variable docs as a Markdown string."
   []
   (->> (get-settings)
        (map (fn [[_ v]] v))
        (filter setter?)
        (filter active?)
        (remove avoid?)
-       (map env-var-entry)))
+       (map format-env-var-entry)))
+
+(defn- format-intro
+  "Exists just so we can write the intro in Markdown."
+  []
+  (str (slurp "src/metabase/cmd/resources/env-var-intro.md") "\n\n"))
 
 (defn generate-dox!
   "Prints the generated environment variable docs to a file."
   []
   (println "Generating docs for environment variables...")
-  (spit (io/file "docs/configuring-metabase/environment-variables.md") (apply str (env-var-docs-intro)
-                                                                                  (str/join "\n\n" (format-env-var-docs))))
+  (spit (io/file "docs/configuring-metabase/environment-variables.md") (apply str (format-intro)
+                                                                              (str/join "\n\n" (format-env-var-docs))))
   (println "Done."))
