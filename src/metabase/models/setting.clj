@@ -246,7 +246,8 @@
    ;; optional fn called whether to allow the getter to return a value. Useful for ensuring premium settings are not available to
    :enabled?    (s/maybe clojure.lang.IFn)})
 
-(defonce registered-settings
+(defonce ^{:doc "Map of loaded defsettings"}
+  registered-settings
   (atom {}))
 
 (defprotocol ^:private Resolvable
