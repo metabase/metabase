@@ -136,8 +136,9 @@ export default class Funnel extends Component {
           enabled: true,
         }));
       },
-      getProps: transformedSeries => ({
+      getProps: (transformedSeries, settings, extra) => ({
         items: transformedSeries.map(s => s.card),
+        hasEditSettings: false,
       }),
       dataTestId: "funnel-row-sort",
     },
