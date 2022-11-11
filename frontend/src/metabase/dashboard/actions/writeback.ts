@@ -1,5 +1,9 @@
 import { t } from "ttag";
 
+import {
+  getResponseErrorMessage,
+  GenericErrorResponse,
+} from "metabase/lib/errors";
 import { createAction } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 
@@ -282,9 +286,12 @@ export const executeRowAction = async ({
 
     return { success: true, message };
   } catch (err) {
-    const message =
-      (<any>err)?.data?.message ||
-      t`Something went wrong while executing the action`;
+    const response = err as GenericErrorResponse;
+    const message = getResponseErrorMessage(
+      response,
+      t`Something went wrong while executing the action`,
+    );
+
     if (shouldToast) {
       dispatch(
         addUndo({
@@ -294,6 +301,7 @@ export const executeRowAction = async ({
         }),
       );
     }
+
     return { success: false, error: message, message };
   }
 };
