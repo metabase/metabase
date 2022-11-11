@@ -243,17 +243,35 @@ export type ExecuteRowActionPayload = {
   shouldToast?: boolean;
 };
 
-function getActionExecutionMessage(result: any) {
-  if (result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0) {
-    return t`Successfully executed the action`;
-  }
-  if (result["created-row"]) {
+function hasDataFromExplicitAction(result: any) {
+  const isInsert = result["created-row"];
+  const isUpdate =
+    result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0;
+  const isDelete = result["rows-deleted"]?.[0] > 0;
+  return !isInsert && !isUpdate && !isDelete;
+}
+
+function getImplicitActionExecutionMessage(action: WritebackAction) {
+  if (action.slug === "insert") {
     return t`Successfully saved`;
   }
-  if (result["rows-deleted"]?.[0] > 0) {
+  if (action.slug === "update") {
+    return t`Successfully updated`;
+  }
+  if (action.slug === "delete") {
     return t`Successfully deleted`;
   }
-  return t`Success! The action returned: ${JSON.stringify(result)}`;
+  return t`Successfully run the action`;
+}
+
+function getActionExecutionMessage(action: WritebackAction, result: any) {
+  if (action.type === "implicit") {
+    return getImplicitActionExecutionMessage(action);
+  }
+  if (hasDataFromExplicitAction(result)) {
+    return t`Success! The action returned: ${JSON.stringify(result)}`;
+  }
+  return `${action.name} ${t`was run successfully`}`;
 }
 
 export const executeRowAction = async ({
@@ -273,7 +291,10 @@ export const executeRowAction = async ({
     });
 
     dispatch(reloadDashboardCards());
-    const message = getActionExecutionMessage(result);
+    const message = getActionExecutionMessage(
+      dashcard.action as WritebackAction,
+      result,
+    );
 
     if (shouldToast) {
       dispatch(
