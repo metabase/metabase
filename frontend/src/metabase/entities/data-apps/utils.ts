@@ -31,6 +31,12 @@ export function getDataAppHomePageId(dataApp: DataApp, pages: Dashboard[]) {
   return firstPage?.id;
 }
 
+export function getDataAppIdForPage(dashboard: Dashboard, dataApps: DataApp[]) {
+  return dataApps.find(
+    dataApp => dataApp.collection_id === dashboard.collection_id,
+  )?.id;
+}
+
 function isParentPage(
   targetPageIndent: number,
   maybeParentNavItem: DataAppNavItem,
