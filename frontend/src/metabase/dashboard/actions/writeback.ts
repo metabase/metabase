@@ -1,5 +1,9 @@
 import { t } from "ttag";
 
+import {
+  getResponseErrorMessage,
+  GenericErrorResponse,
+} from "metabase/lib/errors";
 import { createAction } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 
@@ -239,6 +243,37 @@ export type ExecuteRowActionPayload = {
   shouldToast?: boolean;
 };
 
+function hasDataFromExplicitAction(result: any) {
+  const isInsert = result["created-row"];
+  const isUpdate =
+    result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0;
+  const isDelete = result["rows-deleted"]?.[0] > 0;
+  return !isInsert && !isUpdate && !isDelete;
+}
+
+function getImplicitActionExecutionMessage(action: WritebackAction) {
+  if (action.slug === "insert") {
+    return t`Successfully saved`;
+  }
+  if (action.slug === "update") {
+    return t`Successfully updated`;
+  }
+  if (action.slug === "delete") {
+    return t`Successfully deleted`;
+  }
+  return t`Successfully ran the action`;
+}
+
+function getActionExecutionMessage(action: WritebackAction, result: any) {
+  if (action.type === "implicit") {
+    return getImplicitActionExecutionMessage(action);
+  }
+  if (hasDataFromExplicitAction(result)) {
+    return t`Success! The action returned: ${JSON.stringify(result)}`;
+  }
+  return t`${action.name} was run successfully`;
+}
+
 export const executeRowAction = async ({
   page,
   dashcard,
@@ -246,7 +281,6 @@ export const executeRowAction = async ({
   dispatch,
   shouldToast = true,
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
-  let message = "";
   try {
     const result = await ActionsApi.execute({
       dashboardId: page.id,
@@ -256,16 +290,12 @@ export const executeRowAction = async ({
       parameters,
     });
 
-    if (result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0) {
-      message = t`Successfully executed the action`;
-    } else if (result["created-row"]) {
-      message = t`Successfully saved`;
-    } else if (result["rows-deleted"]?.[0] > 0) {
-      message = t`Successfully deleted`;
-    } else {
-      message = t`Success! The action returned: ${JSON.stringify(result)}`;
-    }
     dispatch(reloadDashboardCards());
+    const message = getActionExecutionMessage(
+      dashcard.action as WritebackAction,
+      result,
+    );
+
     if (shouldToast) {
       dispatch(
         addUndo({
@@ -274,11 +304,15 @@ export const executeRowAction = async ({
         }),
       );
     }
+
     return { success: true, message };
   } catch (err) {
-    const message =
-      (<any>err)?.data?.message ||
-      t`Something went wrong while executing the action`;
+    const response = err as GenericErrorResponse;
+    const message = getResponseErrorMessage(
+      response,
+      t`Something went wrong while executing the action`,
+    );
+
     if (shouldToast) {
       dispatch(
         addUndo({
@@ -288,6 +322,7 @@ export const executeRowAction = async ({
         }),
       );
     }
+
     return { success: false, error: message, message };
   }
 };
