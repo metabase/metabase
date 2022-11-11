@@ -17,6 +17,7 @@ import { color } from "metabase/lib/colors";
 import {
   GRID_WIDTH,
   GRID_ASPECT_RATIO,
+  GRID_MARGIN,
   GRID_BREAKPOINTS,
   GRID_COLUMNS,
   DEFAULT_CARD_SIZE,
@@ -25,6 +26,7 @@ import {
   DATA_APPS_ASPECT_RATIO,
   DATA_APPS_MAX_WIDTH,
   DATA_APPS_GRID_MARGIN,
+  DATA_APPS_GRID_BREAKPOINTS,
 } from "metabase/lib/dashboard_grid";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import { DashboardCard } from "./DashboardGrid.styled";
@@ -366,9 +368,15 @@ class DashboardGrid extends Component {
   );
 
   renderGrid() {
-    const { dashboard, width, isEditing } = this.props;
+    const { dashboard, width } = this.props;
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
+
+    const isDataApp = dashboard.is_app_page;
+
+    const gridWidth =
+      isDataApp && width > DATA_APPS_MAX_WIDTH ? DATA_APPS_MAX_WIDTH : width;
+
     return (
       <GridLayout
         className={cx("DashboardGrid", {
@@ -376,16 +384,10 @@ class DashboardGrid extends Component {
           "Dash--dragging": this.state.isDragging,
         })}
         layouts={layouts}
-        breakpoints={GRID_BREAKPOINTS}
+        breakpoints={isDataApp ? DATA_APPS_GRID_BREAKPOINTS : GRID_BREAKPOINTS}
         cols={GRID_COLUMNS}
-        width={
-          dashboard.is_app_page && !isEditing ? DATA_APPS_MAX_WIDTH : width
-        }
-        margin={
-          dashboard.is_app_page
-            ? DATA_APPS_GRID_MARGIN
-            : { desktop: [6, 6], mobile: [6, 10] }
-        }
+        width={gridWidth}
+        margin={isDataApp ? DATA_APPS_GRID_MARGIN : GRID_MARGIN}
         containerPadding={[0, 0]}
         rowHeight={rowHeight}
         onLayoutChange={this.onLayoutChange}

@@ -11,6 +11,7 @@ import {
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import { DATA_APPS_MAX_WIDTH } from "metabase/lib/dashboard_grid";
 
 import DataAppPageTitle from "metabase/writeback/containers/DataAppPageTitle";
 
@@ -37,10 +38,10 @@ export const HeaderRoot = styled(
   ${props =>
     props.isDataApp &&
     css`
-      width: 1200px;
-      margin-left: auto;
-      margin-right: auto;
-      padding: 0;
+      box-sizing: content-box;
+      max-width: ${DATA_APPS_MAX_WIDTH}px;
+      margin: 0 auto;
+      padding: 0 2rem;
     `}
 
   ${breakpointMaxSmall} {

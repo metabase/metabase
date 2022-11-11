@@ -299,6 +299,7 @@ class Dashboard extends Component {
                   <ParametersWidgetContainer
                     data-testid="edit-dashboard-parameters-widget-container"
                     isEditing={isEditing}
+                    isDataApp={isDataApp}
                   >
                     {parametersWidget}
                   </ParametersWidgetContainer>
