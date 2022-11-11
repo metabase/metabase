@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
             [clojure.test :refer :all]
+            [java-time :as t]
             [metabase.query-processor.streaming.interface :as qp.si]
             [metabase.test :as mt]
             [metabase.test.data.dataset-definitions :as defs])
@@ -75,5 +76,11 @@
 (deftest lazy-seq-realized-test
   (testing "Lazy seqs within rows are automatically realized during exports (#26261)"
     (let [row (first (csv-export [[(lazy-seq [1 2 3])]]))]
-      (is (= ["(1 2 3)"] row))
-      (is (not (instance? clojure.lang.LazySeq row))))))
+      (is (= ["[1 2 3]"] row))))
+
+  (testing "ZonedDateTime in a lazy seq (checking that elements in a lazy seq are formatted correctly)"
+    (mt/with-driver :postgres
+      (mt/with-report-timezone-id "US/Pacific"
+        (mt/with-everything-store
+          (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T20:06:00Z"])]]))]
+            (is (= ["[\"2021-03-30T13:06:00-07:00\"]"] row))))))))

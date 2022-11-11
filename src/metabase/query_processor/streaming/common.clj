@@ -4,7 +4,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date])
-  (:import clojure.lang.LazySeq
+  (:import clojure.lang.ISeq
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (defn in-result-time-zone
@@ -30,8 +30,9 @@
   Object
   (format-value [this] this)
 
-  LazySeq
-  (format-value [this] (apply list this))
+  ISeq
+  (format-value [this]
+    (into [] (map format-value this)))
 
   LocalDate
   (format-value [t]
