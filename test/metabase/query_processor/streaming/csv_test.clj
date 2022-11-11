@@ -2,7 +2,6 @@
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
             [clojure.test :refer :all]
-            [java-time :as t]
             [metabase.query-processor.streaming.interface :as qp.si]
             [metabase.test :as mt]
             [metabase.test.data.dataset-definitions :as defs])
