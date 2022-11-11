@@ -4,7 +4,7 @@ title: DatetimeAdd
 
 # DatetimeAdd
 
-`datetimeAdd` takes a date and adds some unit of time to it. It's useful whenever you need to do calculations over a window of time, like taking a rolling metric (such as a moving average) over a 7 day period.
+`datetimeAdd` takes a date and adds some unit of time to it. This function is useful when you're working with time series data that's marked by a "start" and an "end", such as sessions or subscriptions data.
 
 | Syntax                                                                              | Example                                              |
 |-------------------------------------------------------------------------------------|------------------------------------------------------|
@@ -13,35 +13,26 @@ title: DatetimeAdd
 
 ## Parameters
 
-Units can be any of: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+- Units can be any of: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+- Amounts can be negative: `datetimeAdd("March 25, 2021, 12:52:37", -1, "month")` will return `February 25, 2021, 12:52:37`.
 
-## Rolling metrics
+## Calculating an end date
 
-Let's say we want to take the 7 day rolling average (moving average) for the temperature inside Mount Doom. Rolling metrics are calculated over a time period _relative_ to the reporting date. 
+Let's say you're a coffee connoisseur, and you want to keep track of the freshness of your beans:
 
-So, if we're reporting on the rolling average on Nov 7, 2022, we need to pick a 7 day window relative to Nov 7, 2022, such as:
+| Coffee                 | Opened On  | Finish By  |
+|------------------------|------------|------------|
+| DAK Honey Dude         | 2022-10-31 | 2022-11-14 |
+| NO6 Full City Espresso | 2022-11-07 | 2022-11-21 |
+| Ghost Roaster Giakanja | 2022-11-27 | 2022-12-11 |
 
-- [Lagging or trailing](#lagging-or-trailing-metrics) 7 days (from Nov 1, 2022 to Nov 7, 2022)
-- [Leading](#leading-metrics) 7 days (from Nov 7, 2022 to Nov 13, 2022)
+Here, **Finish By** is a custom column with the expression:
 
-Of course, you can choose any size of window you want, and place it anywhere you want. For example, you could report a 7 day rolling average on Nov 7, 2022 that takes the average temperature between Nov 4, 2022 and Nov 10, 2022 (placing the window evenly "around" the reporting date).
+```
+datetimeAdd([Opened On], 14, 'day')
+```
 
-## Lagging or trailing metrics
-
-| Report Date | Relative Date | Temperature | 7 Day Lagging Average |
-|-------------|---------------|-------------|-----------------------|
-| 2022-11-02  | Today - 6     | 1140        |                       |
-| 2022-11-03  | Today - 5     | 1170        |                       |
-| 2022-11-04  | Today - 4     | 1130        |                       |
-| 2022-11-05  | Today - 3     | 1140        |                       |
-| 2022-11-06  | Today - 2     | 1190        |                       |
-| 2022-11-07  | Yesterday     | 1200        |                       |
-| 2022-11-08  | Today         | 1250        |                       |
-
-
-## Leading metrics
-
-Leading metrics are a bit tricky to wrap your head around. The report dates for a leading metric are almost always in the past.
+You can use the [`between` expression](../expressions-list.md#between) to check if a given date falls between your "start" and "end" dates. 
 
 ## Accepted data types
 
@@ -55,13 +46,97 @@ Leading metrics are a bit tricky to wrap your head around. The report dates for 
 
 ## Limitations
 
+You can use `datetimeAdd` to _calculate_ relative dates given a column of date values, but unfortunately Metabase doesn't currently let you _generate_ a relative date (such as today's date).
+
+For example, if you want to check if today's date falls between **Opened On** and **Finish By** in the [Coffee example](#calculating-an-end-date):
+
+- Ask your database admin if there's table in your database that stores dates for reporting (sometimes called a date dimension table).
+- Create a new question using the date dimension table, with a filter for "Today".
+- Turn the "Today" question into a model.
+- Create a left join between **Coffee** and the "Today" model on `[Opened On] <= [Today]` and `[Finish By] >= [Today]`.
+
+The result should give you a **Today** column that's non-empty if today's date falls inside the coffee freshness window:
+
+| Coffee                 | Opened On  | Finish By  | Today      | 
+|------------------------|------------|------------|------------|
+| DAK Honey Dude         | 2022-10-31 | 2022-11-14 | 2022-11-10 |
+| NO6 Full City Espresso | 2022-11-07 | 2022-11-21 | 2022-11-10 |
+| Ghost Roaster Giakanja | 2022-11-27 | 2022-12-11 |            |
+
 ## Related functions
+
+This section covers functions and formulas that work the same way as the Metabase `regexextract` expression, with notes on how to choose the best option for your use case.
+
+**[Metabase expressions](../expressions-list.md)**
+
+- [datetimeSubtract](#datetimesubtract)
+
+**Other tools**
+
+- [SQL](#sql)
+- [Spreadsheets](#spreadsheets)
+- [Python](#python)
+
+### datetimeSubtract
+
+`datetimeSubtract` and `datetimeAdd` are interchangeable, since you can use a negative number for `amount`.
+
+```
+datetimeSubtract([Opened On], -14, "day")
+```
+
+does the same thing as
+
+```
+datetimeAdd([Opened On], 14, 'day')
+```
 
 ### SQL
 
-### Spreadsheets 
+When you run a question using the [query_builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+
+If our [coffee sample data](#calculating-an-end-date) is stored in a PostgreSQL database:
+
+```sql
+SELECT opened_on + INTERVAL '14 days' AS finish_by
+FROM events
+```
+
+is equivalent to the Metabase `datetimeAdd` expression:
+
+```
+datetimeAdd([Opened On], 14, 'day')
+```
+
+### Spreadsheets
+
+If our [coffee sample data](#calculating-an-end-date) is in a spreadsheet where "Opened On" is in column A with a date format, the spreadsheet function
+
+```
+A:A + 14
+```
+
+produces the same result as
+
+```
+datetimeAdd([Opened On], 14, 'day')
+```
+
+Most spreadsheet tools require use different functions for different time units (for example, you'd use a different function to add "months" to a date). `datetimeAdd` makes it easy for you to convert all of those functions to a single consistent syntax.
 
 ### Python
+
+Assuming the [coffee sample data](#calculating-an-end-date) is in a dataframe column called `df`, you can use the built-in `datetime` module with `pandas` to add time to a datetime value:
+
+```
+df['Finish By'] = df['Opened On'] + datetime.timedelta(days=14)
+```
+
+is equivalent to
+
+```
+datetimeAdd([Opened On], 14, 'day')
+```
 
 ## Further reading
 
