@@ -74,6 +74,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "google-auth-client-id": null,
   "google-auth-auto-create-accounts-domain": null,
   "ldap-enabled": false,
+  "ldap-configured?": false,
   "loading-message": "doing-science",
   "deprecation-notice-version": undefined,
   "session-cookies": null,

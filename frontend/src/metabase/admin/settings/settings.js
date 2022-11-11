@@ -124,15 +124,10 @@ export const UPDATE_SLACK_SETTINGS =
 export const updateSlackSettings = createThunkAction(
   UPDATE_SLACK_SETTINGS,
   function (settings) {
-    return async function (dispatch, getState) {
-      try {
-        const result = await SlackApi.updateSettings(settings);
-        await dispatch(reloadSettings());
-        return result;
-      } catch (error) {
-        console.log("error updating slack settings", settings, error);
-        throw error;
-      }
+    return async function (dispatch) {
+      const result = await SlackApi.updateSettings(settings);
+      await dispatch(reloadSettings());
+      return result;
     };
   },
   {},
@@ -143,15 +138,22 @@ export const UPDATE_LDAP_SETTINGS =
 export const updateLdapSettings = createThunkAction(
   UPDATE_LDAP_SETTINGS,
   function (settings) {
-    return async function (dispatch, getState) {
-      try {
-        const result = await LdapApi.updateSettings(settings);
-        await dispatch(reloadSettings());
-        return result;
-      } catch (error) {
-        console.log("error updating LDAP settings", settings, error);
-        throw error;
-      }
+    return async function (dispatch) {
+      const result = await LdapApi.updateSettings(settings);
+      await dispatch(reloadSettings());
+      return result;
+    };
+  },
+);
+
+export const DELETE_LDAP_SETTINGS =
+  "metabase/admin/settings/DELETE_LDAP_SETTINGS";
+export const deleteLdapSettings = createThunkAction(
+  DELETE_LDAP_SETTINGS,
+  function () {
+    return async function (dispatch) {
+      await LdapApi.deleteSettings();
+      await dispatch(reloadSettings());
     };
   },
 );

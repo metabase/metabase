@@ -62,11 +62,13 @@ const AuthCard = ({
       isEnabled={isEnabled}
       isConfigured={isConfigured}
     >
-      <AuthCardMenu
-        isEnabled={isEnabled}
-        onChange={onChange}
-        onDeactivate={handleOpen}
-      />
+      {isConfigured && (
+        <AuthCardMenu
+          isEnabled={isEnabled}
+          onChange={onChange}
+          onDeactivate={handleOpen}
+        />
+      )}
       {isOpened && (
         <AuthCardModal
           name={name}

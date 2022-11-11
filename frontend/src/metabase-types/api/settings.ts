@@ -79,6 +79,7 @@ export interface Settings {
   "google-auth-auto-create-accounts-domain": string | null;
   "deprecation-notice-version": string | undefined;
   "ldap-enabled": boolean;
+  "ldap-configured?": boolean;
   "loading-message": LoadingMessage;
   "session-cookies": boolean | null;
   "site-locale": string;
