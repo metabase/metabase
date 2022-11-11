@@ -12149,6 +12149,8 @@ databaseChangeLog:
             columnNames: action_id, card_id
             constraintName: pk_query_action
 
+  # note: some migrations which only added and deleted tables within v45 were removed, hence an ID gap here
+
   - changeSet:
       id: v45.00-011
       author: snoe
@@ -12269,6 +12271,8 @@ databaseChangeLog:
             tableName: http_action
             columnNames: action_id
             constraintName: pk_http_action
+
+  # note: some migrations which only added and deleted tables within v45 were removed, hence an ID gap here
 
   - changeSet:
       id: v45.00-022
@@ -12711,6 +12715,8 @@ databaseChangeLog:
                   name: remark
                   type: ${text.type}
                   remarks: 'Optional remarks explaining why these changes were made.'
+
+  # note: some migrations which only added and deleted tables within v45 were removed, hence an ID gap here
 
   # Add created_at to Collection
   - changeSet:

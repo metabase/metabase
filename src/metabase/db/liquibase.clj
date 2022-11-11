@@ -172,6 +172,13 @@
             (.rollback conn save-point)
             (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
 
+(defn- changelog-table-name
+  "Returns case-sensitive database-specific name for Liquibase changelog table for db-type"
+  [db-type]
+  (if (#{:h2 :mysql} db-type)
+    "DATABASECHANGELOG"
+    "databasechangelog"))
+
 (s/defn consolidate-liquibase-changesets!
   "Consolidate all previous DB migrations so they come from single file.
 
@@ -182,9 +189,7 @@
   see https://github.com/metabase/metabase/issues/3715"
   [db-type :- s/Keyword
    conn    :- java.sql.Connection]
-  (let [liquibase-table-name (if (#{:h2 :mysql} db-type)
-                               "DATABASECHANGELOG"
-                               "databasechangelog")
+  (let [liquibase-table-name (changelog-table-name db-type)
         fresh-install?       (jdbc/with-db-metadata [meta {:connection conn}] ; don't migrate on fresh install
                                (empty? (jdbc/metadata-query
                                         (.getTables meta nil nil liquibase-table-name (u/varargs String ["TABLE"])))))
@@ -192,15 +197,36 @@
     (when-not fresh-install?
       (jdbc/execute! {:connection conn} [statement "migrations/000_migrations.yaml"]))))
 
+(defn- extract-numbers
+  "Returns contiguous integers parsed from string s"
+  [s]
+  (map #(Integer/parseInt %) (re-seq #"\d+" s)))
+
+(defn- current-major-version
+  "Returns the major version of the running Metabase JAR"
+  []
+  (second (extract-numbers (:tag config/mb-version-info))))
+
 (defn rollback-major-version
   "Roll back migrations later than given Metabase major version"
-  [conn ^Liquibase liquibase]
-  ;; select all of the ones at the end with a major version matching the current release version
-  (let [version-parts     (re-seq #"\d+" (:tag config/mb-version-info))
-        [_ major-version] (map #(Integer/parseInt %) version-parts)
-        changeset-ids     (map :id (jdbc/query {:connection conn} ["SELECT id FROM DATABASECHANGELOG WHERE id LIKE 'v%'"]))
-        ids-to-drop       (drop-while #(not= major-version (Integer/parseInt (re-find #"\d+" %))) changeset-ids)]
-    (.rollback liquibase (count ids-to-drop) "")))
+  ;; default rollback to previous version
+  ([db-type conn liquibase]
+   ;; get current major version of Metabase we are running
+   (rollback-major-version db-type conn liquibase (dec (current-major-version))))
+  
+  ;; with explicit target version
+  ([db-type conn ^Liquibase liquibase target-version]
+   (when (or (not (integer? target-version)) (< target-version 44))
+     (throw (IllegalArgumentException.
+             (trs "target version must be a number between 44 and the previous major version ({0}), inclusive" (current-major-version)))))
+   ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
+   (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY `ORDEREXECUTED` ASC"
+                                 (changelog-table-name db-type))
+         changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
+         ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
+         ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
+     (log/info (trs "Rolling back app database schema to version {0}" target-version))
+     (.rollback liquibase (count ids-to-drop) ""))))
 
 (defn force-release-locks!
   "(Attempt to) force release Liquibase migration locks."
