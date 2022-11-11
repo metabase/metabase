@@ -8,7 +8,7 @@ import { t } from "ttag";
 
 import { Grid } from "metabase/components/Grid";
 
-import NewDatasetOption from "metabase/new_dataset/components/NewDatasetOption";
+import NewModelOption from "metabase/new_model/components/NewModelOption";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
 import * as Urls from "metabase/lib/urls";
@@ -16,13 +16,13 @@ import * as Urls from "metabase/lib/urls";
 import {
   getHasDataAccess,
   getHasNativeWrite,
-} from "metabase/new_dataset/selectors";
+} from "metabase/new_model/selectors";
 import Database from "metabase/entities/databases";
 import {
   OptionsGridItem,
   OptionsRoot,
   EducationalButton,
-} from "./NewDatasetOptions.styled";
+} from "./NewModelOptions.styled";
 
 const EDUCATIONAL_LINK = "https://www.metabase.com/learn/data-modeling/models";
 
@@ -36,7 +36,7 @@ const mapDispatchToProps = {
   push,
 };
 
-class NewDatasetOptions extends Component {
+class NewModelOptions extends Component {
   componentDidMount() {
     // We need to check if any databases exist otherwise show an empty state.
     // Be aware that the embedded version does not have the Navbar, which also
@@ -77,7 +77,7 @@ class NewDatasetOptions extends Component {
         <Grid className="justifyCenter">
           {hasDataAccess && (
             <OptionsGridItem itemsCount={itemsCount}>
-              <NewDatasetOption
+              <NewModelOption
                 image="app/img/notebook_mode_illustration"
                 title={t`Use the notebook editor`}
                 description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
@@ -87,13 +87,13 @@ class NewDatasetOptions extends Component {
                   creationType: "custom_question",
                   dataset: true,
                 })}
-                data-metabase-event="New Dataset; Custom Question Start"
+                data-metabase-event="New Model; Custom Question Start"
               />
             </OptionsGridItem>
           )}
           {hasNativeWrite && (
             <OptionsGridItem itemsCount={itemsCount}>
-              <NewDatasetOption
+              <NewModelOption
                 image="app/img/sql_illustration"
                 title={t`Use a native query`}
                 description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
@@ -104,7 +104,7 @@ class NewDatasetOptions extends Component {
                   dataset: true,
                 })}
                 width={180}
-                data-metabase-event="New Dataset; Native Query Start"
+                data-metabase-event="New Model; Native Query Start"
               />
             </OptionsGridItem>
           )}
@@ -122,4 +122,4 @@ class NewDatasetOptions extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(NewDatasetOptions);
+export default connect(mapStateToProps, mapDispatchToProps)(NewModelOptions);

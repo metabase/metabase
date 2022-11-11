@@ -41,7 +41,7 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 
-import NewDatasetOptions from "metabase/new_dataset/containers/NewDatasetOptions";
+import NewDatasetOptions from "metabase/new_model/containers/NewModelOptions";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
