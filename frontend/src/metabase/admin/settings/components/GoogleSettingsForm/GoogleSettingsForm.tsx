@@ -25,29 +25,25 @@ const BREADCRUMBS = [
   [t`Google Sign-In`],
 ];
 
-export interface GoogleSettings {
+export interface GoogleAuthSettings {
   [ENABLED_KEY]: boolean;
   [CLIENT_ID_KEY]: string | null;
   [DOMAIN_KEY]: string | null;
 }
 
-const GOOGLE_SETTINGS_SCHEMA = Yup.object({
+const SETTINGS_SCHEMA = Yup.object({
   [ENABLED_KEY]: Yup.boolean().default(false),
   [CLIENT_ID_KEY]: Yup.string()
-    .nullable()
-    .default(null)
-    .when(ENABLED_KEY, {
-      is: true,
-      then: schema => schema.required(t`required`),
-    }),
+    .ensure()
+    .required(t`required`),
   [DOMAIN_KEY]: Yup.string().nullable().default(null),
 });
 
 export interface GoogleSettingsFormProps {
   elements?: SettingDefinition[];
-  settingValues?: Partial<GoogleSettings>;
+  settingValues?: Partial<GoogleAuthSettings>;
   hasMultipleDomains?: boolean;
-  onSubmit: (settingValues: GoogleSettings) => void;
+  onSubmit: (settingValues: GoogleAuthSettings) => void;
 }
 
 const GoogleSettingsForm = ({
@@ -61,14 +57,15 @@ const GoogleSettingsForm = ({
   }, [elements]);
 
   const initialValues = useMemo(() => {
-    return GOOGLE_SETTINGS_SCHEMA.cast(settingValues, { stripUnknown: true });
+    const values = SETTINGS_SCHEMA.cast(settingValues, { stripUnknown: true });
+    return { ...values, [ENABLED_KEY]: true };
   }, [settingValues]);
 
   return (
     <FormProvider
       initialValues={initialValues}
       enableReinitialize
-      validationSchema={GOOGLE_SETTINGS_SCHEMA}
+      validationSchema={SETTINGS_SCHEMA}
       onSubmit={onSubmit}
     >
       {({ dirty }) => (
@@ -89,7 +86,6 @@ const GoogleSettingsForm = ({
             name={CLIENT_ID_KEY}
             title={t`Client ID`}
             placeholder={t`{your-client-id}.apps.googleusercontent.com`}
-            nullable
             {...getFormFieldProps(settings[CLIENT_ID_KEY])}
           />
           <FormInput
