@@ -78,8 +78,8 @@
       (is (= ["[1 2 3]"] row))))
 
   (testing "ZonedDateTime in a lazy seq (checking that elements in a lazy seq are formatted correctly)"
-    (mt/with-driver :postgres
-      (mt/with-report-timezone-id "US/Pacific"
-        (mt/with-everything-store
-          (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T20:06:00Z"])]]))]
-            (is (= ["[\"2021-03-30T13:06:00-07:00\"]"] row))))))))
+    (mt/test-drivers (mt/normal-drivers)
+     (mt/with-report-timezone-id "US/Pacific"
+       (mt/with-everything-store
+         (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T20:06:00Z"])]]))]
+           (is (= ["[\"2021-03-30T20:06:00Z\"]"] row))))))))
