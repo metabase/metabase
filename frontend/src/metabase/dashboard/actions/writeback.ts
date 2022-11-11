@@ -271,7 +271,7 @@ function getActionExecutionMessage(action: WritebackAction, result: any) {
   if (hasDataFromExplicitAction(result)) {
     return t`Success! The action returned: ${JSON.stringify(result)}`;
   }
-  return `${action.name} ${t`was run successfully`}`;
+  return t`${action.name} was run successfully`;
 }
 
 export const executeRowAction = async ({
