@@ -263,13 +263,13 @@
    (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery-cloud-sdk :seconds :some_field)]
      {:value unix-ts
       :type  :timestamp
-      :as    {:date     (hsql/call :cast unix-ts (hsql/raw "date"))
-              :datetime (hsql/call :cast unix-ts (hsql/raw "datetime"))}})
+      :as    {:date     (hsql/call :date unix-ts)
+              :datetime (hsql/call :datetime unix-ts)}})
    (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery-cloud-sdk :milliseconds :some_field)]
      {:value unix-ts
       :type  :timestamp
-      :as    {:date     (hsql/call :cast unix-ts (hsql/raw "date"))
-              :datetime (hsql/call :cast unix-ts (hsql/raw "datetime"))}})])
+      :as    {:date     (hsql/call :date unix-ts)
+              :datetime (hsql/call :datetime unix-ts)}})])
 
 (deftest temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
@@ -344,7 +344,7 @@
                                                                       ::bigquery.qp/do-not-qualify? true)
                                            expected-identifier (case temporal-type
                                                                  :date      (hx/with-database-type-info identifier "date")
-                                                                 :datetime  (hsql/call :cast identifier (hsql/raw "timestamp"))
+                                                                 :datetime  (hsql/call :timestamp identifier)
                                                                  :timestamp (hx/with-database-type-info identifier "timestamp"))]]
               (testing (format "\ntemporal-type = %s" temporal-type)
                 (is (= [:= (hsql/call :extract :dayofweek expected-identifier) 1]
@@ -373,23 +373,57 @@
             (is (= :completed
                    (:status (qp/process-query query))))))))))
 
+(deftest temporal-type-conversion-test
+  (mt/with-driver :bigquery-cloud-sdk
+    (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (let [temporal-string "2022-01-01"
+            convert         (fn [from-t to-t]
+                              (->> (#'bigquery.qp/->temporal-type to-t (#'bigquery.qp/->temporal-type from-t temporal-string))
+                                   (sql.qp/format-honeysql :bigquery-cloud-sdk)))]
+        (testing "convert from datetime to different temporal types"
+          (testing :time
+            (is (= ["time(datetime(?))" temporal-string]
+                   (convert :datetime :time))))
+          (testing :date
+            (is (= ["date(datetime(?))" temporal-string]
+                   (convert :datetime :date))))
+          (testing :timestamp
+            (is (= ["timestamp(datetime(?), 'US/Pacific')" temporal-string]
+                   (convert :datetime :timestamp)))))
+        (testing "convert from date to different temporal types"
+          (testing :time
+            (is (= ["time(date(?))" temporal-string]
+                   (convert :date :time))))
+          (testing :datetime
+            (is (= ["datetime(date(?))" temporal-string]
+                   (convert :date :datetime))))
+          (testing :timestamp
+            (is (= ["timestamp(date(?), 'US/Pacific')" temporal-string]
+                   (convert :date :timestamp)))))
+        (testing "convert from timestamp to different temporal types"
+          (doseq [to-t [:time :date :datetime]]
+            (testing to-t
+              (is (= [(str (name to-t) "(timestamp(?, 'US/Pacific'), 'US/Pacific')") temporal-string]
+                     (convert :timestamp to-t))))))))))
+
 (deftest reconcile-relative-datetimes-test
-  (testing "relative-datetime clauses on their own"
-    (doseq [[t [unit expected-sql]]
-            {:time      [:hour "time_trunc(time_add(current_time(), INTERVAL -1 hour), hour)"]
-             :date      [:year "date_trunc(date_add(current_date(), INTERVAL -1 year), year)"]
-             :datetime  [:year "datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year)"]
-             ;; timestamp_add doesn't support `year` so this should cast a datetime instead
-             :timestamp [:year "CAST(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year) AS timestamp)"]}]
-      (testing t
-        (let [reconciled-clause (#'bigquery.qp/->temporal-type t [:relative-datetime -1 unit])]
-          (testing "Should have correct type metadata after reconciliation"
-            (is (= t
-                   (#'bigquery.qp/temporal-type reconciled-clause))))
-          (testing "Should get converted to the correct SQL"
-            (is (= [(str "WHERE " expected-sql)]
-                   (sql.qp/format-honeysql :bigquery-cloud-sdk
-                                           {:where (sql.qp/->honeysql :bigquery-cloud-sdk reconciled-clause)}))))))))
+  (mt/with-driver :bigquery-cloud-sdk
+    (testing "relative-datetime clauses on their own"
+      (doseq [[t [unit expected-sql]]
+              {:time      [:hour "time_trunc(time_add(current_time(), INTERVAL -1 hour), hour)"]
+               :date      [:year "date_trunc(date_add(current_date(), INTERVAL -1 year), year)"]
+               :datetime  [:year "datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year)"]
+               ;; timestamp_add doesn't support `year` so this should cast a datetime instead
+               :timestamp [:year "timestamp(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year))"]}]
+        (testing t
+          (let [reconciled-clause (#'bigquery.qp/->temporal-type t [:relative-datetime -1 unit])]
+            (testing "Should have correct type metadata after reconciliation"
+              (is (= t
+                     (#'bigquery.qp/temporal-type reconciled-clause))))
+            (testing "Should get converted to the correct SQL"
+              (is (= [(str "WHERE " expected-sql)]
+                     (sql.qp/format-honeysql :bigquery-cloud-sdk
+                                             {:where (sql.qp/->honeysql :bigquery-cloud-sdk reconciled-clause)})))))))))
 
   (testing "relative-datetime clauses on their own when a reporting timezone is set"
     (doseq [timezone ["UTC" "US/Pacific"]]
@@ -411,21 +445,21 @@
                                                {:where (sql.qp/->honeysql :bigquery-cloud-sdk reconciled-clause)}))))))))))
 
   (testing "relative-datetime clauses inside filter clauses"
-    (doseq [[expected-type t] {:date      #t "2020-01-31"
-                               :datetime  #t "2020-01-31T20:43:00.000"
-                               :timestamp #t "2020-01-31T20:43:00.000-08:00"}]
-      (testing expected-type
-        (let [[_ _ relative-datetime :as clause] (sql.qp/->honeysql :bigquery-cloud-sdk
-                                                                    [:=
-                                                                     t
-                                                                     [:relative-datetime -1 :year]])]
-          (testing (format "\nclause = %s" (pr-str clause))
-            (is (= expected-type
-                   (#'bigquery.qp/temporal-type relative-datetime)))))))))
+      (doseq [[expected-type t] {:date      #t "2020-01-31"
+                                 :datetime  #t "2020-01-31T20:43:00.000"
+                                 :timestamp #t "2020-01-31T20:43:00.000-08:00"}]
+        (testing expected-type
+          (let [[_ _ relative-datetime :as clause] (sql.qp/->honeysql :bigquery-cloud-sdk
+                                                                      [:=
+                                                                       t
+                                                                       [:relative-datetime -1 :year]])]
+            (testing (format "\nclause = %s" (pr-str clause))
+              (is (= expected-type
+                     (#'bigquery.qp/temporal-type relative-datetime)))))))))
 
 (deftest field-literal-trunc-form-test
   (testing "`:field` clauses with literal string names should be quoted correctly when doing date truncation (#20806)"
-    (is (= ["datetime_trunc(CAST(`source`.`date` AS datetime), week(sunday))"]
+    (is (= ["datetime_trunc(datetime(`source`.`date`), week(sunday))"]
            (sql.qp/format-honeysql
             :bigquery-cloud-sdk
             (sql.qp/->honeysql
@@ -451,7 +485,7 @@
                               (t/local-date "2019-11-11")
                               (t/local-date "2019-11-12")]))))
       (testing "If first arg has no temporal-type info, should look at next arg"
-        (is (= ["WHERE CAST(field AS date) BETWEEN ? AND ?"
+        (is (= ["WHERE date(field) BETWEEN ? AND ?"
                 (t/local-date "2019-11-11")
                 (t/local-date "2019-11-12")]
                (between->sql [:between
@@ -637,55 +671,56 @@
       false)))
 
 (deftest filter-by-relative-date-ranges-test
-  (testing "Make sure the SQL we generate for filters against relative-datetimes is typed correctly"
-    (mt/with-everything-store
-      (doseq [[field-type [unit expected-sql]]
-              {:type/Time                [:hour (str "WHERE time_trunc(ABC.time, hour)"
-                                                     " = time_trunc(time_add(current_time(), INTERVAL -1 hour), hour)")]
-               :type/Date                [:year (str "WHERE date_trunc(ABC.date, year)"
-                                                     " = date_trunc(date_add(current_date(), INTERVAL -1 year), year)")]
-               :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
-                                                     " = datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year)")]
+  (mt/with-driver :bigquery-cloud-sdk
+    (testing "Make sure the SQL we generate for filters against relative-datetimes is typed correctly"
+      (mt/with-everything-store
+        (doseq [[field-type [unit expected-sql]]
+                {:type/Time                [:hour (str "WHERE time_trunc(ABC.time, hour)"
+                                                       " = time_trunc(time_add(current_time(), INTERVAL -1 hour), hour)")]
+                 :type/Date                [:year (str "WHERE date_trunc(ABC.date, year)"
+                                                       " = date_trunc(date_add(current_date(), INTERVAL -1 year), year)")]
+                 :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
+                                                       " = datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year)")]
                ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead
-               :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year)"
-                                                     " = CAST(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year) AS timestamp)")]}]
-        (mt/with-temp Field [f {:name          (str/lower-case (name field-type))
-                                :base_type     field-type
-                                :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
-          (testing (format "%s field" field-type)
-            (is (= [expected-sql]
-                   (hsql/format {:where (sql.qp/->honeysql
-                                         :bigquery-cloud-sdk
-                                         [:=
-                                          [:field (:id f) {:temporal-unit     unit
-                                                           ::add/source-table "ABC"}]
-                                          [:relative-datetime -1 unit]])}))))))))
+                 :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year)"
+                                                       " = timestamp(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year))")]}]
+          (mt/with-temp Field [f {:name          (str/lower-case (name field-type))
+                                  :base_type     field-type
+                                  :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
+            (testing (format "%s field" field-type)
+              (is (= [expected-sql]
+                     (hsql/format {:where (sql.qp/->honeysql
+                                           :bigquery-cloud-sdk
+                                           [:=
+                                            [:field (:id f) {:temporal-unit     unit
+                                                             ::add/source-table "ABC"}]
+                                            [:relative-datetime -1 unit]])}))))))))
 
-  (testing "Make sure the SQL we generate for filters against relative-datetimes uses the reporting timezone when set"
-    (doseq [timezone ["UTC" "US/Pacific"]]
-      (mt/with-temporary-setting-values [report-timezone timezone]
-        (mt/with-everything-store
-          (doseq [[field-type [unit expected-sql]]
-                  {:type/Time                [:hour (str "WHERE time_trunc(ABC.time, hour)"
-                                                         " = time_trunc(time_add(current_time('" timezone "'), INTERVAL -1 hour), hour)")]
-                   :type/Date                [:year (str "WHERE date_trunc(ABC.date, year)"
-                                                         " = date_trunc(date_add(current_date('" timezone "'), INTERVAL -1 year), year)")]
-                   :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
-                                                         " = datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year)")]
+    (testing "Make sure the SQL we generate for filters against relative-datetimes uses the reporting timezone when set"
+      (doseq [timezone ["UTC" "US/Pacific"]]
+        (mt/with-temporary-setting-values [report-timezone timezone]
+          (mt/with-everything-store
+            (doseq [[field-type [unit expected-sql]]
+                    {:type/Time                [:hour (str "WHERE time_trunc(ABC.time, hour)"
+                                                           " = time_trunc(time_add(current_time('" timezone "'), INTERVAL -1 hour), hour)")]
+                     :type/Date                [:year (str "WHERE date_trunc(ABC.date, year)"
+                                                           " = date_trunc(date_add(current_date('" timezone "'), INTERVAL -1 year), year)")]
+                     :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
+                                                           " = datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year)")]
                    ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead, but when it converts to a timestamp it needs to specify the tz
-                   :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year, '" timezone "')"
-                                                         " = timestamp(datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year), '" timezone "')")]}]
-            (mt/with-temp Field [f {:name          (str/lower-case (name field-type))
-                                    :base_type     field-type
-                                    :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
-              (testing (format "%s field" field-type)
-                (is (= [expected-sql]
-                       (hsql/format {:where (sql.qp/->honeysql
-                                             :bigquery-cloud-sdk
-                                             [:=
-                                              [:field (:id f) {:temporal-unit     unit
-                                                               ::add/source-table "ABC"}]
-                                              [:relative-datetime -1 unit]])})))))))))))
+                     :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year, '" timezone "')"
+                                                           " = timestamp(datetime_trunc(datetime_add(current_datetime('" timezone "'), INTERVAL -1 year), year), '" timezone "')")]}]
+              (mt/with-temp Field [f {:name          (str/lower-case (name field-type))
+                                      :base_type     field-type
+                                      :database_type (name (bigquery.tx/base-type->bigquery-type field-type))}]
+                (testing (format "%s field" field-type)
+                  (is (= [expected-sql]
+                         (hsql/format {:where (sql.qp/->honeysql
+                                               :bigquery-cloud-sdk
+                                               [:=
+                                                [:field (:id f) {:temporal-unit     unit
+                                                                 ::add/source-table "ABC"}]
+                                                [:relative-datetime -1 unit]])}))))))))))))
 
 ;; This is a table of different BigQuery column types -> temporal units we should be able to bucket them by for
 ;; filtering purposes against RELATIVE-DATETIMES. `relative-datetime` only supports the unit below -- a subset of all
