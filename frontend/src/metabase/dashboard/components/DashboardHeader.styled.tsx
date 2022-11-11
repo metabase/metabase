@@ -38,7 +38,8 @@ export const HeaderRoot = styled(
   ${props =>
     props.isDataApp &&
     css`
-      max-width: ${DATA_APPS_MAX_WIDTH + 64}px;
+      box-sizing: content-box;
+      max-width: ${DATA_APPS_MAX_WIDTH}px;
       margin: 0 auto;
       padding: 0 2rem;
     `}
