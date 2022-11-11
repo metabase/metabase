@@ -136,7 +136,7 @@ export default class Funnel extends Component {
           enabled: true,
         }));
       },
-      getProps: (transformedSeries, settings, extra) => ({
+      getProps: transformedSeries => ({
         items: transformedSeries.map(s => s.card),
         hasEditSettings: false,
       }),
