@@ -25,7 +25,8 @@
                                       $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
                                       $sum $toLower $year]]
             [schema.core :as s])
-  (:import org.bson.types.ObjectId))
+  (:import [org.bson.types ObjectId Binary]
+           org.bson.BsonBinarySubType))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -289,15 +290,32 @@
 
 (defmethod ->rvalue nil [_] nil)
 
+(defn- uuid->bsonbinary
+  [u]
+  (let [lo (.getLeastSignificantBits ^java.util.UUID u)
+        hi (.getMostSignificantBits  ^java.util.UUID u)
+        ba (-> (java.nio.ByteBuffer/allocate 16) ; UUID is 128 bits-long
+               (.putLong hi)
+               (.putLong lo)
+               (.array))]
+    (Binary. BsonBinarySubType/UUID_STANDARD ba)))
+
 (defmethod ->rvalue :value
   [[_ value {base-type :base_type}]]
-  (if (and (isa? base-type :type/MongoBSONID)
-           (some? value))
-    ;; Passing nil or "" to the ObjectId constructor throws an exception
-    ;; "invalid hexadecimal representation of an ObjectId: []" so, just treat it as nil
-    (when (not= value "")
-      (ObjectId. (str value)))
-    value))
+  (cond
+    ;; Passing nil or "" to the ObjectId or Binary constructor throws an exception
+    (or (nil? value) (= value ""))
+    value
+
+    (isa? base-type :type/MongoBSONID)
+    (ObjectId. (str value))
+
+    (isa? base-type :type/UUID)
+    (-> (str value)
+        java.util.UUID/fromString
+        uuid->bsonbinary)
+
+    :else value))
 
 (defn- $date-from-string [s]
   {:$dateFromString {:dateString (str s)}})

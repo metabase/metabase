@@ -19,14 +19,13 @@ import {
 import FormArchiveButton from "../FormArchiveButton";
 import { EventFormFooter } from "./EventForm.styled";
 
-const EventSchema = Yup.object({
+const EVENT_SCHEMA = Yup.object({
   name: Yup.string()
     .required(t`required`)
     .max(255, ({ max }) => t`must be ${max} characters or less`),
-  description: Yup.string().max(
-    255,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
+  description: Yup.string()
+    .nullable()
+    .max(255, ({ max }) => t`must be ${max} characters or less`),
   timestamp: Yup.string().required(`required`),
   time_matters: Yup.boolean(),
   icon: Yup.string().required(`required`),
@@ -69,7 +68,7 @@ const EventForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={EventSchema}
+      validationSchema={EVENT_SCHEMA}
       onSubmit={onSubmit}
     >
       {({ dirty, values, setFieldValue }) => (
@@ -93,6 +92,7 @@ const EventForm = ({
             title={t`Description`}
             infoLabel={t`Markdown supported`}
             infoTooltip={t`Add links and formatting via markdown`}
+            nullable
           />
           <FormSelect name="icon" title={t`Icon`} options={iconOptions} />
           {timelines.length > 1 && (

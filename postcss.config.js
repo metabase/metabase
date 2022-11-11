@@ -1,5 +1,4 @@
 /* eslint-disable import/no-commonjs */
-const _ = require("underscore");
 const glob = require("glob");
 
 // eslint-disable-next-line no-undef

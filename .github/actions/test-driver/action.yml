@@ -18,7 +18,7 @@ runs:
       run: clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test
       shell: bash
     - name: Publish Test Report (JUnit)
-      uses: mikepenz/action-junit-report@v2
+      uses: mikepenz/action-junit-report@v3
       if: always()
       with:
         report_paths: 'target/junit/**/*_test.xml'
