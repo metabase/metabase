@@ -7,7 +7,7 @@ import {
 } from "metabase/plugins";
 
 import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
-import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
+import AuthenticationCard from "metabase/admin/settings/components/widgets/AuthenticationCard";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(
@@ -18,7 +18,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
         key: "ldap-enabled",
         description: null,
         noHeader: true,
-        widget: AuthenticationWidget,
+        widget: AuthenticationCard,
         getProps: (setting, settings) => ({
           authType: "ldap",
           authName: t`LDAP`,

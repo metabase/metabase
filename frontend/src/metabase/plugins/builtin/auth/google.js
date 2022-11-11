@@ -9,7 +9,7 @@ import {
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
+import AuthenticationCard from "metabase/admin/settings/components/widgets/AuthenticationCard";
 import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
 
 PLUGIN_AUTH_PROVIDERS.push(providers => {
@@ -31,7 +31,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       key: "google-auth-enabled",
       description: null,
       noHeader: true,
-      widget: AuthenticationWidget,
+      widget: AuthenticationCard,
       getProps: (setting, settings) => ({
         authType: "google",
         authName: t`Sign in with Google`,

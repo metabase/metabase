@@ -10,7 +10,7 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 
-import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
+import AuthenticationCard from "metabase/admin/settings/components/widgets/AuthenticationCard";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
@@ -29,7 +29,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       key: "saml-enabled",
       description: null,
       noHeader: true,
-      widget: AuthenticationWidget,
+      widget: AuthenticationCard,
       getProps: (setting, settings) => ({
         authName: t`SAML`,
         authDescription: t`Allows users to login via a SAML Identity Provider.`,
@@ -42,7 +42,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       key: "jwt-enabled",
       description: null,
       noHeader: true,
-      widget: AuthenticationWidget,
+      widget: AuthenticationCard,
       getProps: (setting, settings) => ({
         authName: t`JWT`,
         authDescription: t`Allows users to login via a JWT Identity Provider.`,

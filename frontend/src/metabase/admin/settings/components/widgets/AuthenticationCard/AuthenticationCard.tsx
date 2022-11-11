@@ -4,11 +4,11 @@ import { Link } from "react-router";
 import Button from "metabase/core/components/Button";
 import Toggle from "metabase/core/components/Toggle";
 import {
-  WidgetDescription,
-  WidgetHeader,
-  WidgetRoot,
-  WidgetTitle,
-} from "./AuthenticationWidget.styled";
+  CardDescription,
+  CardHeader,
+  CardRoot,
+  CardTitle,
+} from "./AuthenticationCard.styled";
 
 export interface AuthenticationSetting {
   value: boolean | null;
@@ -24,7 +24,7 @@ export interface AuthenticationWidgetProps {
   onChange: (value: boolean) => void;
 }
 
-const AuthenticationWidget = ({
+const AuthenticationCard = ({
   setting,
   authType,
   authName,
@@ -35,19 +35,19 @@ const AuthenticationWidget = ({
   const value = setting.value ?? setting.default;
 
   return (
-    <WidgetRoot>
-      <WidgetHeader>
-        <WidgetTitle>{authName}</WidgetTitle>
+    <CardRoot>
+      <CardHeader>
+        <CardTitle>{authName}</CardTitle>
         {authConfigured && (
           <Toggle value={value} aria-label={authName} onChange={onChange} />
         )}
-      </WidgetHeader>
-      <WidgetDescription>{authDescription}</WidgetDescription>
+      </CardHeader>
+      <CardDescription>{authDescription}</CardDescription>
       <Button as={Link} to={`/admin/settings/authentication/${authType}`}>
-        {t`Configure`}
+        {authConfigured ? t`Edit` : t`Set up`}
       </Button>
-    </WidgetRoot>
+    </CardRoot>
   );
 };
 
-export default AuthenticationWidget;
+export default AuthenticationCard;
