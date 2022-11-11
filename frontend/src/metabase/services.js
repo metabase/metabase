@@ -217,6 +217,7 @@ export const LdapApi = {
 
 export const GoogleApi = {
   updateSettings: PUT("/api/google/settings"),
+  deleteSettings: DELETE("/api/google/settings"),
 };
 
 export const TimelineApi = {

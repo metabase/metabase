@@ -1,4 +1,3 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
 
 import {
@@ -9,8 +8,8 @@ import {
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import AuthCard from "metabase/admin/settings/components/widgets/AuthCard";
 import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
+import GoogleAuthCard from "metabase/admin/settings/components/widgets/GoogleAuthCard";
 
 PLUGIN_AUTH_PROVIDERS.push(providers => {
   const googleProvider = {
@@ -31,13 +30,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       key: "google-auth-enabled",
       description: null,
       noHeader: true,
-      widget: AuthCard,
-      getProps: (setting, settings) => ({
-        type: "google",
-        title: t`Sign in with Google`,
-        description: t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`,
-        isConfigured: Boolean(settings["google-auth-client-id"]),
-      }),
+      widget: GoogleAuthCard,
     },
   ]),
 );

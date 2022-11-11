@@ -13,9 +13,15 @@ import {
   CardTitle,
 } from "./AuthCard.styled";
 
+export interface AuthSetting {
+  value: boolean | null;
+  default: boolean;
+}
+
 export interface AuthCardProps {
   type: string;
-  title: string;
+  name: string;
+  title?: string;
   description: string;
   isEnabled: boolean;
   isConfigured: boolean;
@@ -25,7 +31,8 @@ export interface AuthCardProps {
 
 const AuthCard = ({
   type,
-  title,
+  name,
+  title = name,
   description,
   isEnabled,
   isConfigured,
@@ -62,7 +69,7 @@ const AuthCard = ({
       />
       {isOpened && (
         <AuthCardModal
-          title={title}
+          name={name}
           onDeactivate={handleDeactivate}
           onClose={handleClose}
         />
@@ -71,7 +78,7 @@ const AuthCard = ({
   );
 };
 
-export interface AuthCardBodyProps {
+interface AuthCardBodyProps {
   type: string;
   title: string;
   description: string;
@@ -136,20 +143,20 @@ const AuthCardMenu = ({
 };
 
 interface AuthCardModalProps {
-  title: string;
+  name: string;
   onDeactivate: () => void;
   onClose: () => void;
 }
 
 const AuthCardModal = ({
-  title,
+  name,
   onDeactivate,
   onClose,
 }: AuthCardModalProps): JSX.Element => {
   return (
     <Modal small onClose={onClose}>
       <ModalContent
-        title={t`Deactivate ${title}?`}
+        title={t`Deactivate ${name}?`}
         footer={[
           <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
           <Button key="submit" danger onClick={onDeactivate}>

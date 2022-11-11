@@ -161,15 +161,22 @@ export const UPDATE_GOOGLE_SETTINGS =
 export const updateGoogleSettings = createThunkAction(
   UPDATE_GOOGLE_SETTINGS,
   function (settings) {
-    return async function (dispatch, getState) {
-      try {
-        const result = await GoogleApi.updateSettings(settings);
-        await dispatch(reloadSettings());
-        return result;
-      } catch (error) {
-        console.log("error updating Google settings", settings, error);
-        throw error;
-      }
+    return async function (dispatch) {
+      const result = await GoogleApi.updateSettings(settings);
+      await dispatch(reloadSettings());
+      return result;
+    };
+  },
+);
+
+export const DELETE_GOOGLE_SETTINGS =
+  "metabase/admin/settings/DELETE_GOOGLE_SETTINGS";
+export const deleteGoogleSettings = createThunkAction(
+  DELETE_GOOGLE_SETTINGS,
+  function () {
+    return async function (dispatch) {
+      await GoogleApi.deleteSettings();
+      await dispatch(reloadSettings());
     };
   },
 );
