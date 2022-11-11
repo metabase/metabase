@@ -4,6 +4,8 @@
    [metabase.driver.athena.hive-parser :as athena.hive-parser]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]))
 
+(set! *warn-on-reflection* true)
+
 (defn- column->base-type [column-type]
   (sql-jdbc.sync/database-type->base-type :athena (keyword (re-find #"\w+" column-type))))
 

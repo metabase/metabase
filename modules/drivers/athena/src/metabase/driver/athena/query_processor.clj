@@ -4,6 +4,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util.honeysql-extensions :as hx]))
 
+(set! *warn-on-reflection* true)
+
 (defn- get-parent-qualifiers [field-identifier]
   (:components field-identifier))
 

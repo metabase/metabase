@@ -4,6 +4,8 @@
    [clojure.string :as str]
    [clojure.walk :as walk]))
 
+(set! *warn-on-reflection* true)
+
 (defn- parse-to-json-string [s]
   (loop  [schema s
           closes []

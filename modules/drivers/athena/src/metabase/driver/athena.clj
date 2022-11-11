@@ -19,11 +19,14 @@
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.models.field :as field :refer [Field]]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]])
   (:import
    (java.sql DatabaseMetaData Timestamp)
    (java.time OffsetDateTime ZonedDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! :athena, :parent #{:sql-jdbc, ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
@@ -49,30 +52,31 @@
     (str/starts-with? region "cn-") ".amazonaws.com.cn"
     :else ".amazonaws.com"))
 
-(defmethod sql-jdbc.conn/connection-details->spec :athena [_ {:keys [region access_key secret_key s3_staging_dir workgroup db catalog], :as details}]
+(defmethod sql-jdbc.conn/connection-details->spec :athena
+  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog], :as details}]
   (-> (merge
-       {:classname        "com.simba.athena.jdbc.Driver"
-        :subprotocol      "awsathena"
-        :subname          (str "//athena." region (endpoint-for-region region) ":443")
-        :user             access_key
-        :password         secret_key
-        :s3_staging_dir   s3_staging_dir
-        :workgroup        workgroup
-        :AwsRegion        region
-        }
+       {:classname      "com.simba.athena.jdbc.Driver"
+        :subprotocol    "awsathena"
+        :subname        (str "//athena." region (endpoint-for-region region) ":443")
+        :user           access_key
+        :password       secret_key
+        :s3_staging_dir s3_staging_dir
+        :workgroup      workgroup
+        :AwsRegion      region}
        (when (str/blank? access_key)
          {:AwsCredentialsProviderClass "com.simba.athena.amazonaws.auth.DefaultAWSCredentialsProviderChain"})
        (when-not (str/blank? catalog)
          {:MetadataRetrievalMethod "ProxyAPI"
-          :Catalog catalog})
-       (dissoc details :db :catalog))
+          :Catalog                 catalog})
+       (dissoc details :db :catalog :metabase.driver.athena/schema))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
 ;;; ------------------------------------------------- sql-jdbc.sync --------------------------------------------------
 
 ;; Map of column types -> Field base types
 ;; https://s3.amazonaws.com/athena-downloads/drivers/JDBC/SimbaAthenaJDBC_2.0.5/docs/Simba+Athena+JDBC+Driver+Install+and+Configuration+Guide.pdf
-(defmethod sql-jdbc.sync/database-type->base-type :athena [_ database-type]
+(defmethod sql-jdbc.sync/database-type->base-type :athena
+  [_driver database-type]
   ({:array      :type/Array
     :bigint     :type/BigInteger
     :binary     :type/*
@@ -96,15 +100,26 @@
 ;;; ------------------------------------------------- date functions -------------------------------------------------
 
 (defmethod unprepare/unprepare-value [:athena OffsetDateTime]
-  [_ t]
-  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
+  [_driver t]
+  #_(format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t))
+  ;; Timestamp literals do not support offsets, or at least they don't in `INSERT INTO ...` statements. I'm not 100%
+  ;; sure what the correct thing to do here is then. The options are either:
+  ;;
+  ;; 1. Normalize to UTC
+  ;; 2. Ignore offset and just consider local date/time
+  ;; 3. Normalize to the report timezone
+  ;;
+  ;; For now I went with option (1) because it SEEMS like that's what Athena is doing. Not sure about this tho. We can
+  ;; do something better when we figure out what's actually going on. -- Cam
+  (let [t (u.date/with-time-zone-same-instant t (t/zone-id "UTC"))]
+    (format "timestamp '%s %s'" (t/local-date t) (t/local-time t))))
 
 (defmethod unprepare/unprepare-value [:athena ZonedDateTime]
-  [_ t]
-  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t)))
+  [driver t]
+  (unprepare/unprepare-value driver (t/offset-date-time t)))
 
 ; Helper function for truncating dates - currently unused
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
+#_(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
 
 ; Example of handling report timezone
 ; (defn- date-trunc
@@ -228,7 +243,7 @@
 
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
-  [^DatabaseMetaData metadata, database,  driver, {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
+  [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
   (try
     (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
       (let [columns (jdbc/metadata-result rs)]
@@ -241,28 +256,47 @@
 
 ;; Becuse describe-table-fields might fail, we catch the error here and return an empty set of columns
 
-
-(defmethod driver/describe-table :athena [driver {{:keys [catalog] :as details} :details :as database} table]
+(defmethod driver/describe-table :athena
+  [driver {{:keys [catalog]} :details, :as database} table]
   (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
     (->> (assoc (select-keys table [:name :schema])
                 :fields (try
                           (describe-table-fields metadata database driver table catalog)
                           (catch Throwable e (set nil)))))))
 
-;; Athena can query EXTERNAL and MANAGED tables
-(defn- get-tables [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
+(defn- get-tables
+  "Athena can query EXTERNAL and MANAGED tables."
+  [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
-                             (into-array String ["EXTERNAL_TABLE", "EXTERNAL TABLE", "EXTERNAL", "TABLE", "VIEW", "VIRTUAL_VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW", "MANAGED_TABLE"]))]
+                             (into-array String ["EXTERNAL_TABLE"
+                                                 "EXTERNAL TABLE"
+                                                 "EXTERNAL"
+                                                 "TABLE"
+                                                 "VIEW"
+                                                 "VIRTUAL_VIEW"
+                                                 "FOREIGN TABLE"
+                                                 "MATERIALIZED VIEW"
+                                                 "MANAGED_TABLE"]))]
     (vec (jdbc/metadata-result rs))))
 
-;; Required because we're calling our own custom private get-tables method to support Athena
-(defn- fast-active-tables [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
-  ;; TODO: Catch errors here so a single exception doesn't fail the entire schema
+(defn- fast-active-tables
+  "Required because we're calling our own custom private get-tables method to support Athena.
 
+  `:metabase.driver.athena/schema` is an icky hack that's in here to force it to only try to sync a single schema,
+  used by the tests when loading test data. We're not expecting users to specify it at this point in time. I'm not
+  really sure how this is really different than `catalog`, which they can specify -- in the future when we understand
+  Athena better maybe we can have a better way to do this -- Cam."
+  [driver ^DatabaseMetaData metadata {:keys [catalog], ::keys [schema]}]
+  ;; TODO: Catch errors here so a single exception doesn't fail the entire schema
+  ;;
   ;; Also we're creating a set here, so even if we set "ProxyAPI", we'll miss dupe database names
   (with-open [rs (.getSchemas metadata)]
-    (let [all-schemas (if db-name-or-nil (filter #(= (:table_catalog %) db-name-or-nil) (jdbc/metadata-result rs)) (jdbc/metadata-result rs))
+    ;; it seems like `table_catalog` is ALWAYS `AwsDataCatalog`. `table_schem` seems to correspond to the Database name,
+    ;; at least for stuff we create with the test data extensions?? :thinking_face:
+    (let [all-schemas (set (cond->> (jdbc/metadata-result rs)
+                             catalog (filter #(= (:table_catalog %) catalog))
+                             schema  (filter #(= (:table_schem %) schema))))
           schemas     (set/difference all-schemas (sql-jdbc.sync/excluded-schemas driver))]
       (set (for [schema schemas
                  table  (get-tables metadata (:table_schem schema) (:table_catalog schema))]
@@ -277,12 +311,13 @@
 ;   #{"database_name"})
 
 ; If we want to limit the initial connection to a specific database/schema, I think we'd have to do that here...
-(defmethod driver/describe-database :athena [driver {{:keys [catalog schema] :as details} :details :as database}]
+(defmethod driver/describe-database :athena
+  [driver {details :details, :as database}]
   {:tables (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-             (fast-active-tables driver metadata catalog))})
+             (fast-active-tables driver metadata details))})
 
 ; Unsure if this is the right way to approach building the parameterized query...but it works
-(defn- prepare-query [driver {:keys [database settings], query :native, :as outer-query}]
+(defn- prepare-query [driver {query :native, :as outer-query}]
   (cond-> outer-query
     (seq (:params query))
     (merge {:native {:params nil
