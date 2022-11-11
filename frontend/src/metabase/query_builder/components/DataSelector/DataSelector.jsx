@@ -21,7 +21,11 @@ import Search from "metabase/entities/search";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import { getMetadata } from "metabase/selectors/metadata";
+<<<<<<< HEAD
 import { getHasDataAccess } from "metabase/selectors/data";
+=======
+import { getHasDataAccess } from "metabase/new_dataset/selectors";
+>>>>>>> 54cb71da9b (Clean up and update files around new query)
 import { getSchemaName } from "metabase-lib/metadata/utils/schema";
 import {
   isVirtualCardId,
