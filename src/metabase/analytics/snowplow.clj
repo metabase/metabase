@@ -133,6 +133,12 @@
    ::timeline  "1-0-0"
    ::task      "1-0-0"})
 
+(defn app-db-type
+  "Returns the type of the Metabase application database as a string (e.g. PostgreSQL, MySQL)"
+  []
+  (clojure.java.jdbc/with-db-metadata [metadata (db/connection)]
+    (.getDatabaseProductName metadata)))
+
 (defn app-db-version
   "Returns the version of the Metabase application database as a string"
   []
@@ -148,7 +154,7 @@
         "version"                      {"tag" (:tag (public-settings/version))}
         "token_features"               (m/map-keys name (public-settings/token-features))
         "created_at"                   (instance-creation)
-        "application_database"         (config/config-str :mb-db-type)
+        "application_database"         (app-db-type)
         "application_database_version" (app-db-version)}))
 
 (defn- normalize-kw

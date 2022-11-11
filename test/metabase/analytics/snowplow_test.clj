@@ -94,7 +94,7 @@
                      :version                      {:tag (:tag (public-settings/version))},
                      :token_features               (public-settings/token-features)
                      :created_at                   (snowplow/instance-creation)
-                     :application_database         (config/config-str :mb-db-type)
+                     :application_database         (snowplow/app-db-type)
                      :application_database_version (snowplow/app-db-version)}}
              (:context (first @*snowplow-collector*))))
 
