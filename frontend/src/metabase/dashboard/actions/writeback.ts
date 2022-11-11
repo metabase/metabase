@@ -239,6 +239,19 @@ export type ExecuteRowActionPayload = {
   shouldToast?: boolean;
 };
 
+function getActionExecutionMessage(result: any) {
+  if (result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0) {
+    return t`Successfully executed the action`;
+  }
+  if (result["created-row"]) {
+    return t`Successfully saved`;
+  }
+  if (result["rows-deleted"]?.[0] > 0) {
+    return t`Successfully deleted`;
+  }
+  return t`Success! The action returned: ${JSON.stringify(result)}`;
+}
+
 export const executeRowAction = async ({
   page,
   dashcard,
@@ -246,7 +259,6 @@ export const executeRowAction = async ({
   dispatch,
   shouldToast = true,
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
-  let message = "";
   try {
     const result = await ActionsApi.execute({
       dashboardId: page.id,
@@ -256,16 +268,9 @@ export const executeRowAction = async ({
       parameters,
     });
 
-    if (result["rows-affected"] > 0 || result["rows-updated"]?.[0] > 0) {
-      message = t`Successfully executed the action`;
-    } else if (result["created-row"]) {
-      message = t`Successfully saved`;
-    } else if (result["rows-deleted"]?.[0] > 0) {
-      message = t`Successfully deleted`;
-    } else {
-      message = t`Success! The action returned: ${JSON.stringify(result)}`;
-    }
     dispatch(reloadDashboardCards());
+    const message = getActionExecutionMessage(result);
+
     if (shouldToast) {
       dispatch(
         addUndo({
@@ -274,6 +279,7 @@ export const executeRowAction = async ({
         }),
       );
     }
+
     return { success: true, message };
   } catch (err) {
     const message =
