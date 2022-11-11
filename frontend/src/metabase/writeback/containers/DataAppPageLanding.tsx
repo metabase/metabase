@@ -55,6 +55,8 @@ function DataAppPageLanding({
   ...props
 }: DataAppPageLandingProps) {
   useDebouncedEffect(
+    // we need to debounce this slightly because the dashboard and app id state changes happen at different times
+    // which potentially causes infinite replacement loops
     () => {
       if (dashboard?.is_app_page && dataApps) {
         // check if we're in the correct app for this page
