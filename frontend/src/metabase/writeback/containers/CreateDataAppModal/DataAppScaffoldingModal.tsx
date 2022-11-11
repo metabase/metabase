@@ -31,7 +31,7 @@ import {
   SearchInputContainer,
   SearchInput,
   SearchIcon,
-} from "./CreateDataAppModal.styled";
+} from "./DataAppScaffoldingModal.styled";
 
 interface OwnProps {
   onClose: () => void;
@@ -78,7 +78,11 @@ function DataPickerSearchInput({ value }: { value: DataPickerValue }) {
   );
 }
 
-function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
+function DataAppScaffoldingModal({
+  onCreate,
+  onChangeLocation,
+  onClose,
+}: Props) {
   const [value, setValue] = useDataPickerValue();
 
   const { tableIds } = value;
@@ -124,4 +128,4 @@ export default connect<unknown, DispatchProps, OwnProps, State>(
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   mapDispatchToProps,
-)(CreateDataAppModal);
+)(DataAppScaffoldingModal);

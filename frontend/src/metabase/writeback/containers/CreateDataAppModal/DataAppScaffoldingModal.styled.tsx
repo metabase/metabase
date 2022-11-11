@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import Icon from "metabase/components/Icon";
 
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 
 export const ModalRoot = styled.div`
   display: flex;
