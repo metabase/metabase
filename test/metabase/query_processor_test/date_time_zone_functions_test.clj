@@ -92,8 +92,7 @@
 
 (deftest extraction-function-tests
   (mt/dataset times-mixed
-    ;; need to have seperate tests for mongo because it doesn't have supports for casting yet
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
+    (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
       (testing "with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
                 op                  [:get-year :get-quarter :get-month :get-day
@@ -101,33 +100,17 @@
                 {:keys [expected-fn query-fn]}
                 extraction-test-cases]
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id))))))))
+            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
-     (testing "with date columns"
-       (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
-               op                  [:get-year :get-quarter :get-month :get-day :get-day-of-week]
-               {:keys [expected-fn query-fn]}
-               extraction-test-cases]
-        (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-          (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
-
-    (mt/test-driver :mongo
-      (testing "with datetimes columns"
-        (let [[col-type field-id] [:datetime (mt/id :times :dt)]]
-          (doseq [op              [:get-year :get-quarter :get-month :get-day
-                                   :get-day-of-week :get-hour :get-minute :get-second]
-                  {:keys [expected-fn query-fn]}
-                  extraction-test-cases]
-           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
-
+    ;; mongo doesn't supports cast string to date
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with date columns"
-        (let [[col-type field-id] [:date (mt/id :times :d)]]
-          (doseq [op               [:get-year :get-quarter :get-month :get-day :get-day-of-week]
-                  {:keys [expected-fn query-fn]}
-                  extraction-test-cases]
-           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id))))))))))))
+        (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
+                op                  [:get-year :get-quarter :get-month :get-day :get-day-of-week]
+                {:keys [expected-fn query-fn]}
+                extraction-test-cases]
+         (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
+           (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))))
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
