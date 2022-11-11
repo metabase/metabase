@@ -36,7 +36,7 @@ interface CardBadgeProps {
 }
 
 export const CardBadge = styled.div<CardBadgeProps>`
-  color: ${props => color(props.isEnabled ? "brand" : "warning")};
+  color: ${props => color(props.isEnabled ? "brand" : "danger")};
   background-color: ${props =>
     color(props.isEnabled ? "brand-light" : "bg-light")};
   padding: 0.25rem 0.375rem;
