@@ -43,7 +43,7 @@
                                                   mbql.normalize/normalize-tokens)
                                             "Field or aggregation reference as it comes in to the API"))
    ;; the timezone in which the column was converted to using `:convert-timezone` expression
-   (s/optional-key :converted_timezone) (s/maybe mbql.preds/TimezoneIds?)
+   (s/optional-key :converted_timezone) (s/pred mbql.preds/TimezoneIds?)
    s/Keyword                            s/Any})
 
 (def ResultsMetadata

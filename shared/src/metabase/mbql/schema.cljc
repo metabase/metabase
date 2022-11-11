@@ -85,9 +85,7 @@
              (apply s/enum (ZoneId/getAvailableZoneIds)) ;; about 600 timezones on java 17
              "timezone-ids")
      ;; Should we just use helpers/NonBlankString for cljs?
-     :cljs (s/named
-             (apply s/enum (. js/Intl supportedValuesOf "timeZone"));; 468 timezones on firefox v106
-             "timezone-ids")))
+     :cljs helpers/NonBlankString))
 
 (def TemporalExtractUnits
   "Valid units to extract from a temporal."
