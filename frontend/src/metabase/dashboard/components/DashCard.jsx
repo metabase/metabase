@@ -363,6 +363,9 @@ const DashCardActionButtons = ({
   isPreviewing,
   dashboard,
 }) => {
+  const analyticsContext = dashboard.is_app_page
+    ? "Data App Page"
+    : "Dashboard";
   const buttons = [];
 
   if (getVisualizationRaw(series).visualization.supportPreviewing) {
@@ -371,6 +374,7 @@ const DashCardActionButtons = ({
         key="toggle-card-preview-button"
         isPreviewing={isPreviewing}
         onPreviewToggle={onPreviewToggle}
+        analyticsContext={analyticsContext}
       />,
     );
   }
@@ -394,7 +398,7 @@ const DashCardActionButtons = ({
         <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
           <a
             className="text-dark-hover drag-disabled mr1"
-            data-metabase-event="Dashboard;Open Click Behavior Sidebar"
+            data-metabase-event={`${analyticsContext};Open Click Behavior Sidebar`}
             onClick={showClickBehaviorSidebar}
             style={HEADER_ACTION_STYLE}
           >
@@ -410,6 +414,7 @@ const DashCardActionButtons = ({
           key="add-series-button"
           series={series}
           onAddSeries={onAddSeries}
+          analyticsContext={analyticsContext}
         />,
       );
     }
@@ -419,7 +424,11 @@ const DashCardActionButtons = ({
     <span className="flex align-center text-medium" style={{ lineHeight: 1 }}>
       {buttons}
       <Tooltip tooltip={t`Remove`}>
-        <RemoveButton className="ml1" onRemove={onRemove} />
+        <RemoveButton
+          className="ml1"
+          onRemove={onRemove}
+          analyticsContext={analyticsContext}
+        />
       </Tooltip>
     </span>
   );
@@ -455,10 +464,10 @@ const ChartSettingsButton = ({
   </ModalWithTrigger>
 );
 
-const RemoveButton = ({ onRemove }) => (
+const RemoveButton = ({ onRemove, analyticsContext }) => (
   <a
     className="text-dark-hover drag-disabled"
-    data-metabase-event="Dashboard;Remove Card Modal"
+    data-metabase-event={`${analyticsContext};Remove Card Modal`}
     onClick={onRemove}
     style={HEADER_ACTION_STYLE}
   >
@@ -466,10 +475,10 @@ const RemoveButton = ({ onRemove }) => (
   </a>
 );
 
-const AddSeriesButton = ({ series, onAddSeries }) => (
+const AddSeriesButton = ({ series, onAddSeries, analyticsContext }) => (
   <a
     data-testid="add-series-button"
-    data-metabase-event="Dashboard;Edit Series Modal;open"
+    data-metabase-event={`${analyticsContext};Edit Series Modal;open`}
     className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
     onClick={onAddSeries}
     style={HEADER_ACTION_STYLE}
@@ -490,10 +499,14 @@ const AddSeriesButton = ({ series, onAddSeries }) => (
   </a>
 );
 
-const ToggleCardPreviewButton = ({ isPreviewing, onPreviewToggle }) => {
+const ToggleCardPreviewButton = ({
+  isPreviewing,
+  onPreviewToggle,
+  analyticsContext,
+}) => {
   return (
     <a
-      data-metabase-event="Dashboard;Text;edit"
+      data-metabase-event={`${analyticsContext};Text;edit`}
       className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
       onClick={onPreviewToggle}
       style={HEADER_ACTION_STYLE}

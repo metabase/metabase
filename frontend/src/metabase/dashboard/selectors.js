@@ -256,3 +256,8 @@ export const getDataAppNavItem = (state, routerParams) => {
 
 export const getPageTitleTemplateChange = state =>
   state.dashboard.titleTemplateChange;
+
+export const getIsDataAppPage = createSelector(
+  [getDashboardComplete],
+  dashboard => dashboard?.is_app_page,
+);

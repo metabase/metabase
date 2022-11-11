@@ -78,9 +78,12 @@ export function DashboardSidebars({
         dashId: dashboard.id,
         cardId: cardId,
       });
-      MetabaseAnalytics.trackStructEvent("Dashboard", "Add Card");
+      MetabaseAnalytics.trackStructEvent(
+        dashboard.is_app_page ? "Data App Page" : "Dashboard",
+        "Add Card",
+      );
     },
-    [addCardToDashboard, dashboard.id],
+    [dashboard, addCardToDashboard],
   );
 
   if (isFullscreen) {
