@@ -249,21 +249,23 @@
 
 (defn- duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries. Returns a map of
-  {old-card-id duplicated-card} so that the new dashboard can adjust accordingly."
+  {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly."
   [dashboard dest-coll-id]
   (let [same-collection? (= (:collection_id dashboard) dest-coll-id)
         {:keys [copy discard]} (cards-to-copy (:ordered_cards dashboard))]
     (reduce (fn [m [id card]]
-              (assoc m id
-                     (if (:dataset card)
-                       card
-                       (api.card/create-card!
-                        (cond-> (assoc card :collection_id dest-coll-id)
-                          same-collection?
-                          (update :name #(str % " -- " (tru "Duplicate"))))
-                        ;; creating cards from a transaction. wait until tx complete to signal event
-                        true))))
-            {:uncopied discard}
+              (assoc-in m
+                        [:copied id]
+                        (if (:dataset card)
+                          card
+                          (api.card/create-card!
+                           (cond-> (assoc card :collection_id dest-coll-id)
+                             same-collection?
+                             (update :name #(str % " -- " (tru "Duplicate"))))
+                           ;; creating cards from a transaction. wait until tx complete to signal event
+                           true))))
+            {:copied {}
+             :uncopied discard}
             copy)))
 
 (defn update-cards-for-copy
@@ -332,17 +334,18 @@
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
                         (let [dash (db/insert! Dashboard dashboard-data)
-                              id->new-card (when is_deep_copy
-                                             (duplicate-cards existing-dashboard collection_id))]
-                          (reset! new-cards (vals (dissoc id->new-card :uncopied)))
+                              {id->new-card :copied uncopied :uncopied}
+                              (when is_deep_copy
+                                (duplicate-cards existing-dashboard collection_id))]
+                          (reset! new-cards (vals id->new-card))
                           (doseq [card (update-cards-for-copy from-dashboard-id
                                                               (:ordered_cards existing-dashboard)
                                                               is_deep_copy
                                                               id->new-card)]
                             (api/check-500 (dashboard/add-dashcard! dash (:card_id card) card)))
                           (cond-> dash
-                            (:uncopied id->new-card)
-                            (assoc :uncopied (:uncopied id->new-card)))))]
+                            (seq uncopied)
+                            (assoc :uncopied uncopied))))]
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
     ;; must signal event outside of tx so cards are visible from other threads
     (when-let [newly-created-cards (seq @new-cards)]
