@@ -14,14 +14,13 @@ import { TimelineData } from "metabase-types/api";
 import FormArchiveButton from "../FormArchiveButton";
 import { TimelineFormFooter } from "./TimelineForm.styled";
 
-const TimelineSchema = Yup.object({
+const TIMELINE_SCHEMA = Yup.object({
   name: Yup.string()
     .required(t`required`)
     .max(255, ({ max }) => t`must be ${max} characters or less`),
-  description: Yup.string().max(
-    255,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
+  description: Yup.string()
+    .nullable()
+    .max(255, ({ max }) => t`must be ${max} characters or less`),
   icon: Yup.string().required(t`required`),
 });
 
@@ -44,7 +43,7 @@ const TimelineForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={TimelineSchema}
+      validationSchema={TIMELINE_SCHEMA}
       onSubmit={onSubmit}
     >
       {({ dirty }) => (
@@ -55,7 +54,7 @@ const TimelineForm = ({
             placeholder={t`Product releases`}
             autoFocus
           />
-          <FormTextArea name="description" title={t`Description`} fullWidth />
+          <FormTextArea name="description" title={t`Description`} nullable />
           <FormSelect name="icon" title={t`Default icon`} options={icons} />
           <TimelineFormFooter>
             <FormErrorMessage inline />

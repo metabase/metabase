@@ -355,26 +355,27 @@
       ;; date arithmetic doesn't supports until mongo 5+
       (when (driver/database-supports? :mongo :date-arithmetics (mt/db))
         (testing "date arithmetic with datetime columns"
-          (let [[col-type field-id] [:datetime (mt/id :times :dt)]]
-            (doseq [op               [:datetime-add :datetime-subtract]
-                    unit             [:year :quarter :month :day :hour :minute :second :millisecond]
-                    {:keys [expected query]}
-                    [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
-                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                                 :fields      [[:expression "expr"]]}}
-                     {:expected (into [] (frequencies
-                                          [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
-                                           (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                           (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
-                                           (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
-                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                                 :aggregation [[:count]]
-                                 :breakout    [[:expression "expr"]]}}]]
-              (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-                (is (= (set expected) (set (qp.datetime-test/test-datetime-math query))))))))
+          (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)]
+                                       [:text-as-datetime (mt/id :times :as_dt)]]
+                  op                  [:datetime-add :datetime-subtract]
+                  unit                [:year :quarter :month :day :hour :minute :second :millisecond]
+                  {:keys [expected query]}
+                  [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
+                               (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                               (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
+                               (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
+                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                               :fields      [[:expression "expr"]]}}
+                   {:expected (into [] (frequencies
+                                        [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
+                                         (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                                         (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
+                                         (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
+                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                               :aggregation [[:count]]
+                               :breakout    [[:expression "expr"]]}}]]
+            (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
+              (is (= (set expected) (set (qp.datetime-test/test-datetime-math query)))))))
 
         (testing "date arithmetic with date columns"
           (let [[col-type field-id] [:date (mt/id :times :d)]]
