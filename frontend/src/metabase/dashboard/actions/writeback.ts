@@ -261,7 +261,7 @@ function getImplicitActionExecutionMessage(action: WritebackAction) {
   if (action.slug === "delete") {
     return t`Successfully deleted`;
   }
-  return t`Successfully run the action`;
+  return t`Successfully ran the action`;
 }
 
 function getActionExecutionMessage(action: WritebackAction, result: any) {
