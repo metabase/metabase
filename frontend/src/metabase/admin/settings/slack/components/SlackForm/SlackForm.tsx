@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import Form from "metabase/core/components/Form";
@@ -10,8 +10,13 @@ import { SlackSettings } from "metabase-types/api";
 import { SlackFormMessage } from "./SlackForm.styled";
 
 const SLACK_SCHEMA = Yup.object({
-  "slack-app-token": Yup.string().required(t`required`),
-  "slack-files-channel": Yup.string().required(t`required`),
+  "slack-app-token": Yup.string()
+    .default("")
+    .required(t`required`),
+  "slack-files-channel": Yup.string()
+    .default("")
+    .required(t`required`)
+    .lowercase(),
 });
 
 export interface SlackFormProps {
@@ -25,11 +30,16 @@ const SlackForm = ({
   isReadOnly,
   onSubmit = () => undefined,
 }: SlackFormProps): JSX.Element => {
+  const handleSubmit = useCallback(
+    (values: SlackSettings) => onSubmit(SLACK_SCHEMA.cast(values)),
+    [onSubmit],
+  );
+
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={!isReadOnly ? SLACK_SCHEMA : undefined}
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       <Form>
         <FormInput
