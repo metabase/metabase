@@ -60,14 +60,6 @@ You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code a
 
 When you run a query from the SQL editor, Metabase sends the query to your database exactly as it is written. Any results or errors displayed in Metabase are the same as the results or errors that you would get if you ran the query directly against your database. If the SQL syntax of your query doesn’t match the SQL dialect used by your database, your database won’t be able to run the query.
 
-## How Metabase executes SQL variables
-
-When you run a query that includes a [variable][variable-gloss], the query will be executed by replacing the `{% raw %}{{ variable_name_or_id }}{% endraw %}` tag with the SQL query of the referenced question or model.
-
-This means that your main query must be aware of all the tables that your variable is pointing to, otherwise you'll get a SQL syntax error. For example, if your main query uses the `Products` table, but your variable points to a query that uses the `Orders` table, you'll need to include a join to `Orders` in your main query.
-
-For an example, see the documentation on [Referencing models and saved questions in SQL queries](./referencing-saved-questions-in-queries.md).
-
 ## Learn more
 
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)

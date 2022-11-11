@@ -1,6 +1,16 @@
+/**
+ * @deprecated
+ */
 export type FieldName = string;
+
+/**
+ * @deprecated
+ */
 export type DefaultFieldValue = unknown;
 
+/**
+ * @deprecated
+ */
 export type FieldValues = Record<FieldName, DefaultFieldValue>;
 
 type FieldValidateResultOK = undefined;
@@ -9,6 +19,9 @@ type FieldValidateResultError = string;
 // Extending Record type here as field definition's props
 // will be just spread to the final field widget
 // (e.g. autoFocus, placeholder)
+/**
+ * @deprecated
+ */
 export type BaseFieldDefinition = Record<string, unknown> & {
   name: string;
   type?: string;
@@ -33,19 +46,31 @@ export type BaseFieldDefinition = Record<string, unknown> & {
   normalize?: (value: unknown) => DefaultFieldValue;
 };
 
+/**
+ * @deprecated
+ */
 export type StandardFormFieldDefinition = BaseFieldDefinition & {
   // If not is not provided, we're going to use default text input
   type?: string | (() => JSX.Element);
 };
 
+/**
+ * @deprecated
+ */
 export type CustomFormFieldDefinition = BaseFieldDefinition & {
   widget: () => JSX.Element;
 };
 
+/**
+ * @deprecated
+ */
 export type FormFieldDefinition =
   | StandardFormFieldDefinition
   | CustomFormFieldDefinition;
 
+/**
+ * @deprecated
+ */
 export type FormField<Value = DefaultFieldValue> = {
   name: FieldName;
   value: Value;
@@ -64,12 +89,18 @@ export type FormField<Value = DefaultFieldValue> = {
   onFocus: () => void;
 };
 
+/**
+ * @deprecated
+ */
 export type FormObject = {
   fields:
     | FormFieldDefinition[]
     | ((values?: FieldValues) => FormFieldDefinition[]);
 };
 
+/**
+ * @deprecated
+ */
 export type PopulatedFormObject = {
   fields: (values?: FieldValues) => FormFieldDefinition[];
   fieldNames: (values: FieldValues) => FieldName[];

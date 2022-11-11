@@ -29,8 +29,8 @@
 
 (deftest add-bindings-test
   (testing "Can we accure bindings?"
-    (let [new-bindings {"D2" [:sum [:field-id 4]]
-                        "D3" [:field-id 5]}]
+    (let [new-bindings {"D2" [:sum [:field 4 nil]]
+                        "D3" [:field 5 nil]}]
       (is (= (update-in @test-bindings ["Venues" :dimensions] merge new-bindings)
              (#'tf/add-bindings @test-bindings "Venues" new-bindings)))))
 
@@ -79,7 +79,7 @@
     (with-test-transform-specs
       (is (= [(mt/id :venues)]
              (map u/the-id (#'tf/resulting-entities {"VenuesEnhanced" {:entity     (db/select-one Table :id (mt/id :venues))
-                                                                       :dimensions {"D1" [:field-id 1]}}}
+                                                                       :dimensions {"D1" [:field 1 nil]}}}
                                                     (first @tf.specs/transform-specs))))))))
 
 (deftest tables-matching-requirements-test
@@ -105,14 +105,14 @@
                                                                    {:result_metadata [{:name "AvgPrice"}
                                                                                       {:name "MaxPrice"}
                                                                                       {:name "MinPrice"}]})
-                                                      :dimensions {"D1" [:field-id 1]}}}
+                                                      :dimensions {"D1" [:field 1 nil]}}}
                                    (first @tf.specs/transform-specs))))
 
       (testing "... and do we throw if we didn't get what we expected?"
         (is (thrown?
              java.lang.AssertionError
              (#'tf/validate-results {"VenuesEnhanced" {:entity     (db/select-one Table :id (mt/id :venues))
-                                                       :dimensions {"D1" [:field-id 1]}}}
+                                                       :dimensions {"D1" [:field 1 nil]}}}
                                     (first @tf.specs/transform-specs))))))))
 
 (deftest transform-test

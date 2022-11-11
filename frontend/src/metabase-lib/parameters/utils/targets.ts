@@ -4,18 +4,13 @@ import {
   ParameterVariableTarget,
 } from "metabase-types/types/Parameter";
 import { SavedCard } from "metabase-types/types/Card";
+import { isDimensionTarget } from "metabase-types/guards";
 import Dimension from "metabase-lib/Dimension";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
-
-export function isDimensionTarget(
-  target: ParameterTarget,
-): target is ParameterDimensionTarget {
-  return target?.[0] === "dimension";
-}
 
 export function isVariableTarget(target: ParameterTarget) {
   return target?.[0] === "variable";

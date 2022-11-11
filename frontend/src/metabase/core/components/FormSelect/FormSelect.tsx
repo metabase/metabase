@@ -28,7 +28,7 @@ const FormSelect = forwardRef(function FormSelect<
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [{ value, onChange, onBlur }, meta] = useField(name);
+  const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
   const buttonProps = useMemo(() => ({ id, onBlur }), [id, onBlur]);
 
   return (
@@ -38,7 +38,7 @@ const FormSelect = forwardRef(function FormSelect<
       title={title}
       description={description}
       htmlFor={id}
-      error={meta.touched ? meta.error : undefined}
+      error={touched ? error : undefined}
     >
       <Select
         {...props}

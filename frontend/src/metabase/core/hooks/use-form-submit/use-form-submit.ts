@@ -1,26 +1,40 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { FormikHelpers } from "formik";
+import { FormState } from "metabase/core/context/FormContext";
 import { FormError } from "./types";
 
-const useFormSubmit = <T>(
-  onSubmit: (data: T, helpers: FormikHelpers<T>) => void,
-) => {
-  return useCallback(
+export interface UseFormSubmitProps<T> {
+  onSubmit: (values: T, helpers: FormikHelpers<T>) => void;
+}
+
+export interface UseFormSubmitResult<T> {
+  state: FormState;
+  handleSubmit: (values: T, helpers: FormikHelpers<T>) => void;
+}
+
+const useFormSubmit = <T>({
+  onSubmit,
+}: UseFormSubmitProps<T>): UseFormSubmitResult<T> => {
+  const [state, setState] = useState<FormState>({ status: "idle" });
+
+  const handleSubmit = useCallback(
     async (data: T, helpers: FormikHelpers<T>) => {
       try {
-        helpers.setStatus({ status: "pending" });
+        setState({ status: "pending" });
         await onSubmit(data, helpers);
-        helpers.setStatus({ status: "fulfilled" });
+        setState({ status: "fulfilled" });
       } catch (error) {
         helpers.setErrors(getFormErrors(error));
-        helpers.setStatus({
-          status: "rejected",
-          message: getFormMessage(error),
-        });
+        setState({ status: "rejected", message: getFormMessage(error) });
       }
     },
     [onSubmit],
   );
+
+  return {
+    state,
+    handleSubmit,
+  };
 };
 
 const isFormError = <T>(error: unknown): error is FormError<T> => {

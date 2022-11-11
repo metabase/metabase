@@ -9,12 +9,8 @@ import FormWidget from "metabase/components/form/FormWidget";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
-import {
-  BaseFieldDefinition,
-  StandardFormFieldDefinition,
-  CustomFormFieldDefinition,
-  FormFieldDefinition,
-} from "metabase-types/forms/legacy";
+import { BaseFieldDefinition } from "metabase-types/forms/legacy";
+import { isCustomWidget } from "metabase-types/guards/forms-legacy";
 
 import {
   CustomFormLegacyContext,
@@ -22,19 +18,9 @@ import {
   LegacyContextTypes,
 } from "./types";
 
-function isCustomWidget(
-  formField: FormFieldDefinition,
-): formField is CustomFormFieldDefinition {
-  return (
-    !(formField as StandardFormFieldDefinition).type &&
-    typeof (formField as CustomFormFieldDefinition).widget === "function"
-  );
-}
-
 export interface CustomFormFieldProps extends BaseFieldDefinition {
   onChange?: (e: unknown) => void;
 }
-
 interface LegacyContextProps
   extends CustomFormLegacyContext,
     FormContainerLegacyContext {}
@@ -130,8 +116,14 @@ CustomFormFieldLegacyContext.contextTypes = {
   unregisterFormField: PropTypes.func,
 };
 
-export default React.forwardRef<HTMLInputElement, CustomFormFieldProps>(
-  function CustomFormField(props, ref) {
-    return <CustomFormFieldLegacyContext {...props} forwardedRef={ref} />;
-  },
-);
+/**
+ * @deprecated
+ */
+const CustomFormField = React.forwardRef<
+  HTMLInputElement,
+  CustomFormFieldProps
+>(function CustomFormField(props, ref) {
+  return <CustomFormFieldLegacyContext {...props} forwardedRef={ref} />;
+});
+
+export default CustomFormField;

@@ -24,12 +24,6 @@ export const StepDescription = styled.div`
   color: ${color("text-medium")};
 `;
 
-export const StepFormGroup = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-`;
-
 export const FormActions = styled.div`
   display: flex;
   align-items: center;

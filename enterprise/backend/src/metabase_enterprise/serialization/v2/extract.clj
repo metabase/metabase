@@ -7,6 +7,7 @@
     [clojure.string :as str]
     [clojure.tools.logging :as log]
     [medley.core :as m]
+    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
     [metabase-enterprise.serialization.v2.models :as serdes.models]
     [metabase.models :refer [Card Collection Dashboard DashboardCard]]
     [metabase.models.collection :as collection]
@@ -41,6 +42,7 @@
   there."
   [opts]
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
+  (serdes.backfill/backfill-ids)
   (let [model-pred (if (:data-model-only opts)
                      #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
                      (constantly true))
@@ -170,6 +172,7 @@
                                                            (filter #(= (first %) "Collection"))
                                                            (map second)
                                                            set))]
+    (serdes.backfill/backfill-ids)
     (if-let [analysis (escape-analysis selected-collections)]
       ;; If that is non-nil, emit the report.
       (escape-report analysis)

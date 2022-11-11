@@ -305,7 +305,7 @@
          :dataset_query {:database (mt/id)
                          :type     :query
                          :query   {:source-table (mt/id :checkins)
-                                   :breakout     [[:datetime-field [:field (mt/id :checkins :date) nil]  :month]]
+                                   :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :month}]]
                                    :aggregation  [[:count]]}}))
 
 (deftest make-sure-we-include-all-the-relevant-fields-like-insights

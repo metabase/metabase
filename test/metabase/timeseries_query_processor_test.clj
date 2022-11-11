@@ -784,6 +784,6 @@
              (mt/formatted-rows [str 1.0]
                (mt/run-mbql-query checkins
                  {:aggregation [[:avg $venue_price]]
-                  :breakout    [[:field-id $venue_category_name]]
+                  :breakout    [[:field $venue_category_name nil]]
                   :order-by    [[:desc [:aggregation 0]]]
                   :limit       4})))))))
