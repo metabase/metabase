@@ -12,8 +12,6 @@ import CreateDataAppModal from "metabase/writeback/containers/CreateDataAppModal
 
 import type { Collection, CollectionId } from "metabase-types/api";
 
-import { WideModal } from "./NewItemMenu.styled";
-
 type ModalType = "new-app" | "new-dashboard" | "new-collection";
 
 export interface NewItemMenuProps {
@@ -153,9 +151,7 @@ const NewItemMenu = ({
               />
             </Modal>
           ) : modal === "new-app" ? (
-            <WideModal onClose={handleModalClose}>
-              <CreateDataAppModal onClose={handleModalClose} />
-            </WideModal>
+            <CreateDataAppModal onClose={handleModalClose} />
           ) : null}
         </>
       )}
