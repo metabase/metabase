@@ -81,8 +81,7 @@
                    (db/select-reducible NativeQuerySnippet :collection_id [:in collection-set]))]))
 
 (defmethod serdes.base/serdes-generate-path "NativeQuerySnippet" [_ snippet]
-  [(assoc (serdes.base/infer-self-path "NativeQuerySnippet" snippet)
-          :label (:name snippet))])
+  (serdes.base/maybe-labeled "NativeQuerySnippet" snippet :name))
 
 (defmethod serdes.base/extract-one "NativeQuerySnippet"
   [_model-name _opts snippet]

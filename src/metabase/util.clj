@@ -432,6 +432,21 @@
   (^String [s max-length]
    (str/join (take max-length (slugify s)))))
 
+(defn slugify-filename
+  "Return a version of String `s` appropriate for use as part of a file path.
+   Downcase the name, remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores;
+   Non-ASCII characters are preserved - modern filesystems support them.
+
+   Optionally specify `max-length` which will truncate the slug after that many characters."
+  (^String [^String s]
+   (when (seq s)
+     (str/join (for [c (remove-diacritical-marks (str/lower-case s))]
+                 (if (<= (int c) 128)
+                   (slugify-char c)
+                   c)))))
+  (^String [s max-length]
+   (str/join (take max-length (slugify s)))))
+
 (defn full-exception-chain
   "Gather the full exception chain into a sequence."
   [e]

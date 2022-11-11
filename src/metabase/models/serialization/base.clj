@@ -12,6 +12,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase.models.interface :as mi]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -97,6 +98,19 @@
                 (some-> (get entity pk) model serdes.hash/identity-hash)
                 (throw (ex-info "Could not infer-self-path on this entity - maybe implement serdes-entity-id ?"
                                 {:model model-name :entity entity})))}))
+
+(defn maybe-labeled
+  "Common helper for defining [[serdes-generate-path]] for an entity that is
+  (1) top-level, ie. a one layer path;
+  (2) labeled by a single field, slugified.
+
+  For example, a Card's or Dashboard's `:name` field."
+  [model-name entity slug-key]
+  (let [self  (infer-self-path model-name entity)
+        label (get entity slug-key)]
+    [(if label
+       (assoc self :label (u/slugify-filename label))
+       self)]))
 
 (defmethod serdes-generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for nested ones.

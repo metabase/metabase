@@ -29,6 +29,9 @@
    :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
+(defmethod serdes.base/serdes-generate-path "Dimension" [_model-name dim]
+  (serdes.base/maybe-labeled "Dimension" dim :name))
+
 (defmethod serdes.base/extract-one "Dimension"
   [_model-name _opts dim]
   ;; The field IDs are converted to {:field [db schema table field]} portable values.

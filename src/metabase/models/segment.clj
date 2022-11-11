@@ -76,11 +76,8 @@
 
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
-
-(defmethod serdes.base/serdes-generate-path "Segment"
-  [_ segment]
-  [(assoc (serdes.base/infer-self-path "Segment" segment)
-          :label (:name segment))])
+(defmethod serdes.base/serdes-generate-path "Segment" [_ segment]
+  (serdes.base/maybe-labeled "Segment" segment :name))
 
 (defmethod serdes.base/extract-one "Segment"
   [_model-name _opts segment]

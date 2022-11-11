@@ -409,6 +409,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+(defmethod serdes.base/serdes-generate-path "Dashboard" [_model-name dashboard]
+  (serdes.base/maybe-labeled "Dashboard" dashboard :name))
+
 (defmethod serdes.base/extract-query "Dashboard" [_ {:keys [collection-set]}]
   (eduction (map #(hydrate % :ordered_cards))
             (if (seq collection-set)

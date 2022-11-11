@@ -76,11 +76,8 @@
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
-
-(defmethod serdes.base/serdes-generate-path "Metric"
-  [_ metric]
-  (let [base (serdes.base/infer-self-path "Metric" metric)]
-    [(assoc base :label (:name metric))]))
+(defmethod serdes.base/serdes-generate-path "Metric" [_model-name metric]
+  (serdes.base/maybe-labeled "Metric" metric :name))
 
 (defmethod serdes.base/extract-one "Metric"
   [_model-name _opts metric]
