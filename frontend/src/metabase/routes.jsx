@@ -42,6 +42,7 @@ import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 
 import NewModelOptions from "metabase/new_model/containers/NewModelOptions";
+
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import { Unauthorized } from "metabase/containers/ErrorPages";

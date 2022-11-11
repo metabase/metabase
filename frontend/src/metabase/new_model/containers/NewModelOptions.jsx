@@ -8,33 +8,18 @@ import { t } from "ttag";
 
 import { Grid } from "metabase/components/Grid";
 
-<<<<<<<< HEAD:frontend/src/metabase/new_model/containers/NewModelOptions.jsx
 import NewModelOption from "metabase/new_model/components/NewModelOption";
-========
-import NewDatasetOption from "metabase/new_dataset/components/NewDatasetOption";
->>>>>>>> 54cb71da9b (Clean up and update files around new query):frontend/src/metabase/new_dataset/containers/NewDatasetOptions.jsx
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
 import * as Urls from "metabase/lib/urls";
 
-<<<<<<<< HEAD:frontend/src/metabase/new_model/containers/NewModelOptions.jsx
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-========
-import {
-  getHasDataAccess,
-  getHasNativeWrite,
-} from "metabase/new_dataset/selectors";
->>>>>>>> 54cb71da9b (Clean up and update files around new query):frontend/src/metabase/new_dataset/containers/NewDatasetOptions.jsx
 import Database from "metabase/entities/databases";
 import {
   OptionsGridItem,
   OptionsRoot,
   EducationalButton,
-<<<<<<<< HEAD:frontend/src/metabase/new_model/containers/NewModelOptions.jsx
 } from "./NewModelOptions.styled";
-========
-} from "./NewDatasetOptions.styled";
->>>>>>>> 54cb71da9b (Clean up and update files around new query):frontend/src/metabase/new_dataset/containers/NewDatasetOptions.jsx
 
 const EDUCATIONAL_LINK = "https://www.metabase.com/learn/data-modeling/models";
 
@@ -89,11 +74,7 @@ class NewModelOptions extends Component {
         <Grid className="justifyCenter">
           {hasDataAccess && (
             <OptionsGridItem itemsCount={itemsCount}>
-<<<<<<<< HEAD:frontend/src/metabase/new_model/containers/NewModelOptions.jsx
               <NewModelOption
-========
-              <NewDatasetOption
->>>>>>>> 54cb71da9b (Clean up and update files around new query):frontend/src/metabase/new_dataset/containers/NewDatasetOptions.jsx
                 image="app/img/notebook_mode_illustration"
                 title={t`Use the notebook editor`}
                 description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
@@ -109,11 +90,7 @@ class NewModelOptions extends Component {
           )}
           {hasNativeWrite && (
             <OptionsGridItem itemsCount={itemsCount}>
-<<<<<<<< HEAD:frontend/src/metabase/new_model/containers/NewModelOptions.jsx
               <NewModelOption
-========
-              <NewDatasetOption
->>>>>>>> 54cb71da9b (Clean up and update files around new query):frontend/src/metabase/new_dataset/containers/NewDatasetOptions.jsx
                 image="app/img/sql_illustration"
                 title={t`Use a native query`}
                 description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
