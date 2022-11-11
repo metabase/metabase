@@ -11,10 +11,10 @@ import { SlackFormMessage } from "./SlackForm.styled";
 
 const SLACK_SCHEMA = Yup.object({
   "slack-app-token": Yup.string()
-    .default("")
+    .ensure()
     .required(t`required`),
   "slack-files-channel": Yup.string()
-    .default("")
+    .ensure()
     .required(t`required`)
     .lowercase(),
 });
