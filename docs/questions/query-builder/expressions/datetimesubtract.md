@@ -79,7 +79,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### datetimeAdd
 
-`datetimeSubtract` and `datetimeAdd` are interchangeable, since you can use a negative number for `amount`. We could use either expression for our [events example](#calculating-a-start-date):
+`datetimeSubtract` and `datetimeAdd` are interchangeable, since you can use a negative number for `amount`. We could use either expression for our [events example](#calculating-a-start-date), but you should try to avoid "double negatives" (such as subtracting a negative number) if possible.
 
 ```
 datetimeAdd([Arrive By], -30, "minute")

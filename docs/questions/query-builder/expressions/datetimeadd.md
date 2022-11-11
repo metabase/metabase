@@ -79,7 +79,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### datetimeSubtract
 
-`datetimeSubtract` and `datetimeAdd` are interchangeable, since you can use a negative number for `amount`.
+`datetimeSubtract` and `datetimeAdd` are interchangeable, since you can use a negative number for `amount`. It's generally a good idea to avoid double negatives (such as subtracting a negative number).
 
 ```
 datetimeSubtract([Opened On], -14, "day")
