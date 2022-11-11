@@ -77,9 +77,7 @@
     (let [row (first (csv-export [[(lazy-seq [1 2 3])]]))]
       (is (= ["[1 2 3]"] row))))
 
-  (testing "ZonedDateTime in a lazy seq (checking that elements in a lazy seq are formatted correctly)"
-    (mt/test-drivers (mt/normal-drivers)
-     (mt/with-report-timezone-id "US/Pacific"
-       (mt/with-everything-store
-         (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T20:06:00Z"])]]))]
-           (is (= ["[\"2021-03-30T20:06:00Z\"]"] row))))))))
+  (testing "LocalDate in a lazy seq (checking that elements in a lazy seq are formatted correctly as strings)"
+   (mt/with-everything-store
+     (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T"])]]))]
+       (is (= ["[\"2021-03-30\"]"] row))))))
