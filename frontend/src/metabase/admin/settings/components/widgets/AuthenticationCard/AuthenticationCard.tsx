@@ -1,11 +1,12 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { Link } from "react-router";
 import Button from "metabase/core/components/Button";
-import Toggle from "metabase/core/components/Toggle";
 import {
+  CardBadge,
   CardDescription,
   CardHeader,
+  CardMenu,
   CardRoot,
   CardTitle,
 } from "./AuthenticationCard.styled";
@@ -32,14 +33,29 @@ const AuthenticationCard = ({
   authConfigured,
   onChange,
 }: AuthenticationWidgetProps) => {
-  const value = setting.value ?? setting.default;
+  const isEnabled = setting.value ?? setting.default;
+
+  const menuItems = useMemo(() => {
+    return [
+      {
+        title: isEnabled ? t`Pause` : t`Resume`,
+        icon: "play",
+        action: () => onChange(!isEnabled),
+      },
+    ];
+  }, [isEnabled, onChange]);
 
   return (
     <CardRoot>
       <CardHeader>
         <CardTitle>{authName}</CardTitle>
         {authConfigured && (
-          <Toggle value={value} aria-label={authName} onChange={onChange} />
+          <>
+            <CardBadge isEnabled={isEnabled}>
+              {isEnabled ? t`Active` : t`Paused`}
+            </CardBadge>{" "}
+            <CardMenu triggerIcon="ellipsis" items={menuItems} />
+          </>
         )}
       </CardHeader>
       <CardDescription>{authDescription}</CardDescription>

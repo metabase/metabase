@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import EntityMenu from "metabase/components/EntityMenu";
 
 export const CardRoot = styled.div`
   width: 31.25rem;
@@ -12,8 +13,8 @@ export const CardRoot = styled.div`
 
 export const CardHeader = styled.div`
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
   margin-bottom: 1rem;
 `;
 
@@ -28,4 +29,21 @@ export const CardDescription = styled.div`
   font-size: 0.875rem;
   line-height: 1.5rem;
   margin-bottom: 1.5rem;
+`;
+
+interface CardBadgeProps {
+  isEnabled: boolean;
+}
+
+export const CardBadge = styled.div<CardBadgeProps>`
+  color: ${props => color(props.isEnabled ? "brand" : "warning")};
+  background-color: ${props =>
+    color(props.isEnabled ? "brand-light" : "bg-light")};
+  padding: 0.25rem 0.375rem;
+  border-radius: 0.25rem;
+  font-weight: bold;
+`;
+
+export const CardMenu = styled(EntityMenu)`
+  margin-left: auto;
 `;
