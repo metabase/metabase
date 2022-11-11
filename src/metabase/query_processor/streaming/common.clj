@@ -32,7 +32,7 @@
 
   ISeq
   (format-value [this]
-    (into [] (map format-value this)))
+    (mapv format-value this))
 
   LocalDate
   (format-value [t]
