@@ -14,14 +14,16 @@ import {
   PasswordFormTitle,
 } from "./ResetPasswordForm.styled";
 
-const ResetPasswordSchema = Yup.object({
+const RESET_PASSWORD_SCHEMA = Yup.object({
   password: Yup.string()
+    .default("")
     .required(t`required`)
     .test(async (value = "", context) => {
       const error = await context.options.context?.onValidatePassword(value);
       return error ? context.createError({ message: error }) : true;
     }),
   password_confirm: Yup.string()
+    .default("")
     .required(t`required`)
     .oneOf([Yup.ref("password")], t`passwords do not match`),
 });
@@ -35,15 +37,13 @@ const ResetPasswordForm = ({
   onValidatePassword,
   onSubmit,
 }: ResetPasswordFormProps): JSX.Element => {
-  const initialValues = useMemo(
-    () => ({ password: "", password_confirm: "" }),
-    [],
-  );
+  const initialValues = useMemo(() => {
+    return RESET_PASSWORD_SCHEMA.getDefault();
+  }, []);
 
-  const passwordDescription = useMemo(
-    () => MetabaseSettings.passwordComplexityDescription(),
-    [],
-  );
+  const passwordDescription = useMemo(() => {
+    return MetabaseSettings.passwordComplexityDescription();
+  }, []);
 
   const validationContext = useMemo(
     () => ({ onValidatePassword: _.memoize(onValidatePassword) }),
@@ -58,7 +58,7 @@ const ResetPasswordForm = ({
       </PasswordFormMessage>
       <FormProvider
         initialValues={initialValues}
-        validationSchema={ResetPasswordSchema}
+        validationSchema={RESET_PASSWORD_SCHEMA}
         validationContext={validationContext}
         onSubmit={onSubmit}
       >
