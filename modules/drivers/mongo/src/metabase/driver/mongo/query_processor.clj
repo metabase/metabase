@@ -11,6 +11,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
@@ -24,7 +25,8 @@
                                       $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
                                       $sum $toLower $year]]
             [schema.core :as s])
-  (:import org.bson.types.ObjectId))
+  (:import [org.bson.types ObjectId Binary]
+           org.bson.BsonBinarySubType))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -136,10 +138,27 @@
 
       (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
       {"$dateFromString" {:dateString field-name
-                          :format "%Y%m%d%H%M%S"
-                          :onError field-name}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
 
-      :else field-name)))
+      ;; mongo only supports datetime
+      (isa? coercion :Coercion/ISO8601->DateTime)
+      {"$dateFromString" {:dateString field-name
+                          :onError    field-name}}
+
+
+      (isa? coercion :Coercion/ISO8601->Date)
+      (throw (ex-info (tru "MongoDB does not support parsing strings as dates. Try parsing to a datetime instead")
+                      {:type              qp.error-type/unsupported-feature
+                       :coercion-strategy coercion}))
+
+
+      (isa? coercion :Coercion/ISO8601->Time)
+      (throw (ex-info (tru "MongoDB does not support parsing strings as times. Try parsing to a datetime instead")
+                      {:type              qp.error-type/unsupported-feature
+                       :coercion-strategy coercion}))
+
+     :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
 ;;
@@ -271,15 +290,32 @@
 
 (defmethod ->rvalue nil [_] nil)
 
+(defn- uuid->bsonbinary
+  [u]
+  (let [lo (.getLeastSignificantBits ^java.util.UUID u)
+        hi (.getMostSignificantBits  ^java.util.UUID u)
+        ba (-> (java.nio.ByteBuffer/allocate 16) ; UUID is 128 bits-long
+               (.putLong hi)
+               (.putLong lo)
+               (.array))]
+    (Binary. BsonBinarySubType/UUID_STANDARD ba)))
+
 (defmethod ->rvalue :value
   [[_ value {base-type :base_type}]]
-  (if (and (isa? base-type :type/MongoBSONID)
-           (some? value))
-    ;; Passing nil or "" to the ObjectId constructor throws an exception
-    ;; "invalid hexadecimal representation of an ObjectId: []" so, just treat it as nil
-    (when (not= value "")
-      (ObjectId. (str value)))
-    value))
+  (cond
+    ;; Passing nil or "" to the ObjectId or Binary constructor throws an exception
+    (or (nil? value) (= value ""))
+    value
+
+    (isa? base-type :type/MongoBSONID)
+    (ObjectId. (str value))
+
+    (isa? base-type :type/UUID)
+    (-> (str value)
+        java.util.UUID/fromString
+        uuid->bsonbinary)
+
+    :else value))
 
 (defn- $date-from-string [s]
   {:$dateFromString {:dateString (str s)}})

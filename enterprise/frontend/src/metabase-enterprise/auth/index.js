@@ -1,9 +1,6 @@
-import React from "react";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import { updateIn } from "icepick";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
-
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import MetabaseSettings from "metabase/lib/settings";
 import {
@@ -13,7 +10,6 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 
-import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
@@ -30,16 +26,22 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(sections, ["authentication", "settings"], settings => [
     ...settings,
     {
-      authName: t`SAML`,
-      authDescription: t`Allows users to login via a SAML Identity Provider.`,
-      authType: "saml",
-      authEnabled: settings => settings["saml-enabled"],
-      widget: AuthenticationOption,
+      key: "saml-enabled",
+      description: null,
+      noHeader: true,
+      widget: AuthenticationWidget,
+      getProps: (setting, settings) => ({
+        authName: t`SAML`,
+        authDescription: t`Allows users to login via a SAML Identity Provider.`,
+        authType: "saml",
+        authConfigured: settings => settings["saml-configured"],
+      }),
       getHidden: () => !hasPremiumFeature("sso"),
     },
     {
       key: "jwt-enabled",
       description: null,
+      noHeader: true,
       widget: AuthenticationWidget,
       getProps: (setting, settings) => ({
         authName: t`JWT`,
@@ -87,17 +89,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     settings: [
       {
         key: "saml-enabled",
-        display_name: t`SAML Authentication`,
-        description: jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
-          <ExternalLink
-            href={MetabaseSettings.docsUrl(
-              "people-and-groups/authenticating-with-saml",
-            )}
-          >
-            {t`documentation`}
-          </ExternalLink>
-        )}.`,
-        type: "boolean",
+        getHidden: () => true,
       },
       {
         key: "saml-identity-provider-uri",

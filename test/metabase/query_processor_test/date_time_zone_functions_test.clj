@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
+            [metabase.models :refer [Card]]
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
@@ -54,7 +55,7 @@
        (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")        ;; dt_tz
        (t/local-date t)                                       ;; d
        (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as _dt
-       (t/format "yyyy-MM-dd" (t/local-date-time t))])]
+       (t/format "yyyy-MM-dd" (t/local-date-time t))])]       ;; as_d
    ["weeks" [{:field-name "index"
               :base-type :type/Integer}
              {:field-name "description"
@@ -101,8 +102,7 @@
 
 (deftest extraction-function-tests
   (mt/dataset times-mixed
-    ;; need to have seperate tests for mongo because it doesn't have supports for casting yet
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
+    (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
       (testing "with datetime columns"
         (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)] [:text-as-datetime (mt/id :times :as_dt)]]
                 op                  [:get-year :get-quarter :get-month :get-day
@@ -110,34 +110,17 @@
                 {:keys [expected-fn query-fn]}
                 extraction-test-cases]
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id))))))))
+            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
+    ;; mongo doesn't supports cast string to date
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with date columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
                 op                  [:get-year :get-quarter :get-month :get-day :get-day-of-week]
                 {:keys [expected-fn query-fn]}
                 extraction-test-cases]
-          (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
-
-   (mt/test-driver :mongo
-     (testing "with datetimes columns"
-       (let [[col-type field-id] [:datetime (mt/id :times :dt)]]
-         (doseq [op              [:get-year :get-quarter :get-month :get-day
-                                  :get-day-of-week :get-hour :get-minute :get-second]
-                 {:keys [expected-fn query-fn]}
-                 extraction-test-cases]
-           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
-
-     (testing "with date columns"
-       (let [[col-type field-id] [:date (mt/id :times :d)]]
-         (doseq [op               [:get-year :get-quarter :get-month :get-day :get-day-of-week]
-                 {:keys [expected-fn query-fn]}
-                 extraction-test-cases]
-           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id))))))))))))
-
+         (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
+           (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))))
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
@@ -169,6 +152,24 @@
                 :expected [1]
                 :query    {:filter [:= [:* [:get-year [:field (mt/id :times :dt) nil]] 2] 4008]
                            :fields [[:field (mt/id :times :index) nil]]}}]]
+        (testing title
+          (is (= expected (test-temporal-extract query))))))))
+
+(deftest temporal-extraction-with-datetime-arithmetic-expression-tests
+  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract :expressions)
+    (mt/dataset times-mixed
+      (doseq [{:keys [title expected query]}
+              [{:title    "Nested interval addition expression"
+                :expected [2005]
+                :query    {:expressions {"expr" [:abs [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]]]}
+                           :filter      [:= [:field (mt/id :times :index) nil] 1]
+                           :fields      [[:expression "expr"]]}}
+
+               {:title    "Interval addition nested in numeric addition"
+                :expected [2006]
+                :query    {:expressions {"expr" [:+ [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]] 1]}
+                           :filter      [:= [:field (mt/id :times :index) nil] 1]
+                           :fields      [[:expression "expr"]]}}]]
         (testing title
           (is (= expected (test-temporal-extract query))))))))
 
@@ -431,8 +432,9 @@
                                        [:expression "hour"]]})
                       (mt/formatted-rows [str str int])
                       first))))
+
         (testing "convert-timezone nested with date-math, date-extract"
-          (is (= ["2004-03-19T09:19:09Z" "2004-03-19T18:19:09+09:00" "2004-03-19T11:19:09Z" 20]
+          (is (= ["2004-03-19T09:19:09Z" "2004-03-19T18:19:09+09:00" "2004-03-19T20:19:09Z" 20]
                  (->> (mt/run-mbql-query
                         times
                         {:expressions {"converted"  [:convert-timezone $times.dt (offset->zone "+09:00")]
@@ -451,7 +453,7 @@
                   ["2008-06-20T10:20:10Z" "2008-06-20T03:20:10-07:00" 3]] ;; During DST -- UTC-7
                  (->> (mt/run-mbql-query
                         times
-                        {:expressions {"converted" [:convert-timezone $times.dt "US/Pacific" "UTC"]
+                        {:expressions {"converted" [:convert-timezone $times.dt "America/Los_Angeles" "UTC"]
                                        "hour"      [:get-hour [:expression "converted"]]}
                          :filter      [:< $times.index 3]
                          :fields      [$times.dt
@@ -465,7 +467,8 @@
                  (->> (mt/run-mbql-query
                         times
                         {:expressions {"to-07"       [:convert-timezone $times.dt (offset->zone "+07:00")]
-                                       "to-07-to-09" [:convert-timezone [:expression "to-07"] (offset->zone "+09:00")]}
+                                       "to-07-to-09" [:convert-timezone [:expression "to-07"] (offset->zone "+09:00")
+                                                      (offset->zone "+07:00")]}
                          :filter      [:= $times.index 1]
                          :fields      [$times.dt
                                        [:expression "to-07"]
@@ -490,4 +493,44 @@
                          :filter      [:= [:expression "hour"] 18]
                          :fields      [[:expression "converted"]]})
                       mt/rows
-                      first))))))))
+                      first))))
+
+        (testing "nested query should works"
+          (mt/with-temp Card [card
+                              {:dataset_query
+                               (mt/mbql-query
+                                 times
+                                 {:expressions {"to-07"       [:convert-timezone $times.dt (offset->zone "+07:00")]
+                                                "to-07-to-09" [:convert-timezone [:expression "to-07"] (offset->zone "+09:00")
+                                                               (offset->zone "+07:00")]}
+                                  :filter      [:= $times.index 1]
+                                  :fields      [$times.dt
+                                                [:expression "to-07"]
+                                                [:expression "to-07-to-09"]]})}]
+            (testing "mbql query"
+              (is (= [["2004-03-19T09:19:09Z"
+                       "2004-03-19T16:19:09+07:00"
+                       "2004-03-19T18:19:09+09:00"]]
+                     (->> (mt/mbql-query nil {:source-table (format "card__%d" (:id card))})
+                          mt/process-query
+                          mt/rows))))
+
+            (testing "native query"
+              (let [card-tag (format "#%d" (:id card))]
+                ;; FIXME: technically these values should have offset timezone(not just all are 'Z')
+                ;; but we haven't figured out a way to pass the convert_timezone metadata if you use a native query.
+                ;; FWIW we don't display `offset` part on UI, so whether it's Z or "+XX:XX" it doesn't matter
+                ;; What important is datetime extraction or date-math functions gives correct values
+                (is (= [["2004-03-19T09:19:09Z"
+                         "2004-03-19T16:19:09Z"
+                         "2004-03-19T18:19:09Z"]]
+                       (->> (mt/native-query {:query         (format "select * from {{%s}} %s" card-tag
+                                                                    (case driver/*driver*
+                                                                      :oracle ""
+                                                                      "as source"))
+                                              :template-tags {card-tag {:card-id      (:id card)
+                                                                        :type         :card
+                                                                        :display-name "CARD ID"
+                                                                        :id           "_CARD_ID_"}}})
+                            mt/process-query
+                            mt/rows)))))))))))

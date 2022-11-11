@@ -266,16 +266,14 @@
                     {:type            qp.error-type/invalid-parameter
                      :target-timezone target-timezone
                      :source-timezone source-timezone})))
-    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
-          expr            (cond-> expr
-                            source-timezone
-                            (hx/->AtTimeZone (zone-id->windows-zone source-timezone))
-                            target-timezone
-                            (hx/->AtTimeZone (zone-id->windows-zone target-timezone)))]
-      (hx/with-convert-timezone-type-info expr
+    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))]
+      (cond-> expr
+        (and (not datetimeoffset?) source-timezone)
+        (hx/->AtTimeZone (zone-id->windows-zone source-timezone))
         target-timezone
-        source-timezone
-        "datetimeoffset"))))
+        (hx/->AtTimeZone (zone-id->windows-zone target-timezone))
+        true
+        hx/->datetime))))
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]

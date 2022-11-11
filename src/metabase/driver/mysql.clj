@@ -349,12 +349,6 @@
                                 2)
                           (hx/literal "-01"))))
 
-(defn- datetime->timestamp
-  [expr]
-  (->> expr
-       (hsql/call :unix_timestamp)
-       (hsql/call :from_unixtime)))
-
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr       (sql.qp/->honeysql driver arg)
@@ -365,13 +359,9 @@
                      :target-timezone   target-timezone
                      :source-timezone source-timezone})))
     (let [source-timezone (or source-timezone
-                              (:target-timezone (hx/type-info->convert-timezone-info (hx/type-info expr)))
                               (qp.timezone/results-timezone-id))
-          expr            (if-not timestamp?
-                            (datetime->timestamp expr)
-                            expr)
           expr            (hsql/call :convert_tz expr source-timezone target-timezone)]
-      (hx/with-convert-timezone-type-info expr target-timezone source-timezone "timestamp"))))
+      (hx/with-database-type-info expr "datetime"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

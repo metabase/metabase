@@ -69,18 +69,19 @@ const Input = forwardRef(function Input(
         fieldSize={size}
         hasError={error}
         fullWidth={fullWidth}
+        hasSubtitle={Boolean(subtitle)}
+        hasLeftIcon={Boolean(leftIcon)}
         hasRightIcon={Boolean(rightIcon)}
-        subtitle={subtitle}
       />
       {leftIcon && (
-        <Tooltip tooltip={leftIconTooltip} placement="left" offset={[0, 24]}>
+        <Tooltip tooltip={leftIconTooltip} placement="left">
           <InputLeftButton tabIndex={-1} onClick={onLeftIconClick}>
             <Icon name={leftIcon} />
           </InputLeftButton>
         </Tooltip>
       )}
       {rightIcon && (
-        <Tooltip tooltip={rightIconTooltip} placement="right" offset={[0, 24]}>
+        <Tooltip tooltip={rightIconTooltip} placement="right">
           <InputRightButton tabIndex={-1} onClick={onRightIconClick}>
             <Icon name={rightIcon} />
           </InputRightButton>

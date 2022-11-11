@@ -169,20 +169,12 @@
             (hformat/to-sql expr)
             (hformat/to-sql (literal zone)))))
 
-(def ^:private available-timezones (java.time.ZoneId/getAvailableZoneIds))
-
-(def ^:private ConvertTimezoneInfo
-  "Type info for `convert-timezone` expression."
-  {:source-timezone (apply s/enum available-timezones)
-   :target-timezone (apply s/enum available-timezones)})
-
 (def ^:private NormalizedTypeInfo
   {(s/optional-key ::database-type) (s/constrained
                                      su/NonBlankString
                                      (fn [s]
                                        (= s (str/lower-case s)))
-                                     "lowercased string")
-   (s/optional-key ::convert-timezone) ConvertTimezoneInfo})
+                                     "lowercased string")})
 
 (s/defn ^:private normalize-type-info :- NormalizedTypeInfo
   "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
@@ -222,12 +214,6 @@
   {:added "0.39.0"}
   (::database-type type-info))
 
-(defn type-info->convert-timezone-info
-  "For a given type-info, returns the `convert-timezone`."
-  [type-info]
-  {:added "0.45.0"}
-  (::convert-timezone type-info))
-
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `database-type`?
 
@@ -250,19 +236,6 @@
   (if (some? database-type)
     (with-type-info honeysql-form {::database-type database-type})
     (unwrap-typed-honeysql-form honeysql-form)))
-
-(s/defn with-convert-timezone-type-info
-  "Convenience for adding only database type information to a `honeysql-form`. Wraps `honeysql-form` and returns a
-  `TypedHoneySQLForm`. Passing `nil` as `database-type` will remove any existing type info.
-
-    (with-database-type-info :field \"text\")
-    ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
-  {:style/indent [:form]}
-  [honeysql-form target-timezone source-timezone timestamp-db-type]
-  (with-type-info honeysql-form
-    {::convert-timezone {:source-timezone source-timezone
-                         :target-timezone target-timezone}
-     ::database-type    timestamp-db-type}))
 
 (s/defn cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."

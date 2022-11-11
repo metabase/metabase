@@ -9,7 +9,8 @@
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
      [schema.core :as s])
-    (:import java.time.format.DateTimeFormatter)]
+    (:import java.time.format.DateTimeFormatter
+             java.time.ZoneId)]
    :cljs
    [(:require
      [clojure.core :as core]
@@ -77,6 +78,14 @@
   (s/named
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
+
+(def TimezoneIds
+  "Valid timezone ids."
+  #?(:clj  (s/named
+             (apply s/enum (ZoneId/getAvailableZoneIds)) ;; about 600 timezones on java 17
+             "timezone-ids")
+     ;; Should we just use helpers/NonBlankString for cljs?
+     :cljs helpers/NonBlankString))
 
 (def TemporalExtractUnits
   "Valid units to extract from a temporal."
@@ -493,7 +502,7 @@
 
 (def date-arithmetic-functions
   "Functions to do math with date, datetime."
-  #{:datetime-add :datetime-subtract})
+  #{:+ :datetime-add :datetime-subtract})
 
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
@@ -526,21 +535,21 @@
 
 (def ^:private DateTimeExpressionArg
   (s/conditional
-    (partial is-clause? aggregations)
-    (s/recursive #'Aggregation)
+   (partial is-clause? aggregations)
+   (s/recursive #'Aggregation)
 
-    (partial is-clause? :value)
-    value
+   (partial is-clause? :value)
+   value
 
     ;; Recursively doing date math
-    (partial is-clause? date-arithmetic-functions)
-    (s/recursive #'DatetimeExpression)
+   (partial is-clause? date-arithmetic-functions)
+   (s/recursive #'DatetimeExpression)
 
-    (partial is-clause? :convert-timezone)
-    (s/recursive #'DatetimeExpression)
+   (partial is-clause? :convert-timezone)
+   (s/recursive #'DatetimeExpression)
 
-    :else
-    (s/cond-pre DatetimeLiteral Field)))
+   :else
+   (s/cond-pre DatetimeLiteral Field)))
 
 (def ^:private ExpressionArg
   (s/conditional
@@ -685,8 +694,8 @@
 
 (defclause ^{:requires-features #{:convert-timezone}} convert-timezone
   datetime DateTimeExpressionArg
-  to       StringExpressionArg
-  from     (optional StringExpressionArg))
+  to       TimezoneIds
+  from     (optional TimezoneIds))
 
 (def ^:private ArithmeticDateTimeUnit
   (s/named
@@ -704,7 +713,7 @@
   unit     ArithmeticDateTimeUnit)
 
 (def ^:private DatetimeExpression*
-  (one-of temporal-extract datetime-add datetime-subtract convert-timezone
+  (one-of + temporal-extract datetime-add datetime-subtract convert-timezone
           ;; SUGAR drivers do not need to implement
           get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))

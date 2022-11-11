@@ -167,7 +167,7 @@
                                   :condition    [:= $flock_id &f.flock.id]
                                   :alias        "f"
                                   :fields       :all}]
-                      :order-by [[:asc [:field-id $name]]]})))))))))
+                      :order-by [[:asc $name]]})))))))))
 
 (deftest include-no-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -199,7 +199,7 @@
                                   :condition    [:= $flock_id &f.flock.id]
                                   :alias        "f"
                                   :fields       :none}]
-                      :order-by [[:asc [:field-id $name]]]})))))))))
+                      :order-by [[:asc $name]]})))))))))
 
 (deftest specific-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -213,7 +213,7 @@
                                                         :condition    [:= $flock_id &f.flock.id]
                                                         :alias        "f"
                                                         :fields       [&f.flock.name]}]
-                                            :order-by [[:asc [:field-id $name]]]}))))]
+                                            :order-by [[:asc $name]]}))))]
         (is (= (mapv mt/format-name ["id" "name" "name_2"])
                columns))
         (is (= [[2  "Big Red"         "Bayview Brood"]
