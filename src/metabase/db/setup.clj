@@ -66,6 +66,7 @@
           :up            (liquibase/migrate-up-if-needed! liquibase)
           :force         (liquibase/force-migrate-up-if-needed! conn liquibase)
           :down-one      (liquibase/rollback-one liquibase)
+          :downgrade     (liquibase/rollback-major-version conn liquibase)
           :print         (print-migrations-and-quit-if-needed! liquibase)
           :release-locks (liquibase/force-release-locks! liquibase))
         ;; Migrations were successful; commit everything and re-enable auto-commit

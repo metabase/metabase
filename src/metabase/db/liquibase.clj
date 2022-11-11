@@ -3,6 +3,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.config :as config]
             [metabase.db.liquibase.h2 :as liquibase.h2]
             [metabase.db.liquibase.mysql :as liquibase.mysql]
             [metabase.util :as u]
@@ -195,6 +196,16 @@
   "Roll back the last migration."
   [^Liquibase liquibase]
   (.rollback liquibase 1 ""))
+
+(defn rollback-major-version
+  "Roll back migrations later than given Metabase major version"
+  [conn ^Liquibase liquibase]
+  ;; select all of the ones at the end with a major version matching the current release version
+  (let [version-parts     (re-seq #"\d+" (:tag config/mb-version-info))
+        [_ major-version] (map #(Integer/parseInt %) version-parts)
+        changeset-ids     (map :id (jdbc/query {:connection conn} ["SELECT id FROM DATABASECHANGELOG WHERE id LIKE 'v%'"]))
+        ids-to-drop       (drop-while #(not= major-version (Integer/parseInt (re-find #"\d+" %))) changeset-ids)]
+    (.rollback liquibase (count ids-to-drop) "")))
 
 (defn force-release-locks!
   "(Attempt to) force release Liquibase migration locks."
