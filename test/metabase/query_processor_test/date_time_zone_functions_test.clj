@@ -55,7 +55,7 @@
        (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")        ;; dt_tz
        (t/local-date t)                                       ;; d
        (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as _dt
-       (t/format "yyyy-MM-dd" (t/local-date-time t))])]
+       (t/format "yyyy-MM-dd" (t/local-date-time t))])]       ;; as_d
    ["weeks" [{:field-name "index"
               :base-type :type/Integer}
              {:field-name "description"
@@ -514,7 +514,7 @@
               (let [card-tag (format "#%d" (:id card))]
                 ;; FIXME: technically these values should have offset timezone(not just all are 'Z')
                 ;; but we haven't figured out a way to pass the convert_timezone metadata if you use a native query.
-                ;; FWIW we don't display `timezone` part on UI, so whether it's Z or "+XX:XX" it doesn't matter
+                ;; FWIW we don't display `offset` part on UI, so whether it's Z or "+XX:XX" it doesn't matter
                 ;; What important is datetime extraction or date-math functions gives correct values
                 (is (= [["2004-03-19T09:19:09Z"
                          "2004-03-19T16:19:09Z"

@@ -9,7 +9,8 @@
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
      [schema.core :as s])
-    (:import java.time.format.DateTimeFormatter)]
+    (:import java.time.format.DateTimeFormatter
+             java.time.ZoneId)]
    :cljs
    [(:require
      [clojure.core :as core]
@@ -77,6 +78,16 @@
   (s/named
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
+
+(def TimezoneIds
+  "Valid timezone ids."
+  #?(:clj  (s/named
+             (apply s/enum (ZoneId/getAvailableZoneIds)) ;; about 600 timezones on java 17
+             "timezone-ids")
+     ;; Should we just use helpers/NonBlankString for cljs?
+     :cljs (s/named
+             (apply s/enum (. js/Intl supportedValuesOf "timeZone"));; 468 timezones on firefox v106
+             "timezone-ids")))
 
 (def TemporalExtractUnits
   "Valid units to extract from a temporal."
@@ -685,8 +696,8 @@
 
 (defclause ^{:requires-features #{:convert-timezone}} convert-timezone
   datetime DateTimeExpressionArg
-  to       StringExpressionArg
-  from     (optional StringExpressionArg))
+  to       TimezoneIds
+  from     (optional TimezoneIds))
 
 (def ^:private ArithmeticDateTimeUnit
   (s/named
