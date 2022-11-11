@@ -912,21 +912,22 @@
         (or (some-> results mt/first-row first int)
             results)))))
 
-;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests
-;;        are ran and loading data into these DBs is mind-bogglingly slow.
+;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests are
+;;        ran and loading data into these DBs is mind-bogglingly slow. This also applies to Athena for now, because
+;;        deleting data is not easy.
 ;;
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
 ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
 ;; machine isn't as slow as the CircleCI ones)
 (deftest count-of-grouping-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
           (is (= 4
                  (apply count-of-grouping checkins:4-per-minute :minute args))
               (format "filter by minute = %s" (into [:relative-datetime] args)))))))
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per hour dataset"
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
@@ -945,7 +946,7 @@
             "filter by week = [:relative-datetime :current]")))))
 
 (deftest time-interval-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
         (is (= 1
@@ -977,7 +978,7 @@
      :unit (-> results :data :cols first :unit)}))
 
 (deftest date-bucketing-when-you-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (is (= {:rows 1, :unit :day}
            (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day")))
     (is (= {:rows 7, :unit :day}
@@ -1005,7 +1006,7 @@
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
 ;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
 (deftest default-bucketing-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
              (mt/formatted-rows [int]
@@ -1032,7 +1033,7 @@
                                   [:= [:field $timestamp nil] "2019-01-16"]
                                   [:= [:field $id nil] 6]]})))))))
 
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
         (is (=
