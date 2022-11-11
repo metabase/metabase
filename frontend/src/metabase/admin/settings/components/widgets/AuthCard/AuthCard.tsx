@@ -11,33 +11,27 @@ import {
   CardMenu,
   CardRoot,
   CardTitle,
-} from "./AuthenticationCard.styled";
+} from "./AuthCard.styled";
 
-export interface AuthenticationSetting {
-  value: boolean | null;
-  default: boolean;
-}
-
-export interface AuthenticationWidgetProps {
-  setting: AuthenticationSetting;
+export interface AuthCardProps {
   type: string;
   title: string;
   description: string;
+  isEnabled: boolean;
   isConfigured: boolean;
   onChange: (value: boolean) => void;
   onDeactivate: () => void;
 }
 
-const AuthenticationCard = ({
-  setting,
+const AuthCard = ({
   type,
   title,
   description,
+  isEnabled,
   isConfigured,
   onChange,
   onDeactivate,
-}: AuthenticationWidgetProps) => {
-  const isEnabled = setting.value ?? setting.default;
+}: AuthCardProps) => {
   const [isOpened, setIsOpened] = useState(false);
 
   const handleOpen = useCallback(() => {
@@ -54,7 +48,7 @@ const AuthenticationCard = ({
   }, [onDeactivate, handleClose]);
 
   return (
-    <AuthCard
+    <AuthCardBody
       type={type}
       title={title}
       description={description}
@@ -73,11 +67,11 @@ const AuthenticationCard = ({
           onClose={handleClose}
         />
       )}
-    </AuthCard>
+    </AuthCardBody>
   );
 };
 
-export interface AuthCardProps {
+export interface AuthCardBodyProps {
   type: string;
   title: string;
   description: string;
@@ -86,14 +80,14 @@ export interface AuthCardProps {
   children?: ReactNode;
 }
 
-const AuthCard = ({
+const AuthCardBody = ({
   type,
   title,
   description,
   isEnabled,
   isConfigured,
   children,
-}: AuthCardProps) => {
+}: AuthCardBodyProps) => {
   return (
     <CardRoot>
       <CardHeader>
@@ -128,12 +122,10 @@ const AuthCardMenu = ({
     () => [
       {
         title: isEnabled ? t`Pause` : t`Resume`,
-        icon: "play",
         action: () => onChange(!isEnabled),
       },
       {
         title: `Deactivate`,
-        icon: "close",
         action: onDeactivate,
       },
     ],
@@ -171,4 +163,4 @@ const AuthCardModal = ({
   );
 };
 
-export default AuthenticationCard;
+export default AuthCard;
