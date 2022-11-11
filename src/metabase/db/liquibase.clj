@@ -192,11 +192,6 @@
     (when-not fresh-install?
       (jdbc/execute! {:connection conn} [statement "migrations/000_migrations.yaml"]))))
 
-(defn rollback-one
-  "Roll back the last migration."
-  [^Liquibase liquibase]
-  (.rollback liquibase 1 ""))
-
 (defn rollback-major-version
   "Roll back migrations later than given Metabase major version"
   [conn ^Liquibase liquibase]
