@@ -9,7 +9,7 @@ import * as Urls from "metabase/lib/urls";
 
 import type { DataApp } from "metabase-types/api";
 
-import NewButton from "../NewButton";
+import NewButton from "./NewButton";
 import { Root, ActionsContainer } from "./DataAppActionPanel.styled";
 
 interface Props {
