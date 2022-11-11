@@ -178,10 +178,12 @@
 
     (mbql.u/is-clause? :convert-timezone expression)
     {:converted_timezone (nth expression 2)
-     :base_type          :type/DateTimeWithTZ}
+     :base_type          :type/DateTime}
 
     (datetime-arithmetics? expression)
-    {:base_type :type/DateTime}
+    ;; make sure converted_timezone survived if we do nested datetime operations
+    (merge (select-keys (infer-expression-type (second expression)) [:converted_timezone])
+           {:base_type :type/DateTime})
 
     (mbql.u/is-clause? mbql.s/string-expressions expression)
     {:base_type :type/Text}

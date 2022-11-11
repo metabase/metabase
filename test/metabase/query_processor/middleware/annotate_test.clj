@@ -281,15 +281,26 @@
 
     (testing "col-info for convert-timezone should have a `converted_timezone` property"
       (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
-              :base_type          :type/DateTimeWithTZ,
+              :base_type          :type/DateTime,
               :name               "last-login-converted",
               :display_name       "last-login-converted",
               :expression_name    "last-login-converted",
               :field_ref          [:expression "last-login-converted"]}
              (mt/$ids users
-                      (#'annotate/col-info-for-field-clause
-                        {:expressions {"last-login-converted" [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"]}}
-                        [:expression "last-login-converted"])))))
+               (#'annotate/col-info-for-field-clause
+                 {:expressions {"last-login-converted" [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"]}}
+                 [:expression "last-login-converted"]))))
+      (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
+              :base_type          :type/DateTime,
+              :name               "last-login-converted",
+              :display_name       "last-login-converted",
+              :expression_name    "last-login-converted",
+              :field_ref          [:expression "last-login-converted"]}
+             (mt/$ids users
+               (#'annotate/col-info-for-field-clause
+                 {:expressions {"last-login-converted" [:datetime-add
+                                                        [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"] 2 :hour]}}
+                 [:expression "last-login-converted"])))))
 
    (testing "if there is no matching expression it should give a meaningful error message"
      (is (= {:data    {:expression-name "double-price"
@@ -301,7 +312,6 @@
               (mt/$ids venues
                 (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
               (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    (MBQL) Col info for Aggregation clauses                                     |
