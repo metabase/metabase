@@ -4,9 +4,11 @@ import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
 
-import DataApps, { ScaffoldNewPagesParams } from "metabase/entities/data-apps";
-
 import { useDataPickerValue } from "metabase/containers/DataPicker";
+import {
+  scaffoldDataAppPages,
+  ScaffoldNewPagesParams,
+} from "metabase/writeback/actions";
 import DataAppScaffoldingDataPicker from "metabase/writeback/components/DataAppScaffoldingDataPicker";
 
 import type { DataApp } from "metabase-types/api";
@@ -34,12 +36,8 @@ type Props = OwnProps & DispatchProps;
 
 function mapDispatchToProps(dispatch: Dispatch) {
   return {
-    onScaffold: async (params: ScaffoldNewPagesParams) => {
-      const action = await dispatch(
-        DataApps.objectActions.scaffoldNewPages(params),
-      );
-      return DataApps.HACK_getObjectFromAction(action);
-    },
+    onScaffold: (params: ScaffoldNewPagesParams) =>
+      dispatch(scaffoldDataAppPages(params)),
   };
 }
 
@@ -85,5 +83,9 @@ function ScaffoldDataAppPagesModal({
 
 export default connect<unknown, DispatchProps, OwnProps, State>(
   null,
+
+  // Need to figure out how to properly type curried actions
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
   mapDispatchToProps,
 )(ScaffoldDataAppPagesModal);

@@ -8,13 +8,15 @@ import Button from "metabase/core/components/Button";
 
 import * as Urls from "metabase/lib/urls";
 
-import DataApps, { ScaffoldNewAppParams } from "metabase/entities/data-apps";
-
 import DataPicker, {
   useDataPicker,
   useDataPickerValue,
   DataPickerValue,
 } from "metabase/containers/DataPicker";
+import {
+  scaffoldDataApp,
+  ScaffoldNewAppParams,
+} from "metabase/writeback/actions";
 import DataAppScaffoldingDataPicker from "metabase/writeback/components/DataAppScaffoldingDataPicker";
 
 import type { DataApp } from "metabase-types/api";
@@ -44,12 +46,8 @@ type Props = OwnProps & DispatchProps;
 
 function mapDispatchToProps(dispatch: Dispatch) {
   return {
-    onCreate: async (params: ScaffoldNewAppParams) => {
-      const action = await dispatch(
-        DataApps.objectActions.scaffoldNewApp(params),
-      );
-      return DataApps.HACK_getObjectFromAction(action);
-    },
+    onCreate: (params: ScaffoldNewAppParams) =>
+      dispatch(scaffoldDataApp(params)),
     onChangeLocation: (location: LocationDescriptor) =>
       dispatch(push(location)),
   };
@@ -121,5 +119,9 @@ function CreateDataAppModal({ onCreate, onChangeLocation, onClose }: Props) {
 
 export default connect<unknown, DispatchProps, OwnProps, State>(
   null,
+
+  // Need to figure out how to properly type curried actions
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
   mapDispatchToProps,
 )(CreateDataAppModal);
