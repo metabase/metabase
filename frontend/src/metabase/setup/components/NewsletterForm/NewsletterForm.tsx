@@ -18,7 +18,7 @@ import {
   EmailFormInput,
 } from "./NewsletterForm.styled";
 
-const NewsletterSchema = Yup.object({
+const NEWSLETTER_SCHEMA = Yup.object({
   email: Yup.string()
     .required(t`required`)
     .email(t`must be a valid email address`),
@@ -58,7 +58,7 @@ const NewsletterForm = ({
       {!isSubscribed && (
         <FormProvider
           initialValues={initialValues}
-          validationSchema={NewsletterSchema}
+          validationSchema={NEWSLETTER_SCHEMA}
           onSubmit={handleSubmit}
         >
           <EmailForm>
