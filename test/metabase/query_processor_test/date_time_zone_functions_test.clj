@@ -473,6 +473,7 @@
                          :fields      [$times.dt
                                        [:expression "to-07"]
                                        [:expression "to-07-to-09"]]})
+                      mt/rows
                       first))))
 
         (testing "filter a converted-timezone column"
