@@ -117,7 +117,7 @@ jobs:
 
               BACKPORT_PR_NUMBER=${BACKPORT_PR_URL##*/}
 
-              echo "::set-output name=backport_pr_number::$BACKPORT_PR_NUMBER"
+              echo "backport_pr_number=$BACKPORT_PR_NUMBER" >> $GITHUB_OUTPUT
               echo "New PR has been created"
           fi
         env:

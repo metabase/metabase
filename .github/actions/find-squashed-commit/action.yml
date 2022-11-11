@@ -22,7 +22,7 @@ runs:
         COMMIT=$(env -i git log $BASE_REF --grep="(#$PULL_REQUEST_NUMBER)" --format="%H")
         echo "commit SHA $COMMIT"
 
-        echo "::set-output name=commit::$COMMIT"
+        echo "commit=$COMMIT" >> $GITHUB_OUTPUT
       id: find-squashed-commit
       shell: bash
       env:
