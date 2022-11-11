@@ -37,12 +37,17 @@ export const ModalBody = styled.div`
 
 export const ModalFooter = styled.div`
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
 
-  gap: 1rem;
   padding: 1.5rem 2rem;
 
   border-top: 1px solid ${color("border")};
+`;
+
+export const ModalFooterContent = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 `;
 
 export const SearchInputContainer = styled.div`
@@ -80,4 +85,8 @@ export const SearchInput = styled.input`
     color: ${color("text-light")};
     font-weight: 700;
   }
+`;
+
+export const ErrorMessage = styled.span`
+  color: ${color("error")};
 `;

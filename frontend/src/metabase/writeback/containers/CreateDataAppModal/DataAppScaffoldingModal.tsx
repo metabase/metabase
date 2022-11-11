@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -6,6 +6,10 @@ import type { LocationDescriptor } from "history";
 
 import Button from "metabase/core/components/Button";
 
+import {
+  getResponseErrorMessage,
+  GenericErrorResponse,
+} from "metabase/lib/errors";
 import * as Urls from "metabase/lib/urls";
 
 import DataPicker, {
@@ -28,9 +32,11 @@ import {
   ModalTitle,
   ModalBody,
   ModalFooter,
+  ModalFooterContent,
   SearchInputContainer,
   SearchInput,
   SearchIcon,
+  ErrorMessage,
 } from "./DataAppScaffoldingModal.styled";
 
 interface OwnProps {
@@ -84,19 +90,34 @@ function DataAppScaffoldingModal({
   onClose,
 }: Props) {
   const [value, setValue] = useDataPickerValue();
+  const [error, setError] = useState("");
 
   const { tableIds } = value;
 
+  const handleValueChange = useCallback(
+    nextValue => {
+      setValue(nextValue);
+      setError("");
+    },
+    [setValue],
+  );
+
   const handleCreate = useCallback(async () => {
-    const dataApp = await onCreate({
-      name: t`New App`,
-      tables: tableIds as number[],
-    });
-    onClose();
-    onChangeLocation(Urls.dataApp(dataApp));
+    try {
+      const dataApp = await onCreate({
+        name: t`New App`,
+        tables: tableIds as number[],
+      });
+      onClose();
+      onChangeLocation(Urls.dataApp(dataApp));
+    } catch (error) {
+      const response = error as GenericErrorResponse;
+      setError(getResponseErrorMessage(response));
+    }
   }, [tableIds, onCreate, onChangeLocation, onClose]);
 
-  const canSubmit = tableIds.length > 0;
+  const hasError = error.length > 0;
+  const canSubmit = tableIds.length > 0 && !hasError;
 
   return (
     <DataPicker.Provider>
@@ -106,15 +127,23 @@ function DataAppScaffoldingModal({
           <DataPickerSearchInput value={value} />
         </ModalHeader>
         <ModalBody>
-          <DataAppScaffoldingDataPicker value={value} onChange={setValue} />
+          <DataAppScaffoldingDataPicker
+            value={value}
+            onChange={handleValueChange}
+          />
         </ModalBody>
         <ModalFooter>
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button
-            primary
-            disabled={!canSubmit}
-            onClick={handleCreate}
-          >{t`Create`}</Button>
+          <ModalFooterContent>
+            {hasError && <ErrorMessage>{error}</ErrorMessage>}
+          </ModalFooterContent>
+          <ModalFooterContent>
+            <Button onClick={onClose}>{t`Cancel`}</Button>
+            <Button
+              primary
+              disabled={!canSubmit}
+              onClick={handleCreate}
+            >{t`Create`}</Button>
+          </ModalFooterContent>
         </ModalFooter>
       </ModalRoot>
     </DataPicker.Provider>
