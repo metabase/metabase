@@ -23,7 +23,7 @@ import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import {
   getHasDataAccess,
   getHasOwnDatabase,
-} from "metabase/new_query/selectors";
+} from "metabase/new_dataset/selectors";
 
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import {
