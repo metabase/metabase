@@ -1,8 +1,8 @@
 (ns metabase.cmd.env-var-dox
   (:require [clojure.java.classpath :as classpath]
             [clojure.java.io :as io]
-            [clojure.tools.namespace.find :as ns.find]
             [clojure.string :as str]
+            [clojure.tools.namespace.find :as ns.find]
             [clojure.tools.reader.edn :as edn]
             [metabase.models.setting :as setting]
             [metabase.util :as u]))
@@ -91,8 +91,9 @@
   "Preps environment variable docs as a Markdown string."
   []
   (->> (get-settings)
-       (map (fn [[k v]] v))
+       (map (fn [[_ v]] v))
        (filter setter?)
+       (filter active?)
        (remove avoid?)
        (map env-var-entry)))
 
@@ -100,6 +101,6 @@
   "Prints the generated environment variable docs to a file."
   []
   (println "Generating docs for environment variables...")
-  (do (spit (io/file "docs/configuring-metabase/environment-variables.md") (apply str (env-var-docs-intro)
-                                                                                  (str/join "\n\n" (format-env-var-docs)))))
+  (spit (io/file "docs/configuring-metabase/environment-variables.md") (apply str (env-var-docs-intro)
+                                                                                  (str/join "\n\n" (format-env-var-docs))))
   (println "Done."))
