@@ -33,7 +33,7 @@ function NewButton({ onAddData, onNewPage }: NewButtonProps) {
       items={menuItems}
       trigger={
         <IconButtonWrapper>
-          <AddIcon name="add" size={14} />
+          <AddIcon name="add" size={14} tooltip={t`Add page`} />
         </IconButtonWrapper>
       }
     />
