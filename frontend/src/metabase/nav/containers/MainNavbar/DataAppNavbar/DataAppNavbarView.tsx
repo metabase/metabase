@@ -10,7 +10,6 @@ import type {
 import type { MainNavbarProps, SelectedItem } from "../types";
 import type { DataAppNavbarMode } from "./types";
 
-import NewButton from "./NewButton";
 import DataAppPageLink from "./DataAppPageLink";
 import DataAppActionPanel from "./DataAppActionPanel";
 
@@ -89,17 +88,14 @@ function DataAppNavbarView({
 
   return (
     <Root>
-      <NavItemsList>
-        {navItems.map(renderNavItem)}
-        <li>
-          <NewButton onAddData={onAddData} onNewPage={onNewPage} />
-        </li>
-      </NavItemsList>
+      <NavItemsList>{navItems.map(renderNavItem)}</NavItemsList>
       <DataAppActionPanel
         dataApp={dataApp}
         hasEditPageAction={hasSelectedPage}
         hasManageContentAction={mode !== "manage-content"}
         hasArchivePageAction={hasArchivePageAction}
+        onAddData={onAddData}
+        onNewPage={onNewPage}
         onEditAppPage={onEditAppPage}
         onEditAppSettings={onEditAppSettings}
         onArchiveApp={onArchiveApp}

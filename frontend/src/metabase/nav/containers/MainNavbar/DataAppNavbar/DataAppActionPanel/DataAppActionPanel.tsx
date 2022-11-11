@@ -9,13 +9,16 @@ import * as Urls from "metabase/lib/urls";
 
 import type { DataApp } from "metabase-types/api";
 
-import { Root } from "./DataAppActionPanel.styled";
+import NewButton from "../NewButton";
+import { Root, ActionsContainer } from "./DataAppActionPanel.styled";
 
 interface Props {
   dataApp: DataApp;
   hasEditPageAction?: boolean;
   hasArchivePageAction?: boolean;
   hasManageContentAction?: boolean;
+  onAddData: () => void;
+  onNewPage: () => void;
   onEditAppPage: () => void;
   onEditAppSettings: () => void;
   onArchiveApp: () => void;
@@ -34,6 +37,8 @@ function DataAppActionPanel({
   hasEditPageAction = true,
   hasArchivePageAction = true,
   hasManageContentAction = true,
+  onAddData,
+  onNewPage,
   onEditAppPage,
   onEditAppSettings,
   onArchiveApp,
@@ -82,16 +87,21 @@ function DataAppActionPanel({
 
   return (
     <Root>
-      {hasEditPageAction && (
-        <Tooltip tooltip={t`Edit page`}>
-          <Button icon="pencil" onlyIcon onClick={onEditAppPage} />
-        </Tooltip>
-      )}
-      <EntityMenu
-        items={menuItems}
-        triggerIcon="ellipsis"
-        tooltip={t`Manage content, settings and more…`}
-      />
+      <ActionsContainer>
+        <NewButton onAddData={onAddData} onNewPage={onNewPage} />
+      </ActionsContainer>
+      <ActionsContainer>
+        {hasEditPageAction && (
+          <Tooltip tooltip={t`Edit page`}>
+            <Button icon="pencil" onlyIcon onClick={onEditAppPage} />
+          </Tooltip>
+        )}
+        <EntityMenu
+          items={menuItems}
+          triggerIcon="ellipsis"
+          tooltip={t`Manage content, settings and more…`}
+        />
+      </ActionsContainer>
     </Root>
   );
 }
