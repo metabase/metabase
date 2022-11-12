@@ -236,13 +236,22 @@
     (s/assert* ::config m)
     (expand-templates m)))
 
+(defn- sort-by-initialization-order
+  "Sort the various config sections. The `:settings` section should always be applied first (important, since it can
+  affect the other sections)."
+  [config-sections]
+  (let [{settings-sections true, other-sections false} (group-by (fn [[section-name]]
+                                                                   (= section-name :settings))
+                                                                 (seq config-sections))]
+    (concat settings-sections other-sections)))
+
 (defn ^{:added "0.45.0"} initialize!
   "Initialize Metabase according to the directives in the config file, if it exists."
   []
   ;; TODO -- this should only do anything if we have an appropriate token (we should get a token for testing this before
   ;; enabling that check tho)
   (when-let [m (config)]
-    (doseq [[section-name section-config] (:config m)]
+    (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
       (log/info (u/colorize :magenta (trs "Initializing {0} from config file..." section-name)) (u/emoji "🗄️"))
       (advanced-config.file.i/initialize-section! section-name section-config))
     (log/info (u/colorize :magenta (trs "Done initializing from file.")) (u/emoji "🗄️")))
