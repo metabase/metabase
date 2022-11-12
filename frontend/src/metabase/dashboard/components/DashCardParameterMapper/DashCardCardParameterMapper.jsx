@@ -16,7 +16,6 @@ import {
   isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
-import { isActionDashCard } from "metabase/writeback/utils";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 import Question from "metabase-lib/Question";
@@ -101,7 +100,6 @@ function DashCardCardParameterMapper({
     [card.id, dashcard.id, editingParameter.id, setParameterMapping],
   );
 
-  const isAction = isActionDashCard(dashcard);
   const isVirtual = isVirtualDashCard(dashcard);
   const isNative = isNativeDashCard(dashcard);
 
@@ -179,7 +177,7 @@ function DashCardCardParameterMapper({
   return (
     <Container>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
-      {isVirtual && !isAction && isDisabled ? (
+      {isVirtual && isDisabled ? (
         showVirtualDashCardInfoText(dashcard, isMobile) ? (
           <TextCardDefault>
             <Icon name="info" size={12} className="pr1" />
@@ -195,14 +193,11 @@ function DashCardCardParameterMapper({
             />
           </TextCardDefault>
         )
-      ) : (isNative || isAction) && isDisabled ? (
+      ) : isNative && isDisabled ? (
         <NativeCardDefault>
           <NativeCardIcon name="info" />
           <NativeCardText>
-            {getDashCardEmptyMappingText(
-              editingParameter,
-              isAction ? "action" : "question",
-            )}
+            {getDashCardEmptyMappingText(editingParameter)}
           </NativeCardText>
           <NativeCardLink
             href={MetabaseSettings.docsUrl(
@@ -252,7 +247,7 @@ function DashCardCardParameterMapper({
           </Tooltip>
         </>
       )}
-      {onlyAcceptsSingleValue && !isAction && (
+      {onlyAcceptsSingleValue && (
         <Warning>
           {t`This field only accepts a single value because it's used in a SQL query.`}
         </Warning>
