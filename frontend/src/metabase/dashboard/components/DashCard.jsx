@@ -285,7 +285,7 @@ export default class DashCard extends Component {
                     : t`Action button`}
                 </h4>
               </div>
-            ) : isEditingParameter ? (
+            ) : isEditingParameter && !isAction ? (
               <DashCardParameterMapper
                 dashcard={dashcard}
                 isMobile={isMobile}
