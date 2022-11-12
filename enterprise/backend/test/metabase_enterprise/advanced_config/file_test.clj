@@ -6,13 +6,16 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.interface
     :as advanced-config.file.i]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [yaml.core :as yaml]))
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1.0, :max 1.999}]
-                        (thunk))))
+                        (premium-features-test/with-premium-features #{:advanced-config}
+                          (thunk)))))
 
 (defn- re-quote [^String s]
   (re-pattern (java.util.regex.Pattern/quote s)))
@@ -176,6 +179,15 @@
                                   (advanced-config.file/initialize!))))]
         (is (= [[:warn nil (u/colorize :yellow "Ignoring unknown config section :unknown-section.")]]
                log-messages))))))
+
+(deftest require-advanced-config-test
+  (testing "Config files should require the `:advanced-config` token feature"
+    (premium-features-test/with-premium-features #{}
+      (binding [advanced-config.file/*config* {:version 1.0, :config {:unknown-section {}}}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Metabase config files require a Premium token with the :advanced-config feature"
+             (advanced-config.file/initialize!)))))))
 
 (deftest ^:parallel error-validation-do-not-leak-env-vars-test
   (testing "spec errors should not include contents of env vars -- expand templates after spec validation."
