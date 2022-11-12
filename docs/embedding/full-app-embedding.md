@@ -65,19 +65,19 @@ Use this option if you want to send people directly to your SSO login screen (i.
 You'll need to set the `src` attribute to your auth endpoint, with a parameter containing the encoded Metabase URL. For example, to send people to your SSO login page and automatically redirect them to `http://metabase.yourcompany.com/dashboard/1`:
 
 ```
-https://metabase.example.com/auth/sso?redirect=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1
+https://metabase.example.com/auth/sso?return_to=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1
 ```
 
 If you're using [JWT](../people-and-groups/authenticating-with-jwt.md), you can use the relative path for the redirect (i.e., your Metabase URL without the [site URL](../configuring-metabase/settings.md#site-url)). For example, to send people to a Metabase page at `/dashboard/1`:
 
 ```
-https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1
+https://metabase.example.com/auth/sso?jwt=<token>&return_to=%2Fdashboard%2F1
 ```
 
 You must URL encode (or double encode, depending on your web setup) all of the parameters in your redirect link, including parameters for filters (e.g., `filter=value`) and [UI settings](#showing-or-hiding-metabase-ui-components) (e.g., `top_nav=true`). For example, if you added two filter parameters to the JWT example shown above, your `src` link would become:
 
 ```
-https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1%3Ffilter1%3Dvalue%26filter2%3Dvalue
+https://metabase.example.com/auth/sso?jwt=<token>&return_to=%2Fdashboard%2F1%3Ffilter1%3Dvalue%26filter2%3Dvalue
 ```
 
 ## Embedding Metabase in a different domain
