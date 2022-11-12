@@ -37,7 +37,8 @@
 
 (defmethod driver/supports? [:athena :foreign-keys] [_ _] true)
 
-(defmethod driver/supports? [:athena :nested-fields] [_ _] true)
+(defmethod driver/supports? [:athena :nested-fields] [_ _] false #_true) ; huh? Not sure why this was `true`. Disabled
+                                                                         ; for now.
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |
@@ -116,6 +117,7 @@
 
 (defmethod unprepare/unprepare-value [:athena ZonedDateTime]
   [driver t]
+  #_(format "timestamp '%s %s' at time zone '%s'" (t/local-date t) (t/local-time t) (t/zone-id t))
   (unprepare/unprepare-value driver (t/offset-date-time t)))
 
 ; Helper function for truncating dates - currently unused
@@ -156,11 +158,16 @@
 (defmethod sql.qp/date [:athena :month-of-year]   [_ _ expr] (hsql/call :month expr))
 (defmethod sql.qp/date [:athena :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
 
-(defmethod sql.qp/->honeysql [:athena (class Field)] [driver field] (athena.qp/->honeysql driver field))
+(defmethod sql.qp/->honeysql [:athena (class Field)]
+  [driver field]
+  (athena.qp/->honeysql driver field))
 
-(defmethod sql.qp/unix-timestamp->honeysql [:athena :seconds] [_ _ expr] (hsql/call :from_unixtime expr))
+(defmethod sql.qp/unix-timestamp->honeysql [:athena :seconds]
+  [_driver _seconds-or-milliseconds expr]
+  (hsql/call :from_unixtime expr))
 
-(defmethod sql.qp/add-interval-honeysql-form :athena [_ hsql-form amount unit]
+(defmethod sql.qp/add-interval-honeysql-form :athena
+  [_driver hsql-form amount unit]
   (hsql/call :date_add
              (hx/literal (name unit))
              (hsql/raw (int amount))
