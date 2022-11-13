@@ -77,7 +77,8 @@
           (throw e)
           (do
             (log/error e (tru "Error executing action."))
-            {:body {:message (tru "Error executing action.")} :status 500}))))))
+            {:body {:message (tru "Error executing action: {0}" (ex-message e))}
+             :status 500}))))))
 
 (defn- implicit-action-table
   [card_id]
@@ -162,7 +163,8 @@
       (actions/perform-action! implicit-action arg-map)
       (catch Exception e
         (log/error e (tru "Error executing action."))
-        {:body {:message (tru "Error executing action.")} :status 500}))))
+        {:body {:message (tru "Error executing action: {0}" (ex-message e))}
+         :status 500}))))
 
 (defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters

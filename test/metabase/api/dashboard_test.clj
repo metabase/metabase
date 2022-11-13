@@ -1874,6 +1874,11 @@
                                                      :slug "insert"}}]}
                           (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))
 
+(defn- has-valid-action-execution-error-message? [response]
+  (let [m (:message response)]
+    (and (string? m)
+         (some? (re-matches #"(?s)Error executing action: .+" m)))))
+
 (deftest dashcard-query-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
@@ -1912,14 +1917,13 @@
                                                                           Integer/MAX_VALUE)
                                              {}))))
               (testing "Missing parameter should fail gracefully"
-                (is (partial= {:message "Error executing action."}
-                              (mt/user-http-request :crowberto :post 500 execute-path
-                                                    {:parameters {}}))))
+                (is (has-valid-action-execution-error-message?
+                     (mt/user-http-request :crowberto :post 500 execute-path
+                                           {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
-
-                (is (partial= {:message "Error executing action."}
-                              (mt/user-http-request :crowberto :post 500 execute-path
-                                                    {:parameters {"id" "BAD"}})))))))))))
+                (is (has-valid-action-execution-error-message?
+                     (mt/user-http-request :crowberto :post 500 execute-path
+                                           {:parameters {"id" "BAD"}})))))))))))
 
 (deftest dashcard-http-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -1947,13 +1951,13 @@
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"extra" 1}}))))
               (testing "Missing parameter should fail gracefully"
-                (is (partial= {:message "Error executing action."}
-                              (mt/user-http-request :crowberto :post 500 execute-path
-                                                    {:parameters {}}))))
+                (is (has-valid-action-execution-error-message?
+                     (mt/user-http-request :crowberto :post 500 execute-path
+                                           {:parameters {}}))))
               (testing "Sending an invalid number should fail gracefully"
-                (is (= "Error executing action."
-                       (:message (mt/user-http-request :crowberto :post 500 execute-path
-                                                       {:parameters {"id" "BAD"}}))))))))))))
+                (is (has-valid-action-execution-error-message?
+                     (mt/user-http-request :crowberto :post 500 execute-path
+                                           {:parameters {"id" "BAD"}})))))))))))
 
 (deftest dashcard-implicit-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -2093,20 +2097,20 @@
             (testing "Bad data"
               (doseq [{:keys [field-name] value ::bad} (filter ::bad types)]
                 (testing (str "Attempting to implicitly insert bad " field-name)
-                  (is (= {:message "Error executing action."}
-                         (mt/user-http-request :crowberto :post 500
-                                               (format "dashboard/%s/dashcard/%s/execute/insert" dashboard-id dashcard-id)
-                                               {:parameters {field-name value}}))))
+                  (is (has-valid-action-execution-error-message?
+                       (mt/user-http-request :crowberto :post 500
+                                             (format "dashboard/%s/dashcard/%s/execute/insert" dashboard-id dashcard-id)
+                                             {:parameters {field-name value}}))))
                 (actions.test-util/with-action [{action-id :action-id} (custom-action-for-field field-name)]
                   (mt/with-temp* [ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
                                   DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
                                                                            :card_id card-id
                                                                            :visualization_settings {:action_slug "custom"}}]]
                     (testing (str "Attempting to custom insert bad " field-name)
-                      (is (= {:message "Error executing action."}
-                             (mt/user-http-request :crowberto :post 500
-                                                   (format "dashboard/%s/dashcard/%s/execute/custom" dashboard-id custom-dashcard-id)
-                                                   {:parameters {field-name value}}))))))))))))))
+                      (is (has-valid-action-execution-error-message?
+                           (mt/user-http-request :crowberto :post 500
+                                                 (format "dashboard/%s/dashcard/%s/execute/custom" dashboard-id custom-dashcard-id)
+                                                 {:parameters {field-name value}}))))))))))))))
 
 (deftest dashcard-action-execution-auth-test
   (mt/with-temp-copy-of-db
