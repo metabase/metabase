@@ -176,10 +176,6 @@
            (select-keys (infer-expression-type expression) type-info-columns)))
        clauses))
 
-    (mbql.u/is-clause? :convert-timezone expression)
-    {:converted_timezone (nth expression 2)
-     :base_type          :type/DateTimeWithTZ}
-
     (datetime-arithmetics? expression)
     {:base_type :type/DateTime}
 
