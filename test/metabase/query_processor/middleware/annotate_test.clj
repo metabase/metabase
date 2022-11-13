@@ -279,29 +279,6 @@
                 {:expressions {"double-price" [:* $price 2]}}
                 [:expression "double-price"])))))
 
-    (testing "col-info for convert-timezone should have a `converted_timezone` property"
-      (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
-              :base_type          :type/DateTime,
-              :name               "last-login-converted",
-              :display_name       "last-login-converted",
-              :expression_name    "last-login-converted",
-              :field_ref          [:expression "last-login-converted"]}
-             (mt/$ids users
-               (#'annotate/col-info-for-field-clause
-                 {:expressions {"last-login-converted" [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"]}}
-                 [:expression "last-login-converted"]))))
-      (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
-              :base_type          :type/DateTime,
-              :name               "last-login-converted",
-              :display_name       "last-login-converted",
-              :expression_name    "last-login-converted",
-              :field_ref          [:expression "last-login-converted"]}
-             (mt/$ids users
-               (#'annotate/col-info-for-field-clause
-                 {:expressions {"last-login-converted" [:datetime-add
-                                                        [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"] 2 :hour]}}
-                 [:expression "last-login-converted"])))))
-
    (testing "if there is no matching expression it should give a meaningful error message"
      (is (= {:data    {:expression-name "double-price"
                        :tried           ["double-price" :double-price]
