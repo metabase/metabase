@@ -279,16 +279,17 @@
                 {:expressions {"double-price" [:* $price 2]}}
                 [:expression "double-price"])))))
 
-   (testing "if there is no matching expression it should give a meaningful error message"
-     (is (= {:data    {:expression-name "double-price"
-                       :tried           ["double-price" :double-price]
-                       :found           #{"one-hundred"}
-                       :type            :invalid-query}
-             :message "No expression named 'double-price'"}
-            (try
-              (mt/$ids venues
-                (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
-              (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
+    (testing "if there is no matching expression it should give a meaningful error message"
+      (is (= {:data    {:expression-name "double-price"
+                        :tried           ["double-price" :double-price]
+                        :found           #{"one-hundred"}
+                        :type            :invalid-query}
+              :message "No expression named 'double-price'"}
+             (try
+               (mt/$ids venues
+                 (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
+               (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    (MBQL) Col info for Aggregation clauses                                     |

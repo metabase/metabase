@@ -37,11 +37,11 @@
    (s/optional-key :id)            (s/maybe su/IntGreaterThanZero)
    ;; only optional because it's not present right away, but it should be present at the end.
    (s/optional-key :field_ref)     (s/cond-pre
-                                     mbql.s/FieldOrAggregationReference
-                                     (s/pred
-                                       (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
-                                             mbql.normalize/normalize-tokens)
-                                       "Field or aggregation reference as it comes in to the API"))
+                                    mbql.s/FieldOrAggregationReference
+                                    (s/pred
+                                     (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
+                                           mbql.normalize/normalize-tokens)
+                                     "Field or aggregation reference as it comes in to the API"))
    s/Keyword                       s/Any})
 
 (def ResultsMetadata
@@ -90,9 +90,9 @@
     (redux/post-complete
      (redux/juxt
       (apply fingerprinters/col-wise (for [{:keys [fingerprint], :as metadata} cols]
-                                      (if-not fingerprint
-                                        (fingerprinters/fingerprinter metadata)
-                                        (fingerprinters/constant-fingerprinter fingerprint))))
+                          (if-not fingerprint
+                            (fingerprinters/fingerprinter metadata)
+                            (fingerprinters/constant-fingerprinter fingerprint))))
       (insights/insights cols))
      (fn [[fingerprints insights]]
        {:metadata (map (fn [fingerprint metadata]
