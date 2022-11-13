@@ -59,11 +59,11 @@ describe("scenarios > question > custom column > data type", () => {
         formula: 'datetimeSubtract([Created At], 1, "month")',
       },
       {
-        name: "ConvertTimezone 2 args",
+        name: "ConvertTimezone 3 args",
         formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh", "UTC")',
       },
       {
-        name: "ConvertTimezone 1 arg",
+        name: "ConvertTimezone 2 arg",
         formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh")',
       },
     ]);
