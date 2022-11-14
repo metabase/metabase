@@ -29,7 +29,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.findByText("Success").should("be.visible");
   });
 
-  it("should disable google auth (metabase#20442)", () => {
+  it("should allow to disable google auth (metabase#20442)", () => {
     setupGoogleAuth();
     cy.visit("/admin/settings/authentication");
 

@@ -3,12 +3,14 @@ import {
   describeEE,
   typeAndBlurUsingLabel,
   modal,
+  popover,
 } from "__support__/e2e/helpers";
 
 describeEE("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/setting").as("updateSettings");
   });
 
@@ -20,7 +22,18 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.wait("@updateSettings");
     cy.findAllByRole("link", { name: "Authentication" }).first().click();
 
-    cy.findByRole("switch", { name: "JWT" }).should("be.checked");
+    getAuthCard("JWT").findByText("Active").should("exist");
+  });
+
+  it("should allow to disable jwt", () => {
+    setupJWT();
+    cy.visit("/admin/settings/authentication");
+
+    getAuthCard("JWT").icon("ellipsis").click();
+    popover().findByText("Pause").click();
+    cy.wait("@updateSetting");
+
+    getAuthCard("JWT").findByText("Paused").should("exist");
   });
 
   it("should allow to regenerate the jwt key and save the settings", () => {
@@ -35,6 +48,10 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.findByText("Success").should("exist");
   });
 });
+
+const getAuthCard = title => {
+  return cy.findByText(title).parent();
+};
 
 const setupJWT = () => {
   cy.request("PUT", "/api/setting", {

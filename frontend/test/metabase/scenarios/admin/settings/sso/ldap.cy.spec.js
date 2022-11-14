@@ -38,7 +38,7 @@ describe(
       getAuthCard("LDAP").findByText("Active").should("exist");
     });
 
-    it("should pause auth", () => {
+    it("should allow to disable ldap", () => {
       setupLdap();
       cy.visit("/admin/settings/authentication");
 
