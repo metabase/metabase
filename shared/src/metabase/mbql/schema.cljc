@@ -98,7 +98,7 @@
   "Valid units for a datetime-diff clause."
   (s/named
     (apply s/enum #{:second :minute :hour :day :week :month :year})
-    "temporal-extract-units"))
+    "datetime-diff-units"))
 
 (def ExtractWeekModes
   "Valid modes to extract weeks."
