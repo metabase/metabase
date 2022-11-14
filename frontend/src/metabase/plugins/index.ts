@@ -11,9 +11,9 @@ import {
   GroupsPermissions,
   Dataset,
   Group,
+  User,
 } from "metabase-types/api";
 import { AdminPathKey, State } from "metabase-types/store";
-import { User } from "metabase-types/types/User";
 import Question from "metabase-lib/Question";
 import { PluginGroupManagersType } from "./types";
 
