@@ -4,6 +4,7 @@
             [clojure.core.async :as a]
             [compojure.core :refer [GET]]
             [medley.core :as m]
+            [metabase.actions.execution :as actions.execution]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.api.dashboard :as api.dashboard]
@@ -232,6 +233,32 @@
      :dashcard-id   dashcard-id
      :export-format :api
      :parameters    parameters)))
+
+(api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute/:slug"
+  ;; TODO drop non-public info, fix comments
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+  [uuid dashcard-id slug parameters]
+  {dashcard-id su/IntGreaterThanZero
+   slug su/NonBlankString
+   parameters su/JSONString}
+  (validation/check-public-sharing-enabled)
+  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+    (actions.execution/fetch-values dashboard-id dashcard-id slug (json/parse-string parameters))))
+
+(api/defendpoint POST "/dashboard/:uuid/dashcard/:dashcard-id/execute/:slug"
+  ;; TODO drop non-public info, fix comments
+  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values."
+  [uuid dashcard-id slug :as {{:keys [parameters], :as _body} :body}]
+  {dashcard-id su/IntGreaterThanZero
+   slug su/NonBlankString
+   parameters (s/maybe {s/Keyword s/Any})}
+  (validation/check-public-sharing-enabled)
+  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+    ;; Undo middleware string->keyword coercion
+    (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name))))
 
 (api/defendpoint GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
