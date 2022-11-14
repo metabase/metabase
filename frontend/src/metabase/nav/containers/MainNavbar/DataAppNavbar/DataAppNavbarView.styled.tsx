@@ -23,4 +23,11 @@ export const NavItemsList = styled.ul`
 
   white-space: nowrap;
   overflow-x: auto;
+
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 `;
