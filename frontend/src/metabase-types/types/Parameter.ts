@@ -40,6 +40,7 @@ export type ParameterMappingOptions = {
 export interface Parameter {
   id: ParameterId;
   name: string;
+  "display-name"?: string;
   type: ParameterType;
   slug: string;
   sectionId?: string;

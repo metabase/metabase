@@ -99,6 +99,7 @@ export const getFormField = (
     title:
       fieldSettings.title ||
       fieldSettings.name ||
+      parameter["display-name"] ||
       parameter.name ||
       parameter.id,
     description: fieldSettings.description ?? "",
@@ -183,7 +184,7 @@ export const generateFieldSettingsFromParameters = (
       ? new Field(fieldMetadataMap[param.id])
       : undefined;
 
-    const name = param.name ?? param.id;
+    const name = param["display-name"] ?? param.name ?? param.id;
     const displayName = field?.displayName?.() ?? name;
 
     fieldSettings[param.id] = getDefaultFieldSettings({

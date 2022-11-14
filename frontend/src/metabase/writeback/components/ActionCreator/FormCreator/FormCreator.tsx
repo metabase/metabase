@@ -83,7 +83,7 @@ function FormItem({
   onChange: (fieldSettings: FieldSettings) => void;
 }) {
   const [isEditingOptions, setIsEditingOptions] = useState(false);
-  const name = param.name;
+  const name = param["display-name"] ?? param.name;
 
   const updateOptions = (newOptions: (string | number)[]) => {
     onChange({
