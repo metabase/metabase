@@ -15,7 +15,6 @@ const ChartSettingFieldPicker = ({
   value,
   options,
   onChange,
-  onChangeSettings,
   onRemove,
   onShowWidget,
   className,
@@ -26,7 +25,7 @@ const ChartSettingFieldPicker = ({
   showColorPicker,
   colors,
   series,
-  seriesSettings,
+  onChangeSeriesColor,
 }) => {
   let columnKey;
   if (value && showColumnSetting && columns) {
@@ -59,12 +58,7 @@ const ChartSettingFieldPicker = ({
         <FieldPickerColorPicker
           value={colors[seriesKey]}
           onChange={value => {
-            onChangeSettings({
-              series_settings: {
-                ...seriesSettings,
-                [seriesKey]: { ...seriesSettings[seriesKey], color: value },
-              },
-            });
+            onChangeSeriesColor(seriesKey, value);
           }}
         />
       )}

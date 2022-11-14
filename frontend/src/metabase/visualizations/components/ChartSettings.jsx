@@ -112,6 +112,13 @@ class ChartSettings extends Component {
     this.props.onChange(updateSettings(this._getSettings(), changedSettings));
   };
 
+  handleChangeSeriesColor = (seriesKey, color) => {
+    const settings = this._getSettings();
+    this.props.onChange(
+      assocIn(settings, ["series_settings", seriesKey, "color"], color),
+    );
+  };
+
   handleDone = () => {
     this.props.onDone(this._getSettings());
     this.props.onClose();
@@ -302,6 +309,8 @@ class ChartSettings extends Component {
       onEndShowWidget: this.handleEndShowWidget,
       currentSectionHasColumnSettings,
       columnHasSettings: col => this.columnHasSettings(col),
+      onChangeSeriesColor: (seriesKey, color) =>
+        this.handleChangeSeriesColor(seriesKey, color),
     };
 
     const sectionPicker = (

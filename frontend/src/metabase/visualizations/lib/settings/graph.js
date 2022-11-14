@@ -174,11 +174,13 @@ export const GRAPH_DATA_SETTINGS = {
     },
     getProps: (series, settings) => {
       const seriesSettings = settings["series_settings"] || {};
+      const seriesColors = settings["series_settings.colors"] || {};
       const keys = series.map(s => keyForSingleSeries(s));
       return {
         items: keys.map((key, index) => ({
           name: seriesSettings[key]?.title || key,
           originalIndex: index,
+          color: seriesColors[key],
         })),
         series,
       };
@@ -232,7 +234,6 @@ export const GRAPH_DATA_SETTINGS = {
         showColumnSetting: true,
         showColorPicker: !hasBreakout,
         colors: vizSettings["series_settings.colors"],
-        seriesSettings: vizSettings["series_settings"],
         series: extra.transformedSeries,
       };
     },
