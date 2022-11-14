@@ -4,7 +4,7 @@ title: DatetimeSubtract
 
 # DatetimeSubtract
 
-`datetimeSubtract` takes a date and subtracts some unit of time from it. You might want to use this function when working with time series data that's marked by a "start" and an "end", such as sessions or subscriptions data.
+`datetimeSubtract` takes a datetime value and subtracts some unit of time from it. You might want to use this function when working with time series data that's marked by a "start" and an "end", such as sessions or subscriptions data.
 
 | Syntax                                                                                    | Example                                                   |
 |-------------------------------------------------------------------------------------------|-----------------------------------------------------------|
@@ -14,7 +14,7 @@ title: DatetimeSubtract
 ## Parameters
 
 - Units can be any of: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
-- Amounts can be negative: `datetimeSubtract("March 25, 2021, 12:52:37", -1, "month")` will return `March 25, 2021, 12:52:37`.
+- Amounts can be negative: `datetimeSubtract("March 25, 2021, 12:52:37", -1, "month")` will return `April 25, 2021, 12:52:37`.
 
 ## Calculating a start date
 
@@ -32,7 +32,7 @@ Here, **Depart At** is a custom column with the expression:
 datetimeSubtract([Arrive By], 30, "minute")
 ```
 
-You can use the [`between`](../expressions-list.md#between) or [interval](../expressions-list.md#interval) expressions to check if a given date falls between your start and end datetimes.
+You can use the [`between`](../expressions-list.md#between) or [`interval`](../expressions-list.md#interval) expressions to check if a given date falls between your start and end datetimes.
 
 ## Accepted data types
 
@@ -44,11 +44,13 @@ You can use the [`between`](../expressions-list.md#between) or [interval](../exp
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
+This table uses `timestamp` and `datetime` interchangeably---just make sure that your dates and times aren't stored as string or a number data types in your database.
+
 ## Limitations
 
 You can use `datetimeSubtract` to calculate relative dates given a column of date values, but unfortunately Metabase doesn't currently let you _generate_ a relative date (such as today's date).
 
-What if you want to check if today's date falls between **Arrive By** and **Depart At** in the [Events example](#calculating-a-start-date)?
+What if you want to check if today's date falls between **Arrive By** and **Depart At** in our [events example](#calculating-a-start-date)?
 
 1. Ask your database admin if there's table in your database that stores datetimes for reporting (sometimes called a date dimension table).
 2. Create a new question using the date dimension table, with a filter for "Today".
@@ -93,7 +95,7 @@ datetimeSubtract([Arrive By], 30, "minute")
 
 ### SQL
 
-When you run a question using the [query_builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
 If our [events sample data](#calculating-a-start-date) is stored in a PostgreSQL database:
 
@@ -126,7 +128,7 @@ Most spreadsheets require you to use different calculations for different time u
 
 ### Python
 
-If our [events sample data](#calculating-a-start-date) is in a dataframe column called `df`, you can use the built-in `datetime` module with `pandas` to subtract (or add) time to a datetime value:
+If our [events sample data](#calculating-a-start-date) is in a `pandas` dataframe column called `df`, you can import the `datetime` module and use the `timedelta` function:
 
 ```
 df['Depart At'] = df['Arrive By'] - datetime.timedelta(minutes=30)

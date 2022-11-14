@@ -4,7 +4,7 @@ title: DatetimeAdd
 
 # DatetimeAdd
 
-`datetimeAdd` takes a date and adds some unit of time to it. This function is useful when you're working with time series data that's marked by a "start" and an "end", such as sessions or subscriptions data.
+`datetimeAdd` takes a datetime value and adds some unit of time to it. This function is useful when you're working with time series data that's marked by a "start" and an "end", such as sessions or subscriptions data.
 
 | Syntax                                                                              | Example                                              |
 |-------------------------------------------------------------------------------------|------------------------------------------------------|
@@ -32,7 +32,7 @@ Here, **Finish By** is a custom column with the expression:
 datetimeAdd([Opened On], 14, 'day')
 ```
 
-You can use the [`between`](../expressions-list.md#between) or [interval](../expressions-list.md#interval) expressions to check if a given date falls between your start and end datetimes.
+You can use the [`between`](../expressions-list.md#between) or [`interval`](../expressions-list.md#interval) expressions to check if a given date falls between your start and end datetimes.
 
 ## Accepted data types
 
@@ -43,6 +43,8 @@ You can use the [`between`](../expressions-list.md#between) or [interval](../exp
 | Timestamp               | ✅                   |
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
+
+This table uses `timestamp` and `datetime` interchangeably---just make sure that your dates and times aren't stored as string or a number data types in your database.
 
 ## Limitations
 
@@ -99,7 +101,7 @@ If our [coffee sample data](#calculating-an-end-date) is stored in a PostgreSQL 
 
 ```sql
 SELECT opened_on + INTERVAL '14 days' AS finish_by
-FROM events
+FROM coffee
 ```
 
 is equivalent to the Metabase `datetimeAdd` expression:
@@ -126,7 +128,7 @@ Most spreadsheet tools require use different functions for different time units 
 
 ### Python
 
-Assuming the [coffee sample data](#calculating-an-end-date) is in a dataframe column called `df`, you can use the built-in `datetime` module with `pandas` to add time to a datetime value:
+Assuming the [coffee sample data](#calculating-an-end-date) is in a `pandas` dataframe column called `df`, you can import the `datetime` module and use the `timedelta` function:
 
 ```
 df['Finish By'] = df['Opened On'] + datetime.timedelta(days=14)
