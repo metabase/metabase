@@ -21,6 +21,7 @@ export const CardHeader = styled.div`
 export const CardTitle = styled.div`
   color: ${color("text-dark")};
   font-size: 1.5rem;
+  line-height: 2rem;
   font-weight: bold;
 `;
 
