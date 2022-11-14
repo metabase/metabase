@@ -32,7 +32,7 @@ Here, **Depart At** is a custom column with the expression:
 datetimeSubtract([Arrive By], 30, "minute")
 ```
 
-You can also use the [`between` expression](../expressions-list.md#between) to check if a given datetime falls between your "start" and "end" datetimes. 
+You can use the [`between`](../expressions-list.md#between) or [interval](../expressions-list.md#interval) expressions to check if a given date falls between your start and end datetimes.
 
 ## Accepted data types
 
@@ -79,7 +79,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### datetimeAdd
 
-`datetimeSubtract` and `datetimeAdd` are interchangeable, since you can use a negative number for `amount`. We could use either expression for our [events example](#calculating-a-start-date), but you should try to avoid "double negatives" (such as subtracting a negative number) if possible.
+`datetimeSubtract` and `datetimeAdd` are interchangeable, since you can use a negative number for `amount`. We could use either expression for our [events example](#calculating-a-start-date), but you should try to avoid "double negatives" (such as subtracting a negative number).
 
 ```
 datetimeAdd([Arrive By], -30, "minute")
@@ -110,7 +110,7 @@ datetimeSubtract([Arrive By], 30, "minute")
 
 ### Spreadsheets 
 
-Assuming the [events sample data](#calculating-a-start-date) is in a spreadsheet where "Arrive By" is in column A with a date and time format, the spreadsheet function
+Assuming the [events sample data](#calculating-a-start-date) is in a spreadsheet where "Arrive By" is in column A with a datetime format, the spreadsheet function
 
 ```
 A:A - 30/(60*24)
@@ -141,4 +141,7 @@ datetimeSubtract([Arrive By], 30, "minute")
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/questions/)
+- [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
+- [Time series comparisons](https://www.metabase.com/learn/questions/time-series-comparisons)
+- [How to compare one time period to another](https://www.metabase.com/learn/dashboards/compare-times)
+- [Working with dates in SQL](https://www.metabase.com/learn/sql-questions/dates-in-sql)

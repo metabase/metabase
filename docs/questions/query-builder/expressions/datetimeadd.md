@@ -32,7 +32,7 @@ Here, **Finish By** is a custom column with the expression:
 datetimeAdd([Opened On], 14, 'day')
 ```
 
-You can use the [`between` expression](../expressions-list.md#between) to check if a given date falls between your "start" and "end" dates. 
+You can use the [`between`](../expressions-list.md#between) or [interval](../expressions-list.md#interval) expressions to check if a given date falls between your start and end datetimes.
 
 ## Accepted data types
 
@@ -65,7 +65,7 @@ The result should give you a **Today** column that's non-empty if today's date f
 
 ## Related functions
 
-This section covers functions and formulas that work the same way as the Metabase `regexextract` expression, with notes on how to choose the best option for your use case.
+This section covers functions and formulas that work the same way as the Metabase `datetimeAdd` expression, with notes on how to choose the best option for your use case.
 
 **[Metabase expressions](../expressions-list.md)**
 
@@ -141,4 +141,7 @@ datetimeAdd([Opened On], 14, 'day')
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/questions/)
+- [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
+- [Time series comparisons](https://www.metabase.com/learn/questions/time-series-comparisons)
+- [How to compare one time period to another](https://www.metabase.com/learn/dashboards/compare-times)
+- [Working with dates in SQL](https://www.metabase.com/learn/sql-questions/dates-in-sql)
