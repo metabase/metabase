@@ -28,5 +28,5 @@ export const getUserAttributes = createSelector(
 
 export const getUserPersonalCollectionId = createSelector(
   [getUser],
-  user => user?.personal_collection_id || null,
+  user => user?.personal_collection_id,
 );
