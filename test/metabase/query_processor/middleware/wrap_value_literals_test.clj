@@ -189,11 +189,6 @@
                (mt/mbql-query incidents
                  {:aggregation [[:share [:> !day.timestamp "2015-06-01"]]]})))))))
 
-(mt/dataset sad-toucan-incidents
-  (wrap-value-literals
-   (mt/mbql-query incidents
-     {:select [[:datetime-diff "2022-01-01" "2022-01-02" :day]]})))
-
 (deftest base-type-test
   (testing "Make sure base-type from `:field` w/ name is picked up correctly"
     (is (= {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]]
