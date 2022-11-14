@@ -15,12 +15,12 @@ function NewButton({ onAddData, onNewPage }: NewButtonProps) {
   const menuItems = useMemo(
     () => [
       {
-        title: t`Data`,
+        title: t`Page with data`,
         icon: "database",
         action: onAddData,
       },
       {
-        title: t`Page`,
+        title: t`Blank page`,
         icon: "pencil",
         action: onNewPage,
       },
@@ -33,7 +33,7 @@ function NewButton({ onAddData, onNewPage }: NewButtonProps) {
       items={menuItems}
       trigger={
         <IconButtonWrapper>
-          <AddIcon name="add" size={14} tooltip={t`Add page`} />
+          <AddIcon name="add" size={14} tooltip={t`Add a page`} />
         </IconButtonWrapper>
       }
     />
