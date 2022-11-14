@@ -88,7 +88,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
       (mt/dataset sample-dataset
         (is (= [[1] [0]]
-               (mt/rows
+               (mt/formatted-rows [int]
                 (mt/run-mbql-query products
                   {:fields      [[:expression "two-cases"]]
                    :expressions {"two-cases" [:+
