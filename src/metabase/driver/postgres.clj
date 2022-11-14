@@ -349,10 +349,8 @@
 
 (defmethod sql.qp/->honeysql [:postgres :datetime-diff]
   [driver [_ x y unit]]
-  (let [x (sql.qp/->honeysql driver (cond-> x
-                                      (string? x) u.date/parse))
-        y (sql.qp/->honeysql driver (cond-> y
-                                      (string? y) u.date/parse))]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)]
     (-> (datetime-diff-helper x y unit)
         (hx/with-database-type-info :integer))))
 

@@ -79,6 +79,19 @@
              :query))
       "do datetime literal strings get wrapped in `absolute-datetime` clauses when in appropriate filters?")
 
+  (is (= [:datetime-diff
+          [:absolute-datetime #t "2018-10-01" :default]
+          [:absolute-datetime #t "2019-10-01T01:02:03" :default]
+          :month]
+         (-> (mt/mbql-query checkins
+               {:fields      [[:expression "a"]]
+                :expressions {"a" [:datetime-diff "2018-10-01" "2019-10-01T01:02:03" :month]}})
+             wrap-value-literals
+             :query
+             :expressions
+             (get "a")))
+      "do datetime literal strings get wrapped in `absolute-datetime` clauses when in datetime-diff clauses")
+
   (is (= (:query
           (mt/mbql-query checkins
             {:source-query {:source-table $$checkins}
@@ -175,6 +188,11 @@
              (wrap-value-literals
                (mt/mbql-query incidents
                  {:aggregation [[:share [:> !day.timestamp "2015-06-01"]]]})))))))
+
+(mt/dataset sad-toucan-incidents
+  (wrap-value-literals
+   (mt/mbql-query incidents
+     {:select [[:datetime-diff "2022-01-01" "2022-01-02" :day]]})))
 
 (deftest base-type-test
   (testing "Make sure base-type from `:field` w/ name is picked up correctly"
