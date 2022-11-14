@@ -1,6 +1,9 @@
+import React from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
+
+import DashboardCopyModalShallowCheckboxLabel from "metabase/dashboard/components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel";
 
 function createNameField() {
   return {
@@ -31,6 +34,23 @@ function createCollectionIdField() {
   };
 }
 
+function createShallowCopyField() {
+  return {
+    name: "is_shallow_copy",
+    type: "checkbox",
+    label: <DashboardCopyModalShallowCheckboxLabel />,
+  };
+}
+
+function duplicateForm() {
+  return [
+    createNameField(),
+    createDescriptionField(),
+    createCollectionIdField(),
+    createShallowCopyField(),
+  ];
+}
+
 function createForm() {
   return [
     createNameField(),
@@ -42,6 +62,9 @@ function createForm() {
 export default {
   create: {
     fields: createForm,
+  },
+  duplicate: {
+    fields: duplicateForm,
   },
   edit: {
     fields: () => {
