@@ -19,31 +19,11 @@
   This function derefs that atom and puts the settings into a sorted map for processing."
   []
   (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
-        :when (and
-               (str/includes? (name ns-symb) "metabase")
-               (not (str/includes? (name ns-symb) "test")))]
+          :when (and
+                 (str/includes? (name ns-symb) "metabase")
+                 (not (str/includes? (name ns-symb) "test")))]
     (require ns-symb))
   (seq (into (sorted-map) @setting/registered-settings)))
-
-;;;; Filter functions
-
-(defn- avoid?
-  "Used to filter out environment variables with high foot-gun indices."
-  [env-var]
-  (or (false? (:doc env-var))
-              ;; Ideally, we'd move off of this list completely, but not all environment variables
-              ;; are defsettings.
-              (contains? env-vars-not-to-mess-with (format-prefix env-var))))
-
-(defn- setter?
-  "Used to filter out environment variables that cannot be set."
-  [env-var]
-  (not= :none (:setter env-var)))
-
-(defn- active?
-  "Used to filter our deprecated enviroment variables."
-  [env-var]
-  (nil? (:deprecated env-var)))
 
 ;;;; Formatting functions
 
@@ -82,14 +62,16 @@
        (#(str/replace % #"\[\[|\]\]" ""))))
 
 (defn format-added
+  "Used to specify when the environment variable was added, if that info exists."
   [env-var]
   (when-let [a (:added (:doc env-var))]
     (str "Added: " a)))
 
 (defn- format-doc
+  "Includes additional documentation for an environment variable (`:commentary`), if it exists."
   [env-var]
   (when-let [d (:doc env-var)]
-    (:description d)))
+    (:commentary d)))
 
 (defn format-env-var-entry
   "Preps a doc entry for an environment variable as a Markdown section."
@@ -101,6 +83,26 @@
                             (format-added env-var)
                             (format-description env-var)
                             (format-doc env-var)])))
+
+;;;; Filter functions
+
+(defn- avoid?
+  "Used to filter out environment variables with high foot-gun indices."
+  [env-var]
+  (or (false? (:doc env-var))
+              ;; Ideally, we'd move off of this list completely, but not all environment variables
+              ;; are defsettings.
+      (contains? env-vars-not-to-mess-with (format-prefix env-var))))
+
+(defn- setter?
+  "Used to filter out environment variables that cannot be set."
+  [env-var]
+  (not= :none (:setter env-var)))
+
+(defn- active?
+  "Used to filter our deprecated enviroment variables."
+  [env-var]
+  (nil? (:deprecated env-var)))
 
 (defn format-env-var-docs
   "Preps relevant environment variable docs as a Markdown string."
