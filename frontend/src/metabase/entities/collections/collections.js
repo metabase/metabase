@@ -56,7 +56,7 @@ const Collections = createEntity({
   },
 
   objectSelectors: {
-    getName: collection => collection && collection.name,
+    getName: collection => collection?.name,
     getUrl: collection => Urls.collection(collection),
     getIcon: (collection, opts) => {
       const wrappedCollection = collection.collection;
