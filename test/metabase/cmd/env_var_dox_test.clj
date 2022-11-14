@@ -61,4 +61,3 @@
     (let [generated-docs (sut/format-env-var-docs settings)]
       (is (= expected-docs
              generated-docs)))))
-
