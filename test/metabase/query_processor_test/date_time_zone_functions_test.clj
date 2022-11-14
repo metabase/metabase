@@ -485,7 +485,7 @@
                       mt/rows
                       first))))
 
-        (testing "nested query should works"
+        (testing "nested custom expression should works"
           (mt/with-temp Card [card
                               {:dataset_query
                                (mt/mbql-query
@@ -507,10 +507,6 @@
 
             (testing "native query"
               (let [card-tag (format "#%d" (:id card))]
-                ;; FIXME: technically these values should have offset timezone(not just all are 'Z')
-                ;; but we haven't figured out a way to pass the convert_timezone metadata if you use a native query.
-                ;; FWIW we don't display `offset` part on UI, so whether it's Z or "+XX:XX" it doesn't matter
-                ;; What important is datetime extraction or date-math functions gives correct values
                 (is (= [["2004-03-19T09:19:09Z"
                          "2004-03-19T16:19:09Z"
                          "2004-03-19T18:19:09Z"]]

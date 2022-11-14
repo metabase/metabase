@@ -15,6 +15,7 @@
    [(:require
      [clojure.core :as core]
      [clojure.set :as set]
+     [moment :as moment]
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
      [schema.core :as s])]))
@@ -79,13 +80,14 @@
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
 
-(def TimezoneIds
-  "Valid timezone ids."
+(def TimezoneId
+  "Valid timezone id."
   #?(:clj  (s/named
-             (apply s/enum (ZoneId/getAvailableZoneIds)) ;; about 600 timezones on java 17
-             "timezone-ids")
-     ;; Should we just use helpers/NonBlankString for cljs?
-     :cljs helpers/NonBlankString))
+             (apply s/enum (ZoneId/getAvailableZoneIds)) ;; 600 timezones on java 17
+             "timezone-id")
+     :cljs (s/named
+             (apply s/enum (. moment tz names))          ;; 595 on moment v0.5.38
+             "timezone-id")))
 
 (def TemporalExtractUnits
   "Valid units to extract from a temporal."
@@ -541,11 +543,8 @@
    (partial is-clause? :value)
    value
 
-    ;; Recursively doing date math
-   (partial is-clause? date-arithmetic-functions)
-   (s/recursive #'DatetimeExpression)
-
-   (partial is-clause? :convert-timezone)
+   ;; Recursively doing date math or convert-timezone
+   (partial is-clause? (set/union date-arithmetic-functions #{:convert-timezone}))
    (s/recursive #'DatetimeExpression)
 
    :else
@@ -694,8 +693,8 @@
 
 (defclause ^{:requires-features #{:convert-timezone}} convert-timezone
   datetime DateTimeExpressionArg
-  to       TimezoneIds
-  from     (optional TimezoneIds))
+  to       TimezoneId
+  from     (optional TimezoneId))
 
 (def ^:private ArithmeticDateTimeUnit
   (s/named

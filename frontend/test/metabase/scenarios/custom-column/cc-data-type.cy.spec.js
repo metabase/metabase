@@ -63,7 +63,7 @@ describe("scenarios > question > custom column > data type", () => {
         formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh", "UTC")',
       },
       {
-        name: "ConvertTimezone 2 arg",
+        name: "ConvertTimezone 2 args",
         formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh")',
       },
     ]);

@@ -299,12 +299,11 @@
                        :source-timezone source-timezone})))
     (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
           expr            (cond->> expr
-                            (and (not timestamptz?) source-timezone)
+                            (not timestamptz?)
                             (hsql/call :timezone source-timezone)
-                            target-timezone
+                            true
                             (hsql/call :timezone target-timezone))]
-      (hx/with-type-info expr
-        {::hx/database-type "timestamp"}))))
+      (hx/with-database-type-info expr "timestamp"))))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
