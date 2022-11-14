@@ -14,9 +14,19 @@ import {
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
+import type { Collection, CollectionContentModel } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import { ROOT_COLLECTION, PERSONAL_COLLECTIONS } from "./constants";
 
-export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
+export function normalizedCollection(collection: Collection) {
+  return isRootCollection(collection) ? ROOT_COLLECTION : collection;
+}
+
+export function getCollectionIcon(
+  collection: Collection,
+  { tooltip = "default" } = {},
+) {
   if (isDataAppCollection(collection)) {
     return getDataAppIcon();
   }
@@ -27,22 +37,21 @@ export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
     return { name: "person" };
   }
   const authorityLevel =
-    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
+    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level as string];
 
   return authorityLevel
     ? {
         name: authorityLevel.icon,
-        color: color(authorityLevel.color),
+        color: authorityLevel.color ? color(authorityLevel.color) : undefined,
         tooltip: authorityLevel.tooltips?.[tooltip],
       }
     : { name: "folder" };
 }
 
-export function normalizedCollection(collection) {
-  return isRootCollection(collection) ? ROOT_COLLECTION : collection;
-}
-
-export function getCollectionType(collectionId, state) {
+export function getCollectionType(
+  collectionId: Collection["id"],
+  state: State,
+) {
   if (collectionId === null || collectionId === "root") {
     return "root";
   }
@@ -52,14 +61,17 @@ export function getCollectionType(collectionId, state) {
   return collectionId !== undefined ? "other" : null;
 }
 
-function hasIntersection(list1, list2) {
+function hasIntersection(list1: unknown[], list2?: unknown[]) {
   if (!list2) {
     return false;
   }
   return _.intersection(list1, list2).length > 0;
 }
 
-export function buildCollectionTree(collections, { targetModels } = {}) {
+export function buildCollectionTree(
+  collections: Collection[],
+  { targetModels }: { targetModels?: CollectionContentModel[] } = {},
+): Collection[] {
   if (collections == null) {
     return [];
   }
