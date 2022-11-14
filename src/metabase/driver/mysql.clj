@@ -353,7 +353,6 @@
                                 2)
                           (hx/literal "-01"))))
 
-;; See the explanation in the postgres driver for a full explanation of behaviour.
 (defmethod sql.qp/->honeysql [:mysql :datetime-diff]
   [driver [_ x y unit :as clause]]
   (let [x (sql.qp/->honeysql driver (cond-> x

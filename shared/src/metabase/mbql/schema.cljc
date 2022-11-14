@@ -653,6 +653,16 @@
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
 
+;; The result is positive if x <= y, and negative otherwise.
+;;
+;; Days, weeks, months, and years are only counted if they are whole to the "day".
+;; For example, `datetimeDiff("2022-01-30", "2022-02-28", "month")` returns 0 months.
+;;
+;; If the values are datetimes, the time doesn't matter for these units.
+;; For example, `datetimeDiff("2022-01-01T09:00:00", "2022-01-02T08:00:00", "day")` returns 1 day even though it is less than 24 hours.
+;;
+;; Hours, minutes, and seconds are only counted if they are whole.
+;; For example, datetimeDiff("2022-01-01T01:00:30", "2022-01-01T02:00:29", "hour") returns 0 hours.
 (defclause ^{:requires-features #{:datetime-diff}} datetime-diff
   datetime-x DateTimeExpressionArg
   datetime-y DateTimeExpressionArg
