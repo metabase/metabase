@@ -112,11 +112,18 @@
 
 (defn do-with-log-level [a-namespace level thunk]
   (test-runner.parallel/assert-test-is-not-parallel "with-log-level")
-  (let [original-log-level (ns-log-level a-namespace)]
+  (ensure-unique-logger! a-namespace)
+  (let [original-log-level (ns-log-level a-namespace)
+        logger             (exact-ns-logger a-namespace)
+        is-additive        (.isAdditive logger)]
     (try
+      ;; prevent events to be passed to the parent logger's appenders
+      ;; https://logging.apache.org/log4j/2.x/manual/configuration.html#Additivity
+      (.setAdditive logger false)
       (set-ns-log-level! a-namespace level)
       (thunk)
       (finally
+        (.setAdditive logger is-additive)
         (set-ns-log-level! a-namespace original-log-level)))))
 
 (defmacro with-log-level
@@ -195,9 +202,11 @@
         logger        (exact-ns-logger a-namespace)]
     (try
       (.addAppender logger appender (->Level level) nil)
+      ;; prevent events to be passed to the parent logger's appenders
+      ;; https://logging.apache.org/log4j/2.x/manual/configuration.html#Additivity
       (f (fn [] (appender-logs appender)))
       (finally
-        (.removeAppender logger appender-name)))))
+       (.removeAppender logger appender-name)))))
 
 ;; TODO -- this macro should probably just take a binding for the `logs` function so you can eval when needed
 (defmacro with-log-messages-for-level
