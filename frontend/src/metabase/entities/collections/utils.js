@@ -42,14 +42,15 @@ export function normalizedCollection(collection) {
   return isRootCollection(collection) ? ROOT_COLLECTION : collection;
 }
 
-export const getCollectionType = (collectionId, state) =>
-  collectionId === null || collectionId === "root"
-    ? "root"
-    : collectionId === getUserPersonalCollectionId(state)
-    ? "personal"
-    : collectionId !== undefined
-    ? "other"
-    : null;
+export function getCollectionType(collectionId, state) {
+  if (collectionId === null || collectionId === "root") {
+    return "root";
+  }
+  if (collectionId === getUserPersonalCollectionId(state)) {
+    return "personal";
+  }
+  return collectionId !== undefined ? "other" : null;
+}
 
 function hasIntersection(list1, list2) {
   if (!list2) {
