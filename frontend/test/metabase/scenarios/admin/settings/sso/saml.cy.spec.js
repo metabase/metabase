@@ -2,6 +2,7 @@ import {
   restore,
   describeEE,
   typeAndBlurUsingLabel,
+  popover,
 } from "__support__/e2e/helpers";
 
 describeEE("scenarios > admin > settings > SSO > SAML", () => {
@@ -21,7 +22,7 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     cy.findByText("Success").should("exist");
 
     cy.findAllByRole("link", { name: "Authentication" }).first().click();
-    cy.findByRole("switch", { name: "SAML" }).should("be.checked");
+    getSAMLCard().findByText("Active").should("exist");
   });
 
   it("should allow to update saml settings", () => {
@@ -34,24 +35,24 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     cy.findByText("Success").should("exist");
 
     cy.findAllByRole("link", { name: "Authentication" }).first().click();
-    cy.findByRole("switch", { name: "SAML" }).should("be.checked");
+    getSAMLCard().findByText("Active").should("exist");
   });
 
-  it("should allow to enable and disable saml via the toggle", () => {
+  it("should allow to disable saml", () => {
     setupSAML();
     cy.visit("/admin/settings/authentication");
 
-    cy.findByRole("switch", { name: "SAML" }).click();
+    getSAMLCard().icon("ellipsis").click();
+    popover().findByText("Pause").click();
     cy.wait("@updateSetting");
-    cy.findByText("Saved").should("exist");
-    cy.findByRole("switch", { name: "SAML" }).should("not.be.checked");
 
-    cy.findByRole("switch", { name: "SAML" }).click();
-    cy.wait("@updateSetting");
-    cy.findByText("Saved").should("exist");
-    cy.findByRole("switch", { name: "SAML" }).should("be.checked");
+    getSAMLCard().findByText("Paused").should("exist");
   });
 });
+
+const getSAMLCard = () => {
+  return cy.findByText("SAML").parent();
+};
 
 const getSAMLCertificate = () => {
   return cy.readFile("test_resources/sso/auth0-public-idp.cert", "utf8");

@@ -22,18 +22,18 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.wait("@updateSettings");
     cy.findAllByRole("link", { name: "Authentication" }).first().click();
 
-    getAuthCard("JWT").findByText("Active").should("exist");
+    getJWTCard().findByText("Active").should("exist");
   });
 
   it("should allow to disable jwt", () => {
     setupJWT();
     cy.visit("/admin/settings/authentication");
 
-    getAuthCard("JWT").icon("ellipsis").click();
+    getJWTCard().icon("ellipsis").click();
     popover().findByText("Pause").click();
     cy.wait("@updateSetting");
 
-    getAuthCard("JWT").findByText("Paused").should("exist");
+    getJWTCard().findByText("Paused").should("exist");
   });
 
   it("should allow to regenerate the jwt key and save the settings", () => {
@@ -49,8 +49,8 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
   });
 });
 
-const getAuthCard = title => {
-  return cy.findByText(title).parent();
+const getJWTCard = () => {
+  return cy.findByText("JWT").parent();
 };
 
 const setupJWT = () => {

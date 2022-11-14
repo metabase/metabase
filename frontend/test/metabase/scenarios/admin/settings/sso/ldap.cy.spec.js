@@ -35,18 +35,18 @@ describe(
       cy.wait("@updateLdapSettings");
 
       cy.findAllByRole("link", { name: "Authentication" }).first().click();
-      getAuthCard("LDAP").findByText("Active").should("exist");
+      getLdapCard().findByText("Active").should("exist");
     });
 
     it("should allow to disable ldap", () => {
       setupLdap();
       cy.visit("/admin/settings/authentication");
 
-      getAuthCard("LDAP").icon("ellipsis").click();
+      getLdapCard().icon("ellipsis").click();
       popover().findByText("Pause").click();
       cy.wait("@updateSetting");
 
-      getAuthCard("LDAP").findByText("Paused").should("exist");
+      getLdapCard().findByText("Paused").should("exist");
     });
 
     it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
@@ -91,8 +91,8 @@ describe(
   },
 );
 
-const getAuthCard = title => {
-  return cy.findByText(title).parent();
+const getLdapCard = () => {
+  return cy.findByText("LDAP").parent();
 };
 
 const enterLdapPort = value => {
