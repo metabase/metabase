@@ -165,6 +165,10 @@ const RowChartVisualization = ({
     event: React.MouseEvent,
     bar: BarData<GroupedDatum, SeriesInfo>,
   ) => {
+    if (!bar.datum.isClickable) {
+      return;
+    }
+
     const clickData = getClickData(bar, settings, chartColumns, data.cols);
 
     if (!visualizationIsClickable(clickData)) {

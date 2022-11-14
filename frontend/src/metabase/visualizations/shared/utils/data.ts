@@ -59,6 +59,7 @@ const groupDataByDimensions = (
     const datum = groupedData.get(dimensionValue) ?? {
       dimensionValue,
       metrics: {},
+      isClickable: true,
     };
 
     const rowMetrics = allMetrics.reduce<MetricDatum>((datum, metric) => {
@@ -153,6 +154,7 @@ export const trimData = (
     {
       dimensionValue: groupedDatumDimensionValue,
       metrics: {},
+      isClickable: false,
     },
   );
 

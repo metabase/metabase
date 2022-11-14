@@ -129,7 +129,7 @@ export const RowChart = <TDatum,>({
             seriesColors,
             xScaleType,
           ),
-    [trimmedData, multipleSeries, seriesColors, stackOffset, xScaleType],
+    [stackOffset, trimmedData, multipleSeries, seriesColors, xScaleType],
   );
 
   const { xTickFormatter, yTickFormatter } = tickFormatters;
