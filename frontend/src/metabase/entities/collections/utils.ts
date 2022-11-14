@@ -49,7 +49,7 @@ export function getCollectionIcon(
 }
 
 export function getCollectionType(
-  collectionId: Collection["id"],
+  collectionId: Collection["id"] | undefined,
   state: State,
 ) {
   if (collectionId === null || collectionId === "root") {

@@ -23,6 +23,7 @@ export interface Collection {
   children?: Collection[];
   authority_level?: "official" | null;
 
+  parent_id?: CollectionId;
   personal_owner_id?: number;
 
   location?: string;

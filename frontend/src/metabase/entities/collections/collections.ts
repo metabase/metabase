@@ -10,6 +10,9 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 
+import type { Collection } from "metabase-types/api";
+import type { GetState } from "metabase-types/store";
+
 import { getFormSelector } from "./forms";
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
 import getInitialCollectionId from "./getInitialCollectionId";
@@ -17,6 +20,10 @@ import { getCollectionIcon, getCollectionType } from "./utils";
 
 const listCollectionsTree = GET("/api/collection/tree");
 const listCollections = GET("/api/collection");
+
+type EntityInCollection = {
+  collection?: Collection;
+};
 
 const Collections = createEntity({
   name: "collections",
@@ -27,24 +34,32 @@ const Collections = createEntity({
   displayNameMany: t`collections`,
 
   api: {
-    list: async (params, ...args) =>
+    list: async (params: { tree?: boolean }, ...args: any) =>
       params?.tree
         ? listCollectionsTree(params, ...args)
         : listCollections(params, ...args),
   },
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
+    setArchived: (
+      { id }: Collection,
+      archived: boolean,
+      opts: Record<string, unknown>,
+    ) =>
       Collections.actions.update(
         { id },
         { archived },
         undo(opts, "collection", archived ? "archived" : "unarchived"),
       ),
 
-    setCollection: ({ id }, collection, opts) =>
+    setCollection: (
+      { id }: Collection,
+      collection: Collection,
+      opts: Record<string, unknown>,
+    ) =>
       Collections.actions.update(
         { id },
-        { parent_id: canonicalCollectionId(collection && collection.id) },
+        { parent_id: canonicalCollectionId(collection?.id) },
         undo(opts, "collection", "moved"),
       ),
 
@@ -52,11 +67,15 @@ const Collections = createEntity({
   },
 
   objectSelectors: {
-    getName: collection => collection?.name,
-    getUrl: collection => Urls.collection(collection),
-    getIcon: (collection, opts) => {
-      const wrappedCollection = collection.collection;
-      return getCollectionIcon(wrappedCollection || collection, opts);
+    getName: (collection?: Collection) => collection?.name,
+    getUrl: (collection?: Collection) => Urls.collection(collection),
+    getIcon: (
+      item: Collection | EntityInCollection,
+      opts: { tooltip?: string },
+    ) => {
+      const collection =
+        (item as EntityInCollection).collection || (item as Collection);
+      return getCollectionIcon(collection, opts);
     },
   },
 
@@ -73,7 +92,11 @@ const Collections = createEntity({
     getInitialCollectionId,
   },
 
-  getAnalyticsMetadata([object], { action }, getState) {
+  getAnalyticsMetadata(
+    [object]: [Collection],
+    { action }: any,
+    getState: GetState,
+  ) {
     const type = object && getCollectionType(object.parent_id, getState());
     return type && `collection=${type}`;
   },
