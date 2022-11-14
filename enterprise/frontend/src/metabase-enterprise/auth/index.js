@@ -280,7 +280,10 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
     component: GoogleSettingsForm,
-    settings: [],
+    settings: [
+      { key: "google-auth-client-id" },
+      { key: "google-auth-auto-create-accounts-domain" },
+    ],
     getProps: () => ({ hasMultipleDomains: hasPremiumFeature("sso") }),
   },
 }));

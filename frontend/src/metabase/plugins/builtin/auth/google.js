@@ -48,7 +48,10 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
     component: GoogleSettingsForm ?? FormikForm,
-    settings: [],
+    settings: [
+      { key: "google-auth-client-id" },
+      { key: "google-auth-auto-create-accounts-domain" },
+    ],
   },
 }));
 

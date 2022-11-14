@@ -9,6 +9,7 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import * as Errors from "metabase/core/utils/errors";
 import { SettingDefinition } from "metabase-types/api";
 import {
   GoogleForm,
@@ -34,28 +35,32 @@ export interface GoogleAuthSettings {
 const SETTINGS_SCHEMA = Yup.object({
   [ENABLED_KEY]: Yup.boolean().default(false),
   [CLIENT_ID_KEY]: Yup.string()
-    .ensure()
-    .required(t`required`),
+    .nullable()
+    .default(null)
+    .when(`$${CLIENT_ID_KEY}.is_env_setting`, {
+      is: false,
+      then: schema => schema.required(Errors.required),
+    }),
   [DOMAIN_KEY]: Yup.string().nullable().default(null),
 });
 
 export interface GoogleSettingsFormProps {
-  settings: SettingDefinition[];
-  settingValues: Partial<GoogleAuthSettings>;
-  isEnabled: boolean;
+  elements?: SettingDefinition[];
+  settingValues?: Partial<GoogleAuthSettings>;
+  isEnabled?: boolean;
   hasMultipleDomains?: boolean;
   onSubmit: (settingValues: GoogleAuthSettings) => void;
 }
 
 const GoogleSettingsForm = ({
-  settings,
-  settingValues,
+  elements = [],
+  settingValues = {},
   hasMultipleDomains,
   onSubmit,
 }: GoogleSettingsFormProps): JSX.Element => {
-  const settingByKey = useMemo(() => {
-    return _.indexBy(settings, "key");
-  }, [settings]);
+  const settings = useMemo(() => {
+    return _.indexBy(elements, "key");
+  }, [elements]);
 
   const initialValues = useMemo(() => {
     const values = SETTINGS_SCHEMA.cast(settingValues, { stripUnknown: true });
@@ -67,6 +72,7 @@ const GoogleSettingsForm = ({
       initialValues={initialValues}
       enableReinitialize
       validationSchema={SETTINGS_SCHEMA}
+      validationContext={settings}
       onSubmit={onSubmit}
     >
       {({ dirty }) => (
@@ -87,7 +93,7 @@ const GoogleSettingsForm = ({
             name={CLIENT_ID_KEY}
             title={t`Client ID`}
             placeholder={t`{your-client-id}.apps.googleusercontent.com`}
-            {...getFormFieldProps(settingByKey[CLIENT_ID_KEY])}
+            {...getFormFieldProps(settings[CLIENT_ID_KEY])}
           />
           <FormInput
             name={DOMAIN_KEY}
@@ -103,7 +109,7 @@ const GoogleSettingsForm = ({
                 : "mycompany.com"
             }
             nullable
-            {...getFormFieldProps(settingByKey[DOMAIN_KEY])}
+            {...getFormFieldProps(settings[DOMAIN_KEY])}
           />
           <FormSubmitButton title={t`Save changes`} primary disabled={!dirty} />
           <FormErrorMessage />
