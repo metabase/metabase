@@ -8,7 +8,7 @@ import { color } from "metabase/lib/colors";
 export interface ItemRootProps {
   canSelect: boolean;
   isSelected: boolean;
-  hasChildren: boolean;
+  hasChildren?: boolean;
 }
 
 export const ItemRoot = styled.div<ItemRootProps>`
