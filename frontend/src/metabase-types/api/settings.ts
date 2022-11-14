@@ -82,6 +82,8 @@ export interface Settings {
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
+  "saml-configured"?: boolean;
+  "saml-enabled"?: boolean;
   "session-cookies": boolean | null;
   "show-database-syncing-modal": boolean;
   "show-homepage-data": boolean;

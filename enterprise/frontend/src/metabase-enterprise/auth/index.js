@@ -10,7 +10,6 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 
-import AuthCard from "metabase/admin/settings/components/widgets/AuthCard";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
@@ -19,8 +18,9 @@ import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogl
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import SettingsJWTForm from "./components/SettingsJWTForm";
-
 import SSOButton from "./containers/SSOButton";
+import JwtAuthCard from "./containers/JwtAuthCard";
+import SamlAuthCard from "./containers/SamlAuthCard";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(sections, ["authentication", "settings"], settings => [
@@ -29,20 +29,14 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
       key: "saml-enabled",
       description: null,
       noHeader: true,
-      widget: AuthCard,
-      getProps: (setting, settings) => ({
-        authName: t`SAML`,
-        authDescription: t`Allows users to login via a SAML Identity Provider.`,
-        authType: "saml",
-        authConfigured: settings => settings["saml-configured"],
-      }),
+      widget: SamlAuthCard,
       getHidden: () => !hasPremiumFeature("sso"),
     },
     {
       key: "jwt-enabled",
       description: null,
       noHeader: true,
-      widget: AuthCard,
+      widget: JwtAuthCard,
       getHidden: () => !hasPremiumFeature("sso"),
     },
     {
