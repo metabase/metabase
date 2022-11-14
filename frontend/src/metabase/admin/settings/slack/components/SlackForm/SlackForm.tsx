@@ -6,16 +6,15 @@ import FormProvider from "metabase/core/components/FormProvider";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import * as Errors from "metabase/core/utils/errors";
 import { SlackSettings } from "metabase-types/api";
 import { SlackFormMessage } from "./SlackForm.styled";
 
 const SLACK_SCHEMA = Yup.object({
-  "slack-app-token": Yup.string()
-    .ensure()
-    .required(t`required`),
+  "slack-app-token": Yup.string().ensure().required(Errors.required),
   "slack-files-channel": Yup.string()
     .ensure()
-    .required(t`required`)
+    .required(Errors.required)
     .lowercase(),
 });
 

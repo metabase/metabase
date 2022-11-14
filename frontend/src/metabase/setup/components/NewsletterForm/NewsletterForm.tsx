@@ -3,6 +3,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import * as Errors from "metabase/core/utils/errors";
 import { SubscribeInfo } from "metabase-types/store";
 import {
   EmailForm,
@@ -19,9 +20,7 @@ import {
 } from "./NewsletterForm.styled";
 
 const NEWSLETTER_SCHEMA = Yup.object({
-  email: Yup.string()
-    .required(t`required`)
-    .email(t`must be a valid email address`),
+  email: Yup.string().required(Errors.required).email(Errors.email),
 });
 
 export interface NewsletterFormProps {
