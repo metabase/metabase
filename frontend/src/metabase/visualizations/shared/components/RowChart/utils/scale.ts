@@ -14,7 +14,7 @@ import {
 } from "metabase/visualizations/shared/types/scale";
 import { ChartFont } from "metabase/visualizations/shared/types/style";
 import { DATA_LABEL_OFFSET } from "../../RowChartView";
-import { Series, SeriesData, YValue } from "../types";
+import { SeriesData, StackOffset, YValue } from "../types";
 import { createXDomain, createYDomain } from "./domain";
 
 export const createXScale = (
@@ -54,6 +54,7 @@ export const getChartScales = <TDatum>(
   innerWidth: number,
   additionalXValues: number[],
   xScaleType: ContinuousScaleType,
+  stackOffset: StackOffset,
   rangeOverride?: Range,
 ) => {
   const yDomain = createYDomain(seriesData);
@@ -65,11 +66,13 @@ export const getChartScales = <TDatum>(
 
   const xDomain =
     rangeOverride ?? createXDomain(seriesData, additionalXValues, xScaleType);
+
+  const isExactRange = !!rangeOverride || stackOffset === "expand";
   const xScale = createXScale(
     xDomain,
     [0, innerWidth],
     xScaleType,
-    !!rangeOverride,
+    isExactRange,
   );
 
   return {

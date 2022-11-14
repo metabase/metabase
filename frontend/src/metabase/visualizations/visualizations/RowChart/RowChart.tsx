@@ -5,7 +5,6 @@ import _ from "underscore";
 import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
 import { DatasetData, VisualizationSettings } from "metabase-types/api";
 
-import { formatValue } from "metabase/lib/formatting";
 import {
   getChartColumns,
   hasValidColumnsSelected,
@@ -43,6 +42,7 @@ import {
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
 import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
+import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -95,6 +95,7 @@ interface RowChartVisualizationProps {
   onRender: (data: Record<string, unknown>) => void;
   onHoverChange: (data: Record<string, unknown> | null) => void;
   onChangeCardAndRun: (data: Record<string, unknown>) => void;
+  fontFamily: string;
 }
 
 const RowChartVisualization = ({
@@ -115,6 +116,7 @@ const RowChartVisualization = ({
   onChangeCardAndRun,
   rawSeries: rawMultipleSeries,
   series: multipleSeries,
+  fontFamily,
 }: RowChartVisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -248,6 +250,14 @@ const RowChartVisualization = ({
     [settings],
   );
 
+  const textMeasurer = useMemo(() => {
+    return (text: string, style: FontStyle) =>
+      measureText(text, {
+        ...style,
+        family: fontFamily,
+      });
+  }, [fontFamily]);
+
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
       {hasTitle && (
@@ -281,7 +291,7 @@ const RowChartVisualization = ({
           stackOffset={stackOffset}
           tickFormatters={tickFormatters}
           labelsFormatter={labelsFormatter}
-          measureText={measureText}
+          measureText={textMeasurer}
           hoveredData={hoverData}
           onClick={handleClick}
           onHover={handleHover}

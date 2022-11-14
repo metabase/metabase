@@ -170,7 +170,7 @@ export const RowChart = <TDatum,>({
     [goal],
   );
 
-  const { xScale, yScale, xDomain } = useMemo(
+  const { xScale, yScale } = useMemo(
     () =>
       getChartScales(
         seriesData,
@@ -178,6 +178,7 @@ export const RowChart = <TDatum,>({
         innerWidth,
         additionalXValues,
         xScaleType,
+        stackOffset,
         xValueRange,
       ),
     [
@@ -185,6 +186,7 @@ export const RowChart = <TDatum,>({
       innerHeight,
       innerWidth,
       seriesData,
+      stackOffset,
       xScaleType,
       xValueRange,
     ],
