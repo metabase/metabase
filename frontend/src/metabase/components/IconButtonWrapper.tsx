@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-const IconButtonWrapper = styled.button`
+const IconButtonWrapper = styled.button<{ circle?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;

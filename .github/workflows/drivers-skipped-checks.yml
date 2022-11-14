@@ -1,0 +1,92 @@
+# Required checks with path filtering rules will block pull requests from merging if they change only the excluded files.
+# This is a workaround to allow the PR to be merged.
+# https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks
+name: Driver Tests
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "**.md"
+      - "frontend/test/**"
+      - "enterprise/frontend/test/**"
+
+jobs:
+
+  be-tests-druid-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-mariadb-10-2-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-mariadb-latest-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-mongo-4-0-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-mongo-5-0-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-mongo-latest-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-mysql-5-7-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-postgres-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-postgres-latest-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-presto-186-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-sparksql-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-sqlite-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"
+
+  be-tests-sqlserver-ee:
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          echo "Didn't run due to conditional filtering"

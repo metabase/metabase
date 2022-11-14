@@ -8,14 +8,26 @@ import DateWidget, {
 import FormField from "metabase/core/components/FormField";
 
 export interface FormDateInputProps
-  extends Omit<DateWidgetProps, "value" | "error" | "onChange" | "onBlur"> {
+  extends Omit<
+    DateWidgetProps,
+    "value" | "error" | "fullWidth" | "onChange" | "onBlur"
+  > {
   name: string;
   title?: string;
   description?: ReactNode;
+  nullable?: boolean;
 }
 
 const FormDateInput = forwardRef(function FormDateInput(
-  { name, className, style, title, description, ...props }: FormDateInputProps,
+  {
+    name,
+    className,
+    style,
+    title,
+    description,
+    nullable,
+    ...props
+  }: FormDateInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
@@ -26,10 +38,14 @@ const FormDateInput = forwardRef(function FormDateInput(
   }, [value]);
 
   const handleChange = useCallback(
-    (date?: Moment) => {
-      setValue(date?.toISOString(true));
+    (date: Moment | undefined) => {
+      if (date) {
+        setValue(date.toISOString(true));
+      } else {
+        setValue(nullable ? null : undefined);
+      }
     },
-    [setValue],
+    [nullable, setValue],
   );
 
   return (
@@ -48,6 +64,7 @@ const FormDateInput = forwardRef(function FormDateInput(
         name={name}
         value={date}
         error={touched && error != null}
+        fullWidth
         onChange={handleChange}
         onBlur={onBlur}
       />

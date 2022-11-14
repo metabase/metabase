@@ -110,7 +110,7 @@ describe("collection permissions", () => {
                     cy.findByText(`Move "${item}"?`);
                     // Let's move it into a nested collection
                     cy.findByText("First collection")
-                      .siblings(".Icon-chevronright")
+                      .siblings("[data-testid='expand-btn']")
                       .click();
                     cy.findByText("Second collection").click();
                     cy.findByText("Move").click();

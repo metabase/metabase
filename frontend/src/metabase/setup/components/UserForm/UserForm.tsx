@@ -8,26 +8,31 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { UserInfo } from "metabase-types/store";
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
 
-const UserSchema = Yup.object({
-  first_name: Yup.string().max(
-    100,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
-  last_name: Yup.string().max(
-    100,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
+const USER_SCHEMA = Yup.object({
+  first_name: Yup.string()
+    .nullable()
+    .default(null)
+    .max(100, ({ max }) => t`must be ${max} characters or less`),
+  last_name: Yup.string()
+    .nullable()
+    .default(null)
+    .max(100, ({ max }) => t`must be ${max} characters or less`),
   email: Yup.string()
+    .default("")
     .required(t`required`)
     .email(t`must be a valid email address`),
-  site_name: Yup.string().required(t`required`),
+  site_name: Yup.string()
+    .default("")
+    .required(t`required`),
   password: Yup.string()
+    .default("")
     .required(t`required`)
     .test(async (value = "", context) => {
       const error = await context.options.context?.onValidatePassword(value);
       return error ? context.createError({ message: error }) : true;
     }),
   password_confirm: Yup.string()
+    .default("")
     .required(t`required`)
     .oneOf([Yup.ref("password")], t`passwords do not match`),
 });
@@ -40,7 +45,7 @@ interface UserFormProps {
 
 const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
   const initialValues = useMemo(() => {
-    return getInitialValues(user);
+    return user ?? USER_SCHEMA.getDefault();
   }, [user]);
 
   const validationContext = useMemo(
@@ -50,17 +55,12 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
     [onValidatePassword],
   );
 
-  const handleSubmit = useCallback(
-    (values: UserInfo) => onSubmit(getSubmitValues(values)),
-    [onSubmit],
-  );
-
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={UserSchema}
+      validationSchema={USER_SCHEMA}
       validationContext={validationContext}
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
     >
       <UserFormRoot>
         <UserFieldGroup>
@@ -68,14 +68,14 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
             name="first_name"
             title={t`First name`}
             placeholder={t`Johnny`}
+            nullable
             autoFocus
-            fullWidth
           />
           <FormInput
             name="last_name"
             title={t`Last name`}
             placeholder={t`Appleseed`}
-            fullWidth
+            nullable
           />
         </UserFieldGroup>
         <FormInput
@@ -83,52 +83,28 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
           type="email"
           title={t`Email`}
           placeholder="nicetoseeyou@email.com"
-          fullWidth
         />
         <FormInput
           name="site_name"
           title={t`Company or team name`}
           placeholder={t`Department of Awesome`}
-          fullWidth
         />
         <FormInput
           name="password"
           type="password"
           title={t`Create a password`}
           placeholder={t`Shhh...`}
-          fullWidth
         />
         <FormInput
           name="password_confirm"
           type="password"
           title={t`Confirm your password`}
           placeholder={t`Shhh... but one more time so we get it right`}
-          fullWidth
         />
         <FormSubmitButton title={t`Next`} primary />
       </UserFormRoot>
     </FormProvider>
   );
-};
-
-const getInitialValues = (user?: UserInfo): UserInfo => {
-  return {
-    email: "",
-    site_name: "",
-    password: "",
-    password_confirm: "",
-    ...user,
-    first_name: user?.first_name || "",
-    last_name: user?.last_name || "",
-  };
-};
-
-const getSubmitValues = (user: UserInfo): UserInfo => {
-  return {
-    ...user,
-    first_name: user.first_name || null,
-    last_name: user.last_name || null,
-  };
 };
 
 export default UserForm;

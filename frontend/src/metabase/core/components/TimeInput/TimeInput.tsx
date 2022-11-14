@@ -2,7 +2,6 @@ import React, { forwardRef, Ref, useCallback } from "react";
 import { t } from "ttag";
 import moment, { Moment } from "moment-timezone";
 import Tooltip from "metabase/components/Tooltip";
-
 import {
   InputClearButton,
   InputClearIcon,
@@ -13,9 +12,11 @@ import {
   InputRoot,
 } from "./TimeInput.styled";
 
+const TIME_FORMAT_12 = "h:mm A";
+
 export interface TimeInputProps {
   value: Moment;
-  is24HourMode?: boolean;
+  timeFormat?: string;
   autoFocus?: boolean;
   hasClearButton?: boolean;
   onChange?: (value: Moment) => void;
@@ -25,7 +26,7 @@ export interface TimeInputProps {
 const TimeInput = forwardRef(function TimeInput(
   {
     value,
-    is24HourMode,
+    timeFormat = TIME_FORMAT_12,
     autoFocus,
     hasClearButton = true,
     onChange,
@@ -33,6 +34,7 @@ const TimeInput = forwardRef(function TimeInput(
   }: TimeInputProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
+  const is24HourMode = timeFormat === "HH:mm";
   const hoursText = value.format(is24HourMode ? "HH" : "hh");
   const minutesText = value.format("mm");
   const isAm = value.hours() < 12;

@@ -1,13 +1,13 @@
 import moment from "moment-timezone";
 import _ from "underscore";
 
+import { isDimensionTarget } from "metabase-types/guards";
 import {
   setStartingFrom,
   EXCLUDE_OPTIONS,
   EXCLUDE_UNITS,
 } from "metabase-lib/queries/utils/query-time";
 import Dimension, { FieldDimension } from "metabase-lib/Dimension";
-import { isDimensionTarget } from "metabase-lib/parameters/utils/targets";
 import {
   getParameterSubType,
   isDateParameter,
