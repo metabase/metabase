@@ -5,7 +5,7 @@ import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 
 import { State } from "metabase-types/store";
 import { ITreeNodeItem } from "metabase/components/tree/types";
-import { isNotNull } from "metabase/core/utils/array";
+import { isNotNull } from "metabase/core/utils/types";
 import Database from "metabase-lib/metadata/Database";
 import Metadata from "metabase-lib/metadata/Metadata";
 import { EntityId, RawDataRouteParams } from "../../types";

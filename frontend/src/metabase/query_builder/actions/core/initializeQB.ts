@@ -20,7 +20,7 @@ import {
 } from "metabase-types/store";
 import type { Card } from "metabase-types/types/Card";
 import { isSavedCard } from "metabase-types/guards";
-import { isNotNull } from "metabase/core/utils/array";
+import { isNotNull } from "metabase/core/utils/types";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import Question from "metabase-lib/Question";
