@@ -353,8 +353,8 @@
                                       (string? x) u.date/parse))
         y (sql.qp/->honeysql driver (cond-> y
                                       (string? y) u.date/parse))]
-    (-> (datetime-diff-helper x y unit)
-        (with-database-type-info :integer))))
+    (->> (datetime-diff-helper x y unit)
+         (hx/with-database-type-info :integer))))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
   hformat/ToSql
