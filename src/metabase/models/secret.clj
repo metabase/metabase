@@ -158,7 +158,7 @@
         (get-sub-props conn-prop-nm)
         value  (cond
                  ;; ssl-root-certs will need their prefix removed, and to be base 64 decoded (#20319)
-                 (and (value-kw details) (#{"ssl-client-cert" "ssl-root-cert" "private-key"} conn-prop-nm)
+                 (and (value-kw details) (#{"ssl-client-cert" "ssl-root-cert"} conn-prop-nm)
                       (re-find uploaded-base-64-prefix-pattern (value-kw details)))
                  (-> (value-kw details) (str/replace-first uploaded-base-64-prefix-pattern "") u/decode-base64)
 

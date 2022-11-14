@@ -326,13 +326,46 @@
   [_]
   #{"INFORMATION_SCHEMA"})
 
+(defn- connecting-with-local-keypair?
+  [{:keys [account password private-key-options private-key-value private_key_file user]}]
+  (and (nil? password)
+       (= private-key-options "local")
+       (nil? private_key_file)
+       (some? private-key-value)
+       (some? account)
+       (some? user)))
+
+(let [ByteArray (type (byte-array []))]
+  (defn- byte-array->string [ba]
+    (if (instance? ByteArray ba)
+      (String. ba)
+      ba)))
+
+(defn adapt-snowflake-local-keypair
+  "JDBC is finicky about how it will accept the private-key-file and user. These need to be in the connection-uri. More
+  info in the docstring of "
+  [{:keys [user account private-key-value] :as details}]
+  (let [private-key-str (byte-array->string private-key-value)
+        private-key-file (secret/value->file! {:connection-property-name "private-key-file"
+                                               :id 39993
+                                               :value (byte-array->string private-key-str)})
+        new-conn-uri (format "jdbc:snowflake://%s.snowflakecomputing.com?user=%s&private_key_file=%s"
+                             account
+                             user
+                             private-key-file)]
+    (-> details
+        (dissoc :private-key-value)
+        (assoc :private_key_file private-key-file)
+        (assoc :connection-uri new-conn-uri))))
+
 (defmethod driver/can-connect? :snowflake
-  [driver {:keys [db], :as details}]
-  (and ((get-method driver/can-connect? :sql-jdbc) driver details)
-       (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
-         (let [sql (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
-           (jdbc/query spec sql)
-           true))))
+  [driver details]
+
+  (let [{:keys [db], :as details'} (cond-> details (connecting-with-local-keypair? details) adapt-snowflake-local-keypair)]
+    (and ((get-method driver/can-connect? :sql-jdbc) driver details')
+         (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details']]
+           (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db)))
+         true)))
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
