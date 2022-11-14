@@ -37,7 +37,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     popover().findByText("Pause").click();
     cy.wait("@updateSetting");
 
-    cy.findByText("Paused").should("exist");
+    getAuthCard("Sign in with Google").findByText("Paused").should("exist");
   });
 
   it("should show an error message if the client id does not end with the correct suffix (metabase#15975)", () => {

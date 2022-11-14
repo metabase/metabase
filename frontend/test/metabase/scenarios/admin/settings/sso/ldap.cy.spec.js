@@ -1,4 +1,5 @@
 import {
+  popover,
   restore,
   setupLdap,
   typeAndBlurUsingLabel,
@@ -34,18 +35,18 @@ describe(
       cy.wait("@updateLdapSettings");
 
       cy.findAllByRole("link", { name: "Authentication" }).first().click();
-      cy.findByRole("switch", { name: "LDAP" }).should("be.checked");
+      getAuthCard("LDAP").findByText("Active").should("exist");
     });
 
-    it("should toggle ldap via the authentication page", () => {
+    it("should pause auth", () => {
       setupLdap();
       cy.visit("/admin/settings/authentication");
 
-      cy.findByRole("switch", { name: "LDAP" }).click();
+      getAuthCard("LDAP").icon("ellipsis").click();
+      popover().findByText("Pause").click();
       cy.wait("@updateSetting");
 
-      cy.findByRole("switch", { name: "LDAP" }).should("not.be.checked");
-      cy.findByText("Saved").should("exist");
+      getAuthCard("LDAP").findByText("Paused").should("exist");
     });
 
     it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
@@ -89,6 +90,10 @@ describe(
     });
   },
 );
+
+const getAuthCard = title => {
+  return cy.findByText(title).parent();
+};
 
 const enterLdapPort = value => {
   typeAndBlurUsingLabel("LDAP Port", value);
