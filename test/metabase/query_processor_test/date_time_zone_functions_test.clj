@@ -320,15 +320,6 @@
         (testing title
           (is (= (set expected) (set (test-datetime-math query)))))))))
 
-(mt/defdataset temporal-dataset
-  [["datediff-mixed-types"
-    [{:field-name "index" :base-type :type/Integer}
-     {:field-name "description" :base-type :type/Text}
-     {:field-name "tz" :base-type :type/DateTimeWithTZ}
-     {:field-name "d" :base-type :type/Date}
-     {:field-name "dt" :base-type :type/DateTime}]
-    [[1 "simple comparing across types" #t "2021-08-03T08:09:10.582Z" #t "2022-09-04" #t "2022-10-05 09:19:09"]]]])
-
 (deftest datetime-diff-base-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset sample-dataset
@@ -369,20 +360,20 @@
           (testing (name unit)
             (testing description
               (is (= [expected (- expected)] (query x y unit))))))))
-    (mt/dataset temporal-dataset
+    (mt/dataset attempted-murders
       (testing "Can compare across dates, datetimes, and with timezones from a table"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
-        (is (= [[428 397 31]]
+        (is (= [[-25200 -26599 1398]]
                (mt/rows
-                (mt/run-mbql-query datediff-mixed-types
+                (mt/run-mbql-query attempts
                   {:fields [[:expression "tz,dt"]
                             [:expression "tz,d"]
                             [:expression "d,dt"]]
-                   :filter [:= $index 1]
+                   :limit 1
                    :expressions
-                   {"tz,dt" [:datetime-diff $tz $dt :day]
-                    "tz,d"  [:datetime-diff $tz $d :day]
-                    "d,dt"  [:datetime-diff $d $dt :day]}}))))))))
+                   {"tz,dt" [:datetime-diff $datetime_tz $datetime :second]
+                    "tz,d"  [:datetime-diff $datetime_tz $date :second]
+                    "d,dt"  [:datetime-diff $date $datetime :second]}}))))))))
 
 (deftest datetime-diff-time-zones-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
