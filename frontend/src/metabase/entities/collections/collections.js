@@ -52,7 +52,6 @@ const Collections = createEntity({
         undo(opts, "collection", "moved"),
       ),
 
-    // NOTE: DELETE not currently implemented
     delete: null,
   },
 
