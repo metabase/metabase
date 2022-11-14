@@ -63,6 +63,7 @@ export default class TimeseriesFilterWidget extends Component {
     const { className, card, setDatasetQuery } = this.props;
     const { dimension, filter, filterIndex, currentFilter } = this.state;
     let currentDescription;
+
     if (currentFilter) {
       currentDescription =
         generateTimeFilterValuesDescriptions(currentFilter).join(" - ");
