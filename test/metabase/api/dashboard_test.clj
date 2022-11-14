@@ -1875,9 +1875,7 @@
                           (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))
 
 (defn- has-valid-action-execution-error-message? [response]
-  (let [m (:message response)]
-    (and (string? m)
-         (some? (re-matches #"(?s)Error executing action: .+" m)))))
+  (string? (:message response)))
 
 (deftest dashcard-query-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -2098,7 +2096,7 @@
               (doseq [{:keys [field-name] value ::bad} (filter ::bad types)]
                 (testing (str "Attempting to implicitly insert bad " field-name)
                   (is (has-valid-action-execution-error-message?
-                       (mt/user-http-request :crowberto :post 500
+                       (mt/user-http-request :crowberto :post 400
                                              (format "dashboard/%s/dashcard/%s/execute/insert" dashboard-id dashcard-id)
                                              {:parameters {field-name value}}))))
                 (actions.test-util/with-action [{action-id :action-id} (custom-action-for-field field-name)]
@@ -2131,9 +2129,9 @@
                                              {:parameters {"id" 1}}))))
               (testing "Without execute rights on the DB"
                 (actions.test-util/with-actions-enabled
-                  (is (= "You don't have permissions to do that."
-                         (mt/user-http-request :rasta :post 403 execute-path
-                                               {:parameters {"id" 1}})))))
+                  (is (partial= {:message "You don't have permissions to do that."}
+                                (mt/user-http-request :rasta :post 403 execute-path
+                                                      {:parameters {"id" 1}})))))
               (testing "With execute rights on the DB"
                 (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
                 (try
@@ -2215,9 +2213,9 @@
                         (mt/with-temp* [PermissionsGroup [{group-id :id}]
                                         PermissionsGroupMembership [_ {:user_id  (mt/user->id :rasta)
                                                                        :group_id group-id}]]
-                          (is (= "You don't have permissions to do that."
-                                 (mt/user-http-request :rasta :post 403 execute-path
-                                                       {:parameters {"id" 1}}))
+                          (is (partial= {:message "You don't have permissions to do that."}
+                                        (mt/user-http-request :rasta :post 403 execute-path
+                                                              {:parameters {"id" 1}}))
                               "Execution permission should be required")
 
                           (mt/user-http-request
@@ -2235,7 +2233,7 @@
                                                           {:schemas :block})
                           (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
                                                           {:schemas :block})
-                          (is (= "You don't have permissions to do that."
-                                 (mt/user-http-request :rasta :post 403 execute-path
-                                                       {:parameters {"id" 1}}))
+                          (is (partial= {:message "You don't have permissions to do that."}
+                                        (mt/user-http-request :rasta :post 403 execute-path
+                                                              {:parameters {"id" 1}}))
                               "Data permissions should be required"))))))))))))))
