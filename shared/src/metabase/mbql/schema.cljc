@@ -480,10 +480,10 @@
    :else
    Field))
 
+;; TODO - rename to numeric-expressions
 (def arithmetic-expressions
   "Set of valid arithmetic expression clause keywords."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case
-    :datetime-diff})
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :datetime-diff})
 
 (def boolean-expressions
   "Set of valid boolean expression clause keywords."
@@ -491,6 +491,7 @@
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
+;; TODO: expressions that return numerics should be in arithmetic-expressions
 (def temporal-extract-functions
   "Functions to extract components of a date, datetime."
   #{;; extraction functions (get some component of a given temporal value/column)
@@ -647,8 +648,10 @@
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
 
+;; TODO: rename to NumericExpression*
 (declare ArithmeticExpression*)
 
+;; TODO: rename to NumericExpression
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
@@ -897,6 +900,7 @@
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
 
+;; TODO: rename to NumericExpression?
 (def ^:private ArithmeticExpression*
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datetime-diff))
 
