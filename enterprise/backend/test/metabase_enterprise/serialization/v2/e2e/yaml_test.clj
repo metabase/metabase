@@ -178,14 +178,6 @@
           (testing "for dashboards"
             (is (= 100 (count (dir->file-set (io/file dump-dir "Dashboard"))))))
 
-          (testing "for dashboard cards"
-            (is (= 300
-                   (reduce + (for [dash (get @entities "Dashboard")
-                                   :let [card-dir (io/file dump-dir "Dashboard" (:entity_id dash) "DashboardCard")]]
-                               (if (.exists card-dir)
-                                 (count (dir->file-set card-dir))
-                                 0))))))
-
           (testing "for dimensions"
             (is (= 40 (count (dir->file-set (io/file dump-dir "Dimension"))))))
 
