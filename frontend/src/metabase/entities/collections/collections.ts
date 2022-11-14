@@ -11,7 +11,7 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import type { Collection } from "metabase-types/api";
-import type { GetState } from "metabase-types/store";
+import type { GetState, ReduxAction } from "metabase-types/store";
 
 import { getFormSelector } from "./forms";
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
@@ -94,7 +94,7 @@ const Collections = createEntity({
 
   getAnalyticsMetadata(
     [object]: [Collection],
-    { action }: any,
+    { action }: { action: ReduxAction },
     getState: GetState,
   ) {
     const type = object && getCollectionType(object.parent_id, getState());
