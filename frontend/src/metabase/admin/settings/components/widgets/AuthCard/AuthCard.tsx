@@ -131,10 +131,12 @@ const AuthCardMenu = ({
     () => [
       {
         title: isEnabled ? t`Pause` : t`Resume`,
+        icon: isEnabled ? "pause" : "play",
         action: () => onChange(!isEnabled),
       },
       {
         title: `Deactivate`,
+        icon: "close",
         action: onDeactivate,
       },
     ],
