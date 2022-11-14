@@ -7,7 +7,7 @@ import {
   ContinuousScaleType,
   Range,
 } from "metabase/visualizations/shared/types/scale";
-import { isNotNull } from "metabase/core/utils/array";
+import { isNotNull } from "metabase/core/utils/types";
 import { BarData, Series, SeriesData, StackOffset } from "../types";
 import { createXScale, createYScale } from "./scale";
 import { createStackedXDomain, createXDomain } from "./domain";

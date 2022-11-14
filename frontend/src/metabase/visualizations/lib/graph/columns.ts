@@ -3,7 +3,7 @@ import {
   DatasetData,
   VisualizationSettings,
 } from "metabase-types/api";
-import { isNotNull } from "metabase/core/utils/array";
+import { isNotNull } from "metabase/core/utils/types";
 import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
 
 export type ColumnDescriptor = {
