@@ -23,18 +23,9 @@ const DataAppCollections = createEntity({
 
   selectors: {
     getExpandedCollectionsById: createSelector(
-      [
-        state => state.entities.dataAppCollections,
-        state => {
-          const list = state.entities.dataAppCollections_list?.null?.list;
-          return list || [];
-        },
-      ],
-      (collections, collectionsIds) =>
-        getExpandedCollectionsById(
-          collectionsIds.map(id => collections[id]),
-          null,
-        ),
+      state => state.entities.dataAppCollections,
+      collections =>
+        getExpandedCollectionsById(Object.values(collections), null),
     ),
   },
 
