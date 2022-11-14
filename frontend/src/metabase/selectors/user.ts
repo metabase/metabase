@@ -1,7 +1,9 @@
 import { createSelector } from "reselect";
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 
-export const getUser = state => state.currentUser;
+import type { State } from "metabase-types/store";
+
+export const getUser = (state: State) => state.currentUser;
 
 export const getUserId = createSelector([getUser], user => user?.id);
 
