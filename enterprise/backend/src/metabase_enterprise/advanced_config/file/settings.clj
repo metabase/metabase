@@ -1,16 +1,16 @@
-(ns metabase-enterprise.config-from-file.settings
+(ns metabase-enterprise.advanced-config.file.settings
   (:require
    [clojure.spec.alpha :as s]
    [clojure.tools.logging :as log]
-   [metabase-enterprise.config-from-file.interface :as config-from-file.i]
+   [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.models.setting :as setting]
    [metabase.util.i18n :refer [trs]]))
 
-(defmethod config-from-file.i/section-spec :settings
+(defmethod advanced-config.file.i/section-spec :settings
   [_section-name]
   (s/map-of keyword? any?))
 
-(defmethod config-from-file.i/initialize-section! :settings
+(defmethod advanced-config.file.i/initialize-section! :settings
   [_section-name settings]
   (log/info (trs "Setting setting values from config file"))
   (doseq [[setting-name setting-value] settings]

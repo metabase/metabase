@@ -1,5 +1,4 @@
-(ns ^{:added "0.45.0"}
- metabase-enterprise.config-from-file.core
+(ns ^{:added "0.45.0"} metabase-enterprise.advanced-config.file
   "Support for initializing Metabase with configuration from a `config.yml` file located in the current working
   directory. See https://github.com/metabase/metabase/issues/2052 for more information.
 
@@ -99,10 +98,10 @@
    [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [environ.core :as env]
-   [metabase-enterprise.config-from-file.databases]
-   [metabase-enterprise.config-from-file.interface :as config-from-file.i]
-   [metabase-enterprise.config-from-file.settings]
-   [metabase-enterprise.config-from-file.users]
+   [metabase-enterprise.advanced-config.file.databases]
+   [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
+   [metabase-enterprise.advanced-config.file.settings]
+   [metabase-enterprise.advanced-config.file.users]
    [metabase.driver.common.parameters]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.util :as u]
@@ -114,11 +113,11 @@
   ;; for parameter parsing
   metabase.driver.common.parameters/keep-me
   ;; for `settings:` section code
-  metabase-enterprise.config-from-file.settings/keep-me
+  metabase-enterprise.advanced-config.file.settings/keep-me
   ;; for `databases:` section code
-  metabase-enterprise.config-from-file.databases/keep-me
+  metabase-enterprise.advanced-config.file.databases/keep-me
   ;; for `users:` section code
-  metabase-enterprise.config-from-file.users/keep-me)
+  metabase-enterprise.advanced-config.file.users/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -127,7 +126,7 @@
    map?
    (fn validate-section-configs [m]
      (doseq [[section-name section-config] m
-             :let [spec (config-from-file.i/section-spec section-name)]]
+             :let [spec (advanced-config.file.i/section-spec section-name)]]
        (s/assert* spec section-config))
      true)))
 
@@ -245,6 +244,6 @@
   (when-let [m (config)]
     (doseq [[section-name section-config] (:config m)]
       (log/info (u/colorize :magenta (trs "Initializing {0} from config file..." section-name)) (u/emoji "🗄️"))
-      (config-from-file.i/initialize-section! section-name section-config))
+      (advanced-config.file.i/initialize-section! section-name section-config))
     (log/info (u/colorize :magenta (trs "Done initializing from file.")) (u/emoji "🗄️")))
   :ok)
