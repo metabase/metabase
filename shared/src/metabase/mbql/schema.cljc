@@ -15,7 +15,6 @@
    [(:require
      [clojure.core :as core]
      [clojure.set :as set]
-     [moment :as moment]
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
      [schema.core :as s])]))
@@ -85,9 +84,8 @@
   #?(:clj  (s/named
              (apply s/enum (ZoneId/getAvailableZoneIds)) ;; 600 timezones on java 17
              "timezone-id")
-     :cljs (s/named
-             (apply s/enum (. moment tz names))          ;; 595 on moment v0.5.38
-             "timezone-id")))
+     ;; TODO figure out how to use moment.tz.names() or Intl.supportedValuesOf('timeZone') cljs
+     :cljs (s/named helpers/NonBlankString "timezone-id")))
 
 (def TemporalExtractUnits
   "Valid units to extract from a temporal."
