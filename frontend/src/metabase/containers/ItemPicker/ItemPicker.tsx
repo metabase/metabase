@@ -75,7 +75,7 @@ function mapStateToProps(
     const { root: rootCollection, ...normalCollectionsById } =
       defaultCollectionsById;
 
-    const dataAppCollections = rootDataAppCollection.children;
+    const dataAppCollections = rootDataAppCollection?.children;
     const dataAppCollectionsById = _.indexBy(dataAppCollections, "id");
 
     collectionsById = {

@@ -23,7 +23,7 @@ const DataAppCollections = createEntity({
 
   selectors: {
     getExpandedCollectionsById: createSelector(
-      state => state.entities.dataAppCollections,
+      state => state.entities.dataAppCollections || {},
       collections =>
         getExpandedCollectionsById(Object.values(collections), null),
     ),
