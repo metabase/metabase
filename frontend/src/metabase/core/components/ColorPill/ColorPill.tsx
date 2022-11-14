@@ -53,4 +53,7 @@ const ColorPill = forwardRef(function ColorPill(
   );
 });
 
-export default ColorPill;
+export default Object.assign(ColorPill, {
+  Content: ColorPillContent,
+  Root: ColorPillRoot,
+});

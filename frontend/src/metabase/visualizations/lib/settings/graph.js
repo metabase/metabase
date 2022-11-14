@@ -208,7 +208,7 @@ export const GRAPH_DATA_SETTINGS = {
       ),
     getDefault: (series, vizSettings) => getDefaultColumns(series).metrics,
     persistDefault: true,
-    getProps: ([{ card, data }], vizSettings) => {
+    getProps: ([{ card, data }], vizSettings, onChange, extra) => {
       const options = data.cols
         .filter(vizSettings["graph._metric_filter"])
         .map(getOptionFromColumn);
@@ -230,6 +230,10 @@ export const GRAPH_DATA_SETTINGS = {
         addAnother: canAddAnother ? t`Add another series` : null,
         columns: data.cols,
         showColumnSetting: true,
+        showColorPicker: !hasBreakout,
+        colors: vizSettings["series_settings.colors"],
+        seriesSettings: vizSettings["series_settings"],
+        series: extra.transformedSeries,
       };
     },
     readDependencies: ["graph._dimension_filter", "graph._metric_filter"],

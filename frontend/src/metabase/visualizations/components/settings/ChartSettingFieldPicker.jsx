@@ -2,17 +2,20 @@
 import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import ChartSettingSelect from "./ChartSettingSelect";
 import {
   SettingsIcon,
   ChartSettingFieldPickerRoot,
+  FieldPickerColorPicker,
 } from "./ChartSettingFieldPicker.styled";
 
 const ChartSettingFieldPicker = ({
   value,
   options,
   onChange,
+  onChangeSettings,
   onRemove,
   onShowWidget,
   className,
@@ -20,12 +23,27 @@ const ChartSettingFieldPicker = ({
   showColumnSetting,
   showDragHandle,
   columnHasSettings,
+  showColorPicker,
+  colors,
+  series,
+  seriesSettings,
 }) => {
   let columnKey;
   if (value && showColumnSetting && columns) {
     const column = _.findWhere(columns, { name: value });
     if (column && columnHasSettings(column)) {
       columnKey = getColumnKey(column);
+    }
+  }
+
+  let seriesKey;
+  if (series && columnKey && showColorPicker) {
+    const seriesForColumn = series.find(single => {
+      const tempColumn = single.data.cols[1];
+      return getColumnKey(tempColumn) === columnKey;
+    });
+    if (seriesForColumn) {
+      seriesKey = keyForSingleSeries(seriesForColumn);
     }
   }
   return (
@@ -36,6 +54,19 @@ const ChartSettingFieldPicker = ({
     >
       {showDragHandle && (
         <SettingsIcon name="grabber2" size={12} noPointer noMargin />
+      )}
+      {showColorPicker && seriesKey && (
+        <FieldPickerColorPicker
+          value={colors[seriesKey]}
+          onChange={value => {
+            onChangeSettings({
+              series_settings: {
+                ...seriesSettings,
+                [seriesKey]: { ...seriesSettings[seriesKey], color: value },
+              },
+            });
+          }}
+        />
       )}
       <ChartSettingSelect
         value={value}
