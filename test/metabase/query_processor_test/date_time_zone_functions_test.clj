@@ -363,7 +363,7 @@
     (mt/dataset attempted-murders
       (testing "Can compare across dates, datetimes, and with timezones from a table"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
-        (is (= [[-25200 -26599 1398]]
+        (is (= [[-25200 -26598 1398]]
                (mt/rows
                 (mt/run-mbql-query attempts
                   {:fields [[:expression "tz,dt"]

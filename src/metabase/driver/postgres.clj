@@ -336,12 +336,13 @@
     (let [ex            (hsql/call :extract :epoch (hx/maybe-cast :timestamptz x))
           ey            (hsql/call :extract :epoch (hx/maybe-cast :timestamptz y))
           positive-diff (fn [a b]
-                          (if (= unit :second)
-                            (hx/- b a)
-                            (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))]
-      (hx/cast
-       :integer
-       (hx/floor (hsql/call :case (hsql/call :<= x y) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))))
+                          (hx/cast
+                           :integer
+                           (hx/floor
+                            (if (= unit :second)
+                              (hx/- b a)
+                              (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))))]
+      (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))
 
     (throw (ex-info (tru "Invalid datetime-diff unit: {0}" unit)
                     {:valid-units [:year :month :week :day :hour :minute :second]

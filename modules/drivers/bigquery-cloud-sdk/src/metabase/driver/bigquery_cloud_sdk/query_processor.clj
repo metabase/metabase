@@ -573,10 +573,11 @@
       (let [x' (trunc :day (hx/->timestamp x'))
             y' (trunc :day (hx/->timestamp y'))
             positive-diff (fn [a b]
-                            (hx// (hsql/call :timestamp_diff b a (hsql/raw "day")) 7))]
-        (hx/cast
-         :integer
-         (hx/floor (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))))
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (hsql/call :timestamp_diff b a (hsql/raw "day")) 7))))]
+        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
 
       :day
       (let [x' (trunc :day (hx/->timestamp x'))
