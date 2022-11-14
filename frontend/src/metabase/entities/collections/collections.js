@@ -7,7 +7,7 @@ import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 
 import { CollectionSchema } from "metabase/schema";
-import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
+import { getUser } from "metabase/selectors/user";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 
@@ -17,6 +17,7 @@ import {
   PERSONAL_COLLECTIONS,
 } from "./constants";
 import { getFormSelector } from "./forms";
+import getInitialCollectionId from "./getInitialCollectionId";
 import { getCollectionIcon, getCollectionType } from "./utils";
 
 const listCollectionsTree = GET("/api/collection/tree");
@@ -81,38 +82,7 @@ const Collections = createEntity({
           user && user.personal_collection_id,
         ),
     ),
-    getInitialCollectionId: createSelector(
-      [
-        state => state.entities.collections,
-        getUserPersonalCollectionId,
-
-        // these are listed in order of priority
-        byCollectionIdProp,
-        byCollectionIdNavParam,
-        byCollectionUrlId,
-        byCollectionQueryParameter,
-      ],
-      (collections, personalId, ...collectionIds) => {
-        const allCollectionIds = [
-          ...collectionIds,
-          ROOT_COLLECTION.id,
-          personalId,
-        ];
-
-        for (const collectionId of allCollectionIds) {
-          const collection = collections[collectionId];
-          if (collection && collection.can_write) {
-            return canonicalCollectionId(collectionId);
-          }
-        }
-
-        const rootCollection = collections[ROOT_COLLECTION.id];
-
-        return rootCollection?.can_write
-          ? canonicalCollectionId(ROOT_COLLECTION.id)
-          : canonicalCollectionId(personalId);
-      },
-    ),
+    getInitialCollectionId,
   },
 
   getAnalyticsMetadata([object], { action }, getState) {
@@ -223,55 +193,4 @@ export function getExpandedCollectionsById(
   }
 
   return collectionsById;
-}
-
-// Initial collection ID selector helpers
-
-/**
- * @param {ReduxState} state
- * @param {{collectionId?: number}} props
- * @returns {number | undefined}
- */
-function byCollectionIdProp(state, { collectionId }) {
-  return collectionId;
-}
-
-/**
- * @param {ReduxState} state
- * @param {params?: {collectionId?: number}} props
- * @returns {number | undefined}
- */
-function byCollectionIdNavParam(state, { params }) {
-  return params && params.collectionId;
-}
-
-/**
- * Extracts ID from collection URL slugs
- *
- * Example: /collection/14-marketing —> 14
- *
- * @param {ReduxState} state
- * @param {params?: {slug?: string}, location?: {pathname?: string}} props
- * @returns {number | undefined}
- */
-function byCollectionUrlId(state, { params, location }) {
-  const isCollectionPath =
-    params &&
-    params.slug &&
-    location &&
-    Urls.isCollectionPath(location.pathname);
-  return isCollectionPath && Urls.extractCollectionId(params.slug);
-}
-
-/**
- * Extracts collection ID from query params
- *
- * Example: /some-route?collectionId=14 —> 14
- *
- * @param {ReduxState} state
- * @param {location?: {query?: {collectionId?: number}}} props
- * @returns {number | undefined}
- */
-function byCollectionQueryParameter(state, { location }) {
-  return location && location.query && location.query.collectionId;
 }
