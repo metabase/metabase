@@ -17,7 +17,7 @@ const SSO_PROFILE_SCHEMA = Yup.object({
 });
 
 const LOCAL_PROFILE_SCHEMA = SSO_PROFILE_SCHEMA.shape({
-  first_name: Yup.string().nullable().default(null).max(100, Errors.required),
+  first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
   last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
   email: Yup.string().ensure().required(Errors.required).email(Errors.email),
 });
