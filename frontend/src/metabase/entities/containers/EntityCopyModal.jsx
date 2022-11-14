@@ -10,11 +10,15 @@ const EntityCopyModal = ({
   entityType,
   entityObject,
   copy,
+  title,
   onClose,
   onSaved,
   ...props
 }) => (
-  <ModalContent title={t`Duplicate "${entityObject.name}"`} onClose={onClose}>
+  <ModalContent
+    title={title || t`Duplicate "${entityObject.name}"`}
+    onClose={onClose}
+  >
     <EntityForm
       entityType={entityType}
       entityObject={{
