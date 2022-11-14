@@ -158,7 +158,6 @@
     "@types/icepick": "2.3.0",
     "@types/iframe-resizer": "^3.5.9",
     "@types/inflection": "^1.13.0",
-    "@types/isomorphic-fetch": "^0.0.35",
     "@types/jest": "^28.1.1",
     "@types/js-cookie": "^2.2.7",
     "@types/jsonwebtoken": "^7.2.8",

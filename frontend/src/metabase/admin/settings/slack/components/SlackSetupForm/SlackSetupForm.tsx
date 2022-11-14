@@ -1,33 +1,18 @@
-import React, { useMemo } from "react";
-import { t } from "ttag";
-import Form from "metabase/containers/FormikForm";
+import React from "react";
 import { SlackSettings } from "metabase-types/api";
-import { getSlackForm } from "../../forms";
-import { FormProps } from "./types";
-import { FormMessage } from "./SlackSetupForm.styled";
+import SlackForm from "../SlackForm";
+
+const DEFAULT_SETTINGS: SlackSettings = {
+  "slack-app-token": "",
+  "slack-files-channel": "",
+};
 
 export interface SlackSetupFormProps {
   onSubmit: (settings: SlackSettings) => void;
 }
 
 const SlackSetupForm = ({ onSubmit }: SlackSetupFormProps): JSX.Element => {
-  const form = useMemo(() => getSlackForm(), []);
-
-  return (
-    <Form form={form} onSubmit={onSubmit}>
-      {({ Form, FormField, FormFooter }: FormProps) => (
-        <Form>
-          <FormField name="slack-app-token" />
-          <FormMessage>
-            {t`Finally, open Slack, create a public channel and enter its name below.`}{" "}
-            {t`This channel shouldn't really be used by anyone — we'll upload charts and tables here before sending out dashboard subscriptions (it's a Slack requirement).`}
-          </FormMessage>
-          <FormField name="slack-files-channel" />
-          <FormFooter submitTitle={t`Save changes`} />
-        </Form>
-      )}
-    </Form>
-  );
+  return <SlackForm initialValues={DEFAULT_SETTINGS} onSubmit={onSubmit} />;
 };
 
 export default SlackSetupForm;

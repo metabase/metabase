@@ -1,34 +1,29 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import * as Errors from "metabase/core/utils/errors";
 import { UserInfo } from "metabase-types/store";
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
 
-const UserSchema = Yup.object({
-  first_name: Yup.string().max(
-    100,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
-  last_name: Yup.string().max(
-    100,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
-  email: Yup.string()
-    .required(t`required`)
-    .email(t`must be a valid email address`),
-  site_name: Yup.string().required(t`required`),
+const USER_SCHEMA = Yup.object({
+  first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
+  last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
+  email: Yup.string().default("").required(Errors.required).email(Errors.email),
+  site_name: Yup.string().default("").required(Errors.required),
   password: Yup.string()
-    .required(t`required`)
+    .default("")
+    .required(Errors.required)
     .test(async (value = "", context) => {
       const error = await context.options.context?.onValidatePassword(value);
       return error ? context.createError({ message: error }) : true;
     }),
   password_confirm: Yup.string()
-    .required(t`required`)
+    .default("")
+    .required(Errors.required)
     .oneOf([Yup.ref("password")], t`passwords do not match`),
 });
 
@@ -40,7 +35,7 @@ interface UserFormProps {
 
 const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
   const initialValues = useMemo(() => {
-    return getInitialValues(user);
+    return user ?? USER_SCHEMA.getDefault();
   }, [user]);
 
   const validationContext = useMemo(
@@ -50,17 +45,12 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
     [onValidatePassword],
   );
 
-  const handleSubmit = useCallback(
-    (values: UserInfo) => onSubmit(getSubmitValues(values)),
-    [onSubmit],
-  );
-
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={UserSchema}
+      validationSchema={USER_SCHEMA}
       validationContext={validationContext}
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
     >
       <UserFormRoot>
         <UserFieldGroup>
@@ -68,12 +58,14 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
             name="first_name"
             title={t`First name`}
             placeholder={t`Johnny`}
+            nullable
             autoFocus
           />
           <FormInput
             name="last_name"
             title={t`Last name`}
             placeholder={t`Appleseed`}
+            nullable
           />
         </UserFieldGroup>
         <FormInput
@@ -103,26 +95,6 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
       </UserFormRoot>
     </FormProvider>
   );
-};
-
-const getInitialValues = (user?: UserInfo): UserInfo => {
-  return {
-    email: "",
-    site_name: "",
-    password: "",
-    password_confirm: "",
-    ...user,
-    first_name: user?.first_name || "",
-    last_name: user?.last_name || "",
-  };
-};
-
-const getSubmitValues = (user: UserInfo): UserInfo => {
-  return {
-    ...user,
-    first_name: user.first_name || null,
-    last_name: user.last_name || null,
-  };
 };
 
 export default UserForm;
