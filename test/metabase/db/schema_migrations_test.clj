@@ -51,7 +51,7 @@
             migrate!    (partial db.setup/migrate! db-type data-source)
             get-last-id (fn []
                           (-> {:connection (.getConnection data-source)}
-                              (jdbc/query ["SELECT id FROM `DATABASECHANGELOG` ORDER BY `ORDEREXECUTED` DESC LIMIT 1"])
+                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
                               first
                               :id))]
         (migrate! :up)
