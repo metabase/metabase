@@ -14,7 +14,7 @@ import {
 import type Question from "metabase-lib/Question";
 import { saveForm, updateForm } from "./forms";
 
-type ActionParams = {
+export type ActionParams = {
   name: string;
   description?: string;
   model_id?: number;
