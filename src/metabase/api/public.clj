@@ -167,12 +167,12 @@
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
   (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
-      (hydrate [:ordered_cards :card :series] :param_fields)
+      (hydrate [:ordered_cards :card :series :dashcard/action] :param_fields)
       api.dashboard/add-query-average-durations
       (update :ordered_cards (fn [dashcards]
                                (for [dashcard dashcards]
                                  (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x
-                                                            :size_y :parameter_mappings :visualization_settings])
+                                                            :size_y :parameter_mappings :visualization_settings :action])
                                      (update :card remove-card-non-public-columns)
                                      (update :series (fn [series]
                                                        (for [series series]
