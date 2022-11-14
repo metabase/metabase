@@ -1,9 +1,9 @@
 import { DELETE } from "metabase/lib/api";
 
 export const SamlApi = {
-  deleteSettings: DELETE("/api/saml/settings"),
+  deleteSettings: DELETE("/api/ee/auth/saml/settings"),
 };
 
 export const JwtApi = {
-  deleteSettings: DELETE("/api/jwt/settings"),
+  deleteSettings: DELETE("/api/ee/auth/jwt/settings"),
 };

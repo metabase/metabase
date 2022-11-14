@@ -1,4 +1,5 @@
 import {
+  modal,
   popover,
   restore,
   setupLdap,
@@ -14,6 +15,7 @@ describe(
       cy.signInAsAdmin();
       cy.intercept("PUT", "/api/setting/*").as("updateSetting");
       cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
+      cy.intercept("DELETE", "/api/ldap/settings").as("deleteLdapSettings");
     });
 
     it("should setup ldap (metabase#16173)", () => {
@@ -47,6 +49,18 @@ describe(
       cy.wait("@updateSetting");
 
       getLdapCard().findByText("Paused").should("exist");
+    });
+
+    it("should allow to reset ldap settings", () => {
+      setupLdap();
+      cy.visit("/admin/settings/authentication");
+
+      getLdapCard().icon("ellipsis").click();
+      popover().findByText("Deactivate").click();
+      modal().button("Deactivate").click();
+      cy.wait("@deleteLdapSettings");
+
+      getLdapCard().button("Set up").should("exist");
     });
 
     it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
@@ -92,7 +106,7 @@ describe(
 );
 
 const getLdapCard = () => {
-  return cy.findByText("LDAP").parent();
+  return cy.findByText("LDAP").parent().parent();
 };
 
 const enterLdapPort = value => {

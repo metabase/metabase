@@ -49,8 +49,8 @@ const AuthCard = ({
     setIsOpened(false);
   }, []);
 
-  const handleDeactivate = useCallback(() => {
-    onDeactivate();
+  const handleDeactivate = useCallback(async () => {
+    await onDeactivate();
     handleClose();
   }, [onDeactivate, handleClose]);
 

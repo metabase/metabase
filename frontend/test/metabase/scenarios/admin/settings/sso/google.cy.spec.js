@@ -1,4 +1,5 @@
 import {
+  modal,
   popover,
   restore,
   typeAndBlurUsingLabel,
@@ -12,6 +13,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.signInAsAdmin();
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/google/settings").as("updateGoogleSettings");
+    cy.intercept("DELETE", "/api/google/settings").as("deleteGoogleSettings");
   });
 
   it("should save the client id on subsequent tries (metabase#15974)", () => {
@@ -38,6 +40,18 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.wait("@updateSetting");
 
     getGoogleCard().findByText("Paused").should("exist");
+  });
+
+  it("should allow to reset google settings", () => {
+    setupGoogleAuth();
+    cy.visit("/admin/settings/authentication");
+
+    getGoogleCard().icon("ellipsis").click();
+    popover().findByText("Deactivate").click();
+    modal().button("Deactivate").click();
+    cy.wait("@deleteGoogleSettings");
+
+    getGoogleCard().button("Set up").should("exist");
   });
 
   it("should show an error message if the client id does not end with the correct suffix (metabase#15975)", () => {
@@ -68,7 +82,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
 });
 
 const getGoogleCard = () => {
-  return cy.findByText("Sign in with Google").parent();
+  return cy.findByText("Sign in with Google").parent().parent();
 };
 
 const setupGoogleAuth = ({ enabled = true } = {}) => {
