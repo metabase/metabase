@@ -20,7 +20,6 @@ import EntityListLoader, {
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 
 import Collections from "metabase/entities/collections";
-import DataAppCollections from "metabase/entities/data-app-collections";
 
 import { ItemPickerHeader, ItemPickerList } from "./ItemPicker.styled";
 
@@ -272,43 +271,10 @@ export default _.compose(
     entityType: (state, props) => props.entity?.name ?? "collections",
     loadingAndErrorWrapper: false,
   }),
-  DataAppCollections.loadList({
-    loadingAndErrorWrapper: false,
-    listName: "dataAppCollections",
-  }),
-  connect((state, props) => {
-    const entity = props.entity || Collections;
-
-    const normalCollectionsById =
-      entity.selectors.getExpandedCollectionsById(state);
-
-    let collectionsById = {};
-
-    if (!props.entity) {
-      const { root: rootDataAppCollection } =
-        DataAppCollections.selectors.getExpandedCollectionsById(state);
-
-      const { root: rootCollection, ..._normalCollectionsById } =
-        normalCollectionsById;
-
-      const dataAppCollections = rootDataAppCollection.children;
-      const dataAppCollectionsById = _.indexBy(dataAppCollections, "id");
-
-      collectionsById = {
-        ..._normalCollectionsById,
-        ...dataAppCollectionsById,
-        root: {
-          ...rootCollection,
-          children: [...rootCollection.children, ...dataAppCollections],
-        },
-      };
-    } else {
-      collectionsById = normalCollectionsById;
-    }
-
-    return {
-      collectionsById,
-      getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
-    };
-  }),
+  connect((state, props) => ({
+    collectionsById: (
+      props.entity || Collections
+    ).selectors.getExpandedCollectionsById(state),
+    getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
+  })),
 )(ItemPicker);
