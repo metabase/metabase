@@ -6,7 +6,7 @@ import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 
 import { CollectionSchema } from "metabase/schema";
-import { getUser } from "metabase/selectors/user";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 
@@ -63,18 +63,11 @@ const Collections = createEntity({
   selectors: {
     getForm: getFormSelector,
     getExpandedCollectionsById: createSelector(
-      [
-        state => state.entities.collections,
-        state => {
-          const { list } = state.entities.collections_list[null] || {};
-          return list || [];
-        },
-        getUser,
-      ],
-      (collections, collectionsIds, user) =>
+      [state => state.entities.collections || {}, getUserPersonalCollectionId],
+      (collections, currentUserPersonalCollectionId) =>
         getExpandedCollectionsById(
-          collectionsIds.map(id => collections[id]),
-          user && user.personal_collection_id,
+          Object.values(collections),
+          currentUserPersonalCollectionId,
         ),
     ),
     getInitialCollectionId,
