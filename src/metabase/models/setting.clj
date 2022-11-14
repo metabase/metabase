@@ -224,6 +224,7 @@
    :munged-name s/Str
    :namespace   s/Symbol
    :description s/Any            ; description is validated via the macro, not schema
+   :doc         s/Any            ; description is validated via the macro, not schema
    :default     s/Any
    :type        Type             ; all values are stored in DB as Strings,
    :getter      clojure.lang.IFn ; different getters/setters take care of parsing/unparsing
@@ -753,6 +754,7 @@
                  :munged-name    munged-name
                  :namespace      setting-ns
                  :description    nil
+                 :doc            nil
                  :type           setting-type
                  :default        default
                  :on-change      nil

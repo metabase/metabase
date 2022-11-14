@@ -11,14 +11,14 @@
 
 (def env-vars-not-to-mess-with
   "Flamber advises that people avoid touching these environment variables."
-  (set (edn/read-string (slurp (io/file "src/metabase/cmd/resources/env-vars-to-avoid.edn")))))
+  (set (edn/read-string (slurp (io/resource "metabase/cmd/resources/env-vars-to-avoid.edn")))))
 
 (defn- get-settings
   "Loads all of the metabase namespaces, which loads all of the defsettings,
   which are registered in an atom in the settings namespace. Once settings are registered,
   This function derefs that atom and puts the settings into a sorted map for processing."
   []
-  (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
+  (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
         :when (and
                (str/includes? (name ns-symb) "metabase")
                (not (str/includes? (name ns-symb) "test")))]
@@ -30,7 +30,10 @@
 (defn- avoid?
   "Used to filter out environment variables with high foot-gun indices."
   [env-var]
-  (contains? env-vars-not-to-mess-with (u/screaming-snake-case (name (:name env-var)))))
+  (or (false? (:doc env-var))
+              ;; Ideally, we'd move off of this list completely, but not all environment variables
+              ;; are defsettings.
+              (contains? env-vars-not-to-mess-with (format-prefix env-var))))
 
 (defn- setter?
   "Used to filter out environment variables that cannot be set."
@@ -62,8 +65,8 @@
 
 (defn- format-prefix
   "Used to build an environment variable."
-  [s]
-  (str "MB_" s))
+  [env-var]
+  (str "MB_" (u/screaming-snake-case (name (:name env-var)))))
 
 (defn- format-heading
   "Takes an integer and a string and creates a Markdown heading of level n."
@@ -78,13 +81,26 @@
        ;; Drop brackets used to create source code links
        (#(str/replace % #"\[\[|\]\]" ""))))
 
+(defn format-added
+  [env-var]
+  (when-let [a (:added (:doc env-var))]
+    (str "Added: " a)))
+
+(defn- format-doc
+  [env-var]
+  (when-let [d (:doc env-var)]
+    (:description d)))
+
 (defn format-env-var-entry
   "Preps a doc entry for an environment variable as a Markdown section."
   [env-var]
-  (str/join "\n\n" [(format-heading 3 (format-prefix (u/screaming-snake-case (name (:name env-var)))))
-                    (format-type env-var)
-                    (format-default env-var)
-                    (format-description env-var)]))
+  (str/join "\n\n" (remove str/blank?
+                           [(format-heading 3 (format-prefix env-var))
+                            (format-type env-var)
+                            (format-default env-var)
+                            (format-added env-var)
+                            (format-description env-var)
+                            (format-doc env-var)])))
 
 (defn format-env-var-docs
   "Preps relevant environment variable docs as a Markdown string."
