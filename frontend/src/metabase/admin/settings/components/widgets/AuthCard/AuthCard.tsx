@@ -19,26 +19,27 @@ export interface AuthSetting {
 }
 
 export interface AuthCardProps {
+  setting: AuthSetting;
   type: string;
   name: string;
   title?: string;
   description: string;
-  isEnabled: boolean;
   isConfigured: boolean;
   onChange: (value: boolean) => void;
   onDeactivate: () => void;
 }
 
 const AuthCard = ({
+  setting,
   type,
   name,
   title = name,
   description,
-  isEnabled,
   isConfigured,
   onChange,
   onDeactivate,
 }: AuthCardProps) => {
+  const isEnabled = setting.value ?? setting.default;
   const [isOpened, setIsOpened] = useState(false);
 
   const handleOpen = useCallback(() => {

@@ -2,24 +2,21 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Dispatch, State } from "metabase-types/store";
-import { updateSetting, deleteGoogleSettings } from "../../../settings";
-import AuthCard from "../AuthCard";
+import { deleteGoogleSettings } from "../../../settings";
+import AuthCard, { AuthCardProps } from "../AuthCard";
 
-const ENABLED_KEY = "google-auth-enabled";
-const CONFIGURED_KEY = "google-auth-configured";
+type StateProps = Omit<AuthCardProps, "setting" | "onChange" | "onDeactivate">;
+type DispatchProps = Pick<AuthCardProps, "onDeactivate">;
 
-const mapStateToProps = (state: State) => ({
+const mapStateToProps = (state: State): StateProps => ({
   type: "google",
   name: t`Google Sign-in`,
   title: t`Sign in with Google`,
   description: t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`,
-  isEnabled: getSetting(state, ENABLED_KEY),
-  isConfigured: getSetting(state, CONFIGURED_KEY),
+  isConfigured: getSetting(state, "google-auth-configured"),
 });
 
-const mapDispatchToProps = (dispatch: Dispatch) => ({
-  onChange: (value: boolean) =>
-    dispatch(updateSetting({ key: ENABLED_KEY, value })),
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
   onDeactivate: () => dispatch(deleteGoogleSettings()),
 });
 
