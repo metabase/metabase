@@ -1,6 +1,6 @@
 import React from "react";
 import type { FieldSettings } from "metabase-types/api";
-import type { TemplateTag } from "metabase-types/types/Query";
+import type { Parameter } from "metabase-types/types/Parameter";
 
 import { getWidgetComponent } from "metabase/components/form/FormWidget";
 
@@ -8,13 +8,13 @@ import { getFormField } from "./utils";
 
 // sample form fields
 export function FormField({
-  tag,
+  param,
   fieldSettings,
 }: {
-  tag: TemplateTag;
+  param: Parameter;
   fieldSettings: FieldSettings;
 }) {
-  const fieldProps = getFormField(tag, fieldSettings);
+  const fieldProps = getFormField(param, fieldSettings);
   const InputField = getWidgetComponent(fieldProps);
   return <InputField field={fieldProps} {...fieldProps} />;
 }
