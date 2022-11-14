@@ -4,8 +4,8 @@ import { color } from "metabase/lib/colors";
 
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import {
+  isRootCollection,
   isPersonalCollection,
-  canonicalCollectionId,
 } from "metabase/collections/utils";
 import {
   getDataAppIcon,
@@ -39,10 +39,7 @@ export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
 }
 
 export function normalizedCollection(collection) {
-  if (canonicalCollectionId(collection.id) === null) {
-    return ROOT_COLLECTION;
-  }
-  return collection;
+  return isRootCollection(collection) ? ROOT_COLLECTION : collection;
 }
 
 export const getCollectionType = (collectionId, state) =>
