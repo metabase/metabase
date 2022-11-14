@@ -36,6 +36,8 @@ export type BaseDashboardOrderedCard = {
   visualization_settings?: {
     [key: string]: unknown;
   };
+  isAdded?: boolean;
+  justAdded?: boolean;
 };
 
 export type DashboardOrderedCard = BaseDashboardOrderedCard & {
