@@ -573,11 +573,10 @@
       (let [x' (trunc :day (hx/->timestamp x'))
             y' (trunc :day (hx/->timestamp y'))
             positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                              (hx// (hsql/call :timestamp_diff b a (hsql/raw "day")) 7))))]
-        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
+                            (hx// (hsql/call :timestamp_diff b a (hsql/raw "day")) 7))]
+        (hx/cast
+         :integer
+         (hx/floor (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))))
 
       :day
       (let [x' (trunc :day (hx/->timestamp x'))
@@ -589,9 +588,10 @@
             y' (hx/->timestamp y')]
         (hsql/call :timestamp_diff y' x' (hsql/raw (name unit))))
 
-      (throw (ex-info (tru "Unsupported datetime-diff unit {0}" unit)
-                      {:clause          clause
-                       :supported-units [:year :month :week :day :hour :minute :second]})))))
+      (throw (ex-info (tru "Invalid datetime-diff unit {0}" unit)
+                      {:clause      clause
+                       :valid-units [:year :month :week :day :hour :minute :second]
+                       :type        qp.error-type/invalid-query})))))
 
 (defmethod driver/escape-alias :bigquery-cloud-sdk
   [driver s]

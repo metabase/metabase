@@ -24,6 +24,7 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
             [metabase.models.secret :as secret]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
@@ -308,8 +309,8 @@
     (hx/cast
      :integer
      (hsql/call
-      :date_part
-      (hx/literal unit)
+      :extract
+      unit
       (hsql/call
        (case unit :year :age :day :-)
        (hsql/call :date_trunc (hsql/raw "'day'") y)
@@ -324,8 +325,8 @@
      (hx/+
       (hx/* 12 (datetime-diff-helper x y :year))
       (hsql/call
-       :date_part
-       (hsql/raw "'month'")
+       :extract
+       :month
        (hsql/call
         :age
         (hsql/call :date_trunc (hsql/raw "'day'") y)
@@ -335,17 +336,16 @@
     (let [ex            (hsql/call :extract :epoch (hx/->timestamptz x))
           ey            (hsql/call :extract :epoch (hx/->timestamptz y))
           positive-diff (fn [a b]
-                          (hx/cast
-                           :integer
-                           (hx/floor
-                            (if (= unit :second)
-                              (hx/- b a)
-                              (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))))]
-      (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))
+                          (if (= unit :second)
+                            (hx/- b a)
+                            (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))]
+      (hx/cast
+       :integer
+       (hx/floor (hsql/call :case (hsql/call :<= x y) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))))
 
     (throw (ex-info (tru "Invalid datetime-diff unit: {0}" unit)
                     {:valid-units [:year :month :week :day :hour :minute :second]
-                     :bad-unit unit}))))
+                     :type        qp.error-type/invalid-query}))))
 
 (defmethod sql.qp/->honeysql [:postgres :datetime-diff]
   [driver [_ x y unit]]
@@ -353,7 +353,8 @@
                                       (string? x) u.date/parse))
         y (sql.qp/->honeysql driver (cond-> y
                                       (string? y) u.date/parse))]
-    (datetime-diff-helper x y unit)))
+    (-> (datetime-diff-helper x y unit)
+        (with-database-type-info :integer))))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
   hformat/ToSql

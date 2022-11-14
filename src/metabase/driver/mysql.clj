@@ -21,6 +21,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
@@ -373,9 +374,10 @@
       (:hour :minute :second)
       (hsql/call :timestampdiff (hsql/raw (name unit)) x y)
 
-      (throw (ex-info (tru "Unsupported datetime-diff unit {0}" unit)
-                      {:clause          clause
-                       :supported-units [:year :month :week :day :hour :minute :second]})))))
+      (throw (ex-info (tru "Invalid datetime-diff unit {0}" unit)
+                      {:clause      clause
+                       :valid-units [:year :month :week :day :hour :minute :second]
+                       :type        qp.error-type/invalid-query})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
