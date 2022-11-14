@@ -1,6 +1,5 @@
 (ns metabase.query-processor-test.case-test
   (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
             [metabase.models :refer [Metric Segment]]
             [metabase.test :as mt]))
 
