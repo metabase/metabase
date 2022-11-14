@@ -724,6 +724,27 @@
     (is (= [[22 46] [23 47] [24 40] [25 60] [26 7]]
            (sad-toucan-incidents-with-bucketing :week-of-year :utc)))))
 
+(deftest week-of-year-and-week-count-should-be-consistent-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/with-start-of-week :tuesday
+     (mt/dataset sample-dataset
+       (is (= (->> (mt/mbql-query orders
+                                  {:filter      [:between $created_at "2019-01-01" "2019-12-31"]
+                                   :breakout    [!week.created_at]
+                                   :aggregation [[:count]]})
+                   mt/process-query
+                   mt/rows
+                   (map second))
+            (->> (mt/mbql-query orders
+                                   {:filter      [:between $created_at "2019-01-01" "2019-12-31"]
+                                    :breakout    [!week-of-year.created_at]
+                                    :aggregation [[:count]]})
+                 mt/process-query
+                 mt/rows
+                 (map second))))))))
+
+
+
 ;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;; difference is how the beginning of hte month is represented, since we always return times with our dates
 (deftest group-by-month-test
