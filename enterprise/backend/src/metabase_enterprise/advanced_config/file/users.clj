@@ -1,32 +1,32 @@
-(ns metabase-enterprise.config-from-file.users
+(ns metabase-enterprise.advanced-config.file.users
   (:require
    [clojure.spec.alpha :as s]
    [clojure.tools.logging :as log]
-   [metabase-enterprise.config-from-file.interface :as config-from-file.i]
+   [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
    [toucan.db :as db]))
 
-(s/def :metabase-enterprise.config-from-file.users.config-file-spec/first_name
+(s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/first_name
   string?)
 
-(s/def :metabase-enterprise.config-from-file.users.config-file-spec/last_name
+(s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/last_name
   string?)
 
-(s/def :metabase-enterprise.config-from-file.users.config-file-spec/password
+(s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/password
   string?)
 
-(s/def :metabase-enterprise.config-from-file.users.config-file-spec/email
+(s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/email
   string?)
 
 (s/def ::config-file-spec
-  (s/keys :req-un [:metabase-enterprise.config-from-file.users.config-file-spec/first_name
-                   :metabase-enterprise.config-from-file.users.config-file-spec/last_name
-                   :metabase-enterprise.config-from-file.users.config-file-spec/password
-                   :metabase-enterprise.config-from-file.users.config-file-spec/email]))
+  (s/keys :req-un [:metabase-enterprise.advanced-config.file.users.config-file-spec/first_name
+                   :metabase-enterprise.advanced-config.file.users.config-file-spec/last_name
+                   :metabase-enterprise.advanced-config.file.users.config-file-spec/password
+                   :metabase-enterprise.advanced-config.file.users.config-file-spec/email]))
 
-(defmethod config-from-file.i/section-spec :users
+(defmethod advanced-config.file.i/section-spec :users
   [_section]
   (s/spec (s/* ::config-file-spec)))
 
@@ -53,7 +53,7 @@
                                         (pr-str (:email user)))))
       (db/insert! User user))))
 
-(defmethod config-from-file.i/initialize-section! :users
+(defmethod advanced-config.file.i/initialize-section! :users
   [_section-name users]
   (doseq [user users]
     (init-from-config-file! user)))

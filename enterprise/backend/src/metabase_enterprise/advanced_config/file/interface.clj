@@ -1,4 +1,4 @@
-(ns metabase-enterprise.config-from-file.interface
+(ns metabase-enterprise.advanced-config.file.interface
   (:require
    [clojure.tools.logging :as log]
    [metabase.util :as u]
