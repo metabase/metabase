@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { AutoSizer, List } from "react-virtualized";
+import { connect } from "react-redux";
 
 import Icon from "metabase/components/Icon";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -9,6 +10,10 @@ import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import EmptyState from "metabase/components/EmptyState";
 
+import { getIsDataAppPage } from "metabase/dashboard/selectors";
+
+import { isQuestionCompatible } from "./utils";
+import { QuestionListItem } from "./QuestionListItem";
 import {
   LoadMoreButton,
   LoadMoreRow,
@@ -18,10 +23,14 @@ import {
   EmptyStateContainer,
   QuestionListWrapper,
 } from "./QuestionList.styled";
-import { QuestionListItem } from "./QuestionListItem";
-import { isQuestionCompatible } from "./utils";
 
 const LOAD_CHUNK_SIZE = 15;
+
+function mapStateToProps(state) {
+  return {
+    isDataAppPage: getIsDataAppPage(state),
+  };
+}
 
 const propTypes = {
   questions: PropTypes.object,
@@ -34,9 +43,10 @@ const propTypes = {
   loadMetadataForQueries: PropTypes.function,
   visualization: PropTypes.object,
   isLoadingMetadata: PropTypes.bool,
+  isDataAppPage: PropTypes.bool,
 };
 
-export const QuestionList = React.memo(function QuestionList({
+const QuestionList = React.memo(function QuestionList({
   questions,
   badQuestions,
   enabledQuestions,
@@ -47,6 +57,7 @@ export const QuestionList = React.memo(function QuestionList({
   loadMetadataForQueries,
   visualization,
   isLoadingMetadata,
+  isDataAppPage,
 }) {
   const [searchText, setSearchText] = useState("");
   const debouncedSearchText = useDebouncedValue(
@@ -56,7 +67,7 @@ export const QuestionList = React.memo(function QuestionList({
 
   const handleSearchFocus = () => {
     MetabaseAnalytics.trackStructEvent(
-      "Dashboard",
+      isDataAppPage ? "Data App Page" : "Dashboard",
       "Edit Series Modal",
       "search",
     );
@@ -193,3 +204,5 @@ export const QuestionList = React.memo(function QuestionList({
 });
 
 QuestionList.propTypes = propTypes;
+
+export default connect(mapStateToProps)(QuestionList);

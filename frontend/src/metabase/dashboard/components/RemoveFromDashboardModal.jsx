@@ -15,13 +15,19 @@ export default class RemoveFromDashboardModal extends Component {
   };
 
   onRemove() {
-    this.props.removeCardFromDashboard({
-      dashId: this.props.dashboard.id,
-      dashcardId: this.props.dashcard.id,
-    });
-    this.props.onClose();
+    const { dashboard, dashcard, removeCardFromDashboard, onClose } =
+      this.props;
 
-    MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Card");
+    removeCardFromDashboard({
+      dashId: dashboard.id,
+      dashcardId: dashcard.id,
+    });
+    onClose();
+
+    MetabaseAnalytics.trackStructEvent(
+      dashboard.is_app_page ? "Data App Page" : "Dashboard",
+      "Remove Card",
+    );
   }
 
   render() {

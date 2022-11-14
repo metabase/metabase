@@ -136,7 +136,10 @@ class DashboardGrid extends Component {
 
     if (changes.length > 0) {
       setMultipleDashCardAttributes(changes);
-      MetabaseAnalytics.trackStructEvent("Dashboard", "Layout Changed");
+      MetabaseAnalytics.trackStructEvent(
+        dashboard.is_app_page ? "Data App Page" : "Dashboard",
+        "Layout Changed",
+      );
     }
   };
 

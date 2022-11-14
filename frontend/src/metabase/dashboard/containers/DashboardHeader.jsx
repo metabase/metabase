@@ -159,6 +159,11 @@ class DashboardHeader extends Component {
     this.onDoneEditing();
   }
 
+  getAnalyticsContext = () => {
+    const { dashboard } = this.props;
+    return dashboard.is_app_page ? "Data App Page" : "Dashboard";
+  };
+
   getEditWarning(dashboard) {
     if (dashboard.embedding_params) {
       const currentSlugs = Object.keys(dashboard.embedding_params);
@@ -183,9 +188,11 @@ class DashboardHeader extends Component {
     const canSave =
       !isDataAppPage || pageTitleTemplate === null || pageTitleTemplate !== "";
 
+    const analyticsContext = this.getAnalyticsContext();
+
     return [
       <Button
-        data-metabase-event="Dashboard;Cancel Edits"
+        data-metabase-event={`${analyticsContext}Cancel Edits`}
         key="cancel"
         className="Button Button--small mr1"
         onClick={() => this.onCancel()}
@@ -227,6 +234,7 @@ class DashboardHeader extends Component {
 
     const isDataAppPage = dashboard.is_app_page;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
+    const analyticsContext = this.getAnalyticsContext();
 
     const buttons = [];
     const extraButtons = [];
@@ -248,7 +256,7 @@ class DashboardHeader extends Component {
             icon="add"
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
-            data-metabase-event="Dashboard;Add Card Sidebar"
+            data-metabase-event={`${analyticsContext};Add Card Sidebar`}
           />
         </Tooltip>,
       );
@@ -257,7 +265,7 @@ class DashboardHeader extends Component {
       buttons.push(
         <Tooltip key="add-a-text-box" tooltip={t`Add a text box`}>
           <a
-            data-metabase-event="Dashboard;Add Text Box"
+            data-metabase-event={`${analyticsContext};Add Text Box`}
             key="add-text"
             className="text-brand-hover cursor-pointer"
             onClick={() => this.onAddTextBox()}
@@ -312,7 +320,7 @@ class DashboardHeader extends Component {
               <DashboardHeaderButton
                 isActive={activeSidebarName === SIDEBAR_NAME.addActionForm}
                 onClick={() => toggleSidebar(SIDEBAR_NAME.addActionForm)}
-                data-metabase-event="Dashboard;Add Card Sidebar"
+                data-metabase-event={`${analyticsContext};Add Card Sidebar`}
               >
                 <Icon name="list" size={18} />
               </DashboardHeaderButton>
@@ -321,7 +329,7 @@ class DashboardHeader extends Component {
               <DashboardHeaderButton
                 isActive={activeSidebarName === SIDEBAR_NAME.addActionButton}
                 onClick={() => toggleSidebar(SIDEBAR_NAME.addActionButton)}
-                data-metabase-event="Dashboard;Add Card Sidebar"
+                data-metabase-event={`${analyticsContext};Add Card Sidebar`}
               >
                 <Icon name="click" size={18} />
               </DashboardHeaderButton>
@@ -334,7 +342,7 @@ class DashboardHeader extends Component {
         title: t`Revision history`,
         icon: "history",
         link: `${location.pathname}/history`,
-        event: "Dashboard;Revisions",
+        event: `${analyticsContext};Revisions`,
       });
     }
 
@@ -346,7 +354,7 @@ class DashboardHeader extends Component {
         >
           <DashboardHeaderButton
             key="edit"
-            data-metabase-event="Dashboard;Edit"
+            data-metabase-event={`${analyticsContext};Edit`}
             icon="pencil"
             className="text-brand-hover cursor-pointer"
             onClick={() => this.handleEdit(dashboard)}
@@ -361,7 +369,7 @@ class DashboardHeader extends Component {
           title: t`Enter fullscreen`,
           icon: "expand",
           action: e => onFullscreenChange(!isFullscreen, !e.altKey),
-          event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
+          event: `${analyticsContext};Fullscreen Mode;${!isFullscreen}`,
         });
       }
 
@@ -369,7 +377,7 @@ class DashboardHeader extends Component {
         title: t`Duplicate`,
         icon: "copy",
         link: `${location.pathname}/copy`,
-        event: "Dashboard;Copy",
+        event: `${analyticsContext};Copy`,
       });
 
       if (canEdit) {
@@ -377,14 +385,14 @@ class DashboardHeader extends Component {
           title: t`Move`,
           icon: "move",
           link: `${location.pathname}/move`,
-          event: "Dashboard;Move",
+          event: `${analyticsContext};Move`,
         });
 
         extraButtons.push({
           title: t`Archive`,
           icon: "view_archive",
           link: `${location.pathname}/archive`,
-          event: "Dashboard;Archive",
+          event: `${analyticsContext};Archive`,
         });
       }
     }
@@ -448,7 +456,7 @@ class DashboardHeader extends Component {
       <Header
         headerClassName="wrapper"
         objectType="dashboard"
-        analyticsContext="Dashboard"
+        analyticsContext={dashboard.is_app_page ? "Page" : "Dashboard"}
         dashboard={dashboard}
         dataAppNavItem={dataAppNavItem}
         pageTitleTemplate={pageTitleTemplate}

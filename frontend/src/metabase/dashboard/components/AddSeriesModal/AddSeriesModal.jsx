@@ -19,7 +19,7 @@ import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { getVisualizationRaw } from "metabase/visualizations";
 import Question from "metabase-lib/Question";
 
-import { QuestionList } from "./QuestionList";
+import QuestionList from "./QuestionList";
 
 const getQuestions = createSelector(
   [getMetadataWithHiddenTables, (_state, props) => props.questions],
@@ -42,6 +42,7 @@ class AddSeriesModal extends Component {
   }
 
   static propTypes = {
+    dashboard: PropTypes.object.isRequired,
     dashcard: PropTypes.object.isRequired,
     questions: PropTypes.array,
     dashcardData: PropTypes.object.isRequired,
@@ -50,12 +51,21 @@ class AddSeriesModal extends Component {
     setDashCardAttributes: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
   };
+
   static defaultProps = {};
+
+  getAnalyticsContext = () => {
+    const { dashboard } = this.props;
+    return dashboard.is_app_page ? "Data App Page" : "Dashboard";
+  };
 
   handleQuestionSelectedChange = async (question, selected) => {
     const { dashcard, dashcardData } = this.props;
     const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
+
     const card = question.card();
+    const analyticsContext = this.getAnalyticsContext();
+
     try {
       if (selected) {
         if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
@@ -85,7 +95,7 @@ class AddSeriesModal extends Component {
           });
 
           MetabaseAnalytics.trackStructEvent(
-            "Dashboard",
+            analyticsContext,
             "Add Series",
             card.display + ", success",
           );
@@ -97,7 +107,7 @@ class AddSeriesModal extends Component {
           setTimeout(() => this.setState({ state: null }), 2000);
 
           MetabaseAnalytics.trackStructEvent(
-            "Dashboard",
+            analyticsContext,
             "Add Series",
             card.dataset_query.type + ", " + card.display + ", fail",
           );
@@ -107,7 +117,7 @@ class AddSeriesModal extends Component {
           series: this.state.series.filter(c => c.id !== card.id),
         });
 
-        MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Series");
+        MetabaseAnalytics.trackStructEvent(analyticsContext, "Remove Series");
       }
     } catch (e) {
       console.error("AddSeriesModal handleQuestionChange", e);
@@ -121,7 +131,10 @@ class AddSeriesModal extends Component {
 
   handleRemoveSeries(card) {
     this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
-    MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Series");
+    MetabaseAnalytics.trackStructEvent(
+      this.getAnalyticsContext(),
+      "Remove Series",
+    );
   }
 
   handleDone = () => {
@@ -131,7 +144,7 @@ class AddSeriesModal extends Component {
     });
     this.props.onClose();
     MetabaseAnalytics.trackStructEvent(
-      "Dashboard",
+      this.getAnalyticsContext(),
       "Edit Series Modal",
       "done",
     );
@@ -163,6 +176,8 @@ class AddSeriesModal extends Component {
         data: getIn(dashcardData, [dashcard.id, card.id, "data"]),
       }))
       .filter(s => !!s.data);
+
+    const analyticsContext = this.getAnalyticsContext();
 
     return (
       <div className="spread flex">
@@ -204,7 +219,7 @@ class AddSeriesModal extends Component {
               {t`Done`}
             </button>
             <button
-              data-metabase-event="Dashboard;Edit Series Modal;cancel"
+              data-metabase-event={`${analyticsContext};Edit Series Modal;cancel`}
               className="Button ml2"
               onClick={this.props.onClose}
             >
