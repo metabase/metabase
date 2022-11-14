@@ -13,10 +13,7 @@ import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmpty
 
 import * as Urls from "metabase/lib/urls";
 
-import {
-  getHasDataAccess,
-  getHasNativeWrite,
-} from "metabase/new_model/selectors";
+import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import Database from "metabase/entities/databases";
 import {
   OptionsGridItem,
