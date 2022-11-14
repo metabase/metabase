@@ -20,11 +20,7 @@ import Collections, {
 } from "metabase/entities/collections";
 import { logout } from "metabase/auth/actions";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-<<<<<<< HEAD
 import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
-=======
-import { getHasDataAccess, getHasOwnDatabase } from "metabase/nav/selectors";
->>>>>>> 620d015893 (Clean up and rationalize selectors)
 
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import {
