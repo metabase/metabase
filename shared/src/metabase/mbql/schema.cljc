@@ -653,7 +653,7 @@
 
 ;; TODO: rename to NumericExpression
 (def ^:private ArithmeticExpression
-  "Schema for the definition of an arithmetic expression."
+  "Schema for the definition of an arithmetic expression. All arithmetic expressions evaluate to numeric values."
   (s/recursive #'ArithmeticExpression*))
 
 ;; The result is positive if x <= y, and negative otherwise.
