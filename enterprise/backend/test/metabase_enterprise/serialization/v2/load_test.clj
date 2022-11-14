@@ -8,6 +8,7 @@
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric Pulse
                                      PulseChannel PulseChannelRecipient Segment Table User]]
             [metabase.models.serialization.base :as serdes.base]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (defn- no-labels [path]
@@ -543,18 +544,19 @@
                                                                  :target [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
 
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))
-            (let [card     (-> @serialized (by-model "Card") first)
-                  dashcard (-> @serialized (by-model "DashboardCard") first)]
+            (let [card (-> @serialized (by-model "Card") first)
+                  dash (-> @serialized (by-model "Dashboard") first)]
               (testing "exported :parameter_mappings are properly converted"
                 (is (= [{:parameter_id "12345678"
                          :target [:dimension [:field ["my-db" nil "orders" "subtotal"]
                                               {:source-field ["my-db" nil "orders" "invoice"]}]]}]
                        (:parameter_mappings card)))
-                (is (= [{:parameter_id "deadbeef"
-                         :card_id (:entity_id @card1s)
-                         :target [:dimension [:field ["my-db" nil "orders" "subtotal"]
-                                              {:source-field ["my-db" nil "orders" "invoice"]}]]}]
-                       (:parameter_mappings dashcard))))
+                (is (schema= [{:parameter_mappings [{:parameter_id (s/eq "deadbeef")
+                                                     :card_id      (s/eq (:entity_id @card1s))
+                                                     :target       (s/eq [:dimension [:field ["my-db" nil "orders" "subtotal"]
+                                                                                      {:source-field ["my-db" nil "orders" "invoice"]}]])}]
+                               s/Keyword s/Any}]
+                       (:ordered_cards dash))))
 
               (testing "exported :visualization_settings are properly converted"
                 (let [expected {:table.pivot_column "SOURCE"
@@ -577,8 +579,7 @@
                   (is (= expected
                          (:visualization_settings card)))
                   (is (= expected
-                         (:visualization_settings dashcard))))))))
-
+                         (-> dash :ordered_cards first :visualization_settings))))))))
 
 
         (testing "deserializing adjusts the IDs properly"
