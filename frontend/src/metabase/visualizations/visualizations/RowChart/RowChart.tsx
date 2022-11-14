@@ -10,11 +10,6 @@ import {
   getChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
-import {
-  getColumnValueFormatter,
-  getFormatters,
-  getLabelsFormatter,
-} from "metabase/visualizations/shared/utils/format";
 import { measureText } from "metabase/lib/measure-text";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import {
@@ -64,6 +59,11 @@ import {
   getXValueRange,
 } from "./utils/settings";
 import { ROW_CHART_SETTINGS } from "./utils/settings-definitions";
+import {
+  getColumnValueFormatter,
+  getFormatters,
+  getLabelsFormatter,
+} from "./utils/format";
 
 const RowChartRenderer = ExplicitSize({
   wrapped: true,
@@ -117,7 +117,7 @@ const RowChartVisualization = ({
   series: multipleSeries,
 }: RowChartVisualizationProps) => {
   const formatColumnValue = useMemo(() => {
-    return getColumnValueFormatter(formatValue);
+    return getColumnValueFormatter();
   }, []);
   const [chartSeries] = useMemo(() => {
     return isPlaceholder ? multipleSeries : rawMultipleSeries;
@@ -150,12 +150,12 @@ const RowChartVisualization = ({
   );
 
   const tickFormatters = useMemo(
-    () => getFormatters(chartColumns, settings, formatValue),
+    () => getFormatters(chartColumns, settings),
     [chartColumns, settings],
   );
 
   const labelsFormatter = useMemo(
-    () => getLabelsFormatter(chartColumns, settings, formatValue),
+    () => getLabelsFormatter(chartColumns, settings),
     [chartColumns, settings],
   );
 
@@ -352,7 +352,7 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
   const computedSeries = getSeries(
     data,
     chartColumns,
-    getColumnValueFormatter(formatValue),
+    getColumnValueFormatter(),
   ).map(series => {
     const seriesCard = {
       ...card,

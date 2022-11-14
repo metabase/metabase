@@ -18,7 +18,7 @@ function row_chart(settings, data, colors) {
   return StaticViz.RenderChart("row", {
     settings: JSON.parse(settings),
     data: JSON.parse(data),
-    colors: JSON.parse(colors),
+    // colors: JSON.parse(colors),
   });
 }
 
