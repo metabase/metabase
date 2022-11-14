@@ -736,7 +736,7 @@
                                                  :breakout    [:field $created_at {:temporal-unit unit}]
                                                  :aggregation [[:count]]})
                                            mt/process-query
-                                           mt/rows
+                                           (mt/formatted-rows [str int])
                                            (map second)))]
           (is (= (test-break-out :week)
                  (test-break-out :week-of-year)))
