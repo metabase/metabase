@@ -32,6 +32,12 @@ interface ActionParameterMapperProps {
   page: DataAppPage;
 }
 
+type NewParameterChangeEvent = {
+  target: {
+    value: string;
+  };
+};
+
 type ParamaterMappingFn = (
   parameterId: ParameterId,
   dashcardId: number,
@@ -58,11 +64,9 @@ export const ActionParameterMapper = ({
     return null;
   }
 
-  const isNewlyAddedDashcard = dashcard.id < 1;
-
   return (
     <TippyPopoverWithTrigger
-      isInitiallyVisible={isNewlyAddedDashcard}
+      isInitiallyVisible={dashcard.justAdded}
       placement="right"
       renderTrigger={({ onClick, visible }) => (
         <ActionParameterTriggerContainer onClick={onClick}>
@@ -122,11 +126,9 @@ export const ActionParameterMappingForm = ({
           </ParameterFormLabel>
           <Select
             value={currentMappings[getTargetKey(actionParam)] ?? null}
-            onChange={({
-              target: { value: newParameterId },
-            }: {
-              target: { value: ParameterId };
-            }) => handleParameterChange(newParameterId, actionParam.target)}
+            onChange={(e: NewParameterChangeEvent) =>
+              handleParameterChange(e?.target?.value, actionParam.target)
+            }
             options={[
               { name: t`Ask the user`, value: null },
               ...dashboardParameters.map(dashboardParam => ({

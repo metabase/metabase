@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
-const TRANSITION_TIME = `200ms`;
+const TRANSITION_TIME = "200ms";
 
 export const ActionParameterTriggerContainer = styled.button`
   position: absolute;
