@@ -242,7 +242,7 @@
   [config-sections]
   (let [{settings-sections true, other-sections false} (group-by (fn [[section-name]]
                                                                    (= section-name :settings))
-                                                                 (seq config-sections))]
+                                                                 config-sections)]
     (concat settings-sections other-sections)))
 
 (defn ^{:added "0.45.0"} initialize!
