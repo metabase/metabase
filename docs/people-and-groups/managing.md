@@ -38,7 +38,7 @@ If you want to delete an account because the account information was set up inco
 
 1. Change the name and email associated with the old account.
 2. [Deactivate](#deactivating-an-account) the old account.
-3. [Create a new account](#creating-accounts-for-your-team) with the person's correct information.
+3. [Create a new account](#creating-an-account) with the person's correct information.
 
 ## Checking someone's auth method
 
