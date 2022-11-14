@@ -581,7 +581,7 @@ const SECTIONS = updateSectionsWithPlugins({
 export const getSettings = createSelector(
   state => state.admin.settings.settings,
   state => state.admin.settings.warnings,
-  (settings, warnings) =>
+  (settings = [], warnings = {}) =>
     settings.map(setting =>
       warnings[setting.key]
         ? { ...setting, warning: warnings[setting.key] }
@@ -594,7 +594,7 @@ export const getSettings = createSelector(
 // /api/session/properties API handler and getDerivedSettingValues returns them.
 export const getDerivedSettingValues = state => state.settings?.values ?? {};
 
-export const getSettingValues = createSelector(getSettings, settings => {
+export const getSettingValues = createSelector(getSettings, (settings = []) => {
   const settingValues = {};
   for (const setting of settings) {
     settingValues[setting.key] = setting.value;

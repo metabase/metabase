@@ -40,21 +40,22 @@ const SETTINGS_SCHEMA = Yup.object({
 });
 
 export interface GoogleSettingsFormProps {
-  elements?: SettingDefinition[];
-  settingValues?: Partial<GoogleAuthSettings>;
+  settings: SettingDefinition[];
+  settingValues: Partial<GoogleAuthSettings>;
+  isEnabled: boolean;
   hasMultipleDomains?: boolean;
   onSubmit: (settingValues: GoogleAuthSettings) => void;
 }
 
 const GoogleSettingsForm = ({
-  elements = [],
-  settingValues = {},
+  settings,
+  settingValues,
   hasMultipleDomains,
   onSubmit,
 }: GoogleSettingsFormProps): JSX.Element => {
-  const settings = useMemo(() => {
-    return _.indexBy(elements, "key");
-  }, [elements]);
+  const settingByKey = useMemo(() => {
+    return _.indexBy(settings, "key");
+  }, [settings]);
 
   const initialValues = useMemo(() => {
     const values = SETTINGS_SCHEMA.cast(settingValues, { stripUnknown: true });
@@ -86,7 +87,7 @@ const GoogleSettingsForm = ({
             name={CLIENT_ID_KEY}
             title={t`Client ID`}
             placeholder={t`{your-client-id}.apps.googleusercontent.com`}
-            {...getFormFieldProps(settings[CLIENT_ID_KEY])}
+            {...getFormFieldProps(settingByKey[CLIENT_ID_KEY])}
           />
           <FormInput
             name={DOMAIN_KEY}
@@ -102,7 +103,7 @@ const GoogleSettingsForm = ({
                 : "mycompany.com"
             }
             nullable
-            {...getFormFieldProps(settings[DOMAIN_KEY])}
+            {...getFormFieldProps(settingByKey[DOMAIN_KEY])}
           />
           <FormSubmitButton title={t`Save changes`} primary disabled={!dirty} />
           <FormErrorMessage />
