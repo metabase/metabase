@@ -333,8 +333,8 @@
         (hsql/call :date_trunc (hsql/raw "'day'") x)))))
 
     (:hour :minute :second)
-    (let [ex            (hsql/call :extract :epoch (hx/->timestamptz x))
-          ey            (hsql/call :extract :epoch (hx/->timestamptz y))
+    (let [ex            (hsql/call :extract :epoch (hx/maybe-cast :timestamptz x))
+          ey            (hsql/call :extract :epoch (hx/maybe-cast :timestamptz y))
           positive-diff (fn [a b]
                           (if (= unit :second)
                             (hx/- b a)
