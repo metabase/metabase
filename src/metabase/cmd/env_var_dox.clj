@@ -13,7 +13,7 @@
   "Flamber advises that people avoid touching these environment variables."
   (set (edn/read-string (slurp (io/resource "metabase/cmd/resources/env-vars-to-avoid.edn")))))
 
-(defn- get-settings
+(defn get-settings
   "Loads all of the metabase namespaces, which loads all of the defsettings,
   which are registered in an atom in the settings namespace. Once settings are registered,
   This function derefs that atom and puts the settings into a sorted map for processing."
@@ -23,7 +23,10 @@
                  (str/includes? (name ns-symb) "metabase")
                  (not (str/includes? (name ns-symb) "test")))]
     (require ns-symb))
-  (seq (into (sorted-map) @setting/registered-settings)))
+  (->> @setting/registered-settings
+       (into (sorted-map))
+       seq
+       (map (fn [[_ v]] v))))
 
 ;;;; Formatting functions
 
@@ -106,9 +109,8 @@
 
 (defn format-env-var-docs
   "Preps relevant environment variable docs as a Markdown string."
-  []
-  (->> (get-settings)
-       (map (fn [[_ v]] v))
+  [settings]
+  (->> settings
        (filter setter?)
        (filter active?)
        (remove avoid?)
@@ -124,5 +126,5 @@
   []
   (println "Generating docs for environment variables...")
   (spit (io/file "docs/configuring-metabase/environment-variables.md") (apply str (format-intro)
-                                                                              (str/join "\n\n" (format-env-var-docs))))
+                                                                              (str/join "\n\n" (format-env-var-docs (get-settings)))))
   (println "Done."))
