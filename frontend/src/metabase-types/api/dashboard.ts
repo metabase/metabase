@@ -43,6 +43,7 @@ export type DashboardOrderedCard = BaseDashboardOrderedCard & {
   card: SavedCard;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: SavedCard[];
+  action?: WritebackAction;
 };
 
 export type DashboardParameterMapping = {
