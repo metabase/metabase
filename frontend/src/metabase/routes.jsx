@@ -41,7 +41,7 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 
-import NewDatasetOptions from "metabase/new_model/containers/NewModelOptions";
+import NewModelOptions from "metabase/new_model/containers/NewModelOptions";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
@@ -244,11 +244,7 @@ export const getRoutes = store => (
 
         <Route path="/model">
           <IndexRoute component={QueryBuilder} />
-          <Route
-            path="new"
-            title={t`New Model`}
-            component={NewDatasetOptions}
-          />
+          <Route path="new" title={t`New Model`} component={NewModelOptions} />
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
