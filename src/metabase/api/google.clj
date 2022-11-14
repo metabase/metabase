@@ -9,7 +9,7 @@
             [toucan.db :as db]))
 
 (api/defendpoint PUT "/settings"
-  "Update Google Sign-In related settings. You must be a superuser to do this."
+  "Update Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."
   [:as {{:keys [google-auth-client-id google-auth-enabled google-auth-auto-create-accounts-domain]} :body}]
   {google-auth-client-id                   s/Str
    google-auth-enabled                     (s/maybe s/Bool)
@@ -20,5 +20,15 @@
    (setting/set-many! {:google-auth-client-id                   google-auth-client-id
                        :google-auth-auto-create-accounts-domain google-auth-auto-create-accounts-domain})
    (google/google-auth-enabled! google-auth-enabled)))
+
+(api/defendpoint DELETE "/settings"
+  "Reset Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."
+  []
+  (validation/check-has-application-permission :setting)
+  (setting/set-many! {
+                       :google-auth-enabled false
+                       :google-auth-client-id nil
+                       :google-auth-auto-create-accounts-domain nil })
+  api/generic-204-no-content)
 
 (api/define-routes)
