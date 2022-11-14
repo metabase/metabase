@@ -41,11 +41,7 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 
-<<<<<<< HEAD
 import NewModelOptions from "metabase/new_model/containers/NewModelOptions";
-=======
-import NewDatasetOptions from "metabase/new_model/containers/NewModelOptions";
->>>>>>> 55465d77c6 (Rename s/dataset/model)
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
