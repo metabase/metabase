@@ -40,15 +40,19 @@ describe(
       getLdapCard().findByText("Active").should("exist");
     });
 
-    it("should allow to disable ldap", () => {
+    it("should allow to disable and enable ldap", () => {
       setupLdap();
       cy.visit("/admin/settings/authentication");
 
       getLdapCard().icon("ellipsis").click();
       popover().findByText("Pause").click();
       cy.wait("@updateSetting");
-
       getLdapCard().findByText("Paused").should("exist");
+
+      getLdapCard().icon("ellipsis").click();
+      popover().findByText("Resume").click();
+      cy.wait("@updateSetting");
+      getLdapCard().findByText("Active").should("exist");
     });
 
     it("should allow to reset ldap settings", () => {

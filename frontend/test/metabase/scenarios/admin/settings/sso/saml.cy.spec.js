@@ -42,15 +42,19 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     getSamlCard().findByText("Active").should("exist");
   });
 
-  it("should allow to disable saml", () => {
+  it("should allow to disable and enable saml", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication");
 
     getSamlCard().icon("ellipsis").click();
     popover().findByText("Pause").click();
     cy.wait("@updateSetting");
-
     getSamlCard().findByText("Paused").should("exist");
+
+    getSamlCard().icon("ellipsis").click();
+    popover().findByText("Resume").click();
+    cy.wait("@updateSetting");
+    getSamlCard().findByText("Active").should("exist");
   });
 
   it("should allow to reset saml settings", () => {

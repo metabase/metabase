@@ -26,15 +26,19 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     getJwtCard().findByText("Active").should("exist");
   });
 
-  it("should allow to disable jwt", () => {
+  it("should allow to disable and enable jwt", () => {
     setupJwt();
     cy.visit("/admin/settings/authentication");
 
     getJwtCard().icon("ellipsis").click();
     popover().findByText("Pause").click();
     cy.wait("@updateSetting");
-
     getJwtCard().findByText("Paused").should("exist");
+
+    getJwtCard().icon("ellipsis").click();
+    popover().findByText("Resume").click();
+    cy.wait("@updateSetting");
+    getJwtCard().findByText("Active").should("exist");
   });
 
   it("should allow to reset jwt settings", () => {

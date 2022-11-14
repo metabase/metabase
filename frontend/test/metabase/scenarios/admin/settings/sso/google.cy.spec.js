@@ -31,15 +31,19 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.findByText("Success").should("be.visible");
   });
 
-  it("should allow to disable google auth (metabase#20442)", () => {
+  it("should allow to disable and enable google auth (metabase#20442)", () => {
     setupGoogleAuth();
     cy.visit("/admin/settings/authentication");
 
     getGoogleCard().icon("ellipsis").click();
     popover().findByText("Pause").click();
     cy.wait("@updateSetting");
-
     getGoogleCard().findByText("Paused").should("exist");
+
+    getGoogleCard().icon("ellipsis").click();
+    popover().findByText("Resume").click();
+    cy.wait("@updateSetting");
+    getGoogleCard().findByText("Active").should("exist");
   });
 
   it("should allow to reset google settings", () => {
