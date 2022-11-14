@@ -1,4 +1,8 @@
-import { restore, typeAndBlurUsingLabel } from "__support__/e2e/helpers";
+import {
+  popover,
+  restore,
+  typeAndBlurUsingLabel,
+} from "__support__/e2e/helpers";
 
 const CLIENT_ID_SUFFIX = "apps.googleusercontent.com";
 
@@ -29,12 +33,11 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     setupGoogleAuth();
     cy.visit("/admin/settings/authentication");
 
-    cy.findByRole("switch", { name: "Sign in with Google" }).click();
+    getAuthCard("Sign in with Google").icon("ellipsis").click();
+    popover().findByText("Pause").click();
     cy.wait("@updateSetting");
-    cy.findByRole("switch", { name: "Sign in with Google" }).should(
-      "not.be.checked",
-    );
-    cy.findByText("Saved").should("exist");
+
+    cy.findByText("Paused").should("exist");
   });
 
   it("should show an error message if the client id does not end with the correct suffix (metabase#15975)", () => {
@@ -63,6 +66,10 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.findByRole("button", { name: /Google/ }).should("not.exist");
   });
 });
+
+const getAuthCard = title => {
+  return cy.findByText(title).parent();
+};
 
 const setupGoogleAuth = ({ enabled = true } = {}) => {
   cy.request("PUT", "/api/google/settings", {
