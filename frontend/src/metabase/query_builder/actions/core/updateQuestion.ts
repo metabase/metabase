@@ -163,7 +163,7 @@ export const updateQuestion = (
     const isPivot = newQuestion.display() === "pivot";
     const wasPivot = currentQuestion?.display() === "pivot";
 
-    if (wasPivot || isPivot) {
+    if ((wasPivot || isPivot) && queryBuilderMode === "notebook") {
       const hasBreakouts =
         newQuestion.isStructured() &&
         (newQuestion.query() as StructuredQuery).hasBreakouts();
