@@ -90,14 +90,16 @@
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 1024
     },
     "application_database_version": {
       "description": "Application database version",
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "maxLength": 1024
     }
   },
   "required": [
