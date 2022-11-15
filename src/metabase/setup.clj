@@ -42,4 +42,5 @@
   :getter     (fn []
                 (let [user-exists? (atom false)]
                   (or @user-exists?
-                      (reset! user-exists? (db/exists? User))))))
+                      (reset! user-exists? (db/exists? User)))))
+  :doc        false)
