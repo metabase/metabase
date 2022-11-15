@@ -11,6 +11,7 @@ export interface LdapAuthSetting {
 export interface LdapAuthCardProps {
   setting: LdapAuthSetting;
   isConfigured: boolean;
+  isSsoEnabled: boolean;
   onChange: (value: boolean) => void;
   onChangeSettings: (values: Partial<Settings>) => void;
 }
@@ -18,12 +19,14 @@ export interface LdapAuthCardProps {
 const LdapAuthCard = ({
   setting,
   isConfigured,
+  isSsoEnabled,
   onChange,
   onChangeSettings,
 }: LdapAuthCardProps): JSX.Element => {
   const handleDeactivate = useCallback(async () => {
-    await onChangeSettings?.(LDAP_SCHEMA.getDefault());
-  }, [onChangeSettings]);
+    const defaults = LDAP_SCHEMA.getDefault({ context: { isSsoEnabled } });
+    await onChangeSettings?.(defaults);
+  }, [isSsoEnabled, onChangeSettings]);
 
   return (
     <AuthCard

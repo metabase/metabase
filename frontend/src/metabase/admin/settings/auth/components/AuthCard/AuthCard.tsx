@@ -22,7 +22,7 @@ export interface AuthCardProps {
   isEnabled: boolean;
   isConfigured: boolean;
   onChange: (value: boolean) => void;
-  onDeactivate?: () => void;
+  onDeactivate: () => void;
 }
 
 const AuthCard = ({
@@ -46,7 +46,7 @@ const AuthCard = ({
   }, []);
 
   const handleDeactivate = useCallback(async () => {
-    await onDeactivate?.();
+    await onDeactivate();
     handleClose();
   }, [onDeactivate, handleClose]);
 
@@ -62,7 +62,7 @@ const AuthCard = ({
         <AuthCardMenu
           isEnabled={isEnabled}
           onChange={onChange}
-          onDeactivate={onDeactivate && handleOpen}
+          onDeactivate={handleOpen}
         />
       )}
       {isOpened && (

@@ -22,5 +22,9 @@ export const LDAP_SCHEMA = Yup.object({
   "ldap-attribute-lastname": Yup.string().nullable().default(null),
   "ldap-group-sync": Yup.boolean().default(false),
   "ldap-group-base": Yup.string().nullable().default(null),
-  "ldap-group-mappings": Yup.object().default({}),
+  "ldap-group-mappings": Yup.object().default(null),
+  "ldap-group-membership-filter": Yup.string().when("$isSsoEnabled", {
+    is: true,
+    then: schema => schema.default(null),
+  }),
 });
