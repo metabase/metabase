@@ -130,6 +130,10 @@
   []
   {:status 200 :body "/default"})
 
+(api/defendpoint POST ["/complicated/:foo" :foo #"aa|bb"]
+  [foo]
+  {:status 200 :body foo})
+
 (api/define-routes)
 
 (deftest make-route-test
@@ -167,4 +171,6 @@
               (let [results (post content-type route)]
                 (is (= 500 (:status results)))
                 (is (re-find #"Invalid content-type" (:body results))))))))
+      (testing "works for more routes with regexes"
+        (is (= "aa" (:body (post :json "/complicated/aa")))))
       (finally (.stop server)))))
