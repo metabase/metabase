@@ -2,7 +2,7 @@ import { dashboard } from "./dashboards";
 import { question, dataset, tableRowsQuery } from "./questions";
 import { pulse } from "./pulses";
 
-export const exportFormats = ["csv", "xlsx", "json"];
+export const exportFormats = ["csv", "xlsx", "json", "pivoted.csv", "pivoted.xlsx"];
 
 export function accountSettings() {
   return "/account/profile";

@@ -7,16 +7,21 @@
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
            java.nio.charset.StandardCharsets))
 
+(defn csv-stream-options
+  [extension filename-prefix]
+  {:content-type              "text/csv"
+   :status                    200
+   :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.%s\""
+                                                             (or filename-prefix "query_result")
+                                                             (u.date/format (t/zoned-date-time))
+                                                             extension)}
+   :write-keepalive-newlines? false})
+
 (defmethod qp.si/stream-options :csv
   ([_]
    (qp.si/stream-options :csv "query_result"))
   ([_ filename-prefix]
-   {:content-type              "text/csv"
-    :status                    200
-    :headers                   {"Content-Disposition" (format "attachment; filename=\"%s_%s.csv\""
-                                                              (or filename-prefix "query_result")
-                                                              (u.date/format (t/zoned-date-time)))}
-    :write-keepalive-newlines? false}))
+   (csv-stream-options "csv" filename-prefix)))
 
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]

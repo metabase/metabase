@@ -1650,6 +1650,8 @@
           :embedded-question
           :json-download
           :map-tiles
+          :pivoted.csv-download
+          :pivoted.xlsx-download
           :public-dashboard
           :public-question
           :pulse

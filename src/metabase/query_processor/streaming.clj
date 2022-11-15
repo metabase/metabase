@@ -7,6 +7,7 @@
             [metabase.query-processor.streaming.csv :as qp.csv]
             [metabase.query-processor.streaming.interface :as qp.si]
             [metabase.query-processor.streaming.json :as qp.json]
+            [metabase.query-processor.streaming.pivoted-csv :as qp.pivoted-csv]
             [metabase.query-processor.streaming.xlsx :as qp.xlsx]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util :as u])
@@ -18,6 +19,7 @@
 ;; TODO - consider whether we should lazy-load these!
 (comment qp.csv/keep-me
          qp.json/keep-me
+         qp.pivoted-csv/keep-me
          qp.xlsx/keep-me)
 
 (defn- deduplicate-col-names
@@ -172,7 +174,8 @@
 (defmacro streaming-response
   "Return results of processing a query as a streaming response. This response implements the appropriate Ring/Compojure
   protocols, so return or `respond` with it directly. Pass the provided `context` to your query processor function of
-  choice. `export-format` is one of `:api` (for normal JSON API responses), `:json`, `:csv`, or `:xlsx` (for downloads).
+  choice. `export-format` is one of `:api` (for normal JSON API responses), `:json`, `:csv`/`:pivoted.csv`, or
+  `:xlsx`/`:pivoted.xlsx` (for downloads).
 
   Typical example:
 
@@ -187,7 +190,8 @@
   `(streaming-response* ~export-format ~filename-prefix (bound-fn [~context-binding] ~@body)))
 
 (defn export-formats
-  "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results
-  with extra metadata), but other types may be available if plugins are installed. (The interface is extensible.)"
+  "Set of valid streaming response formats. Currently, `:json`, `:csv`/`:pivoted.csv`, `:xlsx`/`:pivoted.xlsx`, and
+  `:api` (normal JSON API results with extra metadata), but other types may be available if plugins are
+  installed. (The interface is extensible.)"
   []
   (set (keys (methods qp.si/stream-options))))

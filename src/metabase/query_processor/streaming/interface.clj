@@ -1,5 +1,7 @@
 (ns metabase.query-processor.streaming.interface
-  (:require [potemkin.types :as p.types]))
+  (:require [metabase.query-processor :as qp]
+            [potemkin.types :as p.types]))
+
 (defmulti stream-options
   "Options for the streaming response for this specific stream type. See `metabase.async.streaming-response` for all
   available options."
@@ -26,3 +28,21 @@
   "Given a `export-format` and `java.io.Writer`, return an object that implements `StreamingResultsWriter`."
   {:arglists '(^metabase.query_processor.streaming.interface.StreamingResultsWriter [export-format ^java.io.OutputStream os])}
   (fn [export-format _] (keyword export-format)))
+
+(defmulti streaming-results-query-processor
+  "The query processor to use for the given export format. Defaults to `process-query-and-save-execution!`."
+  {:arglists '([export-format])}
+  keyword)
+
+(defmethod streaming-results-query-processor :default
+  [_export-format]
+  qp/process-query-and-save-execution!)
+
+(defmulti streaming-results-post-processor
+  "Returns a function that transform the results; defaults to a no-op function."
+  {:arglists '([export-format card-id])}
+  (fn [export-format _card-id] (keyword export-format)))
+
+(defmethod streaming-results-post-processor :default
+  [_export-format _card-id]
+  identity)

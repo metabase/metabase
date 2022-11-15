@@ -12,11 +12,11 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.query :as query]
             [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.query-processor.streaming.interface :as qp.si]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
@@ -176,10 +176,11 @@
   Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.mbql.schema/Context]] for all valid
   options."
   [card-id export-format
-   & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache]
-      :or   {constraints (qp.constraints/default-query-constraints)
-             context     :question
-             qp-runner   qp/process-query-and-save-execution!}}]
+   & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache post-processor]
+      :or   {constraints    (qp.constraints/default-query-constraints)
+             context        :question
+             qp-runner      (qp.si/streaming-results-query-processor export-format)
+             post-processor (qp.si/streaming-results-post-processor export-format card-id)}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [run   (or run
                   ;; param `run` can be used to control how the query is ran, e.g. if you need to
@@ -209,4 +210,4 @@
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
-    (run query info)))
+    (post-processor (run query info))))

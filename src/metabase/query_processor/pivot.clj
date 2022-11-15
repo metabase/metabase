@@ -209,6 +209,9 @@
   ([query info]
    (run-pivot-query query info nil))
   ([query info context]
+   (def xq query)
+   (def xi info)
+   (println "\n\n\n\n===================\n\nhere we are")
    (binding [qp.perms/*card-id* (get info :card-id)]
      (qp.store/with-store
        (let [context                 (merge (context.default/default-context) context)
