@@ -38,8 +38,8 @@ const ChartSettingFieldPicker = ({
   let seriesKey;
   if (series && columnKey && showColorPicker) {
     const seriesForColumn = series.find(single => {
-      const tempColumn = single.data.cols[1];
-      return getColumnKey(tempColumn) === columnKey;
+      const metricColumn = single.data.cols[1];
+      return getColumnKey(metricColumn) === columnKey;
     });
     if (seriesForColumn) {
       seriesKey = keyForSingleSeries(seriesForColumn);
