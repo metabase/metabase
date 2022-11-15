@@ -329,7 +329,6 @@
 (defn- connecting-with-local-keypair?
   [{:keys [account password private-key-options private-key-value private_key_file user]}]
   (and (nil? password)
-       (= private-key-options "local")
        (nil? private_key_file)
        (some? private-key-value)
        (some? account)

@@ -242,3 +242,122 @@
                                             :regionid "us-west-1"}}]
                              (is (= {:account "my-instance.us-west-1"}
                                     (:details db)))))))
+
+(def ^:private test-public-key
+  "n.b. this has had lines like ^--.*--$ and newlines stripped."
+  "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0UNAZzlbi0Kx9758Mc03HjNmVqYuGD+8eEvaEY59jvkc+LDQEZY8Jg2IN67K5bwXOCgBpQ6vBrUHQujy4lnFmelKmcMpqEPQnpmn5dyS/kQDTzqjSZnE7yDuHUQgE8dn2atkFhcFaDgvkBjIvRXGS4AyRvhy8jAdNEhIGRqQo+5B2wANpqcakHwmfifmEhMYXd1uE8tzuVFLcL/dOhjm1kM/eSwzETD90pB+L16FFcvSYfJ91/jnFKADpCg6/vUBLz+tHHGOKXce5vwRXURb/CENr1J1J5TsOLOTeaw9PlMy5CTYsuLDNTbWGWLd8ne8pG2CG+wB2woSRyAgJuyr5QIDAQAB")
+
+(def ^:private test-private-key
+  "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDRQ0BnOVuLQrH3\nvnwxzTceM2ZWpi4YP7x4S9oRjn2O+Rz4sNARljwmDYg3rsrlvBc4KAGlDq8GtQdC\n6PLiWcWZ6UqZwymoQ9Cemafl3JL+RANPOqNJmcTvIO4dRCATx2fZq2QWFwVoOC+Q\nGMi9FcZLgDJG+HLyMB00SEgZGpCj7kHbAA2mpxqQfCZ+J+YSExhd3W4Ty3O5UUtw\nv906GObWQz95LDMRMP3SkH4vXoUVy9Jh8n3X+OcUoAOkKDr+9QEvP60ccY4pdx7m\n/BFdRFv8IQ2vUnUnlOw4s5N5rD0+UzLkJNiy4sM1NtYZYt3yd7ykbYIb7AHbChJH\nICAm7KvlAgMBAAECggEAGczA0/kuYC0I5BKIHVu/v+l2ZJh4dmTlR6+SYze+IzJz\nb/XcsU5kfAyPDs5uFYTrF/FWwpLc4WbQTl+KEn4e7qrkl7CIIka6IdOv75cSSGb6\nQXppR1m9/f2BXfpYOhgLpbqLzG1qLT9AHfPwS9+zYvubN0TKZzGnaBrBSNcNnig4\nfAJIWXDu3qlJiTtJFDTAsVxJDVSzMem2TwWg5E0MsRhBZRDMm+SCJ4GMMQcEHbGy\nVJvX2HlHLO8GsNT0czo1V4spaykg9iS7W+eJP+ERYOl68n8Lr6r0CWywMGKrExux\nSXahblIRBcVVByvi7pAfbujptSkOtWL89YX2FDXiAQKBgQD/jyi3LlkQsH2MWwLo\n5+7Hid2QeQqS5O7WzNMNzPiU5oC9sBFwSbVtzZto/cH028ke2sAfBeEx6TZ5BAXT\nAZZcs6pN0CluOcd9eGcvDK3u1uvkQJScK39PRnsDRICN5isxNQx7DAA0wNY2l7qL\nHmFItlITn7nYRVsRyUm+DF4O2QKBgQDRn6aIyqP0Fv3V4BOuGXtaRCB8ed/Iy1ua\n4+1R5lkQme6H9B/G8II27QOqqCG5I4V9FjWGOXiK5cQq0fOZ6qfgPrxgHIyu6e3v\neqf77u4V4/n7besFoqd94nuuNZZIwud8tGuqCqO3xkyCuOJM69ERG/kxtumMfEiH\nEME7QTY17QKBgEdUOdUHBqz11dT7AhDny2m+PS05242sgE1L1gygDTHiNES9g+CH\ncjA3lwzy5tPlFHmcLMt75KL9qMqWKNoAM2ukagBV/XpafiezF3m2XEWxjx2iONht\n+5aw4VzEHe19NMkDOXyOmPAgcqnCJ7r0u8qDuNzpVAHdOdH5ELAO26HhAoGBAIvP\nDUVi0eL0iqvg3X9ao3jaw0gCCQ1lBF3T8u6S0YhPAlZOrfsDYfW8MpvZs1RFqrx4\n2Y4COrF4+VMN4IkhhoH7lawMno/yma0Fg5B2FPkoqgvVjdCeYVOGgLL6Lpes1rPH\nqZ8ppXPmoBT3todTKIdevt83faEjK0RaGmao4b0pAoGBAKPVn2y6sJcfvWkWeCpC\n+S57MZLA6kLKFX8yLAc0ZGWDZERWX9F4v098WyO1hqMuV3i25/1jSWKfN/fqiigZ\nOO5Z9Sl0QuYYWB/pbzM/1Os+NrZzjzfwuyrIBO/5AXgzpsHDKX72/PCdQWyrU3qL\nIhnZGKdWT7f/t/LdqtFcn6a4\n-----END PRIVATE KEY-----\n")
+
+(deftest keypair-auth-test
+  (mt/test-driver :snowflake
+    (testing "Should be able to connect as a user with an unencrypted keypair"
+      (let [{:keys [user] :as details} (mt/dbdef->connection-details :snowflake :db {:database-name "v3_snowflake_sample_data"})
+            spec    (sql-jdbc.conn/connection-details->spec :snowflake details)
+            _ (do (def details details) (def spec spec))]
+        (is (= {:can_connect 1} (first (jdbc/query spec "select 1 as can_connect")))
+            "Could not connect to snowflake.")
+
+        (is (= [{:status "Statement executed successfully."}]
+               (jdbc/with-db-transaction [db spec]
+                 (jdbc/query db "use role ACCOUNTADMIN;")
+                 (jdbc/query db (str "ALTER USER " user " SET rsa_public_key = '" test-public-key "';"))))
+            "Could not set public key.")
+
+        (is (= false
+               (try (driver/can-connect? :snowflake
+                                         (assoc details
+                                                :password nil
+                                                :private-key-value test-private-key))
+                    (catch Exception _ false))))
+
+        (is (= true
+               (driver/can-connect? :snowflake
+                                    (assoc details
+                                           :password nil
+                                           :private-key-value test-private-key
+                                           ;; Needs to be a db that user has access to.
+                                           :db "SNOWFLAKE_SAMPLE_DATA"))))
+
+
+        (is (= [{:status "Statement executed successfully."}]
+               (jdbc/with-db-transaction [db spec]
+                 (jdbc/query db "use role ACCOUNTADMIN;")
+                 (jdbc/query db (str "ALTER USER " user " SET rsa_public_key = null;")))))
+
+        (is (= [{:property "RSA_PUBLIC_KEY"
+                 :description "RSA public key of the user"
+                 :value "null"
+                 :default "null"}]
+               (filter #(= "RSA_PUBLIC_KEY" (:property %))
+                       (jdbc/query spec (str "DESCRIBE USER SNOWFLAKE_DEVELOPER"))))
+            "rsa key not cleared.")))))
+
+#_(deftest keypair-auth-test
+  (mt/test-driver :snowflake
+    (testing "Should be able to connect as a user with an unencrypted keypair"
+      (let [admin-details (mt/dbdef->connection-details :snowflake :db
+                                                        {:database-name "SNOWFLAKE_SAMPLE_DATA"})
+            admin-spec    (sql-jdbc.conn/connection-details->spec :snowflake admin-details)
+            _ (do (def admin-details admin-details) (def admin-spec admin-spec))
+            user "OWL_USER"
+            user-details (-> (mt/dbdef->connection-details :snowflake :db
+                                                           {:database-name "SNOWFLAKE_SAMPLE_DATA"})
+                             (assoc :password nil
+                                    :user user
+                                    :private-key-value private-key
+                                    :private-key-options "local"))
+            _ (def ud user-details)
+            user-spec (sql-jdbc.conn/connection-details->spec :snowflake user-details)]
+        (is (= {:can_connect 1} (first (jdbc/query admin-spec "select 1 as can_connect")))
+            "Could not connect to snowflake.")
+        (is (= [{:status "Statement executed successfully."}]
+               (jdbc/query admin-spec "use role DEVELOPER;")
+               (jdbc/query admin-spec (str "CREATE USER " user ";"))
+               (jdbc/query admin-spec (str "ALTER USER " user " SET rsa_public_key = '" public-key "';"))
+               (jdbc/query admin-spec (str "GRANT ROLE DEVELOPER TO USER " user ";"))
+               (jdbc/query admin-spec (str "DESCRIBE USER " user ";")))
+            "Could not create OWL_USER for snowflake.")
+
+        (jdbc/query admin-spec (str "DESCRIBE USER " user ";"))
+
+
+        #_{:warehouse "COMPUTE_WH",
+           :db "SNOWFLAKE_SAMPLE_DATA",
+           :role nil,
+           :private-key-path nil,
+           :password nil,
+           :private-key-options "local",
+           :private-key-source nil,
+           :advanced-options false,
+           :private-key-id 1,
+           :schema-filters-type "all",
+           :account "ls10467.us-east-2.aws",
+           :tunnel-enabled false,
+           :engine :snowflake,
+           :private_key_file "/var/folders/dw/_2dd8rzs1_1dvtbbt2tdsxy80000gn/T/metabase-secret_14685192043934707478.tmp",
+           :private-key-creator-id 4,
+           :connection-uri
+           "jdbc:snowflake://ls10467.us-east-2.aws.snowflakecomputing.com?user=BRYAN&private_key_file=/var/folders/dw/_2dd8rzs1_1dvtbbt2tdsxy80000gn/T/metabase-secret_14685192043934707478.tmp",
+           :user "BRYAN",
+           :private-key-created-at "2022-11-14T23:38:18.208281Z"}
+
+        (jdbc/query {:warehouse "COMPUTE_WH",
+                     :db "SNOWFLAKE_SAMPLE_DATA",
+                     :password nil,
+                     :account "ls10467.us-east-2.aws",
+                     :private_key_file "/var/folders/dw/_2dd8rzs1_1dvtbbt2tdsxy80000gn/T/metabase-secret_14685192043934707478.tmp",
+                     :connection-uri "jdbc:snowflake://ls10467.us-east-2.aws.snowflakecomputing.com?user=OWL_USER&private_key_file=/var/folders/dw/_2dd8rzs1_1dvtbbt2tdsxy80000gn/T/metabase-secret_14685192043934707478.tmp",
+                     :user "OWL_USER"} ["select 1"])
+
+        #_(is (= "?" (jdbc/query user-spec ["SHOW TABLES;"])))
+
+        (is (= [{:status "Statement executed successfully."}]
+               (jdbc/query admin-spec
+                           ["use role DEVELOPER;"
+                            (str "DROP USER " user ";")])))))))
+
+;; (def user "OWL_USER")
+;; (def deats details)
+;; (def spec admin-specn-spec)
