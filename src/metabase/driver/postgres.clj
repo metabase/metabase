@@ -351,7 +351,19 @@
 (defmethod sql.qp/->honeysql [:postgres :datetime-diff]
   [driver [_ x y unit]]
   (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)]
+        y (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [v]
+                            (when-let [db-type (keyword (hx/type-info->db-type (hx/type-info v)))]
+                              (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
+                                (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
+                                  (name db-type)))))
+                          [x y])]
+    (when (seq disallowed-types)
+      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                           (pr-str disallowed-types))
+                      {:found disallowed-types
+                       :type  qp.error-type/invalid-parameter})))
     (-> (datetime-diff-helper x y unit)
         (hx/with-database-type-info :integer))))
 

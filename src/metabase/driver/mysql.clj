@@ -356,7 +356,19 @@
 (defmethod sql.qp/->honeysql [:mysql :datetime-diff]
   [driver [_ x y unit :as clause]]
   (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)]
+        y (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [v]
+                            (when-let [db-type (keyword (hx/type-info->db-type (hx/type-info v)))]
+                              (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
+                                (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
+                                  (name db-type)))))
+                          [x y])]
+    (when (seq disallowed-types)
+      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                           (pr-str disallowed-types))
+                      {:found disallowed-types
+                       :type  qp.error-type/invalid-parameter})))
     (case unit
       (:year :month)
       (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))
@@ -374,8 +386,7 @@
       (throw (ex-info (tru "Invalid datetime-diff unit {0}" unit)
                       {:clause      clause
                        :valid-units [:year :month :week :day :hour :minute :second]
-                       :type        qp.error-type/invalid-query})))))
-
+                       :type        qp.error-type/invalid-parameter})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

@@ -555,7 +555,8 @@
        (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
                      (pr-str disallowed-types))
                 {:allowed #{:timestamp :datetime :date}
-                 :found   disallowed-types})))
+                 :found   disallowed-types
+                 :type    qp.error-type/invalid-parameter})))
     (case unit
       (:year :month)
       (let [; timestamp_diff doesn't support months or years, so convert to datetime to use datetime_diff
@@ -596,7 +597,7 @@
       (throw (ex-info (tru "Invalid datetime-diff unit {0}" unit)
                       {:clause      clause
                        :valid-units [:year :month :week :day :hour :minute :second]
-                       :type        qp.error-type/invalid-query})))))
+                       :type        qp.error-type/invalid-parameter})))))
 
 (defmethod driver/escape-alias :bigquery-cloud-sdk
   [driver s]

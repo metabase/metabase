@@ -494,22 +494,24 @@
                                    [:expression "datediff2-add"]]})))))))))
 
 (deftest datetime-diff-type-test
-  (mt/test-drivers #{:bigquery-cloud-sdk}
+  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
+    (testing "Cannot datetime-diff against integer column"
+      (mt/dataset attempted-murders
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Only datetime, timestamp, or date types allowed. Found .*"
+             (mt/rows
+              (mt/run-mbql-query attempts
+                {:limit 1
+                 :fields      [[:expression "diff-day"]]
+                 :expressions {"diff-day" [:datetime-diff $num_crows $datetime_tz :day]}}))))))
     (testing "Cannot datetime-diff against time column"
-      (mt/dataset sample-dataset
+      (mt/dataset attempted-murders
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Only datetime, timestamp, or date types allowed. Found .*"
              (mt/rows
-              (mt/run-mbql-query orders
+              (mt/run-mbql-query attempts
                 {:limit 1
                  :fields      [[:expression "diff-day"]]
-                 :expressions {"diff-day" [:datetime-diff "2022-01-01T00:00:00" #t "00:00:01" :day]}}))))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Only datetime, timestamp, or date types allowed. Found .*"
-             (mt/rows
-              (mt/run-mbql-query orders
-                {:limit 1
-                 :fields      [[:expression "diff-day"]]
-                 :expressions {"diff-day" [:datetime-diff "2021-01-01" [:datetime-add #t "00:00:01" 3 "hour"] :day]}}))))))))
+                 :expressions {"diff-day" [:datetime-diff $time_tz $datetime_tz :day]}}))))))))
