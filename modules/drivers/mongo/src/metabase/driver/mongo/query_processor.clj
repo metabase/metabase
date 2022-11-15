@@ -320,18 +320,21 @@
 (defn- $date-from-string [s]
   {:$dateFromString {:dateString (str s)}})
 
+(defn- parse-datetime
+  [t]
+  (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
+                                   "UTC"))]
+    (condp = (class t)
+      java.time.LocalDate      t
+      java.time.LocalTime      t
+      java.time.LocalDateTime  t
+      java.time.OffsetTime     (t/with-offset-same-instant t (.. report-zone getRules (getOffset (t/instant t))))
+      java.time.OffsetDateTime (t/with-offset-same-instant t (.. report-zone getRules (getOffset (t/instant t))))
+      java.time.ZonedDateTime  (t/offset-date-time (t/with-zone-same-instant t (.. report-zone getRules (getOffset (t/instant t))))))))
+
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
-  (let [report-zone   (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
-                                     "UTC"))
-        report-offset (.. report-zone getRules (getOffset (t/instant t)))
-        t             (condp = (class t)
-                        java.time.LocalDate      t
-                        java.time.LocalTime      t
-                        java.time.LocalDateTime  t
-                        java.time.OffsetTime     (t/with-offset-same-instant t report-offset)
-                        java.time.OffsetDateTime (t/with-offset-same-instant t report-offset)
-                        java.time.ZonedDateTime  (t/offset-date-time (t/with-zone-same-instant t report-offset)))]
+  (let [t (parse-datetime t)]
     (letfn [(extract [unit]
               (u.date/extract t unit))
             (bucket [unit]
