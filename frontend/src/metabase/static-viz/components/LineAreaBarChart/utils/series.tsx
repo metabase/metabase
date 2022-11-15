@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { isNotNull } from "metabase/core/utils/array";
+import { isNotNull } from "metabase/core/utils/types";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { formatStaticValue } from "metabase/static-viz/lib/format-static-value";
 import { ColorPalette } from "metabase/lib/colors/types";
@@ -44,5 +44,5 @@ export function getSeriesWithColors(
 function hasBreakoutValues(
   series: SeriesWithBreakoutValues | SeriesWithoutBreakoutValues,
 ): series is SeriesWithBreakoutValues {
-  return Boolean((series as SeriesWithBreakoutValues).column);
+  return "column" in series;
 }
