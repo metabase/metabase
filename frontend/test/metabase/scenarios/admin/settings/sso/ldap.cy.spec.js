@@ -64,7 +64,7 @@ describe(
       modal().button("Deactivate").click();
       cy.wait("@deleteLdapSettings");
 
-      getLdapCard().button("Set up").should("exist");
+      getLdapCard().findByText("Set up").should("exist");
     });
 
     it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {

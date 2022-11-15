@@ -55,7 +55,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     modal().button("Deactivate").click();
     cy.wait("@deleteGoogleSettings");
 
-    getGoogleCard().button("Set up").should("exist");
+    getGoogleCard().findByText("Set up").should("exist");
   });
 
   it("should show an error message if the client id does not end with the correct suffix (metabase#15975)", () => {
