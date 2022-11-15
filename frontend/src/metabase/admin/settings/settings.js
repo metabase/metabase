@@ -146,6 +146,18 @@ export const updateLdapSettings = createThunkAction(
   },
 );
 
+export const DELETE_LDAP_SETTINGS =
+  "metabase/admin/settings/DELETE_LDAP_SETTINGS";
+export const deleteLdapSettings = createThunkAction(
+  DELETE_LDAP_SETTINGS,
+  function () {
+    return async function (dispatch) {
+      await LdapApi.deleteSettings();
+      await dispatch(reloadSettings());
+    };
+  },
+);
+
 export const UPDATE_GOOGLE_SETTINGS =
   "metabase/admin/settings/UPDATE_GOOGLE_SETTINGS";
 export const updateGoogleSettings = createThunkAction(

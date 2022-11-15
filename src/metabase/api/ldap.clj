@@ -97,7 +97,7 @@
       new-password)))
 
 (api/defendpoint PUT "/settings"
-  "Update LDAP related settings. You must be a superuser to do this."
+  "Update LDAP related settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
   {settings su/Map}
   (validation/check-has-application-permission :setting)
@@ -115,5 +115,14 @@
       ;; test failed, return result message
       {:status 500
        :body   (humanize-error-messages results)})))
+
+(api/defendpoint DELETE "/settings"
+  "Clear all LDAP related settings. You must be a superuser or have `setting` permission to do this."
+  []
+  (validation/check-has-application-permission :setting)
+  (db/transaction
+    (setting/set-many! (zipmap (keys ldap/mb-settings->ldap-details) (repeat nil)))
+    (setting/set-value-of-type! :boolean :ldap-enabled false))
+  api/generic-204-no-content)
 
 (api/define-routes)

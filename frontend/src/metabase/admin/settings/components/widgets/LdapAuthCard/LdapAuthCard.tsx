@@ -1,14 +1,22 @@
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
-import { State } from "metabase-types/store";
-import AuthCard from "../AuthCard";
+import { Dispatch, State } from "metabase-types/store";
+import { deleteLdapSettings } from "../../../settings";
+import AuthCard, { AuthCardProps } from "../AuthCard";
 
-const mapStateToProps = (state: State) => ({
+type StateProps = Omit<AuthCardProps, "setting" | "onChange" | "onDeactivate">;
+type DispatchProps = Pick<AuthCardProps, "onDeactivate">;
+
+const mapStateToProps = (state: State): StateProps => ({
   type: "ldap",
   name: t`LDAP`,
   description: t`Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups.`,
   isConfigured: getSetting(state, "ldap-configured?"),
 });
 
-export default connect(mapStateToProps)(AuthCard);
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  onDeactivate: () => dispatch(deleteLdapSettings()),
+});
+
+export default connect(mapStateToProps, mapDispatchToProps)(AuthCard);

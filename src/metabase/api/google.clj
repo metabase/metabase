@@ -22,13 +22,12 @@
    (google/google-auth-enabled! google-auth-enabled)))
 
 (api/defendpoint DELETE "/settings"
-  "Reset Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."
+  "Clear Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."
   []
   (validation/check-has-application-permission :setting)
-  (setting/set-many! {
-                       :google-auth-enabled false
-                       :google-auth-client-id nil
-                       :google-auth-auto-create-accounts-domain nil })
+  (setting/set-many! {:google-auth-enabled false
+                      :google-auth-client-id nil
+                      :google-auth-auto-create-accounts-domain nil})
   api/generic-204-no-content)
 
 (api/define-routes)
