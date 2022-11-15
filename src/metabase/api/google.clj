@@ -9,7 +9,7 @@
             [toucan.db :as db]))
 
 (api/defendpoint PUT "/settings"
-  "Update Google Sign-In related settings. You must be a superuser to do this."
+  "Update Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."
   [:as {{:keys [google-auth-client-id google-auth-enabled google-auth-auto-create-accounts-domain]} :body}]
   {google-auth-client-id                   s/Str
    google-auth-enabled                     (s/maybe s/Bool)
