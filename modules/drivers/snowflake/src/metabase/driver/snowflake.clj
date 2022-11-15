@@ -327,7 +327,7 @@
   #{"INFORMATION_SCHEMA"})
 
 (defn- connecting-with-local-keypair?
-  [{:keys [account password private-key-options private-key-value private_key_file user]}]
+  [{:keys [account password private-key-value private_key_file user]}]
   (and (nil? password)
        (nil? private_key_file)
        (some? private-key-value)
