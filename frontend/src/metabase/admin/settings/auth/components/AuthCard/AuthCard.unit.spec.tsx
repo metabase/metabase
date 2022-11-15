@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import AuthCard, { AuthSetting, AuthCardProps } from "./AuthCard";
+import AuthCard, { AuthCardProps } from "./AuthCard";
 
 describe("AuthCard", () => {
   it("should render when not configured", () => {
@@ -17,7 +17,7 @@ describe("AuthCard", () => {
 
   it("should pause active authentication", () => {
     const props = getProps({
-      setting: getSetting({ value: true }),
+      isEnabled: true,
       isConfigured: true,
     });
 
@@ -30,7 +30,7 @@ describe("AuthCard", () => {
 
   it("should resume paused authentication", () => {
     const props = getProps({
-      setting: getSetting({ value: false }),
+      isEnabled: false,
       isConfigured: true,
     });
 
@@ -43,7 +43,7 @@ describe("AuthCard", () => {
 
   it("should deactivate authentication", () => {
     const props = getProps({
-      setting: getSetting({ value: false }),
+      isEnabled: false,
       isConfigured: true,
     });
 
@@ -56,17 +56,11 @@ describe("AuthCard", () => {
   });
 });
 
-const getSetting = (opts?: Partial<AuthSetting>): AuthSetting => ({
-  value: false,
-  default: false,
-  ...opts,
-});
-
 const getProps = (opts?: Partial<AuthCardProps>): AuthCardProps => ({
-  setting: getSetting(),
   type: "type",
   name: "SSO",
   description: "SSO authentication",
+  isEnabled: false,
   isConfigured: false,
   onChange: jest.fn(),
   onDeactivate: jest.fn(),
