@@ -22,7 +22,7 @@
    (google/google-auth-enabled! google-auth-enabled)))
 
 (api/defendpoint DELETE "/settings"
-  "Clear Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."
+  "Clear all Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."
   []
   (validation/check-has-application-permission :setting)
   (setting/set-many! {:google-auth-enabled false
