@@ -1,14 +1,18 @@
-import { t } from "ttag";
 import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
-import AuthCard from "metabase/admin/settings/auth/components/AuthCard";
+import { updateSettings } from "metabase/admin/settings/settings";
 import { State } from "metabase-types/store";
+import JwtAuthCard, { JwtAuthCardProps } from "../../components/JwtAuthCard";
 
-const mapStateToProps = (state: State) => ({
-  type: "jwt",
-  name: t`JWT`,
-  description: t`Allows users to login via a JWT Identity Provider.`,
+type StateProps = Pick<JwtAuthCardProps, "isConfigured">;
+type DispatchProps = Pick<JwtAuthCardProps, "onChangeSettings">;
+
+const mapStateToProps = (state: State): StateProps => ({
   isConfigured: getSetting(state, "jwt-configured"),
 });
 
-export default connect(mapStateToProps)(AuthCard);
+const mapDispatchToProps: DispatchProps = {
+  onChangeSettings: updateSettings,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(JwtAuthCard);
