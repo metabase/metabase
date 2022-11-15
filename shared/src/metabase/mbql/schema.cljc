@@ -150,15 +150,6 @@
   "Schema for an ISO-8601-formatted time string literal."
   (s/constrained helpers/NonBlankString can-parse-time? "valid ISO-8601 time string literal"))
 
-(def TemporalLiteralString
-  "Schema for either a literal datetime string, literal date string, or a literal time string."
-  (s/named
-   (s/conditional
-    can-parse-datetime? LiteralDatetimeString
-    can-parse-date?     LiteralDateString
-    can-parse-time?     LiteralTimeString)
-   "valid ISO-8601 datetime, date, or time string literal"))
-
 ;; TODO - `unit` is not allowed if `n` is `current`
 (defclause relative-datetime
   n    (s/cond-pre (s/eq :current) s/Int)
