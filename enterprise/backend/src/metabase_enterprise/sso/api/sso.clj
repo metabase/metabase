@@ -43,7 +43,7 @@
                  :exceptionClass (.getName Exception)
                  :additionalData data}))})
 
-(api/defendpoint POST "/"
+(api/defendpoint ^{:content-types #{:content/form}} POST "/"
   "Route the SSO backends call with successful login details"
   [:as req]
   (throw-if-no-premium-features-token)
