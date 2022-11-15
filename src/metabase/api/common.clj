@@ -3,6 +3,7 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clout.core :as clout]
             [compojure.core :as compojure]
             [honeysql.types :as htypes]
             [medley.core :as m]
@@ -11,7 +12,7 @@
              [add-route-param-regexes auto-parse route-dox route-fn-name validate-params wrap-response-if-needed]]
             [metabase.models.interface :as mi]
             [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+            [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as schema]
             [toucan.db :as db]))
@@ -237,6 +238,46 @@
                                   (ns-name *ns*) fn-name)))
       (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
 
+(def ^:private content-type->regex
+  "A map of content type to a regex that should match that content type."
+  {:content/json #"^application/(.+\+)?json"
+   :content/form #"(^application/x-www-form-urlencoded)|(multipart/form-data)|(application/form)"})
+
+(defn content-type-matches?
+  "Takes the request's content type and the allowable content types (:content/json, :content/form) and verifies if the actual content type is allowed."
+  [actual allowable]
+  (letfn [(allowable-content? [content-type]
+            (re-find (content-type->regex content-type) actual))]
+    (some allowable-content? allowable)))
+
+(defn make-route
+  "Create a route for our defendpoint. For non-POST methods, just returns the route. For POST methods, adds a second
+  check that the content type matches expected. By default this is \"application/json\", but can supply others in
+  metadata like :content/form for form data."
+  [route method content-types]
+  (if (= (str/lower-case (name method)) "post")
+    (do
+      (when (seq content-types)
+        (run! (fn [content-type]
+                (or (content-type->regex content-type)
+                    (throw (ex-info (trs "Unrecognized content type: {0}\n Valid: {1}"
+                                         content-type
+                                         (keys content-type->regex))
+                                    {}))))
+              content-types))
+      `(let [route# (#'compojure/prepare-route ~route)
+             content-types# (or ~content-types #{:content/json})]
+         (reify clout/Route
+           (route-matches [_ request#]
+             (when-let [matched# (clout/route-matches route# request#)]
+               (let [content-type# (get-in request# [:headers "content-type"])]
+                 (if (content-type-matches? content-type# content-types#)
+                   matched#
+                   (throw (ex-info (tru "Invalid content-type")
+                                   {:provided content-type#
+                                    :available content-types#})))))))))
+    route))
+
 (defmacro defendpoint*
   "Impl macro for [[defendpoint]]; don't use this directly."
   [{:keys [method route fn-name docstr args body]}]
@@ -245,7 +286,11 @@
                     assoc
                     :doc          docstr
                     :is-endpoint? true)
-     (~(symbol "compojure.core" (name method)) ~route ~args
+     (~(symbol "compojure.core" (name method))
+      ~(make-route route
+                   (str/lower-case (name method))
+                   (:content-types (meta method) #{:content/json}))
+      ~args
       ~@body)))
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead

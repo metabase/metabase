@@ -1,10 +1,13 @@
 (ns metabase.api.common-test
-  (:require [clojure.test :refer :all]
+  (:require [clj-http.client :as http]
+            [clojure.test :refer :all]
+            [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.api.common.internal :as api.internal]
             [metabase.server.middleware.exceptions :as mw.exceptions]
             [metabase.server.middleware.misc :as mw.misc]
-            [metabase.server.middleware.security :as mw.security]))
+            [metabase.server.middleware.security :as mw.security]
+            [ring.adapter.jetty :as jetty]))
 
 ;;; TESTS FOR CHECK (ETC)
 
@@ -106,3 +109,62 @@
            (macroexpand '(metabase.api.common/defendpoint compojure.core/GET "/:id" [id]
                            {id metabase.util.schema/IntGreaterThanZero}
                            (select-one Card :id id)))))))
+
+(api/defendpoint ^{:content-types #{:content/json :content/form}} POST
+  "/both"
+  []
+  {:status 200 :body "/both"})
+
+(api/defendpoint ^{:content-types #{:content/json}} POST
+  "/json"
+  []
+  {:status 200 :body "/json"})
+
+(api/defendpoint ^{:content-types #{:content/form}} POST
+  "/form"
+  []
+  {:status 200 :body "/form"})
+
+(api/defendpoint POST
+  "/default"
+  []
+  {:status 200 :body "/default"})
+
+(api/define-routes)
+
+(deftest make-route-test
+  (testing "Throws if unrecognized content types are provided"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unrecognized content type: :content/unrecognized"
+                          (api/make-route "/foo"
+                                          "post"
+                                          #{:content/unrecognized}))))
+  (let [server (jetty/run-jetty routes {:port 0
+                                        :join? false})
+        port (.. server getURI getPort)
+        post (fn [content-type route]
+               (http/post (str "http://localhost:" port route)
+                          {:content-type content-type
+                           :throw-exceptions false}))]
+    (try
+      (testing "allows content-type"
+        (doseq [[route content-types] [["/both" [:json :form]]
+                                       ["/json" [:json]]
+                                       ["/form" [:form]]
+                                       ["/default" [:json]]]
+                content-type content-types]
+          (testing route
+            (testing content-type
+              (is (= route (:body (post content-type route))))))))
+      (testing "disallows non-allowed content-types"
+        (doseq [[route content-types] [["/both" [:text]]
+                                       ["/json" [:form :text]]
+                                       ["/form" [:json :text]]
+                                       ["/default" [:form :text]]]
+                content-type content-types]
+          (testing route
+            (testing content-type
+              (let [results (post content-type route)]
+                (is (= 500 (:status results)))
+                (is (re-find #"Invalid content-type" (:body results))))))))
+      (finally (.stop server)))))

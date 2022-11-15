@@ -1592,8 +1592,7 @@
 (defn- test-download-response-headers
   [url]
   (-> (client/client-full-response (test.users/username->token :rasta)
-                                   :post 200 url
-                                   :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
+                                   :post 200 url)
       :headers
       (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
       (update "Content-Disposition" #(some-> % (str/replace #"my_awesome_card_.+(\.\w+)"
@@ -1601,7 +1600,8 @@
 
 (deftest download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
-    (mt/with-temp Card [card {:name "My Awesome Card"}]
+    (mt/with-temp Card [card {:name "My Awesome Card"
+                              :dataset_query (mt/mbql-query checkins {:limit 1})}]
       (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
               "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.csv\""
               "Content-Type"        "text/csv"

@@ -784,7 +784,8 @@ saved later when it is ready."
    :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
-(api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
+(api/defendpoint ^:streaming ^{:content-types #{:content/json :content/form}} POST
+  "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
