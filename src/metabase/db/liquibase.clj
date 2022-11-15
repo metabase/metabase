@@ -220,7 +220,7 @@
      (throw (IllegalArgumentException.
              (trs "target version must be a number between 44 and the previous major version ({0}), inclusive" (current-major-version)))))
    ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
-   (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY `ORDEREXECUTED` ASC"
+   (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC"
                                  (changelog-table-name db-type))
          changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
          ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
