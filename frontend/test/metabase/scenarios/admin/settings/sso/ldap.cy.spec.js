@@ -1,5 +1,4 @@
 import {
-  modal,
   popover,
   restore,
   setupLdap,
@@ -53,18 +52,6 @@ describe(
       popover().findByText("Resume").click();
       cy.wait("@updateSetting");
       getLdapCard().findByText("Active").should("exist");
-    });
-
-    it("should allow to reset ldap settings", () => {
-      setupLdap();
-      cy.visit("/admin/settings/authentication");
-
-      getLdapCard().icon("ellipsis").click();
-      popover().findByText("Deactivate").click();
-      modal().button("Deactivate").click();
-      cy.wait("@deleteLdapSettings");
-
-      getLdapCard().button("Set up").should("exist");
     });
 
     it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {

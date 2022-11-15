@@ -1,6 +1,7 @@
 import React, { ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { Link } from "react-router";
+import { isNotNull } from "metabase/core/utils/types";
 import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
@@ -26,7 +27,7 @@ export interface AuthCardProps {
   description: string;
   isConfigured: boolean;
   onChange: (value: boolean) => void;
-  onDeactivate: () => void;
+  onDeactivate?: () => void;
 }
 
 const AuthCard = ({
@@ -51,7 +52,7 @@ const AuthCard = ({
   }, []);
 
   const handleDeactivate = useCallback(async () => {
-    await onDeactivate();
+    await onDeactivate?.();
     handleClose();
   }, [onDeactivate, handleClose]);
 
@@ -67,7 +68,7 @@ const AuthCard = ({
         <AuthCardMenu
           isEnabled={isEnabled}
           onChange={onChange}
-          onDeactivate={handleOpen}
+          onDeactivate={onDeactivate && handleOpen}
         />
       )}
       {isOpened && (
@@ -120,7 +121,7 @@ const AuthCardBody = ({
 interface AuthCardMenuProps {
   isEnabled: boolean;
   onChange: (isEnabled: boolean) => void;
-  onDeactivate: () => void;
+  onDeactivate?: () => void;
 }
 
 const AuthCardMenu = ({
@@ -129,18 +130,19 @@ const AuthCardMenu = ({
   onDeactivate,
 }: AuthCardMenuProps): JSX.Element => {
   const menuItems = useMemo(
-    () => [
-      {
-        title: isEnabled ? t`Pause` : t`Resume`,
-        icon: isEnabled ? "pause" : "play",
-        action: () => onChange(!isEnabled),
-      },
-      {
-        title: `Deactivate`,
-        icon: "close",
-        action: onDeactivate,
-      },
-    ],
+    () =>
+      [
+        {
+          title: isEnabled ? t`Pause` : t`Resume`,
+          icon: isEnabled ? "pause" : "play",
+          action: () => onChange(!isEnabled),
+        },
+        onDeactivate && {
+          title: `Deactivate`,
+          icon: "close",
+          action: onDeactivate,
+        },
+      ].filter(isNotNull),
     [isEnabled, onChange, onDeactivate],
   );
 

@@ -41,18 +41,6 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     getJwtCard().findByText("Active").should("exist");
   });
 
-  it("should allow to reset jwt settings", () => {
-    setupJwt();
-    cy.visit("/admin/settings/authentication");
-
-    getJwtCard().icon("ellipsis").click();
-    popover().findByText("Deactivate").click();
-    modal().button("Deactivate").click();
-    cy.wait("@deleteJwtSettings");
-
-    getJwtCard().button("Set up").should("exist");
-  });
-
   it("should allow to regenerate the jwt key and save the settings", () => {
     setupJwt();
     cy.visit("/admin/settings/authentication/jwt");

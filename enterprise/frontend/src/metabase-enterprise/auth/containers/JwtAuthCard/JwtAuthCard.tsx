@@ -2,8 +2,7 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
 import AuthCard from "metabase/admin/settings/components/widgets/AuthCard";
-import { Dispatch, State } from "metabase-types/store";
-import { deleteJwtSettings } from "../../actions";
+import { State } from "metabase-types/store";
 
 const mapStateToProps = (state: State) => ({
   type: "jwt",
@@ -12,8 +11,4 @@ const mapStateToProps = (state: State) => ({
   isConfigured: getSetting(state, "jwt-configured"),
 });
 
-const mapDispatchToProps = (dispatch: Dispatch) => ({
-  onDeactivate: () => dispatch(deleteJwtSettings()),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(AuthCard);
+export default connect(mapStateToProps)(AuthCard);

@@ -3,7 +3,6 @@ import {
   describeEE,
   typeAndBlurUsingLabel,
   popover,
-  modal,
 } from "__support__/e2e/helpers";
 
 describeEE("scenarios > admin > settings > SSO > SAML", () => {
@@ -55,18 +54,6 @@ describeEE("scenarios > admin > settings > SSO > SAML", () => {
     popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getSamlCard().findByText("Active").should("exist");
-  });
-
-  it("should allow to reset saml settings", () => {
-    setupSaml();
-    cy.visit("/admin/settings/authentication");
-
-    getSamlCard().icon("ellipsis").click();
-    popover().findByText("Deactivate").click();
-    modal().button("Deactivate").click();
-    cy.wait("@deleteSamlSettings");
-
-    getSamlCard().button("Set up").should("exist");
   });
 });
 

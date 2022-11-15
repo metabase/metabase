@@ -1,8 +1,7 @@
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
-import { Dispatch, State } from "metabase-types/store";
-import { deleteLdapSettings } from "../../../settings";
+import { State } from "metabase-types/store";
 import AuthCard from "../AuthCard";
 
 const mapStateToProps = (state: State) => ({
@@ -12,8 +11,4 @@ const mapStateToProps = (state: State) => ({
   isConfigured: getSetting(state, "ldap-configured?"),
 });
 
-const mapDispatchToProps = (dispatch: Dispatch) => ({
-  onDeactivate: () => dispatch(deleteLdapSettings()),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(AuthCard);
+export default connect(mapStateToProps)(AuthCard);

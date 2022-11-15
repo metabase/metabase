@@ -213,7 +213,6 @@ export const SlackApi = {
 
 export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
-  deleteSettings: DELETE("/api/ldap/settings"),
 };
 
 export const GoogleApi = {
