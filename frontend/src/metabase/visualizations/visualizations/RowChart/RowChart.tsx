@@ -5,16 +5,10 @@ import _ from "underscore";
 import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
 import { DatasetData, VisualizationSettings } from "metabase-types/api";
 
-import { formatValue } from "metabase/lib/formatting";
 import {
   getChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
-import {
-  getColumnValueFormatter,
-  getFormatters,
-  getLabelsFormatter,
-} from "metabase/visualizations/shared/utils/format";
 import { measureText } from "metabase/lib/measure-text";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import {
@@ -37,13 +31,18 @@ import {
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { GroupedDatum } from "metabase/visualizations/shared/types/data";
+import {
+  GroupedDatum,
+  SeriesInfo,
+} from "metabase/visualizations/shared/types/data";
 import { IconProps } from "metabase/components/Icon";
 import {
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
+import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
+import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -60,6 +59,11 @@ import {
   getXValueRange,
 } from "./utils/settings";
 import { ROW_CHART_SETTINGS } from "./utils/settings-definitions";
+import {
+  getColumnValueFormatter,
+  getFormatters,
+  getLabelsFormatter,
+} from "./utils/format";
 
 const RowChartRenderer = ExplicitSize({
   wrapped: true,
@@ -76,6 +80,7 @@ interface RowChartVisualizationProps {
   width: number;
   height: number;
   rawSeries: { data: DatasetData }[];
+  series: { data: DatasetData }[];
   settings: VisualizationSettings;
   visualizationIsClickable: (data: Record<string, unknown>) => boolean;
   onVisualizationClick: (data: Record<string, unknown>) => void;
@@ -90,6 +95,7 @@ interface RowChartVisualizationProps {
   onRender: (data: Record<string, unknown>) => void;
   onHoverChange: (data: Record<string, unknown> | null) => void;
   onChangeCardAndRun: (data: Record<string, unknown>) => void;
+  fontFamily: string;
 }
 
 const RowChartVisualization = ({
@@ -109,13 +115,16 @@ const RowChartVisualization = ({
   showTitle,
   onChangeCardAndRun,
   rawSeries: rawMultipleSeries,
+  series: multipleSeries,
+  fontFamily,
 }: RowChartVisualizationProps) => {
   const formatColumnValue = useMemo(() => {
-    return getColumnValueFormatter(formatValue);
+    return getColumnValueFormatter();
   }, []);
-  // Do not rely on the old series transformation API and use rawSeries instead of series here
-  const [rawSeries] = rawMultipleSeries;
-  const data = rawSeries.data;
+  const [chartSeries] = useMemo(() => {
+    return isPlaceholder ? multipleSeries : rawMultipleSeries;
+  }, [isPlaceholder, multipleSeries, rawMultipleSeries]);
+  const data = chartSeries.data;
 
   const { chartColumns, series, seriesColors } = useMemo(
     () => getTwoDimensionalChartSeries(data, settings, formatColumnValue),
@@ -143,29 +152,24 @@ const RowChartVisualization = ({
   );
 
   const tickFormatters = useMemo(
-    () => getFormatters(chartColumns, settings, formatValue),
+    () => getFormatters(chartColumns, settings),
     [chartColumns, settings],
   );
 
   const labelsFormatter = useMemo(
-    () => getLabelsFormatter(chartColumns, settings, formatValue),
+    () => getLabelsFormatter(chartColumns, settings),
     [chartColumns, settings],
   );
 
   const handleClick = (
     event: React.MouseEvent,
-    seriesIndex: number,
-    datumIndex: number,
+    bar: BarData<GroupedDatum, SeriesInfo>,
   ) => {
-    const clickData = getClickData(
-      seriesIndex,
-      datumIndex,
-      series,
-      groupedData,
-      settings,
-      chartColumns,
-      data.cols,
-    );
+    if (!bar.datum.isClickable) {
+      return;
+    }
+
+    const clickData = getClickData(bar, settings, chartColumns, data.cols);
 
     if (!visualizationIsClickable(clickData)) {
       return;
@@ -176,23 +180,15 @@ const RowChartVisualization = ({
 
   const handleHover = (
     event: React.MouseEvent,
-    seriesIndex: number | null,
-    datumIndex: number | null,
+    bar: BarData<GroupedDatum, SeriesInfo>,
   ) => {
-    if (seriesIndex == null || datumIndex == null) {
-      onHoverChange(null);
+    if (bar == null) {
+      onHoverChange?.(null);
       return;
     }
-    const hoverData = getHoverData(
-      seriesIndex,
-      datumIndex,
-      series,
-      groupedData,
-      settings,
-      chartColumns,
-      data.cols,
-    );
-    onHoverChange({
+    const hoverData = getHoverData(bar, settings, chartColumns, data.cols);
+
+    onHoverChange?.({
       ...hoverData,
       event: event.nativeEvent,
       element: event.target,
@@ -258,6 +254,14 @@ const RowChartVisualization = ({
     [settings],
   );
 
+  const textMeasurer = useMemo(() => {
+    return (text: string, style: FontStyle) =>
+      measureText(text, {
+        ...style,
+        family: fontFamily,
+      });
+  }, [fontFamily]);
+
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
       {hasTitle && (
@@ -291,7 +295,7 @@ const RowChartVisualization = ({
           stackOffset={stackOffset}
           tickFormatters={tickFormatters}
           labelsFormatter={labelsFormatter}
-          measureText={measureText}
+          measureText={textMeasurer}
           hoveredData={hoverData}
           onClick={handleClick}
           onHover={handleHover}
@@ -362,7 +366,7 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
   const computedSeries = getSeries(
     data,
     chartColumns,
-    getColumnValueFormatter(formatValue),
+    getColumnValueFormatter(),
   ).map(series => {
     const seriesCard = {
       ...card,

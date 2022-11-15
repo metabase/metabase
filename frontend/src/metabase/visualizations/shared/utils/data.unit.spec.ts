@@ -76,6 +76,7 @@ describe("data utils", () => {
         expect(groupedData).toStrictEqual([
           {
             dimensionValue: 2020,
+            isClickable: true,
             metrics: {
               count: 850,
               avg: 190,
@@ -83,6 +84,7 @@ describe("data utils", () => {
           },
           {
             dimensionValue: 2021,
+            isClickable: true,
             metrics: {
               count: 1050,
               avg: 230,
@@ -104,6 +106,7 @@ describe("data utils", () => {
       expect(groupedData).toStrictEqual([
         {
           dimensionValue: 2020,
+          isClickable: true,
           metrics: {
             count: 850,
             avg: 190,
@@ -121,6 +124,7 @@ describe("data utils", () => {
         },
         {
           dimensionValue: 2021,
+          isClickable: true,
           metrics: {
             count: 1050,
             avg: 230,
