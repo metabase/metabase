@@ -94,6 +94,16 @@
   (into [] (set/union #{(serdes.util/table->path table_id)}
                       (serdes.util/mbql-deps definition))))
 
+(defmethod serdes.base/storage-path "Metric" [metric _ctx]
+  (let [{:keys [id label]} (-> metric serdes.base/serdes-path last)]
+    (-> metric
+        :table_id
+        serdes.util/table->path
+        serdes.util/storage-table-path-prefix
+        (concat ["metrics" (serdes.base/storage-leaf-file-name id label)]))))
+
+(serdes.base/register-ingestion-path "Metric" (serdes.base/ingestion-matcher-collected "databases" "Metric"))
+
 ;;; ----------------------------------------------------- OTHER ------------------------------------------------------
 
 (s/defn retrieve-metrics :- [(mi/InstanceOf Metric)]

@@ -12,12 +12,17 @@
   (when-let [parent-ids (seq (filter some? (map (comp :parent_id qp.store/field) field-ids)))]
     (recur parent-ids)))
 
+(defn all-field-ids
+  "Given a query, finds the set of all field IDs it references."
+  [query]
+  (into (set (mbql.u/match (:query query) [:field (id :guard integer?) _] id))
+        (comp cat (keep :id))
+        (mbql.u/match (:query query) {:source-metadata source-metadata} source-metadata)))
+
 (defn resolve-fields
   "Resolve all field referenced in the `query`, and store them in the QP Store."
   [query]
-  (let [ids (into (set (mbql.u/match (:query query) [:field (id :guard integer?) _] id))
-                  (comp cat (keep :id))
-                  (mbql.u/match (:query query) {:source-metadata source-metadata} source-metadata))]
+  (let [ids (all-field-ids query)]
     (try
       (u/prog1 query
         (resolve-fields-with-ids! ids))
