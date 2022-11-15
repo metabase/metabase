@@ -359,7 +359,7 @@
         y (sql.qp/->honeysql driver y)
         disallowed-types (keep
                           (fn [v]
-                            (when-let [db-type (keyword (str/upper-case (hx/type-info->db-type (hx/type-info v))))]
+                            (when-let [db-type (some-> v hx/type-info hx/type-info->db-type keyword str/upper-case)]
                               (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
                                 (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
                                   (name db-type)))))
