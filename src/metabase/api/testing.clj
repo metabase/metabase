@@ -80,7 +80,7 @@
         (.. lock writeLock unlock))))
   :ok)
 
-(api/defendpoint POST "/restore/:name"
+(api/defendpoint ^{:content-types #{:content/*}} POST "/restore/:name"
   "Restore a database snapshot for testing purposes."
   [name]
   (restore-snapshot! name)

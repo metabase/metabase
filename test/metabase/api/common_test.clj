@@ -130,6 +130,11 @@
   []
   {:status 200 :body "/default"})
 
+(api/defendpoint ^{:content-types #{:content/*}} POST
+  "/any"
+  []
+  {:status 200 :body "/any"})
+
 (api/defendpoint POST ["/complicated/:foo" :foo #"aa|bb"]
   [foo]
   {:status 200 :body foo})
@@ -152,10 +157,11 @@
                            :throw-exceptions false}))]
     (try
       (testing "allows content-type"
-        (doseq [[route content-types] [["/both" [:json :form]]
-                                       ["/json" [:json]]
-                                       ["/form" [:form]]
-                                       ["/default" [:json]]]
+        (doseq [[route content-types] [["/both"    [:json :form]]
+                                       ["/json"    [:json]]
+                                       ["/form"    [:form]]
+                                       ["/default" [:json]]
+                                       ["/any"     [:json :text :form]]]
                 content-type content-types]
           (testing route
             (testing content-type

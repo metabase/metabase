@@ -241,14 +241,19 @@
 (def ^:private content-type->regex
   "A map of content type to a regex that should match that content type."
   {:content/json #"^application/(.+\+)?json"
-   :content/form #"(^application/x-www-form-urlencoded)|(multipart/form-data)|(application/form)"})
+   :content/form #"(^application/x-www-form-urlencoded)|(multipart/form-data)|(application/form)"
+   :content/*    (constantly true)})
 
 (defn content-type-matches?
   "Takes the request's content type and the allowable content types (:content/json, :content/form) and verifies if the actual content type is allowed."
   [actual allowable]
-  (letfn [(allowable-content? [content-type]
-            (re-find (content-type->regex content-type) actual))]
-    (some allowable-content? allowable)))
+  (when actual
+    (letfn [(allowable-content? [content-type]
+              (let [matcher (content-type->regex content-type)]
+                (if (instance? java.util.regex.Pattern matcher)
+                  (re-find (content-type->regex content-type) actual)
+                  (matcher actual))))]
+      (some allowable-content? allowable))))
 
 (defn make-route
   "Create a route for our defendpoint. For non-POST methods, just returns the route. For POST methods, adds a second
