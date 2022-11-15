@@ -14,6 +14,7 @@ export const CollectionSchema = new schema.Entity("collections");
 
 export const DatabaseSchema = new schema.Entity("databases");
 export const DataAppSchema = new schema.Entity("dataApps");
+export const DataAppCollectionSchema = new schema.Entity("dataAppCollections");
 export const SchemaSchema = new schema.Entity("schemas");
 export const TableSchema = new schema.Entity(
   "tables",

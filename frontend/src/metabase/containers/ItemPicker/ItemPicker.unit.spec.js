@@ -92,6 +92,10 @@ function mockCollectionEndpoint({ extraCollections = [] } = {}) {
 }
 
 function mockCollectionItemsEndpoint() {
+  xhrMock.get(/\/api\/collection\?namespace=apps/, (req, res) => {
+    return res.status(200).body(JSON.stringify([]));
+  });
+
   xhrMock.get(/\/api\/collection\/(root|[1-9]\d*)\/items.*/, (req, res) => {
     const collectionIdParam = req.url().path.split("/")[3];
     const collectionId =
