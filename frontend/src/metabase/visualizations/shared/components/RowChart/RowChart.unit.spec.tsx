@@ -25,7 +25,7 @@ const theme: RowChartTheme = {
   },
 };
 
-const measureText: TextMeasurer = (text: string, style: FontStyle) =>
+const measureText: TextMeasurer = (text: string, _style: FontStyle) =>
   text.length * 10;
 
 const series1 = {
@@ -107,7 +107,7 @@ describe("RowChart", () => {
 
     it("should render nice values for X-ticks ", () => {
       const { getAllByText } = setup({ series: [series1] });
-      const ticks = ["0", "50", "100", "150", "200", "250"];
+      const ticks = ["0", "100", "200"];
 
       // visx duplicates certain ticks
       ticks.forEach(tick => expect(getAllByText(tick)[0]).toBeInTheDocument());
@@ -130,17 +130,7 @@ describe("RowChart", () => {
         },
       });
 
-      const ticks = [
-        "y_foo",
-        "y_bar",
-        "y_baz",
-        "x_0",
-        "x_50",
-        "x_100",
-        "x_150",
-        "x_200",
-        "x_250",
-      ];
+      const ticks = ["y_foo", "y_bar", "y_baz", "x_0", "x_100", "x_200"];
 
       // visx duplicates certain ticks
       ticks.forEach(tick => expect(getAllByText(tick)[0]).toBeInTheDocument());
@@ -232,8 +222,15 @@ describe("RowChart", () => {
 
       expect(onClick).toHaveBeenCalledWith(
         expect.objectContaining({ currentTarget: expect.anything() }),
-        0, // first series
-        0, // first bar
+        expect.objectContaining({
+          datum: expect.objectContaining({ x: 100, x1: 200, y: "foo" }),
+          series: expect.objectContaining({
+            seriesKey: "series 1",
+            seriesName: "Series 1",
+          }),
+          datumIndex: 0,
+          isNegative: false,
+        }),
       );
 
       onClick.mockClear();
@@ -243,12 +240,19 @@ describe("RowChart", () => {
 
       expect(onClick).toHaveBeenCalledWith(
         expect.objectContaining({ currentTarget: expect.anything() }),
-        1, // second series
-        2, // third bar
+        expect.objectContaining({
+          datum: expect.objectContaining({ x: 300, x1: 600, y: "baz" }),
+          series: expect.objectContaining({
+            seriesKey: "series 2",
+            seriesName: "Series 2",
+          }),
+          datumIndex: 2,
+          isNegative: false,
+        }),
       );
     });
 
-    it("should call onClick with the clicked datum info", () => {
+    it("should call onHover with the clicked datum info", () => {
       const onHover = jest.fn();
 
       const { bars } = setup({ onHover });
@@ -256,8 +260,15 @@ describe("RowChart", () => {
 
       expect(onHover).toHaveBeenCalledWith(
         expect.objectContaining({ currentTarget: expect.anything() }),
-        0, // first series
-        0, // first bar
+        expect.objectContaining({
+          datum: expect.objectContaining({ x: 100, x1: 200, y: "foo" }),
+          series: expect.objectContaining({
+            seriesKey: "series 1",
+            seriesName: "Series 1",
+          }),
+          datumIndex: 0,
+          isNegative: false,
+        }),
       );
 
       onHover.mockClear();
@@ -267,8 +278,15 @@ describe("RowChart", () => {
 
       expect(onHover).toHaveBeenCalledWith(
         expect.objectContaining({ currentTarget: expect.anything() }),
-        1, // second series
-        2, // third bar
+        expect.objectContaining({
+          datum: expect.objectContaining({ x: 300, x1: 600, y: "baz" }),
+          series: expect.objectContaining({
+            seriesKey: "series 2",
+            seriesName: "Series 2",
+          }),
+          datumIndex: 2,
+          isNegative: false,
+        }),
       );
     });
 

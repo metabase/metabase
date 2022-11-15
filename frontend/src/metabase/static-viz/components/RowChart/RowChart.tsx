@@ -21,12 +21,11 @@ import {
   getLabelledSeries,
   getXValueRange,
 } from "metabase/visualizations/visualizations/RowChart/utils/settings";
-import { formatStaticValue } from "metabase/static-viz/lib/format-static-value";
 import {
-  getColumnValueFormatter,
-  getFormatters,
-  getLabelsFormatter,
-} from "metabase/visualizations/shared/utils/format";
+  getColumnValueStaticFormatter,
+  getLabelsStaticFormatter,
+  getStaticFormatters,
+} from "metabase/static-viz/lib/format";
 import { calculateLegendRows } from "../Legend/utils";
 import { Legend } from "../Legend";
 
@@ -57,7 +56,7 @@ const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) =>
   );
 
 const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
-  const columnValueFormatter = getColumnValueFormatter(formatStaticValue);
+  const columnValueFormatter = getColumnValueStaticFormatter();
 
   const { chartColumns, series, seriesColors } = getTwoDimensionalChartSeries(
     data,
@@ -69,20 +68,12 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
     chartColumns,
     columnValueFormatter,
   );
-  const labelsFormatter = getLabelsFormatter(
-    chartColumns,
-    settings,
-    formatStaticValue,
-  );
+  const labelsFormatter = getLabelsStaticFormatter(chartColumns, settings);
   const goal = getChartGoal(settings);
   const theme = getStaticChartTheme(getColor);
   const stackOffset = getStackOffset(settings);
 
-  const tickFormatters = getFormatters(
-    chartColumns,
-    settings,
-    formatStaticValue,
-  );
+  const tickFormatters = getStaticFormatters(chartColumns, settings);
 
   const { xLabel, yLabel } = getChartLabels(chartColumns, settings);
   const { hasXAxis, hasYAxis } = getAxesVisibility(settings);
