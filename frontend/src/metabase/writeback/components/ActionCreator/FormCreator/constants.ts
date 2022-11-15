@@ -77,14 +77,14 @@ export const getInputTypes = (): InputOptionsMap => ({
       value: "datetime",
       name: t`date + time`,
     },
-    {
-      value: "monthyear",
-      name: t`month + year`,
-    },
-    {
-      value: "quarteryear",
-      name: t`quarter + year`,
-    },
+    // {
+    //   value: "monthyear",
+    //   name: t`month + year`,
+    // },
+    // {
+    //   value: "quarteryear",
+    //   name: t`quarter + year`,
+    // },
   ],
   category: [...getSelectInputs()],
 });
