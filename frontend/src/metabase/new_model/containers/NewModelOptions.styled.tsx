@@ -11,7 +11,7 @@ const getPercentage = (number: number): string => {
   return `${number * 100}%`;
 };
 
-export const QueryOptionsRoot = styled.div`
+export const OptionsRoot = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -41,11 +41,11 @@ export const EducationalButton = styled(ExternalLink)`
   }
 `;
 
-export interface QueryOptionsGridItemProps {
+export interface OptionsGridItemProps {
   itemsCount: number;
 }
 
-export const QueryOptionsGridItem = styled(GridItem)<QueryOptionsGridItemProps>`
+export const OptionsGridItem = styled(GridItem)<OptionsGridItemProps>`
   width: 100%;
 
   ${breakpointMinSmall} {

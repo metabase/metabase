@@ -1,8 +1,8 @@
-(ns metabase-enterprise.config-from-file.databases
+(ns metabase-enterprise.advanced-config.file.databases
   (:require
    [clojure.spec.alpha :as s]
    [clojure.tools.logging :as log]
-   [metabase-enterprise.config-from-file.interface :as config-from-file.i]
+   [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.driver.util :as driver.u]
    [metabase.models.database :refer [Database]]
    [metabase.models.setting :refer [defsetting]]
@@ -17,21 +17,21 @@
   :type :boolean
   :default true)
 
-(s/def :metabase-enterprise.config-from-file.databases.config-file-spec/name
+(s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
   string?)
 
-(s/def :metabase-enterprise.config-from-file.databases.config-file-spec/engine
+(s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/engine
   string?)
 
-(s/def :metabase-enterprise.config-from-file.databases.config-file-spec/details
+(s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/details
   map?)
 
 (s/def ::config-file-spec
-  (s/keys :req-un [:metabase-enterprise.config-from-file.databases.config-file-spec/engine
-                   :metabase-enterprise.config-from-file.databases.config-file-spec/name
-                   :metabase-enterprise.config-from-file.databases.config-file-spec/details]))
+  (s/keys :req-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/engine
+                   :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
+                   :metabase-enterprise.advanced-config.file.databases.config-file-spec/details]))
 
-(defmethod config-from-file.i/section-spec :databases
+(defmethod advanced-config.file.i/section-spec :databases
   [_section]
   (s/spec (s/* ::config-file-spec)))
 
@@ -50,7 +50,7 @@
           ((requiring-resolve 'metabase.sync/sync-database!) db)
           (log/info (trs "Sync on database creation when initializing from file is disabled. Skipping sync.")))))))
 
-(defmethod config-from-file.i/initialize-section! :databases
+(defmethod advanced-config.file.i/initialize-section! :databases
   [_section-name databases]
   (doseq [database databases]
     (init-from-config-file! database)))
