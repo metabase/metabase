@@ -17,6 +17,7 @@ import type { WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { ActionCreator } from "metabase/writeback/components/ActionCreator";
+import type Question from "metabase-lib/Question";
 
 import {
   EmptyStateContainer,
@@ -29,14 +30,14 @@ const mapDispatchToProps = {
 };
 
 interface Props {
-  modelId: number;
+  model: Question;
   actions: WritebackAction[];
   enableImplicitActionsForModel: (modelId: number) => void;
 }
 
 function ModelActionDetails({
   actions,
-  modelId,
+  model,
   enableImplicitActionsForModel,
 }: Props) {
   const [editingActionId, setEditingActionId] = useState<number | undefined>(
@@ -54,7 +55,7 @@ function ModelActionDetails({
   };
 
   const handleCreateImplicitActions = async () => {
-    await enableImplicitActionsForModel(modelId);
+    await enableImplicitActionsForModel(model.id());
   };
 
   const handleItemClick = useCallback(
@@ -83,7 +84,7 @@ function ModelActionDetails({
 
   return (
     <>
-      {!modelHasImplicitActions && modelId && (
+      {!modelHasImplicitActions && model?.id() && (
         <Button onClick={handleCreateImplicitActions} icon="add">
           {t`Enable implicit actions`}
         </Button>
@@ -110,7 +111,8 @@ function ModelActionDetails({
       </ul>
       {isActionCreatorOpen && (
         <ActionCreator
-          modelId={modelId}
+          modelId={model.id()}
+          databaseId={model.databaseId()}
           actionId={editingActionId}
           onClose={closeModal}
         />
@@ -129,8 +131,8 @@ const AddActionButton = ({ onClick }: { onClick: () => void }) => (
 
 export default Actions.loadList(
   {
-    query: (state: State, props: { modelId?: number | null }) => ({
-      "model-id": props?.modelId,
+    query: (state: State, props: { model?: Question }) => ({
+      "model-id": props?.model?.id(),
     }),
   },
   connect(null, mapDispatchToProps),
