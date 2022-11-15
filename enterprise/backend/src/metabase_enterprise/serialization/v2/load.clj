@@ -58,9 +58,9 @@
                              (update :expanding disj path))
                 ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.
                 rebuilt-path    (serdes.base/serdes-path ingested)
-                local-pk-or-nil (serdes.base/load-find-local rebuilt-path)]
+                local-or-nil    (serdes.base/load-find-local rebuilt-path)]
             (try
-              (serdes.base/load-one! ingested local-pk-or-nil)
+              (serdes.base/load-one! ingested local-or-nil)
               ctx
               (catch Exception e
                 (throw (ex-info (format "Failed to load into database for %s" (pr-str path))
