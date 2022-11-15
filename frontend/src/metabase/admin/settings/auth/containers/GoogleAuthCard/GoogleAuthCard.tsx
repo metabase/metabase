@@ -4,7 +4,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { updateSettings } from "metabase/admin/settings/settings";
 import { Dispatch, State } from "metabase-types/store";
 import AuthCard, { AuthCardProps } from "../../components/AuthCard";
-import { GOOGLE_SCHEMA } from "../../utils";
+import { GOOGLE_SCHEMA } from "../../constants";
 
 type StateProps = Omit<AuthCardProps, "setting" | "onChange" | "onDeactivate">;
 type DispatchProps = Pick<AuthCardProps, "onDeactivate">;
