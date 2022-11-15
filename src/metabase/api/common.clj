@@ -247,13 +247,13 @@
 (defn content-type-matches?
   "Takes the request's content type and the allowable content types (:content/json, :content/form) and verifies if the actual content type is allowed."
   [actual allowable]
-  (when actual
-    (letfn [(allowable-content? [content-type]
-              (let [matcher (content-type->regex content-type)]
-                (if (instance? java.util.regex.Pattern matcher)
-                  (re-find (content-type->regex content-type) actual)
-                  (matcher actual))))]
-      (some allowable-content? allowable))))
+  (letfn [(allowable-content? [content-type]
+            (let [matcher (content-type->regex content-type)]
+              (if (instance? java.util.regex.Pattern matcher)
+                (when actual
+                  (re-find (content-type->regex content-type) actual))
+                (matcher actual))))]
+    (some allowable-content? allowable)))
 
 (defn make-route
   "Create a route for our defendpoint. For non-POST methods, just returns the route. For POST methods, adds a second

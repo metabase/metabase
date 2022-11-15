@@ -148,6 +148,9 @@
                           (api/make-route "/foo"
                                           "post"
                                           #{:content/unrecognized}))))
+  (testing "handles nil content-type"
+    (is (nil? (api/content-type-matches? nil #{:content/json})))
+    (is (api/content-type-matches? nil #{:content/*})))
   (let [server (jetty/run-jetty routes {:port 0
                                         :join? false})
         port (.. server getURI getPort)
