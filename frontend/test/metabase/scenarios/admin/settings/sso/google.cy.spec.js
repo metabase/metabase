@@ -11,9 +11,9 @@ describe("scenarios > admin > settings > SSO > Google", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/google/settings").as("updateGoogleSettings");
-    cy.intercept("DELETE", "/api/google/settings").as("deleteGoogleSettings");
   });
 
   it("should save the client id on subsequent tries (metabase#15974)", () => {
@@ -53,7 +53,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     getGoogleCard().icon("ellipsis").click();
     popover().findByText("Deactivate").click();
     modal().button("Deactivate").click();
-    cy.wait("@deleteGoogleSettings");
+    cy.wait("@updateSettings");
 
     getGoogleCard().findByText("Set up").should("exist");
   });

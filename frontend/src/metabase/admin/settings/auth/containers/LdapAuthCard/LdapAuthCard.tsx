@@ -1,20 +1,20 @@
+import { t } from "ttag";
 import { connect } from "react-redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { getSetting } from "metabase/selectors/settings";
 import { updateSettings } from "metabase/admin/settings/settings";
-import { State } from "metabase-types/store";
-import LdapAuthCard, { LdapAuthCardProps } from "../../components/LdapAuthCard";
+import { Dispatch, State } from "metabase-types/store";
+import AuthCard from "../../components/AuthCard";
+import { LDAP_SCHEMA } from "../../constants";
 
-type StateProps = Pick<LdapAuthCardProps, "isExtended" | "isConfigured">;
-type DispatchProps = Pick<LdapAuthCardProps, "onChangeSettings">;
-
-const mapStateToProps = (state: State): StateProps => ({
-  isExtended: MetabaseSettings.isEnterprise(),
+const mapStateToProps = (state: State) => ({
+  type: "ldap",
+  name: t`LDAP`,
+  description: t`Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups.`,
   isConfigured: getSetting(state, "ldap-configured?"),
 });
 
-const mapDispatchToProps: DispatchProps = {
-  onChangeSettings: updateSettings,
-};
+const mapDispatchToProps = (dispatch: Dispatch) => ({
+  onDeactivate: () => dispatch(updateSettings(LDAP_SCHEMA.getDefault())),
+});
 
-export default connect(mapStateToProps, mapDispatchToProps)(LdapAuthCard);
+export default connect(mapStateToProps, mapDispatchToProps)(AuthCard);

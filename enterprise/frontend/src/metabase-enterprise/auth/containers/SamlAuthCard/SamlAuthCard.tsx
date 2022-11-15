@@ -1,8 +1,10 @@
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
+import { updateSettings } from "metabase/admin/settings/settings";
 import AuthCard from "metabase/admin/settings/auth/components/AuthCard";
-import { State } from "metabase-types/store";
+import { Dispatch, State } from "metabase-types/store";
+import { SAML_SCHEMA } from "../../constants";
 
 const mapStateToProps = (state: State) => ({
   type: "saml",
@@ -11,4 +13,8 @@ const mapStateToProps = (state: State) => ({
   isConfigured: getSetting(state, "saml-configured"),
 });
 
-export default connect(mapStateToProps)(AuthCard);
+const mapDispatchToProps = (dispatch: Dispatch) => ({
+  onDeactivate: () => dispatch(updateSettings(SAML_SCHEMA.getDefault())),
+});
+
+export default connect(mapStateToProps, mapDispatchToProps)(AuthCard);

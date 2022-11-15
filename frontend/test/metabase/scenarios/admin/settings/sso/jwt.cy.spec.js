@@ -10,9 +10,8 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/setting").as("updateSettings");
-    cy.intercept("DELETE", "/api/ee/auth/jwt/settings").as("deleteJwtSettings");
+    cy.intercept("PUT", "/api/setting/*").as("updateSetting");
   });
 
   it("should allow to save and enable jwt", () => {
@@ -39,6 +38,18 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getJwtCard().findByText("Active").should("exist");
+  });
+
+  it("should allow to reset jwt settings", () => {
+    setupJwt();
+    cy.visit("/admin/settings/authentication");
+
+    getJwtCard().icon("ellipsis").click();
+    popover().findByText("Deactivate").click();
+    modal().button("Deactivate").click();
+    cy.wait("@updateSettings");
+
+    getJwtCard().findByText("Set up").should("exist");
   });
 
   it("should allow to regenerate the jwt key and save the settings", () => {

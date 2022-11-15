@@ -24,7 +24,3 @@ export const LDAP_SCHEMA = Yup.object({
   "ldap-group-base": Yup.string().nullable().default(null),
   "ldap-group-mappings": Yup.object().default(null),
 });
-
-export const LDAP_EXTENDED_SCHEMA = LDAP_SCHEMA.shape({
-  "ldap-group-membership-filter": Yup.string().nullable().default(null),
-});

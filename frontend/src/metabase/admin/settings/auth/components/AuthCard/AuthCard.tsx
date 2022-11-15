@@ -14,27 +14,32 @@ import {
   CardTitle,
 } from "./AuthCard.styled";
 
+export interface AuthSetting {
+  value: boolean | null;
+}
+
 export interface AuthCardProps {
+  setting: AuthSetting;
   type: string;
   name: string;
   title?: string;
   description: string;
-  isEnabled: boolean;
   isConfigured: boolean;
   onChange: (value: boolean) => void;
   onDeactivate: () => void;
 }
 
 const AuthCard = ({
+  setting,
   type,
   name,
   title = name,
   description,
-  isEnabled,
   isConfigured,
   onChange,
   onDeactivate,
 }: AuthCardProps) => {
+  const isEnabled = setting.value ?? false;
   const [isOpened, setIsOpened] = useState(false);
 
   const handleOpen = useCallback(() => {

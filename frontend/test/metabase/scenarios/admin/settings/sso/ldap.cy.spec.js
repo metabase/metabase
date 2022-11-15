@@ -13,9 +13,9 @@ describe(
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      cy.intercept("PUT", "/api/setting").as("updateSettings");
       cy.intercept("PUT", "/api/setting/*").as("updateSetting");
       cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
-      cy.intercept("DELETE", "/api/ldap/settings").as("deleteLdapSettings");
     });
 
     it("should setup ldap (metabase#16173)", () => {
@@ -62,7 +62,7 @@ describe(
       getLdapCard().icon("ellipsis").click();
       popover().findByText("Deactivate").click();
       modal().button("Deactivate").click();
-      cy.wait("@deleteLdapSettings");
+      cy.wait("@updateSettings");
 
       getLdapCard().findByText("Set up").should("exist");
     });
