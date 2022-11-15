@@ -544,8 +544,12 @@
   [driver [_ x y unit :as clause]]
   (let [x'               (sql.qp/->honeysql driver x)
         y'               (sql.qp/->honeysql driver y)
-        types            [(temporal-type x') (temporal-type y')]
-        disallowed-types (->> types (filter some?) (remove #{:timestamp :datetime :date}))]
+        disallowed-types (keep
+                          (fn [x]
+                            (when-not (contains? #{:timestamp :date :datetime} (temporal-type x))
+                              (or (some-> (temporal-type x) name)
+                                  (hx/type-info->db-type (hx/type-info x)))))
+                          [x' y'])]
     (when (seq disallowed-types)
       (throw
        (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
