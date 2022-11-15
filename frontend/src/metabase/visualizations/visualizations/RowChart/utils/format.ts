@@ -1,3 +1,4 @@
+import { NumberLike, StringLike } from "@visx/scale";
 import {
   DatasetColumn,
   RowValue,
@@ -16,7 +17,7 @@ export const getFormatters = (
   chartColumns: ChartColumns,
   settings: VisualizationSettings,
 ): ChartTicksFormatters => {
-  const yTickFormatter = (value: RowValue) => {
+  const yTickFormatter = (value: StringLike) => {
     return String(
       formatValue(value, {
         ...settings.column(chartColumns.dimension.column),
@@ -27,7 +28,7 @@ export const getFormatters = (
 
   const metricColumn = getLabelsMetricColumn(chartColumns);
 
-  const percentXTicksFormatter = (percent: any) => {
+  const percentXTicksFormatter = (percent: NumberLike) => {
     const column = metricColumn.column;
     const number_separators = settings.column(column)?.number_separators;
 
@@ -42,7 +43,7 @@ export const getFormatters = (
     );
   };
 
-  const xTickFormatter = (value: any) => {
+  const xTickFormatter = (value: NumberLike) => {
     return String(
       formatValue(value, {
         ...settings.column(metricColumn.column),
@@ -80,6 +81,6 @@ export const getLabelsFormatter = (
 };
 
 export const getColumnValueFormatter = () => {
-  return (value: any, column: DatasetColumn) =>
+  return (value: RowValue, column: DatasetColumn) =>
     String(formatValue(value, { column }));
 };
