@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import { Settings } from "metabase-types/api";
 import AuthCard from "../AuthCard";
-import { LDAP_SCHEMA } from "../../constants";
+import { LDAP_SCHEMA, LDAP_EXTENDED_SCHEMA } from "../../constants";
 
 export interface LdapAuthSetting {
   value: boolean | null;
@@ -10,23 +10,23 @@ export interface LdapAuthSetting {
 
 export interface LdapAuthCardProps {
   setting: LdapAuthSetting;
+  isExtended: boolean;
   isConfigured: boolean;
-  isSsoEnabled: boolean;
   onChange: (value: boolean) => void;
   onChangeSettings: (values: Partial<Settings>) => void;
 }
 
 const LdapAuthCard = ({
   setting,
+  isExtended,
   isConfigured,
-  isSsoEnabled,
   onChange,
   onChangeSettings,
 }: LdapAuthCardProps): JSX.Element => {
   const handleDeactivate = useCallback(async () => {
-    const defaults = LDAP_SCHEMA.getDefault({ context: { isSsoEnabled } });
-    await onChangeSettings?.(defaults);
-  }, [isSsoEnabled, onChangeSettings]);
+    const schema = isExtended ? LDAP_EXTENDED_SCHEMA : LDAP_SCHEMA;
+    await onChangeSettings(schema.getDefault());
+  }, [isExtended, onChangeSettings]);
 
   return (
     <AuthCard

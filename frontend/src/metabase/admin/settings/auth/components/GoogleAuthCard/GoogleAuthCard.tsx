@@ -22,8 +22,7 @@ const GoogleAuthCard = ({
   onChangeSettings,
 }: GoogleAuthCardProps): JSX.Element => {
   const handleDeactivate = useCallback(async () => {
-    const defaults = GOOGLE_SCHEMA.getDefault();
-    await onChangeSettings?.(defaults);
+    await onChangeSettings(GOOGLE_SCHEMA.getDefault());
   }, [onChangeSettings]);
 
   return (

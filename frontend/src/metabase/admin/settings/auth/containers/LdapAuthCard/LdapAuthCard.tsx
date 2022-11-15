@@ -5,12 +5,12 @@ import { updateSettings } from "metabase/admin/settings/settings";
 import { State } from "metabase-types/store";
 import LdapAuthCard, { LdapAuthCardProps } from "../../components/LdapAuthCard";
 
-type StateProps = Pick<LdapAuthCardProps, "isConfigured" | "isSsoEnabled">;
+type StateProps = Pick<LdapAuthCardProps, "isExtended" | "isConfigured">;
 type DispatchProps = Pick<LdapAuthCardProps, "onChangeSettings">;
 
 const mapStateToProps = (state: State): StateProps => ({
+  isExtended: MetabaseSettings.isEnterprise(),
   isConfigured: getSetting(state, "ldap-configured?"),
-  isSsoEnabled: MetabaseSettings.isEnterprise(),
 });
 
 const mapDispatchToProps: DispatchProps = {
