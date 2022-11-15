@@ -14,14 +14,14 @@ export function keyForSingleSeries(single) {
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
 
+export const settingId = "series_settings";
+export const colorSettingId = "series_settings.colors";
+
 export function seriesSetting({
   readDependencies = [],
   noPadding,
   ...def
 } = {}) {
-  const settingId = "series_settings";
-  const colorSettingId = "series_settings.colors";
-
   const COMMON_SETTINGS = {
     // title, and color don't need widgets because they're handled direclty in ChartNestedSettingSeries
     title: {

@@ -11,6 +11,7 @@ import Radio from "metabase/core/components/Radio";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
@@ -113,9 +114,8 @@ class ChartSettings extends Component {
   };
 
   handleChangeSeriesColor = (seriesKey, color) => {
-    const settings = this._getSettings();
     this.props.onChange(
-      assocIn(settings, ["series_settings", seriesKey, "color"], color),
+      updateSeriesColor(this._getSettings(), seriesKey, color),
     );
   };
 
