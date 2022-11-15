@@ -346,8 +346,7 @@
   [{:keys [user account private-key-value] :as details}]
   (let [private-key-str (byte-array->string private-key-value)
         private-key-file (secret/value->file! {:connection-property-name "private-key-file"
-                                               :id 39993
-                                               :value (byte-array->string private-key-str)})
+                                               :value private-key-str})
         new-conn-uri (format "jdbc:snowflake://%s.snowflakecomputing.com?user=%s&private_key_file=%s"
                              account
                              user
