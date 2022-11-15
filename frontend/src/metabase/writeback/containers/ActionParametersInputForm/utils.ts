@@ -1,3 +1,4 @@
+import moment from "moment-timezone";
 import { isEmpty } from "metabase/lib/validate";
 
 import type {
@@ -53,6 +54,15 @@ export const getInitialValues = (
   prefetchValues: ParametersForActionExecution,
 ) => {
   return Object.fromEntries(
-    form.fields.map(field => [field.name, prefetchValues[field.name] ?? ""]),
+    form.fields.map(field => {
+      const value = prefetchValues[field.name];
+      const formattedValue =
+        field.type === "date"
+          ? moment(value).format("YYYY-MM-DD")
+          : field.type === "datetime-local"
+          ? moment(value).format("YYYY-MM-DDThh:mm")
+          : value ?? "";
+      return [field.name, formattedValue];
+    }),
   );
 };
