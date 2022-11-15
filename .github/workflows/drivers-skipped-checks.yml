@@ -4,6 +4,14 @@
 name: Driver Tests
 
 on:
+  push:
+    branches:
+    - 'master'
+    - 'release-**'
+    paths:
+      - "docs/**"
+      - "**.md"
+      - "**/frontend/test/**"
   pull_request:
     paths:
       - "docs/**"
