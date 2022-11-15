@@ -8,8 +8,7 @@ on:
     paths:
       - "docs/**"
       - "**.md"
-      - "frontend/test/**"
-      - "enterprise/frontend/test/**"
+      - "**/frontend/test/**"
 
 jobs:
 
