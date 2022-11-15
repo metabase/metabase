@@ -171,12 +171,17 @@
 ;; Subtract the number of days needed to bring us to the first day of the week, then convert to date
 ;; The equivalent SQL looks like:
 ;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
-(defmethod sql.qp/date [:sqlserver :week]
-  [_ _ expr]
+
+(defn- trunc-week
+  [expr]
   (hx/->datetime
-   (date-add :day
-             (hx/- 1 (date-part :weekday expr) (driver.common/start-of-week-offset :sqlserver))
-             (hx/->date expr))))
+      (date-add :day
+                (hx/- 1 (date-part :weekday expr))
+                (hx/->date expr))))
+
+(defmethod sql.qp/date [:sqlserver :week]
+  [driver _ expr]
+  (sql.qp/adjust-start-of-week driver trunc-week expr))
 
 (defmethod sql.qp/date [:sqlserver :week-of-year-iso]
   [_ _ expr]

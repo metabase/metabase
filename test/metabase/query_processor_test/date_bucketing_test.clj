@@ -743,6 +743,25 @@
           (is (= [127 124 136]
                  (take 3 (test-break-out :week))))))))))
 
+(deftest week-of-year-and-week-count-should-be-consistent-test-2
+  (testing "consistent break out between weeks and week-of-year #4910"
+    (mt/test-drivers (mt/normal-drivers)
+      ;; 2019-01-01 is Tuesday, so set start-of-week to tuesday so
+      ;; breakout by week-of-year will have first row is the 1st week of year
+      (mt/with-start-of-week :wednesday
+       (mt/dataset test-data
+         (letfn [(test-break-out [unit] (->> (mt/mbql-query checkins
+                                                  {:filter      [:between $date "2014-01-01" "2014-12-31"]
+                                                   :breakout    [:field $date {:temporal-unit unit}]
+                                                   :aggregation [[:count]]})
+                                             mt/process-query
+                                             (mt/formatted-rows [str int])
+                                             (map second)))]
+          (is (= (test-break-out :week)
+                 (test-break-out :week-of-year)))
+          (is (= [10 3  6]
+                 (take 3 (test-break-out :week))))))))))
+
 ;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;; difference is how the beginning of hte month is represented, since we always return times with our dates
 (deftest group-by-month-test
