@@ -50,6 +50,15 @@
             :parameters request-parameters}
            e))))))
 
+(defn- handle-action-execution-error [ex]
+  (log/error ex (tru "Error executing action."))
+  (if-let [ed (ex-data ex)]
+    (if (:message ed)
+      (throw ex)
+      (throw (ex-info (ex-message ex) (assoc ed :message (ex-message ex)))))
+    {:body {:message (or (ex-message ex) (tru "Error executing action."))}
+     :status 500}))
+
 (defn- execute-custom-action [action-id request-parameters]
   (let [action (api/check-404 (first (action/select-actions :id action-id)))
         action-type (:type action)
@@ -73,11 +82,7 @@
         :http
         (http-action/execute-http-action! action request-parameters))
       (catch Exception e
-        (if (:status-code (ex-data e))
-          (throw e)
-          (do
-            (log/error e (tru "Error executing action."))
-            {:body {:message (tru "Error executing action.")} :status 500}))))))
+        (handle-action-execution-error e)))))
 
 (defn- implicit-action-table
   [card_id]
@@ -161,8 +166,7 @@
     (try
       (actions/perform-action! implicit-action arg-map)
       (catch Exception e
-        (log/error e (tru "Error executing action."))
-        {:body {:message (tru "Error executing action.")} :status 500}))))
+        (handle-action-execution-error e)))))
 
 (defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
