@@ -182,16 +182,14 @@
                                                                :collection_id dave-coll-id
                                                                :creator_id    mark-id
                                                                :parameters    []}]
-                       DashboardCard [{dc1-id  :id
-                                       dc1-eid :entity_id}    {:card_id      c1-id
+                       DashboardCard [_                       {:card_id      c1-id
                                                                :dashboard_id dash-id
                                                                :parameter_mappings
                                                                [{:parameter_id "12345678"
                                                                  :card_id      c1-id
                                                                  :target [:dimension [:field field-id
                                                                                       {:source-field field2-id}]]}]}]
-                       DashboardCard [{dc2-id  :id
-                                       dc2-eid :entity_id}    {:card_id      c2-id
+                       DashboardCard [_                       {:card_id      c2-id
                                                                :dashboard_id other-dash-id
                                                                :visualization_settings
                                                                {:table.pivot_column "SOURCE"
@@ -312,31 +310,6 @@
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Schema'd Table"}
                       {:model "Field"      :id "Other Field"}]}
-                   (set (serdes.base/serdes-dependencies ser))))))
-
-        (let [ser (serdes.base/extract-one "DashboardCard" {} (db/select-one 'DashboardCard :id dc1-id))]
-          (is (schema= {:serdes/meta         (s/eq [{:model "Dashboard" :id dash-eid}
-                                                    {:model "DashboardCard" :id dc1-eid}])
-                        :dashboard_id        (s/eq dash-eid)
-                        :parameter_mappings  (s/eq [{:parameter_id "12345678"
-                                                     :card_id      c1-eid
-                                                     :target [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
-                                                                          {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}])
-                        :created_at          LocalDateTime
-                        s/Keyword            s/Any}
-                       ser))
-          (is (not (contains? ser :id)))
-
-          (testing "cards depend on their Dashboard and Card, and any fields in their parameter_mappings"
-            (is (= #{[{:model "Card"       :id c1-eid}]
-                     [{:model "Dashboard"  :id dash-eid}]
-                     [{:model "Database"   :id "My Database"}
-                      {:model "Table"      :id "Schemaless Table"}
-                      {:model "Field"      :id "Some Field"}]
-                     [{:model "Database"   :id "My Database"}
-                      {:model "Schema"     :id "PUBLIC"}
-                      {:model "Table"      :id "Schema'd Table"}
-                      {:model "Field"      :id "Other Field"}]}
                    (set (serdes.base/serdes-dependencies ser)))))))
 
       (testing "Cards can be based on other cards"
@@ -362,43 +335,45 @@
                      [{:model "Card"       :id c4-eid}]}
                    (set (serdes.base/serdes-dependencies ser)))))))
 
-      (testing "Dashcard :visualization_settings are included in their deps"
-        (let [ser (serdes.base/extract-one "DashboardCard" {} (db/select-one 'DashboardCard :id dc2-id))]
-          (is (schema= {:serdes/meta            (s/eq [{:model "Dashboard" :id other-dash}
-                                                       {:model "DashboardCard" :id dc2-eid}])
-                        :dashboard_id           (s/eq other-dash)
-                        :visualization_settings (s/eq {:table.pivot_column "SOURCE"
-                                                       :table.cell_column "sum"
-                                                       :table.columns
-                                                       [{:name "SOME_FIELD"
-                                                         :fieldRef [:field ["My Database" nil "Schemaless Table" "Some Field"] nil]
-                                                         :enabled true}
-                                                        {:name "sum"
-                                                         :fieldRef [:field "sum" {:base-type :type/Float}]
-                                                         :enabled true}
-                                                        {:name "count"
-                                                         :fieldRef [:field "count" {:base-type :type/BigInteger}]
-                                                         :enabled true}
-                                                        {:name "Average order total"
-                                                         :fieldRef [:field "Average order total" {:base-type :type/Float}]
-                                                         :enabled true}]
-                                                       :column_settings
-                                                       {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}})
+      (testing "Dashboards include their Dashcards"
+        (let [ser (serdes.base/extract-one "Dashboard" {} (db/select-one 'Dashboard :id other-dash-id))]
+          (is (schema= {:serdes/meta            (s/eq [{:model "Dashboard" :id other-dash}])
+                        :entity_id              (s/eq other-dash)
+                        :ordered_cards
+                        [{:visualization_settings (s/eq {:table.pivot_column "SOURCE"
+                                                         :table.cell_column "sum"
+                                                         :table.columns
+                                                         [{:name "SOME_FIELD"
+                                                           :fieldRef [:field ["My Database" nil "Schemaless Table" "Some Field"] nil]
+                                                           :enabled true}
+                                                          {:name "sum"
+                                                           :fieldRef [:field "sum" {:base-type :type/Float}]
+                                                           :enabled true}
+                                                          {:name "count"
+                                                           :fieldRef [:field "count" {:base-type :type/BigInteger}]
+                                                           :enabled true}
+                                                          {:name "Average order total"
+                                                           :fieldRef [:field "Average order total" {:base-type :type/Float}]
+                                                           :enabled true}]
+                                                         :column_settings
+                                                         {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}})
+                          :created_at             LocalDateTime
+                          s/Keyword               s/Any}]
                         :created_at             LocalDateTime
                         s/Keyword               s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "DashboardCard depend on their Dashboard and Card, and any fields in their visualization_settings"
+          (testing "and depend on all referenced cards, including those in visualization_settings"
             (is (= #{[{:model "Card"       :id c2-eid}]
-                     [{:model "Dashboard"  :id other-dash}]
                      [{:model "Database"   :id "My Database"}
                       {:model "Table"      :id "Schemaless Table"}
                       {:model "Field"      :id "Some Field"}]
                      [{:model "Database"   :id "My Database"}
                       {:model "Schema"     :id "PUBLIC"}
                       {:model "Table"      :id "Schema'd Table"}
-                      {:model "Field"      :id "Other Field"}]}
+                      {:model "Field"      :id "Other Field"}]
+                     [{:model "Collection" :id dave-coll-eid}]}
                    (set (serdes.base/serdes-dependencies ser)))))))
 
       (testing "collection filtering based on :user option"
@@ -431,23 +406,7 @@
           (is (= #{dash-eid other-dash}
                  (->> {:collection-set (extract/collection-set-for-user dave-id)}
                       (serdes.base/extract-all "Dashboard")
-                      (by-model "Dashboard"))))))
-
-      (testing "dashboard cards are filtered based on :user"
-        (testing "dashboard cards whose dashboards are in unowned collections are always returned"
-          (is (= #{dc1-eid}
-                 (->> {:collection-set (extract/collection-set-for-user nil)}
-                      (serdes.base/extract-all "DashboardCard")
-                      (by-model "DashboardCard"))))
-          (is (= #{dc1-eid}
-                 (->> {:collection-set (extract/collection-set-for-user mark-id)}
-                      (serdes.base/extract-all "DashboardCard")
-                      (by-model "DashboardCard")))))
-        (testing "dashboard cards whose dashboards are in personal collections are returned for the :user"
-          (is (= #{dc1-eid dc2-eid}
-                 (->> {:collection-set (extract/collection-set-for-user dave-id)}
-                      (serdes.base/extract-all "DashboardCard")
-                      (by-model "DashboardCard")))))))))
+                      (by-model "Dashboard")))))))))
 
 (deftest dimensions-test
   (ts/with-empty-h2-app-db
@@ -613,7 +572,7 @@
                                             line-eid    :entity_id}  {:name          "Populated Timeline"
                                                                       :collection_id coll-id
                                                                       :creator_id    ann-id}]
-                       TimelineEvent      [{e1-id       :id}         {:name          "First Event"
+                       TimelineEvent      [_                         {:name          "First Event"
                                                                       :creator_id    ann-id
                                                                       :timestamp     #t "2020-04-11T00:00Z"
                                                                       :timeline_id   line-id}]]
@@ -633,37 +592,24 @@
                      (set (serdes.base/serdes-dependencies ser)))))))
 
         (testing "with events"
-          (let [ser   (serdes.base/extract-one "Timeline" {} (db/select-one 'Timeline :id line-id))]
+          (let [ser   (serdes.base/extract-one "Timeline" {} (db/select-one 'Timeline :id line-id))
+                stamp "2020-04-11T00:00:00Z"]
             (is (schema= {:serdes/meta   (s/eq [{:model "Timeline" :id line-eid}])
                           :collection_id (s/eq coll-eid)
                           :creator_id    (s/eq "ann@heart.band")
                           :created_at    OffsetDateTime
+                          :events        [{:timestamp   (s/eq stamp)
+                                           :creator_id  (s/eq "ann@heart.band")
+                                           :created_at  OffsetDateTime
+                                           s/Keyword    s/Any}]
                           s/Keyword      s/Any}
                          ser))
             (is (not (contains? ser :id)))
+            (is (not (contains? (-> ser :events first) :id)))
 
             (testing "depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
-                     (set (serdes.base/serdes-dependencies ser))))))))
-
-      (testing "timeline events"
-        (let [ser   (serdes.base/extract-one "TimelineEvent" {} (db/select-one 'TimelineEvent :id e1-id))
-              stamp "2020-04-11T00:00:00Z"]
-            (is (schema= {:serdes/meta (s/eq [{:model "Timeline" :id line-eid}
-                                              {:model "TimelineEvent"
-                                               :id    stamp
-                                               :label "First Event"}])
-                          :timestamp   (s/eq stamp)
-                          :timeline_id (s/eq line-eid)
-                          :creator_id  (s/eq "ann@heart.band")
-                          :created_at  OffsetDateTime
-                          s/Keyword    s/Any}
-                         ser))
-            (is (not (contains? ser :id)))
-
-            (testing "depend on the Timeline"
-              (is (= #{[{:model "Timeline" :id line-eid}]}
-                     (set (serdes.base/serdes-dependencies ser))))))))))
+                     (set (serdes.base/serdes-dependencies ser)))))))))))
 
 (deftest segments-test
   (ts/with-empty-h2-app-db
@@ -908,10 +854,10 @@
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "depends on the pulse, card and dashcard"
+          (testing "depends on the pulse, card and parent dashboard"
             (is (= #{[{:model "Pulse" :id sub-eid}]
                      [{:model "Card"  :id card1-eid}]
-                     [{:model "Dashboard" :id dash-eid} {:model "DashboardCard" :id dashcard-eid}]}
+                     [{:model "Dashboard" :id dash-eid}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest selective-serialization-basic-test
@@ -960,9 +906,9 @@
                                                                :collection_id coll1-id
                                                                :creator_id    mark-id}]
 
-                       DashboardCard [{dc1-1-eid :entity_id}  {:card_id      c1-1-id
+                       DashboardCard [_                       {:card_id      c1-1-id
                                                                :dashboard_id dash1-id}]
-                       DashboardCard [{dc1-2-eid :entity_id}  {:card_id      c1-2-id
+                       DashboardCard [_                       {:card_id      c1-2-id
                                                                :dashboard_id dash1-id}]
 
                        ;; Second dashboard, in the middle collection.
@@ -988,9 +934,9 @@
                                                                :collection_id coll2-id
                                                                :creator_id    mark-id}]
 
-                       DashboardCard [{dc2-1-eid :entity_id}  {:card_id      c2-1-id
+                       DashboardCard [_                       {:card_id      c2-1-id
                                                                :dashboard_id dash2-id}]
-                       DashboardCard [{dc2-2-eid :entity_id}  {:card_id      c2-2-id
+                       DashboardCard [_                       {:card_id      c2-2-id
                                                                :dashboard_id dash2-id}]
 
                        ;; Third dashboard, in the grandchild collection.
@@ -1016,18 +962,14 @@
                                                                :collection_id coll3-id
                                                                :creator_id    mark-id}]
 
-                       DashboardCard [{dc3-1-eid :entity_id}  {:card_id      c3-1-id
+                       DashboardCard [_                       {:card_id      c3-1-id
                                                                :dashboard_id dash3-id}]
-                       DashboardCard [{dc3-2-eid :entity_id}  {:card_id      c3-2-id
+                       DashboardCard [_                       {:card_id      c3-2-id
                                                                :dashboard_id dash3-id}]]
 
-      (testing "selecting a dashboard gets its dashcards and cards as well"
+      (testing "selecting a dashboard gets all cards its dashcards depend on"
         (testing "grandparent dashboard"
           (is (= #{[{:model "Dashboard" :id dash1-eid}]
-                   [{:model "Dashboard" :id dash1-eid}
-                    {:model "DashboardCard" :id dc1-1-eid}]
-                   [{:model "Dashboard" :id dash1-eid}
-                    {:model "DashboardCard" :id dc1-2-eid}]
                    [{:model "Card" :id c1-1-eid}]
                    [{:model "Card" :id c1-2-eid}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash1-id]]})
@@ -1036,10 +978,6 @@
 
         (testing "middle dashboard"
           (is (= #{[{:model "Dashboard" :id dash2-eid}]
-                   [{:model "Dashboard" :id dash2-eid}
-                    {:model "DashboardCard" :id dc2-1-eid}]
-                   [{:model "Dashboard" :id dash2-eid}
-                    {:model "DashboardCard" :id dc2-2-eid}]
                    [{:model "Card" :id c2-1-eid}]
                    [{:model "Card" :id c2-2-eid}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash2-id]]})
@@ -1048,10 +986,6 @@
 
         (testing "grandchild dashboard"
           (is (= #{[{:model "Dashboard" :id dash3-eid}]
-                   [{:model "Dashboard" :id dash3-eid}
-                    {:model "DashboardCard" :id dc3-1-eid}]
-                   [{:model "Dashboard" :id dash3-eid}
-                    {:model "DashboardCard" :id dc3-2-eid}]
                    [{:model "Card" :id c3-1-eid}]
                    [{:model "Card" :id c3-2-eid}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash3-id]]})
@@ -1061,28 +995,16 @@
       (testing "selecting a collection gets all its contents"
         (let [grandchild-paths  #{[{:model "Collection"    :id coll3-eid :label "grandchild_collection"}]
                                   [{:model "Dashboard"     :id dash3-eid}]
-                                  [{:model "Dashboard"     :id dash3-eid}
-                                   {:model "DashboardCard" :id dc3-1-eid}]
-                                  [{:model "Dashboard"     :id dash3-eid}
-                                   {:model "DashboardCard" :id dc3-2-eid}]
                                   [{:model "Card"          :id c3-1-eid}]
                                   [{:model "Card"          :id c3-2-eid}]
                                   [{:model "Card"          :id c3-3-eid}]}
               middle-paths      #{[{:model "Collection"    :id coll2-eid :label "nested_collection"}]
                                   [{:model "Dashboard"     :id dash2-eid}]
-                                  [{:model "Dashboard"     :id dash2-eid}
-                                   {:model "DashboardCard" :id dc2-1-eid}]
-                                  [{:model "Dashboard"     :id dash2-eid}
-                                   {:model "DashboardCard" :id dc2-2-eid}]
                                   [{:model "Card"          :id c2-1-eid}]
                                   [{:model "Card"          :id c2-2-eid}]
                                   [{:model "Card"          :id c2-3-eid}]}
               grandparent-paths #{[{:model "Collection"    :id coll1-eid :label "some_collection"}]
                                   [{:model "Dashboard"     :id dash1-eid}]
-                                  [{:model "Dashboard"     :id dash1-eid}
-                                   {:model "DashboardCard" :id dc1-1-eid}]
-                                  [{:model "Dashboard"     :id dash1-eid}
-                                   {:model "DashboardCard" :id dc1-2-eid}]
                                   [{:model "Card"          :id c1-1-eid}]
                                   [{:model "Card"          :id c1-2-eid}]
                                   [{:model "Card"          :id c1-3-eid}]}]

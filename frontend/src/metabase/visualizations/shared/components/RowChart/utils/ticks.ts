@@ -5,7 +5,7 @@ import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text"
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 import { ChartFont } from "metabase/visualizations/shared/types/style";
 
-const TICK_SPACING = 4;
+const TICK_SPACING = 20;
 
 const getWidthBasedTickInterval = (innerWidth: number) => innerWidth / 12;
 
@@ -125,7 +125,7 @@ export const getXTicks = (
   const ticksCount = Math.floor(innerWidth / ticksInterval);
 
   const ticks =
-    scaleType === "log"
+    scaleType !== "linear"
       ? getEvenlySpacedTicks(xScale, ticksInterval, ticksCount)
       : getLimitedCountAutoTicks(xScale, ticksCount);
 
