@@ -58,9 +58,9 @@ export const getInitialValues = (
       const value = prefetchValues[field.name];
       const formattedValue =
         field.type === "date"
-          ? moment(value).format("YYYY-MM-DD")
+          ? moment(value).utc(false).format("YYYY-MM-DD")
           : field.type === "datetime-local"
-          ? moment(value).format("YYYY-MM-DDThh:mm")
+          ? moment(value).utc(false).format("YYYY-MM-DDTHH:mm")
           : value ?? "";
       return [field.name, formattedValue];
     }),
