@@ -168,16 +168,16 @@
   [_ _ expr]
   (date-part :dayofyear expr))
 
-;; Subtract the number of days needed to bring us to the first day of the week, then convert to date
-;; The equivalent SQL looks like:
-;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
-
+;; Subtract the number of days needed to bring us to the first day of the week, then convert to back to orignal type
 (defn- trunc-week
   [expr]
-  (hx/->datetime
+  (let [original-type (if (= "datetimeoffset" (hx/type-info->db-type (hx/type-info expr)))
+                        "datetimeoffset"
+                        "datetime")]
+    (hx/cast original-type
       (date-add :day
                 (hx/- 1 (date-part :weekday expr))
-                (hx/->date expr))))
+                (hx/->date expr)))))
 
 (defmethod sql.qp/date [:sqlserver :week]
   [driver _ expr]
