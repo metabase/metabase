@@ -43,7 +43,11 @@ const ColumnItem = ({
       <ColumnItemContainer>
         {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}
         {onColorChange && color && (
-          <ColumnItemColorPicker value={color} onChange={onColorChange} />
+          <ColumnItemColorPicker
+            value={color}
+            onChange={onColorChange}
+            pillSize="small"
+          />
         )}
         <ColumnItemContent>
           <ColumnItemSpan>{title}</ColumnItemSpan>

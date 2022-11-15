@@ -71,11 +71,4 @@ export const SettingsIcon = styled(Icon)<SettingsIconProps>`
 export const FieldPickerColorPicker = styled(ChartSettingColorPicker)`
   margin-bottom: 0;
   margin-left: 0.25rem;
-  ${ColorPill.Root} {
-    padding: 1px;
-  }
-  ${ColorPill.Content} {
-    height: 0.875rem;
-    width: 0.875rem;
-  }
 `;

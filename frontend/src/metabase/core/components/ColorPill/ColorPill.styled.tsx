@@ -1,9 +1,12 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
+
 import { color } from "metabase/lib/colors";
 
 export interface ColorPillRootProps {
   isAuto: boolean;
   isSelected: boolean;
+  pillSize: string;
 }
 
 export const ColorPillRoot = styled.div<ColorPillRootProps>`
@@ -21,6 +24,17 @@ export const ColorPillRoot = styled.div<ColorPillRootProps>`
     border-color: ${props =>
       props.isSelected ? color("text-dark") : color("text-light")};
   }
+
+  ${props =>
+    props.pillSize === "small" &&
+    css`
+      padding: 1px;
+
+      ${ColorPillContent} {
+        height: 0.875rem;
+        width: 0.875rem;
+      }
+    `};
 `;
 
 export const ColorPillContent = styled.div`

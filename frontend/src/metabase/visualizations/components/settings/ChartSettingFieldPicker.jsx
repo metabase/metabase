@@ -56,6 +56,7 @@ const ChartSettingFieldPicker = ({
       )}
       {showColorPicker && seriesKey && (
         <FieldPickerColorPicker
+          pillSize="small"
           value={colors[seriesKey]}
           onChange={value => {
             onChangeSeriesColor(seriesKey, value);
