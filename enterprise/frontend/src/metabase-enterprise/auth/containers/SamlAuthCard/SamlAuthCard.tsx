@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
-import AuthCard from "metabase/admin/settings/components/widgets/AuthCard";
+import AuthCard from "metabase/admin/settings/auth/components/AuthCard";
 import { State } from "metabase-types/store";
 
 const mapStateToProps = (state: State) => ({

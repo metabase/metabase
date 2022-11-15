@@ -171,18 +171,6 @@ export const updateGoogleSettings = createThunkAction(
   },
 );
 
-export const DELETE_GOOGLE_SETTINGS =
-  "metabase/admin/settings/DELETE_GOOGLE_SETTINGS";
-export const deleteGoogleSettings = createThunkAction(
-  DELETE_GOOGLE_SETTINGS,
-  function () {
-    return async function (dispatch) {
-      await GoogleApi.deleteSettings();
-      await dispatch(reloadSettings());
-    };
-  },
-);
-
 // REDUCERS
 
 export const warnings = handleActions(

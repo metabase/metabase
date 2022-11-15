@@ -116,13 +116,4 @@
       {:status 500
        :body   (humanize-error-messages results)})))
 
-(api/defendpoint DELETE "/settings"
-  "Clear all LDAP related settings. You must be a superuser or have `setting` permission to do this."
-  []
-  (validation/check-has-application-permission :setting)
-  (db/transaction
-    (setting/set-many! (zipmap (keys ldap/mb-settings->ldap-details) (repeat nil)))
-    (setting/set-value-of-type! :boolean :ldap-enabled false))
-  api/generic-204-no-content)
-
 (api/define-routes)

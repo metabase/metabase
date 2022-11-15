@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Dispatch, State } from "metabase-types/store";
 import { deleteLdapSettings } from "../../../settings";
-import AuthCard, { AuthCardProps } from "../AuthCard";
+import AuthCard, { AuthCardProps } from "../../components/AuthCard";
 
 type StateProps = Omit<AuthCardProps, "setting" | "onChange" | "onDeactivate">;
 type DispatchProps = Pick<AuthCardProps, "onDeactivate">;

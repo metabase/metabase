@@ -7,7 +7,7 @@ import {
 } from "metabase/plugins";
 
 import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
-import LdapAuthCard from "metabase/admin/settings/components/widgets/LdapAuthCard";
+import LdapAuthCard from "metabase/admin/settings/auth/containers/LdapAuthCard";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(

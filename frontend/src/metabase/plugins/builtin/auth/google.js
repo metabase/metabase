@@ -9,7 +9,7 @@ import {
 import MetabaseSettings from "metabase/lib/settings";
 
 import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
-import GoogleAuthCard from "metabase/admin/settings/components/widgets/GoogleAuthCard";
+import GoogleAuthCard from "metabase/admin/settings/auth/containers/GoogleAuthCard";
 
 PLUGIN_AUTH_PROVIDERS.push(providers => {
   const googleProvider = {
