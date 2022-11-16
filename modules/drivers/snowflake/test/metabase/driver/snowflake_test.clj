@@ -256,6 +256,7 @@
       (let [{:keys [user] :as details} (mt/dbdef->connection-details :snowflake :db {:database-name "v3_snowflake_sample_data"})
             spec    (sql-jdbc.conn/connection-details->spec :snowflake details)
             _ (do (def details details) (def spec spec))]
+        (is (= "?" user))
         (is (= {:can_connect 1} (first (jdbc/query spec "select 1 as can_connect")))
             "Could not connect to snowflake.")
 
