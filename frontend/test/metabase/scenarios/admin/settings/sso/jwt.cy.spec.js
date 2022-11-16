@@ -3,6 +3,7 @@ import {
   describeEE,
   typeAndBlurUsingLabel,
   modal,
+  popover,
 } from "__support__/e2e/helpers";
 
 describeEE("scenarios > admin > settings > SSO > JWT", () => {
@@ -10,21 +11,49 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     restore();
     cy.signInAsAdmin();
     cy.intercept("PUT", "/api/setting").as("updateSettings");
+    cy.intercept("PUT", "/api/setting/*").as("updateSetting");
   });
 
   it("should allow to save and enable jwt", () => {
     cy.visit("/admin/settings/authentication/jwt");
 
-    enterJWTSettings();
+    enterJwtSettings();
     cy.button("Save and enable").click();
     cy.wait("@updateSettings");
     cy.findAllByRole("link", { name: "Authentication" }).first().click();
 
-    cy.findByRole("switch", { name: "JWT" }).should("be.checked");
+    getJwtCard().findByText("Active").should("exist");
+  });
+
+  it("should allow to disable and enable jwt", () => {
+    setupJwt();
+    cy.visit("/admin/settings/authentication");
+
+    getJwtCard().icon("ellipsis").click();
+    popover().findByText("Pause").click();
+    cy.wait("@updateSetting");
+    getJwtCard().findByText("Paused").should("exist");
+
+    getJwtCard().icon("ellipsis").click();
+    popover().findByText("Resume").click();
+    cy.wait("@updateSetting");
+    getJwtCard().findByText("Active").should("exist");
+  });
+
+  it("should allow to reset jwt settings", () => {
+    setupJwt();
+    cy.visit("/admin/settings/authentication");
+
+    getJwtCard().icon("ellipsis").click();
+    popover().findByText("Deactivate").click();
+    modal().button("Deactivate").click();
+    cy.wait("@updateSettings");
+
+    getJwtCard().findByText("Set up").should("exist");
   });
 
   it("should allow to regenerate the jwt key and save the settings", () => {
-    setupJWT();
+    setupJwt();
     cy.visit("/admin/settings/authentication/jwt");
 
     cy.button("Regenerate key").click();
@@ -36,7 +65,11 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
   });
 });
 
-const setupJWT = () => {
+const getJwtCard = () => {
+  return cy.findByText("JWT").parent().parent();
+};
+
+const setupJwt = () => {
   cy.request("PUT", "/api/setting", {
     "jwt-enabled": true,
     "jwt-identity-provider-uri": "https://example.text",
@@ -44,7 +77,7 @@ const setupJWT = () => {
   });
 };
 
-const enterJWTSettings = () => {
+const enterJwtSettings = () => {
   typeAndBlurUsingLabel("JWT Identity Provider URI", "https://example.test");
   cy.button("Generate key").click();
 };

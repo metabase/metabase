@@ -126,7 +126,6 @@
   "Helper for [[infer-expression-type]]. Returns true if a given clause returns a :type/DateTime type."
   [clause]
   (mbql.match/match-one clause
-
     #{:datetime-add :datetime-subtract :relative-datetime}
     true
 

@@ -304,7 +304,7 @@
 
 (defmethod serdes.base/load-find-local "Database"
   [[{:keys [id]}]]
-  (db/select-one-field :id Database :name id))
+  (db/select-one Database :name id))
 
 (defmethod serdes.base/load-xform "Database"
   [database]

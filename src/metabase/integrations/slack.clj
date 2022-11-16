@@ -18,7 +18,8 @@
   (deferred-tru
     (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
          "Please use a new Slack app integration instead."))
-  :deprecated "0.42.0")
+  :deprecated "0.42.0"
+  :doc        false)
 
 (defsetting slack-app-token
   (deferred-tru
@@ -29,7 +30,8 @@
   (deferred-tru
     (str "Whether the current Slack app token, if set, is valid. "
          "Set to 'false' if a Slack API request returns an auth error."))
-  :type :boolean)
+  :type :boolean
+  :doc  false)
 
 (defn process-files-channel-name
   "Converts empty strings to `nil`, and removes leading `#` from the channel name if present."
@@ -40,7 +42,8 @@
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
   :visibility :internal
-  :type :json)
+  :type :json
+  :doc  false)
 
 (def ^:private zoned-time-epoch (t/zoned-date-time 1970 1 1 0))
 
@@ -49,7 +52,8 @@
   :visibility :internal
   :cache?     false
   :type       :timestamp
-  :default    zoned-time-epoch)
+  :default    zoned-time-epoch
+  :doc        false)
 
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")

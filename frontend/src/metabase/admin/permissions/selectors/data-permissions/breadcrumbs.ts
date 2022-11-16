@@ -1,5 +1,5 @@
 import { Group } from "metabase-types/api";
-import { isNotNull } from "metabase/core/utils/array";
+import { isNotNull } from "metabase/core/utils/types";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";

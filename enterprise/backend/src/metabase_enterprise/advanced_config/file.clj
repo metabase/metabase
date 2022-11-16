@@ -99,8 +99,7 @@
    [clojure.walk :as walk]
    [environ.core :as env]
    [metabase-enterprise.advanced-config.file.databases]
-   [metabase-enterprise.advanced-config.file.interface
-    :as advanced-config.file.i]
+   [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
    [metabase.driver.common.parameters]
@@ -244,7 +243,7 @@
   [config-sections]
   (let [{settings-sections true, other-sections false} (group-by (fn [[section-name]]
                                                                    (= section-name :settings))
-                                                                 (seq config-sections))]
+                                                                 config-sections)]
     (concat settings-sections other-sections)))
 
 (defn ^{:added "0.45.0"} initialize!

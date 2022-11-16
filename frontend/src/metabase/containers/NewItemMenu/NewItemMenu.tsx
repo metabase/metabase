@@ -7,7 +7,7 @@ import {
   getHasDataAccess,
   getHasDatabaseWithJsonEngine,
   getHasNativeWrite,
-} from "metabase/nav/selectors";
+} from "metabase/selectors/data";
 import { State } from "metabase-types/store";
 
 interface MenuOwnProps {
