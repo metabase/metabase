@@ -724,6 +724,13 @@
     (is (= [[22 46] [23 47] [24 40] [25 60] [26 7]]
            (sad-toucan-incidents-with-bucketing :week-of-year :utc)))))
 
+
+(defn- fmt-str-or-int
+  [x]
+  (if (string? x)
+    (str x)
+    (int x)))
+
 (deftest week-of-year-and-week-count-should-be-consistent-test
   (testing "consistent break out between weeks and week-of-year #4910"
     (mt/test-drivers (mt/normal-drivers)
@@ -737,7 +744,7 @@
                                          :breakout    [:field $created_at {:temporal-unit unit}]
                                          :aggregation [[:count]]})
                          mt/process-query
-                         (mt/formatted-rows [str int])))]
+                         (mt/formatted-rows [fmt-str-or-int int])))]
             (testing "count result should be the same between week and week-of-year"
               (is (= (map second (test-break-out :week))
                      (map second (test-break-out :week-of-year))))
@@ -753,7 +760,7 @@
                           (map first)
                           (take 3)))))
             (testing "make sure all drivers returns the same week-of-year column"
-              (is (= ["1" "2" "3"]
+              (is (= [1 2 3]
                      (->> (test-break-out :week-of-year)
                           (map first)
                           (take 3)))))))))))
