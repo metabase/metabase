@@ -139,6 +139,10 @@
   [foo]
   {:status 200 :body foo})
 
+(api/defendpoint POST "/restore/:name"
+  [name]
+  {:status 200 :body name})
+
 (api/define-routes)
 
 (deftest make-route-test
@@ -181,5 +185,6 @@
                 (is (= 500 (:status results)))
                 (is (re-find #"Invalid content-type" (:body results))))))))
       (testing "works for more routes with regexes"
-        (is (= "aa" (:body (post :json "/complicated/aa")))))
+        (is (= "aa" (:body (post :json "/complicated/aa"))))
+        (is (= "foo" (:body (post :json "/restore/foo")))))
       (finally (.stop server)))))

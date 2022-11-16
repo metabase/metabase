@@ -31,7 +31,7 @@
     (jdbc/query {:datasource mdb.connection/*application-db*} ["SCRIPT TO ?" path]))
   :ok)
 
-(api/defendpoint POST "/snapshot/:name"
+(api/defendpoint ^{:content-types #{:content/*}} POST "/snapshot/:name"
   "Snapshot the database for testing purposes."
   [name]
   (save-snapshot! name)
@@ -86,7 +86,7 @@
   (restore-snapshot! name)
   nil)
 
-(api/defendpoint POST "/echo"
+(api/defendpoint ^{:content-types #{:content/*}} POST "/echo"
   [fail :as {:keys [body]}]
   (if fail
     {:status 400
