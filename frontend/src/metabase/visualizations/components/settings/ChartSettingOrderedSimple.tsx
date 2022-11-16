@@ -14,6 +14,7 @@ interface SortableItem {
   enabled: boolean;
   originalIndex: number;
   name: string;
+  color?: string;
 }
 
 interface ChartSettingOrderedSimpleProps {
@@ -26,6 +27,7 @@ interface ChartSettingOrderedSimpleProps {
   ) => void;
   series: Series;
   hasEditSettings: boolean;
+  onChangeSeriesColor: (seriesKey: string, color: string) => void;
 }
 
 export const ChartSettingOrderedSimple = ({
@@ -35,6 +37,7 @@ export const ChartSettingOrderedSimple = ({
   series,
   onShowWidget,
   hasEditSettings = true,
+  onChangeSeriesColor,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = (selectedItem: SortableItem) => {
     const index = orderedItems.findIndex(
@@ -71,16 +74,26 @@ export const ChartSettingOrderedSimple = ({
     );
   };
 
+  const handleColorChange = (item: SortableItem, color: string) => {
+    const singleSeries = series[item.originalIndex];
+    const seriesKey = keyForSingleSeries(singleSeries);
+    onChangeSeriesColor(seriesKey, color);
+  };
+
   return (
     <ChartSettingOrderedSimpleRoot>
       {orderedItems.length > 0 ? (
         <ChartSettingOrderedItems
-          items={orderedItems}
+          items={orderedItems.map(item => ({
+            ...item,
+            color: items[item.originalIndex].color,
+          }))}
           getItemName={getItemTitle}
           onRemove={toggleDisplay}
           onEnable={toggleDisplay}
           onSortEnd={handleSortEnd}
           onEdit={hasEditSettings ? handleOnEdit : undefined}
+          onColorChange={handleColorChange}
           distance={5}
         />
       ) : (
