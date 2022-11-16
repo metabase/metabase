@@ -4,10 +4,11 @@ on:
   push:
     paths-ignore:
     - 'docs/**'
-    - 'frontend/test/**'
-    - 'enterprise/frontend/test/**'
+    - "**.md"
+    - '**/frontend/test/**'
     - ".**"
     - "test*"
+    - "**_test.clj"
 
 jobs:
   build:
