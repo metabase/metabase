@@ -273,7 +273,7 @@
   ;; timezone
   ;;
   ;; TIMEZONE FIXME
-  (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo})
+  (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :athena})
     (testing "Change JVM timezone from UTC to Pacific"
       (is (= (cond
                (= :sqlite driver/*driver*)
@@ -525,7 +525,7 @@
     ;; timezone
     ;;
     ;; TIMEZONE FIXME
-    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :vertica})
+    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :vertica :athena})
       (is (= (cond
                (= :sqlite driver/*driver*)
                (results-by-day u.date/parse date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
@@ -740,9 +740,9 @@
         (mt/dataset sample-dataset
           (letfn [(test-break-out [unit]
                     (->> (mt/mbql-query orders
-                                        {:filter      [:between $created_at "2019-01-01" "2019-12-31"]
-                                         :breakout    [:field $created_at {:temporal-unit unit}]
-                                         :aggregation [[:count]]})
+                           {:filter      [:between $created_at "2019-01-01" "2019-12-31"]
+                            :breakout    [:field $created_at {:temporal-unit unit}]
+                            :aggregation [[:count]]})
                          mt/process-query
                          (mt/formatted-rows [fmt-str-or-int int])))]
             (testing "count result should be the same between week and week-of-year"

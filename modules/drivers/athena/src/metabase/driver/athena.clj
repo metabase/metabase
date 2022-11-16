@@ -13,7 +13,7 @@
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util.unprepare :as unprepare]
@@ -28,7 +28,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :athena, :parent #{:sql-jdbc, ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :athena, :parent #{:sql-jdbc})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
@@ -104,9 +104,21 @@
     :smallint   :type/Integer
     :string     :type/Text
     :struct     :type/Dictionary
+    :time       :type/Time ; Athena sort of has a time type, sort of does not. You can specify it in literals but I don't think you can store it.
     :timestamp  :type/DateTime
     :tinyint    :type/Integer
     :varchar    :type/Text} database-type))
+
+;;; ------------------------------------------------ sql-jdbc execute ------------------------------------------------
+
+(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/VARCHAR]
+  [driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Integer i]
+  ;; since TIME is not really a real type (or at least not one you can store) it comes back in a weird way -- it comes
+  ;; back as a string, but the database type is `time`. In that case we can use `.getObject` to get a
+  ;; `java.time.LocalTime` and it seems to work like we'd expect.
+  (if (= (u/lower-case-en (.getColumnTypeName rsmeta i)) "time")
+    (fn read-string-as-LocalTime [] (.getObject rs i java.time.LocalTime))
+    ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/VARCHAR]) driver rs rsmeta i)))
 
 ;;; ------------------------------------------------- date functions -------------------------------------------------
 
@@ -130,44 +142,59 @@
   #_(format "timestamp '%s %s' at time zone '%s'" (t/local-date t) (t/local-time t) (t/zone-id t))
   (unprepare/unprepare-value driver (t/offset-date-time t)))
 
-; Helper function for truncating dates - currently unused
+;;; Helper function for truncating dates - currently unused
 #_(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
 
-; Example of handling report timezone
-; (defn- date-trunc
-;   "date_trunc('interval', timezone, timestamp): truncates a timestamp to a given interval"
-;   [unit expr]
-;   (let [timezone (get-in sql.qp/*query* [:settings :report-timezone])]
-;     (if (nil? timezone)
-;       (hsql/call :date_trunc (hx/literal unit) expr)
-;       (hsql/call :date_trunc (hx/literal unit) timezone expr))))
+;;; Example of handling report timezone
+;;; (defn- date-trunc
+;;;   "date_trunc('interval', timezone, timestamp): truncates a timestamp to a given interval"
+;;;   [unit expr]
+;;;   (let [timezone (get-in sql.qp/*query* [:settings :report-timezone])]
+;;;     (if (nil? timezone)
+;;;       (hsql/call :date_trunc (hx/literal unit) expr)
+;;;       (hsql/call :date_trunc (hx/literal unit) timezone expr))))
 
-; Helper function to cast `expr` to a timestamp if necessary
-(defn- expr->literal [expr]
+(defmethod driver/db-start-of-week :athena
+  [_driver]
+  :monday)
+
+;;;; Datetime truncation functions
+
+(defn- expr->literal
+  "Helper function to cast `expr` to a timestamp if necessary."
+  [expr]
   (if (instance? Timestamp expr)
     expr
     (hx/cast :timestamp expr)))
 
-; If `expr` is a date, we need to cast it to a timestamp before we can truncate to a finer granularity
-; Ideally, we should make this conditional. There's a generic approach above, but different use cases should b tested.
-(defmethod sql.qp/date [:athena :minute]          [_ _ expr] (hsql/call :date_trunc (hx/literal :minute) (expr->literal expr)))
-(defmethod sql.qp/date [:athena :hour]            [_ _ expr] (hsql/call :date_trunc (hx/literal :hour) (expr->literal expr)))
-(defmethod sql.qp/date [:athena :day]             [_ _ expr] (hsql/call :date_trunc (hx/literal :day) expr))
-(defmethod sql.qp/date [:athena :week]            [_ _ expr] (hsql/call :date_trunc (hx/literal :week) expr))
-(defmethod sql.qp/date [:athena :month]           [_ _ expr] (hsql/call :date_trunc (hx/literal :month) expr))
-(defmethod sql.qp/date [:athena :quarter]         [_ _ expr] (hsql/call :date_trunc (hx/literal :quarter) expr))
-(defmethod sql.qp/date [:athena :year]            [_ _ expr] (hsql/call :date_trunc (hx/literal :year) expr))
+;;; If `expr` is a date, we need to cast it to a timestamp before we can truncate to a finer granularity Ideally, we
+;;; should make this conditional. There's a generic approach above, but different use cases should b tested.
+(defmethod sql.qp/date [:athena :minute]  [_ _ expr] (hsql/call :date_trunc (hx/literal :minute) (expr->literal expr)))
+(defmethod sql.qp/date [:athena :hour]    [_ _ expr] (hsql/call :date_trunc (hx/literal :hour) (expr->literal expr)))
+(defmethod sql.qp/date [:athena :day]     [_ _ expr] (hsql/call :date_trunc (hx/literal :day) expr))
+(defmethod sql.qp/date [:athena :month]   [_ _ expr] (hsql/call :date_trunc (hx/literal :month) expr))
+(defmethod sql.qp/date [:athena :quarter] [_ _ expr] (hsql/call :date_trunc (hx/literal :quarter) expr))
+(defmethod sql.qp/date [:athena :year]    [_ _ expr] (hsql/call :date_trunc (hx/literal :year) expr))
 
-; Extraction functions
+(defmethod sql.qp/date [:athena :week]
+  [driver _ expr]
+  (sql.qp/adjust-start-of-week driver (partial hsql/call :date_trunc (hx/literal :week)) expr))
+
+;;;; Datetime extraction functions
+
 (defmethod sql.qp/date [:athena :minute-of-hour]  [_ _ expr] (hsql/call :minute expr))
 (defmethod sql.qp/date [:athena :hour-of-day]     [_ _ expr] (hsql/call :hour expr))
-(defmethod sql.qp/date [:athena :day-of-week]     [_ _ expr] (hsql/call :day_of_week expr))
 (defmethod sql.qp/date [:athena :day-of-month]    [_ _ expr] (hsql/call :day_of_month expr))
 (defmethod sql.qp/date [:athena :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
 (defmethod sql.qp/date [:athena :week-of-year]    [_ _ expr] (hsql/call :week_of_year expr))
 (defmethod sql.qp/date [:athena :month-of-year]   [_ _ expr] (hsql/call :month expr))
 (defmethod sql.qp/date [:athena :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
 
+(defmethod sql.qp/date [:athena :day-of-week]
+  [driver _ expr]
+  (sql.qp/adjust-day-of-week driver (hsql/call :day_of_week expr)))
+
+;;; FIXME (deprecated)
 (defmethod sql.qp/->honeysql [:athena (class Field)]
   [driver field]
   (athena.qp/->honeysql driver field))
@@ -182,6 +209,19 @@
              (hx/literal (name unit))
              (hsql/raw (int amount))
              (hx/->timestamp hsql-form)))
+
+(defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->DateTime]
+  [_driver _semantic-type expr]
+  (hx/->timestamp expr))
+
+(defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->Date]
+  [_driver _semantic-type expr]
+  (hx/->date expr))
+
+(defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->Time]
+  [_driver _semantic-type expr]
+  (hx/->time expr))
+
 
 ;; fix to allow integer division to be cast as double (float is not supported by athena)
 (defmethod sql.qp/->float :athena
