@@ -18,7 +18,9 @@ If you’ve already [configured Metabase to use email](../configuring-metabase/e
 
 ## Editing an account
 
-You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**. Note: be careful when changing someone's email address, because _this will change the address they’ll use to log in to Metabase_.
+You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**.
+
+> Be careful: changing an account's email address _will change the address the person will use to log in to Metabase_.
 
 ## Deactivating an account
 
@@ -125,9 +127,11 @@ To remove a group, click the X icon to the right of a group in the list to remov
 
 ## Adding people to groups
 
-Click into a group and then click `Add members` to add people to that group. Click on the X on the right side of a group member to remove them from that group. You can also add or remove people from groups from the People list using the dropdown in the Groups column.
+To add people to that group, click into a group and then click **Add members**.
 
-Adding people to groups allows you to assign [permissions](../permissions/start.md).
+To remove someone from that group, click on the **X** to the right of the group member.
+
+You can also add or remove people from groups from the **People** list using the dropdown in the **Groups** column.
 
 ## Group managers
 
