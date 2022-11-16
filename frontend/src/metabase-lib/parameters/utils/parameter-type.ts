@@ -1,6 +1,6 @@
 import _ from "underscore";
-import { Parameter } from "metabase-types/types/Parameter";
-import { FieldFilterUiParameter } from "metabase-lib/parameters/types";
+import type { Parameter } from "metabase-types/types/Parameter";
+import type { FieldFilterUiParameter } from "metabase-lib/parameters/types";
 import { FIELD_FILTER_PARAMETER_TYPES } from "metabase-lib/parameters/constants";
 
 export function getParameterType(parameter: Parameter | string) {

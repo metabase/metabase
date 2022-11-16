@@ -3,10 +3,13 @@ import {
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
+import { formatNullable } from "metabase/lib/formatting/nullable";
 import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { Series } from "metabase/visualizations/shared/components/RowChart/types";
 import {
-  GroupedDataset,
+  BarData,
+  Series,
+} from "metabase/visualizations/shared/components/RowChart/types";
+import {
   GroupedDatum,
   MetricDatum,
   SeriesInfo,
@@ -22,7 +25,7 @@ const getMetricColumnData = (
 
     return {
       key: col.display_name,
-      value,
+      value: formatNullable(value),
       col,
     };
   });
@@ -37,7 +40,7 @@ const getColumnsData = (
   const data = [
     {
       key: chartColumns.dimension.column.display_name,
-      value: datum.dimensionValue,
+      value: formatNullable(datum.dimensionValue),
       col: chartColumns.dimension.column,
     },
   ];
@@ -61,25 +64,16 @@ const getColumnsData = (
 };
 
 export const getClickData = (
-  seriesIndex: number,
-  datumIndex: number,
-  series: Series<GroupedDatum, SeriesInfo>[],
-  groupedData: GroupedDataset,
+  bar: BarData<GroupedDatum, SeriesInfo>,
   visualizationSettings: VisualizationSettings,
   chartColumns: ChartColumns,
   datasetColumns: DatasetColumn[],
 ) => {
-  const currentSeries = series[seriesIndex];
-  const currentDatum = groupedData[datumIndex];
-  const data = getColumnsData(
-    chartColumns,
-    currentSeries,
-    currentDatum,
-    datasetColumns,
-  );
+  const { series, datum } = bar;
+  const data = getColumnsData(chartColumns, series, datum, datasetColumns);
 
-  const xValue = currentSeries.xAccessor(currentDatum);
-  const yValue = currentSeries.yAccessor(currentDatum);
+  const xValue = series.xAccessor(datum);
+  const yValue = series.yAccessor(datum);
 
   const dimensions: { column: DatasetColumn; value?: RowValue }[] = [
     {
@@ -91,13 +85,13 @@ export const getClickData = (
   if ("breakout" in chartColumns) {
     dimensions.push({
       column: chartColumns.breakout.column,
-      value: currentSeries.seriesInfo?.breakoutValue,
+      value: series.seriesInfo?.breakoutValue,
     });
   }
 
   return {
     value: xValue,
-    column: currentSeries.seriesInfo?.metricColumn,
+    column: series.seriesInfo?.metricColumn,
     dimensions,
     data,
     settings: visualizationSettings,
@@ -128,27 +122,22 @@ export const getLegendClickData = (
 };
 
 export const getHoverData = (
-  seriesIndex: number,
-  datumIndex: number,
-  series: Series<GroupedDatum, SeriesInfo>[],
-  groupedData: GroupedDataset,
+  bar: BarData<GroupedDatum>,
   settings: VisualizationSettings,
   chartColumns: ChartColumns,
   datasetColumns: DatasetColumn[],
 ) => {
-  const currentSeries = series[seriesIndex];
-  const currentDatum = groupedData[datumIndex];
   const data = getColumnsData(
     chartColumns,
-    currentSeries,
-    currentDatum,
+    bar.series,
+    bar.datum,
     datasetColumns,
   );
 
   return {
     settings,
-    datumIndex,
-    index: seriesIndex,
+    datumIndex: bar.datumIndex,
+    index: bar.seriesIndex,
     data,
   };
 };

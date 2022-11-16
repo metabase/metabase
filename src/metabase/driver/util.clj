@@ -484,7 +484,8 @@
   "Available database engines"
   :visibility :public
   :setter     :none
-  :getter     available-drivers-info)
+  :getter     available-drivers-info
+  :doc        false)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             TLS Helpers                                                        |

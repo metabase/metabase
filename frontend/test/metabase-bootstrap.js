@@ -1,4 +1,3 @@
-import "core-js/stable";
 import "regenerator-runtime/runtime";
 import "number-to-locale-string";
 import "metabase/css/index.css";

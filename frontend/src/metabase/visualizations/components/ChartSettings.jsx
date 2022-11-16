@@ -11,6 +11,7 @@ import Radio from "metabase/core/components/Radio";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
@@ -112,6 +113,12 @@ class ChartSettings extends Component {
     this.props.onChange(updateSettings(this._getSettings(), changedSettings));
   };
 
+  handleChangeSeriesColor = (seriesKey, color) => {
+    this.props.onChange(
+      updateSeriesColor(this._getSettings(), seriesKey, color),
+    );
+  };
+
   handleDone = () => {
     this.props.onDone(this._getSettings());
     this.props.onClose();
@@ -172,6 +179,10 @@ class ChartSettings extends Component {
       settings,
       computedSettings,
       col,
+      _.noop,
+      {
+        series,
+      },
     ).some(widget => !widget.hidden);
   }
 
@@ -298,6 +309,8 @@ class ChartSettings extends Component {
       onEndShowWidget: this.handleEndShowWidget,
       currentSectionHasColumnSettings,
       columnHasSettings: col => this.columnHasSettings(col),
+      onChangeSeriesColor: (seriesKey, color) =>
+        this.handleChangeSeriesColor(seriesKey, color),
     };
 
     const sectionPicker = (

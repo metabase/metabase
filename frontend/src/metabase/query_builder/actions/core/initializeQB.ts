@@ -18,8 +18,9 @@ import {
   GetState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
-import { Card, SavedCard } from "metabase-types/types/Card";
-import { isNotNull } from "metabase/core/utils/array";
+import type { Card } from "metabase-types/types/Card";
+import { isSavedCard } from "metabase-types/guards";
+import { isNotNull } from "metabase/core/utils/types";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import Question from "metabase-lib/Question";
@@ -197,10 +198,6 @@ function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
-function isSavedCard(card: Card): card is SavedCard {
-  return !!(card as SavedCard).id;
-}
-
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 
 /**
@@ -311,7 +308,7 @@ async function handleQBInit(
     question = question.lockDisplay();
 
     const currentUser = getUser(getState());
-    if (currentUser.is_qbnewb) {
+    if (currentUser?.is_qbnewb) {
       uiControls.isShowingNewbModal = true;
       MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
     }

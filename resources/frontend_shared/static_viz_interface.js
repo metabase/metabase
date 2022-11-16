@@ -14,10 +14,11 @@ function toJSMap(m) {
   return o;
 }
 
-function row_chart(settings, data) {
+function row_chart(settings, data, colors) {
   return StaticViz.RenderChart("row", {
     settings: JSON.parse(settings),
     data: JSON.parse(data),
+    colors: JSON.parse(colors),
   });
 }
 
@@ -58,7 +59,7 @@ function categorical_donut(rows, colors, settings) {
   return StaticViz.RenderChart("categorical/donut", {
     data: toJSArray(rows),
     colors: toJSMap(colors),
-    settings: JSON.parse(settings)
+    settings: JSON.parse(settings),
   });
 }
 

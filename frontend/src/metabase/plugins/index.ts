@@ -1,20 +1,24 @@
-import { t } from "ttag";
 import React from "react";
+import { t } from "ttag";
+
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
-import {
+
+import type {
   DatabaseEntityId,
   PermissionSubject,
 } from "metabase/admin/permissions/types";
-import {
-  Collection,
+
+import type {
   Bookmark,
-  GroupsPermissions,
+  Collection,
   Dataset,
   Group,
+  GroupsPermissions,
+  User,
 } from "metabase-types/api";
-import { AdminPathKey, State } from "metabase-types/store";
-import { User } from "metabase-types/types/User";
-import Question from "metabase-lib/Question";
+import type { AdminPathKey, State } from "metabase-types/store";
+import type Question from "metabase-lib/Question";
+
 import { PluginGroupManagersType } from "./types";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.

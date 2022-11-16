@@ -1,10 +1,8 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
-import Form from "metabase/containers/FormikForm";
-import forms from "metabase/entities/timeline-events/forms";
-import { Timeline, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent, TimelineEventData } from "metabase-types/api";
+import EventForm from "../../containers/EventForm";
 import ModalBody from "../ModalBody";
-import ModalDangerButton from "../ModalDangerButton";
 import ModalHeader from "../ModalHeader";
 
 export interface EditEventModalProps {
@@ -28,14 +26,12 @@ const EditEventModal = ({
   onCancel,
   onClose,
 }: EditEventModalProps): JSX.Element => {
-  const form = useMemo(() => forms.details(), []);
-
   const handleSubmit = useCallback(
-    async (event: TimelineEvent) => {
-      await onSubmit(event, timeline);
+    async (values: TimelineEventData) => {
+      await onSubmit({ ...event, ...values }, timeline);
       onSubmitSuccess?.();
     },
-    [timeline, onSubmit, onSubmitSuccess],
+    [event, timeline, onSubmit, onSubmitSuccess],
   );
 
   const handleArchive = useCallback(async () => {
@@ -47,17 +43,11 @@ const EditEventModal = ({
     <div>
       <ModalHeader title={t`Edit event`} onClose={onClose} />
       <ModalBody>
-        <Form<TimelineEvent>
-          form={form}
+        <EventForm
           initialValues={event}
-          isModal={true}
           onSubmit={handleSubmit}
-          onClose={onCancel}
-          footerExtraButtons={
-            <ModalDangerButton onClick={handleArchive}>
-              {t`Archive event`}
-            </ModalDangerButton>
-          }
+          onArchive={handleArchive}
+          onCancel={onCancel}
         />
       </ModalBody>
     </div>

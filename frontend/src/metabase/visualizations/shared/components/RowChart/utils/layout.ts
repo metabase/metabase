@@ -1,10 +1,7 @@
 import _ from "underscore";
 
 import type { ScaleContinuousNumeric } from "d3-scale";
-import {
-  FontStyle,
-  TextMeasurer,
-} from "metabase/visualizations/shared/types/measure-text";
+import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import { Margin } from "metabase/visualizations/shared/types/layout";
 import {
   ChartFont,
@@ -12,7 +9,7 @@ import {
 } from "metabase/visualizations/shared/types/style";
 import { ChartGoal } from "metabase/visualizations/shared/types/settings";
 import { LABEL_PADDING } from "../constants";
-import { Series } from "../types";
+import { Series, SeriesData } from "../types";
 
 const CHART_PADDING = 10;
 const TICKS_OFFSET = 10;
@@ -35,8 +32,7 @@ export const getMaxWidth = (
 };
 
 export const getChartMargin = <TDatum>(
-  data: TDatum[],
-  series: Series<TDatum, unknown>[],
+  seriesData: SeriesData<TDatum>[],
   yTickFormatter: (value: any) => string,
   ticksFont: ChartFont,
   labelFont: ChartFont,
@@ -49,8 +45,8 @@ export const getChartMargin = <TDatum>(
 ): Margin => {
   const yAxisOffset = hasYAxis
     ? getMaxWidth(
-        data.flatMap(datum =>
-          series.map(series => yTickFormatter(series.yAccessor(datum))),
+        seriesData.flatMap(seriesData =>
+          seriesData.bars.map(bar => yTickFormatter(bar.yValue)),
         ),
         ticksFont,
         measureText,

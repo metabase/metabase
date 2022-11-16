@@ -538,3 +538,10 @@
      ~@more
      (catch Throwable e#
        (~raise e#))))
+
+(defn bit->boolean
+  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
+  [v]
+  (if (number? v)
+    (not (zero? v))
+    v))
