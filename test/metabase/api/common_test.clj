@@ -110,29 +110,30 @@
                            {id metabase.util.schema/IntGreaterThanZero}
                            (select-one Card :id id)))))))
 
+;; endpoint content-types are only honored if the route args have args not from the route
 (api/defendpoint ^{:content-types #{:content/json :content/form}} POST
   "/both"
-  []
+  [_x]
   {:status 200 :body "/both"})
 
 (api/defendpoint ^{:content-types #{:content/json}} POST
   "/json"
-  []
+  [_x]
   {:status 200 :body "/json"})
 
 (api/defendpoint ^{:content-types #{:content/form}} POST
   "/form"
-  []
+  [_x]
   {:status 200 :body "/form"})
 
 (api/defendpoint POST
   "/default"
-  []
+  [_x]
   {:status 200 :body "/default"})
 
 (api/defendpoint ^{:content-types #{:content/*}} POST
   "/any"
-  []
+  [_x]
   {:status 200 :body "/any"})
 
 (api/defendpoint POST ["/complicated/:foo" :foo #"aa|bb"]
@@ -151,6 +152,7 @@
                           #"Unrecognized content type: :content/unrecognized"
                           (api/make-route "/foo"
                                           "post"
+                                          [:id]
                                           #{:content/unrecognized}))))
   (testing "handles nil content-type"
     (is (nil? (api/content-type-matches? nil #{:content/json})))

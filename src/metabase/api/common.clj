@@ -1,6 +1,7 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [clojure.spec.alpha :as s]
+  (:require [clojure.set :as set]
+            [clojure.spec.alpha :as s]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clout.core :as clout]
@@ -258,8 +259,16 @@
 (defn make-route
   "Create a route for our defendpoint. For non-POST methods, just returns the route. For POST methods, adds a second
   check that the content type matches expected. By default this is \"application/json\", but can supply others in
-  metadata like :content/form for form data."
-  [route method content-types]
+  metadata like :content/form for form data. It only adds this check if there are args in the args vector for the route that are not from the route.
+
+  Eg: route:       \"/:card-id/query/:export-format\"
+      args vector: [card-id export-format]
+  does not require a check of content type because its only args are from the route itself.
+
+      route:       \"/:card-id/query/:export-format\"
+      args vector: [card-id export-format :as {{:keys [parameters]} :params}]
+  does require a check because it pulls parameters from the request."
+  [route method args content-types]
   (if (= (str/lower-case (name method)) "post")
     (do
       (when (seq content-types)
@@ -270,33 +279,47 @@
                                          (keys content-type->regex))
                                     {}))))
               content-types))
-      `(let [route# (#'compojure/prepare-route ~route)
-             content-types# (or ~content-types #{:content/json})]
-         (reify clout/Route
-           (route-matches [_ request#]
-             (when-let [matched# (clout/route-matches route# request#)]
-               (let [content-type# (get-in request# [:headers "content-type"])]
-                 (if (content-type-matches? content-type# content-types#)
-                   matched#
-                   (throw (ex-info (tru "Invalid content-type")
-                                   {:provided content-type#
-                                    :available content-types#})))))))))
+      `(let [route'# ~route
+             route# (#'compojure/prepare-route route'#)
+             content-types# ~content-types]
+         ;; if all args come from the route, no need to enforce content type
+         (if (seq (set/difference (set '~ args)
+                                  (into #{} (map symbol) (:keys route#))))
+           (do
+             (reify clout/Route
+               (route-matches [_ request#]
+                 (when-let [matched# (clout/route-matches route# request#)]
+                   (let [content-type# (get-in request# [:headers "content-type"])]
+                     (if (content-type-matches? content-type# (or content-types# #{:content/json}))
+                       matched#
+                       (throw (ex-info (tru "Invalid content-type")
+                                       {:provided content-type#
+                                        :available content-types#}))))))))
+           (do (when (seq content-types#)
+                 (log/warnf "Content type %s provided on route `%s` in %s, but route doesn't check body"
+                            content-types#
+                            route'#
+                            (ns-name *ns*)))
+               route#))))
     route))
 
 (defmacro defendpoint*
   "Impl macro for [[defendpoint]]; don't use this directly."
   [{:keys [method route fn-name docstr args body]}]
   {:pre [(or (string? route) (vector? route))]}
-  `(def ~(vary-meta fn-name
-                    assoc
-                    :doc          docstr
-                    :is-endpoint? true)
-     (~(symbol "compojure.core" (name method))
-      ~(make-route route
-                   (str/lower-case (name method))
-                   (:content-types (meta method) #{:content/json}))
-      ~args
-      ~@body)))
+  `(let [route# ~(make-route route
+                             (str/lower-case (name method))
+                             args
+                             (:content-types (meta method)))]
+     (def ~(vary-meta fn-name
+                      assoc
+                      :doc          docstr
+                      :is-endpoint? true)
+       (~(symbol "compojure.core" (name method))
+        route# ;; compojure.core/POST etc evaluate route twice expecting literals. We might emit a warning about
+               ;; content-type requirements with no access to the request body and it logs twice
+        ~args
+        ~@body))))
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`

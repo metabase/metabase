@@ -31,7 +31,7 @@
     (jdbc/query {:datasource mdb.connection/*application-db*} ["SCRIPT TO ?" path]))
   :ok)
 
-(api/defendpoint ^{:content-types #{:content/*}} POST "/snapshot/:name"
+(api/defendpoint POST "/snapshot/:name"
   "Snapshot the database for testing purposes."
   [name]
   (save-snapshot! name)
@@ -80,13 +80,13 @@
         (.. lock writeLock unlock))))
   :ok)
 
-(api/defendpoint ^{:content-types #{:content/*}} POST "/restore/:name"
+(api/defendpoint POST "/restore/:name"
   "Restore a database snapshot for testing purposes."
   [name]
   (restore-snapshot! name)
   nil)
 
-(api/defendpoint ^{:content-types #{:content/*}} POST "/echo"
+(api/defendpoint POST "/echo"
   [fail :as {:keys [body]}]
   (if fail
     {:status 400
