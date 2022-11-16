@@ -12,7 +12,7 @@ const mockedDatabase = createMockDatabase();
 
 describe("metabase/selectors/data", () => {
   describe("getHasDataAccess", () => {
-    it("should return true if user has access to at least one real database", () => {
+    it("should return true if user has access to at least one database, even if it's the one with sample data", () => {
       const state = createMockState({
         entities: {
           databases: {
@@ -38,7 +38,7 @@ describe("metabase/selectors/data", () => {
   });
 
   describe("getHasOwnDatabase", () => {
-    it("should return true if user has their own database", () => {
+    it("user has at least one database, and the one with sample data does not count", () => {
       const state = createMockState({
         entities: {
           databases: {
@@ -54,7 +54,7 @@ describe("metabase/selectors/data", () => {
       expect(getHasOwnDatabase(state)).toBe(true);
     });
 
-    it("should return false if user does not have their own database", () => {
+    it("user does not have their own database, and the one with sample data does not count", () => {
       const state = createMockState({
         entities: {
           databases: {
@@ -68,7 +68,7 @@ describe("metabase/selectors/data", () => {
   });
 
   describe("getHasNativeWrite", () => {
-    it("should return true if user has permissions to write to at least one database", () => {
+    it("user has permissions to write to at least one database", () => {
       const state = createMockState({
         entities: {
           databases: {
@@ -80,7 +80,7 @@ describe("metabase/selectors/data", () => {
       expect(getHasNativeWrite(state)).toBe(true);
     });
 
-    it("should return false if user does not have permissions to write to at least one database", () => {
+    it("user does not have permissions to write to at least one database", () => {
       const state = createMockState({
         entities: {
           databases: {
@@ -94,7 +94,7 @@ describe("metabase/selectors/data", () => {
   });
 
   describe("getHasDatabaseWithJsonEngine", () => {
-    it("should return true if user has a json database", () => {
+    it("user has a json database", () => {
       const state = createMockState({
         entities: {
           databases: {
@@ -106,7 +106,7 @@ describe("metabase/selectors/data", () => {
       expect(getHasDatabaseWithJsonEngine(state)).toBe(true);
     });
 
-    it("should return false if user does not have a json database", () => {
+    it("user does not have a json database", () => {
       const state = createMockState({
         entities: {
           databases: {
