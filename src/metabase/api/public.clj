@@ -246,7 +246,7 @@
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (actions.execution/fetch-values dashboard-id dashcard-id slug (json/parse-string parameters))))
 
-(def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 10))
+(def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 1000))
 
 (api/defendpoint POST "/dashboard/:uuid/dashcard/:dashcard-id/execute/:slug"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
