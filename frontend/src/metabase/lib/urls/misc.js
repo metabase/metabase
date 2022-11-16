@@ -3,7 +3,7 @@ import { model } from "./models";
 import { question, tableRowsQuery } from "./questions";
 import { pulse } from "./pulses";
 
-export const exportFormats = ["csv", "xlsx", "json"];
+export const exportFormats = ["csv", "xlsx", "json", "png"];
 
 export function accountSettings() {
   return "/account/profile";

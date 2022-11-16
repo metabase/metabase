@@ -774,8 +774,34 @@ saved later when it is ready."
    :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
+(defn image-response
+  "Returns a Ring response to serve a static-viz image download."
+  [byte-array]
+  (-> (response/response byte-array)
+      (#'response/content-length (count byte-array))))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema ^:streaming POST "/:card-id/query/:export-format"
+(api/defendpoint POST "/:card-id/download-image"
+  "WIP"
+  [card-id]
+  (let [{:keys [dataset_query] :as card} (db/select-one Card :id card-id)
+        query-results                    (qp/process-query-and-save-execution!
+                                          (-> dataset_query
+                                              (assoc :async? false)
+                                              (assoc-in [:middleware :process-viz-settings?] true))
+                                          {:executed-by api/*current-user-id*
+                                           :context     :pulse
+                                           :card-id     card-id})
+        query-results (qp.card/run-query-for-card-async )
+        png-bytes                        (render/render-pulse-card-to-png (pulse-impl/defaulted-timezone card)
+                                                                          card
+                                                                          query-results
+                                                                          1000)]
+    (-> png-bytes
+        image-response
+        (response/header "Content-Disposition" (format "attachment; filename=\"card-%d.png\"" card-id)))))
+
+(api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint

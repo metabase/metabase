@@ -1691,6 +1691,7 @@
   (s/enum :ad-hoc
           :collection
           :csv-download
+          :png-download
           :dashboard
           :embedded-dashboard
           :embedded-question

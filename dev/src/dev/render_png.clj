@@ -65,6 +65,26 @@
     (.deleteOnExit tmp-file)
     (open tmp-file)))
 
+(defn render-card-to-bytes
+  "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
+  match what's rendered on another system, like a docker container."
+  [card-id]
+  (let [{:keys [dataset_query] :as card} (db/select-one card/Card :id card-id)
+        user                             (db/select-one user/User)
+        query-results                    (binding [qp.perms/*card-id* nil]
+                                           (qp/process-query-and-save-execution!
+                                            (-> dataset_query
+                                                (assoc :async? false)
+                                                (assoc-in [:middleware :process-viz-settings?] true))
+                                            {:executed-by (:id user)
+                                             :context     :pulse
+                                             :card-id     card-id}))
+        png-bytes                        (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
+                                                                                card
+                                                                                query-results
+                                                                                1000)]
+    png-bytes))
+
 (defn open-hiccup-as-html [hiccup]
   (let [html-str (hiccup/html hiccup)
         tmp-file (java.io.File/createTempFile "card-html" ".html")]
