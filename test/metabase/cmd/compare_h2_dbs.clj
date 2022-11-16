@@ -10,7 +10,7 @@
 (comment metabase.db.jdbc-protocols/keep-me)
 
 (defn- jdbc-spec [db-file]
-  {:classname         "org.h2.Driver"
+  {:classname         "org.h2_v1_4_197.Driver"
    :subprotocol       "h2"
    :subname           (str "file:" db-file)
    "IFEXISTS"         "TRUE"

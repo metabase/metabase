@@ -21,7 +21,9 @@
 
   javax.sql.DataSource
   (getConnection [_]
-    (if properties
+    (doto (new org.h2_v1_4_197.jdbcx.JdbcDataSource)
+      (.setURL url))
+    #_(if properties
       (DriverManager/getConnection url properties)
       (DriverManager/getConnection url)))
 

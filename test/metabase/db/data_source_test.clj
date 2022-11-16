@@ -44,7 +44,7 @@
                        :h2
                        {:subprotocol "h2"
                         :db          (format "mem:%s" (mt/random-name))
-                        :classname   "org.h2.Driver"})]
+                        :classname   "org.h2_v1_4_197.Driver"})]
       (with-open [conn (.getConnection data-source)]
         (is (= [{:one 1}]
                (jdbc/query {:connection conn} "SELECT 1 AS one;")))))))

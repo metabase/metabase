@@ -53,7 +53,7 @@
   (testing "Make sure we *cannot* connect to a non-existent database by default"
     (is (= ::exception-thrown
            (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
-                (catch org.h2.jdbc.JdbcSQLException e
+                (catch org.h2_v1_4_197.jdbc.JdbcSQLException e
                   (and (re-matches #"Database .+ not found .+" (.getMessage e))
                        ::exception-thrown)))))))
 

@@ -11,7 +11,7 @@
   ;; Force the DB to use h2 regardless of what's actually in the env vars for Java properties
   (alter-var-root #'env/env assoc :mb-db-type "h2")
   (require 'metabase.db.env :reload)
-  (org.h2.tools.Shell/main
+  (org.h2_v1_4_197.tools.Shell/main
    (into-array
     String
     ["-url" (let [^metabase.db.data_source.DataSource data-source mdb.env/data-source
