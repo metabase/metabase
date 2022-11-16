@@ -395,6 +395,11 @@ export const MBQL_CLAUSES = {
     hasOptions: true,
     requiresFeature: "convert-timezone",
   },
+  now: {
+    displayName: `now`,
+    type: "expression",
+    args: [],
+  },
 };
 
 for (const [name, clause] of Object.entries(MBQL_CLAUSES)) {
