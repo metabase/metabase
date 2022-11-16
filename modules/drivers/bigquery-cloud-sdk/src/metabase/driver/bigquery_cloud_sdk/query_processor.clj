@@ -592,12 +592,7 @@
       (:hour :minute :second)
       (let [x' (hx/->timestamp x')
             y' (hx/->timestamp y')]
-        (hsql/call :timestamp_diff y' x' (hsql/raw (name unit))))
-
-      (throw (ex-info (tru "Invalid datetime-diff unit {0}" unit)
-                      {:clause      clause
-                       :valid-units [:year :month :week :day :hour :minute :second]
-                       :type        qp.error-type/invalid-query})))))
+        (hsql/call :timestamp_diff y' x' (hsql/raw (name unit)))))))
 
 (defmethod driver/escape-alias :bigquery-cloud-sdk
   [driver s]

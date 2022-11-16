@@ -342,11 +342,7 @@
                             (if (= unit :second)
                               (hx/- b a)
                               (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))))]
-      (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))
-
-    (throw (ex-info (tru "Invalid datetime-diff unit: {0}" unit)
-                    {:valid-units [:year :month :week :day :hour :minute :second]
-                     :type        qp.error-type/invalid-query}))))
+      (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))))
 
 (defmethod sql.qp/->honeysql [:postgres :datetime-diff]
   [driver [_ x y unit]]

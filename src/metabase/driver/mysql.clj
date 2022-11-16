@@ -381,12 +381,7 @@
       (hsql/call :datediff y x)
 
       (:hour :minute :second)
-      (hsql/call :timestampdiff (hsql/raw (name unit)) x y)
-
-      (throw (ex-info (tru "Invalid datetime-diff unit {0}" unit)
-                      {:clause      clause
-                       :valid-units [:year :month :week :day :hour :minute :second]
-                       :type        qp.error-type/invalid-query})))))
+      (hsql/call :timestampdiff (hsql/raw (name unit)) x y))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
