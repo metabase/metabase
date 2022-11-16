@@ -54,6 +54,7 @@ const GoogleAuthForm = ({
       initialValues={initialValues}
       enableReinitialize
       validationSchema={GOOGLE_SCHEMA}
+      validationContext={settings}
       onSubmit={onSubmit}
     >
       {({ dirty }) => (
