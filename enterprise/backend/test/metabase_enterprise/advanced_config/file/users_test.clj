@@ -61,39 +61,39 @@
 (deftest init-from-config-file-force-admin-for-first-user-test
   (testing "If this is the first user being created, always make the user a superuser regardless of what is specified"
     (try
-      (binding [] (testing "Create the first User"
-                    (binding [advanced-config.file/*config* {:version 1
-                                                             :config  {:users [{:first_name   "Cam"
-                                                                                :last_name    "Era"
-                                                                                :email        "cam+config-file-admin-test@metabase.com"
-                                                                                :password     "2cans"
-                                                                                :is_superuser false}]}}]
-                      (with-redefs [advanced-config.file.users/init-from-config-file-is-first-user? (constantly true)]
-              (is (= :ok
-                     (advanced-config.file/initialize!)))
-                        (is (partial= {:first_name   "Cam"
-                                       :last_name    "Era"
-                                       :email        "cam+config-file-admin-test@metabase.com"
-                                       :is_superuser true}
-                            (db/select-one User :email "cam+config-file-admin-test@metabase.com")))
-              (is (= 1
-                     (db/count User :email "cam+config-file-admin-test@metabase.com"))))))
-        (testing "Create the another User, DO NOT force them to be an admin"
-          (binding [advanced-config.file/*config* {:version 1
-                                                   :config  {:users [{:first_name   "Cam"
-                                                                      :last_name    "Saul"
-                                                                      :email        "cam+config-file-admin-test-2@metabase.com"
-                                                                      :password     "2cans"
-                                                                      :is_superuser false}]}}]
+      (testing "Create the first User"
+        (binding [advanced-config.file/*config* {:version 1
+                                                 :config  {:users [{:first_name   "Cam"
+                                                                    :last_name    "Era"
+                                                                    :email        "cam+config-file-admin-test@metabase.com"
+                                                                    :password     "2cans"
+                                                                    :is_superuser false}]}}]
+          (with-redefs [advanced-config.file.users/init-from-config-file-is-first-user? (constantly true)]
             (is (= :ok
                    (advanced-config.file/initialize!)))
             (is (partial= {:first_name   "Cam"
-                           :last_name    "Saul"
-                           :email        "cam+config-file-admin-test-2@metabase.com"
-                           :is_superuser false}
-                          (db/select-one User :email "cam+config-file-admin-test-2@metabase.com")))
+                           :last_name    "Era"
+                           :email        "cam+config-file-admin-test@metabase.com"
+                           :is_superuser true}
+                          (db/select-one User :email "cam+config-file-admin-test@metabase.com")))
             (is (= 1
-                   (db/count User :email "cam+config-file-admin-test-2@metabase.com"))))))
+                   (db/count User :email "cam+config-file-admin-test@metabase.com"))))))
+      (testing "Create the another User, DO NOT force them to be an admin"
+        (binding [advanced-config.file/*config* {:version 1
+                                                 :config  {:users [{:first_name   "Cam"
+                                                                    :last_name    "Saul"
+                                                                    :email        "cam+config-file-admin-test-2@metabase.com"
+                                                                    :password     "2cans"
+                                                                    :is_superuser false}]}}]
+          (is (= :ok
+                 (advanced-config.file/initialize!)))
+          (is (partial= {:first_name   "Cam"
+                         :last_name    "Saul"
+                         :email        "cam+config-file-admin-test-2@metabase.com"
+                         :is_superuser false}
+                        (db/select-one User :email "cam+config-file-admin-test-2@metabase.com")))
+          (is (= 1
+                 (db/count User :email "cam+config-file-admin-test-2@metabase.com")))))
       (finally (db/delete! User :email [:in #{"cam+config-file-admin-test@metabase.com"
                                               "cam+config-file-admin-test-2@metabase.com"}])))))
 
@@ -120,32 +120,32 @@
         (db/delete! User :email "cam+config-file-password-test@metabase.com")))))
 
 (deftest ^:parallel init-from-config-file-validation-test
-  (binding [] (are [user error-pattern] (thrown-with-msg?
-                               clojure.lang.ExceptionInfo
-                               error-pattern
-                               (binding [advanced-config.file/*config* {:version 1
-                                                                        :config  {:users [user]}}]
-                                 (#'advanced-config.file/config)))
-      ;; missing email
-                {:first_name "Cam"
-                 :last_name  "Era"
-                 :password   "2cans"}
-                (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :email)"))
+  (are [user error-pattern] (thrown-with-msg?
+                             clojure.lang.ExceptionInfo
+                             error-pattern
+                             (binding [advanced-config.file/*config* {:version 1
+                                                                      :config  {:users [user]}}]
+                               (#'advanced-config.file/config)))
+    ;; missing email
+    {:first_name "Cam"
+     :last_name  "Era"
+     :password   "2cans"}
+    (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :email)"))
 
-                ;; missing first name
-                {:last_name "Era"
-                 :email     "cam+config-file-admin-test@metabase.com"
-                 :password  "2cans"}
-                (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :first_name)"))
+    ;; missing first name
+    {:last_name "Era"
+     :email     "cam+config-file-admin-test@metabase.com"
+     :password  "2cans"}
+    (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :first_name)"))
 
-                ;; missing last name
-                {:first_name "Cam"
-                 :email      "cam+config-file-admin-test@metabase.com"
-                 :password   "2cans"}
-                (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :last_name)"))
+    ;; missing last name
+    {:first_name "Cam"
+     :email      "cam+config-file-admin-test@metabase.com"
+     :password   "2cans"}
+    (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :last_name)"))
 
-                ;; missing password
-                {:first_name "Cam"
-                 :last_name  "Era"
-                 :email      "cam+config-file-test@metabase.com"}
-                (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :password)")))))
+    ;; missing password
+    {:first_name "Cam"
+     :last_name  "Era"
+     :email      "cam+config-file-test@metabase.com"}
+    (re-pattern (java.util.regex.Pattern/quote "failed: (contains? % :password)"))))
