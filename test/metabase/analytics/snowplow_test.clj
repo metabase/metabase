@@ -93,8 +93,8 @@
                      :version                      {:tag (:tag (public-settings/version))},
                      :token_features               (public-settings/token-features)
                      :created_at                   (snowplow/instance-creation)
-                     :application_database         (snowplow/app-db-type)
-                     :application_database_version (snowplow/app-db-version)}}
+                     :application_database         (#'snowplow/app-db-type)
+                     :application_database_version (#'snowplow/app-db-version)}}
              (:context (first @*snowplow-collector*))))
 
       (testing "the created_at should have the format yyyy-MM-dd'T'hh:mm:ss.SSXXX"
