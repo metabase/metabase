@@ -334,17 +334,13 @@
        (some? account)
        (some? user)))
 
-(let [ByteArray (type (byte-array []))]
-  (defn- byte-array->string [ba]
-    (if (instance? ByteArray ba)
-      (String. ba)
-      ba)))
-
 (defn adapt-snowflake-local-keypair
   "JDBC is finicky about how it will accept the private-key-file and user. These need to be in the connection-uri. More
   info in the docstring of "
   [{:keys [user account private-key-value] :as details}]
-  (let [private-key-str (byte-array->string private-key-value)
+  (let [private-key-str (if (instance? (Class/forName "[B") private-key-value)
+                          (String. ^"[B" private-key-value)
+                          private-key-value)
         private-key-file (secret/value->file! {:connection-property-name "private-key-file"
                                                :value private-key-str})
         new-conn-uri (format "jdbc:snowflake://%s.snowflakecomputing.com?user=%s&private_key_file=%s"
