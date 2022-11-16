@@ -31,8 +31,10 @@
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
+            [throttle.core :as throttle]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+            [toucan.hydrate :refer [hydrate]])
+  (:import [clojure.lang ExceptionInfo]))
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
@@ -235,7 +237,6 @@
      :parameters    parameters)))
 
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute/:slug"
-  ;; TODO drop non-public info, fix comments
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [uuid dashcard-id slug parameters]
   {dashcard-id su/IntGreaterThanZero
@@ -245,8 +246,9 @@
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
     (actions.execution/fetch-values dashboard-id dashcard-id slug (json/parse-string parameters))))
 
+(def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 10))
+
 (api/defendpoint POST "/dashboard/:uuid/dashcard/:dashcard-id/execute/:slug"
-  ;; TODO drop non-public info, fix comments
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
@@ -255,10 +257,17 @@
   {dashcard-id su/IntGreaterThanZero
    slug su/NonBlankString
    parameters (s/maybe {s/Keyword s/Any})}
-  (validation/check-public-sharing-enabled)
-  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
-    ;; Undo middleware string->keyword coercion
-    (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name))))
+  (let [throttle-info (try
+                        (throttle/check dashcard-execution-throttle dashcard-id)
+                        nil
+                        (catch ExceptionInfo e (ex-data e)))]
+    (if throttle-info
+      {:status 400 :body (get-in throttle-info [:errors :dashcard-id])}
+      (do
+        (validation/check-public-sharing-enabled)
+        (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+          ;; Undo middleware string->keyword coercion
+          (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name)))))))
 
 (api/defendpoint GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
