@@ -64,7 +64,7 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
     columnValueFormatter,
   );
   const groupedData = getGroupedDataset(
-    data,
+    data.rows,
     chartColumns,
     columnValueFormatter,
   );
