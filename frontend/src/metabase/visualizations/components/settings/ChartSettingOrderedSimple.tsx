@@ -25,6 +25,7 @@ interface ChartSettingOrderedSimpleProps {
     ref: HTMLElement | undefined,
   ) => void;
   series: Series;
+  hasEditSettings: boolean;
 }
 
 export const ChartSettingOrderedSimple = ({
@@ -33,6 +34,7 @@ export const ChartSettingOrderedSimple = ({
   value: orderedItems,
   series,
   onShowWidget,
+  hasEditSettings = true,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = (selectedItem: SortableItem) => {
     const index = orderedItems.findIndex(
@@ -78,7 +80,7 @@ export const ChartSettingOrderedSimple = ({
           onRemove={toggleDisplay}
           onEnable={toggleDisplay}
           onSortEnd={handleSortEnd}
-          onEdit={handleOnEdit}
+          onEdit={hasEditSettings ? handleOnEdit : undefined}
           distance={5}
         />
       ) : (
