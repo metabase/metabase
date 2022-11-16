@@ -10,6 +10,7 @@ on:
       - "**.md"
       - ".circleci/**"
       - "**.unit.spec.*"
+      - "**_test.clj"
 
 jobs:
 

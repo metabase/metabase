@@ -5,12 +5,15 @@ on:
     branches:
       - 'master'
       - 'release-**'
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "**/frontend/test/**"
   pull_request:
     paths-ignore:
       - "docs/**"
       - "**.md"
-      - "frontend/test/**"
-      - "enterprise/frontend/test/**"
+      - "**/frontend/test/**"
 
 jobs:
 
