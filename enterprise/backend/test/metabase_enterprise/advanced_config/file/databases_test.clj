@@ -1,12 +1,10 @@
 (ns metabase-enterprise.advanced-config.file.databases-test
   (:require
    [clojure.test :refer :all]
-   [flatland.ordered.map :as ordered-map]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase.db.connection :as mdb.connection]
    [metabase.models :refer [Database Table]]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan.db :as db]))
@@ -65,22 +63,10 @@
     (mt/with-temporary-setting-values [config-from-file-sync-databases true]
       (try
         (binding [advanced-config.file/*config* {:version 1
-                                                 :config
-                                                 ;; `settings:` HAS to come before `databases:`, otherwise the
-                                                 ;; flag won't be set when database sync stuff happens.
-                                                 ;;
-                                                 ;; Using a [[flatland.ordered.map]] here really isn't necessary
-                                                 ;; since this map only has two keys and will be created as an
-                                                 ;; `ArrayMap`, preserving the originally specified order... but
-                                                 ;; using [[ordered-map]] explicitly here makes this constraint
-                                                 ;; clearer I think. Also the YAML library reads stuff in as an
-                                                 ;; ordered map so this more closely matches the behavior when
-                                                 ;; using a file
-                                                 (ordered-map/ordered-map
-                                                  :settings  {:config-from-file-sync-databases false}
-                                                  :databases [{:name    test-db-name
-                                                               :engine  "h2"
-                                                               :details (:details (mt/db))}])}]
+                                                 :config  {:settings  {:config-from-file-sync-databases false}
+                                                           :databases [{:name    test-db-name
+                                                                        :engine  "h2"
+                                                                        :details (:details (mt/db))}]}}]
           (testing "Create a Database since it does not already exist"
             (is (= :ok
                    (advanced-config.file/initialize!)))

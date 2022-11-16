@@ -2,11 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
-   [metabase-enterprise.advanced-config.file.users
-    :as advanced-config.file.users]
+   [metabase-enterprise.advanced-config.file.users :as advanced-config.file.users]
    [metabase.models :refer [User]]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.util.password :as u.password]
    [toucan.db :as db]))
 
