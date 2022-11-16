@@ -69,7 +69,7 @@ export type ChartSettings = {
     bottom?: string;
     right?: string;
   };
-  series_settings?: Record<string, { color: string }>;
+  series_settings?: Record<string, { color?: string; title?: string }>;
 };
 
 export interface Dimensions {

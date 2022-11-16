@@ -646,8 +646,7 @@
   (for [[idx y-col] (map-indexed vector y-cols)]
     (let [y-col-key     (keyword (:name y-col))
           metric-name          (or (series-setting viz-settings y-col-key :name)
-                                   (series-setting viz-settings y-col-key :title)
-                                   (:display_name y-col))
+                                   (series-setting viz-settings y-col-key :title))
           card-type     (or (series-setting viz-settings y-col-key :display)
                             chart-type
                             (nth default-combo-chart-types idx))

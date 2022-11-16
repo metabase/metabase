@@ -15,7 +15,11 @@ import {
   calculateChartSize,
   getXValuesCount,
 } from "./utils/settings";
-import { getSeriesWithColors, removeNoneSeriesFields } from "./utils/series";
+import {
+  getSeriesWithColors,
+  getSeriesWithLegends,
+  removeNoneSeriesFields,
+} from "./utils/series";
 
 interface LineAreaBarChartProps {
   multipleSeries: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][];
@@ -60,16 +64,20 @@ const LineAreaBarChart = ({
   };
 
   const palette = { ...colors, ...instanceColors };
+  const mainSettings = multipleSettings[0];
   const seriesWithColors = getSeriesWithColors(
     multipleSeries,
-    multipleSettings[0],
+    mainSettings,
     palette,
-  ).map(series => merge(series, { name: series.name ?? series.cardName }));
-  const series = removeNoneSeriesFields(seriesWithColors);
+  );
+  const seriesWithLegends = getSeriesWithLegends(
+    seriesWithColors,
+    mainSettings,
+  );
+  const series = removeNoneSeriesFields(seriesWithLegends);
 
   const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;
   const xValuesCount = getXValuesCount(series);
-  const mainSettings = multipleSettings[0];
   const chartSize = calculateChartSize(mainSettings, xValuesCount, minTickSize);
   const adjustedSettings = adjustSettings(
     mainSettings,
