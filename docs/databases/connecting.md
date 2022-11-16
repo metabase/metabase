@@ -105,11 +105,11 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Syncing and scanning databases
 
-Metabase runs sync and scan queries in order to show tables and columns, populate dropdown menus with the right values, and suggest helpful visualizations. Metabase does _not_ copy any data from your database---it only maintains lists of the tables and columns.
+Metabase runs sync and scan queries in order to show tables, views, and columns, populate dropdown menus with the right values, and suggest helpful visualizations. Metabase does _not_ copy any data from your database---it only maintains lists of the tables and columns.
 
 ### How database syncs work
 
-A Metabase **sync** query gets a list of updated table names, column names, and column data types from your database. The query runs against your database during setup, and again every hour by default. It's very fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/partner-and-community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
+A Metabase **sync** query gets a list of updated table and view names, column names, and column data types from your database. The query runs against your database during setup, and again every hour by default. It's very fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/partner-and-community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
 
 ### How database scans work
 
