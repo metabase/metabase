@@ -32,13 +32,22 @@
  [shared.u
   qualified-name])
 
-(defn add-period
-  "Fixes strings that don't terminate in a period."
+(defn screaming-snake-case
+  "Turns `strings-that-look-like-deafening-vipers` into `STRINGS_THAT_LOOK_LIKE_DEAFENING_VIPERS`."
   [s]
-  (if (or (str/blank? s)
-          (#{\. \? \!} (last s)))
-    s
-    (str s ".")))
+  (str/upper-case (str/replace s "-" "_")))
+
+(defn add-period
+  "Fixes strings that don't terminate in a period; also accounts for strings
+  that end in `:`. Used for formatting docs."
+  [s]
+  (let [text (str s)]
+    (if (or (str/blank? text)
+            (#{\. \? \!} (last text)))
+      text
+      (if (str/ends-with? text ":")
+        (str (subs text 0 (- (count text) 1)) ".")
+        (str text ".")))))
 
 (defn capitalize-first-char
   "Like string/capitalize, only it ignores the rest of the string

@@ -122,6 +122,16 @@
     [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
     [clause field (add-type-info x (type-info field))]
 
+    [:datetime-diff x y unit]
+    [:datetime-diff
+     (if (string? x)
+       (add-type-info (u.date/parse x) nil)
+       x)
+     (if (string? y)
+       (add-type-info (u.date/parse y) nil)
+       y)
+     unit]
+
     [:between field (min-val :guard raw-value?) (max-val :guard raw-value?)]
     [:between
      field

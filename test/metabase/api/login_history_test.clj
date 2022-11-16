@@ -77,7 +77,7 @@
                         :device_description (s/eq "Browser (Chrome/Windows)")
                         :ip_address         (s/eq "52.206.149.9")
                         :active             (s/eq false)
-                        :location           (s/eq "Ashburn, United States")
+                        :location           (s/eq "Ashburn, Virginia, United States")
                         :timezone           (s/eq "ET")}
                        "Virginia")]
                      (mt/client session-id :get 200 "login-history/current")))))))

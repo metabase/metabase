@@ -1,8 +1,8 @@
 import type { ScaleContinuousNumeric } from "d3-scale";
 import { BarData } from "../../RowChart/types";
 
-export const getDataLabel = (
-  bar: BarData<unknown>,
+export const getDataLabel = <TDatum>(
+  bar: BarData<TDatum>,
   xScale: ScaleContinuousNumeric<number, number, never>,
   seriesKey: string,
   isStacked?: boolean,
