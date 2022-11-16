@@ -132,7 +132,7 @@
           (is (= expected
                  (u/slugify s))))))))
 
-(deftest ^:parallel slugify-filename-test
+(deftest ^:parallel slugify-unicode-test
   (doseq [[group s->expected]
           {nil
            {"ToucanFest 2017"               "toucanfest_2017"
@@ -147,9 +147,9 @@
            {"勇士" "勇士"}}]
     (testing group
       (doseq [[s expected] s->expected]
-        (testing (list 'u/slugify-filename s)
+        (testing (list 'u/slugify s {:unicode? true})
           (is (= expected
-                 (u/slugify-filename s))))))))
+                 (u/slugify s {:unicode? true}))))))))
 
 (deftest ^:parallel full-exception-chain-test
   (testing "Not an Exception"

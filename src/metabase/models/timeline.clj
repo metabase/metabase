@@ -65,9 +65,6 @@
   [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 ;;;; serialization
-(defmethod serdes.base/serdes-generate-path "Timeline" [_model-name timeline]
-  (serdes.base/maybe-labeled "Timeline" timeline :name))
-
 (defmethod serdes.base/extract-query "Timeline" [_model-name {:keys [collection-set]}]
   (eduction (map #(timeline-event/include-events-singular % {:all? true}))
             (if (seq collection-set)

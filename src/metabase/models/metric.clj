@@ -76,9 +76,6 @@
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
-(defmethod serdes.base/serdes-generate-path "Metric" [_model-name metric]
-  (serdes.base/maybe-labeled "Metric" metric :name))
-
 (defmethod serdes.base/extract-one "Metric"
   [_model-name _opts metric]
   (-> (serdes.base/extract-one-basics "Metric" metric)

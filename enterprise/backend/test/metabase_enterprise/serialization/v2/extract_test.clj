@@ -718,7 +718,9 @@
                                                               :dashboard_id  dash-id}]]
       (testing "pulse with neither collection nor dashboard"
         (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-none-id))]
-          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-none-eid}])
+          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse"
+                                                                :id    p-none-eid
+                                                                :label "pulse_w_o_collection_or_dashboard"}])
                         :creator_id                     (s/eq "ann@heart.band")
                         (s/optional-key :dashboard_id)  (s/eq nil)
                         (s/optional-key :collection_id) (s/eq nil)
@@ -733,7 +735,9 @@
 
       (testing "pulse with just collection"
         (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-coll-id))]
-          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-coll-eid}])
+          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse"
+                                                                :id    p-coll-eid
+                                                                :label "pulse_with_only_collection"}])
                         :creator_id                     (s/eq "ann@heart.band")
                         (s/optional-key :dashboard_id)  (s/eq nil)
                         :collection_id                  (s/eq coll-eid)
@@ -748,7 +752,9 @@
 
       (testing "pulse with just dashboard"
         (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-dash-id))]
-          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-dash-eid}])
+          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse"
+                                                                :id    p-dash-eid
+                                                                :label "pulse_with_only_dashboard"}])
                         :creator_id                     (s/eq "ann@heart.band")
                         :dashboard_id                   (s/eq dash-eid)
                         (s/optional-key :collection_id) (s/eq nil)
@@ -763,7 +769,9 @@
 
       (testing "pulse with both collection and dashboard"
         (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-both-id))]
-          (is (schema= {:serdes/meta   (s/eq [{:model "Pulse" :id p-both-eid}])
+          (is (schema= {:serdes/meta   (s/eq [{:model "Pulse"
+                                               :id    p-both-eid
+                                               :label "pulse_with_both_collection_and_dashboard"}])
                         :creator_id    (s/eq "ann@heart.band")
                         :dashboard_id  (s/eq dash-eid)
                         :collection_id (s/eq coll-eid)

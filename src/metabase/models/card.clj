@@ -332,9 +332,6 @@
   [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
-(defmethod serdes.base/serdes-generate-path "Card" [_model-name card]
-  (serdes.base/maybe-labeled "Card" card :name))
-
 (defmethod serdes.base/extract-query "Card" [_ {:keys [collection-set]}]
   (if (seq collection-set)
     (db/select-reducible Card :collection_id [:in collection-set])

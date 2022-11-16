@@ -70,7 +70,8 @@
   against existing entities.
 
   The default implementation is a single level, using the model name provided and the ID from either
-  [[serdes-entity-id]] or [[serdes.hash/identity-hash]].
+  [[serdes-entity-id]] or [[serdes.hash/identity-hash]], and any `:name` field as the `:label`.
+  This default implementation is factored out as [[maybe-labeled]] for reuse.
 
   Implementation notes:
   - `:serdes/meta` might be defined - if so it's coming from ingestion and might have truncated values in it, and should
@@ -109,12 +110,12 @@
   (let [self  (infer-self-path model-name entity)
         label (get entity slug-key)]
     [(if label
-       (assoc self :label (u/slugify-filename label))
+       (assoc self :label (u/slugify label {:unicode? true}))
        self)]))
 
 (defmethod serdes-generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for nested ones.
-  [(infer-self-path model-name entity)])
+  (maybe-labeled model-name entity :name))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Serialization Process                                                 |
