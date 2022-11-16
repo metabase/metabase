@@ -3,10 +3,12 @@ import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 
+import { PillSize } from "./types";
+
 export interface ColorPillRootProps {
   isAuto: boolean;
   isSelected: boolean;
-  pillSize: string;
+  pillSize: PillSize;
 }
 
 export const ColorPillRoot = styled.div<ColorPillRootProps>`

@@ -6,7 +6,7 @@ import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorSelector from "metabase/core/components/ColorSelector";
 
 export default function ChartSettingColorPicker(props) {
-  const { value, onChange, className, pillSize = "medium" } = props;
+  const { value, onChange, className, pillSize } = props;
 
   return (
     <div className={cx("flex align-center mb1", className)}>
