@@ -383,6 +383,11 @@ export const MBQL_CLAUSES = {
     type: "expression",
     args: ["expression", "number", "string"],
   },
+  now: {
+    displayName: `now`,
+    type: "expression",
+    args: [],
+  },
 };
 
 for (const [name, clause] of Object.entries(MBQL_CLAUSES)) {
@@ -467,6 +472,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "get-second",
   "datetime-add",
   "datetime-subtract",
+  "now",
   // boolean
   "contains",
   "ends-with",

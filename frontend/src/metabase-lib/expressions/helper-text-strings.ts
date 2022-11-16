@@ -760,6 +760,13 @@ const helperTextStrings: HelpText[] = [
       },
     ],
   },
+  {
+    name: "now",
+    structure: "now()",
+    description: t`Returns the current timestamp.`,
+    example: "now()",
+    args: [],
+  },
 ];
 
 export const getHelpText = (name: string): HelpText | undefined => {

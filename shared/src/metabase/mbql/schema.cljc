@@ -516,7 +516,7 @@
 
 (def date-arithmetic-functions
   "Functions to do math with date, datetime."
-  #{:+ :datetime-add :datetime-subtract})
+  #{:+ :datetime-add :datetime-subtract :now})
 
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
@@ -730,13 +730,15 @@
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
+(defclause ^{:requires-features #{:now}} now)
+
 (defclause ^{:requires-features #{:date-arithmetics}} datetime-subtract
   datetime DateTimeExpressionArg
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
 (def ^:private DatetimeExpression*
-  (one-of + temporal-extract datetime-add datetime-subtract
+  (one-of + temporal-extract datetime-add datetime-subtract now
           ;; SUGAR drivers do not need to implement
           get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))

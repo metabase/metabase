@@ -1,6 +1,7 @@
 (ns metabase.driver.sql.query-processor-test
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]

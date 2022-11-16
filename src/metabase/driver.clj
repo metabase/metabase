@@ -441,6 +441,10 @@
     ;; DEFAULTS TO TRUE
     :temporal-extract
 
+    ;; Does the driver support the now function
+    ;; DEFAULTS TO TRUE
+    :now
+
     ;; Does the driver support doing math with datetime? (i.e Adding 1 year to a datetime column)
     ;; DEFAULTS TO TRUE
     :date-arithmetics
@@ -476,6 +480,7 @@
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
 (defmethod supports? [::driver :date-arithmetics] [_ _] true)
 (defmethod supports? [::driver :temporal-extract] [_ _] true)
+(defmethod supports? [::driver :now] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
