@@ -292,6 +292,26 @@
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
             (is (= (set expected) (set (test-datetime-math query))))))))))
 
+(deftest now-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :now)
+    (testing "now() should return a DateTime type"
+      (let [col (-> (mt/run-mbql-query venues
+                      {:expressions {"1" [:now]}
+                       :fields [[:expression "1"]]
+                       :limit  1})
+                    :data :cols first)]
+        (is (= true
+               (if (:effective_type col)
+                 (isa? (:effective_type col) :type/DateTime)
+                 (isa? (:base_type col) :type/DateTime))))))
+    (testing "now() can be an argument to another function"
+      (let [col (-> (mt/run-mbql-query venues
+                      {:expressions {"1" [:datetime-add [:now] 1 :day]}
+                       :fields [[:expression "1"]]
+                       :limit  1})
+                    :data :cols first)]
+        (is (= true
+               (some? col)))))))
 
 (deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
