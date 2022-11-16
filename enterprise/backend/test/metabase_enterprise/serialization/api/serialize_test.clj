@@ -45,16 +45,8 @@
              (is (= 1
                     (count (files "Collection")))))
            (testing "Dashboard"
-             (is (= 2
-                    (count (files "Dashboard"))))
-             (let [[f1 f2]         (files "Dashboard")
-                   [path-1 path-2] (map u.files/get-path [f1 f2])]
-               (testing "Should have one subdirectory"
-                 (is (= 1
-                        (count (filter true? (map u.files/regular-file? [path-1 path-2]))))))
-               (let [subdirectory-path (first (remove u.files/regular-file? [path-1 path-2]))]
-                 (is (= 1
-                        (count (path-files subdirectory-path)))))))))))))
+             (is (= 1
+                    (count (files "Dashboard")))))))))))
 
 (deftest serialize-data-model-validation-test
   (do-serialize-data-model

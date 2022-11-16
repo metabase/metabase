@@ -6,9 +6,11 @@
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
             [metabase-enterprise.serialization.v2.load :as serdes.load]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric Pulse
-                                     PulseChannel PulseChannelRecipient Segment Table User]]
+                                     PulseChannel PulseChannelRecipient Segment Table Timeline TimelineEvent User]]
             [metabase.models.serialization.base :as serdes.base]
-            [toucan.db :as db]))
+            [schema.core :as s]
+            [toucan.db :as db])
+  (:import java.time.OffsetDateTime))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -543,18 +545,19 @@
                                                                  :target [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
 
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))
-            (let [card     (-> @serialized (by-model "Card") first)
-                  dashcard (-> @serialized (by-model "DashboardCard") first)]
+            (let [card (-> @serialized (by-model "Card") first)
+                  dash (-> @serialized (by-model "Dashboard") first)]
               (testing "exported :parameter_mappings are properly converted"
                 (is (= [{:parameter_id "12345678"
                          :target [:dimension [:field ["my-db" nil "orders" "subtotal"]
                                               {:source-field ["my-db" nil "orders" "invoice"]}]]}]
                        (:parameter_mappings card)))
-                (is (= [{:parameter_id "deadbeef"
-                         :card_id (:entity_id @card1s)
-                         :target [:dimension [:field ["my-db" nil "orders" "subtotal"]
-                                              {:source-field ["my-db" nil "orders" "invoice"]}]]}]
-                       (:parameter_mappings dashcard))))
+                (is (schema= [{:parameter_mappings [{:parameter_id (s/eq "deadbeef")
+                                                     :card_id      (s/eq (:entity_id @card1s))
+                                                     :target       (s/eq [:dimension [:field ["my-db" nil "orders" "subtotal"]
+                                                                                      {:source-field ["my-db" nil "orders" "invoice"]}]])}]
+                               s/Keyword s/Any}]
+                       (:ordered_cards dash))))
 
               (testing "exported :visualization_settings are properly converted"
                 (let [expected {:table.pivot_column "SOURCE"
@@ -577,8 +580,7 @@
                   (is (= expected
                          (:visualization_settings card)))
                   (is (= expected
-                         (:visualization_settings dashcard))))))))
-
+                         (-> dash :ordered_cards first :visualization_settings))))))))
 
 
         (testing "deserializing adjusts the IDs properly"
@@ -622,6 +624,114 @@
                        :card_id      (:id @card1d)
                        :target       [:dimension [:field (:id @field1d) {:source-field (:id @field2d)}]]}]
                      (:parameter_mappings @dashcard1d))))))))))
+
+(deftest timelines-test
+  (testing "timelines"
+    (let [serialized (atom nil)
+          coll1s     (atom nil)
+          user1s     (atom nil)
+          timeline1s (atom nil)
+          event1s    (atom nil)
+          event2s    (atom nil)
+          timeline2s (atom nil)
+          event3s    (atom nil)
+
+          coll1d     (atom nil)
+          user1d     (atom nil)
+          timeline1d (atom nil)
+          timeline2d (atom nil)
+          eventsT1   (atom nil)
+          eventsT2   (atom nil)]
+
+      (ts/with-source-and-dest-dbs
+        (testing "serialize correctly"
+          (ts/with-source-db
+            (reset! coll1s     (ts/create! Collection :name "col1"))
+            (reset! user1s     (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+            (reset! timeline1s (ts/create! Timeline :name "Some events" :creator_id (:id @user1s)
+                                           :collection_id (:id @coll1s)))
+            (reset! event1s    (ts/create! TimelineEvent :name "First thing"  :timeline_id (:id @timeline1s)
+                                           :creator_id (:id @user1s) :timezone "America/New_York"
+                                           :timestamp (t/local-date 2022 11 3)))
+            (reset! event2s    (ts/create! TimelineEvent :name "Second thing" :timeline_id (:id @timeline1s)
+                                           :creator_id (:id @user1s) :timezone "America/New_York"
+                                           :timestamp (t/local-date 2022 11 8)))
+            (reset! timeline2s (ts/create! Timeline :name "More events" :creator_id (:id @user1s)
+                                           :collection_id (:id @coll1s)))
+            (reset! event3s    (ts/create! TimelineEvent :name "Different event"  :timeline_id (:id @timeline2s)
+                                           :creator_id (:id @user1s) :timezone "America/New_York"
+                                           :time_matters true :timestamp (t/offset-date-time 2022 10 31 19 00 00)))
+
+            (testing "expecting 3 events"
+              (is (= 3 (db/count TimelineEvent))))
+
+            (reset! serialized (into [] (serdes.extract/extract-metabase {})))
+
+            (let [timelines (by-model @serialized "Timeline")
+                  timeline1 (first (filter #(= (:entity_id %) (:entity_id @timeline1s)) timelines))
+                  timeline2 (first (filter #(= (:entity_id %) (:entity_id @timeline2s)) timelines))]
+              (testing "with inline :events"
+                (is (schema= {:archived                    (s/eq false)
+                              :collection_id               (s/eq (:entity_id @coll1s))
+                              :name                        (s/eq "Some events")
+                              :creator_id                  (s/eq "tom@bost.on")
+                              (s/optional-key :updated_at) OffsetDateTime
+                              :created_at                  OffsetDateTime
+                              :serdes/meta                 (s/eq [{:model "Timeline" :id (:entity_id timeline1)}])
+                              :entity_id                   (s/eq (:entity_id timeline1))
+                              (s/optional-key :icon)       (s/maybe s/Str)
+                              :description                 (s/maybe s/Str)
+                              (s/optional-key :default)    s/Bool
+                              :events                      [{:timezone                    s/Str
+                                                             :time_matters                s/Bool
+                                                             :name                        s/Str
+                                                             :archived                    s/Bool
+                                                             :description                 (s/maybe s/Str)
+                                                             :creator_id                  s/Str
+                                                             (s/optional-key :icon)       (s/maybe s/Str)
+                                                             :created_at                  OffsetDateTime
+                                                             (s/optional-key :updated_at) OffsetDateTime
+                                                             :timestamp                   s/Str}]}
+                             timeline1))
+                (is (= 2 (-> timeline1 :events count)))
+                (is (= 1 (-> timeline2 :events count)))))))
+
+        (testing "deserializing merges events properly"
+          (ts/with-dest-db
+            ;; The collection, timeline 1 and event 2 already exist. Event 1, plus timeline 2 and its event 3, are new.
+            (reset! user1d     (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+            (reset! coll1d     (ts/create! Collection :name "col1" :entity_id (:entity_id @coll1s)))
+            (reset! timeline1d (ts/create! Timeline :name "Some events" :creator_id (:id @user1s)
+                                           :entity_id (:entity_id @timeline1s)
+                                           :collection_id (:id @coll1d)))
+            (ts/create! TimelineEvent :name "Second thing with different name" :timeline_id (:id @timeline1s)
+                        :timestamp  (:timestamp @event2s)
+                        :creator_id (:id @user1s) :timezone "America/New_York")
+
+            ;; Load the serialized content.
+            (serdes.load/load-metabase (ingestion-in-memory @serialized))
+
+            ;; Fetch the relevant bits
+            (reset! timeline2d (db/select-one Timeline :entity_id (:entity_id @timeline2s)))
+            (reset! eventsT1   (db/select TimelineEvent :timeline_id (:id @timeline1d)))
+            (reset! eventsT2   (db/select TimelineEvent :timeline_id (:id @timeline2d)))
+
+            (testing "no duplication - there are two timelines with the right event counts"
+              (is (some? @timeline2d))
+              (is (= 2 (count @eventsT1)))
+              (is (= 1 (count @eventsT2))))
+
+            (testing "resulting events match up"
+              (let [[event1 event2] (sort-by :timestamp @eventsT1)]
+                (is (= (:timestamp @event1s) (:timestamp event1)))
+                (is (= (:timestamp @event2s) (:timestamp event2)))
+
+                (is (= (:timestamp @event3s)
+                       (:timestamp (first @eventsT2))))
+
+                (is (= (:name @event2s)
+                       (:name event2))
+                    "existing event name should be updated")))))))))
 
 (deftest users-test
   ;; Users are serialized as their email address. If a corresponding user is found during deserialization, its ID is
@@ -780,7 +890,7 @@
               (is (= 2 (db/count FieldValues :field_id [:in fields])))))
 
           (testing "existing FieldValues are properly found and updated"
-            (is (= (:values @fv1s) (:values @fv1d))))
+            (is (= (set (:values @fv1s)) (set (:values @fv1d)))))
           (testing "new FieldValues are properly added"
             (is (= (dissoc @fv2s :id :field_id :created_at :updated_at)
                    (dissoc @fv2d :id :field_id :created_at :updated_at)))))))))

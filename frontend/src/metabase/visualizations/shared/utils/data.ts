@@ -16,7 +16,7 @@ import {
   TwoDimensionalChartData,
 } from "metabase/visualizations/shared/types/data";
 import { Series } from "metabase/visualizations/shared/components/RowChart/types";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { formatNullable } from "metabase/lib/formatting/nullable";
 import { isMetric } from "metabase-lib/types/utils/isa";
 
 const getMetricValue = (value: RowValue): MetricValue => {
@@ -59,6 +59,7 @@ const groupDataByDimensions = (
     const datum = groupedData.get(dimensionValue) ?? {
       dimensionValue,
       metrics: {},
+      isClickable: true,
     };
 
     const rowMetrics = allMetrics.reduce<MetricDatum>((datum, metric) => {
@@ -96,7 +97,10 @@ export const getGroupedDataset = (
 ): GroupedDataset => {
   // We are grouping all metrics because they are used in chart tooltips
   const allMetricColumns = data.cols
-    .filter(isMetric)
+    .filter(
+      (column, index) =>
+        isMetric(column) && index !== chartColumns.dimension.index,
+    )
     .map(column => column.name);
 
   const allMetricDescriptors = getColumnDescriptors(
@@ -150,6 +154,7 @@ export const trimData = (
     {
       dimensionValue: groupedDatumDimensionValue,
       metrics: {},
+      isClickable: false,
     },
   );
 
@@ -180,10 +185,7 @@ const getBreakoutSeries = (
     return {
       seriesKey: breakoutName,
       seriesName: breakoutName,
-      yAccessor: (datum: GroupedDatum) =>
-        datum.dimensionValue == null
-          ? NULL_DISPLAY_VALUE
-          : datum.dimensionValue,
+      yAccessor: (datum: GroupedDatum) => formatNullable(datum.dimensionValue),
       xAccessor: (datum: GroupedDatum) =>
         datum.breakout?.[breakoutName]?.[metric.column.name] ?? null,
       seriesInfo: {
@@ -203,8 +205,7 @@ const getMultipleMetricSeries = (
     return {
       seriesKey: metric.column.name,
       seriesName: metric.column.display_name ?? metric.column.name,
-      yAccessor: (datum: GroupedDatum) =>
-        datum.dimensionValue != null ? datum.dimensionValue : "null",
+      yAccessor: (datum: GroupedDatum) => datum.dimensionValue,
       xAccessor: (datum: GroupedDatum) => datum.metrics[metric.column.name],
       seriesInfo: {
         dimensionColumn: dimension.column,

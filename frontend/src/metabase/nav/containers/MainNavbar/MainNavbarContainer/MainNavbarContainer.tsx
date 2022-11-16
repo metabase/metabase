@@ -20,10 +20,7 @@ import Collections, {
 } from "metabase/entities/collections";
 import { logout } from "metabase/auth/actions";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import {
-  getHasDataAccess,
-  getHasOwnDatabase,
-} from "metabase/new_query/selectors";
+import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
 
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import {
