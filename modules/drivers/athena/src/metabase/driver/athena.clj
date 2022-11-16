@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [honeysql.core :as hsql]
+   [honeysql.format :as hformat]
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -142,6 +143,24 @@
   #_(format "timestamp '%s %s' at time zone '%s'" (t/local-date t) (t/local-time t) (t/zone-id t))
   (unprepare/unprepare-value driver (t/offset-date-time t)))
 
+;;; for some evil reason Athena expects `OFFSET` *before* `LIMIT`, unlike every other database in the known universe; so
+;;; we'll have to have a custom implementation of `:page` here and do our own version of `:offset` that comes before
+;;; `LIMIT`.
+
+(hformat/register-clause! ::offset (dec (get hformat/default-clause-priorities :limit)))
+
+(defmethod hformat/format-clause ::offset
+  [[_clause n] honeysql-map]
+  ;; this has to be a map entry, otherwise HoneySQL has a fit
+  (hformat/format-clause (java.util.Map/entry :offset n) honeysql-map))
+
+(defmethod sql.qp/apply-top-level-clause [:athena :page]
+  [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
+  ;; this is identical to the normal version except for the `::offset` instead of `:offset`
+  (assoc honeysql-form
+         :limit items
+         ::offset (* items (dec page))))
+
 ;;; Helper function for truncating dates - currently unused
 #_(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
 
@@ -169,12 +188,12 @@
 
 ;;; If `expr` is a date, we need to cast it to a timestamp before we can truncate to a finer granularity Ideally, we
 ;;; should make this conditional. There's a generic approach above, but different use cases should b tested.
-(defmethod sql.qp/date [:athena :minute]  [_ _ expr] (hsql/call :date_trunc (hx/literal :minute) (expr->literal expr)))
-(defmethod sql.qp/date [:athena :hour]    [_ _ expr] (hsql/call :date_trunc (hx/literal :hour) (expr->literal expr)))
-(defmethod sql.qp/date [:athena :day]     [_ _ expr] (hsql/call :date_trunc (hx/literal :day) expr))
-(defmethod sql.qp/date [:athena :month]   [_ _ expr] (hsql/call :date_trunc (hx/literal :month) expr))
-(defmethod sql.qp/date [:athena :quarter] [_ _ expr] (hsql/call :date_trunc (hx/literal :quarter) expr))
-(defmethod sql.qp/date [:athena :year]    [_ _ expr] (hsql/call :date_trunc (hx/literal :year) expr))
+(defmethod sql.qp/date [:athena :minute]  [_driver _unit expr] (hsql/call :date_trunc (hx/literal :minute) (expr->literal expr)))
+(defmethod sql.qp/date [:athena :hour]    [_driver _unit expr] (hsql/call :date_trunc (hx/literal :hour) (expr->literal expr)))
+(defmethod sql.qp/date [:athena :day]     [_driver _unit expr] (hsql/call :date_trunc (hx/literal :day) expr))
+(defmethod sql.qp/date [:athena :month]   [_driver _unit expr] (hsql/call :date_trunc (hx/literal :month) expr))
+(defmethod sql.qp/date [:athena :quarter] [_driver _unit expr] (hsql/call :date_trunc (hx/literal :quarter) expr))
+(defmethod sql.qp/date [:athena :year]    [_driver _unit expr] (hsql/call :date_trunc (hx/literal :year) expr))
 
 (defmethod sql.qp/date [:athena :week]
   [driver _ expr]
@@ -182,13 +201,12 @@
 
 ;;;; Datetime extraction functions
 
-(defmethod sql.qp/date [:athena :minute-of-hour]  [_ _ expr] (hsql/call :minute expr))
-(defmethod sql.qp/date [:athena :hour-of-day]     [_ _ expr] (hsql/call :hour expr))
-(defmethod sql.qp/date [:athena :day-of-month]    [_ _ expr] (hsql/call :day_of_month expr))
-(defmethod sql.qp/date [:athena :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
-(defmethod sql.qp/date [:athena :week-of-year]    [_ _ expr] (hsql/call :week_of_year expr))
-(defmethod sql.qp/date [:athena :month-of-year]   [_ _ expr] (hsql/call :month expr))
-(defmethod sql.qp/date [:athena :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
+(defmethod sql.qp/date [:athena :minute-of-hour]  [_driver _unit expr] (hsql/call :minute expr))
+(defmethod sql.qp/date [:athena :hour-of-day]     [_driver _unit expr] (hsql/call :hour expr))
+(defmethod sql.qp/date [:athena :day-of-month]    [_driver _unit expr] (hsql/call :day_of_month expr))
+(defmethod sql.qp/date [:athena :day-of-year]     [_driver _unit expr] (hsql/call :day_of_year expr))
+(defmethod sql.qp/date [:athena :month-of-year]   [_driver _unit expr] (hsql/call :month expr))
+(defmethod sql.qp/date [:athena :quarter-of-year] [_driver _unit expr] (hsql/call :quarter expr))
 
 (defmethod sql.qp/date [:athena :day-of-week]
   [driver _ expr]
