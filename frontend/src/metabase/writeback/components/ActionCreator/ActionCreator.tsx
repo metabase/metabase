@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import { useToggle } from "metabase/hooks/use-toggle";
-import Actions from "metabase/entities/actions";
+import Actions, { ActionParams } from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createQuestionFromAction } from "metabase/writeback/selectors";
@@ -52,6 +52,7 @@ const mapStateToProps = (
 
 const mapDispatchToProps = {
   push,
+  update: Actions.actions.update,
 };
 
 interface ActionCreatorProps {
@@ -60,6 +61,7 @@ interface ActionCreatorProps {
   actionId?: number;
   modelId?: number;
   push: (url: string) => void;
+  update: (action: ActionParams) => void;
   onClose?: () => void;
 }
 
@@ -68,6 +70,7 @@ function ActionCreatorComponent({
   question: passedQuestion,
   actionId,
   modelId,
+  update,
   onClose,
 }: ActionCreatorProps) {
   const [question, setQuestion] = useState(
@@ -120,6 +123,22 @@ function ActionCreatorComponent({
     );
   };
 
+  const handleSaveClick = () => {
+    if (isNew) {
+      setShowSaveModal(true);
+    } else {
+      update({
+        id: (question.card() as SavedCard).id,
+        name: question?.displayName() ?? "",
+        description: question.description() ?? null,
+        model_id: defaultModelId,
+        formSettings: formSettings as ActionFormSettings,
+        question,
+      });
+      onClose?.();
+    }
+  };
+
   return (
     <>
       <Modal onClose={onClose} formModal={false} wide>
@@ -144,8 +163,8 @@ function ActionCreatorComponent({
                 <Button onClick={onClose} borderless>
                   {t`Cancel`}
                 </Button>
-                <Button primary onClick={() => setShowSaveModal(true)}>
-                  {t`Save`}
+                <Button primary onClick={handleSaveClick}>
+                  {isNew ? t`Save` : t`Update`}
                 </Button>
               </ModalActions>
             </ModalLeft>
