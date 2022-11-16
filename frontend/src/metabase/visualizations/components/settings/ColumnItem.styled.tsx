@@ -2,6 +2,8 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
+import ColorPill from "metabase/core/components/ColorPill";
+import ChartSettingColorPicker from "./ChartSettingColorPicker";
 
 interface ColumnItemRootProps {
   isDraggable: boolean;
@@ -73,4 +75,9 @@ export const ColumnItemIcon = styled(Icon)`
 
 export const ColumnItemDragHandle = styled(Icon)`
   color: ${color("text-medium")};
+`;
+
+export const ColumnItemColorPicker = styled(ChartSettingColorPicker)`
+  margin-bottom: 0;
+  margin-left: 0.25rem;
 `;

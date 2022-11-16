@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
+   [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.test :as mt]
    [metabase.util :as u]
    [yaml.core :as yaml]))
@@ -200,3 +201,25 @@
                       @seen-password?))]
             (is (not (contains-password? (ex-message e))))
             (is (not (contains-password? (ex-data e))))))))))
+
+(deftest always-init-settings-first-test
+  (testing "Always apply the :settings section first regardless of the order the YAML file is in."
+    (doseq [config [{:settings {:my-setting 1000}
+                     :users    [{:first_name "Cam"
+                                 :last_name  "Era"
+                                 :email      "camera@example.com"
+                                 :password   "toucans"}]}
+                    {:users    [{:first_name "Cam"
+                                 :last_name  "Era"
+                                 :email      "camera@example.com"
+                                 :password   "toucans"}]
+                     :settings {:my-setting 1000}}]]
+      (testing (format "config = %s" (pr-str config))
+        (let [initialized-sections (atom [])]
+          (with-redefs [advanced-config.file.i/initialize-section! (fn [section-name _section-config]
+                                                                     (swap! initialized-sections conj section-name))]
+            (binding [advanced-config.file/*config* {:version 1, :config config}]
+              (advanced-config.file/initialize!)
+              (is (= [:settings
+                      :users]
+                     @initialized-sections)))))))))
