@@ -881,7 +881,7 @@
 ;; Currently these match the titles of the admin UI buttons that call these endpoints
 
 ;; Should somehow trigger sync-database/sync-database!
-(api/defendpoint POST "/:id/sync_schema"
+(api/defendpoint ^{:content-types #{:content/*}} POST "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
   ;; just wrap this in a future so it happens async
