@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import { IconProps } from "metabase/components/Icon";
+
 import { color } from "metabase/lib/colors";
 
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
@@ -68,10 +70,15 @@ function hasIntersection(list1: unknown[], list2?: unknown[]) {
   return _.intersection(list1, list2).length > 0;
 }
 
+export interface CollectionTreeItem extends Collection {
+  icon: string | IconProps;
+  children: CollectionTreeItem[];
+}
+
 export function buildCollectionTree(
   collections: Collection[],
   { targetModels }: { targetModels?: CollectionContentModel[] } = {},
-): Collection[] {
+): CollectionTreeItem[] {
   if (collections == null) {
     return [];
   }
