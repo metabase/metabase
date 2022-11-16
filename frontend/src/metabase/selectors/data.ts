@@ -7,19 +7,19 @@ const getDatabaseList = createSelector(
   databases => (databases ? Object.values(databases) : []),
 );
 
-export const getHasDataAccess = createSelector([getDatabaseList], databases =>
+export const getHasDataAccess = createSelector(getDatabaseList, databases =>
   databases.some(d => !d.is_saved_questions),
 );
 
-export const getHasOwnDatabase = createSelector([getDatabaseList], databases =>
+export const getHasOwnDatabase = createSelector(getDatabaseList, databases =>
   databases.some(d => !d.is_sample && !d.is_saved_questions),
 );
 
-export const getHasNativeWrite = createSelector([getDatabaseList], databases =>
+export const getHasNativeWrite = createSelector(getDatabaseList, databases =>
   databases.some(d => d.native_permissions === "write"),
 );
 
 export const getHasDatabaseWithJsonEngine = createSelector(
-  [getDatabaseList],
+  getDatabaseList,
   databases => databases.some(d => getEngineNativeType(d.engine) === "json"),
 );

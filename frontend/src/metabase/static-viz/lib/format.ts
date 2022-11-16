@@ -1,6 +1,11 @@
 import moment from "moment";
 import { Moment } from "moment-timezone";
-import { DatasetColumn } from "metabase-types/api";
+import { NumberLike, StringLike } from "@visx/scale";
+import {
+  DatasetColumn,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { formatTime } from "metabase/lib/formatting/time";
 import {
   formatDateTimeWithUnit,
@@ -9,6 +14,13 @@ import {
 import { formatNumber } from "metabase/lib/formatting/numbers";
 import { formatCoordinate } from "metabase/lib/formatting/geography";
 import {
+  ChartTicksFormatters,
+  ValueFormatter,
+} from "metabase/visualizations/shared/types/format";
+import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
+import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
+import {
   isCoordinate,
   isDate,
   isNumber,
@@ -16,6 +28,7 @@ import {
   isBoolean,
 } from "metabase-lib/types/utils/isa";
 import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 type StaticFormattingOptions = {
   column: DatasetColumn;
@@ -87,4 +100,87 @@ export const formatStaticValue = (
   }
 
   return formattedValue;
+};
+
+export const getStaticFormatters = (
+  chartColumns: ChartColumns,
+  settings: VisualizationSettings,
+): ChartTicksFormatters => {
+  const yTickFormatter = (value: StringLike) => {
+    const column = chartColumns.dimension.column;
+    const columnSettings = settings.column_settings?.[getColumnKey(column)];
+
+    return String(
+      formatStaticValue(value, {
+        column,
+        ...columnSettings,
+        jsx: false,
+      }),
+    );
+  };
+
+  const metricColumn = getLabelsMetricColumn(chartColumns);
+
+  const percentXTicksFormatter = (percent: NumberLike) => {
+    const column = metricColumn.column;
+    const number_separators =
+      settings.column_settings?.[getColumnKey(column)]?.number_separators;
+
+    return String(
+      formatStaticValue(percent, {
+        column,
+        number_separators,
+        jsx: false,
+        number_style: "percent",
+        decimals: 2,
+      }),
+    );
+  };
+
+  const xTickFormatter = (value: NumberLike) => {
+    const column = metricColumn.column;
+    const columnSettings = settings.column_settings?.[getColumnKey(column)];
+
+    return String(
+      formatStaticValue(value, {
+        column,
+        ...columnSettings,
+        jsx: false,
+      }),
+    );
+  };
+
+  const shouldFormatXTicksAsPercent = getStackOffset(settings) === "expand";
+
+  return {
+    yTickFormatter,
+    xTickFormatter: shouldFormatXTicksAsPercent
+      ? percentXTicksFormatter
+      : xTickFormatter,
+  };
+};
+
+export const getLabelsStaticFormatter = (
+  chartColumns: ChartColumns,
+  settings: VisualizationSettings,
+): ValueFormatter => {
+  const column = getLabelsMetricColumn(chartColumns).column;
+  const columnSettings = settings.column_settings?.[getColumnKey(column)];
+
+  const labelsFormatter = (value: any) =>
+    String(
+      formatStaticValue(value, {
+        column,
+        ...columnSettings,
+        jsx: false,
+        compact: settings["graph.label_value_formatting"] === "compact",
+      }),
+    );
+
+  return labelsFormatter;
+};
+
+export const getColumnValueStaticFormatter = () => {
+  return (value: RowValue, column: DatasetColumn) =>
+    String(formatStaticValue(value, { column }));
 };

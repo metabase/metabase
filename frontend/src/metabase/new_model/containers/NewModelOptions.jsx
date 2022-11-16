@@ -8,20 +8,20 @@ import { t } from "ttag";
 
 import { Grid } from "metabase/components/Grid";
 
-import NewQueryOption from "metabase/new_query/components/NewQueryOption";
+import NewModelOption from "metabase/new_model/components/NewModelOption";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
 import * as Urls from "metabase/lib/urls";
 
-import {
-  getHasDataAccess,
-  getHasNativeWrite,
-} from "metabase/new_query/selectors";
+import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import Database from "metabase/entities/databases";
 import {
-  QueryOptionsGridItem,
-  QueryOptionsRoot,
-} from "./NewQueryOptions.styled";
+  OptionsGridItem,
+  OptionsRoot,
+  EducationalButton,
+} from "./NewModelOptions.styled";
+
+const EDUCATIONAL_LINK = "https://www.metabase.com/learn/data-modeling/models";
 
 const mapStateToProps = state => ({
   hasDataAccess: getHasDataAccess(state),
@@ -33,7 +33,7 @@ const mapDispatchToProps = {
   push,
 };
 
-class NewQueryOptions extends Component {
+class NewModelOptions extends Component {
   componentDidMount() {
     // We need to check if any databases exist otherwise show an empty state.
     // Be aware that the embedded version does not have the Navbar, which also
@@ -67,57 +67,56 @@ class NewQueryOptions extends Component {
     {
       /* Determine how many items will be shown based on permissions etc so we can make sure the layout adapts */
     }
-    const itemsCount = (hasDataAccess ? 2 : 0) + (hasNativeWrite ? 1 : 0);
+    const itemsCount = (hasDataAccess ? 1 : 0) + (hasNativeWrite ? 1 : 0);
 
     return (
-      <QueryOptionsRoot>
+      <OptionsRoot>
         <Grid className="justifyCenter">
           {hasDataAccess && (
-            <QueryOptionsGridItem itemsCount={itemsCount}>
-              <NewQueryOption
-                image="app/img/simple_mode_illustration"
-                title={t`Simple question`}
-                description={t`Pick some data, view it, and easily filter, summarize, and visualize it.`}
-                width={180}
-                to={Urls.newQuestion({ creationType: "simple_question" })}
-                data-metabase-event="New Question; Simple Question Start"
-              />
-            </QueryOptionsGridItem>
-          )}
-          {hasDataAccess && (
-            <QueryOptionsGridItem itemsCount={itemsCount}>
-              <NewQueryOption
+            <OptionsGridItem itemsCount={itemsCount}>
+              <NewModelOption
                 image="app/img/notebook_mode_illustration"
-                title={t`Custom question`}
-                description={t`Use the advanced notebook editor to join data, create custom columns, do math, and more.`}
+                title={t`Use the notebook editor`}
+                description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
                 width={180}
                 to={Urls.newQuestion({
-                  mode: "notebook",
+                  mode: "query",
                   creationType: "custom_question",
+                  dataset: true,
                 })}
-                data-metabase-event="New Question; Custom Question Start"
+                data-metabase-event="New Model; Custom Question Start"
               />
-            </QueryOptionsGridItem>
+            </OptionsGridItem>
           )}
           {hasNativeWrite && (
-            <QueryOptionsGridItem itemsCount={itemsCount}>
-              <NewQueryOption
+            <OptionsGridItem itemsCount={itemsCount}>
+              <NewModelOption
                 image="app/img/sql_illustration"
-                title={t`Native query`}
-                description={t`For more complicated questions, you can write your own SQL or native query.`}
+                title={t`Use a native query`}
+                description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
                 to={Urls.newQuestion({
+                  mode: "query",
                   type: "native",
                   creationType: "native_question",
+                  dataset: true,
                 })}
                 width={180}
-                data-metabase-event="New Question; Native Query Start"
+                data-metabase-event="New Model; Native Query Start"
               />
-            </QueryOptionsGridItem>
+            </OptionsGridItem>
           )}
         </Grid>
-      </QueryOptionsRoot>
+
+        <EducationalButton
+          target="_blank"
+          href={EDUCATIONAL_LINK}
+          className="mt4"
+        >
+          {t`What's a model?`}
+        </EducationalButton>
+      </OptionsRoot>
     );
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(NewQueryOptions);
+export default connect(mapStateToProps, mapDispatchToProps)(NewModelOptions);

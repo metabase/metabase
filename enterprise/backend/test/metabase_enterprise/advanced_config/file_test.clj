@@ -4,8 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
-   [metabase-enterprise.advanced-config.file.interface
-    :as advanced-config.file.i]
+   [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.test :as mt]
    [metabase.util :as u]
    [yaml.core :as yaml]))
