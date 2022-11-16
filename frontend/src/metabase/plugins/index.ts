@@ -78,7 +78,7 @@ export const PLUGIN_AUTH_PROVIDERS = [] as any;
 
 // Only show the password tab in account settings if these functions all return true.
 // Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.
-export const PLUGIN_IS_PASSWORD_USER: ((user: User | null) => boolean)[] = [];
+export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
