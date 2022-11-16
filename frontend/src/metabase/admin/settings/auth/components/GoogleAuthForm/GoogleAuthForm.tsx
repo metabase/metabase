@@ -28,6 +28,7 @@ const BREADCRUMBS = [
 export interface GoogleSettingsFormProps {
   elements?: SettingDefinition[];
   settingValues?: Partial<Settings>;
+  isEnabled: boolean;
   isSsoEnabled: boolean;
   onSubmit: (settingValues: Partial<Settings>) => void;
 }
@@ -35,11 +36,10 @@ export interface GoogleSettingsFormProps {
 const GoogleAuthForm = ({
   elements = [],
   settingValues = {},
+  isEnabled,
   isSsoEnabled,
   onSubmit,
 }: GoogleSettingsFormProps): JSX.Element => {
-  const isEnabled = settingValues[ENABLED_KEY];
-
   const settings = useMemo(() => {
     return _.indexBy(elements, "key");
   }, [elements]);

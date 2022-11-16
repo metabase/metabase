@@ -9,7 +9,7 @@ const REQUIRED_SCHEMA = {
 };
 
 export const GOOGLE_SCHEMA = Yup.object({
-  "google-auth-enabled": Yup.boolean().default(false),
+  "google-auth-enabled": Yup.boolean().nullable().default(false),
   "google-auth-client-id": Yup.string()
     .nullable()
     .default(null)
@@ -20,10 +20,10 @@ export const GOOGLE_SCHEMA = Yup.object({
 });
 
 export const LDAP_SCHEMA = Yup.object({
-  "ldap-enabled": Yup.boolean().default(false),
+  "ldap-enabled": Yup.boolean().nullable().default(false),
   "ldap-host": Yup.string().nullable().default(null),
   "ldap-port": Yup.number().nullable().default(null),
-  "ldap-security": Yup.string().default("none"),
+  "ldap-security": Yup.string().nullable().default("none"),
   "ldap-bind-dn": Yup.string().nullable().default(null),
   "ldap-password": Yup.string().nullable().default(null),
   "ldap-user-base": Yup.string().nullable().default(null),
@@ -31,7 +31,7 @@ export const LDAP_SCHEMA = Yup.object({
   "ldap-attribute-email": Yup.string().nullable().default(null),
   "ldap-attribute-firstname": Yup.string().nullable().default(null),
   "ldap-attribute-lastname": Yup.string().nullable().default(null),
-  "ldap-group-sync": Yup.boolean().default(false),
+  "ldap-group-sync": Yup.boolean().nullable().default(false),
   "ldap-group-base": Yup.string().nullable().default(null),
-  "ldap-group-mappings": Yup.object().default(null),
+  "ldap-group-mappings": Yup.object().nullable().default(null),
 });

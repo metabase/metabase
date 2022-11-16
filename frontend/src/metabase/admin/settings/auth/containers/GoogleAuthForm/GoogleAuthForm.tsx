@@ -4,6 +4,7 @@ import GoogleAuthForm from "../../components/GoogleAuthForm";
 import { updateGoogleSettings } from "../../../settings";
 
 const mapStateToProps = (state: State) => ({
+  isEnabled: state.settings.values["google-auth-enabled"],
   isSsoEnabled: state.settings.values["token-features"].sso,
 });
 
