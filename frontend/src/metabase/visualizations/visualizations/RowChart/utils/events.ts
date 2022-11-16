@@ -3,7 +3,7 @@ import {
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { formatNullable } from "metabase/lib/formatting/nullable";
 import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
   BarData,
@@ -25,7 +25,7 @@ const getMetricColumnData = (
 
     return {
       key: col.display_name,
-      value: value != null ? value : NULL_DISPLAY_VALUE,
+      value: formatNullable(value),
       col,
     };
   });
@@ -40,7 +40,7 @@ const getColumnsData = (
   const data = [
     {
       key: chartColumns.dimension.column.display_name,
-      value: datum.dimensionValue,
+      value: formatNullable(datum.dimensionValue),
       col: chartColumns.dimension.column,
     },
   ];

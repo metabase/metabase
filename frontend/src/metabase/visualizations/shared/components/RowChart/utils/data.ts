@@ -5,6 +5,7 @@ import d3 from "d3";
 
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
 import { isNotNull } from "metabase/core/utils/array";
+import { formatNullable } from "metabase/lib/formatting/nullable";
 import { BarData, Series, SeriesData, StackOffset } from "../types";
 
 export const StackOffsetFn = {
@@ -22,7 +23,7 @@ export const calculateNonStackedBars = <TDatum>(
   return multipleSeries.map((series, seriesIndex) => {
     const bars: BarData<TDatum>[] = data
       .map((datum, datumIndex) => {
-        const yValue = series.yAccessor(datum);
+        const yValue = formatNullable(series.yAccessor(datum));
         const xValue = series.xAccessor(datum);
         const isNegative = xValue != null && xValue < 0;
 
@@ -101,7 +102,7 @@ export const calculateStackedBars = <TDatum>(
 
         const [xStartValue, xEndValue] = stackedDatum;
 
-        const yValue = series.yAccessor(stackedDatum.data);
+        const yValue = formatNullable(series.yAccessor(stackedDatum.data));
         const isNegative = xStartValue < 0;
         const isBorderValue =
           (isNegative && xStartValue === datumMin) ||
