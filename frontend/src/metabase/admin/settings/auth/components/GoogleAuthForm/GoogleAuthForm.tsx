@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import { jt, t } from "ttag";
-import * as Yup from "yup";
 import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -9,13 +8,13 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import * as Errors from "metabase/core/utils/errors";
-import { SettingDefinition } from "metabase-types/api";
+import { SettingDefinition, Settings } from "metabase-types/api";
+import { GOOGLE_SCHEMA } from "../../constants";
 import {
   GoogleForm,
   GoogleFormCaption,
   GoogleFormHeader,
-} from "./GoogleSettingsForm.styled";
+} from "./GoogleAuthForm.styled";
 
 const ENABLED_KEY = "google-auth-enabled";
 const CLIENT_ID_KEY = "google-auth-client-id";
@@ -26,44 +25,27 @@ const BREADCRUMBS = [
   [t`Google Sign-In`],
 ];
 
-export interface GoogleAuthSettings {
-  [ENABLED_KEY]: boolean;
-  [CLIENT_ID_KEY]: string | null;
-  [DOMAIN_KEY]: string | null;
-}
-
-const SETTINGS_SCHEMA = Yup.object({
-  [ENABLED_KEY]: Yup.boolean().default(false),
-  [CLIENT_ID_KEY]: Yup.string()
-    .nullable()
-    .default(null)
-    .when(`$${CLIENT_ID_KEY}.is_env_setting`, {
-      is: false,
-      then: schema => schema.required(Errors.required),
-    }),
-  [DOMAIN_KEY]: Yup.string().nullable().default(null),
-});
-
 export interface GoogleSettingsFormProps {
   elements?: SettingDefinition[];
-  settingValues?: Partial<GoogleAuthSettings>;
-  isEnabled?: boolean;
-  hasMultipleDomains?: boolean;
-  onSubmit: (settingValues: GoogleAuthSettings) => void;
+  settingValues?: Partial<Settings>;
+  isSsoEnabled: boolean;
+  onSubmit: (settingValues: Partial<Settings>) => void;
 }
 
-const GoogleSettingsForm = ({
+const GoogleAuthForm = ({
   elements = [],
   settingValues = {},
-  hasMultipleDomains,
+  isSsoEnabled,
   onSubmit,
 }: GoogleSettingsFormProps): JSX.Element => {
+  const isEnabled = settingValues[ENABLED_KEY];
+
   const settings = useMemo(() => {
     return _.indexBy(elements, "key");
   }, [elements]);
 
   const initialValues = useMemo(() => {
-    const values = SETTINGS_SCHEMA.cast(settingValues, { stripUnknown: true });
+    const values = GOOGLE_SCHEMA.cast(settingValues, { stripUnknown: true });
     return { ...values, [ENABLED_KEY]: true };
   }, [settingValues]);
 
@@ -71,8 +53,7 @@ const GoogleSettingsForm = ({
     <FormProvider
       initialValues={initialValues}
       enableReinitialize
-      validationSchema={SETTINGS_SCHEMA}
-      validationContext={settings}
+      validationSchema={GOOGLE_SCHEMA}
       onSubmit={onSubmit}
     >
       {({ dirty }) => (
@@ -99,19 +80,23 @@ const GoogleSettingsForm = ({
             name={DOMAIN_KEY}
             title={t`Domain`}
             description={
-              hasMultipleDomains
+              isSsoEnabled
                 ? t`Allow users to sign up on their own if their Google account email address is from one of the domains you specify here:`
                 : t`Allow users to sign up on their own if their Google account email address is from:`
             }
             placeholder={
-              hasMultipleDomains
+              isSsoEnabled
                 ? "mycompany.com, example.com.br, otherdomain.co.uk"
                 : "mycompany.com"
             }
             nullable
             {...getFormFieldProps(settings[DOMAIN_KEY])}
           />
-          <FormSubmitButton title={t`Save changes`} primary disabled={!dirty} />
+          <FormSubmitButton
+            title={isEnabled ? t`Save changes` : t`Save and enable`}
+            primary
+            disabled={!dirty}
+          />
           <FormErrorMessage />
         </GoogleForm>
       )}
@@ -132,4 +117,4 @@ const getDocsLink = (): string => {
   );
 };
 
-export default GoogleSettingsForm;
+export default GoogleAuthForm;

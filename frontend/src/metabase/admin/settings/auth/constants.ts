@@ -1,8 +1,17 @@
 import * as Yup from "yup";
+import * as Errors from "metabase/core/utils/errors";
+
+const REQUIRED_CONDITION = {
+  is: true,
+  then: (schema: Yup.AnySchema) => schema.required(Errors.required),
+};
 
 export const GOOGLE_SCHEMA = Yup.object({
   "google-auth-enabled": Yup.boolean().default(false),
-  "google-auth-client-id": Yup.string().nullable().default(null),
+  "google-auth-client-id": Yup.string()
+    .nullable()
+    .default(null)
+    .when("google-auth-enabled", REQUIRED_CONDITION),
   "google-auth-auto-create-accounts-domain": Yup.string()
     .nullable()
     .default(null),
