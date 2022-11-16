@@ -560,7 +560,7 @@
    (s/recursive #'DatetimeExpression)
 
    :else
-   (s/cond-pre DatetimeLiteral Field)))
+   (s/cond-pre DateOrDatetimeLiteral Field)))
 
 (def ^:private ExpressionArg
   (s/conditional
