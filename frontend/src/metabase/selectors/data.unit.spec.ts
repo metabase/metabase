@@ -1,4 +1,6 @@
 import { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
+import { createMockDatabase } from "metabase-types/api/mocks";
 import {
   getHasDataAccess,
   getHasOwnDatabase,
@@ -6,26 +8,32 @@ import {
   getHasDatabaseWithJsonEngine,
 } from "./data";
 
+const mockedDatabase = createMockDatabase();
+
 describe("metabase/selectors/data", () => {
   describe("getHasDataAccess", () => {
     it("should return true if user has data access", () => {
-      const state = {
+      const state = createMockState({
         entities: {
-          databases: { databaseOne: { is_saved_questions: false } },
+          databases: {
+            0: { ...mockedDatabase, is_saved_questions: false },
+          },
         },
-      };
+      });
 
-      expect(getHasDataAccess(state as any)).toBe(true);
+      expect(getHasDataAccess(state)).toBe(true);
     });
 
     it("should return false if user does not have data access", () => {
       const state = {
         entities: {
-          databases: { databaseOne: { is_saved_questions: true } },
+          databases: {
+            0: { ...mockedDatabase, is_saved_questions: true },
+          },
         },
       };
 
-      expect(getHasDataAccess(state as any)).toBe(false);
+      expect(getHasDataAccess(state)).toBe(false);
     });
   });
 
@@ -34,24 +42,28 @@ describe("metabase/selectors/data", () => {
       const state = {
         entities: {
           databases: {
-            databaseOne: { is_sample: false, is_saved_questions: false },
+            0: {
+              ...mockedDatabase,
+              is_sample: false,
+              is_saved_questions: false,
+            },
           },
         },
       };
 
-      expect(getHasOwnDatabase(state as any)).toBe(true);
+      expect(getHasOwnDatabase(state)).toBe(true);
     });
 
     it("should return false if user does not have their own database", () => {
       const state = {
         entities: {
           databases: {
-            databaseOne: { is_sample: true, is_saved_questions: true },
+            0: { ...mockedDatabase, is_sample: true, is_saved_questions: true },
           },
         },
       };
 
-      expect(getHasOwnDatabase(state as any)).toBe(false);
+      expect(getHasOwnDatabase(state)).toBe(false);
     });
   });
 
@@ -60,24 +72,24 @@ describe("metabase/selectors/data", () => {
       const state = {
         entities: {
           databases: {
-            databaseOne: { native_permissions: "write" },
+            0: { ...mockedDatabase, native_permissions: "write" },
           },
         },
       };
 
-      expect(getHasNativeWrite(state as any)).toBe(true);
+      expect(getHasNativeWrite(state)).toBe(true);
     });
 
     it("should return false if user does not have permissions to write to at least one database", () => {
       const state = {
         entities: {
           databases: {
-            databaseOne: { native_permissions: "read" },
+            0: { ...mockedDatabase, native_permissions: "read" },
           },
         },
       };
 
-      expect(getHasNativeWrite(state as any)).toBe(false);
+      expect(getHasNativeWrite(state)).toBe(false);
     });
   });
 
@@ -86,24 +98,24 @@ describe("metabase/selectors/data", () => {
       const state = {
         entities: {
           databases: {
-            databaseOne: { engine: "mongo" },
+            0: { ...mockedDatabase, engine: "mongo" },
           },
         },
       };
 
-      expect(getHasDatabaseWithJsonEngine(state as any)).toBe(true);
+      expect(getHasDatabaseWithJsonEngine(state)).toBe(true);
     });
 
     it("should return false if user does not have a json database", () => {
       const state = {
         entities: {
           databases: {
-            databaseOne: { engine: "postgres" },
+            0: { ...mockedDatabase, engine: "postgres" },
           },
         },
       };
 
-      expect(getHasDatabaseWithJsonEngine(state as any)).toBe(false);
+      expect(getHasDatabaseWithJsonEngine(state)).toBe(false);
     });
   });
 });
