@@ -152,7 +152,6 @@ class SettingsEditorApp extends Component {
           elements={activeSection.settings}
           settingValues={settingValues}
           updateSetting={this.updateSetting}
-          {...activeSection.getProps?.()}
         />
       );
     } else {
