@@ -150,15 +150,6 @@
   "Schema for an ISO-8601-formatted time string literal."
   (s/constrained helpers/NonBlankString can-parse-time? "valid ISO-8601 time string literal"))
 
-(def TemporalLiteralString
-  "Schema for either a literal datetime string, literal date string, or a literal time string."
-  (s/named
-   (s/conditional
-    can-parse-datetime? LiteralDatetimeString
-    can-parse-date?     LiteralDateString
-    can-parse-time?     LiteralTimeString)
-   "valid ISO-8601 datetime, date, or time string literal"))
-
 ;; TODO - `unit` is not allowed if `n` is `current`
 (defclause relative-datetime
   n    (s/cond-pre (s/eq :current) s/Int)
@@ -216,32 +207,56 @@
           :cljs js/Date)
   unit TimeUnit)
 
-(def ^:private DatetimeLiteral
-  "Schema for valid absolute datetime literals."
+(def ^:private DateOrDatetimeLiteral
+  "Schema for a valid date or datetime literal."
   (s/conditional
    (partial is-clause? :absolute-datetime)
    absolute-datetime
 
-   (partial is-clause? :time)
-   time
+   can-parse-datetime?
+   LiteralDatetimeString
+
+   can-parse-date?
+   LiteralDateString
 
    :else
    (s/cond-pre
     ;; literal datetime strings and Java types will get transformed to `absolute-datetime` clauses automatically by
     ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
     ;; `absolute-datetime` clauses.
-    TemporalLiteralString
-
     #?@(:clj
-        [java.time.LocalTime
-         java.time.LocalDate
+        [java.time.LocalDate
          java.time.LocalDateTime
-         java.time.OffsetTime
          java.time.OffsetDateTime
          java.time.ZonedDateTime]
 
         :cljs
         [js/Date]))))
+
+(def ^:private TimeLiteral
+  "Schema for valid time literals."
+  (s/conditional
+   (partial is-clause? :time)
+   time
+
+   can-parse-time?
+   LiteralTimeString
+
+   :else
+   (s/cond-pre
+    ;; literal datetime strings and Java types will get transformed to `time` clauses automatically by
+    ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
+    ;; `time` clauses.
+    #?@(:clj
+        [java.time.LocalTime
+         java.time.OffsetTime]
+
+        :cljs
+        [js/Date]))))
+
+(def ^:private TemporalLiteral
+  "Schema for valid temporal literals."
+  (s/cond-pre TimeLiteral DateOrDatetimeLiteral))
 
 (def DateTimeValue
   "Schema for a datetime value drivers will personally have to handle, either an `absolute-datetime` form or a
@@ -739,7 +754,7 @@
     s/Bool
     s/Num
     s/Str
-    DatetimeLiteral
+    TemporalLiteral
     FieldOrRelativeDatetime
     ExpressionArg
     value)))
@@ -751,7 +766,7 @@
     (s/cond-pre
      s/Num
      s/Str
-     DatetimeLiteral
+     TemporalLiteral
      ExpressionArg
      FieldOrRelativeDatetime)))
 

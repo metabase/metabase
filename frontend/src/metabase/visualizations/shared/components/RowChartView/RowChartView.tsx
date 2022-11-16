@@ -5,23 +5,23 @@ import { Bar } from "@visx/shape";
 import type { NumberValue, ScaleBand, ScaleContinuousNumeric } from "d3-scale";
 import { Text } from "@visx/text";
 import { GridColumns } from "@visx/grid";
-import { scaleBand } from "@visx/scale";
+import { scaleBand, StringLike, NumberLike } from "@visx/scale";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
 import { Margin } from "metabase/visualizations/shared/types/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
-import { RowChartTheme, SeriesData, YValue } from "../RowChart/types";
+import { BarData, RowChartTheme, SeriesData, YValue } from "../RowChart/types";
 import { DATA_LABEL_OFFSET } from "./constants";
 import { getDataLabel } from "./utils/data-labels";
 
-export interface RowChartViewProps {
+export interface RowChartViewProps<TDatum> {
   width: number;
   height: number;
-  yScale: ScaleBand<YValue>;
+  yScale: ScaleBand<StringLike>;
   xScale: ScaleContinuousNumeric<number, number, never>;
-  seriesData: SeriesData<unknown>[];
-  labelsFormatter: (value: NumberValue) => string;
-  yTickFormatter: (value: YValue) => string;
-  xTickFormatter: (value: NumberValue) => string;
+  seriesData: SeriesData<TDatum>[];
+  labelsFormatter: (value: NumberLike) => string;
+  yTickFormatter: (value: StringLike) => string;
+  xTickFormatter: (value: NumberLike) => string;
   xTicks: number[];
   goal: {
     label: string;
@@ -40,19 +40,11 @@ export interface RowChartViewProps {
   isStacked?: boolean;
   style?: React.CSSProperties;
   hoveredData?: HoveredData | null;
-  onHover?: (
-    event: React.MouseEvent,
-    seriesIndex: number | null,
-    datumIndex: number | null,
-  ) => void;
-  onClick?: (
-    event: React.MouseEvent,
-    seriesIndex: number,
-    datumIndex: number,
-  ) => void;
+  onHover?: (event: React.MouseEvent, bar: BarData<TDatum> | null) => void;
+  onClick?: (event: React.MouseEvent, bar: BarData<TDatum>) => void;
 }
 
-const RowChartView = ({
+const RowChartView = <TDatum,>({
   width,
   height,
   innerHeight,
@@ -76,27 +68,7 @@ const RowChartView = ({
   hoveredData,
   onHover,
   onClick,
-}: RowChartViewProps) => {
-  const handleBarMouseEnter = (
-    event: React.MouseEvent,
-    seriesIndex: number,
-    datumIndex: number,
-  ) => {
-    onHover?.(event, seriesIndex, datumIndex);
-  };
-
-  const handleBarMouseLeave = (event: React.MouseEvent) => {
-    onHover?.(event, null, null);
-  };
-
-  const handleClick = (
-    event: React.MouseEvent,
-    seriesIndex: number,
-    datumIndex: number,
-  ) => {
-    onClick?.(event, seriesIndex, datumIndex);
-  };
-
+}: RowChartViewProps<TDatum>) => {
   const innerBarScale = isStacked
     ? null
     : scaleBand({
@@ -120,7 +92,6 @@ const RowChartView = ({
           return series.bars.map(bar => {
             const { xStartValue, xEndValue, isNegative, yValue, datumIndex } =
               bar;
-
             let y = yScale(yValue);
 
             if (y == null) {
@@ -174,11 +145,9 @@ const RowChartView = ({
                   height={height}
                   fill={series.color}
                   opacity={opacity}
-                  onClick={event => handleClick(event, seriesIndex, datumIndex)}
-                  onMouseEnter={event =>
-                    handleBarMouseEnter(event, seriesIndex, datumIndex)
-                  }
-                  onMouseLeave={handleBarMouseLeave}
+                  onClick={event => onClick?.(event, bar)}
+                  onMouseEnter={event => onHover?.(event, bar)}
+                  onMouseLeave={event => onHover?.(event, null)}
                 />
                 {label != null && (
                   <Text
@@ -193,7 +162,7 @@ const RowChartView = ({
                     y={y + height / 2}
                     verticalAnchor="middle"
                   >
-                    {labelsFormatter(value)}
+                    {labelsFormatter(label)}
                   </Text>
                 )}
               </React.Fragment>

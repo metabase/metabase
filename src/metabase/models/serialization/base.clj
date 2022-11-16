@@ -248,7 +248,7 @@
 ;;;       collection's ancestors before the collection itself.
 ;;;     - Dependencies are loaded recursively in postorder; circular dependencies cause the process to throw.
 ;;; - Having found an entity it can really load, check for any existing one:
-;;;     - `(load-find-local path)` returns the corresponding primary key, or nil.
+;;;     - `(load-find-local path)` returns the corresponding entity, or nil.
 ;;; - Then it calls `(load-one! ingested maybe-local-entity)`, passing the `ingested` value and either `nil` or the
 ;;;       Toucan entity corresponding to the incoming map.
 ;;;     - `load-one!` is a side-effecting black box to the rest of the deserialization process.
@@ -278,7 +278,7 @@
 (defmulti load-find-local
   "Given a path, tries to look up any corresponding local entity.
 
-  Returns nil, or the primary key of the local entity.
+  Returns nil, or the local Toucan entity that corresponds to the given path.
   Keyed on the model name at the leaf of the path.
 
   By default, this tries to look up the entity by its `:entity_id` column, or identity hash, depending on the shape of
@@ -292,11 +292,9 @@
 
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
-        model                      (db/resolve-model (symbol model-name))
-        pk                         (models/primary-key model)]
-    (some-> model
-            (lookup-by-id id)
-            (get pk))))
+        model                      (db/resolve-model (symbol model-name))]
+    (when model
+      (lookup-by-id model id))))
 
 (defmulti serdes-dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
@@ -392,14 +390,13 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
-(defmethod load-one! :default [ingested maybe-local-id]
+(defmethod load-one! :default [ingested maybe-local]
   (let [model    (ingested-model ingested)
-        pkey     (models/primary-key (db/resolve-model (symbol model)))
         adjusted (load-xform ingested)]
     (binding [mi/*deserializing?* true]
-      (if (nil? maybe-local-id)
+      (if (nil? maybe-local)
         (load-insert! model adjusted)
-        (load-update! model adjusted (db/select-one (symbol model) pkey maybe-local-id))))))
+        (load-update! model adjusted maybe-local)))))
 
 (defmulti serdes-descendants
   "Captures the notion that eg. a dashboard \"contains\" its cards.

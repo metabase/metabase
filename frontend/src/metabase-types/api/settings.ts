@@ -62,43 +62,41 @@ export type TokenStatus = {
   status?: TokenStatusStatus;
 };
 
-export interface SettingDefinition {
-  key: string;
-  description: string | null;
-  env_name: string;
-  is_env_setting: boolean;
-  default: unknown;
-}
-
 export interface Settings {
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
   "custom-formatting": FormattingSettings;
+  "deprecation-notice-version": string | undefined;
+  "email-configured?": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
-  "email-configured?": boolean;
-  engines: Record<string, Engine>;
-  "is-hosted?": boolean;
-  "google-auth-enabled": boolean;
-  "google-auth-client-id": string | null;
   "google-auth-auto-create-accounts-domain": string | null;
-  "deprecation-notice-version": string | undefined;
+  "google-auth-client-id": string | null;
+  "google-auth-configured": boolean;
+  "google-auth-enabled": boolean;
+  "is-hosted?": boolean;
+  "jwt-enabled"?: boolean;
+  "jwt-configured"?: boolean;
+  "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
+  "saml-configured"?: boolean;
+  "saml-enabled"?: boolean;
   "session-cookies": boolean | null;
-  "site-locale": string;
   "show-database-syncing-modal": boolean;
   "show-homepage-data": boolean;
-  "show-homepage-xrays": boolean;
   "show-homepage-pin-message": boolean;
+  "show-homepage-xrays": boolean;
   "show-lighthouse-illustration": boolean;
   "show-metabot": boolean;
-  "slack-token": string | null;
-  "slack-token-valid?": boolean;
+  "site-locale": string;
   "slack-app-token": string | null;
   "slack-files-channel": string | null;
+  "slack-token": string | null;
+  "slack-token-valid?": boolean;
   "token-status": TokenStatus | undefined;
+  engines: Record<string, Engine>;
   version: Version;
 }

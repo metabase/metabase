@@ -1,5 +1,8 @@
 import { VisualizationSettings } from "metabase-types/api";
-import { getChartColumns } from "metabase/visualizations/lib/graph/columns";
+import {
+  ChartColumns,
+  getChartColumns,
+} from "metabase/visualizations/lib/graph/columns";
 import { ColumnFormatter } from "metabase/visualizations/shared/types/format";
 import { TwoDimensionalChartData } from "../types/data";
 import { getOrderedSeries, getSeries } from "./data";
@@ -22,4 +25,11 @@ export const getTwoDimensionalChartSeries = (
     series,
     seriesColors,
   };
+};
+
+export const getLabelsMetricColumn = (chartColumns: ChartColumns) => {
+  // For multi-metrics charts we use the first metic column settings for formatting
+  return "breakout" in chartColumns
+    ? chartColumns.metric
+    : chartColumns.metrics[0];
 };

@@ -109,6 +109,12 @@
   (classloader/require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
+(defn ^:command environment-variables-documentation
+  "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase."
+  []
+  (classloader/require 'metabase.cmd.env-var-dox)
+  ((resolve 'metabase.cmd.env-var-dox/generate-dox!)))
+
 (defn ^:command driver-methods
   "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."
   ([]
