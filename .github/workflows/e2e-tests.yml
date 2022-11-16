@@ -8,6 +8,7 @@ on:
       - "**.md"
       - ".circleci/**"
       - "**.unit.spec.*"
+      - "**_test.clj"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
