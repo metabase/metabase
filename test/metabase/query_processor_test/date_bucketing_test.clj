@@ -753,9 +753,9 @@
                           (map second)
                           (take 3)))))
             (testing "make sure all drivers returns the same week column"
-              (is (= ["2019-01-01T00:00:00Z"
-                      "2019-01-08T00:00:00Z"
-                      "2019-01-15T00:00:00Z"]
+              (is (= (case driver/*driver*
+                       :sqlite ["2019-01-01 00:00:00" "2019-01-08 00:00:00" "2019-01-15 00:00:00"]
+                       ["2019-01-01T00:00:00Z" "2019-01-08T00:00:00Z" "2019-01-15T00:00:00Z"])
                      (->> (test-break-out :week)
                           (map first)
                           (take 3)))))
