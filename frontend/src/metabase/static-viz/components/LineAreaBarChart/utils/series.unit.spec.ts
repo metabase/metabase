@@ -2,8 +2,8 @@ import { merge } from "icepick";
 import { colors } from "metabase/lib/colors";
 import type {
   ChartSettings,
-  SeriesWithBreakoutValues,
-  SeriesWithoutBreakoutValues,
+  SeriesWithOneOrLessDimensions,
+  SeriesWithTwoDimensions,
 } from "../../XYChart/types";
 import { getSeriesWithColors } from "./series";
 
@@ -22,38 +22,17 @@ const settings: ChartSettings = {
 
 describe("getSeriesWithColors", () => {
   it("should return an empty series given an empty series", () => {
-    const seriesWithColors = getSeriesWithColors([], getPalette({}), settings);
+    const seriesWithColors = getSeriesWithColors([], settings, getPalette({}));
 
     expect(seriesWithColors).toEqual([]);
   });
 
-  describe("Series without breakout values", () => {
-    const series: SeriesWithoutBreakoutValues[] = [
-      {
-        name: "Count",
-        yAxisPosition: "left",
-        type: "bar",
-        data: [
-          ["Doohickey", 3976],
-          ["Gadget", 4939],
-          ["Gizmo", 4784],
-          ["Widget", 5061],
-        ],
-        seriesKey: "count",
-      },
-    ];
-
-    it("should assign colors given series", () => {
-      const seriesWithColors = getSeriesWithColors(
-        series,
-        getPalette({}),
-        settings,
-      );
-
-      const expectedSeries = [
+  describe("Series without ones or less dimensions", () => {
+    const multipleSeries: SeriesWithOneOrLessDimensions[][] = [
+      [
         {
           name: "Count",
-          color: "#509EE3", // brand color
+          cardName: "Bar chart",
           yAxisPosition: "left",
           type: "bar",
           data: [
@@ -62,7 +41,34 @@ describe("getSeriesWithColors", () => {
             ["Gizmo", 4784],
             ["Widget", 5061],
           ],
+          column: {
+            name: "count",
+            source: "aggregation",
+            display_name: "Count",
+          },
         },
+      ],
+    ];
+
+    it("should assign colors given series", () => {
+      const seriesWithColors = getSeriesWithColors(
+        multipleSeries,
+        settings,
+        getPalette({}),
+      );
+
+      const expectedSeries = [
+        [
+          {
+            color: "#509EE3", // brand color
+            name: expect.anything(),
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+          },
+        ],
       ];
 
       expect(seriesWithColors).toEqual(expectedSeries);
@@ -70,24 +76,23 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors from whitelabel colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        series,
-        getPalette({ brand: "#123456", summarize: "#ffffff" }),
+        multipleSeries,
         settings,
+        getPalette({ brand: "#123456", summarize: "#ffffff" }),
       );
 
       const expectedSeries = [
-        {
-          name: "Count",
-          color: "#123456", // whitelabel color
-          yAxisPosition: "left",
-          type: "bar",
-          data: [
-            ["Doohickey", 3976],
-            ["Gadget", 4939],
-            ["Gizmo", 4784],
-            ["Widget", 5061],
-          ],
-        },
+        [
+          {
+            color: "#123456", // whitelabel color
+            name: expect.anything(),
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+          },
+        ],
       ];
 
       expect(seriesWithColors).toEqual(expectedSeries);
@@ -95,8 +100,7 @@ describe("getSeriesWithColors", () => {
 
     it("it should assign colors from column colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        series,
-        getPalette({ brand: "#123456", summarize: "#ffffff" }),
+        multipleSeries,
         merge(settings, {
           series_settings: {
             count: {
@@ -104,21 +108,21 @@ describe("getSeriesWithColors", () => {
             },
           },
         }),
+        getPalette({ brand: "#123456", summarize: "#ffffff" }),
       );
 
       const expectedSeries = [
-        {
-          name: "Count",
-          color: "#987654", // column color
-          yAxisPosition: "left",
-          type: "bar",
-          data: [
-            ["Doohickey", 3976],
-            ["Gadget", 4939],
-            ["Gizmo", 4784],
-            ["Widget", 5061],
-          ],
-        },
+        [
+          {
+            color: "#987654", // column color
+            name: expect.anything(),
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+          },
+        ],
       ];
 
       expect(seriesWithColors).toEqual(expectedSeries);
@@ -126,31 +130,42 @@ describe("getSeriesWithColors", () => {
   });
 
   describe("Series with preferred colors", () => {
-    const series: SeriesWithoutBreakoutValues[] = [
-      {
-        name: "Sum of Total",
-        yAxisPosition: "left",
-        type: "bar",
-        data: [["2016-04-24T00:00:00Z", 52.75594257942132]],
-        seriesKey: "sum",
-      },
+    const multipleSeries: SeriesWithOneOrLessDimensions[][] = [
+      [
+        {
+          name: "Sum of Total",
+          cardName: "Bar chart",
+          yAxisPosition: "left",
+          type: "bar",
+          data: [["2016-04-24T00:00:00Z", 52.75594257942132]],
+          column: {
+            name: "sum",
+            source: "aggregation",
+            display_name: "Sum of Total",
+          },
+        },
+      ],
     ];
 
     it("should assign colors from preferred color", () => {
       const seriesWithColors = getSeriesWithColors(
-        series,
-        getPalette({ brand: "#123456", summarize: "#ffffff" }),
+        multipleSeries,
         merge(settings, { x: { type: "timeseries" } }),
+        getPalette({ brand: "#123456", summarize: "#ffffff" }),
       );
 
       const expectedSeries = [
-        {
-          name: "Sum of Total",
-          color: "#88BF4D", // accent1 color
-          yAxisPosition: "left",
-          type: "bar",
-          data: [["2016-04-24T00:00:00Z", 52.75594257942132]],
-        },
+        [
+          {
+            color: "#88BF4D", // accent1 color
+            name: expect.anything(),
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+          },
+        ],
       ];
 
       expect(seriesWithColors).toEqual(expectedSeries);
@@ -158,21 +173,25 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors from whitelabel colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        series,
-        getPalette({ accent1: "#123456", summarize: "#ffffff" }),
+        multipleSeries,
         merge(settings, {
           x: { type: "timeseries" },
         }),
+        getPalette({ accent1: "#123456", summarize: "#ffffff" }),
       );
 
       const expectedSeries = [
-        {
-          name: "Sum of Total",
-          color: "#123456", // whitelabel color
-          yAxisPosition: "left",
-          type: "bar",
-          data: [["2016-04-24T00:00:00Z", 52.75594257942132]],
-        },
+        [
+          {
+            color: "#123456", // whitelabel color
+            name: expect.anything(),
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+          },
+        ],
       ];
 
       expect(seriesWithColors).toEqual(expectedSeries);
@@ -180,8 +199,7 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors from column colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        series,
-        getPalette({ brand: "#123456", summarize: "#ffffff" }),
+        multipleSeries,
         merge(settings, {
           x: { type: "timeseries" },
           series_settings: {
@@ -190,75 +208,33 @@ describe("getSeriesWithColors", () => {
             },
           },
         }),
+        getPalette({ brand: "#123456", summarize: "#ffffff" }),
       );
 
       const expectedSeries = [
-        {
-          name: "Sum of Total",
-          color: "#987654", // column color
-          yAxisPosition: "left",
-          type: "bar",
-          data: [["2016-04-24T00:00:00Z", 52.75594257942132]],
-        },
+        [
+          {
+            color: "#987654", // column color
+            name: expect.anything(),
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+          },
+        ],
       ];
 
       expect(seriesWithColors).toEqual(expectedSeries);
     });
   });
 
-  describe("Series with breakout values", () => {
-    const series: SeriesWithBreakoutValues[] = [
-      {
-        name: "2016-01-01T00:00:00Z",
-        type: "area",
-        data: [
-          ["Doohickey", 177],
-          ["Gadget", 199],
-          ["Gizmo", 158],
-          ["Widget", 210],
-        ],
-        yAxisPosition: "left",
-        column: {
-          semantic_type: "type/CreationTimestamp",
-          unit: "year",
-          name: "CREATED_AT",
-          source: "breakout",
-          display_name: "Created At",
-        },
-      },
-      {
-        name: "2017-01-01T00:00:00Z",
-        type: "area",
-        data: [
-          ["Doohickey", 1206],
-          ["Gadget", 1505],
-          ["Gizmo", 1592],
-          ["Widget", 1531],
-        ],
-        yAxisPosition: "left",
-        column: {
-          semantic_type: "type/CreationTimestamp",
-          unit: "year",
-          name: "CREATED_AT",
-          source: "breakout",
-          display_name: "Created At",
-        },
-      },
-    ];
-
-    it("should assign colors given series", () => {
-      const seriesWithColors = getSeriesWithColors(
-        series,
-        getPalette({}),
-        merge(settings, {
-          x: { type: "timeseries" },
-        }),
-      );
-
-      const expectedSeries = [
+  describe("Series with 2 dimension", () => {
+    const multipleSeries: SeriesWithTwoDimensions[][] = [
+      [
         {
-          name: "2016-01-01T00:00:00Z",
-          color: "#EF8C8C", // accent3 color
+          name: null,
+          cardName: "Area chart",
           type: "area",
           data: [
             ["Doohickey", 177],
@@ -267,10 +243,18 @@ describe("getSeriesWithColors", () => {
             ["Widget", 210],
           ],
           yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2016-01-01T00:00:00Z",
         },
         {
-          name: "2017-01-01T00:00:00Z",
-          color: "#F9D45C", // accent4 color
+          name: null,
+          cardName: "Area chart",
           type: "area",
           data: [
             ["Doohickey", 1206],
@@ -279,7 +263,50 @@ describe("getSeriesWithColors", () => {
             ["Widget", 1531],
           ],
           yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2017-01-01T00:00:00Z",
         },
+      ],
+    ];
+
+    it("should assign colors given series", () => {
+      const seriesWithColors = getSeriesWithColors(
+        multipleSeries,
+        merge(settings, {
+          x: { type: "timeseries" },
+        }),
+        getPalette({}),
+      );
+
+      const expectedSeries = [
+        [
+          {
+            color: "#EF8C8C", // accent3 color
+            name: null,
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+            breakoutValue: expect.anything(),
+          },
+          {
+            color: "#F9D45C", // accent4 color
+            name: null,
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+            breakoutValue: expect.anything(),
+          },
+        ],
       ];
 
       expect(seriesWithColors).toEqual(expectedSeries);
@@ -287,38 +314,36 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors from whitelabel colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        series,
-        getPalette({ accent3: "#123456" }),
+        multipleSeries,
         merge(settings, {
           x: { type: "timeseries" },
         }),
+        getPalette({ accent3: "#123456" }),
       );
 
       const expectedSeries = [
-        {
-          name: "2016-01-01T00:00:00Z",
-          color: "#123456", // whitelabel color
-          type: "area",
-          data: [
-            ["Doohickey", 177],
-            ["Gadget", 199],
-            ["Gizmo", 158],
-            ["Widget", 210],
-          ],
-          yAxisPosition: "left",
-        },
-        {
-          name: "2017-01-01T00:00:00Z",
-          color: "#F9D45C", // accent4 color
-          type: "area",
-          data: [
-            ["Doohickey", 1206],
-            ["Gadget", 1505],
-            ["Gizmo", 1592],
-            ["Widget", 1531],
-          ],
-          yAxisPosition: "left",
-        },
+        [
+          {
+            color: "#123456", // whitelabel color
+            name: null,
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+            breakoutValue: expect.anything(),
+          },
+          {
+            color: "#F9D45C", // accent4 color
+            name: null,
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+            breakoutValue: expect.anything(),
+          },
+        ],
       ];
 
       expect(seriesWithColors).toEqual(expectedSeries);
@@ -326,8 +351,7 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors from column colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        series,
-        getPalette({ accent3: "#123456" }),
+        multipleSeries,
         merge(settings, {
           x: { type: "timeseries" },
           series_settings: {
@@ -336,33 +360,32 @@ describe("getSeriesWithColors", () => {
             },
           },
         }),
+        getPalette({ accent3: "#123456" }),
       );
 
       const expectedSeries = [
-        {
-          name: "2016-01-01T00:00:00Z",
-          color: "#123456", // whitelabel color
-          type: "area",
-          data: [
-            ["Doohickey", 177],
-            ["Gadget", 199],
-            ["Gizmo", 158],
-            ["Widget", 210],
-          ],
-          yAxisPosition: "left",
-        },
-        {
-          name: "2017-01-01T00:00:00Z",
-          color: "#987654", // column color
-          type: "area",
-          data: [
-            ["Doohickey", 1206],
-            ["Gadget", 1505],
-            ["Gizmo", 1592],
-            ["Widget", 1531],
-          ],
-          yAxisPosition: "left",
-        },
+        [
+          {
+            color: "#123456", // whitelabel color
+            name: null,
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+            breakoutValue: expect.anything(),
+          },
+          {
+            color: "#987654", // column color
+            name: null,
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+            breakoutValue: expect.anything(),
+          },
+        ],
       ];
 
       expect(seriesWithColors).toEqual(expectedSeries);

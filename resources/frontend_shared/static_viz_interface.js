@@ -25,8 +25,8 @@ function row_chart(settings, data, colors) {
 function combo_chart(series, settings, colors) {
   // Thinking of combo as similar to multiple, although they're different in BE
   return StaticViz.RenderChart("combo-chart", {
-    series: JSON.parse(series),
-    settings: JSON.parse(settings),
+    multipleSeries: JSON.parse(series),
+    multipleSettings: JSON.parse(settings),
     colors: JSON.parse(colors),
   });
 }

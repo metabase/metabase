@@ -595,18 +595,6 @@
   (conj (repeat "bar")
         "line"))
 
-(defn- join-series
-  [names types row-seqs y-axis-positions y-col]
-  (for [[idx card-name card-type rows y-axis-position]
-        (map vector (range) names types row-seqs y-axis-positions)]
-    {:name          card-name
-     :type          card-type
-     :data          rows
-     :yAxisPosition y-axis-position
-     :seriesKey     (if (zero? idx)
-                      (:name y-col)
-                      card-name)}))
-
 (defn- attach-image-bundle
   [image-bundle]
   {:attachments
@@ -618,33 +606,6 @@
     [:img {:style (style/style {:display :block
                                 :width   :100%})
            :src   (:image-src image-bundle)}]]})
-
-(def ^:private axis-group-threshold 0.33)
-
-(defn- render-multiple-lab-chart
-  "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
-  [render-type card dashcard {:keys [viz-settings] :as data}]
-  (let [viz-settings  (merge viz-settings (:visualization_settings dashcard))
-        multi-res     (pu/execute-multi-card card dashcard)
-        ;; multi-res gets the other results from the set of multis.
-        ;; we shove cards and data here all together below for uniformity's sake
-        viz-settings  (set-default-stacked viz-settings card)
-        cards         (cons card (map :card multi-res))
-        multi-data    (cons data (map #(get-in % [:result :data]) multi-res))
-        rowfns        (mapv common/graphing-column-row-fns cards multi-data)
-        row-seqs      (for [[row-seq [x-rowfn y-rowfn]] (map vector (map :rows multi-data) rowfns)]
-                        (map (juxt x-rowfn y-rowfn)
-                             (common/row-preprocess x-rowfn y-rowfn row-seq)))
-        col-seqs      (map :cols multi-data)
-        first-rowfns  (first rowfns)
-        [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-seqs))
-        labels        (x-and-y-axis-label-info x-col y-col viz-settings)
-        names         (map :name cards)
-        types         (replace {:scalar :bar} (map :display cards))
-        settings      (->ts-viz x-col y-col labels viz-settings)
-        y-pos         (take (count names) (default-y-pos data axis-group-threshold))
-        series        (join-series names colors types row-seqs y-pos)]
-    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
 
 (defn- multiple-scalar-series
   [joined-rows _x-cols _y-cols _viz-settings]
@@ -673,36 +634,32 @@
         settings     (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
     (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
 
-(s/defmethod render :multiple
-  [_ render-type _timezone-id card dashcard data]
-  ((if (= :scalar (:display card))
-     render-multiple-scalars
-     render-multiple-lab-chart)
-   render-type card dashcard data))
-
 (defn- series-setting [viz-settings outer-key inner-key]
   (get-in viz-settings [:series_settings (keyword outer-key) inner-key]))
+
+(def ^:private axis-group-threshold 0.33)
 
 (defn- single-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
-  [chart-type joined-rows _x-cols y-cols {:keys [viz-settings] :as data}]
+  [chart-type joined-rows _x-cols y-cols {:keys [viz-settings] :as data} card-name]
   (for [[idx y-col] (map-indexed vector y-cols)]
     (let [y-col-key     (keyword (:name y-col))
-          card-name     (or (series-setting viz-settings y-col-key :name)
-                            (series-setting viz-settings y-col-key :title)
-                            (:display_name y-col))
+          metric-name          (or (series-setting viz-settings y-col-key :name)
+                                   (series-setting viz-settings y-col-key :title)
+                                   (:display_name y-col))
           card-type     (or (series-setting viz-settings y-col-key :display)
                             chart-type
                             (nth default-combo-chart-types idx))
           selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
                             (nth (default-y-pos data axis-group-threshold) idx))]
-      {:name          card-name
+      {:name          metric-name
+       :cardName      card-name
        :type          card-type
        :data          selected-rows
        :yAxisPosition y-axis-pos
-       :seriesKey    (name y-col-key)})))
+       :column        y-col})))
 
 (defn- double-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
@@ -710,25 +667,68 @@
 
   This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
-  [chart-type joined-rows x-cols _y-cols {:keys [viz-settings] :as data}]
+  [chart-type joined-rows x-cols _y-cols {:keys [viz-settings] :as data} card-name]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)
         groups       (keys grouped-rows)]
     (for [[idx group-key] (map-indexed vector groups)]
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
-            card-name          (or (series-setting viz-settings group-key :name)
-                                   (series-setting viz-settings group-key :title)
-                                   group-key)
+            column-name          (or (series-setting viz-settings group-key :name)
+                                   (series-setting viz-settings group-key :title))
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
                                    (nth default-combo-chart-types idx))
             y-axis-pos         (or (series-setting viz-settings group-key :axis)
                                    (nth (default-y-pos data axis-group-threshold) idx))]
-        {:name          card-name
+        {:name          column-name
+         :cardName      card-name
          :type          card-type
          :data          selected-row-group
          :yAxisPosition y-axis-pos
-         :column        (second x-cols)}))))
+         :column        (second x-cols)
+         :breakoutValue group-key}))))
+
+(defn- render-multiple-lab-chart
+  "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
+  [render-type card dashcard {:keys [viz-settings]
+                              :as   data}]
+  (let [viz-settings      (merge viz-settings (:visualization_settings dashcard))
+        multi-res         (pu/execute-multi-card card dashcard)
+        ;; multi-res gets the other results from the set of multis.
+        ;; we shove cards and data here all together below for uniformity's sake
+        viz-settings      (set-default-stacked viz-settings card)
+        viz-settings-seqs (cons viz-settings (map (comp :visualization_settings :card) multi-res))
+        cards             (cons card (map :card multi-res))
+        multi-data        (cons data (map #(get-in % [:result :data]) multi-res))
+        axis-row-fns      (fn [card data]
+                            [(or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
+                             (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))])
+        rowfns            (mapv axis-row-fns cards multi-data)
+        row-seqs          (for [[row-seq [x-rowfn y-rowfn]] (map vector (map :rows multi-data) rowfns)]
+                            (map (comp flatten (juxt x-rowfn y-rowfn))
+                                 (common/row-preprocess x-rowfn y-rowfn row-seq)))
+        col-seqs          (map :cols multi-data)
+        first-rowfns      (first rowfns)
+        [[x-col] [y-col]] ((juxt (first first-rowfns) (second first-rowfns)) (first col-seqs))
+        labels            (x-and-y-axis-label-info x-col y-col viz-settings)
+        names             (map :name cards)
+        types             (replace {:scalar :bar} (map :display cards))
+        settings-seqs     (map (partial ->ts-viz x-col y-col labels) viz-settings-seqs)
+        y-axis-positions  (take (count names) (default-y-pos data axis-group-threshold))
+        series            (for [[enforced-type rows cols viz-settings [x-axis-rowfn y-axis-rowfn] y-axis-position card-name]
+                                (map vector types row-seqs col-seqs viz-settings-seqs rowfns y-axis-positions names)]
+                            (let [
+                                  x-cols      (x-axis-rowfn cols)
+                                  y-cols      (y-axis-rowfn cols)
+                                  x-rows      (map x-axis-rowfn rows)
+                                  y-rows      (map y-axis-rowfn rows)
+                                  joined-rows (map vector x-rows y-rows)]
+                              (map
+                               #(assoc % :yAxisPosition y-axis-position)
+                               (if (= (count x-cols) 1)
+                                 (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings card-name)
+                                 (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings card-name)))))]
+    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings-seqs)))))
 
 (defn- lab-image-bundle
   "Generate an image-bundle for a Line Area Bar chart (LAB)
@@ -747,16 +747,24 @@
         enforced-type   (if (= chart-type :combo)
                           nil
                           chart-type)
+        card-name       (:name card)
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
-        series          (if (= (count x-cols) 1)
-                          (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols data)
-                          (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols data))
+        series          [(if (= (count x-cols) 1)
+                           (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name)
+                           (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name))]
 
         labels          (combo-label-info x-cols y-cols viz-settings)
-        settings        (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
+        settings        [(->ts-viz (first x-cols) (first y-cols) labels viz-settings)]]
     (image-bundle/make-image-bundle
      render-type
      (js-svg/combo-chart series settings))))
+
+(s/defmethod render :multiple
+  [_ render-type _timezone-id card dashcard data]
+  ((if (= :scalar (:display card))
+     render-multiple-scalars
+     render-multiple-lab-chart)
+   render-type card dashcard data))
 
 (s/defmethod render :line :- common/RenderedPulseCard
   [_ render-type timezone-id card dashcard data]

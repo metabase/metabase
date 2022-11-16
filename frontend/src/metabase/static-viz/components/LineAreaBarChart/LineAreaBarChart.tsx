@@ -1,12 +1,13 @@
 import React from "react";
+import { merge } from "icepick";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
 import { colors } from "metabase/lib/colors";
 import { XYChart } from "../XYChart";
 import {
   ChartSettings,
   ChartStyle,
-  SeriesWithBreakoutValues,
-  SeriesWithoutBreakoutValues,
+  SeriesWithOneOrLessDimensions,
+  SeriesWithTwoDimensions,
 } from "../XYChart/types";
 import { Colors } from "./types";
 import {
@@ -14,18 +15,18 @@ import {
   calculateChartSize,
   getXValuesCount,
 } from "./utils/settings";
-import { getSeriesWithColors } from "./utils/series";
+import { getSeriesWithColors, removeNoneSeriesFields } from "./utils/series";
 
 interface LineAreaBarChartProps {
-  series: (SeriesWithBreakoutValues | SeriesWithoutBreakoutValues)[];
-  settings: ChartSettings;
+  multipleSeries: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][];
+  multipleSettings: ChartSettings[];
   colors: Colors;
   getColor: ColorGetter;
 }
 
 const LineAreaBarChart = ({
-  series: multipleSeries,
-  settings,
+  multipleSeries,
+  multipleSettings,
   getColor,
   colors: instanceColors,
 }: LineAreaBarChartProps) => {
@@ -58,17 +59,20 @@ const LineAreaBarChart = ({
     goalColor: getColor("text-medium"),
   };
 
-  const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;
   const palette = { ...colors, ...instanceColors };
   const seriesWithColors = getSeriesWithColors(
     multipleSeries,
+    multipleSettings[0],
     palette,
-    settings,
-  );
-  const xValuesCount = getXValuesCount(seriesWithColors);
-  const chartSize = calculateChartSize(settings, xValuesCount, minTickSize);
+  ).map(series => merge(series, { name: series.name ?? series.cardName }));
+  const series = removeNoneSeriesFields(seriesWithColors);
+
+  const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;
+  const xValuesCount = getXValuesCount(series);
+  const mainSettings = multipleSettings[0];
+  const chartSize = calculateChartSize(mainSettings, xValuesCount, minTickSize);
   const adjustedSettings = adjustSettings(
-    settings,
+    mainSettings,
     xValuesCount,
     minTickSize,
     chartSize,
@@ -76,7 +80,7 @@ const LineAreaBarChart = ({
 
   return (
     <XYChart
-      series={seriesWithColors}
+      series={series}
       settings={adjustedSettings}
       style={chartStyle}
       width={chartSize.width}

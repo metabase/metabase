@@ -17,21 +17,25 @@ export type YAxisPosition = "left" | "right";
 export type VisualizationType = "line" | "area" | "bar" | "waterfall";
 
 interface BaseSeries {
-  name: string;
+  name: string | null;
   data: SeriesData;
   type: VisualizationType;
   yAxisPosition: YAxisPosition;
 }
 
-export interface SeriesWithoutBreakoutValues extends BaseSeries {
-  seriesKey: string;
-}
-
-export interface SeriesWithBreakoutValues extends BaseSeries {
+export interface SeriesWithOneOrLessDimensions extends BaseSeries {
+  cardName: string;
   column: DatasetColumn;
 }
 
+export interface SeriesWithTwoDimensions extends BaseSeries {
+  cardName: string;
+  column: DatasetColumn;
+  breakoutValue: string;
+}
+
 export interface Series extends BaseSeries {
+  name: string;
   color: string;
 }
 
