@@ -541,7 +541,7 @@
       t (->temporal-type t))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetime-diff]
-  [driver [_ x y unit :as clause]]
+  [driver [_ x y unit]]
   (let [x'               (sql.qp/->honeysql driver x)
         y'               (sql.qp/->honeysql driver y)
         disallowed-types (keep

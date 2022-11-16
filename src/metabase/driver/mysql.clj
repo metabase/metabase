@@ -354,7 +354,7 @@
                           (hx/literal "-01"))))
 
 (defmethod sql.qp/->honeysql [:mysql :datetime-diff]
-  [driver [_ x y unit :as clause]]
+  [driver [_ x y unit]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)
         disallowed-types (keep
