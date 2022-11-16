@@ -25,7 +25,7 @@ const BREADCRUMBS = [
   [t`Google Sign-In`],
 ];
 
-export interface GoogleSettingsFormProps {
+export interface GoogleAuthFormProps {
   elements?: SettingDefinition[];
   settingValues?: Partial<Settings>;
   isEnabled: boolean;
@@ -39,7 +39,7 @@ const GoogleAuthForm = ({
   isEnabled,
   isSsoEnabled,
   onSubmit,
-}: GoogleSettingsFormProps): JSX.Element => {
+}: GoogleAuthFormProps): JSX.Element => {
   const settings = useMemo(() => {
     return _.indexBy(elements, "key");
   }, [elements]);
