@@ -695,25 +695,24 @@ workflows:
 
       - test-driver:
           name: be-tests-redshift-ee
-          requires:
-            - be-tests-java-11-ee
           driver: redshift
           timeout: 15m
 
       - test-driver:
           name: be-tests-snowflake-ee
-          requires:
-            - be-tests-java-11-ee
           driver: snowflake
-          timeout: 115m
+          timeout: 115m # WHUT
 
       - test-driver:
           name: be-tests-vertica-ee
-          requires:
-            - be-tests-java-11-ee
           e: vertica
           before-steps:
             - fetch-jdbc-driver:
                 source: VERTICA_JDBC_JAR
                 dest: vertica-jdbc-7.1.2-0.jar
           driver: vertica
+
+      - test-driver:
+          name: be-tests-athena-ee
+          driver: athena
+          timeout: 30m
