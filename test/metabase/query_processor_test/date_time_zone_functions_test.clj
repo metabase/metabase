@@ -163,12 +163,6 @@
         (testing title
           (is (= expected (test-temporal-extract query))))))))
 
-(defmacro with-start-of-week
-  "With start of week."
-  [start-of-week & body]
-  `(mt/with-temporary-setting-values [start-of-week ~start-of-week]
-     ~@body))
-
 (defn test-extract-week
   [field-id method]
   (->> (mt/mbql-query weeks {:expressions {"expr" [:get-week [:field field-id nil] method]}
@@ -188,7 +182,7 @@
           (is (= [52 52 1 1 1 1 1 1 1 53]
                  (test-extract-week (mt/id :weeks :d) :iso)))
           (testing "shouldn't change if start-of-week settings change"
-            (with-start-of-week :monday
+            (mt/with-temporary-setting-values [start-of-week :monday]
               (is (= [52 52 1 1 1 1 1 1 1 53]
                      (test-extract-week (mt/id :weeks :d) :iso)))))))
 
@@ -198,7 +192,7 @@
           (is (= [1 2 2 2 2 2 2 2 3 1]
                  (test-extract-week (mt/id :weeks :d) :us)))
           (testing "shouldn't change if start-of-week settings change"
-            (with-start-of-week :monday
+            (mt/with-temporary-setting-values [start-of-week :monday]
               (is (= [1 2 2 2 2 2 2 2 3 1]
                      (test-extract-week (mt/id :weeks :d) :us)))))))
 
@@ -206,7 +200,7 @@
         (is (= [1 2 2 2 2 2 2 2 3 1]
                (test-extract-week (mt/id :weeks :d) :instance)))
 
-        (with-start-of-week :monday
+        (mt/with-temporary-setting-values [start-of-week :monday]
           (is (= [1 1 2 2 2 2 2 2 2 1]
                  (test-extract-week (mt/id :weeks :d) :instance))))))))
 
