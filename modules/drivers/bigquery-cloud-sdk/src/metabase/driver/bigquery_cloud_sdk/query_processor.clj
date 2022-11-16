@@ -540,6 +540,60 @@
     (cond->> ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)
       t (->temporal-type t))))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x'               (sql.qp/->honeysql driver x)
+        y'               (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [x]
+                            (when-not (contains? #{:timestamp :date :datetime} (temporal-type x))
+                              (or (some-> (temporal-type x) name)
+                                  (hx/type-info->db-type (hx/type-info x)))))
+                          [x' y'])]
+    (when (seq disallowed-types)
+      (throw
+       (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                     (pr-str disallowed-types))
+                {:allowed #{:timestamp :datetime :date}
+                 :found   disallowed-types
+                 :type    qp.error-type/invalid-query})))
+    (case unit
+      (:year :month)
+      (let [; timestamp_diff doesn't support months or years, so convert to datetime to use datetime_diff
+            x'       (hx/->datetime (trunc :day (hx/->timestamp x')))
+            y'       (hx/->datetime (trunc :day (hx/->timestamp y')))
+            raw-unit (hsql/raw (name unit))
+            positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             (hsql/call :datetime_diff b a raw-unit)
+                             (hx/cast
+                              :integer
+                              (hsql/call
+                               :>
+                               (hsql/call :datetime_diff a (hsql/call :date_trunc a raw-unit) (hsql/raw "day"))
+                               (hsql/call :datetime_diff b (hsql/call :date_trunc b raw-unit) (hsql/raw "day"))))))]
+        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
+
+      :week
+      (let [x' (trunc :day (hx/->timestamp x'))
+            y' (trunc :day (hx/->timestamp y'))
+            positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (hsql/call :timestamp_diff b a (hsql/raw "day")) 7))))]
+        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
+
+      :day
+      (let [x' (trunc :day (hx/->timestamp x'))
+            y' (trunc :day (hx/->timestamp y'))]
+        (hsql/call :timestamp_diff y' x' (hsql/raw (name unit))))
+
+      (:hour :minute :second)
+      (let [x' (hx/->timestamp x')
+            y' (hx/->timestamp y')]
+        (hsql/call :timestamp_diff y' x' (hsql/raw (name unit)))))))
+
 (defmethod driver/escape-alias :bigquery-cloud-sdk
   [driver s]
   ;; Convert field alias `s` to a valid BigQuery field identifier. From the dox: Fields must contain only letters,
@@ -638,6 +692,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- interval [amount unit]
+  ;; todo: can bigquery have an expression here or just a numeric literal?
   (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit))))
 
 ;; We can coerce the HoneySQL form this wraps to whatever we want and generate the appropriate SQL.
