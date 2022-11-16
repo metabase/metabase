@@ -1186,9 +1186,3 @@
       (if (neg? @a)
         (apply f args)
         (throw (ex-info "Not yet" {:remaining @a}))))))
-
-(defmacro with-start-of-week
-  "Executes the body with `start-of-week` temporarily changed."
-  [start-of-week & body]
-  `(mt/with-temporary-setting-values [start-of-week ~start-of-week]
-     ~@body))

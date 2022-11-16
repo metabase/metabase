@@ -182,7 +182,7 @@
           (is (= [52 52 1 1 1 1 1 1 1 53]
                  (test-extract-week (mt/id :weeks :d) :iso)))
           (testing "shouldn't change if start-of-week settings change"
-            (mt/with-start-of-week :monday
+            (mt/with-temporary-setting-values [start-of-week :monday]
               (is (= [52 52 1 1 1 1 1 1 1 53]
                      (test-extract-week (mt/id :weeks :d) :iso)))))))
 
@@ -192,7 +192,7 @@
           (is (= [1 2 2 2 2 2 2 2 3 1]
                  (test-extract-week (mt/id :weeks :d) :us)))
           (testing "shouldn't change if start-of-week settings change"
-            (mt/with-start-of-week :monday
+            (mt/with-temporary-setting-values [start-of-week :monday]
               (is (= [1 2 2 2 2 2 2 2 3 1]
                      (test-extract-week (mt/id :weeks :d) :us)))))))
 
@@ -200,7 +200,7 @@
         (is (= [1 2 2 2 2 2 2 2 3 1]
                (test-extract-week (mt/id :weeks :d) :instance)))
 
-        (mt/with-start-of-week :monday
+        (mt/with-temporary-setting-values [start-of-week :monday]
           (is (= [1 1 2 2 2 2 2 2 2 1]
                  (test-extract-week (mt/id :weeks :d) :instance))))))))
 
