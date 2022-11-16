@@ -252,8 +252,8 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (db/select-one-field :id Database :name db-name)]
-    (db/select-one-field :id Table :name table-name :db_id db-id :schema schema-name)))
+        db-id       (db/select-one-id Database :name db-name)]
+    (db/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes.base/extract-one "Table"
   [_model-name _opts {:keys [db_id] :as table}]

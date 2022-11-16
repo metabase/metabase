@@ -54,7 +54,8 @@
   "Current report timezone abbreviation"
   :visibility :public
   :setter     :none
-  :getter     (fn [] (short-timezone-name (report-timezone))))
+  :getter     (fn [] (short-timezone-name (report-timezone)))
+  :doc        false)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
