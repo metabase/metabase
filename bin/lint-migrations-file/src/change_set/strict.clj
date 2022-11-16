@@ -28,64 +28,49 @@
       (apply distinct? (mapcat #(str/split (-> % :sql :dbms) #",")
                                changes))))))
 
-(def change-types-requiring-rollback
-  ;; this list was generated with a little grep and awk from the docs here:
+(def change-types-supporting-rollback
+  ;; This set was generated with a little grep and awk from the docs here:
   ;; https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
-  #{:addAutoIncrement
-    :alterSequence
-    :createFunction
-    :createPackage
-    :createPackageBody
-    :createProcedure
-    :createTrigger
-    :customChange
-    :delete
-    :dropAllForeignKeyConstraints
-    :dropCheckConstraint
-    :dropColumn
-    :dropDefaultValue
-    :dropForeignKeyConstraint
-    :dropFunction
-    :dropIndexNot
-    :dropPackage
-    :dropPackageBody
-    :dropPrimaryKey
-    :dropProcedure
-    :dropSequence
-    :dropSynonym
-    :dropTable
-    :dropTrigger
-    :dropUniqueConstraint
-    :dropView
-    :empty
-    :executeCommand
-    :insert
-    :loadData
-    :loadUpdateData
-    :markUnused
-    :mergeColumns
-    :modifyDataType
-    :output
-    :setColumnRemarks
-    :setTableRemarks
-    :sql
-    :sqlFile
-    :stop
-    :update})
+  ;;
+  ;; If a new change type is introduced that supports automatic rollback, it should be added
+  ;; to this set.
+  #{:addCheckConstraint
+    :addColumn
+    :addDefaultValue
+    :addForeignKeyConstraint
+    :addLookupTable
+    :addNotNullConstraint
+    :addPrimaryKey
+    :addUniqueConstraint
+    :createIndex
+    :createSequence
+    :createSynonym
+    :createTable
+    :createView
+    :disableCheckConstraint
+    :disableTrigger
+    :dropNotNullConstraint
+    :enableCheckConstraint
+    :enableTrigger
+    :renameColumn
+    :renameSequence
+    :renameTable
+    :renameTrigger
+    :renameView})
 
-(defn major-version
+(defn- major-version
   "Returns major version from id string, e.g. 44 from \"v44.00-034\""
   [id-str]
   (when (string? id-str)
     (some-> (re-find #"\d+" id-str) Integer/parseInt)))
 
-(defn rollback-present-when-required?
+(defn- rollback-present-when-required?
   "Ensures rollback key is present when change type doesn't support auto rollback"
   [{:keys [id changes] :as change-set}]
   (or
    (int? id)
    (< (major-version id) 45)
-   (not (some change-types-requiring-rollback (mapcat keys changes)))
+   (some change-types-supporting-rollback (mapcat keys changes))
    (contains? change-set :rollback)))
 
 (s/def ::change-set
