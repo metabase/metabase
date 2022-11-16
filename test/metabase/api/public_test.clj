@@ -25,8 +25,8 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db]
-            [throttle.core :as throttle])
+            [throttle.core :as throttle]
+            [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
@@ -1131,7 +1131,7 @@
                         (is (= [nil "Google" "Gizmo" 1 52 186] (nth rows 50)))
                         (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))))
 
-(deftest execute-public-dashcard-test
+(deftest execute-public-dashcard-action-test
   (actions.test-util/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash {:parameters []}]
