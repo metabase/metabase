@@ -368,7 +368,7 @@
       (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
                            (pr-str disallowed-types))
                       {:found disallowed-types
-                       :type  qp.error-type/invalid-parameter})))
+                       :type  qp.error-type/invalid-query})))
     (case unit
       (:year :month)
       (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))
@@ -386,7 +386,7 @@
       (throw (ex-info (tru "Invalid datetime-diff unit {0}" unit)
                       {:clause      clause
                        :valid-units [:year :month :week :day :hour :minute :second]
-                       :type        qp.error-type/invalid-parameter})))))
+                       :type        qp.error-type/invalid-query})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

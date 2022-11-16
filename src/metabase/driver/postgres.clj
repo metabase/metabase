@@ -363,7 +363,7 @@
       (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
                            (pr-str disallowed-types))
                       {:found disallowed-types
-                       :type  qp.error-type/invalid-parameter})))
+                       :type  qp.error-type/invalid-query})))
     (-> (datetime-diff-helper x y unit)
         (hx/with-database-type-info :integer))))
 
