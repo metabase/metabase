@@ -8,12 +8,12 @@ on:
     paths-ignore:
       - "docs/**"
       - "**.md"
-      - "**/frontend/test/**"
+      - "**/frontend/**"
   pull_request:
     paths-ignore:
       - "docs/**"
       - "**.md"
-      - "**/frontend/test/**"
+      - "**/frontend/**"
 
 jobs:
 
