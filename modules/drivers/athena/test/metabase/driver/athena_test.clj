@@ -1,6 +1,7 @@
 (ns metabase.driver.athena-test
   (:require [clojure.test :refer :all]
-            [metabase.driver.athena :as athena]))
+            [metabase.driver.athena :as athena]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
 
 #_(def ^:private nested-schema_str
   "key                  int                   from deserializer
@@ -41,3 +42,14 @@ data                  struct<name:string>   from deserializer")
       "us-west-2"      ".amazonaws.com"
       "cn-north-1"     ".amazonaws.com.cn"
       "cn-northwest-1" ".amazonaws.com.cn")))
+
+(deftest ^:parallel data-source-name-test
+  (are [details expected] (= expected
+                             (sql-jdbc.conn/data-source-name :athena details))
+    {:catalog "birds"}                                             "birds"
+    {:catalog "birds", :s3_staging_dir "s3://metabase-metabirbs/"} "birds"
+    {:catalog "", :s3_staging_dir "s3://metabase-metabirbs/"}      "metabase_metabirbs_"
+    {:s3_staging_dir "s3://metabase-metabirbs/"}                   "metabase_metabirbs_"
+    {:s3_staging_dir "s3://metabase-metabirbs/toucans/"}           "metabase_metabirbs_toucans_"
+    {:s3_staging_dir ""}                                           nil
+    {}                                                             nil))

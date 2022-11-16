@@ -69,8 +69,18 @@
        (when-not (str/blank? catalog)
          {:MetadataRetrievalMethod "ProxyAPI"
           :Catalog                 catalog})
+       ;; `:metabase.driver.athena/schema` is just a gross hack for testing so we can treat multiple tests datasets as
+       ;; different DBs -- see [[metabase.driver.athena/fast-active-tables]]. Not used outside of tests.
        (dissoc details :db :catalog :metabase.driver.athena/schema))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
+
+(defmethod sql-jdbc.conn/data-source-name :athena
+  [_driver {:keys [catalog], s3-results-bucket :s3_staging_dir}]
+  ;; we're sort of in a pickle here since catalog is optional. We'll use that if it's present, otherwise use something
+  ;; based on the s3 results bucket name (ick)
+  (or (not-empty catalog)
+      (when (seq s3-results-bucket)
+        (u/slugify (str/replace s3-results-bucket #"^s3://" "")))))
 
 ;;; ------------------------------------------------- sql-jdbc.sync --------------------------------------------------
 
