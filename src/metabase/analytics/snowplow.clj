@@ -133,16 +133,16 @@
    ::timeline  "1-0-0"
    ::task      "1-0-0"})
 
-(defn app-db-type
+(defn- app-db-type
   "Returns the type of the Metabase application database as a string (e.g. PostgreSQL, MySQL)"
   []
-  (clojure.java.jdbc/with-db-metadata [metadata (db/connection)]
+  (jdbc/with-db-metadata [metadata (db/connection)]
     (.getDatabaseProductName metadata)))
 
-(defn app-db-version
+(defn- app-db-version
   "Returns the version of the Metabase application database as a string"
   []
-  (clojure.java.jdbc/with-db-metadata [metadata (db/connection)]
+  (jdbc/with-db-metadata [metadata (db/connection)]
     (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))))
 
 (defn- context
