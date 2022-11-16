@@ -15,8 +15,9 @@ import type Question from "metabase-lib/Question";
 import { saveForm, updateForm } from "./forms";
 
 export type ActionParams = {
+  id: number;
   name: string;
-  description?: string;
+  description: string | null;
   model_id?: number;
   collection_id?: number;
   question: Question;

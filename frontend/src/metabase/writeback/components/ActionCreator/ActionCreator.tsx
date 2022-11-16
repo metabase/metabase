@@ -129,10 +129,10 @@ function ActionCreatorComponent({
     } else {
       update({
         id: (question.card() as SavedCard).id,
-        name: question?.displayName(),
-        description: question.description(),
+        name: question?.displayName() ?? "",
+        description: question.description() ?? null,
         model_id: defaultModelId,
-        formSettings,
+        formSettings: formSettings as ActionFormSettings,
         question,
       });
       onClose?.();
