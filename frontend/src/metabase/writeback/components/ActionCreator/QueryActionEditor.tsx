@@ -4,6 +4,8 @@ import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEdit
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Question from "metabase-lib/Question";
 
+import { getTemplateTagParameters } from "metabase-lib/parameters/utils/template-tags";
+
 export function QueryActionEditor({
   question,
   setQuestion,
@@ -18,11 +20,10 @@ export function QueryActionEditor({
         viewHeight="full"
         setDatasetQuery={(newQuery: NativeQuery) => {
           // we need to sync the query AND the template tags
-          setQuestion(
-            question
-              .setQuery(newQuery)
-              .setParameters(newQuery?.templateTagsWithoutSnippets()),
+          const newParams = getTemplateTagParameters(
+            newQuery.templateTagsWithoutSnippets(),
           );
+          setQuestion(question.setQuery(newQuery).setParameters(newParams));
         }}
         enableRun={false}
         hasEditingSidebar={false}
