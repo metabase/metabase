@@ -58,7 +58,7 @@ export const getChartScales = <TDatum>(
   rangeOverride?: Range,
 ) => {
   const yDomain = createYDomain(seriesData);
-  const yScale = scaleBand<YValue>({
+  const yScale = scaleBand({
     domain: yDomain,
     range: [0, innerHeight],
     padding: 0.2,

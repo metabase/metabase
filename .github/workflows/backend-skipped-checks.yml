@@ -4,12 +4,19 @@
 name: Backend
 
 on:
+  push:
+    branches:
+      - 'master'
+      - 'release-**'
+    paths:
+      - "docs/**"
+      - "**.md"
+      - "**/frontend/**"
   pull_request:
     paths:
       - "docs/**"
       - "**.md"
-      - "frontend/test/**"
-      - "enterprise/frontend/test/**"
+      - "**/frontend/**"
 
 jobs:
 

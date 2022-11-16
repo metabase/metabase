@@ -1,5 +1,6 @@
 import moment from "moment";
 import { Moment } from "moment-timezone";
+import { NumberLike, StringLike } from "@visx/scale";
 import {
   DatasetColumn,
   RowValue,
@@ -105,7 +106,7 @@ export const getStaticFormatters = (
   chartColumns: ChartColumns,
   settings: VisualizationSettings,
 ): ChartTicksFormatters => {
-  const yTickFormatter = (value: RowValue) => {
+  const yTickFormatter = (value: StringLike) => {
     const column = chartColumns.dimension.column;
     const columnSettings = settings.column_settings?.[getColumnKey(column)];
 
@@ -120,7 +121,7 @@ export const getStaticFormatters = (
 
   const metricColumn = getLabelsMetricColumn(chartColumns);
 
-  const percentXTicksFormatter = (percent: any) => {
+  const percentXTicksFormatter = (percent: NumberLike) => {
     const column = metricColumn.column;
     const number_separators =
       settings.column_settings?.[getColumnKey(column)]?.number_separators;
@@ -136,7 +137,7 @@ export const getStaticFormatters = (
     );
   };
 
-  const xTickFormatter = (value: any) => {
+  const xTickFormatter = (value: NumberLike) => {
     const column = metricColumn.column;
     const columnSettings = settings.column_settings?.[getColumnKey(column)];
 
@@ -180,6 +181,6 @@ export const getLabelsStaticFormatter = (
 };
 
 export const getColumnValueStaticFormatter = () => {
-  return (value: any, column: DatasetColumn) =>
+  return (value: RowValue, column: DatasetColumn) =>
     String(formatStaticValue(value, { column }));
 };

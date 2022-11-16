@@ -5,10 +5,10 @@ import { getIn } from "icepick";
 
 import { parseTimestamp } from "metabase/lib/time";
 import {
-  NULL_DISPLAY_VALUE,
   NULL_NUMERIC_VALUE,
   TOTAL_ORDINAL_VALUE,
 } from "metabase/lib/constants";
+import { formatNullable } from "metabase/lib/formatting/nullable";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 
 import {
@@ -109,7 +109,7 @@ const memoizedParseXValue = _.memoize(
     if (isTimeseries && !isQuantitative) {
       return parseTimestampAndWarn(xValue, unit);
     }
-    const parsedValue = isNumeric ? xValue : String(formatNull(xValue));
+    const parsedValue = isNumeric ? xValue : String(formatNullable(xValue));
     return { parsedValue };
   },
   // create cache key from args
@@ -407,10 +407,6 @@ export const hasClickBehavior = series =>
 export const isMultiCardSeries = series =>
   series.length > 1 &&
   getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"]);
-
-export function formatNull(value) {
-  return value === null ? NULL_DISPLAY_VALUE : value;
-}
 
 // Hack: for numeric dimensions we have to replace null values
 // with anything else since crossfilter groups merge 0 and null
