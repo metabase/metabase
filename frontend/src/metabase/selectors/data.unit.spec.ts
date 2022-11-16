@@ -12,7 +12,7 @@ const mockedDatabase = createMockDatabase();
 
 describe("metabase/selectors/data", () => {
   describe("getHasDataAccess", () => {
-    it("should return true if user has data access", () => {
+    it("should return true if user has access to at least one real database", () => {
       const state = createMockState({
         entities: {
           databases: {
@@ -24,14 +24,14 @@ describe("metabase/selectors/data", () => {
       expect(getHasDataAccess(state)).toBe(true);
     });
 
-    it("should return false if user does not have data access", () => {
-      const state = {
+    it("should return false if user does not have access to at least one real database", () => {
+      const state = createMockState({
         entities: {
           databases: {
             0: { ...mockedDatabase, is_saved_questions: true },
           },
         },
-      };
+      });
 
       expect(getHasDataAccess(state)).toBe(false);
     });
@@ -39,7 +39,7 @@ describe("metabase/selectors/data", () => {
 
   describe("getHasOwnDatabase", () => {
     it("should return true if user has their own database", () => {
-      const state = {
+      const state = createMockState({
         entities: {
           databases: {
             0: {
@@ -49,19 +49,19 @@ describe("metabase/selectors/data", () => {
             },
           },
         },
-      };
+      });
 
       expect(getHasOwnDatabase(state)).toBe(true);
     });
 
     it("should return false if user does not have their own database", () => {
-      const state = {
+      const state = createMockState({
         entities: {
           databases: {
             0: { ...mockedDatabase, is_sample: true, is_saved_questions: true },
           },
         },
-      };
+      });
 
       expect(getHasOwnDatabase(state)).toBe(false);
     });
@@ -69,25 +69,25 @@ describe("metabase/selectors/data", () => {
 
   describe("getHasNativeWrite", () => {
     it("should return true if user has permissions to write to at least one database", () => {
-      const state = {
+      const state = createMockState({
         entities: {
           databases: {
             0: { ...mockedDatabase, native_permissions: "write" },
           },
         },
-      };
+      });
 
       expect(getHasNativeWrite(state)).toBe(true);
     });
 
     it("should return false if user does not have permissions to write to at least one database", () => {
-      const state = {
+      const state = createMockState({
         entities: {
           databases: {
             0: { ...mockedDatabase, native_permissions: "read" },
           },
         },
-      };
+      });
 
       expect(getHasNativeWrite(state)).toBe(false);
     });
@@ -95,25 +95,25 @@ describe("metabase/selectors/data", () => {
 
   describe("getHasDatabaseWithJsonEngine", () => {
     it("should return true if user has a json database", () => {
-      const state = {
+      const state = createMockState({
         entities: {
           databases: {
             0: { ...mockedDatabase, engine: "mongo" },
           },
         },
-      };
+      });
 
       expect(getHasDatabaseWithJsonEngine(state)).toBe(true);
     });
 
     it("should return false if user does not have a json database", () => {
-      const state = {
+      const state = createMockState({
         entities: {
           databases: {
             0: { ...mockedDatabase, engine: "postgres" },
           },
         },
-      };
+      });
 
       expect(getHasDatabaseWithJsonEngine(state)).toBe(false);
     });
