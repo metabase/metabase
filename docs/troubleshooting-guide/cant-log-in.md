@@ -9,7 +9,7 @@ title: People can't log in to Metabase
 If you're not a Metabase admin, you'll have to tag them for help here.
 
 1. Check that you have the correct [site URL](../configuring-metabase/settings.md) from **Settings** > **Admin settings** > **General**.
-3. Check if the [account is deactivated](../people-and-groups/managing.md#reactivating-an-account).
+3. Check if the [account is deactivated](../people-and-groups/managing.md#deactivating-an-account).
 
 ## No access to Metabase Cloud account
 
