@@ -60,6 +60,7 @@ interface ActionCreatorProps {
   question?: Question;
   actionId?: number;
   modelId?: number;
+  databaseId?: number;
   push: (url: string) => void;
   update: (action: ActionParams) => void;
   onClose?: () => void;
@@ -70,11 +71,12 @@ function ActionCreatorComponent({
   question: passedQuestion,
   actionId,
   modelId,
+  databaseId,
   update,
   onClose,
 }: ActionCreatorProps) {
   const [question, setQuestion] = useState(
-    passedQuestion ?? newQuestion(metadata),
+    passedQuestion ?? newQuestion(metadata, databaseId),
   );
   const [formSettings, setFormSettings] = useState<
     ActionFormSettings | undefined
@@ -85,7 +87,7 @@ function ActionCreatorComponent({
     useToggle(false);
 
   useEffect(() => {
-    setQuestion(passedQuestion ?? newQuestion(metadata));
+    setQuestion(passedQuestion ?? newQuestion(metadata, databaseId));
 
     // we do not want to update this any time the props or metadata change, only if action id changes
   }, [actionId]); // eslint-disable-line react-hooks/exhaustive-deps
