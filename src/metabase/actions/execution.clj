@@ -6,7 +6,7 @@
     [metabase.actions :as actions]
     [metabase.actions.http-action :as http-action]
     [metabase.api.common :as api]
-    [metabase.models :refer [Card Dashboard DashboardCard Table]]
+    [metabase.models :refer [Card DashboardCard Table]]
     [metabase.models.action :as action]
     [metabase.models.persisted-info :as persisted-info]
     [metabase.models.query :as query]
