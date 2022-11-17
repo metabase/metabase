@@ -6,7 +6,7 @@
     [metabase.actions :as actions]
     [metabase.actions.http-action :as http-action]
     [metabase.api.common :as api]
-    [metabase.models :refer [Card Dashboard DashboardCard Table]]
+    [metabase.models :refer [Card DashboardCard Table]]
     [metabase.models.action :as action]
     [metabase.models.persisted-info :as persisted-info]
     [metabase.models.query :as query]
@@ -173,7 +173,6 @@
    of shape `{<parameter-id> <value>}."
   [dashboard-id dashcard-id slug request-parameters]
   (actions/check-actions-enabled)
-  (api/read-check Dashboard dashboard-id)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
@@ -208,7 +207,6 @@
    Must pass in parameters of shape `{<parameter-id> <value>}` for primary keys."
   [dashboard-id dashcard-id slug request-parameters]
   (actions/check-actions-enabled)
-  (api/read-check Dashboard dashboard-id)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
