@@ -13,12 +13,12 @@
              java.time.ZoneId)]
    :cljs
    [(:require
+     ["moment" :as moment]
+     ["moment-timezone" :as mtz]
      [clojure.core :as core]
      [clojure.set :as set]
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
-     [moment :as moment]
-     [moment-timezone :as mtz]
      [schema.core :as s])]))
 
 #?(:cljs
