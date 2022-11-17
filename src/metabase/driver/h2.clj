@@ -178,7 +178,7 @@
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
     :implicitly-relative-db-file-path
 
-    #"^Database .* not found .*$"
+    #"^Database .* not found, .*$"
     :db-file-not-found
 
     #"^Wrong user name or password .*$"

@@ -54,7 +54,7 @@
     (is (= ::exception-thrown
            (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
                 (catch org.h2.jdbc.JdbcSQLException e
-                  (and (re-matches #"Database .+ not found .+" (.getMessage e))
+                  (and (re-matches #"Database .+ not found, .+" (.getMessage e))
                        ::exception-thrown)))))))
 
 (deftest db-default-timezone-test

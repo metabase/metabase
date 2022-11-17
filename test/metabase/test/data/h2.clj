@@ -65,12 +65,13 @@
 
 (defmethod sql.tx/create-db-sql :h2
   [& _]
-  [;; Create a non-admin account 'GUEST' which will be used from here on out
-   "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+  (str
+   ;; Create a non-admin account 'GUEST' which will be used from here on out
+   "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';\n"
 
    ;; Set DB_CLOSE_DELAY here because only admins are allowed to do it, so we can't set it via the connection string.
    ;; Set it to to -1 (no automatic closing)
-   "SET DB_CLOSE_DELAY -1;"])
+   "SET DB_CLOSE_DELAY -1;"))
 
 (defmethod sql.tx/create-table-sql :h2
   [driver dbdef {:keys [table-name], :as tabledef}]
