@@ -303,24 +303,15 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :now)
     (testing "should return the current time"
       ;; Allow a 30 second window for the current time to account for any difference between the time in Clojure and the DB
-      (-> (mt/run-mbql-query venues
-            {:expressions {"1" [:now]}
-             :fields [[:expression "1"]]
-             :limit  1})
-          mt/rows
-          ffirst
-          u.date/parse
-          (close? (t/instant) (t/seconds 30))))
-    (testing "should work as an argument to other functions"
-      (is (= [1 1]
+      (is (= true
              (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:datetime-diff [:now] [:datetime-add [:now] 1 :month] :month]
-                                  "2" [:now]
-                                  "3" [:datetime-diff [:expression "2"] [:datetime-add [:expression "2"] 1 :month] :month]}
-                    :fields [[:expression "1"]
-                             [:expression "3"]]
+                   {:expressions {"1" [:now]}
+                    :fields [[:expression "1"]]
                     :limit  1})
-                 mt/rows first))))
+                 mt/rows
+                 ffirst
+                 u.date/parse
+                 (close? (t/instant) (t/seconds 30))))))
     (testing "should return a datetime with second precision"
       (is (= true
              (-> (mt/run-mbql-query venues
@@ -328,7 +319,7 @@
                     :fields [[:expression "1"]]
                     :limit  1})
                  mt/rows ffirst u.date/parse second-precision?))))
-    (testing "should return a DateTime type"
+    (testing "should return a :type/DateTime typed column"
       (let [col (-> (mt/run-mbql-query venues
                       {:expressions {"1" [:now]}
                        :fields [[:expression "1"]]
@@ -337,7 +328,29 @@
         (is (= true
                (if (:effective_type col)
                  (isa? (:effective_type col) :type/DateTime)
-                 (isa? (:base_type col) :type/DateTime))))))))
+                 (isa? (:base_type col) :type/DateTime)))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics)
+    (testing "should work as an argument to datetime-add and datetime-subtract"
+      (is (= true
+             (-> (mt/run-mbql-query venues
+                   {:expressions {"1" [:datetime-subtract [:datetime-add [:now] 1 :month] 1 :month]}
+                    :fields [[:expression "1"]]
+                    :limit  1})
+                 mt/rows
+                 ffirst
+                 u.date/parse
+                 (close? (t/instant) (t/seconds 30)))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :now :datetime-diff)
+    (testing "should work as an argument to datetime-diff"
+      (is (= [1 1]
+             (-> (mt/run-mbql-query venues
+                   {:expressions {"1" [:datetime-diff [:now] [:datetime-add [:now] 1 :month] :month]
+                                  "2" [:now]
+                                  "3" [:datetime-diff [:expression "2"] [:datetime-add [:expression "2"] 1 :month] :month]}
+                    :fields [[:expression "1"]
+                             [:expression "3"]]
+                    :limit  1})
+                 mt/rows first))))))
 
 (deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
