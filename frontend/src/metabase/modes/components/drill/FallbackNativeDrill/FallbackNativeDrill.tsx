@@ -4,19 +4,19 @@ import MetabaseSettings from "metabase/lib/settings";
 import { getEngineNativeType } from "metabase/lib/engine";
 import Icon from "metabase/components/Icon";
 import Question from "metabase-lib/Question";
-import { unsupportedDrill } from "metabase-lib/queries/drills/unsupported-drill";
+import { fallbackNativeDrill } from "metabase-lib/queries/drills/fallback-native-drill";
 import {
   DrillLearnLink,
   DrillMessage,
   DrillRoot,
-} from "./UnsupportedDrill.styled";
+} from "./FallbackNativeDrill.styled";
 
 interface UnsupportedDrillProps {
   question: Question;
 }
 
-const UnsupportedDrill = ({ question }: UnsupportedDrillProps) => {
-  const drill = unsupportedDrill({ question });
+const FallbackNativeDrill = ({ question }: UnsupportedDrillProps) => {
+  const drill = fallbackNativeDrill({ question });
   if (!drill) {
     return [];
   }
@@ -27,7 +27,7 @@ const UnsupportedDrill = ({ question }: UnsupportedDrillProps) => {
 
   return [
     {
-      name: "unsupported",
+      name: "fallback-native",
       section: "info",
       buttonType: "info",
       title: (
@@ -47,4 +47,4 @@ const UnsupportedDrill = ({ question }: UnsupportedDrillProps) => {
   ];
 };
 
-export default UnsupportedDrill;
+export default FallbackNativeDrill;

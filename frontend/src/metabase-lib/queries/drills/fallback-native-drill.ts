@@ -1,10 +1,10 @@
 import Question from "metabase-lib/Question";
 
-interface UnsupportedDrillProps {
+interface FallbackNativeDrillProps {
   question: Question;
 }
 
-export function unsupportedDrill({ question }: UnsupportedDrillProps) {
+export function fallbackNativeDrill({ question }: FallbackNativeDrillProps) {
   const query = question.query();
   const database = question.database();
   if (!question.isNative() || !query.isEditable() || !database) {
