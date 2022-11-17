@@ -120,29 +120,25 @@
   ([h2-db-id s]
    (let [h2-parser (make-h2-parser h2-db-id)]
      (when-not (= ::client-side-session h2-parser)
-       (let [parse-method (doto (.getDeclaredMethod (class h2-parser)
-                                                    "parse"
-                                                    (into-array Class [java.lang.String]))
-                            (.setAccessible true))
-             parse-index-field (doto (.getDeclaredField (class h2-parser) "parseIndex")
-                                 (.setAccessible true))]
-         ;; parser moves parseIndex, so get-offset will be the index in the string that was parsed "up to"
-         (parse s
-                (fn parser [s]
-                  (try (.invoke parse-method h2-parser (object-array [s]))
-                       ;; need to chew through error scenarios because of a query like:
-                       ;;
-                       ;; vulnerability; abc;
-                       ;;
-                       ;; which would cause this parser to break w/o the error handling here, but this way we
-                       ;; still return the org.h2.command.ddl.* classes.
-                       (catch Throwable _ ::parse-fail)))
-                (fn get-offset [] (.get parse-index-field h2-parser)))))))
-  ([s parser get-offset] (vec (concat
-                               [(parser s)];; this call to parser parses up to the end of the first sql statement
-                               (let [more (apply str (drop (get-offset) s))] ;; more is the unparsed part of s
-                                 (when-not (str/blank? more)
-                                   (parse more parser get-offset)))))))
+       ;; parser moves parseIndex, so get-offset will be the index in the string that was parsed "up to"
+       (parse s
+              (fn parser [s]
+                (try
+                  (.parseExpression h2-parser s)
+                  ;; need to chew through error scenarios because of a query like:
+                  ;;
+                  ;; vulnerability; abc;
+                  ;;
+                  ;; which would cause this parser to break w/o the error handling here, but this way we
+                  ;; still return the org.h2.command.ddl.* classes.
+                  (catch Throwable _ ::parse-fail)))
+              (fn get-offset [] (inc (.getLastParseIndex h2-parser)))))))
+  ([s parser get-offset]
+   (vec (concat
+         [(parser s)] ;; this call to parser parses up to the end of the first sql statement
+         (let [more (apply str (drop (get-offset) s))] ;; more is the unparsed part of s
+           (when-not (str/blank? more)
+             (parse more parser get-offset)))))))
 
 (defn- check-disallow-ddl-commands [{:keys [database] :as query}]
   (when query
