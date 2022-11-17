@@ -255,7 +255,6 @@
     (testing "Should be able to connect as a user with an unencrypted keypair"
       (let [{:keys [user] :as details} (mt/dbdef->connection-details :snowflake :db {:database-name "v3_snowflake_sample_data"})
             spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
-        (is (= "?" details))
         (is (= {:can_connect 1} (first (jdbc/query spec "select 1 as can_connect")))
             "Could not connect to snowflake.")
 
