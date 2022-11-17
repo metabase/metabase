@@ -178,7 +178,7 @@ function ActionCreatorComponent({
 
             {!isDataRefOpen && (
               <FormCreator
-                tags={query?.templateTagsWithoutSnippets()}
+                params={question?.parameters() ?? []}
                 formSettings={
                   question?.card()?.visualization_settings as ActionFormSettings
                 }

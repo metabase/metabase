@@ -1,8 +1,10 @@
 import React from "react";
 
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import type Query from "metabase-lib/queries/Query";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Question from "metabase-lib/Question";
+
+import { getTemplateTagParameters } from "metabase-lib/parameters/utils/template-tags";
 
 export function QueryActionEditor({
   question,
@@ -16,9 +18,13 @@ export function QueryActionEditor({
       <NativeQueryEditor
         query={question.query()}
         viewHeight="full"
-        setDatasetQuery={(newQuery: Query) =>
-          setQuestion(question.setQuery(newQuery))
-        }
+        setDatasetQuery={(newQuery: NativeQuery) => {
+          // we need to sync the query AND the template tags
+          const newParams = getTemplateTagParameters(
+            newQuery.templateTagsWithoutSnippets(),
+          );
+          setQuestion(question.setQuery(newQuery).setParameters(newParams));
+        }}
         enableRun={false}
         hasEditingSidebar={false}
         isNativeEditorOpen

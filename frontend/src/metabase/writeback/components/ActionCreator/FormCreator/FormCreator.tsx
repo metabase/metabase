@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { t } from "ttag";
 
-import type { TemplateTag } from "metabase-types/types/Query";
+import type { Parameter } from "metabase-types/types/Parameter";
 import type { ActionFormSettings, FieldSettings } from "metabase-types/api";
 
 import { FieldSettingsPopover } from "./FieldSettingsPopover";
@@ -21,12 +21,12 @@ import {
 } from "./FormCreator.styled";
 
 export function FormCreator({
-  tags,
+  params,
   formSettings: passedFormSettings,
   onChange,
   onExampleClick,
 }: {
-  tags: TemplateTag[];
+  params: Parameter[];
   formSettings?: ActionFormSettings;
   onChange: (formSettings: ActionFormSettings) => void;
   onExampleClick: () => void;
@@ -40,48 +40,50 @@ export function FormCreator({
   }, [formSettings, onChange]);
 
   const handleChangeFieldSettings = (
-    tagId: string,
+    paramId: string,
     newFieldSettings: FieldSettings,
   ) => {
     setFormSettings({
       ...formSettings,
       fields: {
         ...formSettings.fields,
-        [tagId]: newFieldSettings,
+        [paramId]: newFieldSettings,
       },
     });
   };
 
   return (
     <FormCreatorWrapper>
-      {tags.map(tag => (
+      {params.map(param => (
         <FormItem
-          key={tag.id}
-          tag={tag}
+          key={param.id}
+          param={param}
           fieldSettings={
-            formSettings.fields?.[tag.id] ?? getDefaultFieldSettings()
+            formSettings.fields?.[param.id] ?? getDefaultFieldSettings()
           }
           onChange={(newSettings: FieldSettings) =>
-            handleChangeFieldSettings(tag.id, newSettings)
+            handleChangeFieldSettings(param.id, newSettings)
           }
         />
       ))}
-      {!tags.length && <EmptyFormPlaceholder onExampleClick={onExampleClick} />}
+      {!params.length && (
+        <EmptyFormPlaceholder onExampleClick={onExampleClick} />
+      )}
     </FormCreatorWrapper>
   );
 }
 
 function FormItem({
-  tag,
+  param,
   fieldSettings,
   onChange,
 }: {
-  tag: TemplateTag;
+  param: Parameter;
   fieldSettings: FieldSettings;
   onChange: (fieldSettings: FieldSettings) => void;
 }) {
   const [isEditingOptions, setIsEditingOptions] = useState(false);
-  const name = tag.name;
+  const name = param["display-name"] ?? param.name;
 
   const updateOptions = (newOptions: (string | number)[]) => {
     onChange({
@@ -106,7 +108,7 @@ function FormItem({
               onChange={updateOptions}
             />
           ) : (
-            <FormField tag={tag} fieldSettings={fieldSettings} />
+            <FormField param={param} fieldSettings={fieldSettings} />
           )}
           {!isEditingOptions && hasOptions && (
             <EditButton

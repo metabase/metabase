@@ -17,7 +17,6 @@ import type {
 } from "metabase-types/api";
 
 import type { Parameter } from "metabase-types/types/Parameter";
-import type { TemplateTag } from "metabase-types/types/Query";
 
 import { isEditableField } from "metabase/writeback/utils";
 import Field from "metabase-lib/metadata/Field";
@@ -84,7 +83,7 @@ const inputTypeHasOptions = (fieldSettings: FieldSettings) =>
   ["dropdown", "radio"].includes(fieldSettings.inputType);
 
 export const getFormField = (
-  parameter: Parameter | TemplateTag,
+  parameter: Parameter,
   fieldSettings: FieldSettings,
 ) => {
   if (
@@ -100,6 +99,7 @@ export const getFormField = (
     title:
       fieldSettings.title ||
       fieldSettings.name ||
+      parameter["display-name"] ||
       parameter.name ||
       parameter.id,
     description: fieldSettings.description ?? "",
@@ -184,7 +184,7 @@ export const generateFieldSettingsFromParameters = (
       ? new Field(fieldMetadataMap[param.id])
       : undefined;
 
-    const name = param.name ?? param.id;
+    const name = param["display-name"] ?? param.name ?? param.id;
     const displayName = field?.displayName?.() ?? name;
 
     fieldSettings[param.id] = getDefaultFieldSettings({
