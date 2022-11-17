@@ -132,7 +132,7 @@
     "@storybook/react": "^6.5.13",
     "@testing-library/cypress": "^8.0.3",
     "@testing-library/dom": "^7.29.0",
-    "@testing-library/jest-dom": "^4.0.0",
+    "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^11.0.2",
     "@testing-library/react-hooks": "^8.0.0",
     "@testing-library/user-event": "^12.6.0",
