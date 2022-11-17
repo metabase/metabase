@@ -325,11 +325,11 @@
 (defmethod driver/describe-table :athena
   [driver {{:keys [catalog]} :details, :as database} table]
   (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (->> (assoc (select-keys table [:name :schema])
-                :fields (try
-                          (describe-table-fields metadata database driver table catalog)
-                          (catch Throwable _
-                            (set nil)))))))
+    (assoc (select-keys table [:name :schema])
+           :fields (try
+                     (describe-table-fields metadata database driver table catalog)
+                     (catch Throwable _
+                       (set nil))))))
 
 (defn- get-tables
   "Athena can query EXTERNAL and MANAGED tables."
