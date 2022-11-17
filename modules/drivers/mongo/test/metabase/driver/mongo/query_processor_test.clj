@@ -57,6 +57,22 @@
                     {:aggregation [[:count]]
                      :filter      [:time-interval $datetime :last :month]})))))))))
 
+(deftest absolute-datetime-test
+  (mt/test-driver :mongo
+    (testing "Make sure absolute-datetime are compiled correctly"
+      (doseq [[expected date]
+              [["2014-01-01"        (t/local-date "2014-01-01")]
+               ["10:00"             (t/local-time "10:00:00")]
+               ["2014-01-01T10:00"  (t/local-date-time "2014-01-01T10:00")]
+               ["03:00Z"            (t/offset-time "10:00:00+07:00")]
+               ["2014-01-01T03:00Z" (t/offset-date-time "2014-01-01T10:00+07:00")]
+               ["2014-01-01T00:00Z" (t/zoned-date-time "2014-01-01T07:00:00+07:00[Asia/Ho_Chi_Minh]")]]]
+        (testing (format "with %s" (type date))
+          (is (= {:$expr {"$lt" ["$date-field" {:$dateFromString {:dateString expected}}]}}
+                 (mongo.qp/compile-filter [:<
+                                           [:field "date-field"]
+                                           [:absolute-datetime date]]))))))))
+
 (deftest no-initial-projection-test
   (mt/test-driver :mongo
     (testing "Don't need to create initial projections anymore (#4216)"

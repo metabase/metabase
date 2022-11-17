@@ -325,12 +325,12 @@
   (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
                                    "UTC"))
         t           (condp = (class t)
-                      java.time.LocalDate      t
-                      java.time.LocalTime      t
-                      java.time.LocalDateTime  t
-                      java.time.OffsetTime     (t/with-offset-same-instant t report-zone)
-                      java.time.OffsetDateTime (t/with-offset-same-instant t report-zone)
-                      java.time.ZonedDateTime  (t/offset-date-time (t/with-zone-same-instant t report-zone)))]
+                     java.time.LocalDate      t
+                     java.time.LocalTime      t
+                     java.time.LocalDateTime  t
+                     java.time.OffsetTime     (t/offset-time t report-zone)
+                     java.time.OffsetDateTime (t/offset-date-time t report-zone)
+                     java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
     (letfn [(extract [unit]
               (u.date/extract t unit))
             (bucket [unit]
