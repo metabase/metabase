@@ -129,15 +129,15 @@
   "Make a basic `card-and-data` map for a given `display-type` key. Useful for buildng up test viz data without the need for `viz-scenarios`.
   The `rows` should be a vector of vectors, where the first row is the header row."
   [header-and-rows display-type]
-  (let [[headers & rows] header-and-rows
+  (let [[header & rows] header-and-rows
         indices (range (count (first header-and-rows)))
         cols (mapv (fn [idx] (mapv #(nth % idx) (vec rows))) indices)]
     {:card {:display display-type
             :visualization_settings (base-viz-settings display-type header-and-rows)}
      :data {:viz-settings {}
-            :cols (mapv base-cols-settings indices headers rows)
+            :cols (mapv base-cols-settings indices header (first rows))
             :rows (vec rows)
-            :results_metadata {:columns (mapv base-results-metadata indices headers cols)}}}))
+            :results_metadata {:columns (mapv base-results-metadata indices header cols)}}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;    validate-viz-scenarios
