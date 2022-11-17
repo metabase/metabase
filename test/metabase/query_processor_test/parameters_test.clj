@@ -116,7 +116,10 @@
         ;; TIMEZONE FIXME — The excluded drivers don't have TIME types, so the `attempted-murders` dataset doesn't
         ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
         ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
-        (when (mt/supports-time-type? driver/*driver*)
+        ;;
+        ;; TIMEZONE FIXME -- Presto *does* support a TIME type, but this fails because it doesn't support TIME WITH TIME
+        ;; ZONE... we should just use TIME instead so we can run this test.
+        (when (disj (mt/supports-time-type? driver/*driver*) :presto)
           (mt/dataset attempted-murders
             (doseq [field
                     [:datetime
