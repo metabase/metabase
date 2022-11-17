@@ -4,6 +4,7 @@
                [clojure.java.io :as io]
                [clojure.java.jdbc :as jdbc]
                [clojure.java.shell :as sh]
+               [clojure.string :as str]
                [clojure.tools.logging :as log]
                [metabase.util.i18n :refer [trs]])
   (:import [java.nio.file Files Paths]))
@@ -37,7 +38,7 @@
   ;; See: https://www.h2database.com/html/mvstore.html
   (when-let [path (str (h2-base-path jdbc-url) ".mv.db")]
     (when (.exists (io/file path))
-      (let [header     (apply str (map try-char (head path 4096)))
+      (let [header     (str/join (map try-char (head path 4096)))
             format-key "format:"]
         (when-not (.startsWith header "H:2")
           (throw (IllegalArgumentException. "File does not appear to be an H2 MV database file")))
