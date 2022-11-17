@@ -28,11 +28,11 @@ data                  struct<name:string>   from deserializer")
               :database-type     "struct"
               :nested-fields     #{{:name "name", :base-type :type/Text, :database-type "string", :database-position 1}},
               :database-position 1}}
-           (athena/sync-table-with-nested-field "test" "test" "test")))))
+           (#'athena/sync-table-with-nested-field "test" "test" "test")))))
   (testing "sync without nested fields"
     (is (= #{{:name "id", :base-type :type/Text, :database-type "string", :database-position 0}
              {:name "ts", :base-type :type/Text, :database-type "string", :database-position 1}}
-           (athena/sync-table-without-nested-field :athena flat-schema-columns)))))
+           (#'athena/sync-table-without-nested-field :athena flat-schema-columns)))))
 
 (deftest ^:parallel endpoint-test
   (testing "AWS Endpoint URL"

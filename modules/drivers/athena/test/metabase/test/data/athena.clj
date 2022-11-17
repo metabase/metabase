@@ -118,7 +118,7 @@
             (s3-location-for-table driver database-name table-name))))
 
 (comment
-  (let [test-data-dbdef (tx/get-dataset-definition metabase.test.data.dataset-definitions/test-data)
+  (let [test-data-dbdef (tx/get-dataset-definition @(requiring-resolve 'metabase.test.data.dataset-definitions/test-data))
         venues-tabledef (some (fn [tabledef]
                                 (when (= (:table-name tabledef) "venues")
                                   tabledef))

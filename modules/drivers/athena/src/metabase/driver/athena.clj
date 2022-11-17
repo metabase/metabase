@@ -10,7 +10,6 @@
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.driver.athena.query-processor :as athena.qp]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -18,7 +17,6 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.models.field :as field :refer [Field]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
@@ -212,11 +210,6 @@
   [driver _ expr]
   (sql.qp/adjust-day-of-week driver (hsql/call :day_of_week expr)))
 
-;;; FIXME (deprecated)
-(defmethod sql.qp/->honeysql [:athena (class Field)]
-  [driver field]
-  (athena.qp/->honeysql driver field))
-
 (defmethod sql.qp/unix-timestamp->honeysql [:athena :seconds]
   [_driver _seconds-or-milliseconds expr]
   (hsql/call :from_unixtime expr))
@@ -284,7 +277,7 @@
   {:name (str/trim (:col_name rs))
    :type (str/trim (:data_type rs))})
 
-(defn remove-invalid-columns
+(defn- remove-invalid-columns
   [result]
   (->> result
        (remove #(= (:col_name %) ""))
@@ -294,7 +287,7 @@
        (distinct) ; driver can return twice the partitioning fields
        (map describe-database->clj)))
 
-(defn sync-table-with-nested-field [database schema table-name]
+(defn- sync-table-with-nested-field [database schema table-name]
   (->> (run-query database (str "DESCRIBE `" schema "`.`" table-name "`;"))
        remove-invalid-columns
        (map-indexed #(merge %2 {:database-position %1}))
@@ -302,7 +295,7 @@
        doall
        set))
 
-(defn sync-table-without-nested-field [driver columns]
+(defn- sync-table-without-nested-field [driver columns]
   (set
    (for [[idx {database-type :type_name
                column-name   :column_name
@@ -314,10 +307,11 @@
        :database-position idx}
       (when (not (str/blank? remarks))
         {:field-comment remarks})))))
+
 ;; Not all tables in the Data Catalog are guaranted to be compatible with Athena
 ;; If an exception is thrown, log and throw an error
 
-(defn table-has-nested-fields [columns]
+(defn- table-has-nested-fields? [columns]
   (some #(= "struct" (:type_name %)) columns))
 
 (defn describe-table-fields
@@ -326,7 +320,7 @@
   (try
     (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
       (let [columns (jdbc/metadata-result rs)]
-        (if (table-has-nested-fields columns)
+        (if (table-has-nested-fields? columns)
           (sync-table-with-nested-field database schema table-name)
           (sync-table-without-nested-field driver columns))))
     (catch Throwable e
@@ -341,7 +335,8 @@
     (->> (assoc (select-keys table [:name :schema])
                 :fields (try
                           (describe-table-fields metadata database driver table catalog)
-                          (catch Throwable e (set nil)))))))
+                          (catch Throwable _
+                            (set nil)))))))
 
 (defn- get-tables
   "Athena can query EXTERNAL and MANAGED tables."
