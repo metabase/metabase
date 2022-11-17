@@ -132,7 +132,7 @@ const RowChartVisualization = ({
   );
 
   const groupedData = useMemo(
-    () => getGroupedDataset(data, chartColumns, formatColumnValue),
+    () => getGroupedDataset(data.rows, chartColumns, formatColumnValue),
     [chartColumns, data, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
