@@ -322,7 +322,11 @@
                    {:expressions {"1" [:now]}
                     :fields [[:expression "1"]]
                     :limit  1})
-                 mt/rows ffirst u.date/parse second-precision?))))
+                 mt/rows
+                 ffirst
+                 u.date/parse
+                 (t/zoned-date-time (t/zone-id "UTC"))
+                 second-precision?))))
     (testing "should work as an argument to datetime-add and datetime-subtract"
       (is (= true
              (-> (mt/run-mbql-query venues
