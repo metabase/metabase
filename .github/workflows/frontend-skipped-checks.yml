@@ -5,7 +5,8 @@ on:
     paths:
       - "docs/**"
       - "**.md"
-      - "**_test.clj"
+      - "**.cljc?"
+      - "**.edn"
       - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
       - "frontend/test/__support__/e2e/**"
       - "frontend/test/__runner__/*cypress*"
