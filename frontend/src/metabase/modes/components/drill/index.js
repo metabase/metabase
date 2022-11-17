@@ -9,6 +9,7 @@ import CompareToRestDrill from "./CompareToRestDrill";
 import ZoomDrill from "./ZoomDrill";
 import FormatAction from "./FormatAction";
 import DashboardClickDrill from "./DashboardClickDrill";
+import UnsupportedDrill from "./UnsupportedDrill";
 
 export const getDefaultDrills = () => [
   ZoomDrill,
@@ -22,4 +23,5 @@ export const getDefaultDrills = () => [
   CompareToRestDrill,
   FormatAction,
   DashboardClickDrill,
+  UnsupportedDrill,
 ];

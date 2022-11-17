@@ -66,6 +66,9 @@ const SECTIONS = {
   auto: {
     icon: "bolt",
   },
+  info: {
+    icon: "info",
+  },
 };
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
 Object.values(SECTIONS).map((section, index) => {
@@ -313,7 +316,8 @@ export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
   // This is where all the different action button styles get applied.
   // Some of them have bespoke classes defined in ChartClickActions.css,
   // like for cases when we needed to really dial in the spacing.
-  const className = cx("cursor-pointer no-decoration", {
+  const className = cx("no-decoration", {
+    "cursor-pointer": action.buttonType !== "info",
     sort: action.buttonType === "sort",
     "formatting-button": action.buttonType === "formatting",
     "horizontal-button": action.buttonType === "horizontal",
