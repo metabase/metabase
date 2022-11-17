@@ -8,6 +8,7 @@ import type {
   ActionDashboardCard,
   ParametersForActionExecution,
   DataAppPage,
+  VisualizationSettings,
 } from "metabase-types/api";
 import { getFormTitle } from "metabase/writeback/components/ActionCreator/FormCreator";
 
@@ -24,6 +25,8 @@ import {
 interface ActionFormProps {
   onSubmit: OnSubmitActionForm;
   dashcard: ActionDashboardCard;
+  settings: VisualizationSettings;
+  isSettings: boolean;
   page: DataAppPage;
   missingParameters: WritebackParameter[];
   dashcardParamValues: ParametersForActionExecution;
@@ -34,6 +37,8 @@ interface ActionFormProps {
 function ActionForm({
   onSubmit,
   dashcard,
+  settings,
+  isSettings,
   page,
   missingParameters,
   dashcardParamValues,
@@ -68,7 +73,8 @@ function ActionForm({
       <>
         <ActionButtonView
           onClick={onClick}
-          settings={dashcard.visualization_settings}
+          settings={settings}
+          isFullHeight={!isSettings}
         />
         {showModal && (
           <ActionParametersInputModal

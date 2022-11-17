@@ -228,6 +228,7 @@ export default class DashCard extends Component {
               isPreviewing={this.state.isPreviewingCard}
               onPreviewToggle={this.handlePreviewToggle}
               dashboard={dashboard}
+              dashcard={dashcard}
             />
           </DashboardCardActionsPanel>
         ) : null}
@@ -362,6 +363,7 @@ const DashCardActionButtons = ({
   onPreviewToggle,
   isPreviewing,
   dashboard,
+  dashcard,
 }) => {
   const analyticsContext = dashboard.is_app_page
     ? "Data App Page"
@@ -390,6 +392,7 @@ const DashCardActionButtons = ({
           series={series}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
           dashboard={dashboard}
+          dashcard={dashcard}
         />,
       );
     }
@@ -438,6 +441,7 @@ const ChartSettingsButton = ({
   series,
   onReplaceAllVisualizationSettings,
   dashboard,
+  dashcard,
 }) => (
   <ModalWithTrigger
     wide
@@ -460,6 +464,7 @@ const ChartSettingsButton = ({
       onChange={onReplaceAllVisualizationSettings}
       isDashboard
       dashboard={dashboard}
+      dashcard={dashcard}
     />
   </ModalWithTrigger>
 );
