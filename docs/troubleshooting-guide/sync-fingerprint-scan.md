@@ -10,11 +10,11 @@ First, check if your data is outdated because of browser caching:
 2. Refresh your Metabase page.
 3. Open your Metabase page in an incognito window.
 
-If you're looking at a non-cached view of your tables and columns and the data still isn't quite right, tag your database admin for help with troubleshooting:
+Once you've confirmed that you're looking at a non-cached view of your tables and columns, tag your database admin for help with troubleshooting:
 
-1. **Syncs**, if your tables are missing, or your column data types are wrong.
-2. **Scans**, if you're missing _columns_ from your tables.
-3. **Fingerprinting**, if your column _values_ are wrong (for example, if your filter dropdown menus contain the wrong values).
+- **Syncs**, if your tables or columns are missing, or your column data types are wrong.
+- **Scans**, if your column _values_ are wrong (for example, if your filter dropdown menus contain the wrong values).
+- **Fingerprinting**, if you've triggered a manual scan, but the changes aren't taking effect.
 
 ## Initializing a sync
 
@@ -39,18 +39,19 @@ WHERE 1 <> 1
 LIMIT 0
 ```
 
-If you’ve just set up a new database in Metabase, the initial sync query might still be running—especially if you have a large database. To run the query, Metabase must:
+If you’ve just set up a new database in Metabase, the initial sync query might still be running—--especially if you have a large database. To run the query, Metabase must:
 
 - successfully connect to your database, and
 - be granted permissions to query that database.
 
-If the connection is failing, or the database privileges are wrong, the sync query won't be able to run. This will block the initial scan and fingerprinting queries as well.
+If the connection is failing, or the database privileges are wrong, the sync query won't be able to run. This will block the _initial_ scan and fingerprinting queries as well.
 
 ## Syncing new or updated tables and views
 
 1. Go to **Admin** > **Troubleshooting** > **Logs** to check the status of the sync.
 2. If the logs show you that the sync is failing on a specific table or view, make sure Metabase has the correct database privileges to query that table or view.
 3. Run a query against your database from the Metabase SQL editor to check for database connection or database privilege errors that aren't listed in the logs:
+
     ```sql
     SELECT *
     FROM "your_database"."your_schema"."your_table_or_view"
@@ -60,7 +61,14 @@ If the connection is failing, or the database privileges are wrong, the sync que
 
 **Explanation**
 
-Metabase needs the correct database privileges to query a given database, schema, and table (or view) during the sync process.
+Metabase needs the correct database privileges to run the sync query against a given database, schema, and table (or view):
+
+```sql
+SELECT TRUE
+FROM "your_database"."your_schema"."your_table_or_view"
+WHERE 1 <> 1
+LIMIT 0
+```
 
 ## Syncing tables with JSON records
 
@@ -71,13 +79,20 @@ Metabase needs the correct database privileges to query a given database, schema
 
 **Explanation**
 
-Metabase will try to unfold JSON and JSONB records during the sync process, which is a pretty slow operation. If you have a lot of JSON records, try disabling the automatic unfolding to see if that unblocks your sync. Remember that you can follow the status of the sync from **Admin** > **Troubleshooting** > **Logs**.
+Metabase will try to unfold JSON and JSONB records during the sync process, which can take up a decent chunk of query execution time. If you have a lot of JSON records, try disabling the automatic unfolding option to pull the sync out of slow-motion. Remember that you can follow the status of the sync from **Admin** > **Troubleshooting** > **Logs**.
 
 ## Scanning
 
-1. Manually start a scan.
-2. Go to **Admin** > **Troubleshooting** > **Logs** to check the status of the scan.
-3. 
+1. Go to **Admin** > **Data Model**.
+2. Select the database and table.
+3. Go to the column you want to update, and click the **gear** icon.
+4. Click **Discard cached field values**.
+2. Click **Re-scan this field**.
+2. Go to **Admin** > **Troubleshooting** > **Logs** to follow the status of the scan.
+3. If you get an error during the scan process, try running the scan query against your database directly, and debug the query execution error from there. Check for:
+   - Schema and table privileges
+   - Recent schema or table updates
+   - Database-specific handling of nulls and numeric, timestamp, or boolean data types.
 
 ### Special cases
 
@@ -85,35 +100,31 @@ If you're waiting for the _initial_ scan to run after connecting a database, mak
 
 **Explanation**
 
-Scan queries are run against your database like this:
+Scan queries are run against your database to sample column values from the first 1,000 rows in a table or view:
 
 ```sql
 SELECT "your_table"."column" AS "column"
-FROM "your_table"
+FROM "your_database"."your_schema"."your_table_or_view"
 GROUP BY "your_table"."column"
 ORDER BY "your_table"."column" ASC
 LIMIT 1000
 ```
 
-## Syncing or scanning is taking a long time
-
-1. For sync, delays are usually caused by a large database with hundreds of schema, thousands of table and with hundreds of columns in each table. If you only need a subset of those tables or columns in Metabase, then restricting the privileges used to connect to the database will make sure that Metabase can only sync a limited subset of the database.
-2. Scanning normally takes longer than sync, but you can reduce the number of fields Metabase will scan by changing the number of fields that have the **Filtering on this field** option set to "A list of all values". Setting fields to either "Search box" or "Plain input box" will exclude those fields from scans.
-
-You can "fix" this by disabling scan entirely by going to the database in the Admin Panel and telling Metabase, "This is a large database," and then going to the Scheduling tab. However, sync is necessary: without it, Metabase won't know what tables exist or what columns they contain.
-
-**Explanation**
-
-
+A failed scan is caused by a failed scan query---you can debug the query just like any other query you'd try to run against your database.
 
 ## Fingerprinting
 
-To manually re-trigger a fingerprinting query for a given table:
+To manually re-trigger a fingerprinting query for a given column:
 
-1. Go to **Admin** > **Data Model**.
-2. Select your database and table.
-3. Change the visibility of the table to **Hidden**.
-4. Change the visibility back to **Queryable**.
+1. Go to **Admin** > **Databases** > **your database** > **Show advanced options**.
+2. Toggle OFF **Periodically refingerprint tables**.
+3. Go to **Admin** > **Data Model**.
+4. Select your database and table.
+5. Change the visibility of the table to **Hidden**.
+6. Change the visibility back to **Queryable**.
+7. Wait 10 seconds.
+8. Go back to the **Data Model** view of your table.
+9. Go to your column and change the **Type** from **Entity Key** to **No semantic type**, and back to **Entity Key**.
 
 ### Special cases
 
@@ -125,7 +136,7 @@ The initial fingerprinting query looks at the first 10,000 rows from a given tab
 
 ```sql
 SELECT "your_table"."column" AS "column"
-FROM "your_table"
+FROM "your_database"."your_schema"."your_table_or_view"
 LIMIT 10000
 ```
 
@@ -133,6 +144,22 @@ If the first 10,000 rows aren't representative of the data in a table (for examp
 
 - Filter dropdown menus with missing values.
 - Histogram visualizations that don't work (since Metabase needs a min and max value to generate the bins).
+
+Metabase doesn't have a built-in option to trigger manual fingerprinting queries. You can "reset" a field's settings using the steps above to try and force a fingerprinting query, but it's not guaranteed to work on all versions of Metabase.
+
+## Syncing or scanning is taking a long time
+
+To speed up **syncs**:
+   - Restrict the privileges used to connect to the database so that Metabase only syncs a limited subset of schemas or tables.
+   - [Reduce the frequency of sync queries](../databases/connecting.md#scheduling-database-scans).
+
+To speed up **scans**:
+   - Reduce the number of columns scanned by going to the **Data Model** and setting **Filtering on this field** to **Search box** or **Plain input box**.
+   - [Reduce the frequency of scans, or disable scans entirely](../databases/connecting.md#scheduling-database-scans).
+
+**Explanation**
+
+Syncs and scans are ultimately just two kinds of queries that get run against your database, so the speed of execution is limited by the number of queries that are run, the frequency of execution, the size of your data, and the amount of resources you've allocated to your database. In Metabase, you can adjust the number and frequency of sync and scan queries, since unfortunately, we can't imbue your database with more power... (yet?)
 
 ## Using the API
 
@@ -143,15 +170,14 @@ If the first 10,000 rows aren't representative of the data in a table (for examp
 
 **Explanation**
 
-Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API][api-learn] to force sync or scan to take place right away. [Our API][metabase-api] provides two ways to do this:
+Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API](https://www.metabase.com/learn/administration/metabase-api) to force sync or scan to take place right away. [Our API](../api-documentation.md) provides two ways to do this:
 
 1. Using an endpoint with a session token: `/api/database/:id/sync_schema` or `api/database/:id/rescan_values`. These do the same things as going to the database in the Admin Panel and choosing **Sync database schema now** or **Re-scan field values now** respectively. In this case you have to authenticate with a user ID and pass a session token in the header of your request.
 
-2. Using an endpoint with an API key: `/api/notify/db/:id`. This endpoint was made to notify Metabase to sync after an [ETL operation][etl] finishes. In this case you must pass an API key by defining the `MB_API_KEY` environment variable.
+2. Using an endpoint with an API key: `/api/notify/db/:id`. This endpoint was made to notify Metabase to sync after an [ETL operation](https://www.metabase.com/learn/analytics/etl-landscape) finishes. In this case you must pass an API key by defining the `MB_API_KEY` environment variable.
 
 ## Related topics
 
-- [Can't see tables](./cant-see-tables.md).
 - [Troubleshooting database connections](./db-connection.md).
 - [Troubleshooting filters](./filters.md).
 - [How syncs and scans work](../databases/connecting.md#syncing-and-scanning-databases).
