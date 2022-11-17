@@ -160,8 +160,9 @@
  :paths
  ["src" "shared/src" "resources"]
 
- ;; These are needed for the Athena and Redshift drivers if you are developing against them locally. If those
- ;; dependencies are not included they are effectively ignored.
+ ;; These are needed for the Athena and Redshift drivers if you are developing against them locally. If those drivers'
+ ;; dependencies are not included (i.e., if we don't have the `:drivers` profile), these repos are effectively
+ ;; ignored.
  ;;
  ;; 1. Maven repos from subprojects do not get copied over -- see
  ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
