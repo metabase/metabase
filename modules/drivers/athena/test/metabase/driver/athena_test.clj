@@ -1,7 +1,12 @@
 (ns metabase.driver.athena-test
   (:require [clojure.test :refer :all]
             [metabase.driver.athena :as athena]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
+            [metabase.query-processor :as qp]
+            [metabase.test :as mt]))
 
 #_(def ^:private nested-schema_str
   "key                  int                   from deserializer
@@ -53,3 +58,20 @@ data                  struct<name:string>   from deserializer")
     {:s3_staging_dir "s3://metabase-metabirbs/toucans/"}           "metabase_metabirbs_toucans_"
     {:s3_staging_dir ""}                                           nil
     {}                                                             nil))
+
+(deftest add-interval-to-timestamp-with-time-zone-test
+  (mt/test-driver :athena
+    (testing "Should be able to use `add-interval-honeysql-form` on a timestamp with time zone (https://github.com/dacort/metabase-athena-driver/issues/115)"
+      ;; Even tho Athena doesn't let you store a TIMESTAMP WITH TIME ZONE, you can still use it as a literal...
+      ;;
+      ;; apparently you can't cast a TIMESTAMP WITH TIME ZONE to a regular TIMESTAMP. So make sure we're not trying to
+      ;; do that cast. This only applies to Athena v3! I think we're currently testing against v2. When we upgrade this
+      ;; should ensure things continue to work.
+      (let [literal      (hsql/raw "timestamp '2022-11-16 04:21:00 US/Pacific'")
+            [sql & args] (hformat/format {:select [[(sql.qp/add-interval-honeysql-form :athena literal 1 :day)
+                                                    :t]
+                                                   ]})
+            query        (mt/native-query {:query sql, :params args})]
+        (mt/with-native-query-testing-context query
+          (is (= ["2022-11-17T12:21:00Z"]
+                 (mt/first-row (qp/process-query query)))))))))

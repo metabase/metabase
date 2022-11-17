@@ -22,7 +22,7 @@
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]])
   (:import
-   (java.sql DatabaseMetaData Timestamp)
+   (java.sql DatabaseMetaData)
    (java.time OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
@@ -177,17 +177,10 @@
 
 ;;;; Datetime truncation functions
 
-(defn- expr->literal
-  "Helper function to cast `expr` to a timestamp if necessary."
-  [expr]
-  (if (instance? Timestamp expr)
-    expr
-    (hx/cast :timestamp expr)))
-
 ;;; If `expr` is a date, we need to cast it to a timestamp before we can truncate to a finer granularity Ideally, we
 ;;; should make this conditional. There's a generic approach above, but different use cases should b tested.
-(defmethod sql.qp/date [:athena :minute]  [_driver _unit expr] (hsql/call :date_trunc (hx/literal :minute) (expr->literal expr)))
-(defmethod sql.qp/date [:athena :hour]    [_driver _unit expr] (hsql/call :date_trunc (hx/literal :hour) (expr->literal expr)))
+(defmethod sql.qp/date [:athena :minute]  [_driver _unit expr] (hsql/call :date_trunc (hx/literal :minute) expr))
+(defmethod sql.qp/date [:athena :hour]    [_driver _unit expr] (hsql/call :date_trunc (hx/literal :hour) expr))
 (defmethod sql.qp/date [:athena :day]     [_driver _unit expr] (hsql/call :date_trunc (hx/literal :day) expr))
 (defmethod sql.qp/date [:athena :month]   [_driver _unit expr] (hsql/call :date_trunc (hx/literal :month) expr))
 (defmethod sql.qp/date [:athena :quarter] [_driver _unit expr] (hsql/call :date_trunc (hx/literal :quarter) expr))
@@ -219,7 +212,7 @@
   (hsql/call :date_add
              (hx/literal (name unit))
              (hsql/raw (int amount))
-             (hx/->timestamp hsql-form)))
+             hsql-form))
 
 (defmethod sql.qp/cast-temporal-string [:athena :Coercion/ISO8601->DateTime]
   [_driver _semantic-type expr]
