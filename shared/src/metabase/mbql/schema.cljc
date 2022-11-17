@@ -15,14 +15,16 @@
    [(:require
      [clojure.core :as core]
      [clojure.set :as set]
-     ["moment" :as moment]
-     ["moment-timezone" :as mtz]
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
+     [moment :as moment]
+     [moment-timezone :as mtz]
      [schema.core :as s])]))
 
-(comment
-  #?(:cljs (mtz/keepme))) ;; to get the timezone list from moment
+#?(:cljs
+   (comment
+     moment/keepme
+     mtz/keepme)) ;; to get the timezone list from moment
 
 ;; A NOTE ABOUT METADATA:
 ;;
