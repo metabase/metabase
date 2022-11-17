@@ -844,6 +844,7 @@
    dashcard-id su/IntGreaterThanZero
    slug su/NonBlankString
    parameters su/JSONString}
+  (api/read-check Dashboard dashboard-id)
   (actions.execution/fetch-values dashboard-id dashcard-id slug (json/parse-string parameters)))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
@@ -856,7 +857,7 @@
    dashcard-id su/IntGreaterThanZero
    slug su/NonBlankString
    parameters (s/maybe {s/Keyword s/Any})}
-  (action/check-data-apps-enabled)
+  (api/read-check Dashboard dashboard-id)
   ;; Undo middleware string->keyword coercion
   (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name)))
 

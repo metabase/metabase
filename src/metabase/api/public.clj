@@ -4,6 +4,7 @@
             [clojure.core.async :as a]
             [compojure.core :refer [GET]]
             [medley.core :as m]
+            [metabase.actions.execution :as actions.execution]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.api.dashboard :as api.dashboard]
@@ -30,8 +31,10 @@
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
+            [throttle.core :as throttle]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+            [toucan.hydrate :refer [hydrate]])
+  (:import [clojure.lang ExceptionInfo]))
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
@@ -167,12 +170,12 @@
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
   (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
-      (hydrate [:ordered_cards :card :series] :param_fields)
+      (hydrate [:ordered_cards :card :series :dashcard/action] :param_fields)
       api.dashboard/add-query-average-durations
       (update :ordered_cards (fn [dashcards]
                                (for [dashcard dashcards]
                                  (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :size_x
-                                                            :size_y :parameter_mappings :visualization_settings])
+                                                            :size_y :parameter_mappings :visualization_settings :action])
                                      (update :card remove-card-non-public-columns)
                                      (update :series (fn [series]
                                                        (for [series series]
@@ -232,6 +235,44 @@
      :dashcard-id   dashcard-id
      :export-format :api
      :parameters    parameters)))
+
+(api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute/:slug"
+  "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
+  [uuid dashcard-id slug parameters]
+  {dashcard-id su/IntGreaterThanZero
+   slug su/NonBlankString
+   parameters su/JSONString}
+  (validation/check-public-sharing-enabled)
+  (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+    (actions.execution/fetch-values dashboard-id dashcard-id slug (json/parse-string parameters))))
+
+(def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
+
+(api/defendpoint POST "/dashboard/:uuid/dashcard/:dashcard-id/execute/:slug"
+  "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values."
+  [uuid dashcard-id slug :as {{:keys [parameters], :as _body} :body}]
+  {dashcard-id su/IntGreaterThanZero
+   slug su/NonBlankString
+   parameters (s/maybe {s/Keyword s/Any})}
+  (let [throttle-message (try
+                        (throttle/check dashcard-execution-throttle dashcard-id)
+                        nil
+                        (catch ExceptionInfo e
+                          (get-in (ex-data e) [:errors :dashcard-id])))
+        throttle-time (when throttle-message
+                        (second (re-find #"You must wait ([0-9]+) seconds" throttle-message)))]
+    (if throttle-message
+      (cond-> {:status 429
+               :body throttle-message}
+        throttle-time (assoc :headers {"Retry-After" throttle-time}))
+      (do
+        (validation/check-public-sharing-enabled)
+        (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
+          ;; Undo middleware string->keyword coercion
+          (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name)))))))
 
 (api/defendpoint GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."

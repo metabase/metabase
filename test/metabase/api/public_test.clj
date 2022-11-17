@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
+            [metabase.actions.test-util :as actions.test-util]
             [metabase.api.dashboard-test :as api.dashboard-test]
             [metabase.api.pivots :as api.pivots]
             [metabase.api.public :as api.public]
@@ -15,7 +16,8 @@
                                      DashboardCardSeries
                                      Dimension
                                      Field
-                                     FieldValues]]
+                                     FieldValues
+                                     ModelAction]]
             [metabase.models.interface :as mi]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
@@ -23,6 +25,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
+            [throttle.core :as throttle]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
@@ -1150,3 +1153,46 @@
                         (is (= ["CA" "Affiliate" "Doohickey" 0 16 48] (first rows)))
                         (is (= [nil "Google" "Gizmo" 1 52 186] (nth rows 50)))
                         (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))))
+
+(deftest execute-public-dashcard-action-test
+  (actions.test-util/with-actions-test-data-and-actions-enabled
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard [dash {:parameters []}]
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                        ModelAction [_ {:slug "update" :card_id card-id :requires_pk true}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
+                                                          :card_id card-id
+                                                          :visualization_settings {:action_slug "update"}}]]
+          (with-redefs [api.public/dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 1)]
+            (is (partial= {:rows-updated [1]}
+                          (client/client
+                            :post 200
+                            (format "public/dashboard/%s/dashcard/%s/execute/update"
+                                    (:public_uuid dash)
+                                    dashcard-id)
+                            {:parameters {:id 1 :name "European"}})))
+            (let [throttled-response (client/client-full-response
+                                       :post 429
+                                       (format "public/dashboard/%s/dashcard/%s/execute/update"
+                                               (:public_uuid dash)
+                                               dashcard-id)
+                                       {:parameters {:id 1 :name "European"}})]
+              (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
+              (is (contains? (:headers throttled-response) "Retry-After")))))))))
+
+(deftest fetch-public-dashcard-action-test
+  (actions.test-util/with-actions-test-data-and-actions-enabled
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard [dash {:parameters []}]
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                        ModelAction [_ {:slug "update" :card_id card-id :requires_pk true}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
+                                                          :card_id card-id
+                                                          :visualization_settings {:action_slug "update"}}]]
+          (is (partial= {:id 1 :name "African"}
+                        (client/client
+                          :get 200
+                          (format "public/dashboard/%s/dashcard/%s/execute/update?parameters=%s"
+                                  (:public_uuid dash)
+                                  dashcard-id
+                                  (json/encode {:id 1}))))))))))
