@@ -6,5 +6,12 @@ interface UnsupportedDrillProps {
 
 export function unsupportedDrill({ question }: UnsupportedDrillProps) {
   const query = question.query();
-  return question.isNative() && query.isEditable();
+  const database = question.database();
+  if (!question.isNative() || !query.isEditable() || !database) {
+    return null;
+  }
+
+  return {
+    database,
+  };
 }

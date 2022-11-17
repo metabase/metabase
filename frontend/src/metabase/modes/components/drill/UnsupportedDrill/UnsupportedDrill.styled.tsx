@@ -15,7 +15,7 @@ export const DrillMessage = styled.div`
 `;
 
 export const DrillLearnLink = styled(ExternalLink)`
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   color: ${color("brand")};
