@@ -330,7 +330,7 @@
                      java.time.LocalDateTime  t
                      java.time.OffsetTime     (t/offset-time t report-zone)
                      java.time.OffsetDateTime (t/offset-date-time t report-zone)
-                     java.time.ZonedDateTime  (t/offset-date-time (t/with-zone-same-instant t report-zone)))]
+                     java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
     (letfn [(extract [unit]
               (u.date/extract t unit))
             (bucket [unit]
