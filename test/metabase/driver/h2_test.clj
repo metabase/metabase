@@ -161,13 +161,13 @@
 
 (deftest classify-ddl-test
   (mt/test-driver :h2
-    (is (= [org.h2.command.dml.Select]
+    (is (= [org.h2.command.query.Select]
            (mapv type (#'h2/parse (u/the-id (mt/db)) "select 1"))))
     (is (= [org.h2.command.dml.Update]
            (mapv type (#'h2/parse (u/the-id (mt/db)) "update venues set name = 'bill'"))))
     (is (= [org.h2.command.dml.Delete]
            (mapv type (#'h2/parse (u/the-id (mt/db)) "delete venues"))))
-    (is (= [org.h2.command.dml.Select
+    (is (= [org.h2.command.query.Select
             org.h2.command.dml.Update
             org.h2.command.dml.Delete]
            (mapv type (#'h2/parse (u/the-id (mt/db))
