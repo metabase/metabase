@@ -416,5 +416,5 @@
 
 (defmethod serdes.base/load-find-local "Field"
   [path]
-  (let [table-id (serdes.base/load-find-local (pop path))]
-    (db/select-one-field :id Field :name (-> path last :id) :table_id table-id)))
+  (let [table (serdes.base/load-find-local (pop path))]
+    (db/select-one Field :name (-> path last :id) :table_id (:id table))))

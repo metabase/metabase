@@ -1,4 +1,10 @@
-import React, { forwardRef, ReactNode, Ref } from "react";
+import React, {
+  ChangeEvent,
+  forwardRef,
+  ReactNode,
+  Ref,
+  useCallback,
+} from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import NumericInput, {
@@ -14,6 +20,7 @@ export interface FormNumericInputProps
   name: string;
   title?: string;
   description?: ReactNode;
+  nullable?: boolean;
 }
 
 const FormNumericInput = forwardRef(function FormNumericInput(
@@ -23,12 +30,20 @@ const FormNumericInput = forwardRef(function FormNumericInput(
     style,
     title,
     description,
+    nullable,
     ...props
   }: FormNumericInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
+
+  const handleChange = useCallback(
+    (value: number | undefined) => {
+      setValue(value === undefined && nullable ? null : value);
+    },
+    [nullable, setValue],
+  );
 
   return (
     <FormField
@@ -44,10 +59,10 @@ const FormNumericInput = forwardRef(function FormNumericInput(
         {...props}
         id={id}
         name={name}
-        value={value}
+        value={value ?? undefined}
         error={touched && error != null}
         fullWidth
-        onChange={setValue}
+        onChange={handleChange}
         onBlur={onBlur}
       />
     </FormField>

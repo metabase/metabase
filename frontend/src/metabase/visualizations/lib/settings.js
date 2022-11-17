@@ -131,6 +131,7 @@ function getSettingWidget(
     onChangeSettings(newSettings);
   };
   if (settingDef.useRawSeries && object._raw) {
+    extra.transformedSeries = object;
     object = object._raw;
   }
   return {

@@ -1,4 +1,9 @@
-import { restore, typeAndBlurUsingLabel } from "__support__/e2e/helpers";
+import {
+  modal,
+  popover,
+  restore,
+  typeAndBlurUsingLabel,
+} from "__support__/e2e/helpers";
 
 const CLIENT_ID_SUFFIX = "apps.googleusercontent.com";
 
@@ -6,6 +11,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/google/settings").as("updateGoogleSettings");
   });
@@ -25,16 +31,31 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.findByText("Success").should("be.visible");
   });
 
-  it("should disable google auth (metabase#20442)", () => {
+  it("should allow to disable and enable google auth (metabase#20442)", () => {
     setupGoogleAuth();
     cy.visit("/admin/settings/authentication");
 
-    cy.findByRole("switch", { name: "Sign in with Google" }).click();
+    getGoogleCard().icon("ellipsis").click();
+    popover().findByText("Pause").click();
     cy.wait("@updateSetting");
-    cy.findByRole("switch", { name: "Sign in with Google" }).should(
-      "not.be.checked",
-    );
-    cy.findByText("Saved").should("exist");
+    getGoogleCard().findByText("Paused").should("exist");
+
+    getGoogleCard().icon("ellipsis").click();
+    popover().findByText("Resume").click();
+    cy.wait("@updateSetting");
+    getGoogleCard().findByText("Active").should("exist");
+  });
+
+  it("should allow to reset google settings", () => {
+    setupGoogleAuth();
+    cy.visit("/admin/settings/authentication");
+
+    getGoogleCard().icon("ellipsis").click();
+    popover().findByText("Deactivate").click();
+    modal().button("Deactivate").click();
+    cy.wait("@updateSettings");
+
+    getGoogleCard().findByText("Set up").should("exist");
   });
 
   it("should show an error message if the client id does not end with the correct suffix (metabase#15975)", () => {
@@ -63,6 +84,10 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.findByRole("button", { name: /Google/ }).should("not.exist");
   });
 });
+
+const getGoogleCard = () => {
+  return cy.findByText("Sign in with Google").parent().parent();
+};
 
 const setupGoogleAuth = ({ enabled = true } = {}) => {
   cy.request("PUT", "/api/google/settings", {

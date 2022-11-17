@@ -382,6 +382,36 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
+    name: "datetime-diff",
+    structure:
+      "datetime-diff(" +
+      t`datetime1` +
+      ", " +
+      t`datetime2` +
+      ", " +
+      t`unit` +
+      ")",
+    description: t`Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.`,
+    example:
+      "datetime-diff([" +
+      t`created_at` +
+      "], [" +
+      t`shipped_at` +
+      "], " +
+      t`month` +
+      ")",
+    args: [
+      {
+        name: t`datetime1, datetime2`,
+        description: t`The columns or expressions with your datetime values.`,
+      },
+      {
+        name: t`unit`,
+        description: t`Choose from: "year", "month", "week", "day", "hour", "minute", or "second".`,
+      },
+    ],
+  },
+  {
     name: "exp",
     structure: "exp(" + t`column` + ")",
     description: t`Returns Euler's number, e, raised to the power of the supplied number.`,

@@ -5,12 +5,15 @@ on:
     branches:
       - 'master'
       - 'release-**'
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "**/frontend/**"
   pull_request:
     paths-ignore:
       - "docs/**"
       - "**.md"
-      - "frontend/test/**"
-      - "enterprise/frontend/test/**"
+      - "**/frontend/**"
 
 jobs:
 
@@ -113,7 +116,7 @@ jobs:
     - name: Run tests
       run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
     - name: Publish Test Report (JUnit)
-      uses: mikepenz/action-junit-report@v2
+      uses: mikepenz/action-junit-report@v3
       if: always()
       with:
         report_paths: 'target/junit/**/*_test.xml'
