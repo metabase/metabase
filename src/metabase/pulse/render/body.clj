@@ -521,7 +521,7 @@
      *-----------------------------------------*
                                                       min-b = 52             max-b = 75
                                                         *----------------------*
-  The overlap above is 0. The mirror case where col-b is entirely less than col-a, and also has 0 overlap.
+  The overlap above is 0. The mirror case where col-b is entirely less than col-a also has 0 overlap.
   Otherwise, overlap is calculated as follows:
 
      min-a = 0                                 max-a = 43
@@ -546,20 +546,18 @@
      |                                                         |
      |--------- max-width = (- 59 0) = 59 ---------------------|
 
-  overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59
-"
+  overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59"
   [col-a col-b]
-  (let [[min-a min-b] (map #(get-in % [:fingerprint :type :type/Number :min]) [col-a col-b])
-        [max-a max-b] (map #(get-in % [:fingerprint :type :type/Number :max]) [col-a col-b])
-        [a b c d] (sort [min-a min-b max-a max-b])
-        max-width (- d a)
-        overlap-width (- c b)]
-    (if (or (and (< max-a min-b) (< max-a max-b))
-            (and (> min-a min-b) (> min-a max-b)))
-      ;; the smaller range is completely ahead of or behind the larger range
-       0
-      ;; there is some overlap, so what's the overlap of the whole width of both ranges?
-      (/ overlap-width max-width))))
+  (let [[min-a min-b]    (map #(get-in % [:fingerprint :type :type/Number :min]) [col-a col-b])
+        [max-a max-b]    (map #(get-in % [:fingerprint :type :type/Number :max]) [col-a col-b])
+        non-overlapping? (or (and (< max-a min-b) (< max-a max-b))
+                             (and (> min-a min-b) (> min-a max-b)))]
+   (if non-overlapping?
+     0
+     (let [[a b c d]     (sort [min-a min-b max-a max-b])
+           max-width     (- d a)
+           overlap-width (- c b)]
+       (/ overlap-width max-width)))))
 
 (defn- group-axes
   [cols-meta group-threshold]
