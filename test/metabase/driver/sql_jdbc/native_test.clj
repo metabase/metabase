@@ -4,7 +4,6 @@
             [medley.core :as m]
             [metabase.query-processor :as qp]
             [metabase.test.data :as data]
-            [metabase.test.util.log :as tu.log]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
