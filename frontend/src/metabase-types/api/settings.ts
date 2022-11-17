@@ -58,9 +58,27 @@ export type LoadingMessage =
 
 export type TokenStatusStatus = "unpaid" | "past-due" | string;
 
-export type TokenStatus = {
+export interface TokenStatus {
   status?: TokenStatusStatus;
-};
+}
+
+export interface TokenFeatures {
+  advanced_config: boolean;
+  advanced_permissions: boolean;
+  audit_app: boolean;
+  content_management: boolean;
+  embedding: boolean;
+  hosting: boolean;
+  sandboxes: boolean;
+  sso: boolean;
+  whitelabel: boolean;
+}
+
+export interface SettingDefinition {
+  key: string;
+  env_name: string;
+  is_env_setting: boolean;
+}
 
 export interface Settings {
   "application-font": string;
@@ -96,7 +114,8 @@ export interface Settings {
   "slack-files-channel": string | null;
   "slack-token": string | null;
   "slack-token-valid?": boolean;
-  "token-status": TokenStatus | undefined;
+  "token-features": TokenFeatures;
+  "token-status": TokenStatus | null;
   engines: Record<string, Engine>;
   version: Version;
 }
