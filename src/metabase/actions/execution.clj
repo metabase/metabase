@@ -207,7 +207,6 @@
    Must pass in parameters of shape `{<parameter-id> <value>}` for primary keys."
   [dashboard-id dashcard-id slug request-parameters]
   (actions/check-actions-enabled)
-  (api/read-check Dashboard dashboard-id)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))

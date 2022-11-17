@@ -257,12 +257,17 @@
   {dashcard-id su/IntGreaterThanZero
    slug su/NonBlankString
    parameters (s/maybe {s/Keyword s/Any})}
-  (let [throttle-info (try
+  (let [throttle-message (try
                         (throttle/check dashcard-execution-throttle dashcard-id)
                         nil
-                        (catch ExceptionInfo e (ex-data e)))]
-    (if throttle-info
-      {:status 400 :body (get-in throttle-info [:errors :dashcard-id])}
+                        (catch ExceptionInfo e
+                          (get-in (ex-data e) [:errors :dashcard-id])))
+        throttle-time (when throttle-message
+                        (second (re-find #"You must wait ([0-9]+) seconds" throttle-message)))]
+    (if throttle-message
+      (cond-> {:status 429
+               :body throttle-message}
+        throttle-time (assoc :headers {"Retry-After" throttle-time}))
       (do
         (validation/check-public-sharing-enabled)
         (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]

@@ -1143,15 +1143,33 @@
           (with-redefs [api.public/dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 1)]
             (is (partial= {:rows-updated [1]}
                           (client/client
-                            :post
+                            :post 200
                             (format "public/dashboard/%s/dashcard/%s/execute/update"
                                     (:public_uuid dash)
                                     dashcard-id)
                             {:parameters {:id 1 :name "European"}})))
-            (is (str/starts-with? (client/client
-                                    :post
-                                    (format "public/dashboard/%s/dashcard/%s/execute/update"
-                                            (:public_uuid dash)
-                                            dashcard-id)
-                                    {:parameters {:id 1 :name "European"}})
-                                  "Too many attempts!"))))))))
+            (let [throttled-response (client/client-full-response
+                                       :post 429
+                                       (format "public/dashboard/%s/dashcard/%s/execute/update"
+                                               (:public_uuid dash)
+                                               dashcard-id)
+                                       {:parameters {:id 1 :name "European"}})]
+              (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
+              (is (contains? (:headers throttled-response) "Retry-After")))))))))
+
+(deftest fetch-public-dashcard-action-test
+  (actions.test-util/with-actions-test-data-and-actions-enabled
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard [dash {:parameters []}]
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                        ModelAction [_ {:slug "update" :card_id card-id :requires_pk true}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
+                                                          :card_id card-id
+                                                          :visualization_settings {:action_slug "update"}}]]
+          (is (partial= {:id 1 :name "African"}
+                        (client/client
+                          :get 200
+                          (format "public/dashboard/%s/dashcard/%s/execute/update?parameters=%s"
+                                  (:public_uuid dash)
+                                  dashcard-id
+                                  (json/encode {:id 1}))))))))))
