@@ -204,6 +204,10 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod sql.qp/->honeysql [:h2 :now]
+  [_driver _clause]
+  (hsql/call :current_timestamp 0))
+
 (defn- add-to-1970 [expr unit-str]
   (hsql/call :timestampadd
     (hx/literal unit-str)
