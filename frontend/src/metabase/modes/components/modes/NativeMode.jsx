@@ -1,10 +1,10 @@
-import FallbackNativeDrill from "../drill/FallbackNativeDrill";
+import NativeDrillFallback from "../drill/NativeDrillFallback";
 import DefaultMode from "./DefaultMode";
 
 const NativeMode = {
   name: "native",
   drills: DefaultMode.drills,
-  fallback: FallbackNativeDrill,
+  fallback: NativeDrillFallback,
 };
 
 export default NativeMode;

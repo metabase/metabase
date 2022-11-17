@@ -4,7 +4,7 @@ interface FallbackNativeDrillProps {
   question: Question;
 }
 
-export function fallbackNativeDrill({ question }: FallbackNativeDrillProps) {
+export function nativeDrillFallback({ question }: FallbackNativeDrillProps) {
   const query = question.query();
   const database = question.database();
   if (!question.isNative() || !query.isEditable() || !database) {
