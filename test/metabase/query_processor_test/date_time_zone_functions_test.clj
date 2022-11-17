@@ -385,7 +385,7 @@
        (t/after? (t/instant t1) (t/minus (t/instant t2) period))))
 
 (deftest now-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :now)
+  (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
     (testing "should return the current time"
       ;; Allow a 30 second window for the current time to account for any difference between the time in Clojure and the DB
       (doseq [timezone [nil "America/Los_Angeles"]]

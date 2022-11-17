@@ -740,7 +740,7 @@
   amount   NumericExpressionArg
   unit     ArithmeticDateTimeUnit)
 
-(defclause ^{:requires-features #{:now}} now)
+(defclause ^{:requires-features #{:date-arithmetics}} now)
 
 (defclause ^{:requires-features #{:date-arithmetics}} datetime-subtract
   datetime DateTimeExpressionArg
