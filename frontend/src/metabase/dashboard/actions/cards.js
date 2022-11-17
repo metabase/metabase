@@ -2,6 +2,7 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import { createAction } from "metabase/lib/redux";
+import { measureText } from "metabase/lib/measure-text";
 
 import Questions from "metabase/entities/questions";
 
@@ -96,12 +97,27 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
   });
 };
 
-const esitmateCardSize = (displayType, action) => {
+const esitmateCardSize = (displayType, action, buttonLabel) => {
   const BASE_HEIGHT = 3;
   const HEIGHT_PER_FIELD = 1.5;
 
+  const PIXELS_PER_BLOCK = 49;
+  const MAX_BUTTON_BLOCK_WIDTH = 18;
+
   if (displayType === "button") {
-    return { size_x: 2, size_y: 1 };
+    const textWidth = measureText(buttonLabel, {
+      family: "Lato",
+      size: 14,
+      weight: 700,
+    });
+
+    return {
+      size_x: Math.min(
+        Math.ceil((textWidth + PIXELS_PER_BLOCK) / PIXELS_PER_BLOCK),
+        MAX_BUTTON_BLOCK_WIDTH,
+      ),
+      size_y: 1,
+    };
   }
 
   return {
@@ -122,15 +138,17 @@ export const addActionToDashboard =
       archived: false,
     };
 
+    const buttonLabel = action.name ?? action.id;
+
     const dashcardOverrides = {
       action,
       card_id: action.model_id,
       card: virtualActionsCard,
-      ...esitmateCardSize(displayType, action),
+      ...esitmateCardSize(displayType, action, buttonLabel),
       visualization_settings: {
         actionDisplayType: displayType ?? "button",
         virtual_card: virtualActionsCard,
-        "button.label": action.name ?? action.id,
+        "button.label": buttonLabel,
         action_slug: action.slug,
       },
     };
