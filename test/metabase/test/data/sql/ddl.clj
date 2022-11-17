@@ -31,7 +31,10 @@
 (defn create-db-ddl-statements
   "DDL statements to create the DB itself (does not include statements to drop the DB if it already exists)."
   [driver dbdef]
-  [(sql.tx/create-db-sql driver dbdef)])
+  (let [statements (sql.tx/create-db-sql driver dbdef)]
+    (if (vector? statements)
+      statements
+      [statements])))
 
 (defmulti create-db-tables-ddl-statements
   "Return a default sequence of DDL statements for creating the tables/columns/etc. inside a Database. DOES NOT INCLUDE
