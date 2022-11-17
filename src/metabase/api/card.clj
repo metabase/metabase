@@ -780,8 +780,7 @@ saved later when it is ready."
   (-> (response/response byte-array)
       (#'response/content-length (count byte-array))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/:card-id/download-image"
+(defn- render-card
   "WIP"
   [card-id]
   (let [{:keys [dataset_query] :as card} (db/select-one Card :id card-id)
@@ -792,7 +791,6 @@ saved later when it is ready."
                                           {:executed-by api/*current-user-id*
                                            :context     :pulse
                                            :card-id     card-id})
-        query-results (qp.card/run-query-for-card-async )
         png-bytes                        (render/render-pulse-card-to-png (pulse-impl/defaulted-timezone card)
                                                                           card
                                                                           query-results
@@ -801,6 +799,7 @@ saved later when it is ready."
         image-response
         (response/header "Content-Disposition" (format "attachment; filename=\"card-%d.png\"" card-id)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
@@ -809,16 +808,18 @@ saved later when it is ready."
   [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format api.dataset/ExportFormat}
-  (qp.card/run-query-for-card-async
-   card-id export-format
-   :parameters  (json/parse-string parameters keyword)
-   :constraints nil
-   :context     (api.dataset/export-format->context export-format)
-   :middleware  {:process-viz-settings?  true
-                 :skip-results-metadata? true
-                 :ignore-cached-results? true
-                 :format-rows?           false
-                 :js-int-to-string?      false}))
+  (case export-format
+    "png" (render-card card-id)
+    (qp.card/run-query-for-card-async
+     card-id export-format
+     :parameters  (json/parse-string parameters keyword)
+     :constraints nil
+     :context     (api.dataset/export-format->context export-format)
+     :middleware  {:process-viz-settings?  true
+                   :skip-results-metadata? true
+                   :ignore-cached-results? true
+                   :format-rows?           false
+                   :js-int-to-string?      false})))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
