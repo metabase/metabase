@@ -10,7 +10,7 @@
             [metabase.util.date-2 :as u.date])
   (:import java.io.BufferedReader
            [java.sql PreparedStatement ResultSet ResultSetMetaData Types]
-           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset]))
+           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (defn- set-object
   [^PreparedStatement stmt ^Integer index object ^Integer target-sql-type]
