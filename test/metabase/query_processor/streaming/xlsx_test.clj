@@ -502,20 +502,20 @@
                                                        [["a" "abcdefghijklmnopqrstuvwxyz"]]
                                                        parse-column-width))]
       ;; Provide a marign for error since width measurements end up being slightly different on CI
-      (is (<= 2300 col1-width 2400))
-      (is (<= 7950 col2-width 8200))))
+      (is (<= 2200 col1-width 2400))
+      (is (<= 7700 col2-width 8200))))
   (testing "Auto-sizing works when the number of rows is at or above the auto-sizing threshold"
     (binding [qp.xlsx/*auto-sizing-threshold* 2]
       (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
                                              {}
                                              [["abcdef"] ["abcedf"]]
                                              parse-column-width))]
-        (is (<= 2800 col-width 2900)))
+        (is (<= 2700 col-width 2900)))
       (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
                                              {}
                                              [["abcdef"] ["abcedf"] ["abcdef"]]
                                              parse-column-width))]
-        (is (<= 2800 col-width 2900)))))
+        (is (<= 2700 col-width 2900)))))
   (testing "An auto-sized column does not exceed max-column-width (the width of 255 characters)"
     (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
                                            {}
@@ -539,15 +539,15 @@
 (deftest dont-format-non-temporal-columns-as-temporal-columns-test
   (testing "Don't format columns with temporal semantic type as datetime unless they're actually datetimes (#18729)"
     (mt/dataset sample-dataset
-      (is (= [["CREATED_AT"]
-              [1.0]
-              [2.0]]
-             (xlsx-export [{:id             0
-                            :semantic_type  :type/CreationTimestamp
-                            :unit           :month-of-year
-                            :name           "CREATED_AT"
-                            :effective_type :type/Integer
-                            :base_type      :type/Integer}]
-                          {}
-                          [[1]
-                           [2]]))))))
+                (is (= [["CREATED_AT"]
+                        [1.0]
+                        [2.0]]
+                       (xlsx-export [{:id             0
+                                      :semantic_type  :type/CreationTimestamp
+                                      :unit           :month-of-year
+                                      :name           "CREATED_AT"
+                                      :effective_type :type/Integer
+                                      :base_type      :type/Integer}]
+                                    {}
+                                    [[1]
+                                     [2]]))))))
