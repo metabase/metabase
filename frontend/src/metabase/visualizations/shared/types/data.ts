@@ -1,4 +1,9 @@
-import { DatasetColumn, DatasetData, RowValue } from "metabase-types/api";
+import {
+  DatasetColumn,
+  DatasetData,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 
 export type TwoDimensionalChartData = Pick<DatasetData, "rows" | "cols">;
 
@@ -17,7 +22,13 @@ export type GroupedDatum = {
   dimensionValue: RowValue;
   metrics: MetricDatum;
   isClickable: boolean;
-  breakout?: { [key: BreakoutName]: MetricDatum };
+  breakout?: {
+    [key: BreakoutName]: {
+      metrics: MetricDatum;
+      rawRows: RowValues[];
+    };
+  };
+  rawRows: RowValues[];
 };
 
 export type GroupedDataset = GroupedDatum[];

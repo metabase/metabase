@@ -3,8 +3,13 @@ import {
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/core/utils/types";
 import { formatNullable } from "metabase/lib/formatting/nullable";
-import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import {
+  ChartColumns,
+  ColumnDescriptor,
+  getColumnDescriptors,
+} from "metabase/visualizations/lib/graph/columns";
 import {
   BarData,
   Series,
@@ -14,6 +19,8 @@ import {
   MetricDatum,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
+import { sumMetric } from "metabase/visualizations/shared/utils/data";
+import { isMetric } from "metabase-lib/types/utils/isa";
 
 const getMetricColumnData = (
   columns: DatasetColumn[],
@@ -29,6 +36,36 @@ const getMetricColumnData = (
       col,
     };
   });
+};
+
+const getColumnData = (columns: ColumnDescriptor[], datum: GroupedDatum) => {
+  return columns
+    .map(columnDescriptor => {
+      const { column, index } = columnDescriptor;
+
+      let value = null;
+
+      if (isMetric(column)) {
+        const metricSum = datum.rawRows.reduce<number | null>(
+          (acc, currentRow) => sumMetric(acc, currentRow[index]),
+          null,
+        );
+
+        value = formatNullable(metricSum);
+      } else {
+        const distinctValues = new Set(datum.rawRows.map(row => row[index]));
+        value = distinctValues.size === 1 ? datum.rawRows[0][index] : null;
+      }
+
+      return value != null
+        ? {
+            key: column.display_name,
+            value: formatNullable(value),
+            col: column,
+          }
+        : null;
+    })
+    .filter(isNotNull);
 };
 
 const getColumnsData = (
@@ -54,12 +91,21 @@ const getColumnsData = (
       col: chartColumns.breakout.column,
     });
 
-    metricDatum = datum.breakout[series.seriesKey];
+    metricDatum = datum.breakout[series.seriesKey].metrics;
   } else {
     metricDatum = datum.metrics;
   }
 
   data.push(...getMetricColumnData(datasetColumns, metricDatum));
+
+  const otherColumnsDescriptiors = getColumnDescriptors(
+    datasetColumns
+      .filter(column => !data.some(item => item.col === column))
+      .map(column => column.name),
+    datasetColumns,
+  );
+
+  data.push(...getColumnData(otherColumnsDescriptiors, datum));
   return data;
 };
 
