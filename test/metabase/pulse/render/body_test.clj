@@ -658,7 +658,7 @@
     nil  "1,234,543.21%"
     ""   "1,234,543.21%"))
 
-(deftest ^:parallel reasonable-split-axes-test
+(deftest reasonable-split-axes-test
   (let [rows        [["Category" "Series A" "Series B"]
                      ["A"        1          1.3]
                      ["B"        2          1.9]
