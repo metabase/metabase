@@ -32,8 +32,8 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [coalesce](./expressions/coalesce.md)
   - [concat](./expressions/concat.md)
   - [contains](#contains)
-  - [datetimeAdd](#datetimeadd)
-  - [datetimeSubtract](#datetimesubtract)
+  - [datetimeAdd](./expressions/datetimeadd.md)
+  - [datetimeSubtract](./expressions/datetimesubtract.md)
   - [day](#day)
   - [endswith](#endswith)
   - [exp](#exp)
@@ -268,7 +268,7 @@ Example: `contains([Status], "Class")`. If `Status` were "Classified", the expre
 
 Related: [regexextract](#regexextract).
 
-### datetimeAdd
+### [datetimeAdd](./expressions/datetimeadd.md)
 
 Adds some unit of time to a date or timestamp value.
 
@@ -280,7 +280,7 @@ Syntax: `datetimeAdd(column, amount, unit)`.
 
 Example: `datetimeAdd("March 25, 2021, 12:52:37", 1, "month")` would return `April 25, 2021, 12:52:37`.
 
-### datetimeSubtract
+### [datetimeSubtract](./expressions/datetimesubtract.md)
 
 Subtracts some unit of time from a date or timestamp value.
 

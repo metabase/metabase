@@ -138,6 +138,7 @@ export default class Funnel extends Component {
       },
       getProps: transformedSeries => ({
         items: transformedSeries.map(s => s.card),
+        hasEditSettings: false,
       }),
       dataTestId: "funnel-row-sort",
     },

@@ -1,7 +1,8 @@
+import { StringLike } from "@visx/scale";
 import { AxisStyle, ChartFont, GoalStyle } from "../../types/style";
 
 export type XValue = number | null;
-export type YValue = string | number | boolean;
+export type YValue = string | number | boolean | null;
 
 export type Series<TDatum, TSeriesInfo = unknown> = {
   seriesKey: string;
@@ -11,20 +12,22 @@ export type Series<TDatum, TSeriesInfo = unknown> = {
   seriesInfo?: TSeriesInfo;
 };
 
-export type BarData<TDatum> = {
+export type BarData<TDatum, TSeriesInfo = unknown> = {
   xStartValue: number;
   xEndValue: number;
-  yValue: YValue;
+  yValue: StringLike;
   isNegative: boolean;
-  originalDatum: TDatum;
-  datumIndex: number;
   isBorderValue?: boolean;
+  datum: TDatum;
+  datumIndex: number;
+  series: Series<TDatum, TSeriesInfo>;
+  seriesIndex: number;
 };
 
-export type SeriesData<TDatum> = {
+export type SeriesData<TDatum, TSeriesInfo = unknown> = {
   key: string;
   color: string;
-  bars: BarData<TDatum>[];
+  bars: BarData<TDatum, TSeriesInfo>[];
 };
 
 export type RowChartTheme = {
