@@ -446,8 +446,8 @@
                               :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
   (testing "Render a stacked area graph"
     (is (has-inline-image?
-          (render-stack-area-graph {:cols default-columns
-                                    :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+          (render-stack-area-graph {:cols default-multi-columns
+                                    :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
           (render-area-graph {:cols default-columns
@@ -478,7 +478,8 @@
                         {:name "NumSold", :display_name "NumSold", :base_type :type/Number}]
                        {:viz-settings
                         {:series_settings {:NumPurchased {:color "#a7cf7b" :title "Bought"}
-                                           :NumSold      {:color "#a7cf7b" :title "Sold"}}}}))))))
+                                           :NumSold      {:color "#a7cf7b" :title "Sold"}}}}
+                       "Card name"))))))
   (testing "Check if double x-axis combo series uses custom series names (#21503)"
     (is (= #{"Bobby" "Dobby" "Robby" "Mobby"}
            (set (map :name
@@ -492,7 +493,8 @@
                         {:series_settings {:Bob   {:color "#c5a9cf" :title "Bobby"}
                                            :Dobbs {:color "#a7cf7b" :title "Dobby"}
                                            :Robbs {:color "#34517d" :title "Robby"}
-                                           :Mobbs {:color "#e0be40" :title "Mobby"}}}})))))))
+                                           :Mobbs {:color "#e0be40" :title "Mobby"}}}}
+                       "Card name")))))))
 
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
