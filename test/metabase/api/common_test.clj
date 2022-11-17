@@ -1,13 +1,15 @@
 (ns metabase.api.common-test
   (:require [clj-http.client :as http]
             [clojure.test :refer :all]
+            [clout.core :as clout]
             [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.api.common.internal :as api.internal]
             [metabase.server.middleware.exceptions :as mw.exceptions]
             [metabase.server.middleware.misc :as mw.misc]
             [metabase.server.middleware.security :as mw.security]
-            [ring.adapter.jetty :as jetty]))
+            [ring.adapter.jetty :as jetty])
+  (:import clojure.lang.ExceptionInfo))
 
 ;;; TESTS FOR CHECK (ETC)
 
@@ -110,30 +112,94 @@
                            {id metabase.util.schema/IntGreaterThanZero}
                            (select-one Card :id id)))))))
 
+
+
+(deftest matching-route-test
+  (letfn [(in [bytes] (java.io.ByteArrayInputStream. bytes))
+          (request [{:keys [body content length]}]
+            {:uri     "/card/1"
+             :headers (cond-> {}
+                        content (assoc "content-type" (content
+                                                       {:json "application/json"
+                                                        :form "application/form"
+                                                        :text "application/text"}))
+                        length  (assoc "content-length" (str length)))
+             :body    (in (.getBytes (case body
+                                       :empty
+                                       ""
+                                       :json
+                                       "{\"a\": 1}"
+                                       :form
+                                       "aa\nbb")))})
+          (route
+            ([] (api/matching-route "/card/:id" #{}))
+            ([content-types] (api/matching-route "/card/:id" content-types)))]
+    (testing "When no content-type is set"
+      (testing "matches when content-length is zero"
+        (is (= {:id "1"}
+               (clout/route-matches (route) (request {:body    :empty
+                                                      :length  0})))))
+      (testing "matches when content-length is zero and route specifies a type"
+        (is (= {:id "1"}
+               (clout/route-matches (route #{:content/json})
+                                    (request {:body    :empty
+                                              :length  0})))))
+      (testing "matches when content-length is absent and route specifies a type"
+        (is (= {:id "1"}
+               (clout/route-matches (route #{:content/json})
+                                    (request {:body    :empty})))))
+      (testing "throws when content-length is non-zero"
+        (is (thrown-with-msg? ExceptionInfo #"Invalid content-type"
+                              (clout/route-matches (route) (request {:body    :json
+                                                                     :length  4})))))
+      (testing "throws if content-length is 0 but body has info"
+        (is (thrown-with-msg? ExceptionInfo #"Invalid content-type"
+                              (clout/route-matches (route) (request {:body    :json
+                                                                     :length  0 ;; liar
+                                                                     }))))))
+    (testing "When content-type is set"
+      (testing "matches when content type is json and route doesn't specify"
+        (is (= {:id "1"}
+               (clout/route-matches (route) (request {:body    :json
+                                                      :content :json
+                                                      :length  4})))))
+      (testing "matches when content type is form and route allows it"
+        (is (= {:id "1"}
+               (clout/route-matches (route #{:content/form})
+                                    (request {:body    :form
+                                              :content :form
+                                              :length  4})))))
+      (testing "throw when content type doesn't align and empty body"
+        (is (thrown-with-msg? ExceptionInfo #"Invalid content-type"
+                              (clout/route-matches (route #{:content/json})
+                                                   (request {:body    :form
+                                                             :content :empty
+                                                             :length  0}))))))))
+
 ;; endpoint content-types are only honored if the route args have args not from the route
 (api/defendpoint ^{:content-types #{:content/json :content/form}} POST
   "/both"
-  [_x]
+  []
   {:status 200 :body "/both"})
 
 (api/defendpoint ^{:content-types #{:content/json}} POST
   "/json"
-  [_x]
+  []
   {:status 200 :body "/json"})
 
 (api/defendpoint ^{:content-types #{:content/form}} POST
   "/form"
-  [_x]
+  []
   {:status 200 :body "/form"})
 
 (api/defendpoint POST
   "/default"
-  [_x]
+  []
   {:status 200 :body "/default"})
 
 (api/defendpoint ^{:content-types #{:content/*}} POST
   "/any"
-  [_x]
+  []
   {:status 200 :body "/any"})
 
 (api/defendpoint POST ["/complicated/:foo" :foo #"aa|bb"]
@@ -146,24 +212,22 @@
 
 (api/define-routes)
 
-(deftest make-route-test
-  (testing "Throws if unrecognized content types are provided"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                          #"Unrecognized content type: :content/unrecognized"
-                          (api/make-route "/foo"
-                                          "post"
-                                          [:id]
-                                          #{:content/unrecognized}))))
-  (testing "handles nil content-type"
-    (is (nil? (api/content-type-matches? nil #{:content/json})))
-    (is (api/content-type-matches? nil #{:content/*})))
+(deftest post-routing-test
   (let [server (jetty/run-jetty routes {:port 0
                                         :join? false})
         port (.. server getURI getPort)
         post (fn [content-type route]
                (http/post (str "http://localhost:" port route)
-                          {:content-type content-type
-                           :throw-exceptions false}))]
+                          (cond-> {:content-type content-type
+                                   :throw-exceptions false}
+                            (= content-type :json)
+                            (assoc :body "{\"json\": \"input\"}")
+
+                            (= content-type :form)
+                            (assoc :multipart [{:name "title" :content "My Awesome Picture"}])
+
+                            (= content-type :text)
+                            (assoc :body "foo"))))]
     (try
       (testing "allows content-type"
         (doseq [[route content-types] [["/both"    [:json :form]]
