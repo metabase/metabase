@@ -35,6 +35,8 @@ export function infer(mbql, env) {
   }
 
   switch (op) {
+    case "now":
+      return MONOTYPE.DateTime;
     case "case":
       return infer(mbql[1][0][1], env);
     case "coalesce":
