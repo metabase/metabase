@@ -87,36 +87,54 @@
 ;; https://s3.amazonaws.com/athena-downloads/drivers/JDBC/SimbaAthenaJDBC_2.0.5/docs/Simba+Athena+JDBC+Driver+Install+and+Configuration+Guide.pdf
 (defmethod sql-jdbc.sync/database-type->base-type :athena
   [_driver database-type]
-  ({:array      :type/Array
-    :bigint     :type/BigInteger
-    :binary     :type/*
-    :varbinary  :type/*
-    :boolean    :type/Boolean
-    :char       :type/Text
-    :date       :type/Date
-    :decimal    :type/Decimal
-    :double     :type/Float
-    :float      :type/Float
-    :integer    :type/Integer
-    :int        :type/Integer
-    :map        :type/*
-    :smallint   :type/Integer
-    :string     :type/Text
-    :struct     :type/Dictionary
-    :time       :type/Time ; Athena sort of has a time type, sort of does not. You can specify it in literals but I don't think you can store it.
-    :timestamp  :type/DateTime
-    :tinyint    :type/Integer
-    :varchar    :type/Text} database-type))
+  ({:array                               :type/Array
+    :bigint                              :type/BigInteger
+    :binary                              :type/*
+    :varbinary                           :type/*
+    :boolean                             :type/Boolean
+    :char                                :type/Text
+    :date                                :type/Date
+    :decimal                             :type/Decimal
+    :double                              :type/Float
+    :float                               :type/Float
+    :integer                             :type/Integer
+    :int                                 :type/Integer
+    :map                                 :type/*
+    :smallint                            :type/Integer
+    :string                              :type/Text
+    :struct                              :type/Dictionary
+    ;; Athena sort of has a time type, sort of does not. You can specify it in literals but I don't think you can store
+    ;; it.
+    :time                                :type/Time
+    :timestamp                           :type/DateTime
+    ;; Same for timestamp with time zone... the type sort of exists. You can't store it AFAIK but you can create one
+    ;; from a literal.
+    (keyword "timestamp with time zone") :type/DateTimeWithZoneID
+    :tinyint                             :type/Integer
+    :varchar                             :type/Text} database-type))
 
 ;;; ------------------------------------------------ sql-jdbc execute ------------------------------------------------
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/VARCHAR]
   [driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Integer i]
-  ;; since TIME is not really a real type (or at least not one you can store) it comes back in a weird way -- it comes
-  ;; back as a string, but the database type is `time`. In that case we can use `.getObject` to get a
-  ;; `java.time.LocalTime` and it seems to work like we'd expect.
-  (if (= (u/lower-case-en (.getColumnTypeName rsmeta i)) "time")
-    (fn read-string-as-LocalTime [] (.getObject rs i java.time.LocalTime))
+  ;; since TIME and TIMESTAMP WITH TIME ZONE are not really real types (or at least not ones that you can store), they
+  ;; come back in a weird way -- they come back as a string, but the database type is `time` or `timestamp with time
+  ;; zone`, respectively. In those cases we can use `.getObject` to get a
+  ;; `java.time.LocalTime`/`java.time.ZonedDateTime` and it seems to work like we'd expect.
+  (condp = (u/lower-case-en (.getColumnTypeName rsmeta i))
+    "time"
+    (fn read-column-as-LocalTime [] (.getObject rs i java.time.LocalTime))
+
+    "timestamp with time zone"
+    (fn read-column-as-ZonedDateTime []
+      (when-let [s (.getString rs i)]
+        (try
+          (u.date/parse s)
+          ;; better to catch and log the error here than to barf completely, right?
+          (catch Throwable e
+            (log/error e (trs "Error parsing timestamp with time zone string {0}: {1}" (pr-str s) (ex-message e)))
+            nil))))
+
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/VARCHAR]) driver rs rsmeta i)))
 
 ;;; ------------------------------------------------- date functions -------------------------------------------------
@@ -137,9 +155,19 @@
     (format "timestamp '%s %s'" (t/local-date t) (t/local-time t))))
 
 (defmethod unprepare/unprepare-value [:athena ZonedDateTime]
-  [driver t]
-  #_(format "timestamp '%s %s' at time zone '%s'" (t/local-date t) (t/local-time t) (t/zone-id t))
-  (unprepare/unprepare-value driver (t/offset-date-time t)))
+  [_driver t]
+  ;; This format works completely fine for literals e.g.
+  ;;
+  ;;    SELECT timestamp '2022-11-16 04:21:00 US/Pacific'
+  ;;
+  ;; is the coolest thing in the world as far as Athena is concerned and will return a TIMESTAMP WITH TIME ZONE. However
+  ;; you most certainly cannot try to load one of these into a TIMESTAMP column when loading test data. That's probably
+  ;; fine, I think we're skipping those tests anyway, right? Hard to say since the Athena code doesn't recreate datasets
+  ;; that have already been created for performance reasons. If you add a new dataset and it should work for
+  ;; Athena (despite Athena only partially supporting TIMESTAMP WITH TIME ZONE) then you can use the commented out impl
+  ;; to do it. That should work ok because it converts it to a UTC then to a LocalDateTime. -- Cam
+  #_(unprepare/unprepare-value driver (t/offset-date-time t))
+  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t)))
 
 ;;; for some evil reason Athena expects `OFFSET` *before* `LIMIT`, unlike every other database in the known universe; so
 ;;; we'll have to have a custom implementation of `:page` here and do our own version of `:offset` that comes before
@@ -265,30 +293,30 @@
       (log/error (u/format-color 'red "Failed to execute query: %s %s" query (.getMessage e))))))
 
 (defn- describe-database->clj
-  "Workaround for wrong getColumnCount response by the driver"
-  [rs]
-  {:name (str/trim (:col_name rs))
-   :type (str/trim (:data_type rs))})
+  "Workaround for wrong getColumnCount response by the driver (huh?)"
+  [column-metadata]
+  {:name (str/trim (:col_name column-metadata))
+   :type (str/trim (:data_type column-metadata))})
 
 (defn- remove-invalid-columns
-  [result]
-  (->> result
-       (remove #(= (:col_name %) ""))
-       (remove #(= (:col_name %) nil))
-       (remove #(= (:data_type %) nil))
-       (remove #(str/starts-with? (:col_name %) "#")) ; remove comment
-       (distinct) ; driver can return twice the partitioning fields
-       (map describe-database->clj)))
+  "Returns a transducer."
+  []
+  (comp (remove #(= (:col_name %) ""))
+        (remove #(= (:col_name %) nil))
+        (remove #(= (:data_type %) nil))
+        (remove #(str/starts-with? (:col_name %) "#")) ; remove comment
+        (distinct)                                     ; driver can return twice the partitioning fields
+        (map describe-database->clj)))
 
-(defn- sync-table-with-nested-field [database schema table-name]
-  (->> (run-query database (str "DESCRIBE `" schema "`.`" table-name "`;"))
-       remove-invalid-columns
-       (map-indexed #(merge %2 {:database-position %1}))
-       (map athena.schema-parser/parse-schema)
-       doall
-       set))
+(defn- describe-table-fields-with-nested-fields [database schema table-name]
+  (into #{}
+        (comp (remove-invalid-columns)
+              (map-indexed (fn [i column-metadata]
+                             (assoc column-metadata :database-position i)))
+              (map athena.schema-parser/parse-schema))
+        (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name))))
 
-(defn- sync-table-without-nested-field [driver columns]
+(defn- describe-table-fields-without-nested-fields [driver columns]
   (set
    (for [[idx {database-type :type_name
                column-name   :column_name
@@ -314,8 +342,8 @@
     (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
       (let [columns (jdbc/metadata-result rs)]
         (if (table-has-nested-fields? columns)
-          (sync-table-with-nested-field database schema table-name)
-          (sync-table-without-nested-field driver columns))))
+          (describe-table-fields-with-nested-fields database schema table-name)
+          (describe-table-fields-without-nested-fields driver columns))))
     (catch Throwable e
       (log/error e (trs "Error retreiving fields for DB {0}.{1}" schema table-name))
       (throw e))))
