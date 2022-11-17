@@ -1,4 +1,11 @@
-import { Engine, FontFile, Settings, Version } from "metabase-types/api";
+import {
+  Engine,
+  FontFile,
+  SettingDefinition,
+  Settings,
+  TokenFeatures,
+  Version,
+} from "metabase-types/api";
 
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
@@ -58,33 +65,67 @@ export const createMockTokenStatus = () => ({
   "valid-thru": "2022-12-30T23:00:00Z",
 });
 
+export const createMockTokenFeatures = (
+  opts?: Partial<TokenFeatures>,
+): TokenFeatures => ({
+  advanced_config: false,
+  advanced_permissions: false,
+  audit_app: false,
+  content_management: false,
+  embedding: false,
+  hosting: false,
+  sandboxes: false,
+  sso: false,
+  whitelabel: false,
+  ...opts,
+});
+
+export const createMockSettingDefinition = (
+  opts?: Partial<SettingDefinition>,
+): SettingDefinition => ({
+  key: "key",
+  env_name: "",
+  is_env_setting: false,
+  ...opts,
+});
+
 export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "application-font": "Lato",
   "application-font-files": [],
   "available-fonts": [],
   "available-locales": null,
+  "custom-formatting": {},
+  "deprecation-notice-version": undefined,
+  "email-configured?": false,
   "enable-public-sharing": false,
   "enable-xrays": false,
-  "email-configured?": false,
-  engines: createMockEngines(),
-  "is-hosted?": false,
+  "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
+  "google-auth-configured": false,
+  "google-auth-enabled": false,
+  "is-hosted?": false,
+  "jwt-enabled": false,
+  "jwt-configured": false,
+  "ldap-configured?": false,
   "ldap-enabled": false,
   "loading-message": "doing-science",
-  "deprecation-notice-version": undefined,
+  "saml-configured": false,
+  "saml-enabled": false,
   "session-cookies": null,
-  "site-locale": "en",
   "show-database-syncing-modal": false,
   "show-homepage-data": false,
-  "show-homepage-xrays": false,
   "show-homepage-pin-message": false,
+  "show-homepage-xrays": false,
   "show-lighthouse-illustration": true,
   "show-metabot": true,
-  "slack-token": undefined,
-  "token-status": createMockTokenStatus(),
+  "site-locale": "en",
+  "slack-app-token": null,
+  "slack-files-channel": null,
+  "slack-token": null,
   "slack-token-valid?": false,
-  "slack-app-token": undefined,
-  "slack-files-channel": undefined,
+  "token-features": createMockTokenFeatures(),
+  "token-status": null,
+  engines: createMockEngines(),
   version: createMockVersion(),
   ...opts,
 });

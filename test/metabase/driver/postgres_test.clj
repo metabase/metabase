@@ -736,7 +736,7 @@
                         {:database (u/the-id db)
                          :type     :query
                          :query    {:source-table table-id
-                                    :filter       [:= [:field-id (u/the-id bird-type-field-id)] "toucan"]
+                                    :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
                                     :limit        10}})
                        :data
                        (select-keys [:rows :native_form]))))))))))

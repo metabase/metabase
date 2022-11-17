@@ -288,7 +288,7 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
-                                          :breakout [[:fk-> (mt/id :checkins) (mt/id :venues :category_id)]]
+                                          :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
                                           :source-table (mt/id :checkins)}
                                   :type :query
                                   :database (mt/id)})]

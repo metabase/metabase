@@ -4,10 +4,11 @@ on:
   push:
     paths-ignore:
     - 'docs/**'
-    - 'frontend/test/**'
-    - 'enterprise/frontend/test/**'
+    - "**.md"
+    - '**/frontend/test/**'
     - ".**"
     - "test*"
+    - "**_test.clj"
 
 jobs:
   build:
@@ -49,7 +50,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
     - run: java -version
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -78,7 +79,7 @@ jobs:
     - name: Check out the code (Dockerfile needed)
       uses: actions/checkout@v3
     - name: Download uploaded artifacts to insert into container
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: metabase-${{ matrix.edition }}-uberjar
         path: bin/docker/
@@ -105,7 +106,7 @@ jobs:
       run: docker ps
     - name: Wait for Metabase to start and reach 100% health
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-      timeout-minutes: 1
+      timeout-minutes: 3
     - name: Login to Docker Hub
       uses: docker/login-action@v1
       with:
