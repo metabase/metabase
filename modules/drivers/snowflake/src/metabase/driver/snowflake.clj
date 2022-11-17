@@ -179,6 +179,10 @@
   [_]
   (hx/with-database-type-info :%current_timestamp :TIMESTAMPTZ))
 
+(defmethod sql.qp/->honeysql [:snowflake :now]
+  [_driver _clause]
+  (hsql/call :current_timestamp 0))
+
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
   [_ hsql-form amount unit]
   (hsql/call :dateadd
