@@ -311,6 +311,7 @@
                  mt/rows
                  ffirst
                  u.date/parse
+                 (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
                  (close? (t/instant) (t/seconds 30))))))
     (testing "should return a datetime with second precision"
       (is (= true
@@ -338,6 +339,7 @@
                  mt/rows
                  ffirst
                  u.date/parse
+                 (t/zoned-date-time (t/zone-id "UTC"))
                  (close? (t/instant) (t/seconds 30)))))))
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics :datetime-diff)
     (testing "should work as an argument to datetime-diff"
