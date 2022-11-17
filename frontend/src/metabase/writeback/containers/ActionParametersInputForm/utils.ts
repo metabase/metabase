@@ -1,3 +1,4 @@
+import moment from "moment-timezone";
 import { isEmpty } from "metabase/lib/validate";
 
 import type {
@@ -47,12 +48,25 @@ export const getChangedValues = (
   return Object.fromEntries(changedValues);
 };
 
+const formatValue = (value: string | number, inputType?: string) => {
+  if (inputType === "date") {
+    return moment(value).format("YYYY-MM-DD");
+  }
+  if (inputType === "datetime-local") {
+    return moment(value).format("YYYY-MM-DD HH:mm:ss");
+  }
+  return value;
+};
+
 // maps intial values, if any, into an intialValues map
 export const getInitialValues = (
   form: ActionFormProps,
   prefetchValues: ParametersForActionExecution,
 ) => {
   return Object.fromEntries(
-    form.fields.map(field => [field.name, prefetchValues[field.name] ?? ""]),
+    form.fields.map(field => [
+      field.name,
+      formatValue(prefetchValues[field.name], field.type),
+    ]),
   );
 };

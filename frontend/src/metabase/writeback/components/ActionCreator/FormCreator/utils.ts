@@ -67,7 +67,7 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
   string: "input",
   text: "text",
   date: "date",
-  datetime: "date",
+  datetime: "datetime-local",
   monthyear: "date",
   quarteryear: "date",
   email: "email",
@@ -112,10 +112,6 @@ export const getFormField = (
     fieldProps.options = fieldSettings.valueOptions?.length
       ? getOptionsFromArray(fieldSettings.valueOptions)
       : getSampleOptions();
-  }
-
-  if (fieldProps.type === "date") {
-    fieldProps.values = {};
   }
 
   return fieldProps;
@@ -223,7 +219,7 @@ export const getInputType = (param: Parameter, field?: Field) => {
     return "boolean";
   }
   if (field.isDate()) {
-    return "date";
+    return field.isDateWithoutTime() ? "date" : "datetime";
   }
   if (field.semantic_type === TYPE.Email) {
     return "email";
