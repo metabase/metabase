@@ -45,7 +45,7 @@
     ".styled.{jsx,tsx}",
     ".info.js"
   ],
-  "testEnvironment": "jsdom",
+  "testEnvironment": "jest-environment-jsdom",
   "watchPlugins": [
     "jest-watch-typeahead/filename",
     "jest-watch-typeahead/testname"
