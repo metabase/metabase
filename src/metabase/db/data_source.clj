@@ -1,71 +1,15 @@
 (ns metabase.db.data-source
-  (:require [clojure.java.io :as io]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.connection-pool :as connection-pool]
             [metabase.db.spec :as mdb.spec]
+            [metabase.db.update-h2 :as update-h2]
             [potemkin :as p]
             [pretty.core :as pretty])
   (:import java.sql.DriverManager
            java.util.Properties))
-
-(defn- h2? [url]
-  (.startsWith url "jdbc:h2:"))
-
-(defn- h2-path [url]
-  (let [[_ path] (re-matches #"jdbc:h2:file:(.*)$" url)]
-    path))
-
-(defn- h2-migration-paths [url]
-  (let [base (h2-path url)]
-    {:v1db   (str base ".mv.db")
-     :v2db   (str base ".v2.mv.db")
-     :script (str base ".v2migration.sql")}))
-
-(defn- h2-v1-db [url]
-  (let [src (.newInstance (Class/forName "org.h2_v1_4_197.jdbcx.JdbcDataSource"))]
-    (.setURL src url)
-    (.getConnection src)))
-
-(defn- h2-v2-db [url]
-  (let [src (.newInstance (Class/forName "org.h2.jdbcx.JdbcDataSource"))]
-    (.setURL src (str url ".v2"))
-    (.getConnection src)))
-
-(defn- h2-migrate! [url]
-  (let [{:keys [v2db script]} (h2-migration-paths url)]
-    (try
-      (log/warn "H2 migration: beginning migration")
-      (jdbc/query {:connection (h2-v1-db url)} ["SCRIPT TO ?" script])
-      (log/warn "H2 migration: v1 export complete, starting v2 import")
-      (let [conn-v2          (h2-v2-db url)]
-        (jdbc/execute! {:connection conn-v2} ["RUNSCRIPT FROM ? FROM_1X" script])
-        (log/warn "H2 migration: complete")
-        conn-v2)
-      (catch Exception e
-        (log/error "H2 migration failed: " e)
-        (.delete (io/file v2db))))))
-
-(def ^:private h2-lock (Object.))
-
-(defn- get-h2-connection
-  "H2 connections are a special case, because we transparently handle migration from H2 v1.4.x to H2 2.x.
-  v2 databases have the suffix .v2.mv.db while v1 databases are just .mv.db. That suffix is added by [[h2-v2-db]].
-  The lock is necessary to prevent Metabase from trying to open the blank v2 database before migration is complete."
-  [url]
-  (locking h2-lock
-    (log/warn "Inside H2 lock")
-    (let [{:keys [v1db v2db]} (h2-migration-paths url)]
-      (cond
-        ;; Case 1: v2 database exists - just load it.
-        (.exists (io/file v2db))   (h2-v2-db url)
-        ;; Case 2: v1 exists and not v2, so do the migration.
-        (.exists (io/file v1db))   (h2-migrate! url)
-        ;; Case 3: Nothing at all - just open a new v2 database.
-        :else                      (h2-v2-db url)))))
 
 (p/deftype+ DataSource [^String url ^Properties properties]
   pretty/PrettyPrintable
@@ -78,13 +22,10 @@
 
   javax.sql.DataSource
   (getConnection [_]
-    (if (h2? url)
-      ;; H2 databases are special.
-      (get-h2-connection url)
-      ;; Regular lookup for everything else.
-      (if properties
-        (DriverManager/getConnection url properties)
-        (DriverManager/getConnection url))))
+    (update-h2/update-if-needed url)
+    (if properties
+      (DriverManager/getConnection url properties)
+      (DriverManager/getConnection url)))
 
   ;; we don't use (.getConnection this url user password) so we don't need to implement it.
   (getConnection [_ _user _password]
