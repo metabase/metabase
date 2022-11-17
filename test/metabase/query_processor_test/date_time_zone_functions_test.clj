@@ -3,6 +3,9 @@
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.util.honeysql-extensions :as hx]
+            [honeysql.core :as hsql]
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
@@ -320,16 +323,6 @@
                     :fields [[:expression "1"]]
                     :limit  1})
                  mt/rows ffirst u.date/parse second-precision?))))
-    (testing "should return a :type/DateTime typed column"
-      (let [col (-> (mt/run-mbql-query venues
-                      {:expressions {"1" [:now]}
-                       :fields [[:expression "1"]]
-                       :limit  1})
-                    :data :cols first)]
-        (is (= true
-               (if (:effective_type col)
-                 (isa? (:effective_type col) :type/DateTime)
-                 (isa? (:base_type col) :type/DateTime))))))
     (testing "should work as an argument to datetime-add and datetime-subtract"
       (is (= true
              (-> (mt/run-mbql-query venues
