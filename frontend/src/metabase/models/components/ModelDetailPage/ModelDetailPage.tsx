@@ -91,7 +91,7 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
             <ModelSchemaDetails model={model} />
           </TabPanel>
           <TabPanel value="actions">
-            <ModelActionDetails modelId={model.id()} />
+            <ModelActionDetails model={model} />
           </TabPanel>
           <TabPanel value="apps">
             <ModelApps model={model} />

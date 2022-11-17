@@ -117,6 +117,7 @@ function ModelActionPicker({
       {isActionCreatorOpen && (
         <ActionCreator
           modelId={model.id}
+          databaseId={model.database_id}
           actionId={editingActionId}
           onClose={closeModal}
         />

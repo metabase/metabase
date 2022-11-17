@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import { useToggle } from "metabase/hooks/use-toggle";
-import Actions from "metabase/entities/actions";
+import Actions, { ActionParams } from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createQuestionFromAction } from "metabase/writeback/selectors";
@@ -52,6 +52,7 @@ const mapStateToProps = (
 
 const mapDispatchToProps = {
   push,
+  update: Actions.actions.update,
 };
 
 interface ActionCreatorProps {
@@ -59,7 +60,9 @@ interface ActionCreatorProps {
   question?: Question;
   actionId?: number;
   modelId?: number;
+  databaseId?: number;
   push: (url: string) => void;
+  update: (action: ActionParams) => void;
   onClose?: () => void;
 }
 
@@ -68,10 +71,12 @@ function ActionCreatorComponent({
   question: passedQuestion,
   actionId,
   modelId,
+  databaseId,
+  update,
   onClose,
 }: ActionCreatorProps) {
   const [question, setQuestion] = useState(
-    passedQuestion ?? newQuestion(metadata),
+    passedQuestion ?? newQuestion(metadata, databaseId),
   );
   const [formSettings, setFormSettings] = useState<
     ActionFormSettings | undefined
@@ -82,7 +87,7 @@ function ActionCreatorComponent({
     useToggle(false);
 
   useEffect(() => {
-    setQuestion(passedQuestion ?? newQuestion(metadata));
+    setQuestion(passedQuestion ?? newQuestion(metadata, databaseId));
 
     // we do not want to update this any time the props or metadata change, only if action id changes
   }, [actionId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -120,6 +125,22 @@ function ActionCreatorComponent({
     );
   };
 
+  const handleSaveClick = () => {
+    if (isNew) {
+      setShowSaveModal(true);
+    } else {
+      update({
+        id: (question.card() as SavedCard).id,
+        name: question?.displayName() ?? "",
+        description: question.description() ?? null,
+        model_id: defaultModelId,
+        formSettings: formSettings as ActionFormSettings,
+        question,
+      });
+      onClose?.();
+    }
+  };
+
   return (
     <>
       <Modal onClose={onClose} formModal={false} wide>
@@ -144,8 +165,8 @@ function ActionCreatorComponent({
                 <Button onClick={onClose} borderless>
                   {t`Cancel`}
                 </Button>
-                <Button primary onClick={() => setShowSaveModal(true)}>
-                  {t`Save`}
+                <Button primary onClick={handleSaveClick}>
+                  {isNew ? t`Save` : t`Update`}
                 </Button>
               </ModalActions>
             </ModalLeft>

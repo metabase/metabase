@@ -25,6 +25,7 @@ import LinkButton from "./LinkButton";
 import ActionForm from "./ActionForm";
 
 import { shouldShowConfirmation } from "./utils";
+import { ActionParameterMapper } from "./ActionParameterMapper";
 
 interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;
@@ -38,6 +39,7 @@ function ActionComponent({
   dashboard: page,
   dispatch,
   isSettings,
+  isEditing,
   settings,
   onVisualizationClick,
   parameterValues,
@@ -95,15 +97,18 @@ function ActionComponent({
 
   if (dashcard.action) {
     return (
-      <ActionForm
-        onSubmit={onSubmit}
-        dashcard={dashcard}
-        page={page}
-        missingParameters={missingParameters}
-        dashcardParamValues={dashcardParamValues}
-        action={dashcard.action as WritebackQueryAction}
-        shouldDisplayButton={shouldDisplayButton}
-      />
+      <>
+        {isEditing && <ActionParameterMapper dashcard={dashcard} page={page} />}
+        <ActionForm
+          onSubmit={onSubmit}
+          dashcard={dashcard}
+          page={page}
+          missingParameters={missingParameters}
+          dashcardParamValues={dashcardParamValues}
+          action={dashcard.action as WritebackQueryAction}
+          shouldDisplayButton={shouldDisplayButton}
+        />
+      </>
     );
   }
 

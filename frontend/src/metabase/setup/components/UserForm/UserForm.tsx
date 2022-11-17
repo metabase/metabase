@@ -1,39 +1,29 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import _ from "underscore";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import * as Errors from "metabase/core/utils/errors";
 import { UserInfo } from "metabase-types/store";
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
 
 const USER_SCHEMA = Yup.object({
-  first_name: Yup.string()
-    .nullable()
-    .default(null)
-    .max(100, ({ max }) => t`must be ${max} characters or less`),
-  last_name: Yup.string()
-    .nullable()
-    .default(null)
-    .max(100, ({ max }) => t`must be ${max} characters or less`),
-  email: Yup.string()
-    .default("")
-    .required(t`required`)
-    .email(t`must be a valid email address`),
-  site_name: Yup.string()
-    .default("")
-    .required(t`required`),
+  first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
+  last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
+  email: Yup.string().default("").required(Errors.required).email(Errors.email),
+  site_name: Yup.string().default("").required(Errors.required),
   password: Yup.string()
     .default("")
-    .required(t`required`)
+    .required(Errors.required)
     .test(async (value = "", context) => {
       const error = await context.options.context?.onValidatePassword(value);
       return error ? context.createError({ message: error }) : true;
     }),
   password_confirm: Yup.string()
     .default("")
-    .required(t`required`)
+    .required(Errors.required)
     .oneOf([Yup.ref("password")], t`passwords do not match`),
 });
 

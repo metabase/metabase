@@ -178,14 +178,6 @@
           (testing "for dashboards"
             (is (= 100 (count (dir->file-set (io/file dump-dir "Dashboard"))))))
 
-          (testing "for dashboard cards"
-            (is (= 300
-                   (reduce + (for [dash (get @entities "Dashboard")
-                                   :let [card-dir (io/file dump-dir "Dashboard" (:entity_id dash) "DashboardCard")]]
-                               (if (.exists card-dir)
-                                 (count (dir->file-set card-dir))
-                                 0))))))
-
           (testing "for dimensions"
             (is (= 40 (count (dir->file-set (io/file dump-dir "Dimension"))))))
 
@@ -216,12 +208,7 @@
             (is (= 10 (count (dir->file-set (io/file dump-dir "NativeQuerySnippet"))))))
 
           (testing "for timelines and events"
-            (is (= 10 (count (dir->file-set (io/file dump-dir "Timeline")))))
-
-            (is (= 90 (reduce + (for [timeline (get @entities "Timeline")]
-                                  (->> (io/file dump-dir "Timeline" (:entity_id timeline) "TimelineEvent")
-                                       dir->file-set
-                                       count))))))
+            (is (= 10 (count (dir->file-set (io/file dump-dir "Timeline"))))))
 
           (testing "for settings"
             (is (.exists (io/file dump-dir "settings.yaml")))))
@@ -344,13 +331,6 @@
                   (is (= (clean-entity timeline)
                          (->> (db/select-one 'Timeline :entity_id entity_id)
                               (serdes.base/extract-one "Timeline" {})
-                              clean-entity))))
-
-                (doseq [{:keys [timeline_id timestamp] :as event} (get @entities "TimelineEvent")]
-                  (is (= (clean-entity event)
-                         (->> (db/select-one-id 'Timeline :entity_id timeline_id)
-                              (db/select-one 'TimelineEvent :timestamp timestamp :timeline_id)
-                              (serdes.base/extract-one "TimelineEvent" {})
                               clean-entity)))))
 
               (testing "for settings"

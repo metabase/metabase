@@ -7,6 +7,7 @@ import { IconProps } from "metabase/components/Icon";
 import { getCrumbs } from "metabase/lib/collections";
 
 import Collections from "metabase/entities/collections";
+import DataAppCollections from "metabase/entities/data-app-collections";
 
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
@@ -37,12 +38,16 @@ interface OwnProps {
   onChange: (value: PickerValue) => void;
 }
 
+interface DataAppCollectionsLoaderProps {
+  dataAppCollections: Collection[];
+}
+
 interface StateProps {
   collectionsById: Record<Collection["id"], Collection>;
   getCollectionIcon: (collection: Collection) => IconProps;
 }
 
-type Props = OwnProps & StateProps;
+type Props = OwnProps & DataAppCollectionsLoaderProps & StateProps;
 
 function canWriteToCollectionOrChildren(collection: Collection) {
   return (
@@ -51,10 +56,42 @@ function canWriteToCollectionOrChildren(collection: Collection) {
   );
 }
 
-function mapStateToProps(state: State, props: OwnProps) {
+function mapStateToProps(
+  state: State,
+  props: OwnProps & DataAppCollectionsLoaderProps,
+) {
   const entity = props.entity || Collections;
+  const isPickingRegularCollections = !props.entity;
+
+  const defaultCollectionsById =
+    entity.selectors.getExpandedCollectionsById(state);
+
+  let collectionsById = {};
+
+  if (isPickingRegularCollections) {
+    const { root: rootDataAppCollection } =
+      DataAppCollections.selectors.getExpandedCollectionsById(state);
+
+    const { root: rootCollection, ...normalCollectionsById } =
+      defaultCollectionsById;
+
+    const dataAppCollections = rootDataAppCollection?.children;
+    const dataAppCollectionsById = _.indexBy(dataAppCollections, "id");
+
+    collectionsById = {
+      ...normalCollectionsById,
+      ...dataAppCollectionsById,
+      root: {
+        ...rootCollection,
+        children: [...rootCollection.children, ...dataAppCollections],
+      },
+    };
+  } else {
+    collectionsById = defaultCollectionsById;
+  }
+
   return {
-    collectionsById: entity.selectors.getExpandedCollectionsById(state),
+    collectionsById,
     getCollectionIcon: entity.objectSelectors.getIcon,
   };
 }
@@ -239,6 +276,10 @@ export default _.compose(
   entityListLoader({
     entityType: getEntityLoaderType,
     loadingAndErrorWrapper: false,
+  }),
+  DataAppCollections.loadList({
+    loadingAndErrorWrapper: false,
+    listName: "dataAppCollections",
   }),
   connect(mapStateToProps),
 )(ItemPicker);

@@ -117,6 +117,7 @@ export const addActionToDashboard =
   dispatch => {
     const virtualActionsCard = {
       ...createCard(),
+      id: action.model_id,
       display: "action",
       archived: false,
     };

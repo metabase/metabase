@@ -1,11 +1,13 @@
 (ns metabase.models.timeline
-  (:require [metabase.models.collection :as collection]
+  (:require [java-time :as t]
+            [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.serialization.util :as serdes.util]
             [metabase.models.timeline-event :as timeline-event]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
@@ -63,17 +65,45 @@
   [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 ;;;; serialization
+(defmethod serdes.base/extract-query "Timeline" [_model-name {:keys [collection-set]}]
+  (eduction (map #(timeline-event/include-events-singular % {:all? true}))
+            (if (seq collection-set)
+              (db/select-reducible Timeline :collection_id [:in collection-set])
+              (db/select-reducible Timeline))))
+
+(defn- extract-events [events]
+  (sort-by :timestamp
+           (for [event events]
+             (-> (into (sorted-map) event)
+                 (dissoc :creator :id :timeline_id)
+                 (update :creator_id  serdes.util/export-user)
+                 (update :timestamp   #(u.date/format (t/offset-date-time %)))))))
+
 (defmethod serdes.base/extract-one "Timeline"
   [_model-name _opts timeline]
-  (-> (serdes.base/extract-one-basics "Timeline" timeline)
-      (update :collection_id serdes.util/export-fk 'Collection)
-      (update :creator_id    serdes.util/export-user)))
+  (let [timeline (if (contains? timeline :events)
+                   timeline
+                   (timeline-event/include-events-singular timeline {:all? true}))]
+    (-> (serdes.base/extract-one-basics "Timeline" timeline)
+        (update :events        extract-events)
+        (update :collection_id serdes.util/export-fk 'Collection)
+        (update :creator_id    serdes.util/export-user))))
 
 (defmethod serdes.base/load-xform "Timeline" [timeline]
   (-> timeline
       serdes.base/load-xform-basics
       (update :collection_id serdes.util/import-fk 'Collection)
       (update :creator_id    serdes.util/import-user)))
+
+(defmethod serdes.base/load-one! "Timeline" [ingested maybe-local]
+  (let [timeline ((get-method serdes.base/load-one! :default) (dissoc ingested :events) maybe-local)]
+    (doseq [event (:events ingested)]
+      (let [local (db/select-one 'TimelineEvent :timeline_id (:id timeline) :timestamp (u.date/parse (:timestamp event)))
+            event (assoc event
+                         :timeline_id (:entity_id timeline)
+                         :serdes/meta [{:model "Timeline"      :id (:entity_id timeline)}
+                                       {:model "TimelineEvent" :id (u.date/format (t/offset-date-time (:timestamp event)))}])]
+        (serdes.base/load-one! event local)))))
 
 (defmethod serdes.base/serdes-dependencies "Timeline" [{:keys [collection_id]}]
   [[{:model "Collection" :id collection_id}]])
