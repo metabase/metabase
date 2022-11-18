@@ -1,6 +1,8 @@
 import { createSelector } from "reselect";
 import type { Location } from "history";
 
+import * as Urls from "metabase/lib/urls";
+
 import { getUser } from "metabase/selectors/user";
 import {
   getIsEditing as getIsEditingDashboard,
@@ -40,6 +42,10 @@ const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props.location.pathname;
+};
+
+export const getRouterQueryParameters = (state: State, props: RouterProps) => {
+  return props.location.query || {};
 };
 
 export const getRouterHash = (state: State, props: RouterProps) => {
@@ -139,9 +145,17 @@ export const getCollectionId = createSelector(
     dashboardId ? dashboard?.collection_id : question?.collectionId(),
 );
 
+export const getIsComingFromDataApp = createSelector(
+  getRouterQueryParameters,
+  params => typeof params.from === "string" && Urls.isDataAppPath(params.from),
+);
+
 export const getIsCollectionPathVisible = createSelector(
-  [getQuestion, getDashboard, getRouterPath],
-  (question, dashboard, path) => {
+  [getQuestion, getDashboard, getIsComingFromDataApp, getRouterPath],
+  (question, dashboard, isFromDataApp, path) => {
+    if (isFromDataApp) {
+      return false;
+    }
     const isDashboard = dashboard != null;
     return (
       (isDashboard || question?.isSaved()) &&
@@ -151,9 +165,9 @@ export const getIsCollectionPathVisible = createSelector(
 );
 
 export const getIsQuestionLineageVisible = createSelector(
-  [getQuestion, getOriginalQuestion, getRouterPath],
-  (question, originalQuestion, path) => {
-    if (!question || !originalQuestion) {
+  [getQuestion, getOriginalQuestion, getIsComingFromDataApp, getRouterPath],
+  (question, originalQuestion, isFromDataApp, path) => {
+    if (!question || !originalQuestion || isFromDataApp) {
       return false;
     }
     return (
