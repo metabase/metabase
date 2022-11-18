@@ -834,13 +834,24 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- apply-funnel-viz-settings
+  [rows {order-data :funnel.rows}]
+  (let [rows (vec rows)]
+    (->> (for [{:keys [enabled originalIndex name]} order-data]
+           (when enabled
+             (cond-> (get rows originalIndex)
+               name (assoc 0 name))))
+         (remove nil?)
+         vec)))
+
 (s/defmethod render :funnel :- common/RenderedPulseCard
   [_ render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]
   (let [viz-settings   (merge viz-settings (:visualization_settings dashcard))
         [x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
-        rows           (map (juxt x-axis-rowfn y-axis-rowfn)
-                            (common/row-preprocess x-axis-rowfn y-axis-rowfn rows))
+        rows           (-> (map (juxt x-axis-rowfn y-axis-rowfn)
+                                (common/row-preprocess x-axis-rowfn y-axis-rowfn rows))
+                           (apply-funnel-viz-settings viz-settings))
         [x-col y-col]  cols
         settings       (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
                          (assoc jsviz-settings :step    {:name   (:display_name x-col)
