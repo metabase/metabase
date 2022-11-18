@@ -474,6 +474,8 @@
             (is (true? (close-minute? minute (.getMinute now))))
             (is (true? (close-hour? hour (.getHour now))))))))))
 
+(mt/set-test-drivers! #{:presto-jdbc})
+
 (deftest datetime-math-with-extract-test
   ;; FIXME: mongo doesn't supports parsing strings as dates so we exclude it from this test temporarily (#27111)
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :date-arithmetics) :mongo)
