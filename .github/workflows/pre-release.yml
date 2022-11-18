@@ -111,11 +111,16 @@ jobs:
     - name: Determine the target Docker Hub repository
       run: |
         if [[ ${{ matrix.edition }} == ee ]]; then
-          echo "Metabase EE: image is going to be pushed to ${{ github.repository_owner }}/metabase-enterprise:${{ github.event.inputs.commit }}"
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise:${{ github.event.inputs.commit }}" >> $GITHUB_ENV
+          docker_image="metabase_enterprise:${{ github.event.inputs.commit }}"
         else
-          echo "Metabase OSS: image is going to be pushed to ${{ github.repository_owner }}/metabase:${{ github.event.inputs.commit }}"
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase:${{ github.event.inputs.commit }}" >> $GITHUB_ENV
+          docker_image="metabase:${{ github.event.inputs.commit }}"
+        fi
+
+        if [[ ${{ github.repository }} == 'metabase/metabase' ]]; then
+          echo "Metabase ${{ matrix.edition }}: image is going to be pushed to metabase/$docker_image"
+          echo "DOCKERHUB_REPO=metabase/$docker_image" >> $GITHUB_ENV
+        else
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}:${{ github.event.inputs.commit }}-${{ matrix-edition }}" >> $GITHUB_ENV
         fi
     - name: Retag and push container image to Docker Hub
       run: |
@@ -140,9 +145,15 @@ jobs:
     - name: Determine the container image to pull
       run: |
         if [[ ${{ matrix.edition }} == ee ]]; then
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise:${{ github.event.inputs.commit }}" >> $GITHUB_ENV
+          docker_image="metabase_enterprise:${{ github.event.inputs.commit }}"
         else
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase:${{ github.event.inputs.commit }}" >> $GITHUB_ENV
+          docker_image="metabase:${{ github.event.inputs.commit }}"
+        fi
+
+        if [[ ${{ github.repository }} == 'metabase/metabase' ]]; then
+          echo "DOCKERHUB_REPO=metabase/$docker_image" >> $GITHUB_ENV
+        else
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}:${{ github.event.inputs.commit }}-${{ matrix-edition }}" >> $GITHUB_ENV
         fi
     - name: Pull the container image
       run: |
