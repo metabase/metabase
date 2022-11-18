@@ -1,7 +1,7 @@
-import { Location } from "history";
 import { createSelector } from "reselect";
-import { t } from "ttag";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import type { Location } from "history";
+
+import { getUser } from "metabase/selectors/user";
 import {
   getIsEditing as getIsEditingDashboard,
   getDashboard,
@@ -12,7 +12,8 @@ import {
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { State } from "metabase-types/store";
+
+import type { State } from "metabase-types/store";
 
 export interface RouterProps {
   location: Location;
