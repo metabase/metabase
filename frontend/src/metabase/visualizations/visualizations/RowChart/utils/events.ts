@@ -3,7 +3,7 @@ import {
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/core/utils/array";
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import {
   ChartColumns,
