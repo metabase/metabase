@@ -162,6 +162,10 @@
             (hh/where [:> :__rownum__ offset])
             (hh/limit items))))))
 
+(defmethod sql.qp/->honeysql [:presto-common :now]
+  [_driver _clause]
+  (hsql/call :date_trunc (hx/literal :second) (hsql/call :now)))
+
 (defmethod sql.qp/date [:presto-common :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:presto-common :minute]          [_ _ expr] (hsql/call :date_trunc (hx/literal :minute) expr))
 (defmethod sql.qp/date [:presto-common :minute-of-hour]  [_ _ expr] (hsql/call :minute expr))
