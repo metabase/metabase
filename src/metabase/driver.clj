@@ -441,10 +441,6 @@
     ;; DEFAULTS TO TRUE
     :temporal-extract
 
-    ;; Does the driver support the now function
-    ;; DEFAULTS TO TRUE
-    :now
-
     ;; Does the driver support doing math with datetime? (i.e Adding 1 year to a datetime column)
     ;; DEFAULTS TO TRUE
     :date-arithmetics
