@@ -1,15 +1,11 @@
 import { createMockDashboard } from "metabase-types/api/mocks";
 import type { DashboardState } from "metabase-types/store";
 
-export const createMockDashboardState = ({
-  dashboardId = 1,
-  dashboards = {
-    [dashboardId as number]: createMockDashboard({ id: dashboardId as number }),
-  },
-  ...opts
-}: Partial<DashboardState> = {}): DashboardState => ({
-  dashboardId,
-  dashboards,
+export const createMockDashboardState = (
+  opts: Partial<DashboardState> = {},
+): DashboardState => ({
+  dashboardId: null,
+  dashboards: {},
   dashcards: {},
   dashcardData: {},
   parameterValues: {},
