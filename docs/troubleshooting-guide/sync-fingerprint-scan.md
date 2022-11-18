@@ -156,12 +156,12 @@ To speed up **syncs**:
    - [Reduce the frequency of sync queries](../databases/connecting.md#scheduling-database-scans).
 
 To speed up **scans**:
-   - Prevent a column from being scanned by going to **Admin** > **Data Model** and setting the column's **Filtering on this field** setting to **Search box** or **Plain input box**.
+   - Reduce the number of columns being scanned by going to **Admin** > **Data Model** and setting **Filtering on this field** to **Search box** or **Plain input box**.
    - [Reduce the frequency of scans, or disable scans entirely](../databases/connecting.md#scheduling-database-scans).
 
 **Explanation**
 
-Syncs and scans are ultimately just two kinds of queries that get run against your database, so the speed of execution is limited by the number of queries that are run, the frequency of execution, the size of your data, and the amount of resources you've allocated to your database. In Metabase, you can adjust the number and frequency of sync and scan queries, since unfortunately, we can't imbue your database with more power... (yet?)
+Syncs and scans are ultimately just two kinds of queries that are run against your database, so the speed of execution is limited by the number of queries that are run, the frequency of execution, the size of your data, and the amount of resources you've allocated to your database. Metabase gives you options to adjust the number and frequency of sync and scan queries, since unfortunately, we can't imbue your database with more power... (yet?)
 
 ## Using the API
 
@@ -175,8 +175,6 @@ Syncs and scans are ultimately just two kinds of queries that get run against yo
 - [Troubleshooting database connections](./db-connection.md).
 - [Troubleshooting filters](./filters.md).
 - [How syncs and scans work](../databases/connecting.md#syncing-and-scanning-databases).
-- [Manally syncing tables and columns](../databases/connecting.md#manually-syncing-tables-and-columns).
-- [Manally scanning column values](../databases/connecting.md#manually-scanning-column-values).
 
 ## Are you still stuck?
 
