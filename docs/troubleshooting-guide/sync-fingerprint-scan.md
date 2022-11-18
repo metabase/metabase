@@ -97,7 +97,7 @@ Metabase will try to unfold JSON and JSONB records during the sync process, whic
 
 ### Special cases
 
-If you're waiting for the _initial_ scan to run after connecting a database, make sure the [initial sync](#initial-sync) has completed first.
+If you're waiting for the _initial_ scan to run after connecting a database, make sure the [initial sync](#initializing-a-sync) has completed first.
 
 **Explanation**
 
@@ -127,6 +127,8 @@ To manually re-trigger a fingerprinting query for a given column:
 8. Go to your column and change the **Type** from **Entity Key** to **No semantic type**, and back to **Entity Key**.
 
 ### Special cases
+
+If you're waiting for the _initial_ fingerprinting query to run after connecting a database, make sure the [initial sync](#initializing-a-sync) has completed first.
 
 If you're using MongoDB, Metabase fingerprints the first 10,000 documents per collection. If you're not seeing all of your fields, it's because those fields might not exist in those first 10,000 documents. For more info, see our [MongoDB reference doc](../databases/connections/mongodb.md#i-added-fields-to-my-database-but-dont-see-them-in-metabase).
 
