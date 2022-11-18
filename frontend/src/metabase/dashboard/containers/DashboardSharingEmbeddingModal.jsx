@@ -84,7 +84,7 @@ class DashboardSharingEmbeddingModal extends Component {
           className={className}
           resource={dashboard}
           resourceParameters={parameters}
-          resourceType="dashboard"
+          resourceType={dashboard.is_app_page ? "page" : "dashboard"}
           onCreatePublicLink={() => createPublicLink(dashboard)}
           onDisablePublicLink={() => deletePublicLink(dashboard)}
           onUpdateEnableEmbedding={enableEmbedding =>
