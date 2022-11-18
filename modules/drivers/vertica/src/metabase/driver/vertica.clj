@@ -72,8 +72,8 @@
       (sql-jdbc.common/handle-additional-options details)))
 
 (defmethod sql.qp/->honeysql [:vertica :now]
-  [_driver _clause]
-  (hsql/call :current_timestamp 0))
+  [_ _]
+  (hsql/call :localtimestamp 0))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]
