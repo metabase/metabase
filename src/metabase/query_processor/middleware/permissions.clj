@@ -126,8 +126,6 @@
 (s/defn ^:private check-query-action-permissions*
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
   [outer-query :- su/Map]
-  (when-not *current-user-id*
-    (throw (ex-info (tru "Query actions have to executed by a user.") {})))
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (check-card-read-perms *card-id*)
   (when-not (has-data-perms? (required-perms outer-query))
