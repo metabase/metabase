@@ -14,7 +14,7 @@
 
     (is (=
          {:grouperrors "string" :grouperrorsorder [] :fielderrors {:reviewtext {:field "string"} :title {:field "string"}} :fielderrorsorder []}
-         (hive-schema->map "struct<grouperrors:string,grouperrorsorder:array<string>,fielderrors:struct<reviewtext:struct<field:string>,title:struct<field:string>>,fielderrorsorder:array<string>>")))))
+         (hive-schema->map "struct<grouperrors:string,grouperrorsorder:array<string>,fielderrors:struct<reviewtext:struct<field:string>,title:struct<field:string>>,fielderrorsorder:array<string>>")))
 
     (is (=
          [{:customerid "string" :Order "bigint"}]
@@ -26,4 +26,4 @@
 
     (is (=
          {:mediacategory "string" :mediakey "string" :mediaurl "string" :order "bigint"}
-         (hive-schema->map "struct<mediacategory: string, mediakey: string, mediaurl: string, order: bigint>")))
+         (hive-schema->map "struct<mediacategory: string, mediakey: string, mediaurl: string, order: bigint>")))))
