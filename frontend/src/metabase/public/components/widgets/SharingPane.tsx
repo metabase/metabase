@@ -57,6 +57,7 @@ export default function SharingPane({
   const publicLink = getPublicUrl(resource, extensionState);
   const iframeSource = getPublicEmbedHTML(getPublicUrl(resource));
 
+  const canEmbed = resourceType !== "page";
   const shouldDisableEmbedding = !isAdmin || !isApplicationEmbeddingEnabled;
 
   const embeddingHelperText = getEmbeddingHelperText({
@@ -103,7 +104,8 @@ export default function SharingPane({
       )}
 
       <SharingOption
-        className={cx("border-bottom", {
+        className={cx({
+          "border-bottom": canEmbed,
           disabled: !resource.public_uuid,
         })}
         illustration={
@@ -137,40 +139,44 @@ export default function SharingPane({
         )}
       </SharingOption>
 
-      <SharingOption
-        className={cx("border-bottom", {
-          disabled: !resource.public_uuid,
-        })}
-        illustration={
-          <ResponsiveImage imageUrl="app/assets/img/simple_embed.png" />
-        }
-      >
-        <PublicEmbedHeader>{t`Public embed`}</PublicEmbedHeader>
-        <Description className="mb1">{t`Embed this ${resourceType} in blog posts or web pages by copying and pasting this snippet:`}</Description>
-        <CopyWidget value={iframeSource} />
-      </SharingOption>
-
-      <SharingOption
-        className={cx({
-          disabled: shouldDisableEmbedding,
-          "cursor-pointer": !shouldDisableEmbedding,
-        })}
-        illustration={
-          <ResponsiveImage imageUrl="app/assets/img/secure_embed.png" />
-        }
-        onClick={() => {
-          if (!shouldDisableEmbedding) {
-            onChangeEmbedType("application");
+      {canEmbed && (
+        <SharingOption
+          className={cx("border-bottom", {
+            disabled: !resource.public_uuid,
+          })}
+          illustration={
+            <ResponsiveImage imageUrl="app/assets/img/simple_embed.png" />
           }
-        }}
-      >
-        <EmbedWidgetHeader>{t`Embed in your application`}</EmbedWidgetHeader>
-        <Description>{t`Add this ${resourceType} to your application server code. You’ll be able to preview the way it looks and behaves before making it securely visible for your users.`}</Description>
-        {embeddingHelperText && (
-          <Description enableMouseEvents>{embeddingHelperText}</Description>
-        )}
-        <Button primary>{t`Set up`}</Button>
-      </SharingOption>
+        >
+          <PublicEmbedHeader>{t`Public embed`}</PublicEmbedHeader>
+          <Description className="mb1">{t`Embed this ${resourceType} in blog posts or web pages by copying and pasting this snippet:`}</Description>
+          <CopyWidget value={iframeSource} />
+        </SharingOption>
+      )}
+
+      {canEmbed && (
+        <SharingOption
+          className={cx({
+            disabled: shouldDisableEmbedding,
+            "cursor-pointer": !shouldDisableEmbedding,
+          })}
+          illustration={
+            <ResponsiveImage imageUrl="app/assets/img/secure_embed.png" />
+          }
+          onClick={() => {
+            if (!shouldDisableEmbedding) {
+              onChangeEmbedType("application");
+            }
+          }}
+        >
+          <EmbedWidgetHeader>{t`Embed in your application`}</EmbedWidgetHeader>
+          <Description>{t`Add this ${resourceType} to your application server code. You’ll be able to preview the way it looks and behaves before making it securely visible for your users.`}</Description>
+          {embeddingHelperText && (
+            <Description enableMouseEvents>{embeddingHelperText}</Description>
+          )}
+          <Button primary>{t`Set up`}</Button>
+        </SharingOption>
+      )}
     </div>
   );
 }
