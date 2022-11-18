@@ -38,9 +38,7 @@ export function getDashboardDrillType(clicked) {
     } else if (linkType === "page") {
       const { location, routerParams } = extraData;
 
-      const isInDataApp =
-        Urls.isDataAppPagePath(location.pathname) ||
-        Urls.isDataAppPath(location.pathname);
+      const isInDataApp = Urls.isDataAppPath(location.pathname);
       if (!isInDataApp) {
         return null;
       }
