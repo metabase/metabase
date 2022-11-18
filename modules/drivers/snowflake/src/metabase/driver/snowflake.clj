@@ -29,6 +29,7 @@
             [ring.util.codec :as codec])
   (:import [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
+           java.io.File
            metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
@@ -63,7 +64,7 @@
          (format "jdbc:snowflake://%s.snowflakecomputing.com?user=%s&private_key_file=%s"
                  account
                  (codec/url-encode user)
-                 (codec/url-encode (.getCanonicalPath private-key-file)))))
+                 (codec/url-encode (.getCanonicalPath ^File private-key-file)))))
 
 (defn- resolve-private-key
   "Convert the private-key secret properties into a private_key_file property in `details`.
