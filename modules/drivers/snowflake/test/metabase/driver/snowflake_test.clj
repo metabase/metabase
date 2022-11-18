@@ -3,6 +3,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models :refer [Table]]
@@ -140,6 +141,7 @@
                (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
               "can-connect? should throw for Snowflake databases that don't exist (#9511)")
           (when (and pk-key pk-user)
+            (log/fatal (str/join (repeat 1000 "[TEST DEBUG MESSAGE] - Running private key authentication Test\n")))
             (testing "private key authentication"
               (spit pk-path pk-key)
               (doseq [to-merge [{:private-key-value pk-key}
