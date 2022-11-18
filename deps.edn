@@ -180,6 +180,7 @@
     djblue/portal                                         {:mvn/version "0.30.0"}
     eftest/eftest                                         {:mvn/version "0.5.9"}
     io.github.camsaul/humane-are                          {:mvn/version "1.0.2"}
+    com.github.qnkhuat/test-plus                          {:mvn/version "0.0.4"} ;; testing-only
     jonase/eastwood                                       {:mvn/version "1.2.2"}
     pjstadig/humane-test-output                           {:mvn/version "0.11.0"}
     reifyhealth/specmonstah                               {:mvn/version "2.0.0"
