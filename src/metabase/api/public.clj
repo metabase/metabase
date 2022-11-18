@@ -258,10 +258,10 @@
    slug su/NonBlankString
    parameters (s/maybe {s/Keyword s/Any})}
   (let [throttle-message (try
-                        (throttle/check dashcard-execution-throttle dashcard-id)
-                        nil
-                        (catch ExceptionInfo e
-                          (get-in (ex-data e) [:errors :dashcard-id])))
+                           (throttle/check dashcard-execution-throttle dashcard-id)
+                           nil
+                           (catch ExceptionInfo e
+                             (get-in (ex-data e) [:errors :dashcard-id])))
         throttle-time (when throttle-message
                         (second (re-find #"You must wait ([0-9]+) seconds" throttle-message)))]
     (if throttle-message
@@ -271,8 +271,12 @@
       (do
         (validation/check-public-sharing-enabled)
         (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
-          ;; Undo middleware string->keyword coercion
-          (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name)))))))
+          ;; Run this query with full superuser perms. We don't want the various perms checks
+          ;; failing because there are no current user perms; if this Dashcard is public
+          ;; you're by definition allowed to run it without a perms check anyway
+          (binding [api/*current-user-permissions-set* (delay #{"/"})]
+            ;; Undo middleware string->keyword coercion
+            (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name))))))))
 
 (api/defendpoint GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
