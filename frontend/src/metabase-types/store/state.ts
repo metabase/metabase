@@ -11,7 +11,7 @@ import { SetupState } from "./setup";
 export interface State {
   admin: AdminState;
   app: AppState;
-  currentUser: User;
+  currentUser: User | null;
   embed: EmbedState;
   entities: EntitiesState;
   form: FormState;

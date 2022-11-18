@@ -20,7 +20,7 @@ import { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import NoResults from "assets/img/no_results.svg";
 
-import { checkCanRefreshModelCache } from "metabase-lib/lib/metadata/utils/models";
+import { checkCanRefreshModelCache } from "metabase-lib/metadata/utils/models";
 import {
   ErrorBox,
   IconButtonContainer,

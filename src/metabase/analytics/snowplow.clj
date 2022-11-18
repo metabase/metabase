@@ -1,6 +1,7 @@
 (ns metabase.analytics.snowplow
   "Functions for sending Snowplow analytics events"
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
             [metabase.config :as config]
@@ -22,29 +23,32 @@
 
 (defsetting analytics-uuid
   (deferred-tru
-    (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
-         "This is a public setting since some analytics events are sent prior to initial setup."))
+   (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
+        "This is a public setting since some analytics events are sent prior to initial setup."))
   :visibility :public
   :setter     :none
-  :type       ::public-settings/uuid-nonce)
+  :type       ::public-settings/uuid-nonce
+  :doc        false)
 
 (defsetting snowplow-available
   (deferred-tru
-    (str "Boolean indicating whether a Snowplow collector is available to receive analytics events. "
-         "Should be set via environment variable in Cypress tests or during local development."))
+   (str "Boolean indicating whether a Snowplow collector is available to receive analytics events. "
+        "Should be set via environment variable in Cypress tests or during local development."))
   :type       :boolean
   :visibility :public
-  :default    config/is-prod?)
+  :default    config/is-prod?
+  :doc        false)
 
 (defsetting snowplow-enabled
   (deferred-tru
-    (str "Boolean indicating whether analytics events are being sent to Snowplow. "
-         "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
+   (str "Boolean indicating whether analytics events are being sent to Snowplow. "
+        "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
   :type   :boolean
   :setter :none
   :getter (fn [] (and (snowplow-available)
                       (public-settings/anon-tracking-enabled)))
-  :visibility :public)
+  :visibility :public
+  :doc        false)
 
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
@@ -52,7 +56,8 @@
                 "https://sp.metabase.com"
                 ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
                 "http://localhost:9090")
-  :visibility :public)
+  :visibility :public
+  :doc        false)
 
 (defn- first-user-creation
   "Returns the earliest user creation timestamp in the database"
@@ -76,7 +81,8 @@
                   (let [value (or (first-user-creation) (t/offset-date-time))]
                     (setting/set-value-of-type! :timestamp :instance-creation value)
                     (track-event! ::new-instance-created)))
-                (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation))))
+                (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
+  :doc false)
 
 (def ^:private emitter
   "Returns an instance of a Snowplow emitter"
@@ -127,15 +133,29 @@
    ::timeline  "1-0-0"
    ::task      "1-0-0"})
 
+(defn- app-db-type
+  "Returns the type of the Metabase application database as a string (e.g. PostgreSQL, MySQL)"
+  []
+  (jdbc/with-db-metadata [metadata (db/connection)]
+    (.getDatabaseProductName metadata)))
+
+(defn- app-db-version
+  "Returns the version of the Metabase application database as a string"
+  []
+  (jdbc/with-db-metadata [metadata (db/connection)]
+    (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))))
+
 (defn- context
   "Common context included in every analytics event"
   []
   (new SelfDescribingJson
        (str "iglu:com.metabase/instance/jsonschema/" (schema->version ::instance))
-       {"id"             (analytics-uuid)
-        "version"        {"tag" (:tag (public-settings/version))}
-        "token_features" (m/map-keys name (public-settings/token-features))
-        "created_at"     (instance-creation)}))
+       {"id"                           (analytics-uuid)
+        "version"                      {"tag" (:tag (public-settings/version))}
+        "token_features"               (m/map-keys name (public-settings/token-features))
+        "created_at"                   (instance-creation)
+        "application_database"         (app-db-type)
+        "application_database_version" (app-db-version)}))
 
 (defn- normalize-kw
   [kw]

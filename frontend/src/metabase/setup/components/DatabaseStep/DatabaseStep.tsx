@@ -3,17 +3,16 @@ import { t } from "ttag";
 import _ from "underscore";
 import { updateIn } from "icepick";
 import Button from "metabase/core/components/Button";
-import Users from "metabase/entities/users";
 import Databases from "metabase/entities/databases";
 import DriverWarning from "metabase/containers/DriverWarning";
 import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
+import InviteUserForm from "../InviteUserForm";
 import SetupSection from "../SetupSection";
 import {
   StepActions,
   StepDescription,
-  StepFormGroup,
   StepButton,
   FormActions,
 } from "./DatabaseStep.styled";
@@ -87,7 +86,11 @@ const DatabaseStep = ({
           title={t`Need help connecting to your data?`}
           description={t`Invite a teammate. We’ll make them an admin so they can configure your database. You can always change this later on.`}
         >
-          <InviteForm user={user} invite={invite} onSubmit={onInviteSubmit} />
+          <InviteUserForm
+            user={user}
+            invite={invite}
+            onSubmit={onInviteSubmit}
+          />
         </SetupSection>
       )}
     </ActiveStep>
@@ -165,37 +168,6 @@ const DatabaseForm = ({
         </Form>
       )}
     </Databases.Form>
-  );
-};
-
-interface InviteFormProps {
-  user?: UserInfo;
-  invite?: InviteInfo;
-  onSubmit: (invite: InviteInfo) => void;
-}
-
-const InviteForm = ({
-  user,
-  invite,
-  onSubmit,
-}: InviteFormProps): JSX.Element => {
-  return (
-    <Users.Form
-      form={Users.forms.setup_invite(user)}
-      user={invite}
-      onSubmit={onSubmit}
-    >
-      {({ Form, FormField, FormFooter }: FormProps) => (
-        <Form>
-          <StepFormGroup>
-            <FormField name="first_name" />
-            <FormField name="last_name" />
-          </StepFormGroup>
-          <FormField name="email" />
-          <FormFooter submitTitle={t`Send invitation`} />
-        </Form>
-      )}
-    </Users.Form>
   );
 };
 

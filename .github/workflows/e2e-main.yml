@@ -10,6 +10,7 @@ on:
       - "**.md"
       - ".circleci/**"
       - "**.unit.spec.*"
+      - "**_test.clj"
 
 jobs:
 
@@ -53,6 +54,7 @@ jobs:
       MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
       RECORDING_ENABLED: ${{ secrets.CURRENTS_KEY }}
       CYPRESS_DEPLOYSENTINEL_KEY: ${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}
+      ELECTRON_EXTRA_LAUNCH_ARGS: '--remote-debugging-port=40500' # deploysentinel
     strategy:
       fail-fast: false
       matrix:
@@ -129,7 +131,7 @@ jobs:
     - name: Run Snowplow micro
       uses: ./.github/actions/run-snowplow-micro
 
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
         name: metabase-${{ matrix.edition }}-uberjar
@@ -158,7 +160,7 @@ jobs:
         TERM: xterm
 
     - name: Upload Cypress Artifacts upon failure
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: failure()
       with:
         name: cypress-artifacts-${{ matrix.folder }}-${{ matrix.edition }}
@@ -201,7 +203,7 @@ jobs:
     - name: Prepare Cypress environment
       uses: ./.github/actions/prepare-cypress
 
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact for ${{ matrix.edition }}
       with:
         name: metabase-${{ matrix.edition }}-uberjar

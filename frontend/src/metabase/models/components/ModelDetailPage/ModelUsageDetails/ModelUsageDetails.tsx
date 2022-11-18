@@ -13,8 +13,8 @@ import Questions, {
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type { Card as LegacyCardType } from "metabase-types/types/Card";
-import { getQuestionVirtualTableId } from "metabase-lib/lib/metadata/utils/saved-questions";
-import type Question from "metabase-lib/lib/Question";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import type Question from "metabase-lib/Question";
 
 import {
   EmptyStateContainer,

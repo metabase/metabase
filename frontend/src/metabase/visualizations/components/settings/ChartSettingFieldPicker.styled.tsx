@@ -3,6 +3,8 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import SelectButton from "metabase/core/components/SelectButton";
 import Triggerable from "metabase/components/Triggerable";
+import ColorPill from "metabase/core/components/ColorPill";
+import ChartSettingColorPicker from "./ChartSettingColorPicker";
 
 interface ChartSettingFieldPickerRootProps {
   disabled: boolean;
@@ -46,8 +48,8 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
     color: ${color("text-dark")};
   }
 
-  ${SelectButton.Root} {
-    ${props => props.disabled && `background-color: ${color("white")};`}
+  ${SelectButton.Root}:disabled {
+    background-color: ${color("white")};
   }
 `;
 
@@ -64,4 +66,9 @@ export const SettingsIcon = styled(Icon)<SettingsIconProps>`
   &:hover {
     color: ${color("brand")};
   }
+`;
+
+export const FieldPickerColorPicker = styled(ChartSettingColorPicker)`
+  margin-bottom: 0;
+  margin-left: 0.25rem;
 `;

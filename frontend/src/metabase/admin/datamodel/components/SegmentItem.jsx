@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon";
-import { formatQueryDescription } from "metabase-lib/lib/queries/utils/description";
+import { formatQueryDescription } from "metabase-lib/queries/utils/description";
 import ObjectActionSelect from "./ObjectActionSelect";
 
 export default class SegmentItem extends Component {

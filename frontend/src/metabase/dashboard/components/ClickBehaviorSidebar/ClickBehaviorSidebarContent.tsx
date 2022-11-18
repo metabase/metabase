@@ -14,7 +14,7 @@ import type {
 } from "metabase-types/api";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { UiParameter } from "metabase-lib/lib/parameters/types";
+import type { UiParameter } from "metabase-lib/parameters/types";
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarMainView from "./ClickBehaviorSidebarMainView";
 import TableClickBehaviorView from "./TableClickBehaviorView";

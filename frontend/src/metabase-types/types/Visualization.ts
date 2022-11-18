@@ -8,14 +8,15 @@ import { Card } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { ReduxAction } from "metabase-types/types/redux";
 
-// import Question from "metabase-lib/lib/Question";
+// import Question from "metabase-lib/Question";
 type Question = any;
 
 export type ActionCreator = (props: ClickActionProps) => ClickAction[];
 
 export type QueryMode = {
   name: string;
-  drills: () => ActionCreator[];
+  drills: ActionCreator[];
+  fallback?: ActionCreator;
 };
 
 export type HoverData = Array<{ key: string; value: any; col?: Column }>;

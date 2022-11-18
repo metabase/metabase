@@ -9,8 +9,8 @@ import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
-import { generateQueryDescription } from "metabase-lib/lib/queries/utils/description";
+import * as Q_DEPRECATED from "metabase-lib/queries/utils";
+import { generateQueryDescription } from "metabase-lib/queries/utils/description";
 
 import "./SaveQuestionModal.css";
 

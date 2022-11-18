@@ -131,12 +131,16 @@ function getSettingWidget(
     onChangeSettings(newSettings);
   };
   if (settingDef.useRawSeries && object._raw) {
+    extra.transformedSeries = object;
     object = object._raw;
   }
   return {
     ...settingDef,
     id: settingId,
     value: value,
+    section: settingDef.getSection
+      ? settingDef.getSection(object, computedSettings, extra)
+      : settingDef.section,
     title: settingDef.getTitle
       ? settingDef.getTitle(object, computedSettings, extra)
       : settingDef.title,

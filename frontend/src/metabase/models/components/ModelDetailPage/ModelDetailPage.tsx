@@ -8,8 +8,8 @@ import TabContent from "metabase/core/components/TabContent";
 import * as Urls from "metabase/lib/urls";
 
 import type { Card } from "metabase-types/api";
-import type Question from "metabase-lib/lib/Question";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
 
 import ModelActionDetails from "./ModelActionDetails";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";

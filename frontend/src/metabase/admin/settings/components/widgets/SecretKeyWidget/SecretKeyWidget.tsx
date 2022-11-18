@@ -38,7 +38,7 @@ const SecretKeyWidget = ({
         <GenerateButton
           primary
           onClick={generateToken}
-        >{t`Generate Key`}</GenerateButton>
+        >{t`Generate key`}</GenerateButton>
       )}
     </SecretKeyWidgetRoot>
   );

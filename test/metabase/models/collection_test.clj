@@ -15,7 +15,8 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+            [toucan.hydrate :refer [hydrate]])
+  (:import java.time.LocalDateTime))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -36,16 +37,16 @@
 (deftest create-collection-test
   (testing "test that we can create a new Collection with valid inputs"
     (mt/with-temp Collection [collection {:name "My Favorite Cards", :color "#ABCDEF"}]
-      (is (= (merge
-              (mt/object-defaults Collection)
-              {:name              "My Favorite Cards"
-               :slug              "my_favorite_cards"
-               :description       nil
-               :color             "#ABCDEF"
-               :archived          false
-               :location          "/"
-               :personal_owner_id nil})
-             (mt/derecordize (dissoc collection :id :entity_id)))))))
+      (is (partial= (merge
+                     (mt/object-defaults Collection)
+                     {:name              "My Favorite Cards"
+                      :slug              "my_favorite_cards"
+                      :description       nil
+                      :color             "#ABCDEF"
+                      :archived          false
+                      :location          "/"
+                      :personal_owner_id nil})
+                    collection)))))
 
 (deftest color-validation-test
   (testing "Collection colors should be validated when inserted into the DB"
@@ -537,38 +538,38 @@
 (deftest root-collection-descendants-test
   (testing "For the *Root* Collection, can we get top-level Collections?"
     (with-collection-hierarchy [_]
-      (is (= #{{:name        "A"
-                :id          true
-                :description nil
-                :location    "/"
-                :children    #{{:name        "C"
-                                :id          true
-                                :description nil
-                                :location    "/A/"
-                                :children    #{{:name        "D"
-                                                :id          true
-                                                :description nil
-                                                :location    "/A/C/"
-                                                :children    #{{:name        "E"
-                                                                :id          true
-                                                                :description nil
-                                                                :location    "/A/C/D/"
-                                                                :children    #{}}}}
-                                               {:name        "F"
-                                                :id          true
-                                                :description nil
-                                                :location    "/A/C/"
-                                                :children    #{{:name        "G"
-                                                                :id          true
-                                                                :description nil
-                                                                :location    "/A/C/F/"
-                                                                :children    #{}}}}}}
-                               {:name        "B"
-                                :id          true
-                                :description nil
-                                :location    "/A/"
-                                :children    #{}}}}}
-             (descendants collection/root-collection))))))
+      (is (contains? (descendants collection/root-collection)
+                     {:name        "A"
+                      :id          true
+                      :description nil
+                      :location    "/"
+                      :children    #{{:name        "C"
+                                      :id          true
+                                      :description nil
+                                      :location    "/A/"
+                                      :children    #{{:name        "D"
+                                                      :id          true
+                                                      :description nil
+                                                      :location    "/A/C/"
+                                                      :children    #{{:name        "E"
+                                                                      :id          true
+                                                                      :description nil
+                                                                      :location    "/A/C/D/"
+                                                                      :children    #{}}}}
+                                                     {:name        "F"
+                                                      :id          true
+                                                      :description nil
+                                                      :location    "/A/C/"
+                                                      :children    #{{:name        "G"
+                                                                      :id          true
+                                                                      :description nil
+                                                                      :location    "/A/C/F/"
+                                                                      :children    #{}}}}}}
+                                     {:name        "B"
+                                      :id          true
+                                      :description nil
+                                      :location    "/A/"
+                                      :children    #{}}}})))))
 
 
 
@@ -1624,18 +1625,28 @@
 
 (deftest identity-hash-test
   (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
-    (mt/with-temp* [Collection [c1  {:name "top level"  :namespace "yolocorp" :location "/"}]
-                    Collection [c2  {:name "nested"     :namespace "yolocorp" :location (format "/%s/" (:id c1))}]
-                    Collection [c3  {:name "grandchild" :namespace "yolocorp" :location (format "/%s/%s/" (:id c1) (:id c2))}]]
-      (let [c1-hash (serdes.hash/identity-hash c1)
-            c2-hash (serdes.hash/identity-hash c2)]
-        (is (= "37e57249"
-               (serdes.hash/raw-hash ["top level" :yolocorp "ROOT"])
-               c1-hash)
-            "Top-level collections should use a parent hash of 'ROOT'")
-        (is (= "ce76f360"
-               (serdes.hash/raw-hash ["nested" :yolocorp c1-hash])
-               c2-hash))
-        (is (= "acb1ea3e"
-               (serdes.hash/raw-hash ["grandchild" :yolocorp c2-hash])
-               (serdes.hash/identity-hash c3)))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection [c1  {:name       "top level"
+                                       :created_at now
+                                       :namespace  "yolocorp"
+                                       :location   "/"}]
+                      Collection [c2  {:name       "nested"
+                                       :created_at now
+                                       :namespace  "yolocorp"
+                                       :location   (format "/%s/" (:id c1))}]
+                      Collection [c3  {:name       "grandchild"
+                                       :created_at now
+                                       :namespace  "yolocorp"
+                                       :location   (format "/%s/%s/" (:id c1) (:id c2))}]]
+        (let [c1-hash (serdes.hash/identity-hash c1)
+              c2-hash (serdes.hash/identity-hash c2)]
+          (is (= "f2620cc6"
+                 (serdes.hash/raw-hash ["top level" :yolocorp "ROOT" now])
+                 c1-hash)
+              "Top-level collections should use a parent hash of 'ROOT'")
+          (is (= "a27aef0f"
+                 (serdes.hash/raw-hash ["nested" :yolocorp c1-hash now])
+                 c2-hash))
+          (is (= "e816af2d"
+                 (serdes.hash/raw-hash ["grandchild" :yolocorp c2-hash now])
+                 (serdes.hash/identity-hash c3))))))))

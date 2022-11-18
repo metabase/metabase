@@ -15,7 +15,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 import { isVirtualDashCard } from "./utils";
 

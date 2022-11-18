@@ -52,11 +52,13 @@
 
 (defmethod serdes.hash/identity-hash-fields DashboardCard
   [_dashboard-card]
-  [(serdes.hash/hydrated-hash :card)
+  [(serdes.hash/hydrated-hash :card "<none>") ; :card is optional, eg. text cards
    (comp serdes.hash/identity-hash
          #(db/select-one 'Dashboard :id %)
          :dashboard_id)
-   :visualization_settings])
+   :visualization_settings
+   :row :col
+   :created_at])
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
@@ -219,48 +221,17 @@
     (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-(defmethod serdes.base/extract-query "DashboardCard" [_ {:keys [user]}]
-  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
-  (serdes.base/raw-reducible-query
-    "DashboardCard"
-    {:select     [:dc.*]
-     :from       [[:report_dashboardcard :dc]]
-     :left-join  [[:report_dashboard :dash] [:= :dash.id :dc.dashboard_id]
-                  [:collection :coll]       [:= :coll.id :dash.collection_id]]
-     :where      (if user
-                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                   [:is :coll.personal_owner_id nil])}))
-
-(defmethod serdes.base/serdes-dependencies "DashboardCard"
-  [{:keys [card_id dashboard_id parameter_mappings visualization_settings]}]
-  (->> (mapcat serdes.util/mbql-deps parameter_mappings)
-       (concat (serdes.util/visualization-settings-deps visualization_settings))
-       (concat #{[{:model "Dashboard" :id dashboard_id}] })
-       (concat (when card_id #{[{:model "Card" :id card_id}]}))
-       set))
-
+;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
+;; However, we can reuse some of the serdes machinery (especially load-one!) by implementing a few serdes methods.
 (defmethod serdes.base/serdes-generate-path "DashboardCard" [_ dashcard]
   [(serdes.base/infer-self-path "Dashboard" (db/select-one 'Dashboard :id (:dashboard_id dashcard)))
    (serdes.base/infer-self-path "DashboardCard" dashcard)])
 
-(defmethod serdes.base/extract-one "DashboardCard"
-  [_model-name _opts dashcard]
-  (-> (serdes.base/extract-one-basics "DashboardCard" dashcard)
-      (update :card_id                serdes.util/export-fk 'Card)
-      (update :dashboard_id           serdes.util/export-fk 'Dashboard)
-      (update :parameter_mappings     serdes.util/export-parameter-mappings)
-      (update :visualization_settings serdes.util/export-visualization-settings)))
-
 (defmethod serdes.base/load-xform "DashboardCard"
   [dashcard]
-  (-> (serdes.base/load-xform-basics dashcard)
+  (-> dashcard
+      (dissoc :serdes/meta)
       (update :card_id                serdes.util/import-fk 'Card)
       (update :dashboard_id           serdes.util/import-fk 'Dashboard)
       (update :parameter_mappings     serdes.util/import-parameter-mappings)
       (update :visualization_settings serdes.util/import-visualization-settings)))
-
-(defmethod serdes.base/serdes-descendants "DashboardCard" [_model-name id]
-  (let [{:keys [card_id dashboard_id]} (db/select-one DashboardCard :id id)]
-    (cond-> #{["Dashboard" dashboard_id]}
-      ;; card_id is nil for text cards; in that case there's no Card to depend on.
-      card_id (conj ["Card" card_id]))))

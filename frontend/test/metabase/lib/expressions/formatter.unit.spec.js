@@ -1,8 +1,8 @@
-import { format } from "metabase-lib/lib/expressions/format";
+import { format } from "metabase-lib/expressions/format";
 
 import { shared } from "./__support__/expressions";
 
-describe("metabase-lib/lib/expressions/format", () => {
+describe("metabase-lib/expressions/format", () => {
   describe("format()", () => {
     for (const [name, cases, opts] of shared) {
       describe(name, () => {

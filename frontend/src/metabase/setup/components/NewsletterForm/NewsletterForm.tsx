@@ -1,22 +1,27 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
-import Users from "metabase/entities/users";
-import Form from "metabase/containers/FormikForm";
+import * as Yup from "yup";
+import FormProvider from "metabase/core/components/FormProvider";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import * as Errors from "metabase/core/utils/errors";
 import { SubscribeInfo } from "metabase-types/store";
 import {
-  FormContainer,
-  FormFieldContainer,
-  FormHeader,
-  FormLabel,
-  FormLabelCard,
-  FormLabelIcon,
-  FormLabelText,
-  FormRoot,
-  FormSuccessContainer,
-  FormSuccessIcon,
-  FormSuccessText,
+  EmailForm,
+  EmailFormHeader,
+  EmailFormLabel,
+  EmailFormLabelCard,
+  EmailFormLabelIcon,
+  EmailFormLabelText,
+  EmailFormRoot,
+  EmailFormSuccessContainer,
+  EmailFormSuccessIcon,
+  EmailFormSuccessText,
+  EmailFormInput,
 } from "./NewsletterForm.styled";
-import { FormProps } from "./types";
+
+const NEWSLETTER_SCHEMA = Yup.object({
+  email: Yup.string().required(Errors.required).email(Errors.email),
+});
 
 export interface NewsletterFormProps {
   initialEmail?: string;
@@ -30,50 +35,51 @@ const NewsletterForm = ({
   const initialValues = { email: initialEmail };
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const onSubmit = async ({ email }: SubscribeInfo) => {
-    await onSubscribe(email);
-    setIsSubscribed(true);
-  };
+  const handleSubmit = useCallback(
+    async ({ email }: SubscribeInfo) => {
+      await onSubscribe(email);
+      setIsSubscribed(true);
+    },
+    [onSubscribe],
+  );
 
   return (
-    <FormRoot>
-      <FormLabel>
-        <FormLabelCard>
-          <FormLabelIcon name="mail" />
-          <FormLabelText>{t`Metabase Newsletter`}</FormLabelText>
-        </FormLabelCard>
-      </FormLabel>
-      <FormHeader>
+    <EmailFormRoot>
+      <EmailFormLabel>
+        <EmailFormLabelCard>
+          <EmailFormLabelIcon name="mail" />
+          <EmailFormLabelText>{t`Metabase Newsletter`}</EmailFormLabelText>
+        </EmailFormLabelCard>
+      </EmailFormLabel>
+      <EmailFormHeader>
         {t`Get infrequent emails about new releases and feature updates.`}
-      </FormHeader>
+      </EmailFormHeader>
       {!isSubscribed && (
-        <Form<{ email: string }>
-          form={Users.forms.newsletter}
+        <FormProvider
           initialValues={initialValues}
-          submitTitle={t`Subscribe`}
-          onSubmit={onSubmit}
+          validationSchema={NEWSLETTER_SCHEMA}
+          onSubmit={handleSubmit}
         >
-          {({ Form, FormField, FormSubmit }: FormProps) => (
-            <Form>
-              <FormContainer>
-                <FormFieldContainer>
-                  <FormField name="email" />
-                </FormFieldContainer>
-                <FormSubmit primary={false} />
-              </FormContainer>
-            </Form>
-          )}
-        </Form>
+          <EmailForm>
+            <EmailFormInput
+              name="email"
+              type="email"
+              placeholder="nicetoseeyou@email.com"
+              autoFocus
+            />
+            <FormSubmitButton title={t`Subscribe`} />
+          </EmailForm>
+        </FormProvider>
       )}
       {isSubscribed && (
-        <FormSuccessContainer>
-          <FormSuccessIcon name="check" />
-          <FormSuccessText>
+        <EmailFormSuccessContainer>
+          <EmailFormSuccessIcon name="check" />
+          <EmailFormSuccessText>
             {t`You're subscribed. Thanks for using Metabase!`}
-          </FormSuccessText>
-        </FormSuccessContainer>
+          </EmailFormSuccessText>
+        </EmailFormSuccessContainer>
       )}
-    </FormRoot>
+    </EmailFormRoot>
   );
 };
 

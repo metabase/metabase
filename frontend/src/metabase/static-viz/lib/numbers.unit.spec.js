@@ -100,6 +100,16 @@ describe("formatNumber", () => {
     expect(text).toEqual("10000.11");
   });
 
+  it("should format `,.` number separators", () => {
+    const number = 10000.11;
+
+    const text = formatNumber(number, {
+      number_separators: ",.",
+    });
+
+    expect(text).toEqual("10.000,11");
+  });
+
   it("should format small number", () => {
     expect(formatNumber(0.00196)).toEqual("0.002");
     expect(formatNumber(0.00201)).toEqual("0.002");

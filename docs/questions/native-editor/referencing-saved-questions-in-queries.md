@@ -74,7 +74,7 @@ SELECT count(*)
 FROM 2019_gizmo_orders
 ```
 
-# How to find a question's ID
+## How to find a question's ID
 
 - Selecting a question from the variable sidebar in the SQL editor will automatically add the ID number to the variable in our query.
 - You can also navigate to the question you'd like to reference and find its ID at the end of the URL in your browser's address bar, after `/question/`. E.g., for `https://metabase.example.com/question/12345`, the question's ID would be `12345`.
@@ -90,7 +90,7 @@ For other ways to standardize analytics, check out:
 - [SQL Snippets](https://www.metabase.com/learn/building-analytics/sql-templates/sql-snippets.html)
 - [SQL Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/building-analytics/sql-templates/organizing-sql.html)
 
-### Limitations and tradeoffs
+## Limitations and tradeoffs
 
 - You can only reference a saved question in a query when working with a SQL database like PostgreSQL, MySQL, or SQL Server.
 - The saved question you select has to be one that's based on the same database as the one you've currently selected in the native query editor.

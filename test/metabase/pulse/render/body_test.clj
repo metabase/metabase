@@ -115,33 +115,33 @@
 (deftest prefers-col-visualization-settings-for-header
   (testing "Users can give columns custom names. Use those if they exist."
     (let [card    {:visualization_settings
-                   {:column_settings {(keyword "[\"ref\",[\"field-id\",321]]") {:column_title "Custom Last Login"}
-                                      (keyword "[\"name\",\"name\"]")          {:column_title "Custom Name"}}}}
+                   {:column_settings {"[\"ref\",[\"field\",321,null]]" {:column_title "Custom Last Login"}
+                                      "[\"name\",\"name\"]"            {:column_title "Custom Name"}}}}
           cols    [{:name            "last_login"
                     :display_name    "Last Login"
                     :base_type       :type/DateTime
                     :semantic_type    nil
                     :visibility_type :normal
-                    :field_ref       [:field-id 321]}
+                    :field_ref       [:field 321 nil]}
                    {:name            "name"
                     :display_name    "Name"
                     :base_type       :type/Text
                     :semantic_type    nil
                     :visibility_type :normal}]]
 
-      ;; card contains custom column names
-      (is (= {:row       ["Custom Last Login" "Custom Name"]
-              :bar-width nil}
-             (first (#'body/prep-for-html-rendering pacific-tz
-                                                    card
-                                                    {:cols cols :rows []}))))
+      (testing "card contains custom column names"
+        (is (= {:row       ["Custom Last Login" "Custom Name"]
+                :bar-width nil}
+               (first (#'body/prep-for-html-rendering pacific-tz
+                                                      card
+                                                      {:cols cols :rows []})))))
 
-      ;; card does not contain custom column names
-      (is (= {:row       ["Last Login" "Name"]
-              :bar-width nil}
-             (first (#'body/prep-for-html-rendering pacific-tz
-                                                    {}
-                                                    {:cols cols :rows []})))))))
+      (testing "card does not contain custom column names"
+        (is (= {:row       ["Last Login" "Name"]
+                :bar-width nil}
+               (first (#'body/prep-for-html-rendering pacific-tz
+                                                      {}
+                                                      {:cols cols :rows []}))))))))
 
 ;; When including a bar column, bar-width is 99%
 (deftest bar-width
@@ -157,14 +157,14 @@
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
+  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
-  (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
+  (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data}
@@ -207,12 +207,12 @@
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1") (number "34.10") "Bad" "Apr 1, 2014" "Stout Burgers & Beers"]
+  (is (= [[(number "1") (number "34.1") "Bad" "Apr 1, 2014" "Stout Burgers & Beers"]
           [(number "2") (number "34.04") "Ok" "Dec 5, 2014" "The Apple Pan"]
           [(number "3") (number "34.05") "Good" "Aug 1, 2014" "The Gorbals"]]
-         (map :row (rest (#'body/prep-for-html-rendering pacific-tz
-                                                         {}
-                                                         {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
+         (map :row (rest (#'body/prep-for-html-rendering  pacific-tz
+                                                          {}
+                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
 (deftest no-truncation-warnig
@@ -231,7 +231,7 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
+  (is (= [{:bar-width nil, :row [(number "1") (number "34.1") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
@@ -329,15 +329,15 @@
                                  :last-change nil
                                  :col "value"
                                  :last-value 20.0}]}]
-        (is (= "40.00\nUp 133.33%. Was 30.00 last month"
+        (is (= "40\nUp 133.33%. Was 30 last month"
                (:render/text (body/render :smartscalar nil pacific-tz nil nil results))))
-        (is (= "40.00\nNo change. Was 40.00 last month"
+        (is (= "40\nNo change. Was 40 last month"
                (:render/text (body/render :smartscalar nil pacific-tz nil nil sameres))))
-        (is (= "20.0\nNothing to compare to."
+        (is (= "20\nNothing to compare to."
                (:render/text (body/render :smartscalar nil pacific-tz nil nil dumbres))))
         (is (schema= {:attachments (s/eq nil)
                       :content     (s/pred vector? "hiccup vector")
-                      :render/text (s/eq "40.00\nUp 133.33%. Was 30.00 last month")}
+                      :render/text (s/eq "40\nUp 133.33%. Was 30 last month")}
                      (body/render :smartscalar nil pacific-tz nil nil results)))))))
 
 (defn- replace-style-maps [hiccup-map]
@@ -474,7 +474,7 @@
             [[[10.0] [1]] [[5.0] [10]] [[1.25] [20]]]
             [{:name "Price", :display_name "Price", :base_type :type/BigInteger, :semantic_type nil}]
             [{:name "NumPurchased", :display_name "NumPurchased", :base_type :type/BigInteger, :semantic_type nil}]
-            {:series_settings {:NumPurchased {:color "#a7cf7b"}}}))))
+            {:viz-settings {:series_settings {:NumPurchased {:color "#a7cf7b"}}}}))))
   (testing "Check if double x-axis combo series can convert colors"
     (is (= [{:name "Bob", :color "#c5a9cf", :type "line", :data [[10.0 123]], :yAxisPosition "left"}
             {:name "Dobbs", :color "#a7cf7b", :type "bar", :data [[5.0 12]], :yAxisPosition "right"}
@@ -486,10 +486,10 @@
             [{:base_type :type/BigInteger, :display_name "Price", :name "Price", :semantic_type nil}
              {:base_type :type/BigInteger, :display_name "NumPurchased", :name "NumPurchased", :semantic_type nil}]
             [{:base_type :type/BigInteger, :display_name "NumKazoos", :name "NumKazoos", :semantic_type nil}]
-            {:series_settings {:Bob {:color "#c5a9cf"}
-                               :Dobbs {:color "#a7cf7b"}
-                               :Robbs {:color "#34517d"}
-                               :Mobbs {:color "#e0be40"}}})))))
+            {:viz-settings {:series_settings {:Bob {:color "#c5a9cf"}
+                                              :Dobbs {:color "#a7cf7b"}
+                                              :Robbs {:color "#34517d"}
+                                              :Mobbs {:color "#e0be40"}}}})))))
 
 (deftest series-with-custom-names-test
   (testing "Check if single x-axis combo series uses custom series names (#21503)"
@@ -501,8 +501,9 @@
                        [{:name "Price", :display_name "Price", :base_type :type/Number}]
                        [{:name "NumPurchased", :display_name "NumPurchased", :base_type :type/Number}
                         {:name "NumSold", :display_name "NumSold", :base_type :type/Number}]
-                       {:series_settings {:NumPurchased {:color "#a7cf7b" :title "Bought"}
-                                          :NumSold      {:color "#a7cf7b" :title "Sold"}}}))))))
+                       {:viz-settings
+                        {:series_settings {:NumPurchased {:color "#a7cf7b" :title "Bought"}
+                                           :NumSold      {:color "#a7cf7b" :title "Sold"}}}}))))))
   (testing "Check if double x-axis combo series uses custom series names (#21503)"
     (is (= #{"Bobby" "Dobby" "Robby" "Mobby"}
            (set (map :name
@@ -512,10 +513,11 @@
                        [{:base_type :type/BigInteger, :display_name "Price", :name "Price", :semantic_type nil}
                         {:base_type :type/BigInteger, :display_name "NumPurchased", :name "NumPurchased", :semantic_type nil}]
                        [{:base_type :type/BigInteger, :display_name "NumKazoos", :name "NumKazoos", :semantic_type nil}]
-                       {:series_settings {:Bob   {:color "#c5a9cf" :title "Bobby"}
-                                          :Dobbs {:color "#a7cf7b" :title "Dobby"}
-                                          :Robbs {:color "#34517d" :title "Robby"}
-                                          :Mobbs {:color "#e0be40" :title "Mobby"}}})))))))
+                       {:viz-settings
+                        {:series_settings {:Bob   {:color "#c5a9cf" :title "Bobby"}
+                                           :Dobbs {:color "#a7cf7b" :title "Dobby"}
+                                           :Robbs {:color "#34517d" :title "Robby"}
+                                           :Mobbs {:color "#e0be40" :title "Mobby"}}}})))))))
 
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
@@ -591,11 +593,11 @@
                   :display_name  "NumPurchased",
                   :base_type     :type/Integer
                   :semantic_type nil}]
-        render  (fn [rows]
+        render  (fn [rows & [viz-settings]]
                   (body/render :categorical/donut :inline pacific-tz
                                render.tu/test-card
                                nil
-                               {:cols columns :rows rows}))
+                               {:cols columns :rows rows :viz-settings viz-settings}))
         prune   (fn prune [html-tree]
                   (walk/prewalk (fn no-maps [x]
                                   (if (vector? x)
@@ -603,7 +605,7 @@
                                     x))
                                 html-tree))]
     (testing "Renders without error"
-      (let [rendered-info (render [["Doohickey" 75] ["Widget" 25]])]
+      (let [rendered-info (render [["Doohickey" 75] ["Widget" 25]] {:show_values true})]
         (is (has-inline-image? rendered-info))))
     (testing "Includes percentages"
       (is (= [:div
@@ -655,6 +657,26 @@
     " "  "1,234,543 21%"
     nil  "1,234,543.21%"
     ""   "1,234,543.21%"))
+
+(deftest reasonable-split-axes-test
+  (let [rows        [["Category" "Series A" "Series B"]
+                     ["A"        1          1.3]
+                     ["B"        2          1.9]
+                     ["C"        3          4  ]]
+        axes-split? (fn [rows]
+                      (let [text (-> rows first last)]
+                        ;; there is always 1 node with the series name in the legend
+                        ;; so we see if the series name shows up a second time, which will
+                        ;; be the axis label, indicating that there is indeed a split
+                        (< 1 (-> rows
+                                 (render.tu/make-viz-data :bar {})
+                                 :viz-tree
+                                 (render.tu/nodes-with-text text)
+                                 count))))]
+    (testing "Multiple series with close values does not split y-axis."
+      (is (not (axes-split? rows))))
+    (testing "Multiple series with far values does split y-axis."
+      (is (axes-split? (conj rows ["D" 3 70]))))))
 
 (deftest ^:parallel x-and-y-axis-label-info-test
   (let [x-col {:display_name "X col"}

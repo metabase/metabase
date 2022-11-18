@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
-import { isVirtualCardId } from "metabase-lib/lib/metadata/utils/saved-questions";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
 import { WidthBoundTableInfo } from "./TableInfoPopover.styled";
 

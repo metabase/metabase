@@ -1,8 +1,32 @@
+export interface FormattingSettings {
+  "type/Temporal"?: DateFormattingSettings;
+  "type/Number"?: NumberFormattingSettings;
+  "type/Currency"?: CurrencyFormattingSettings;
+}
+
+export interface DateFormattingSettings {
+  date_style?: string;
+  date_separator?: string;
+  date_abbreviate?: boolean;
+  time_style?: string;
+}
+
+export interface NumberFormattingSettings {
+  number_separators?: string;
+}
+
+export interface CurrencyFormattingSettings {
+  currency?: string;
+  currency_style?: string;
+  currency_in_header?: boolean;
+}
+
 export interface Engine {
   "driver-name": string;
   "superseded-by": string | undefined;
   source: EngineSource;
 }
+
 export interface EngineSource {
   type?: "official" | "community" | "partner";
   contact?: EngineSourceContact;
@@ -34,35 +58,64 @@ export type LoadingMessage =
 
 export type TokenStatusStatus = "unpaid" | "past-due" | string;
 
-export type TokenStatus = {
+export interface TokenStatus {
   status?: TokenStatusStatus;
-};
+}
+
+export interface TokenFeatures {
+  advanced_config: boolean;
+  advanced_permissions: boolean;
+  audit_app: boolean;
+  content_management: boolean;
+  embedding: boolean;
+  hosting: boolean;
+  sandboxes: boolean;
+  sso: boolean;
+  whitelabel: boolean;
+}
+
+export interface SettingDefinition {
+  key: string;
+  env_name: string;
+  is_env_setting: boolean;
+}
 
 export interface Settings {
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "available-fonts": string[];
-  "available-locales": LocaleData[] | undefined;
+  "available-locales": LocaleData[] | null;
+  "custom-formatting": FormattingSettings;
+  "deprecation-notice-version": string | undefined;
+  "email-configured?": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
-  "email-configured?": boolean;
-  engines: Record<string, Engine>;
-  "is-hosted?": boolean;
+  "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-client-id": string | null;
-  "deprecation-notice-version": string | undefined;
+  "google-auth-configured": boolean;
+  "google-auth-enabled": boolean;
+  "is-hosted?": boolean;
+  "jwt-enabled"?: boolean;
+  "jwt-configured"?: boolean;
+  "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
-  "site-locale": string;
+  "saml-configured"?: boolean;
+  "saml-enabled"?: boolean;
+  "session-cookies": boolean | null;
   "show-database-syncing-modal": boolean;
   "show-homepage-data": boolean;
-  "show-homepage-xrays": boolean;
   "show-homepage-pin-message": boolean;
+  "show-homepage-xrays": boolean;
   "show-lighthouse-illustration": boolean;
   "show-metabot": boolean;
-  "token-status": TokenStatus | undefined;
-  "slack-token": string | undefined;
+  "site-locale": string;
+  "slack-app-token": string | null;
+  "slack-files-channel": string | null;
+  "slack-token": string | null;
   "slack-token-valid?": boolean;
-  "slack-app-token": string | undefined;
-  "slack-files-channel": string | undefined;
+  "token-features": TokenFeatures;
+  "token-status": TokenStatus | null;
+  engines: Record<string, Engine>;
   version: Version;
 }

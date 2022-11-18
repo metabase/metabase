@@ -3,7 +3,7 @@ import React from "react";
 import {
   quickFilterDrill,
   quickFilterDrillQuestion,
-} from "metabase-lib/lib/queries/drills/quick-filter-drill";
+} from "metabase-lib/queries/drills/quick-filter-drill";
 
 export default function QuickFilterDrill({ question, clicked }) {
   const drill = quickFilterDrill({ question, clicked });

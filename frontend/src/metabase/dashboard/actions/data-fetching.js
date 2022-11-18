@@ -24,8 +24,8 @@ import {
 } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getParameterValuesBySlug } from "metabase-lib/lib/parameters/utils/parameter-values";
-import { applyParameters } from "metabase-lib/lib/queries/utils/card";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+import { applyParameters } from "metabase-lib/queries/utils/card";
 import {
   getDashboardComplete,
   getParameterValues,

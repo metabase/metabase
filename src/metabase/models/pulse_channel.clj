@@ -198,7 +198,7 @@
 
 (defmethod serdes.hash/identity-hash-fields PulseChannel
   [_pulse-channel]
-  [(serdes.hash/hydrated-hash :pulse) :channel_type :details])
+  [(serdes.hash/hydrated-hash :pulse) :channel_type :details :created_at])
 
 (defn will-delete-recipient
   "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is
@@ -376,7 +376,10 @@
       (update :pulse_id serdes.util/import-fk 'Pulse)))
 
 (defn- import-recipients [channel-id emails]
-  (let [incoming-users (db/select-ids 'User :email [:in emails])
+  (let [incoming-users (set (for [email emails
+                                  :let [id (db/select-one-id 'User :email email)]]
+                              (or id
+                                  (:id (user/serdes-synthesize-user! {:email email})))))
         current-users  (set (db/select-field :user_id PulseChannelRecipient :pulse_channel_id channel-id))
         combined       (set/union incoming-users current-users)]
     (when-not (empty? combined)
@@ -385,14 +388,15 @@
 ;; Customized load-insert! and load-update! to handle the embedded recipients field - it's really a separate table.
 (defmethod serdes.base/load-insert! "PulseChannel" [_ ingested]
   (let [;; Call through to the default load-insert!
-        id ((get-method serdes.base/load-insert! "") "PulseChannel" (dissoc ingested :recipients))]
-    (import-recipients id (:recipients ingested))))
+        chan ((get-method serdes.base/load-insert! "") "PulseChannel" (dissoc ingested :recipients))]
+    (import-recipients (:id chan) (:recipients ingested))
+    chan))
 
 (defmethod serdes.base/load-update! "PulseChannel" [_ ingested local]
   ;; Call through to the default load-update!
-  ((get-method serdes.base/load-update! "") "PulseChannel" (dissoc ingested :recipients) local)
-  (import-recipients (:id local) (:recipients ingested))
-  (:id local))
+  (let [chan ((get-method serdes.base/load-update! "") "PulseChannel" (dissoc ingested :recipients) local)]
+    (import-recipients (:id local) (:recipients ingested))
+    chan))
 
 ;; Depends on the Pulse.
 (defmethod serdes.base/serdes-dependencies "PulseChannel" [{:keys [pulse_id]}]

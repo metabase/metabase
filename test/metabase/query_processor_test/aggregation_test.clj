@@ -250,7 +250,7 @@
   (testing "Does `:settings` show up for aggregate Fields?"
     (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
       (let [results (mt/run-mbql-query venues
-                      {:aggregation [[:sum [:field-id $price]]]})]
+                      {:aggregation [[:sum $price]]})]
         (is (= (assoc (qp.test/aggregate-col :sum :venues :price)
                       :settings {:is_priceless false})
                (or (-> results mt/cols first)

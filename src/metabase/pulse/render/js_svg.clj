@@ -134,26 +134,27 @@
   Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
   [series settings]
-  (let [svg-string (.asString (js/execute-fn-name (context)
-                                                  "combo_chart"
-                                                  (json/generate-string series)
-                                                  (json/generate-string settings)
-                                                  (json/generate-string (:colors settings))))]
-    (svg-string->bytes svg-string)))
+  (svg-string->bytes
+   (.asString (js/execute-fn-name (context)
+                                  "combo_chart"
+                                  (json/generate-string series)
+                                  (json/generate-string settings)
+                                  (json/generate-string (:colors settings))))))
 
 (defn row-chart
   "Clojure entrypoint to render a row chart."
   [settings data]
   (let [svg-string (.asString (js/execute-fn-name (context) "row_chart"
                                                   (json/generate-string settings)
-                                                  (json/generate-string data)))]
+                                                  (json/generate-string data)
+                                                  (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"
-  [rows colors]
-  (let [svg-string (.asString (js/execute-fn-name (context) "categorical_donut" rows (seq colors)))]
+  [rows colors settings]
+  (let [svg-string (.asString (js/execute-fn-name (context) "categorical_donut" rows (seq colors) (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
 (defn gauge

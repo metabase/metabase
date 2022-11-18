@@ -1,4 +1,3 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
 
 import {
@@ -9,8 +8,9 @@ import {
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
-import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
+import FormikForm from "metabase/containers/FormikForm";
+import GoogleAuthCard from "metabase/admin/settings/auth/containers/GoogleAuthCard";
+import GoogleSettingsForm from "metabase/admin/settings/auth/containers/GoogleAuthForm";
 
 PLUGIN_AUTH_PROVIDERS.push(providers => {
   const googleProvider = {
@@ -30,13 +30,8 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
     {
       key: "google-auth-enabled",
       description: null,
-      widget: AuthenticationWidget,
-      getProps: (setting, settings) => ({
-        authType: "google",
-        authName: t`Sign in with Google`,
-        authDescription: t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`,
-        authConfigured: Boolean(settings["google-auth-client-id"]),
-      }),
+      noHeader: true,
+      widget: GoogleAuthCard,
     },
   ]),
 );
@@ -44,19 +39,10 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
-    component: SettingsGoogleForm,
+    component: GoogleSettingsForm ?? FormikForm,
     settings: [
-      {
-        key: "google-auth-client-id",
-        required: true,
-        autoFocus: true,
-      },
-      {
-        key: "google-auth-auto-create-accounts-domain",
-        description:
-          "Allow users to sign up on their own if their Google account email address is from:",
-        placeholder: "mycompany.com",
-      },
+      { key: "google-auth-client-id" },
+      { key: "google-auth-auto-create-accounts-domain" },
     ],
   },
 }));

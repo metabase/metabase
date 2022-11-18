@@ -48,7 +48,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Segment
   [_segment]
-  [:name (serdes.hash/hydrated-hash :table)])
+  [:name (serdes.hash/hydrated-hash :table) :created_at])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -76,25 +76,19 @@
 
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
-
-(defmethod serdes.base/serdes-generate-path "Segment"
-  [_ segment]
-  [(assoc (serdes.base/infer-self-path "Segment" segment)
-          :label (:name segment))])
-
 (defmethod serdes.base/extract-one "Segment"
   [_model-name _opts segment]
   (-> (serdes.base/extract-one-basics "Segment" segment)
       (update :table_id   serdes.util/export-table-fk)
       (update :creator_id serdes.util/export-user)
-      (update :definition serdes.util/export-json-mbql)))
+      (update :definition serdes.util/export-mbql)))
 
 (defmethod serdes.base/load-xform "Segment" [segment]
   (-> segment
       serdes.base/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
       (update :creator_id serdes.util/import-user)
-      (update :definition serdes.util/import-json-mbql)))
+      (update :definition serdes.util/import-mbql)))
 
 (defmethod serdes.base/serdes-dependencies "Segment" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes.util/table->path table_id)}

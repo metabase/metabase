@@ -7,7 +7,8 @@
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import java.time.LocalDateTime))
 
 (def ^:private metric-defaults
   {:description             nil
@@ -136,9 +137,10 @@
 
 (deftest identity-hash-test
   (testing "Metric hashes are composed of the metric name and table identity-hash"
-    (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
-                    Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                    Metric   [metric {:name "measurement" :table_id (:id table)}]]
-      (is (= "8fb4650a"
-             (serdes.hash/raw-hash ["measurement" (serdes.hash/identity-hash table)])
-             (serdes.hash/identity-hash metric))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
+                      Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                      Metric   [metric {:name "measurement" :table_id (:id table) :created_at now}]]
+        (is (= "a2318866"
+               (serdes.hash/raw-hash ["measurement" (serdes.hash/identity-hash table) now])
+               (serdes.hash/identity-hash metric)))))))

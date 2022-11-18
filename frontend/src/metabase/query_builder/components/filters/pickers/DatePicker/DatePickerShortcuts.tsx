@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import { Filter as FilterExpression } from "metabase-types/types/Query";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 import { ShortcutButton, Separator } from "./DatePickerShortcuts.styled";
 import {

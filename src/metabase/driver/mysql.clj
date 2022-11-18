@@ -21,12 +21,13 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs]])
+            [metabase.util.i18n :refer [deferred-tru trs tru]])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
@@ -51,6 +52,10 @@
 (defmethod driver/database-supports? [:mysql :persist-models-enabled]
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
+
+(defmethod driver/database-supports? [:mysql :datetime-diff]
+  [_driver _feature _db]
+  true)
 
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
@@ -225,11 +230,14 @@
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
 
-
 (defmethod sql.qp/->float :mysql
   [_ value]
   ;; no-op as MySQL doesn't support cast to float
   value)
+
+(defmethod sql.qp/->integer :mysql
+  [_ value]
+  (hx/maybe-cast :signed value))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
@@ -327,6 +335,8 @@
                                                   (hx/literal " Sunday"))))]
     (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)))
 
+(defmethod sql.qp/date [:mysql :week-of-year-iso] [_ _ expr] (hx/week expr 3))
+
 (defmethod sql.qp/date [:mysql :month] [_ _ expr]
   (str-to-date "%Y-%m-%d"
                (hx/concat (date-format "%Y-%m" expr)
@@ -343,6 +353,35 @@
                                 2)
                           (hx/literal "-01"))))
 
+(defmethod sql.qp/->honeysql [:mysql :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [v]
+                            (when-let [db-type (some-> v hx/type-info hx/type-info->db-type str/upper-case keyword)]
+                              (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
+                                (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
+                                  (name db-type)))))
+                          [x y])]
+    (when (seq disallowed-types)
+      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                           (pr-str disallowed-types))
+                      {:found disallowed-types
+                       :type  qp.error-type/invalid-query})))
+    (case unit
+      (:year :month)
+      (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))
+
+      :week
+      (let [positive-diff (fn [a b] (hx/floor (hx// (hsql/call :datediff b a) 7)))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :day
+      (hsql/call :datediff y x)
+
+      (:hour :minute :second)
+      (hsql/call :timestampdiff (hsql/raw (name unit)) x y))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

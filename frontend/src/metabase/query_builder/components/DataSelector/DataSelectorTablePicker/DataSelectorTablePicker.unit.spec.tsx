@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { createMockTable } from "metabase-types/api/mocks/table";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Table from "metabase-lib/metadata/Table";
 import DataSelectorTablePicker from "./DataSelectorTablePicker";
 
 const database = createMockDatabase();

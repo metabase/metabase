@@ -12,6 +12,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase.models.interface :as mi]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -69,7 +70,8 @@
   against existing entities.
 
   The default implementation is a single level, using the model name provided and the ID from either
-  [[serdes-entity-id]] or [[serdes.hash/identity-hash]].
+  [[serdes-entity-id]] or [[serdes.hash/identity-hash]], and any `:name` field as the `:label`.
+  This default implementation is factored out as [[maybe-labeled]] for reuse.
 
   Implementation notes:
   - `:serdes/meta` might be defined - if so it's coming from ingestion and might have truncated values in it, and should
@@ -98,9 +100,22 @@
                 (throw (ex-info "Could not infer-self-path on this entity - maybe implement serdes-entity-id ?"
                                 {:model model-name :entity entity})))}))
 
+(defn maybe-labeled
+  "Common helper for defining [[serdes-generate-path]] for an entity that is
+  (1) top-level, ie. a one layer path;
+  (2) labeled by a single field, slugified.
+
+  For example, a Card's or Dashboard's `:name` field."
+  [model-name entity slug-key]
+  (let [self  (infer-self-path model-name entity)
+        label (get entity slug-key)]
+    [(if label
+       (assoc self :label (u/slugify label {:unicode? true}))
+       self)]))
+
 (defmethod serdes-generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for nested ones.
-  [(infer-self-path model-name entity)])
+  (maybe-labeled model-name entity :name))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Serialization Process                                                 |
@@ -166,20 +181,11 @@
 
   Keyed on the model name, the first argument.
 
-  Returns a reducible stream of maps with `:serdes/meta` keys on them. It should *not* be a stream of Toucan entities,
-  but vanilla Clojure maps.
+  Returns a reducible stream of modeled Toucan maps.
 
-  In fact, Toucan's high-level niceties (eg. expanding JSON-encoded fields to Clojure data, decrypting, type
-  conversions, or hydrating some relationship by default) are counterproductive when our goal is a database-level
-  export. As a specific example, [[db/simple-select]] expands JSON but [[db/simple-insert!]] doesn't put it back.
-  There's also no `simple-update!`, making a fresh insert diverge from an update.
+  Defaults to using `(toucan.db/select model)` for the entire table.
 
-  Defaults to using the helper `(raw-reducible-query model)` for the entire table, which is equivalent to
-  `(db/simple-select-reducible model)` but without running post-select handlers. This returns vanilla maps, not
-  [[db/IModel]] instances.
-
-  You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized. Prefer using
-  the two-argument form of [[raw-reducible-query]]."
+  You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized."
   (fn [model _] model))
 
 (defmulti extract-one
@@ -205,27 +211,8 @@
   (eduction (map (partial extract-one model opts))
             (extract-query model opts)))
 
-(defn- model-name->table
-  "The model name is not necessarily the table name. This pulls the table name from the Toucan model."
-  [model-name]
-  (-> model-name
-      symbol
-      db/resolve-model
-      :table))
-
-(defn raw-reducible-query
-  "Helper for calling Toucan's raw [[db/reducible-query]]. With just the model name, fetches everything. You can filter
-  with a HoneySQL map like `{:where [:= :archived true]}`.
-
-  Returns a reducible stream of JDBC row maps."
-  ([model-name]
-   (raw-reducible-query model-name nil))
-  ([model-name honeysql-form]
-   (db/reducible-query (merge {:select [:*] :from [(model-name->table model-name)]}
-                              honeysql-form))))
-
 (defmethod extract-query :default [model-name _]
-  (raw-reducible-query model-name))
+  (db/select-reducible (symbol model-name)))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
@@ -238,9 +225,9 @@
   [model-name entity]
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
-    (-> entity
-      (assoc :serdes/meta (serdes-generate-path model-name entity))
-      (dissoc pk :updated_at))))
+    (-> (into {} entity)
+        (assoc :serdes/meta (serdes-generate-path model-name entity))
+        (dissoc pk :updated_at))))
 
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))
@@ -276,7 +263,7 @@
 ;;;       collection's ancestors before the collection itself.
 ;;;     - Dependencies are loaded recursively in postorder; circular dependencies cause the process to throw.
 ;;; - Having found an entity it can really load, check for any existing one:
-;;;     - `(load-find-local path)` returns the corresponding primary key, or nil.
+;;;     - `(load-find-local path)` returns the corresponding entity, or nil.
 ;;; - Then it calls `(load-one! ingested maybe-local-entity)`, passing the `ingested` value and either `nil` or the
 ;;;       Toucan entity corresponding to the incoming map.
 ;;;     - `load-one!` is a side-effecting black box to the rest of the deserialization process.
@@ -292,7 +279,6 @@
 ;;;     - `(load-update! ingested local-entity)` if the local entity exists, or
 ;;;     - `(load-insert! ingested)` if the entity is new.
 ;;;   Both of these have the obvious defaults of [[jdbc/update!]] or [[jdbc/insert!]].
-
 (defn- ingested-model
   "The dispatch function for several of the load multimethods: dispatching on the model of the incoming entity."
   [ingested]
@@ -307,7 +293,7 @@
 (defmulti load-find-local
   "Given a path, tries to look up any corresponding local entity.
 
-  Returns nil, or the primary key of the local entity.
+  Returns nil, or the local Toucan entity that corresponds to the given path.
   Keyed on the model name at the leaf of the path.
 
   By default, this tries to look up the entity by its `:entity_id` column, or identity hash, depending on the shape of
@@ -321,11 +307,9 @@
 
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
-        model                      (db/resolve-model (symbol model-name))
-        pk                         (models/primary-key model)]
-    (some-> model
-            (lookup-by-id id)
-            (get pk))))
+        model                      (db/resolve-model (symbol model-name))]
+    (when model
+      (lookup-by-id model id))))
 
 (defmulti serdes-dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
@@ -341,7 +325,7 @@
 
 (defmulti load-xform
   "Given the incoming vanilla map as ingested, transform it so it's suitable for sending to the database (in eg.
-  [[db/simple-insert!]]).
+  [[db/insert!]]).
   For example, this should convert any foreign keys back from a portable entity ID or identity hash into a numeric
   database ID. This is the mirror of [[extract-one]], in spirit. (They're not strictly inverses - [[extract-one]] drops
   the primary key but this need not put one back, for example.)
@@ -372,49 +356,36 @@
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
-  Returns the primary key of the updated entity."
+  Returns the updated entity."
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
 (defmethod load-update! :default [model-name ingested local]
   (let [model    (db/resolve-model (symbol model-name))
         pk       (models/primary-key model)
-        id       (get local pk)
-        adjusted (if (-> model models/properties :timestamped?)
-                   (assoc ingested :updated_at (mi/now))
-                   ingested)]
+        id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
-    ;; Using the two-argument form of [[db/update!]] that takes the model and a HoneySQL form for the actual update.
-    ;; It works differently from the more typical `(db/update! 'Model id updates...)` form: this form doesn't run any of
-    ;; the pre-update magic, it just updates the database directly.
-    ;; Therefore we manually set the :updated_at time.
-    (db/update! model {:where [:= pk id] :set adjusted})
-    id))
+    (db/update! model id ingested)
+    (db/select-one model pk id)))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
   `(load-insert! \"ModelName\" ingested-and-xformed)`
 
-  Defaults to a straightforward [[db/simple-insert!]], and you probably don't need to implement this.
-  Note that [[db/insert!]] should be avoided - we don't want to populate the `:entity_id` field if it wasn't already
-  set!
+  Defaults to a straightforward [[db/insert!]], and you probably don't need to implement this.
+
+  Note that any [[db/insert!]] behavior we don't want to run (like generating an `:entity_id`!) should be skipped based
+  on the [[mi/*deserializing?*]] dynamic var.
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
-  Returns the primary key of the newly inserted entity."
+  Returns the newly inserted entity."
   {:arglists '([model ingested])}
   (fn [model _] model))
 
-(defmethod load-insert! :default [model ingested]
-  (log/tracef "Inserting %s: %s" model (pr-str ingested))
-  ; Toucan's simple-insert! actually does the right thing for our purposes: it doesn't call pre-insert or post-insert,
-  ; and it returns the new primary key.
-  (let [model    (db/resolve-model (symbol model))
-        adjusted (if (-> model models/properties :timestamped?)
-                   (let [now (mi/now)]
-                     (assoc ingested :created_at now :updated_at now))
-                   ingested)]
-    (db/simple-insert! model adjusted)))
+(defmethod load-insert! :default [model-name ingested]
+  (log/tracef "Inserting %s: %s" model-name (pr-str ingested))
+  (db/insert! (symbol model-name) ingested))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -434,13 +405,13 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
-(defmethod load-one! :default [ingested maybe-local-id]
+(defmethod load-one! :default [ingested maybe-local]
   (let [model    (ingested-model ingested)
-        pkey     (models/primary-key (db/resolve-model (symbol model)))
         adjusted (load-xform ingested)]
-    (if (nil? maybe-local-id)
-      (load-insert! model adjusted)
-      (load-update! model adjusted (db/select-one (symbol model) pkey maybe-local-id)))))
+    (binding [mi/*deserializing?* true]
+      (if (nil? maybe-local)
+        (load-insert! model adjusted)
+        (load-update! model adjusted maybe-local)))))
 
 (defmulti serdes-descendants
   "Captures the notion that eg. a dashboard \"contains\" its cards.
