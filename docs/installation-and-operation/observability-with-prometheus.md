@@ -4,15 +4,27 @@ title: observability-with-prometheus
 
 # Observability with Prometheus
 
-You can export Prometheus stats from your Metabase. 
+You can export [Prometheus](https://prometheus.io/) stats from your Metabase.
 
-## Running Prometheus locally
+## Running Metabase and Prometheus locally
 
-Assuming you have a [Metabase JAR](https://www.metabase.com/start/oss/). 
+To give you an idea of how Metabase and Prometheus would work in your production environment, we'll walk through how to set up Metabase and Prometheus locally. 
+
+### Start up Metabase with `MB_PROMETHEUS_SERVER_PORT`
+
+Download the latest [Metabase JAR](https://www.metabase.com/start/oss/), and run Metabase using an environment variable to specify the Prometheus server port:
 
 ```
-MB_PROMETHEUS_SERVER_PORT=9191 java -jar downloaded.jar
+MB_PROMETHEUS_SERVER_PORT=9191 java -jar metabase.jar
 ```
+
+The `MB_PROMETHEUS_SERVER_PORT=9191` specifies which port (`9191`) Metabase will use to send data to Prometheus. To clarify the ports that will be involved here:
+
+- Port `3000` is the port Metabase uses to serve the Metabase app. You can set another port with `MB_JETTY_PORT` (e.g., `MB_JETTY_PORT=3001`).
+- Port `9191` (or whichever port you specified with the `MB_PROMETHEUS_SERVER_PORT` environment variable) is the port Metabase uses to send metrics to Prometheus.
+- Port `9090` is the port Prometheus uses to serve the Prometheus application.
+
+When you start Metabase, the Metabase logs will tell you that Metabase is starting the `prometheus metrics collector` and `prometheus metrics web-server`.
 
 ```
 (truncated logs)
@@ -23,29 +35,15 @@ MB_PROMETHEUS_SERVER_PORT=9191 java -jar downloaded.jar
 (truncated logs)
 ```
 
-## Sample output
+You can view your locally running Metabase at [http://localhost:3000](http://localhost:3000).
 
-```
-'# HELP jvm_threads_current Current thread count of a JVM
-'# TYPE jvm_threads_current gauge
-jvm_threads_current 81.0
-'# HELP jvm_threads_daemon Daemon thread count of a JVM
-'# TYPE jvm_threads_daemon gauge
-jvm_threads_daemon 36.0
-'# HELP jvm_threads_peak Peak thread count of a JVM
-'# TYPE jvm_threads_peak gauge
-jvm_threads_peak 81.0
-'# HELP jvm_threads_started_total Started thread count of a JVM
-'# TYPE jvm_threads_started_total counter
-jvm_threads_started_total 104.0
-'# HELP jvm_threads_deadlocked Cycles of JVM-threads that are in deadlock waiting to acquire object monitors or ownable synchronizers
-'# TYPE jvm_threads_deadlocked gauge
-jvm_threads_deadlocked 0.0
+### Download and configure Prometheus
 
-```
+[Download Prometheus](https://prometheus.io/download), and extract the files.
 
+Change into the Prometheus directory, add the following YAML file to configure your Prometheus:
 
-### Prometheus configuration file example
+#### Prometheus configuration file example
 
 ```
 global:
@@ -69,10 +67,43 @@ scrape_configs:
       - targets: ['localhost:9191']
 ```
 
+### Running Prometheus Locally
 
-## Exported data
+In a new terminal process in the Prometheus directory, run:
 
-Here are the common metric types from the registry:
+```
+./prometheus --config.file=prometheus.yml
+```
+
+Then check [http://localhost:9090](http://localhost:9090). You should see the Prometheus app, and be able to search for various metrics emitted by Metabase.
+
+![Prometheus page showing `jvm_thread_state` graph](./prometheus.png)
+
+## Sample metrics output
+
+Here is some sample output from Metabase:
+
+```
+'# HELP jvm_threads_current Current thread count of a JVM
+'# TYPE jvm_threads_current gauge
+jvm_threads_current 81.0
+'# HELP jvm_threads_daemon Daemon thread count of a JVM
+'# TYPE jvm_threads_daemon gauge
+jvm_threads_daemon 36.0
+'# HELP jvm_threads_peak Peak thread count of a JVM
+'# TYPE jvm_threads_peak gauge
+jvm_threads_peak 81.0
+'# HELP jvm_threads_started_total Started thread count of a JVM
+'# TYPE jvm_threads_started_total counter
+jvm_threads_started_total 104.0
+'# HELP jvm_threads_deadlocked Cycles of JVM-threads that are in deadlock waiting to acquire object monitors or ownable synchronizers
+'# TYPE jvm_threads_deadlocked gauge
+jvm_threads_deadlocked 0.0
+```
+
+## Exported metrics
+
+Metrics exported by Metabase include:
 
 - `c3p0_max_pool_size`
 - `c3p0_min_pool_size`
@@ -123,3 +154,5 @@ Here are the common metric types from the registry:
 - `process_max_fds`
 - `process_open_fds`
 - `process_start_time_seconds`
+
+
