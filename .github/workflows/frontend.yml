@@ -8,7 +8,7 @@ on:
     paths-ignore:
       - "docs/**"
       - "**.md"
-      - "**.cljc?"
+      - "**.clj*"
       - "**.edn"
       - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
       - "frontend/test/__support__/e2e/**"
@@ -17,7 +17,7 @@ on:
     paths-ignore:
       - "docs/**"
       - "**.md"
-      - "**.cljc?"
+      - "**.clj*"
       - "**.edn"
       - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
       - "frontend/test/__support__/e2e/**"

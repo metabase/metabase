@@ -11,7 +11,7 @@ on:
     paths:
       - "docs/**"
       - "**.md"
-      - "**.cljc?"
+      - "**.clj*"
       - "**.edn"
       - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
       - "frontend/test/__support__/e2e/**"
@@ -20,7 +20,7 @@ on:
     paths:
       - "docs/**"
       - "**.md"
-      - "**.cljc?"
+      - "**.clj*"
       - "**.edn"
       - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
       - "frontend/test/__support__/e2e/**"
