@@ -1,5 +1,5 @@
 import React from "react";
-import { ComponentStory } from "@storybook/react";
+import type { ComponentStory } from "@storybook/react";
 
 import Icon from "../Icon";
 import { TokenFieldItem, TokenFieldAddon } from "./TokenFieldItem.styled";

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ComponentStory } from "@storybook/react";
+import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 import ColorInput from "./ColorInput";
 
