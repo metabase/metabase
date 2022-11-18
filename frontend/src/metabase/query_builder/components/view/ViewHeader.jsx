@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState, useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -16,6 +16,8 @@ import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
+
+import DataApps from "metabase/entities/data-apps";
 
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
@@ -56,6 +58,8 @@ const viewTitleHeaderPropTypes = {
 
   result: PropTypes.object,
 
+  location: PropTypes.object.isRequired,
+
   isDirty: PropTypes.bool,
   isRunnable: PropTypes.bool,
   isRunning: PropTypes.bool,
@@ -81,7 +85,8 @@ const viewTitleHeaderPropTypes = {
 };
 
 export function ViewTitleHeader(props) {
-  const { question, className, style, isNavBarOpen, updateQuestion } = props;
+  const { question, location, className, style, isNavBarOpen, updateQuestion } =
+    props;
 
   const [
     areFiltersExpanded,
@@ -111,6 +116,11 @@ export function ViewTitleHeader(props) {
   const isSummarized =
     isStructured && question.query().topLevelQuery().hasAggregations();
 
+  const fromUrl = location.query["from"];
+  const hasValidFromUrl =
+    // At the moment, only data app paths are expected
+    typeof fromUrl === "string" && Urls.isDataAppPath(fromUrl);
+
   const onQueryChange = useCallback(
     newQuery => {
       updateQuestion(newQuery.question(), { run: true });
@@ -127,12 +137,16 @@ export function ViewTitleHeader(props) {
         isNavBarOpen={isNavBarOpen}
       >
         {isSaved ? (
-          <SavedQuestionLeftSide {...props} />
+          <SavedQuestionLeftSide
+            {...props}
+            fromUrl={hasValidFromUrl ? fromUrl : null}
+          />
         ) : (
           <AhHocQuestionLeftSide
             {...props}
             isNative={isNative}
             isSummarized={isSummarized}
+            fromUrl={hasValidFromUrl ? fromUrl : null}
           />
         )}
         <ViewTitleHeaderRightSide
@@ -161,6 +175,7 @@ export function ViewTitleHeader(props) {
 
 SavedQuestionLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
+  fromUrl: PropTypes.string,
   isObjectDetail: PropTypes.bool,
   isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
@@ -171,6 +186,7 @@ SavedQuestionLeftSide.propTypes = {
 function SavedQuestionLeftSide(props) {
   const {
     question,
+    fromUrl,
     isObjectDetail,
     isAdditionalInfoVisible,
     onOpenQuestionInfo,
@@ -179,6 +195,9 @@ function SavedQuestionLeftSide(props) {
 
   const [showSubHeader, setShowSubHeader] = useState(true);
 
+  const hasLastEditInfo = question.lastEditInfo() != null;
+  const isDataset = question.isDataset();
+
   useOnMount(() => {
     const timerId = setTimeout(() => {
       setShowSubHeader(false);
@@ -186,8 +205,22 @@ function SavedQuestionLeftSide(props) {
     return () => clearTimeout(timerId);
   });
 
-  const hasLastEditInfo = question.lastEditInfo() != null;
-  const isDataset = question.isDataset();
+  const breadcrumbs = useMemo(() => {
+    const list = [];
+    if (fromUrl) {
+      list.push(<DataAppBackButton key="back-to-data-app" url={fromUrl} />);
+    } else if (isAdditionalInfoVisible && question.isDataset()) {
+      list.push(<DatasetCollectionBadge key="collection" dataset={question} />);
+    }
+    list.push(
+      <SavedQuestionHeaderButton
+        key="question-name"
+        question={question}
+        onSave={onHeaderChange}
+      />,
+    );
+    return list;
+  }, [question, fromUrl, isAdditionalInfoVisible, onHeaderChange]);
 
   const onHeaderChange = useCallback(
     name => {
@@ -207,22 +240,7 @@ function SavedQuestionLeftSide(props) {
         <SavedQuestionHeaderButtonContainer isDataset={isDataset}>
           <HeadBreadcrumbs
             divider={<HeaderDivider>/</HeaderDivider>}
-            parts={[
-              ...(isAdditionalInfoVisible && isDataset
-                ? [
-                    <DatasetCollectionBadge
-                      key="collection"
-                      dataset={question}
-                    />,
-                  ]
-                : []),
-
-              <SavedQuestionHeaderButton
-                key={question.displayName()}
-                question={question}
-                onSave={onHeaderChange}
-              />,
-            ]}
+            parts={breadcrumbs}
           />
         </SavedQuestionHeaderButtonContainer>
       </ViewHeaderMainLeftContentContainer>
@@ -249,6 +267,7 @@ function SavedQuestionLeftSide(props) {
 
 AhHocQuestionLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
+  fromUrl: PropTypes.string,
   originalQuestion: PropTypes.object,
   isNative: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
@@ -259,6 +278,7 @@ AhHocQuestionLeftSide.propTypes = {
 function AhHocQuestionLeftSide(props) {
   const {
     question,
+    fromUrl,
     originalQuestion,
     isNative,
     isObjectDetail,
@@ -266,28 +286,54 @@ function AhHocQuestionLeftSide(props) {
     onOpenModal,
   } = props;
 
-  const handleTitleClick = () => {
+  const handleTitleClick = useCallback(() => {
     const query = question.query();
     if (!query.readOnly()) {
       onOpenModal(MODAL_TYPES.SAVE);
     }
-  };
+  }, [question, onOpenModal]);
+
+  const renderTitle = useCallback(() => {
+    if (isNative) {
+      return t`New question`;
+    }
+    if (fromUrl) {
+      return (
+        <HeadBreadcrumbs
+          divider={<HeaderDivider>/</HeaderDivider>}
+          parts={[
+            <DataAppBackButton key="back-to-data-app" url={fromUrl} />,
+            <SavedQuestionHeaderButton
+              key="question-name"
+              question={originalQuestion}
+              isRenamingDisabled
+            />,
+          ]}
+        />
+      );
+    }
+    return (
+      <QuestionDescription
+        question={question}
+        originalQuestion={originalQuestion}
+        isObjectDetail={isObjectDetail}
+        onClick={handleTitleClick}
+        fromUrl={fromUrl}
+      />
+    );
+  }, [
+    question,
+    originalQuestion,
+    isObjectDetail,
+    fromUrl,
+    isNative,
+    handleTitleClick,
+  ]);
 
   return (
     <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
-        <AdHocViewHeading color="medium">
-          {isNative ? (
-            t`New question`
-          ) : (
-            <QuestionDescription
-              question={question}
-              originalQuestion={originalQuestion}
-              isObjectDetail={isObjectDetail}
-              onClick={handleTitleClick}
-            />
-          )}
-        </AdHocViewHeading>
+        <AdHocViewHeading color="medium">{renderTitle()}</AdHocViewHeading>
       </ViewHeaderMainLeftContentContainer>
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
@@ -314,6 +360,30 @@ function DatasetCollectionBadge({ dataset }) {
     <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="model">
       {collection?.name || t`Our analytics`}
     </HeadBreadcrumbs.Badge>
+  );
+}
+
+DataAppBackButton.propTypes = {
+  url: PropTypes.func.isRequired,
+};
+
+function DataAppBackButton({ url }) {
+  return (
+    <DataApps.Loader
+      id={Urls.getDataAppIdFromPath(url)}
+      loadingAndErrorWrapper={false}
+    >
+      {({ dataApp }) => {
+        if (!dataApp) {
+          return null;
+        }
+        return (
+          <HeadBreadcrumbs.Badge to={url} icon="chevronleft">
+            {dataApp.collection.name}
+          </HeadBreadcrumbs.Badge>
+        );
+      }}
+    </DataApps.Loader>
   );
 }
 
