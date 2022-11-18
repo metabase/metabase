@@ -140,9 +140,13 @@ export const getCollectionId = createSelector(
 
 export const getIsCollectionPathVisible = createSelector(
   [getQuestion, getDashboard, getRouterPath],
-  (question, dashboard, path) =>
-    ((question != null && question.isSaved()) || dashboard != null) &&
-    PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
+  (question, dashboard, path) => {
+    const isDashboard = dashboard != null;
+    return (
+      (isDashboard || question?.isSaved()) &&
+      PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path))
+    );
+  },
 );
 
 export const getIsQuestionLineageVisible = createSelector(
