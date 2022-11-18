@@ -1,11 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import type {
-  DataApp,
-  DataAppNavItem,
-  DataAppPageId,
-} from "metabase-types/api";
+import type { DataApp, DataAppNavItem, DataAppPage } from "metabase-types/api";
 
 import type { MainNavbarProps, SelectedItem } from "../types";
 import type { DataAppNavbarMode } from "./types";
@@ -17,6 +13,7 @@ import { Root, NavItemsList } from "./DataAppNavbarView.styled";
 
 interface Props extends Omit<MainNavbarProps, "location" | "params"> {
   dataApp: DataApp;
+  selectedPage?: DataAppPage;
   pages: any[];
   selectedItems: SelectedItem[];
   mode: DataAppNavbarMode;
@@ -30,6 +27,7 @@ interface Props extends Omit<MainNavbarProps, "location" | "params"> {
 
 function DataAppNavbarView({
   dataApp,
+  selectedPage,
   pages,
   selectedItems,
   mode,
@@ -79,7 +77,7 @@ function DataAppNavbarView({
     [dataApp, pageMap, dataAppPage],
   );
 
-  const hasSelectedPage = !!dataAppPage?.id;
+  const hasSelectedPage = !!selectedPage;
 
   // Archiving last app page would lead a user into a weird app state
   // For now we'd just hide the action when there's only one top-level page left
@@ -91,6 +89,7 @@ function DataAppNavbarView({
       <NavItemsList>{navItems.map(renderNavItem)}</NavItemsList>
       <DataAppActionPanel
         dataApp={dataApp}
+        page={selectedPage}
         hasEditPageAction={hasSelectedPage}
         hasManageContentAction={mode !== "manage-content"}
         hasArchivePageAction={hasArchivePageAction}
