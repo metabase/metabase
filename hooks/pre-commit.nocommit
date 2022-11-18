@@ -11,11 +11,13 @@ fi
 # Redirect output to stderr.
 exec 1>&2
 
+DEFAULT_NO_COMMIT_RE='nocommit|testing-only'
+
 # Check user defined nocommit words
 if [ -z "$NOCOMMIT_RE" ]; then
-  RE="nocommit"
+  RE=$DEFAULT_NO_COMMIT_RE
 else
-  RE="nocommit|$NOCOMMIT_RE"
+  RE="$DEFAULT_NO_COMMIT_RE|$NOCOMMIT_RE"
 fi
 
 NOCOMMIT_FOUND=$(git diff --cached --diff-filter=ACM $against | egrep -i "$RE")

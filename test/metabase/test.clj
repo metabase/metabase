@@ -54,6 +54,7 @@
   ;; add a `testing-only` macro to clojure.core.testing
   ;; it's convienient for development to trick the test runner to
   ;; execute a single testing inside a deftest
+  ;; See #26600 for example of usage
   (test-plus/install!))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
