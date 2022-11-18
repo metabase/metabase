@@ -92,7 +92,7 @@
 
 (defmethod sql.qp/->honeysql [:hive-like :now]
   [_driver _clause]
-  (hsql/call :trunc :current_timestamp (hx/literal :second)))
+  (hsql/call :trunc (hsql/call :current_timestamp) (hx/literal :second)))
 
 (defmethod sql.qp/date [:hive-like :default]         [_ _ expr] (hx/->timestamp expr))
 (defmethod sql.qp/date [:hive-like :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (hx/->timestamp expr)))
