@@ -26,7 +26,7 @@ export type ActionParams = {
 
 const getAPIFn =
   (apifn: (args: any) => Promise<any>) =>
-  ({
+  async ({
     name,
     description,
     question,
@@ -44,7 +44,7 @@ const getAPIFn =
       parameters,
     );
 
-    return apifn({
+    const apiResponse = await apifn({
       ...question.card(),
       name,
       description,
@@ -54,6 +54,12 @@ const getAPIFn =
       visualization_settings: settings,
       collection_id,
     });
+
+    // because we write to the card api on change, we need to get an action object to
+    // cache on the client
+    const fetchedAction = await ActionsApi.get({ id: apiResponse.action_id });
+
+    return fetchedAction;
   };
 
 const createAction = getAPIFn(CardApi.create);
