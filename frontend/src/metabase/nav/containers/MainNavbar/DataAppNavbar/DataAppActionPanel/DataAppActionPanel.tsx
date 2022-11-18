@@ -7,13 +7,15 @@ import Tooltip from "metabase/components/Tooltip";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { DataApp } from "metabase-types/api";
+import type { DataApp, DataAppPage } from "metabase-types/api";
 
+import DataAppPageSharingControl from "./DataAppPageSharingControl";
 import NewButton from "./NewButton";
 import { Root, ActionsContainer } from "./DataAppActionPanel.styled";
 
 interface Props {
   dataApp: DataApp;
+  page?: DataAppPage;
   hasEditPageAction?: boolean;
   hasArchivePageAction?: boolean;
   hasManageContentAction?: boolean;
@@ -34,6 +36,7 @@ type MenuItem = {
 
 function DataAppActionPanel({
   dataApp,
+  page,
   hasEditPageAction = true,
   hasArchivePageAction = true,
   hasManageContentAction = true,
@@ -96,6 +99,7 @@ function DataAppActionPanel({
             <Button icon="pencil" onlyIcon onClick={onEditAppPage} />
           </Tooltip>
         )}
+        {page && <DataAppPageSharingControl page={page} />}
         <EntityMenu
           items={menuItems}
           triggerIcon="ellipsis"

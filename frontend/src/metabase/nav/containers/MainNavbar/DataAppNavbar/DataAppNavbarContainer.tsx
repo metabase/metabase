@@ -17,6 +17,7 @@ import DataApps, {
 import Search from "metabase/entities/search";
 
 import { setEditingDashboard as setEditingDataAppPage } from "metabase/dashboard/actions";
+import { getDashboardComplete } from "metabase/dashboard/selectors";
 
 import ArchiveDataAppModal from "metabase/writeback/containers/ArchiveDataAppModal";
 import ArchiveDataAppPageModal from "metabase/writeback/containers/ArchiveDataAppPageModal";
@@ -54,12 +55,17 @@ interface DataAppNavbarContainerOwnProps extends MainNavbarProps {
   pages: any[];
 }
 
+interface DataAppNavbarContainerStateProps {
+  page?: DataAppPage;
+}
+
 interface DataAppNavbarContainerDispatchProps {
   setEditingDataAppPage: (isEditing: boolean) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
 type DataAppNavbarContainerProps = DataAppNavbarContainerOwnProps &
+  DataAppNavbarContainerStateProps &
   DataAppNavbarContainerDispatchProps & {
     onReloadNavbar: () => Promise<void>;
   };
@@ -75,6 +81,17 @@ type SearchRenderProps = {
   reload: () => Promise<void>;
 };
 
+function mapStateToProps(
+  state: State,
+  { dataApp }: DataAppNavbarContainerProps,
+) {
+  const dashboard = getDashboardComplete(state);
+  const isDataAppPage =
+    dashboard?.is_app_page &&
+    dashboard?.collection_id === dataApp.collection_id;
+  return isDataAppPage ? { page: dashboard } : {};
+}
+
 const mapDispatchToProps = {
   setEditingDataAppPage,
   onChangeLocation: push,
@@ -82,6 +99,7 @@ const mapDispatchToProps = {
 
 function DataAppNavbarContainer({
   dataApp,
+  page: selectedPage,
   pages: fetchedPages,
   location,
   params,
@@ -255,6 +273,7 @@ function DataAppNavbarContainer({
       <DataAppNavbarView
         {...props}
         dataApp={dataApp}
+        selectedPage={selectedPage}
         pages={pages}
         selectedItems={selectedItems}
         mode={mode}
@@ -319,5 +338,5 @@ function getDataAppId(state: State, props: MainNavbarOwnProps) {
 export default _.compose(
   withRouter,
   DataApps.load({ id: getDataAppId }),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(DataAppNavbarContainerLoader);

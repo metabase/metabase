@@ -18,6 +18,7 @@ export interface Dashboard {
   name: string;
   description: string | null;
   model?: string;
+  public_uuid: string | null;
   ordered_cards: DashboardOrderedCard[];
   parameters?: Parameter[] | null;
   can_write: boolean;

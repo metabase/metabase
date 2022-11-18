@@ -34,6 +34,11 @@ export function publicDashboard(uuid: string) {
   return `${siteUrl}/public/dashboard/${uuid}`;
 }
 
+export function publicDataAppPage(uuid: string) {
+  const siteUrl = MetabaseSettings.get("site-url");
+  return `${siteUrl}/public/page/${uuid}`;
+}
+
 export function embedDashboard(token: string) {
   const siteUrl = MetabaseSettings.get("site-url");
   return `${siteUrl}/embed/dashboard/${token}`;

@@ -14,6 +14,7 @@ export const getRoutes = store => (
     <Route path="public" component={PublicApp}>
       <Route path="question/:uuid" component={PublicQuestion} />
       <Route path="dashboard/:uuid" component={PublicDashboard} />
+      <Route path="page/:uuid" component={PublicDashboard} />
       <Route path="*" component={PublicNotFound} />
     </Route>
     <Route path="*" component={PublicNotFound} />
