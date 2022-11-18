@@ -1180,6 +1180,25 @@
               (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
               (is (contains? (:headers throttled-response) "Retry-After")))))))))
 
+(deftest execute-public-dashcard-custom-action-test
+  (mt/with-temp-copy-of-db
+    (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
+    (actions.test-util/with-actions-test-data-and-actions-enabled
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-dashboard [dash {:parameters []}]
+          (actions.test-util/with-action [{:keys [action-id]} {}]
+            (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+                            ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
+                            DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
+                                                              :card_id card-id}]]
+              (is (partial= {:rows-affected 1}
+                            (client/client
+                             :post 200
+                             (format "public/dashboard/%s/dashcard/%s/execute/custom"
+                                     (:public_uuid dash)
+                                     dashcard-id)
+                             {:parameters {:id 1 :name "European"}}))))))))))
+
 (deftest fetch-public-dashcard-action-test
   (actions.test-util/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
