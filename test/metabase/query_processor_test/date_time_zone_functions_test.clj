@@ -349,8 +349,6 @@
                     :limit  1})
                  mt/rows first))))))
 
-(mt/set-test-drivers! #{:presto-jdbc})
-
 (deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
     (mt/dataset times-mixed
