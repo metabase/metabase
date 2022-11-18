@@ -8,5 +8,6 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   can_write: true,
   description: "",
   cache_ttl: null,
+  public_uuid: null,
   ...opts,
 });
