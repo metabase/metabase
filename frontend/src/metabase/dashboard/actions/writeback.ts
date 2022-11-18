@@ -5,9 +5,10 @@ import {
   GenericErrorResponse,
 } from "metabase/lib/errors";
 import { createAction } from "metabase/lib/redux";
+import Utils from "metabase/lib/utils";
 import { addUndo } from "metabase/redux/undo";
 
-import { ActionsApi } from "metabase/services";
+import { ActionsApi, PublicApi } from "metabase/services";
 
 import type {
   DataAppPage,
@@ -86,6 +87,10 @@ function getActionExecutionMessage(action: WritebackAction, result: any) {
   return t`${action.name} was run successfully`;
 }
 
+function getDataAppPageType(pageId: string | number) {
+  return Utils.isUUID(pageId) ? "public" : "normal";
+}
+
 export const executeRowAction = async ({
   page,
   dashcard,
@@ -93,8 +98,13 @@ export const executeRowAction = async ({
   dispatch,
   shouldToast = true,
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
+  const executeAction =
+    getDataAppPageType(page.id) === "public"
+      ? PublicApi.executeAction
+      : ActionsApi.execute;
+
   try {
-    const result = await ActionsApi.execute({
+    const result = await executeAction({
       dashboardId: page.id,
       dashcardId: dashcard.id,
       modelId: dashcard.card_id,
