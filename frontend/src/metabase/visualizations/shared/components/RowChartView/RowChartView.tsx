@@ -5,7 +5,7 @@ import { Bar } from "@visx/shape";
 import type { NumberValue, ScaleBand, ScaleContinuousNumeric } from "d3-scale";
 import { Text } from "@visx/text";
 import { GridColumns } from "@visx/grid";
-import { scaleBand } from "@visx/scale";
+import { scaleBand, StringLike, NumberLike } from "@visx/scale";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
 import { Margin } from "metabase/visualizations/shared/types/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
@@ -16,12 +16,12 @@ import { getDataLabel } from "./utils/data-labels";
 export interface RowChartViewProps<TDatum> {
   width: number;
   height: number;
-  yScale: ScaleBand<YValue>;
+  yScale: ScaleBand<StringLike>;
   xScale: ScaleContinuousNumeric<number, number, never>;
   seriesData: SeriesData<TDatum>[];
-  labelsFormatter: (value: NumberValue) => string;
-  yTickFormatter: (value: YValue) => string;
-  xTickFormatter: (value: NumberValue) => string;
+  labelsFormatter: (value: NumberLike) => string;
+  yTickFormatter: (value: StringLike) => string;
+  xTickFormatter: (value: NumberLike) => string;
   xTicks: number[];
   goal: {
     label: string;
