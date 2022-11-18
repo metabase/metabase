@@ -266,6 +266,10 @@
   (let [s (str/replace s #"[\"\u0000]" "_")]
     (driver.impl/truncate-alias s legacy-max-identifier-length)))
 
+(defmethod sql.qp/->honeysql [:oracle :now]
+  [_driver _clause]
+  (hsql/call :current_timestamp 0))
+
 (defmethod sql.qp/->honeysql [:oracle :substring]
   [driver [_ arg start length]]
   (if length
