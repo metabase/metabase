@@ -7,12 +7,12 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/github-script@v4
+    - uses: actions/github-script@v6
       id: get-latest-release-branch
       with:
         result-encoding: string
         script: |
-          const releaseBranches = await github.git.listMatchingRefs({
+          const releaseBranches = await github.rest.git.listMatchingRefs({
             owner: context.repo.owner,
             repo: context.repo.repo,
             ref: "heads/release-x.",

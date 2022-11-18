@@ -10,25 +10,29 @@ To start managing people, click on the **gear** icon > **Admin settings** > **Pe
 
 ![Admin menu](images/AdminBar.png)
 
-## Managing people
-
-### Creating accounts for your team
+## Creating an account
 
 To add a new person, click **Add person** in the upper right corner. You’ll be prompted to enter their name and email address.
 
 If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the new user an invite email. Otherwise, it’ll give you a temporary password that you’ll have to send to the person you’re inviting by hand.
 
-### Deactivating an account
+## Editing an account
+
+You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**.
+
+> Be careful: changing an account's email address _will change the address the person will use to log in to Metabase_.
+
+## Deactivating an account
 
 To deactivate someone's account, click on the three dots icon on the right of a person’s row and select **Deactivate** from the dropdown. Deactivating an account will mark it as inactive and prevent the user from logging in - but it _won’t_ delete that person's saved questions or dashboards.
 
-![Remove a user](images/RemoveUser.png)
+If you're using SSO, you should deactivate the account in Metabase as well as your IdP (that is, deactivation doesn't get applied from Metabase to your IdP, and vice versa).
 
-### Reactivating an account
+![Remove a user](images/RemoveUser.png)
 
 To reactivate a deactivated account, click the **Deactivated** radio button at the top of the people list to see the list of deactivated accounts. Click on the icon on the far right to reactivate that account, allowing them to log in to Metabase again.
 
-### Deleting an account
+## Deleting an account
 
 Metabase doesn't explicitly support account deletion. Instead, Metabase deactivates accounts so people can't log in to them, while it preserves any questions, models, dashboards, and other items created by those accounts.
 
@@ -36,13 +40,9 @@ If you want to delete an account because the account information was set up inco
 
 1. Change the name and email associated with the old account.
 2. [Deactivate](#deactivating-an-account) the old account.
-3. [Create a new account](#creating-accounts-for-your-team) with the person's correct information.
+3. [Create a new account](#creating-an-account) with the person's correct information.
 
-### Editing an account
-
-You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**. Note: be careful when changing someone's email address, because _this will change the address they’ll use to log in to Metabase_.
-
-### Checking someone's auth method
+## Checking someone's auth method
 
 Search for a person and look for an icon beside their name.
 
@@ -51,13 +51,13 @@ Search for a person and look for an icon beside their name.
 
 Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of SSO, the latter's icon will _not_ show up next to their name.
 
-### Resetting someone’s password
+## Resetting someone’s password
 
 If you've already [configured your email settings](../configuring-metabase/email.md), people can reset their passwords using the "forgot password" link on the login screen. If you haven't yet configured your email settings, they will see a message telling them to ask an admin to reset their password for them.
 
 To reset a password for someone, just click the three dots icon next to their account and choose **Reset Password**. If you haven’t [configured your email settings](../configuring-metabase/email.md) yet, you’ll be given a temporary password that you’ll have to share with that person. Otherwise, they’ll receive a password reset email.
 
-### Resetting the admin password
+## Resetting the admin password
 
 If you're using Metabase Cloud, [contact support](https://www.metabase.com/help-premium) to reset your admin password.
 
@@ -84,7 +84,7 @@ If you're a Metabase admin and have access to the server console, you can get Me
     ```
 6.  You should now see a page where you can input a new password for the admin account.
 
-### Unsubscribe from all subscriptions / alerts
+## Unsubscribe from all subscriptions / alerts
 
 This action will delete any dashboard subscriptions or alerts the person has created, and remove them as a recipient from any other subscriptions or alerts.
 
@@ -117,31 +117,23 @@ The **All Users** group is another special one. Every Metabase user is always a 
 
 It's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. See [Setting permissions](../permissions/start.md).
 
-### Managing groups
+## Creating a group
 
-#### Creating a group and adding people to it
-
-To create a group, go to **Admin settings** > **People** > **Groups**, and click the **Add a group** button.
+Go to **Admin settings** > **People** > **Groups**, and click the **Add a group** button.
 
 We recommend creating groups that correspond to the teams your company or organization has, such as Human Resources, Engineering, Finance, and so on. By default, newly created groups don’t have access to anything.
 
-Click into a group and then click `Add members` to add people to that group. Click on the X on the right side of a group member to remove them from that group. You can also add or remove people from groups from the People list using the dropdown in the Groups column.
-
-#### Removing a group
-
 To remove a group, click the X icon to the right of a group in the list to remove it (remember, you can’t remove the special default groups).
 
-#### Adding people to groups
+## Adding people to groups
 
-Adding people to groups allows you to assign
+To add people to that group, click into a group and then click **Add members**.
 
-- [Data access](../permissions/data.md),
-- [Collection permissions](../permissions/collections.md),
-- [Application permissions](../permissions/application.md).
+To remove someone from that group, click on the **X** to the right of the group member.
 
-To add someone to one or more groups, just click the Groups dropdown and click the checkboxes next to the group(s) you want to add the person to. You can also add people from the group's page.
+You can also add or remove people from groups from the **People** list using the dropdown in the **Groups** column.
 
-### Group managers
+## Group managers
 
 {% include plans-blockquote.html feature="Group managers" %}
 
@@ -156,7 +148,7 @@ Group managers can:
 
 Group managers are not admins, so their powers are limited. They cannot create new groups or invite new people to your Metabase.
 
-#### Promoting/demoting group managers
+## Promoting/demoting group managers
 
 To promote someone to become a group manager:
 
@@ -164,12 +156,8 @@ To promote someone to become a group manager:
 2. Select the group you want the person to manage. If the person isn't already in the group, you'll need to add that person to the group.
 3. Find the person you want to promote, hover over their member type, and click the up arrow to promote them to group manager. If you want to demote them, click on the down arrow.
 
-### Grouping strategies
-
-For guidance on which groups you should create for your Metabase, check out [Permissions strategies](https://www.metabase.com/learn/permissions/strategy).
-
 ## Further reading
 
-- [Configure Single Sign-On](./start.md).
-- [Permissions overview](../permissions/start.md)
-- [Learn permissions](https://www.metabase.com/learn/permissions/)
+- [Configure Single Sign-On (SSO)](./start.md#authentication).
+- [Permissions strategies](https://www.metabase.com/learn/permissions/strategy).
+- [Multi-tenant permissions](https://www.metabase.com/learn/permissions/multi-tenant-permissions).

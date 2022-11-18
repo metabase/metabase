@@ -2,6 +2,7 @@
   "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
   related types."
   (:require [clojure.test :refer :all]
+            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -46,7 +47,7 @@
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset sad-toucan-incidents
       (let [query (mt/mbql-query incidents
-                     {:filter   [:= [:datetime-field $timestamp :day] "2015-06-02"]
+                     {:filter   [:= !day.timestamp "2015-06-02"]
                       :order-by [[:asc $timestamp]]})]
         ;; There's a race condition with this test. If we happen to grab a connection that is in a session with the
         ;; timezone set to pacific, we'll get 9 results even when the above if statement is true. It seems to be pretty
@@ -206,6 +207,7 @@
                             (qp/process-query
                               (assoc (mt/mbql-query just-dates)
                                      :middleware {:format-rows? false}))))))))
+
       (testing "sqlite returns as strings"
         (mt/test-drivers #{:sqlite}
           (is (= [[1 "foo" "2004-10-19 10:23:54" "2004-10-19" "10:23:54"]
@@ -216,6 +218,7 @@
                             (qp/process-query
                               (assoc (mt/mbql-query times)
                                      :middleware {:format-rows? false}))))))))
+
       (testing "bigquery adds UTC"
         (mt/test-drivers #{:bigquery-cloud-sdk}
           (is (= [[1 "foo" #t "2004-10-19T10:23:54Z[UTC]" #t "2004-10-19T00:00Z[UTC]" #t "10:23:54"]
@@ -225,21 +228,55 @@
                  (mt/rows (mt/dataset string-times
                             (qp/process-query
                               (assoc (mt/mbql-query times)
-                                     :middleware {:format-rows? false})))))))))
+                                     :middleware {:format-rows? false}))))))))
+
+      (testing "mongo only supports datetime"
+        (mt/test-drivers #{:mongo}
+          (mt/dataset string-times
+            (is (= [[(t/instant "2004-10-19T10:23:54Z")]
+                    [(t/instant "2008-10-19T10:23:54Z")]
+                    [(t/instant "2012-10-19T10:23:54Z")]]
+                   (mt/rows (qp/process-query
+                              (assoc (mt/mbql-query times
+                                                    {:fields [$ts]})
+                                     :middleware {:format-rows? false})))))
+            (is (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #"MongoDB does not support parsing strings as dates. Try parsing to a datetime instead"
+                  (qp/process-query
+                    (mt/mbql-query times {:fields [$d]}))))
+            (is (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
+                  (qp/process-query
+                    (mt/mbql-query times {:fields [$t]}))))))))
+
     (testing "are queryable as dates"
-      (testing "a datetime field"
-        ;; TODO: why does this fail on oracle? gives a NPE
-        (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
-          (is (= 1
-                 (count (mt/rows (mt/dataset string-times
-                                   (mt/run-mbql-query times
-                                     {:filter   [:= [:datetime-field $ts :day] "2008-10-19"]}))))))))
-      (testing "a date field"
-        (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
-          (is (= 1
-                 (count (mt/rows (mt/dataset string-times
-                                   (mt/run-mbql-query times
-                                     {:filter   [:= [:datetime-field $d :day] "2008-10-19"]})))))))))))
+      (mt/dataset string-times
+       (testing "a datetime field"
+         ;; TODO: why does this fail on oracle? gives a NPE
+         (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+           (is (= 1
+                  (->> (mt/run-mbql-query times
+                         {:filter [:= !day.ts "2008-10-19"]})
+                       mt/rows
+                       count))))
+
+         (mt/test-drivers #{:mongo}
+           (is (= 1
+                  (->> (mt/run-mbql-query times
+                         {:filter [:= !day.ts "2008-10-19"]
+                          :fields [$ts]})
+                       mt/rows
+                       count)))))
+
+       (testing "a date field"
+         (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+           (is (= 1
+                  (->> (mt/run-mbql-query times
+                         {:filter [:= !day.d "2008-10-19"]})
+                       mt/rows
+                       count)))))))))
 
 (mt/defdataset yyyymmddhhss-times
   [["times" [{:field-name "name"

@@ -57,7 +57,9 @@ export default createEntity({
     if (type === Questions.actionTypes.CREATE && !error) {
       const { question, status, data } = payload;
       if (question) {
-        const schema = getCollectionVirtualSchemaId(question.collection);
+        const schema = getCollectionVirtualSchemaId(question.collection, {
+          isDatasets: question.dataset,
+        });
         if (!state[schema]) {
           return state;
         }
@@ -76,7 +78,9 @@ export default createEntity({
 
     if (type === Questions.actionTypes.UPDATE && !error) {
       const { question } = payload;
-      const schemaId = getCollectionVirtualSchemaId(question.collection);
+      const schemaId = getCollectionVirtualSchemaId(question.collection, {
+        isDatasets: question.dataset,
+      });
 
       const virtualQuestionId = getQuestionVirtualTableId(question);
       const previousSchemaContainingTheQuestion =

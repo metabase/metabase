@@ -7,19 +7,22 @@ import FormProvider from "metabase/core/components/FormProvider";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import * as Errors from "metabase/core/utils/errors";
 import { User } from "metabase-types/api";
 import { UserPasswordData } from "../../types";
 
-const UserPasswordSchema = Yup.object({
-  old_password: Yup.string().required(t`required`),
+const USER_PASSWORD_SCHEMA = Yup.object({
+  old_password: Yup.string().default("").required(Errors.required),
   password: Yup.string()
-    .required(t`required`)
+    .default("")
+    .required(Errors.required)
     .test(async (value = "", context) => {
       const error = await context.options.context?.onValidatePassword(value);
       return error ? context.createError({ message: error }) : true;
     }),
   password_confirm: Yup.string()
-    .required(t`required`)
+    .default("")
+    .required(Errors.required)
     .oneOf([Yup.ref("password")], t`passwords do not match`),
 });
 
@@ -34,10 +37,9 @@ const UserPasswordForm = ({
   onValidatePassword,
   onSubmit,
 }: UserPasswordFormProps): JSX.Element => {
-  const initialValues = useMemo(
-    () => ({ old_password: "", password: "", password_confirm: "" }),
-    [],
-  );
+  const initialValues = useMemo(() => {
+    return USER_PASSWORD_SCHEMA.getDefault();
+  }, []);
 
   const validationContext = useMemo(
     () => ({ onValidatePassword: _.memoize(onValidatePassword) }),
@@ -54,7 +56,7 @@ const UserPasswordForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={UserPasswordSchema}
+      validationSchema={USER_PASSWORD_SCHEMA}
       validationContext={validationContext}
       onSubmit={handleSubmit}
     >
@@ -65,7 +67,6 @@ const UserPasswordForm = ({
           title={t`Current password`}
           placeholder={t`Shhh...`}
           autoComplete="current-password"
-          fullWidth
         />
         <FormInput
           name="password"
@@ -73,7 +74,6 @@ const UserPasswordForm = ({
           title={t`Create a password`}
           placeholder={t`Shhh...`}
           autoComplete="new-password"
-          fullWidth
         />
         <FormInput
           name="password_confirm"
@@ -81,7 +81,6 @@ const UserPasswordForm = ({
           title={t`Confirm your password`}
           placeholder={t`Shhh... but one more time so we get it right`}
           autoComplete="new-password"
-          fullWidth
         />
         <FormSubmitButton title={t`Save`} primary />
         <FormErrorMessage />

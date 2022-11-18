@@ -57,6 +57,22 @@
                     {:aggregation [[:count]]
                      :filter      [:time-interval $datetime :last :month]})))))))))
 
+(deftest absolute-datetime-test
+  (mt/test-driver :mongo
+    (testing "Make sure absolute-datetime are compiled correctly"
+      (doseq [[expected date]
+              [["2014-01-01"        (t/local-date "2014-01-01")]
+               ["10:00"             (t/local-time "10:00:00")]
+               ["2014-01-01T10:00"  (t/local-date-time "2014-01-01T10:00")]
+               ["03:00Z"            (t/offset-time "10:00:00+07:00")]
+               ["2014-01-01T03:00Z" (t/offset-date-time "2014-01-01T10:00+07:00")]
+               ["2014-01-01T00:00Z" (t/zoned-date-time "2014-01-01T07:00:00+07:00[Asia/Ho_Chi_Minh]")]]]
+        (testing (format "with %s" (type date))
+          (is (= {:$expr {"$lt" ["$date-field" {:$dateFromString {:dateString expected}}]}}
+                 (mongo.qp/compile-filter [:<
+                                           [:field "date-field"]
+                                           [:absolute-datetime date]]))))))))
+
 (deftest no-initial-projection-test
   (mt/test-driver :mongo
     (testing "Don't need to create initial projections anymore (#4216)"
@@ -310,7 +326,7 @@
                   (qp/compile
                    (mt/mbql-query checkins
                      {:filter   [:time-interval $date -4 :month]
-                      :breakout [[:datetime-field $date :day]]}))))))))))
+                      :breakout [!day.date]}))))))))))
 
 (deftest temporal-arithmetic-test
   (testing "Mixed integer and date arithmetic works with Mongo 5+"
@@ -355,26 +371,27 @@
       ;; date arithmetic doesn't supports until mongo 5+
       (when (driver/database-supports? :mongo :date-arithmetics (mt/db))
         (testing "date arithmetic with datetime columns"
-          (let [[col-type field-id] [:datetime (mt/id :times :dt)]]
-            (doseq [op               [:datetime-add :datetime-subtract]
-                    unit             [:year :quarter :month :day :hour :minute :second :millisecond]
-                    {:keys [expected query]}
-                    [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
-                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                                 :fields      [[:expression "expr"]]}}
-                     {:expected (into [] (frequencies
-                                          [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
-                                           (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
-                                           (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
-                                           (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
-                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                                 :aggregation [[:count]]
-                                 :breakout    [[:expression "expr"]]}}]]
-              (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-                (is (= (set expected) (set (qp.datetime-test/test-datetime-math query))))))))
+          (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)]
+                                       [:text-as-datetime (mt/id :times :as_dt)]]
+                  op                  [:datetime-add :datetime-subtract]
+                  unit                [:year :quarter :month :day :hour :minute :second :millisecond]
+                  {:keys [expected query]}
+                  [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
+                               (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                               (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
+                               (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
+                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                               :fields      [[:expression "expr"]]}}
+                   {:expected (into [] (frequencies
+                                        [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
+                                         (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                                         (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
+                                         (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
+                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                               :aggregation [[:count]]
+                               :breakout    [[:expression "expr"]]}}]]
+            (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
+              (is (= (set expected) (set (qp.datetime-test/test-datetime-math query)))))))
 
         (testing "date arithmetic with date columns"
           (let [[col-type field-id] [:date (mt/id :times :d)]]

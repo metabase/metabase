@@ -4,11 +4,11 @@ import {
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
 import { ParameterDimensionTarget } from "metabase-types/types/Parameter";
+import { isDimensionTarget } from "metabase-types/guards";
 import { SavedCard } from "metabase-types/types/Card";
 import Database from "metabase-lib/metadata/Database";
 import {
   getParameterTargetField,
-  isDimensionTarget,
   isVariableTarget,
   getTemplateTagFromTarget,
   getTargetFieldFromCard,

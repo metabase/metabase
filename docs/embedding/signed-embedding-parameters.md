@@ -43,13 +43,13 @@ For example, if your embedded dashboard has a filter called "Breakfast", and you
 your_embedding_url?breakfast=Scrambled_eggs
 ```
 
-To specify default values for more than one filter, separate them with ampersands (&):
+To specify default values for more than one filter, separate the filters with ampersands (&):
 
 ```
 your_embedding_url?breakfast=Scrambled_eggs&lunch=Grilled_cheese
 ```
 
-If the original dashboard's filter widget accepts multiple values (i.e., it's a [dropdown filter](../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter), not a text box filter), you can set multiple default values:
+You can set multiple default values for a filter by separating the `key=value` pairs with ampersands (&):
 
 ```
 your_embedding_url?breakfast=Scrambled_eggs&breakfast=Bacon
@@ -71,14 +71,11 @@ You can use locked parameters to display filtered data based on attributes captu
 
 Locked parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. Locked parameters may also limit the values that are shown in your [embedded filter widgets](#adding-a-filter-widget-to-a-signed-embed).
 
-## Adding multiple values to a locked parameter
+## Locked parameters on dashboards with SQL questions
 
-If your [locked parameter](#restricting-data-in-a-signed-embed) is linked to a:
+If your [locked parameter](#restricting-data-in-a-signed-embed) is linked to a dashboard filter that's in turn linked to a SQL question, you'll only be able to choose a _single_ value for your locked parameter.
 
-- dashboard filter, change the filter type to a [dropdown filter](../dashboards/filters.md#choosing-between-a-dropdown-or-autocomplete-for-your-filter). 
-- SQL question, [change the SQL variable type](../questions/native-editor/sql-parameters.md#filter-widget-with-dropdown-menu-and-search).
-
-For example, let's say you have a text box filter on your original dashboard called "Breakfast" with the values "Scrambled eggs", "Bacon", and "Waffles". With this setup, you'll be able to choose _one_ of "Scrambled eggs", "Bacon", or "Waffles" for a locked parameter linked to the "Breakfast" filter. If you want to provide the values "Scrambled eggs" _and_ "Bacon to the locked parameter, change the original "Breakfast" filter on your dashboard to a dropdown filter.
+For example, let's say you have a dashboard filter called "Breakfast" with the values "Scrambled eggs", "Bacon", and "Waffles". If the "Breakfast" filter is linked to _any_ SQL questions on the dashboard, you'll only be able to choose _one_ of "Scrambled eggs", "Bacon", or "Waffles" for a locked parameter linked to the "Breakfast" filter.
 
 ## Hiding filter widgets from a signed embed
 

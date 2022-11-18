@@ -431,8 +431,8 @@
         (let [r-word  "r_word"
               no-sp   "no_spaces"
               results (mt/run-mbql-query venues
-                        {:expressions  {r-word [:regex-match-first [:field-id (mt/id :venues :name)] "^R[^ ]+"]
-                                        no-sp  [:replace [:field-id (mt/id :venues :name)] " " ""]}
+                        {:expressions  {r-word [:regex-match-first $name "^R[^ ]+"]
+                                        no-sp  [:replace $name " " ""]}
                          :source-query {:source-table $$venues}
                          :fields       [$name [:expression r-word] [:expression no-sp]]
                          :filter       [:= $id 1 95]
