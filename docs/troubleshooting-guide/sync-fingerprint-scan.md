@@ -16,62 +16,42 @@ Once you've confirmed that you're looking at a non-cached view of your tables an
 - **Scans**, if your column _values_ are wrong (for example, if your filter dropdown menus contain the wrong values).
 - **Fingerprinting**, if you've triggered a manual scan, but the changes aren't taking effect.
 
-## Initializing a sync
+## Syncing
 
-1. Go to **Admin** > **Troubleshooting** > **Logs** to check the status of the sync.
-2. Make sure your database driver is up to date.
-3. Run a query against your database from the Metabase SQL editor to check for database connection or database privilege errors:
-
-    ```
-    SELECT *
-    FROM "your_database"
-    LIMIT 1
-    ```
-4. For more help, see [Troubleshooting database connections](./db-connection.md).
-
-**Explanation**
-
-A sync query should show up like this in your database's query execution table (using whatever role is defined in your database connection string):
-
-```sql
-SELECT TRUE
-FROM "your_database"
-WHERE 1 <> 1
-LIMIT 0
-```
-
-If you’ve just set up a new database in Metabase, the initial sync query might still be running—--especially if you have a large database. To run the query, Metabase must:
-
-- successfully connect to your database, and
-- be granted permissions to query that database.
-
-If the connection is failing, or the database privileges are wrong, the sync query won't be able to run. This will block the _initial_ scan and fingerprinting queries as well.
-
-## Syncing new or updated tables and views
-
-1. Go to **Admin** > **Troubleshooting** > **Logs** to check the status of the sync.
-2. If the logs show you that the sync is failing on a specific table or view, make sure Metabase has the correct database privileges to query that table or view.
+1. Make sure your database driver is up to date.
+2. Go to **Admin** > **Troubleshooting** > **Logs** to check the status of the sync.
 3. Run a query against your database from the Metabase SQL editor to check for database connection or database privilege errors that aren't listed in the logs:
 
     ```sql
     SELECT *
-    FROM "your_database"."your_schema"."your_table_or_view"
+    FROM "your_schema"."your_table_or_view"
     LIMIT 1
     ```
-4. [Manually re-sync](../databases/connecting.md#manually-syncing-tables-and-columns) the table or view.
+5. [Manually re-sync](../databases/connecting.md#manually-syncing-tables-and-columns) the table or view if needed.
+
+### Special cases
+
+If you’ve just set up a new database in Metabase, the initial sync query needs some time to kick off. If the sync hasn't started at all, try [Troubleshooting database connections](./db-connection.md).
 
 **Explanation**
 
-Metabase needs the correct database privileges to run the sync query against a given database, schema, and table (or view):
+A sync query should show up like this in your database's query execution table (using the privileges for the database user in the database connection details):
 
 ```sql
 SELECT TRUE
-FROM "your_database"."your_schema"."your_table_or_view"
+FROM "your_schema"."your_table_or_view"
 WHERE 1 <> 1
 LIMIT 0
 ```
 
-## Syncing tables with JSON records
+To run the sync query, Metabase must:
+
+- successfully connect to your database, and
+- be granted permissions to query that database. 
+
+If the connection is failing or the database privileges are wrong, the sync query won't be able to run. If Metabase can't sync with your database after you first set it up, then the initial scan and fingerprinting queries won't run either.
+
+## Unfolding JSON columns with Object records
 
 1. Go to **Admin** > **Databases** > **your database** > **Show advanced options**.
 2. Click **Disable "JSON unfolding"**
@@ -104,27 +84,29 @@ If you're waiting for the _initial_ scan to run after connecting a database, mak
 Scan queries are run against your database to sample column values from the first 1,000 rows in a table or view:
 
 ```sql
-SELECT "your_table"."column" AS "column"
-FROM "your_database"."your_schema"."your_table_or_view"
-GROUP BY "your_table"."column"
-ORDER BY "your_table"."column" ASC
+SELECT "your_table_or_view"."column" AS "column"
+FROM "your_schema"."your_table_or_view"
+GROUP BY "your_table_or_view"."column"
+ORDER BY "your_table_or_view"."column" ASC
 LIMIT 1000
 ```
 
 A failed scan is caused by a failed scan query---you can debug the query just like any other query you'd try to run against your database.
+
+When you set a field to "A list of all values" in the Data Model, which is used to display options in dropdown menus, scanning looks at the first 1,000 distinct records (ordered ascending). For each field scanned, Metabase stores only the first 100 kilobytes of text. If more values exist, Metabase displays the stored values in the dropdown menus, and only triggers a database search query to look for more values when people type in the search box for that filter widget.
 
 ## Fingerprinting
 
 To manually re-trigger a fingerprinting query for a given column:
 
 1. Go to **Admin** > **Databases** > **your database** > **Show advanced options**.
-2. Toggle OFF **Periodically refingerprint tables**.
+2. Toggle ON **Periodically refingerprint tables** and click **Save changes**.
 3. Go to **Admin** > **Data Model**.
 4. Select your database and table.
-5. Change the visibility of the table to **Hidden**.
-6. Change the visibility back to **Queryable**.
+5. Change the visibility of the table to "Hidden".
+6. Change the visibility back to "Queryable".
 7. Wait 10 seconds.
-8. Go to your column and change the **Type** from **Entity Key** to **No semantic type**, and back to **Entity Key**.
+8. Go to your column and change the **Type** from "Entity Key" to "No semantic type", and back to "Entity Key".
 
 ### Special cases
 
@@ -137,14 +119,14 @@ If you're using MongoDB, Metabase fingerprints the first 10,000 documents per co
 The initial fingerprinting query looks at the first 10,000 rows from a given table or view in your database:
 
 ```sql
-SELECT "your_table"."column" AS "column"
-FROM "your_database"."your_schema"."your_table_or_view"
+SELECT *
+FROM "your_schema"."your_table_or_view"
 LIMIT 10000
 ```
 
 If the first 10,000 rows aren't representative of the data in a table (for example, if you've got sparse data with a lot of blanks or nulls), you could see issues such as:
 
-- Filter dropdown menus with missing values.
+- Missing filter granularity options.
 - Histogram visualizations that don't work (since Metabase needs a min and max value to generate the bins).
 
 Metabase doesn't have a built-in option to trigger manual fingerprinting queries. You can "reset" a field's settings using the steps above to try and force a fingerprinting query, but it's not guaranteed to work on all versions of Metabase.
@@ -156,19 +138,12 @@ To speed up **syncs**:
    - [Reduce the frequency of sync queries](../databases/connecting.md#scheduling-database-scans).
 
 To speed up **scans**:
-   - Reduce the number of columns being scanned by going to **Admin** > **Data Model** and setting **Filtering on this field** to **Search box** or **Plain input box**.
    - [Reduce the frequency of scans, or disable scans entirely](../databases/connecting.md#scheduling-database-scans).
+   - Reduce the number of columns being scanned by going to **Admin** > **Data Model** and setting **Filtering on this field** to **Search box** or **Plain input box**.
 
 **Explanation**
 
 Syncs and scans are ultimately just two kinds of queries that are run against your database, so the speed of execution is limited by the number of queries that are run, the frequency of execution, the size of your data, and the amount of resources you've allocated to your database. Metabase gives you options to adjust the number and frequency of sync and scan queries, since unfortunately, we can't imbue your database with more power... (yet?)
-
-## Using the API
-
-1. Make sure you're able to run a [manual sync](../databases/connecting.md#manually-syncing-tables-and-columns) and [manual scan](../databases/connecting.md#manually-scanning-column-values).
-2. Make sure you're using the correct URL to send the request to Metabase.
-3. Check the error message returned from Metabase.
-4. Check the credentials you're using to authenticate and make sure they identify your script as a user with administrative privileges.
 
 ## Related topics
 

@@ -105,7 +105,7 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Syncing and scanning databases
 
-Metabase runs sync and scan queries in order to show tables, views, and columns, populate dropdown menus with the right values, and suggest helpful visualizations. Metabase does _not_ copy any data from your database---it only maintains lists of the tables and columns.
+Metabase runs sync and scan queries in order to show tables, views, and columns, populate dropdown menus with the right values, and suggest helpful visualizations. Metabase does not store _complete_ tables from your database---we only maintain lists of table and column names, and samples of column values.
 
 ### How database syncs work
 
@@ -113,7 +113,11 @@ A Metabase **sync** query gets a list of updated table and view names, column na
 
 ### How database scans work
 
-A Metabase **scan** query caches the column _values_ for filter dropdowns by looking at the first 1,000 distinct records from each table. A scan is more intensive than a sync query, so it only runs once during setup, and again once a day by default. If you [disable scans](#scheduling-database-scans) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
+A Metabase **scan** query caches the column _values_ for filter dropdowns by looking at the first 1,000 distinct records from each table, in ascending order. For each record, Metabase only stores the first 100 kilobytes of text (so if you have data with really long URLs, for example, Metabase may truncate the values). 
+
+The cached column values are displayed in filter dropdown menus. If people type in the filter search box for values that aren't in the first 1,000 distinct records, Metabase will run a query against your database to look for those values on the fly.
+
+A scan is more intensive than a sync query, so it only runs once during setup, and again once a day by default. If you [disable scans](#scheduling-database-scans) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
 
 ### Getting tables, columns, and values for the first time
 

@@ -150,6 +150,8 @@ You can manually change the user interface for the filter to:
 5. Set **Filtering on this field** to “A list of all values.”
 6. Click **Re-scan this field** at the bottom.
 
+This setting will display the first 1,000 distinct values (ordered ascending) in that column. If you have columns with more than 1,000 distinct values, we recommend setting **Filtering on this field** to "Search box" instead of "A list of all values". For more info, see [How database scans work](../databases/connecting.md#how-database-scans-work).
+
 ## Column order
 
 Metabase will default to the column order native to the database.
