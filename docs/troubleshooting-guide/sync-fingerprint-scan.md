@@ -21,6 +21,7 @@ Once you've confirmed that you're looking at a non-cached view of your tables an
 1. Go to **Admin** > **Troubleshooting** > **Logs** to check the status of the sync.
 2. Make sure your database driver is up to date.
 3. Run a query against your database from the Metabase SQL editor to check for database connection or database privilege errors:
+
     ```
     SELECT *
     FROM "your_database"
@@ -30,7 +31,7 @@ Once you've confirmed that you're looking at a non-cached view of your tables an
 
 **Explanation**
 
-A sync query should show up like this in your database's query execution table (using whatever role is defined in your [connection string]()):
+A sync query should show up like this in your database's query execution table (using whatever role is defined in your database connection string):
 
 ```sql
 SELECT TRUE
@@ -87,9 +88,9 @@ Metabase will try to unfold JSON and JSONB records during the sync process, whic
 2. Select the database and table.
 3. Go to the column you want to update, and click the **gear** icon.
 4. Click **Discard cached field values**.
-2. Click **Re-scan this field**.
-2. Go to **Admin** > **Troubleshooting** > **Logs** to follow the status of the scan.
-3. If you get an error during the scan process, try running the scan query against your database directly, and debug the query execution error from there. Check for:
+5. Click **Re-scan this field**.
+6. Go to **Admin** > **Troubleshooting** > **Logs** to follow the status of the scan.
+7. If you get an error during the scan process, try running the scan query against your database directly, and debug the query execution error from there. Check for:
    - Schema and table privileges
    - Recent schema or table updates
    - Database-specific handling of nulls and numeric, timestamp, or boolean data types.
@@ -123,8 +124,7 @@ To manually re-trigger a fingerprinting query for a given column:
 5. Change the visibility of the table to **Hidden**.
 6. Change the visibility back to **Queryable**.
 7. Wait 10 seconds.
-8. Go back to the **Data Model** view of your table.
-9. Go to your column and change the **Type** from **Entity Key** to **No semantic type**, and back to **Entity Key**.
+8. Go to your column and change the **Type** from **Entity Key** to **No semantic type**, and back to **Entity Key**.
 
 ### Special cases
 
@@ -154,7 +154,7 @@ To speed up **syncs**:
    - [Reduce the frequency of sync queries](../databases/connecting.md#scheduling-database-scans).
 
 To speed up **scans**:
-   - Reduce the number of columns scanned by going to the **Data Model** and setting **Filtering on this field** to **Search box** or **Plain input box**.
+   - Prevent a column from being scanned by going to **Admin** > **Data Model** and setting the column's **Filtering on this field** setting to **Search box** or **Plain input box**.
    - [Reduce the frequency of scans, or disable scans entirely](../databases/connecting.md#scheduling-database-scans).
 
 **Explanation**
@@ -163,18 +163,10 @@ Syncs and scans are ultimately just two kinds of queries that get run against yo
 
 ## Using the API
 
-1. Make sure you are able to sync and scan manually via the Admin Panel.
+1. Make sure you're able to run a [manual sync](../databases/connecting.md#manually-syncing-tables-and-columns) and [manual scan](../databases/connecting.md#manually-scanning-column-values).
 2. Make sure you're using the correct URL to send the request to Metabase.
 3. Check the error message returned from Metabase.
 4. Check the credentials you're using to authenticate and make sure they identify your script as a user with administrative privileges.
-
-**Explanation**
-
-Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API](https://www.metabase.com/learn/administration/metabase-api) to force sync or scan to take place right away. [Our API](../api-documentation.md) provides two ways to do this:
-
-1. Using an endpoint with a session token: `/api/database/:id/sync_schema` or `api/database/:id/rescan_values`. These do the same things as going to the database in the Admin Panel and choosing **Sync database schema now** or **Re-scan field values now** respectively. In this case you have to authenticate with a user ID and pass a session token in the header of your request.
-
-2. Using an endpoint with an API key: `/api/notify/db/:id`. This endpoint was made to notify Metabase to sync after an [ETL operation](https://www.metabase.com/learn/analytics/etl-landscape) finishes. In this case you must pass an API key by defining the `MB_API_KEY` environment variable.
 
 ## Related topics
 

@@ -154,6 +154,14 @@ To forget the data that Metabase has stored from previous [database scans](#sync
 
 ![Re-scan options](./images/re-scan-options.png)
 
+### Syncing and scanning using the API
+
+Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API](https://www.metabase.com/learn/administration/metabase-api) to force sync or scan to take place right away. [Our API](../api-documentation.md) provides two ways to do this:
+
+1. Using an endpoint with a session token: `/api/database/:id/sync_schema` or `api/database/:id/rescan_values`. These do the same things as going to the database in the Admin Panel and choosing **Sync database schema now** or **Re-scan field values now** respectively. In this case you have to authenticate with a user ID and pass a session token in the header of your request.
+
+2. Using an endpoint with an API key: `/api/notify/db/:id`. This endpoint was made to notify Metabase to sync after an [ETL operation](https://www.metabase.com/learn/analytics/etl-landscape) finishes. In this case you must pass an API key by defining the `MB_API_KEY` environment variable.
+
 ## Deleting databases
 
 **Caution: Deleting a database is irreversible! All saved questions and dashboard cards based on the database will be deleted as well!**
