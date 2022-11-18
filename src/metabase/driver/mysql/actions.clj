@@ -62,7 +62,7 @@
                         :constraint constraint
                         :column     col}))))))
 
-(defn- maybe-parse-fk-constraint-error [database error-message]
+(defn- maybe-parse-fk-constraint-error [_database error-message]
   (let [[match table constraint fkey-cols ref-table key-cols]
         (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)
         constraint (remove-backticks constraint)
@@ -80,20 +80,35 @@
        (str/split fkey-cols #", ")
        (str/split key-cols #", ")))))
 
+(defn- maybe-parse-incorrect-type [_database error-message]
+  (when-let [[_ expected-type value database table column row]
+             (re-find #"Incorrect (.+?) value: '(.+)' for column (?:(.+)\.)??(?:(.+)\.)?(.+) at row (\d+)" error-message)]
+    [(cond-> {:message       (tru "incorrect value: {0}" value)
+              :column        (-> column
+                                 (clojure.string/replace #"^'(.*)'$" "$1")
+                                 remove-backticks)
+              :expected-type expected-type
+              :value         value
+              :row           (parse-long row)}
+       table    (assoc :table (remove-backticks table))
+       database (assoc :database (remove-backticks database)))]))
+
 (comment
-  (let [error-message "Cannot delete or update a parent row: a foreign key constraint fails (`food`.`y`, CONSTRAINT `y_ibfk_1` FOREIGN KEY (`x_id1`, `x_id2`) REFERENCES `x` (`id1`, `id2`))"]
-    (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message))
+  (maybe-parse-fk-constraint-error nil "Cannot delete or update a parent row: a foreign key constraint fails (`food`.`y`, CONSTRAINT `y_ibfk_1` FOREIGN KEY (`x_id1`, `x_id2`) REFERENCES `x` (`id1`, `id2`))")
   (maybe-parse-unique-constraint-error {:id 480} "(conn=10) Duplicate entry 'ID' for key 'string_pk.PRIMARY'")
   (maybe-parse-not-null-error nil "Column 'f1' cannot be null")
+  (maybe-parse-incorrect-type nil "Incorrect integer value: 'not boolean' for column `G__168815`.`types`.`boolean` at row 1")
+  (maybe-parse-incorrect-type nil "(conn=183) Incorrect integer value: 'STRING' for column 'id' at row 1")
+  (maybe-parse-incorrect-type nil "(conn=183) Incorrect integer value: 'STRING' for column `table`.`id` at row 1")
   nil)
 
 (defmethod sql-jdbc.actions/parse-sql-error :mysql
   [_driver database message]
-  (tap> [:parse-sql-error message])
   (some #(% database message)
         [maybe-parse-not-null-error
          maybe-parse-unique-constraint-error
-         maybe-parse-fk-constraint-error]))
+         maybe-parse-fk-constraint-error
+         maybe-parse-incorrect-type]))
 
 ;;; There is a huge discrepancy between the types used in DDL statements and
 ;;; types that can be used in CAST:
@@ -110,19 +125,11 @@
    :type/JSON           "JSON"
    :type/Time           "TIME(3)"})
 
-;;; For MySQL creating a Savepoint and rolling back to it on error seems to be
-;;; enough to let the parent transaction proceed if some particular statement
-;;; encounters an error.
+;;; MySQL doesn't need to do anything special with nested transactions; the
+;;; original transaction can proceed even if some specific statement errored.
 (defmethod sql-jdbc.actions/do-nested-transaction :mysql
-  [_driver ^java.sql.Connection conn thunk]
-  (let [savepoint (.setSavepoint conn)]
-    (try
-      (thunk)
-      (catch Throwable e
-        (.rollback conn savepoint)
-        (throw e))
-      (finally
-        (.releaseSavepoint conn savepoint)))))
+  [_driver _conn thunk]
+  (thunk))
 
 (defn- get-primary-keys [db-spec table-components]
   (let [schema (when (next table-components) (first table-components))

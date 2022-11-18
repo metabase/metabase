@@ -281,29 +281,6 @@
                             (assoc e-data :status-code 400)
                             e))))))))
 
-(comment
-  (metabase.models/Database 480)
-
-  (with-jdbc-transaction [conn 480]
-    (tap> (jdbc/execute! {:connection conn}
-                         ["delete from string_pk where id = 'new ID'"]
-                         {:transaction? false})))
-
-  (with-jdbc-transaction [conn 480]
-    (tap> (jdbc/execute! {:connection conn}
-                         ["insert into string_pk values ('new ID', 1, true)"]
-                         {:return-keys true, :identifiers identity, :transaction? false})))
-
-  (with-jdbc-transaction [conn 480]
-    (tap> (jdbc/execute! {:connection conn}
-                         ["insert into named_pk (comment) values ('meg egy megjegyzes')"]
-                         {:return-keys true, :identifiers identity, :transaction? false})))
-
-  (with-jdbc-transaction [conn 480]
-    (tap> (jdbc/execute! {:connection conn}
-                         ["insert into compound_pk (id2, description) values (0, 'leirae')"]
-                         {:return-keys true, :identifiers identity, :transaction? false})))
-  nil)
 ;;;; Bulk actions
 
 (defmulti do-nested-transaction

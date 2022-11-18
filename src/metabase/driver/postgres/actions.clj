@@ -96,5 +96,4 @@
 ;;; Result is already the created row.
 (defmethod sql-jdbc.actions/select-created-row :postgres
   [_driver _create-hsql _conn result]
-  (tap> [_create-hsql result])
   result)
