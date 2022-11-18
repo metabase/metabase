@@ -505,11 +505,7 @@
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
 (defmethod supports? [::driver :date-arithmetics] [_ _] true)
 (defmethod supports? [::driver :temporal-extract] [_ _] true)
-<<<<<<< HEAD
-(defmethod supports? [::driver :convert-timezone] [_ _] false)
-=======
 (defmethod supports? [::driver :now] [_ _] true)
->>>>>>> fa7f28f7c1 (Implement now for sql drivers)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
