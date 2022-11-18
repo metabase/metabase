@@ -19,11 +19,7 @@ import {
 } from "metabase-lib/expressions/index";
 import { getHelpText } from "./helper-text-strings";
 
-const suggestionText = func => {
-  const { displayName, args } = func;
-  const suffix = args.length > 0 ? "(" : " ";
-  return displayName + suffix;
-};
+const suggestionText = func => func.displayName + "(";
 
 export function suggest({
   source,
