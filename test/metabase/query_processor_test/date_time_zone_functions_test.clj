@@ -3,9 +3,6 @@
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx]
-            [honeysql.core :as hsql]
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
