@@ -61,8 +61,6 @@
     (keyword "Long Varchar")   :type/Text
     (keyword "Long Varbinary") :type/*} database-type))
 
-(driver/connection-properties :vertica)
-
 (defmethod sql-jdbc.conn/connection-details->spec :vertica
   [_ {:keys [host port db dbname]
       :or   {host "localhost", port 5433, db ""}
