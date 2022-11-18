@@ -124,6 +124,11 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v3
+    - name: Set conditional ENVs
+      run: |
+        if [[ ${{ github.event.pull_request.base.ref }} != release* ]]; then
+          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
+        fi
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare JDK ${{ matrix.java-version }}
@@ -148,10 +153,6 @@ jobs:
     - name: Run OSS-specific Cypress tests
       if: matrix.edition == 'oss'
       run: |
-        if [[ ${{ github.event.pull_request.base.ref }} != release* ]]; then
-          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
-        fi
-
         yarn run test-cypress-run \
         --env grepTags=@OSS \
         --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
@@ -161,10 +162,6 @@ jobs:
     - name: Run EE Cypress tests on ${{ matrix.folder }}
       if: matrix.edition == 'ee'
       run: |
-        if [[ ${{ github.event.pull_request.base.ref }} != release* ]]; then
-          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
-        fi
-
         yarn run test-cypress-run \
         --env grepTags="-@quarantine" \
         --folder ${{ matrix.folder }}
