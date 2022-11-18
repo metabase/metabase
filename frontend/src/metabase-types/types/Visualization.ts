@@ -15,7 +15,8 @@ export type ActionCreator = (props: ClickActionProps) => ClickAction[];
 
 export type QueryMode = {
   name: string;
-  drills: () => ActionCreator[];
+  drills: ActionCreator[];
+  fallback?: ActionCreator;
 };
 
 export type HoverData = Array<{ key: string; value: any; col?: Column }>;
