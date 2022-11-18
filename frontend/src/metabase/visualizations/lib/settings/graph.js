@@ -151,26 +151,38 @@ export const GRAPH_DATA_SETTINGS = {
     dashboard: false,
     useRawSeries: true,
   },
+  "graph.series_order_dimension": {
+    getValue: (_series, settings) => settings["graph.dimensions"][1],
+    readDependencies: ["graph.series_order"],
+  },
   "graph.series_order": {
     section: t`Data`,
     widget: ChartSettingOrderedSimple,
     marginBottom: "1rem",
-    isValid: (series, settings) => {
-      const seriesOrder = settings["graph.series_order"];
 
-      if (!seriesOrder || !_.isArray(seriesOrder)) {
-        return false;
+    getValue: (series, settings) => {
+      const seriesOrder = settings["graph.series_order"];
+      const seriesOrderDimension = settings["graph.series_order_dimension"];
+      const currentDimension = settings["graph.dimensions"][1];
+
+      const generateDefault = series => {
+        const keys = series.map(s => keyForSingleSeries(s));
+        return keys.map((key, index) => ({
+          name: key,
+          originalIndex: index,
+          enabled: true,
+        }));
+      };
+
+      if (
+        !seriesOrder ||
+        !_.isArray(seriesOrder) ||
+        seriesOrderDimension !== currentDimension
+      ) {
+        return generateDefault(series);
       }
 
-      return seriesOrder.length === series.length;
-    },
-    getDefault: series => {
-      const keys = series.map(s => keyForSingleSeries(s));
-      return keys.map((key, index) => ({
-        name: key,
-        originalIndex: index,
-        enabled: true,
-      }));
+      return seriesOrder;
     },
     getProps: (series, settings) => {
       const seriesSettings = settings["series_settings"] || {};
@@ -190,6 +202,7 @@ export const GRAPH_DATA_SETTINGS = {
     },
     dashboard: false,
     readDependencies: ["series_settings.colors"],
+    writeDependencies: ["graph.series_order_dimension"],
   },
   "graph.metrics": {
     section: t`Data`,
