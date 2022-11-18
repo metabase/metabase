@@ -54,19 +54,37 @@
   []
   (inc (driver.common/start-of-week->int)))
 
+(defn- byte-array? [x] (instance? (Class/forName "[B") x))
+
+(defn- handle-conn-uri [details user account private-key-file]
+  (assoc details
+         :connection-uri
+         (format "jdbc:snowflake://%s.snowflakecomputing.com?user=%s&private_key_file=%s"
+                 account
+                 user
+                 (.getCanonicalPath private-key-file))))
+
 (defn- resolve-private-key
   "Convert the private-key secret properties into a private_key_file property in `details`.
-
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [details]
-  (let [property         "private-key"
-        secret-map       (secret/db-details-prop->secret-map details property)
-        private-key-file (when (some? (:value secret-map))
-                           (secret/value->file! secret-map :snowflake))]
-    (cond-> (apply dissoc details (vals (secret/get-sub-props property)))
-      private-key-file (assoc :private_key_file (.getCanonicalPath private-key-file)))))
+  [{:keys [user password account private-key-value private-key-path] :as details}]
+  (cond
+    password
+    details
+
+    private-key-path
+    (let [secret-map       (secret/db-details-prop->secret-map details "private-key")
+          private-key-file (when (some? (:value secret-map))
+                             (secret/value->file! secret-map :snowflake))]
+      (cond-> (apply dissoc details (vals (secret/get-sub-props "private-key")))
+        private-key-file (handle-conn-uri user account private-key-file)))
+
+    private-key-value
+    (let [private-key-str  (if (byte-array? private-key-value) (String. ^"[B" private-key-value) private-key-value)
+          private-key-file (secret/value->file! {:connection-property-name "private-key-file" :value private-key-str})]
+      (handle-conn-uri details user account private-key-file))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options], :as details}]
@@ -326,40 +344,12 @@
   [_]
   #{"INFORMATION_SCHEMA"})
 
-(defn- connecting-with-local-keypair?
-  [{:keys [account password private-key-value private_key_file user]}]
-  (and (nil? password)
-       (nil? private_key_file)
-       (some? private-key-value)
-       (some? account)
-       (some? user)))
-
-(defn adapt-snowflake-local-keypair
-  "JDBC is finicky about how it will accept the private-key-file and user. These need to be in the connection-uri. More
-  info in the docstring of "
-  [{:keys [user account private-key-value] :as details}]
-  (let [private-key-str (if (instance? (Class/forName "[B") private-key-value)
-                          (String. ^"[B" private-key-value)
-                          private-key-value)
-        private-key-file (secret/value->file! {:connection-property-name "private-key-file"
-                                               :value private-key-str})
-        new-conn-uri (format "jdbc:snowflake://%s.snowflakecomputing.com?user=%s&private_key_file=%s"
-                             account
-                             user
-                             private-key-file)]
-    (-> details
-        (dissoc :private-key-value)
-        (assoc :private_key_file private-key-file)
-        (assoc :connection-uri new-conn-uri))))
-
 (defmethod driver/can-connect? :snowflake
-  [driver details]
-
-  (let [{:keys [db], :as details'} (cond-> details (connecting-with-local-keypair? details) adapt-snowflake-local-keypair)]
-    (and ((get-method driver/can-connect? :sql-jdbc) driver details')
-         (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details']]
-           (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db)))
-         true)))
+  [driver {:keys [db], :as details}]
+  (and ((get-method driver/can-connect? :sql-jdbc) driver details)
+       (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+         (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db)))
+       true))
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
