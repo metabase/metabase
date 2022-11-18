@@ -147,12 +147,16 @@ export const getIsCollectionPathVisible = createSelector(
 
 export const getIsQuestionLineageVisible = createSelector(
   [getQuestion, getOriginalQuestion, getRouterPath],
-  (question, originalQuestion, path) =>
-    question != null &&
-    !question.isSaved() &&
-    originalQuestion != null &&
-    !originalQuestion.isDataset() &&
-    PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
+  (question, originalQuestion, path) => {
+    if (!question || !originalQuestion) {
+      return false;
+    }
+    return (
+      !question.isSaved() &&
+      !originalQuestion.isDataset() &&
+      PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path))
+    );
+  },
 );
 
 export const getSettings = createSelector(
