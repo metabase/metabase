@@ -1,16 +1,10 @@
-name: Release [WIP]
+name: Pre-release [WIP]
 
 on:
   workflow_dispatch:
     inputs:
       commit:
         description: 'A commit hash'
-        required: true
-      oss-tag:
-        description: 'OSS version tag'
-        required: true
-      ee-tag:
-        description: 'EE version tag'
         required: true
 
 jobs:
@@ -27,8 +21,8 @@ jobs:
     steps:
     - name: Check out the code
       uses: actions/checkout@v3
-      with:
-        ref: ${{ github.event.inputs.commit }}
+    - name: Switch to commit ${{ github.event.inputs.commit }}
+      run: git checkout ${{ github.event.inputs.commit }}
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -77,16 +71,10 @@ jobs:
         ports:
           - 5000:5000
     steps:
-    - name: Set the image tag based on the edition
-      run: |
-        if [[ ${{ matrix.edition }} == ee ]]; then
-          echo "IMAGE_TAG=${{ github.event.inputs.ee-tag }}" >> $GITHUB_ENV
-        else
-          echo "IMAGE_TAG=${{ github.event.inputs.oss-tag }}" >> $GITHUB_ENV
-        fi
-    - uses: actions/checkout@v3
-      with:
-        ref: ${{ github.event.inputs.commit }}
+    - name: Check out the code
+      uses: actions/checkout@v3
+    - name: Switch to commit ${{ github.event.inputs.commit }}
+      run: git checkout ${{ github.event.inputs.commit }}
     - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact
       with:
@@ -95,47 +83,75 @@ jobs:
       run: mv ./target/uberjar/metabase.jar bin/docker/.
     - name: Set up Docker Buildx
       id: buildx
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
       with:
         driver-opts: network=host
     - name: Build ${{ matrix.edition }} container
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         context: bin/docker/.
         platforms: linux/amd64
         network: host
-        tags: localhost:5000/local-metabase:${{ env.IMAGE_TAG }}
+        tags: localhost:5000/local-metabase:${{ github.event.inputs.commit }}
         no-cache: true
         push: true
 
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ env.IMAGE_TAG }}
+      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ github.event.inputs.commit }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 3
 
-    - name: Determine the target Docker Hub repository
-      run: |
-        if [[ ${{ github.repository }} == 'metabase/metabase' ]]; then
-          if [[ ${{ matrix.edition }} == ee ]]; then
-            echo "Metabase EE: image ${{ env.IMAGE_TAG }} is going to be pushed to metabase/test-metabase-enterprise"
-            echo "DOCKERHUB_REPO=metabase/test-metabase-enterprise" >> $GITHUB_ENV
-          else
-            echo "Metabase OSS: image ${{ env.IMAGE_TAG }} is going to be pushed to metabase/test-metabase"
-            echo "DOCKERHUB_REPO=metabase/test-metabase" >> $GITHUB_ENV
-          fi
-        else
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}" >> $GITHUB_ENV
-        fi
     - name: Login to Docker Hub
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
-    - name: Retag and push container image to Metabase Docker Hub
+    - name: Determine the target Docker Hub repository
       run: |
-        echo "Pushing ${{ env.IMAGE_TAG }} to ${{ env.DOCKERHUB_REPO }} ..."
-        docker tag localhost:5000/local-metabase:${{ env.IMAGE_TAG }} ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_TAG }}
-        docker push ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_TAG }}
+        if [[ ${{ matrix.edition }} == ee ]]; then
+          echo "Metabase EE: image is going to be pushed to ${{ github.repository_owner }}/metabase-enterprise:${{ github.event.inputs.commit }}"
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise:${{ github.event.inputs.commit }}" >> $GITHUB_ENV
+        else
+          echo "Metabase OSS: image is going to be pushed to ${{ github.repository_owner }}/metabase:${{ github.event.inputs.commit }}"
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase:${{ github.event.inputs.commit }}" >> $GITHUB_ENV
+        fi
+    - name: Retag and push container image to Docker Hub
+      run: |
+        echo "Pushing container image ${{ env.DOCKERHUB_REPO }} ..."
+        docker tag localhost:5000/local-metabase:${{ github.event.inputs.commit }} ${{ env.DOCKERHUB_REPO }}
+        docker push ${{ env.DOCKERHUB_REPO }}
         echo "Finished!"
+
+  verify-docker-pull:
+    runs-on: ubuntu-20.04
+    needs: containerize
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        edition: [oss, ee]
+    steps:
+    - name: Login to Docker Hub # authenticated, to avoid being rate-throttled
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
+    - name: Determine the container image to pull
+      run: |
+        if [[ ${{ matrix.edition }} == ee ]]; then
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise:${{ github.event.inputs.commit }}" >> $GITHUB_ENV
+        else
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase:${{ github.event.inputs.commit }}" >> $GITHUB_ENV
+        fi
+    - name: Pull the container image
+      run: |
+        echo "Pulling container image ${{ env.DOCKERHUB_REPO }} ..."
+        docker pull ${{ env.DOCKERHUB_REPO }}
+        echo "Successful!"
+    - name: Launch container
+      run: docker run --rm -dp 3000:3000 ${{ env.DOCKERHUB_REPO }}
+      timeout-minutes: 5
+    - name: Wait for Metabase to start
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      timeout-minutes: 3
