@@ -25,7 +25,8 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]])
+            [metabase.util.i18n :refer [trs tru]]
+            [ring.util.codec :as codec])
   (:import [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
@@ -61,8 +62,8 @@
          :connection-uri
          (format "jdbc:snowflake://%s.snowflakecomputing.com?user=%s&private_key_file=%s"
                  account
-                 user
-                 (.getCanonicalPath private-key-file))))
+                 (codec/url-encode user)
+                 (codec/url-encode (.getCanonicalPath private-key-file)))))
 
 (defn- resolve-private-key
   "Convert the private-key secret properties into a private_key_file property in `details`.
