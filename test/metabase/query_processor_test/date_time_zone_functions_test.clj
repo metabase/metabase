@@ -303,16 +303,18 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
     (testing "should return the current time"
       ;; Allow a 30 second window for the current time to account for any difference between the time in Clojure and the DB
-      (is (= true
-             (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:now]}
-                    :fields [[:expression "1"]]
-                    :limit  1})
-                 mt/rows
-                 ffirst
-                 u.date/parse
-                 (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
-                 (close? (t/instant) (t/seconds 30))))))
+      (doseq [timezone [nil "America/Los_Angeles"]]
+        (mt/with-temporary-setting-values [report-timezone timezone]
+          (is (= true
+                 (-> (mt/run-mbql-query venues
+                       {:expressions {"1" [:now]}
+                        :fields [[:expression "1"]]
+                        :limit  1})
+                     mt/rows
+                     ffirst
+                     u.date/parse
+                     (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
+                     (close? (t/instant) (t/seconds 30))))))))
     (testing "should return a datetime with second precision"
       (is (= true
              (-> (mt/run-mbql-query venues
@@ -346,6 +348,8 @@
                              [:expression "3"]]
                     :limit  1})
                  mt/rows first))))))
+
+(mt/set-test-drivers! #{:presto-jdbc})
 
 (deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
