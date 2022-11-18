@@ -221,18 +221,32 @@ describe("writeback > ActionCreator > FormCreator > utils", () => {
     });
 
     it('should return "date" for dates', () => {
-      const dateTypes = [
-        "type/Date",
-        "type/DateTime",
-        "type/Time",
-        "type/DateTimeWithLocalTZ",
-        "type/TimeWithLocalTZ",
-      ];
+      const dateTypes = ["type/Date"];
       const param = createParameter();
 
       dateTypes.forEach(type => {
         const field = createField({ base_type: type });
         expect(getInputType(param, field)).toEqual("date");
+      });
+    });
+
+    it('should return "datetime" for datetimes', () => {
+      const dateTypes = ["type/DateTime", "type/DateTimeWithLocalTZ"];
+      const param = createParameter();
+
+      dateTypes.forEach(type => {
+        const field = createField({ base_type: type });
+        expect(getInputType(param, field)).toEqual("datetime");
+      });
+    });
+
+    it('should return "time" for times', () => {
+      const dateTypes = ["type/Time", "type/TimeWithLocalTZ"];
+      const param = createParameter();
+
+      dateTypes.forEach(type => {
+        const field = createField({ base_type: type });
+        expect(getInputType(param, field)).toEqual("time");
       });
     });
 

@@ -55,6 +55,9 @@ const formatValue = (value: string | number, inputType?: string) => {
   if (inputType === "datetime-local") {
     return moment(value).format("YYYY-MM-DD HH:mm:ss");
   }
+  if (inputType === "time") {
+    return String(value).replace(/z/gi, "");
+  }
   return value;
 };
 
