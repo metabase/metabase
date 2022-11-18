@@ -71,9 +71,9 @@
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
 
-(defmethod sql.qp/current-datetime-honeysql-form :vertica
-  [_]
-  (hx/with-database-type-info (hsql/call :current_timestamp 6) :TimestampTz))
+(defmethod sql.qp/->honeysql [:vertica :now]
+  [_driver _clause]
+  (hsql/call :current_timestamp 0))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]
