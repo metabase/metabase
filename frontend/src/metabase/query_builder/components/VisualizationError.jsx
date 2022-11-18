@@ -149,7 +149,11 @@ class VisualizationError extends Component {
             <Icon name="warning" size="40" />
           </QueryErrorIcon>
           <QueryErrorMessage>{processedError}</QueryErrorMessage>
-          <QueryLink href="https://www.metabase.com/learn/debugging-sql/sql-syntax.html">{t`Learn how to debug SQL errors`}</QueryLink>
+          <QueryLink
+            href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
+          >
+            {t`Learn how to debug SQL errors`}
+          </QueryLink>
         </QueryError>
       );
     } else {
