@@ -12,6 +12,7 @@ env:
 
 jobs:
   build:
+    if: ${{ github.repository }} != 'metabase/metabase'
     name: Build Metabase ${{ matrix.edition }} @${{ github.event.inputs.commit }}
     runs-on: ubuntu-20.04
     timeout-minutes: 40
@@ -102,12 +103,12 @@ jobs:
         context: bin/docker/.
         platforms: linux/amd64
         network: host
-        tags: localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }}
+        tags: localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }}-${{ matrix.edition }}
         no-cache: true
         push: true
 
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }}
+      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }}-${{ matrix.edition }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
@@ -120,23 +121,13 @@ jobs:
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
     - name: Determine the target Docker Hub repository
       run: |
-        if [[ ${{ matrix.edition }} == ee ]]; then
-          docker_image="metabase_enterprise:${{ env.COMMIT_IDENTIFIER }}"
-        else
-          docker_image="metabase:${{ env.COMMIT_IDENTIFIER }}"
-        fi
-
-        if [[ ${{ github.repository }} == 'metabase/metabase' ]]; then
-          echo "Metabase ${{ matrix.edition }}: image is going to be pushed to metabase/$docker_image"
-          echo "DOCKERHUB_REPO=metabase/$docker_image" >> $GITHUB_ENV
-        else
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}:${{ env.COMMIT_IDENTIFIER }}-${{ matrix-edition }}" >> $GITHUB_ENV
-        fi
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${{ env.COMMIT_IDENTIFIER }}-${{ matrix-edition }}" >> $GITHUB_ENV
     - name: Retag and push container image to Docker Hub
       run: |
-        echo "Pushing container image ${{ env.DOCKERHUB_REPO }} ..."
-        docker tag localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }} ${{ env.DOCKERHUB_REPO }}
-        docker push ${{ env.DOCKERHUB_REPO }}
+        echo "Pushing container image ${{ env.IMAGE_NAME}} to ${{ env.DOCKERHUB_REPO }} ..."
+        docker tag localhost:5000/local-metabase:${{ env.IMAGE_NAME }} ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
+        docker push ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
         echo "Finished!"
 
   verify-docker-pull:
@@ -161,24 +152,15 @@ jobs:
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
     - name: Determine the container image to pull
       run: |
-        if [[ ${{ matrix.edition }} == ee ]]; then
-          docker_image="metabase_enterprise:${{ env.COMMIT_IDENTIFIER }}"
-        else
-          docker_image="metabase:${{ env.COMMIT_IDENTIFIER }}"
-        fi
-
-        if [[ ${{ github.repository }} == 'metabase/metabase' ]]; then
-          echo "DOCKERHUB_REPO=metabase/$docker_image" >> $GITHUB_ENV
-        else
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}:${{ env.COMMIT_IDENTIFIER }}-${{ matrix-edition }}" >> $GITHUB_ENV
-        fi
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${{ env.COMMIT_IDENTIFIER }}-${{ matrix-edition }}" >> $GITHUB_ENV
     - name: Pull the container image
       run: |
-        echo "Pulling container image ${{ env.DOCKERHUB_REPO }} ..."
-        docker pull ${{ env.DOCKERHUB_REPO }}
+        echo "Pulling container image ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }} ..."
+        docker pull ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
         echo "Successful!"
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 ${{ env.DOCKERHUB_REPO }}
+      run: docker run --rm -dp 3000:3000 ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
