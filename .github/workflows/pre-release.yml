@@ -9,6 +9,7 @@ on:
 
 env:
   MAX_HASH_LENGTH: 8
+  CUSTOM_REPO: ${{ secrets.CUSTOM_RELEASE_REPO }}
 
 jobs:
   build:
@@ -63,6 +64,7 @@ jobs:
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   containerize:
+    if: env.CUSTOM_REPO != null
     runs-on: ubuntu-20.04
     needs: check-uberjar-health
     timeout-minutes: 15
@@ -121,7 +123,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
     - name: Determine the target Docker Hub repository
       run: |
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}" >> $GITHUB_ENV
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ env.CUSTOM_REPO }}" >> $GITHUB_ENV
           echo "IMAGE_NAME=${{ env.COMMIT_IDENTIFIER }}-${{ matrix-edition }}" >> $GITHUB_ENV
     - name: Retag and push container image to Docker Hub
       run: |
@@ -152,7 +154,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
     - name: Determine the container image to pull
       run: |
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}" >> $GITHUB_ENV
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ env.CUSTOM_REPO }}" >> $GITHUB_ENV
           echo "IMAGE_NAME=${{ env.COMMIT_IDENTIFIER }}-${{ matrix-edition }}" >> $GITHUB_ENV
     - name: Pull the container image
       run: |
