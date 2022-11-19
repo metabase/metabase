@@ -6,19 +6,29 @@ on:
       - 'master'
       - 'release-**'
     paths-ignore:
+      # documentation
       - "docs/**"
       - "**.md"
-      - "**.clj*"
-      - "**.edn"
+      # backend
+      - "enterprise/backend/**"
+      - "src/**"
+      - "test/**"
+      - "*modules/**" # modules/, test_modules/
+      # E2E
       - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
       - "frontend/test/__support__/e2e/**"
       - "frontend/test/__runner__/*cypress*"
   pull_request:
     paths-ignore:
+      # documentation
       - "docs/**"
       - "**.md"
-      - "**.clj*"
-      - "**.edn"
+      # backend
+      - "enterprise/backend/**"
+      - "src/**"
+      - "test/**"
+      - "*modules/**" # modules/, test_modules/
+      # E2E
       - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
       - "frontend/test/__support__/e2e/**"
       - "frontend/test/__runner__/*cypress*"
