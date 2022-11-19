@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       commit:
-        description: 'A commit hash'
+        description: 'A full-length commit SHA-1 hash'
         required: true
 
 env:
@@ -24,8 +24,8 @@ jobs:
     steps:
     - name: Check out the code
       uses: actions/checkout@v3
-    - name: Switch to commit ${{ github.event.inputs.commit }}
-      run: git checkout ${{ github.event.inputs.commit }}
+      with:
+        ref: ${{ github.event.inputs.commit }}
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -76,8 +76,8 @@ jobs:
     steps:
     - name: Check out the code
       uses: actions/checkout@v3
-    - name: Switch to commit ${{ github.event.inputs.commit }}
-      run: git checkout ${{ github.event.inputs.commit }}
+      with:
+        ref: ${{ github.event.inputs.commit }}
     - name: Truncate commit hash
       run: |
         commit_id=${{ github.event.inputs.commit }}
