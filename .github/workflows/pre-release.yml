@@ -7,6 +7,9 @@ on:
         description: 'A commit hash'
         required: true
 
+env:
+  MAX_HASH_LENGTH: 8
+
 jobs:
   build:
     name: Build Metabase ${{ matrix.edition }} @${{ github.event.inputs.commit }}
@@ -75,6 +78,13 @@ jobs:
       uses: actions/checkout@v3
     - name: Switch to commit ${{ github.event.inputs.commit }}
       run: git checkout ${{ github.event.inputs.commit }}
+    - name: Truncate commit hash
+      run: |
+        commit_id=${{ github.event.inputs.commit }}
+        truncated_hash=${commit_id:0:${{ env.MAX_HASH_LENGTH }}}
+
+        echo "COMMMIT_IDENTIFIER=$truncated_hash" >> $GITHUB_ENV
+      shell: bash
     - uses: actions/download-artifact@v3
       name: Retrieve uberjar artifact
       with:
@@ -92,12 +102,12 @@ jobs:
         context: bin/docker/.
         platforms: linux/amd64
         network: host
-        tags: localhost:5000/local-metabase:${{ github.event.inputs.commit }}
+        tags: localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }}
         no-cache: true
         push: true
 
     - name: Launch container
-      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ github.event.inputs.commit }}
+      run: docker run --rm -dp 3000:3000 localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }}
       timeout-minutes: 5
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
@@ -111,21 +121,21 @@ jobs:
     - name: Determine the target Docker Hub repository
       run: |
         if [[ ${{ matrix.edition }} == ee ]]; then
-          docker_image="metabase_enterprise:${{ github.event.inputs.commit }}"
+          docker_image="metabase_enterprise:${{ env.COMMIT_IDENTIFIER }}"
         else
-          docker_image="metabase:${{ github.event.inputs.commit }}"
+          docker_image="metabase:${{ env.COMMIT_IDENTIFIER }}"
         fi
 
         if [[ ${{ github.repository }} == 'metabase/metabase' ]]; then
           echo "Metabase ${{ matrix.edition }}: image is going to be pushed to metabase/$docker_image"
           echo "DOCKERHUB_REPO=metabase/$docker_image" >> $GITHUB_ENV
         else
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}:${{ github.event.inputs.commit }}-${{ matrix-edition }}" >> $GITHUB_ENV
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}:${{ env.COMMIT_IDENTIFIER }}-${{ matrix-edition }}" >> $GITHUB_ENV
         fi
     - name: Retag and push container image to Docker Hub
       run: |
         echo "Pushing container image ${{ env.DOCKERHUB_REPO }} ..."
-        docker tag localhost:5000/local-metabase:${{ github.event.inputs.commit }} ${{ env.DOCKERHUB_REPO }}
+        docker tag localhost:5000/local-metabase:${{ env.COMMIT_IDENTIFIER }} ${{ env.DOCKERHUB_REPO }}
         docker push ${{ env.DOCKERHUB_REPO }}
         echo "Finished!"
 
@@ -137,6 +147,13 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
+    - name: Truncate commit hash
+      run: |
+        commit_id=${{ github.event.inputs.commit }}
+        truncated_hash=${commit_id:0:${{ env.MAX_HASH_LENGTH }}}
+
+        echo "COMMMIT_IDENTIFIER=$truncated_hash" >> $GITHUB_ENV
+      shell: bash
     - name: Login to Docker Hub # authenticated, to avoid being rate-throttled
       uses: docker/login-action@v2
       with:
@@ -145,15 +162,15 @@ jobs:
     - name: Determine the container image to pull
       run: |
         if [[ ${{ matrix.edition }} == ee ]]; then
-          docker_image="metabase_enterprise:${{ github.event.inputs.commit }}"
+          docker_image="metabase_enterprise:${{ env.COMMIT_IDENTIFIER }}"
         else
-          docker_image="metabase:${{ github.event.inputs.commit }}"
+          docker_image="metabase:${{ env.COMMIT_IDENTIFIER }}"
         fi
 
         if [[ ${{ github.repository }} == 'metabase/metabase' ]]; then
           echo "DOCKERHUB_REPO=metabase/$docker_image" >> $GITHUB_ENV
         else
-          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}:${{ github.event.inputs.commit }}-${{ matrix-edition }}" >> $GITHUB_ENV
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ secrets.CUSTOM_RELEASE_REPO }}:${{ env.COMMIT_IDENTIFIER }}-${{ matrix-edition }}" >> $GITHUB_ENV
         fi
     - name: Pull the container image
       run: |
