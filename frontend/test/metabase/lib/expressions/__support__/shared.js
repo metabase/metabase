@@ -74,16 +74,16 @@ const expression = [
 ];
 
 const aggregation = [
-  ["Count()", ["count()"], "aggregation with no arguments"],
+  ["Count", ["count"], "aggregation with no arguments"],
   ["Sum([Total])", ["sum", total], "aggregation with one argument"],
-  ["1 - Count()", ["-", 1, ["count"]], "aggregation with math outside"],
+  ["1 - Count", ["-", 1, ["count"]], "aggregation with math outside"],
   [
     "Sum([Total] * 2)",
     ["sum", ["*", total, 2]],
     "aggregation with math inside",
   ],
   [
-    "1 - Sum([Total] * 2) / Count()",
+    "1 - Sum([Total] * 2) / Count",
     ["-", 1, ["/", ["sum", ["*", total, 2]], ["count"]]],
     "aggregation with math inside and outside",
   ],
@@ -118,14 +118,14 @@ const aggregation = [
   // should not compile:
   ["Count([Total])", undefined, "invalid count arguments"],
   ["SumIf([Total] > 50, [Total])", undefined, "invalid sum-where arguments"],
-  ["Count() + Share((", undefined, "invalid share"],
+  ["Count + Share((", undefined, "invalid share"],
 ];
 
 // Skipped for now: temporary, known regression
 /* eslint-disable no-unused-vars */
 const nested_aggregation = [
   // should not compile:
-  ["Sum(Count())", undefined, "aggregation nested inside another aggregation"],
+  ["Sum(Count)", undefined, "aggregation nested inside another aggregation"],
 ];
 /* eslint-enable no-unused-vars */
 
