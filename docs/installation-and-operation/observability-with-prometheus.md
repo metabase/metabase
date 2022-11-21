@@ -4,7 +4,7 @@ title: observability-with-prometheus
 
 # Observability with Prometheus
 
-You can export [Prometheus](https://prometheus.io/) stats from your Metabase.
+You can export metrics in [Prometheus](https://prometheus.io/) format from your Metabase.
 
 ## Running Metabase and Prometheus locally
 
@@ -21,7 +21,7 @@ MB_PROMETHEUS_SERVER_PORT=9191 java -jar metabase.jar
 The `MB_PROMETHEUS_SERVER_PORT=9191` specifies which port (`9191`) Metabase will use to send data to Prometheus. To clarify the ports that will be involved here:
 
 - Port `3000` is the port Metabase uses to serve the Metabase app. You can set another port with `MB_JETTY_PORT` (e.g., `MB_JETTY_PORT=3001`).
-- Port `9191` (or whichever port you specified with the `MB_PROMETHEUS_SERVER_PORT` environment variable) is the port Metabase uses to send metrics to Prometheus.
+  - Port `9191` (or whichever port you specified with the `MB_PROMETHEUS_SERVER_PORT` environment variable) is the port Prometheus uses to scrape metrics from Metabase.
 - Port `9090` is the port Prometheus uses to serve the Prometheus application.
 
 When you start Metabase, the Metabase logs will tell you that Metabase is starting the `prometheus metrics collector` and `prometheus metrics web-server`.
@@ -35,7 +35,7 @@ When you start Metabase, the Metabase logs will tell you that Metabase is starti
 (truncated logs)
 ```
 
-You can view your locally running Metabase at [http://localhost:3000](http://localhost:3000).
+You can view your locally running Metabase at `http://localhost:3000`.
 
 ### Download and configure Prometheus
 
@@ -75,9 +75,9 @@ In a new terminal process in the Prometheus directory, run:
 ./prometheus --config.file=prometheus.yml
 ```
 
-Then check [http://localhost:9090](http://localhost:9090). You should see the Prometheus app, and be able to search for various metrics emitted by Metabase.
+Then check `http://localhost:9090`. You should see the Prometheus app, and be able to search for various metrics emitted by Metabase.
 
-![Prometheus page showing `jvm_thread_state` graph](./prometheus.png)
+![Prometheus page showing `jvm_thread_state` graph](./images/prometheus.png)
 
 ## Sample metrics output
 
@@ -156,3 +156,6 @@ Metrics exported by Metabase include:
 - `process_start_time_seconds`
 
 
+## Further reading
+
+- [Monitoring Metabase](./monitoring-metabase.md)
