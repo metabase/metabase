@@ -50,6 +50,47 @@ describe("getSeriesWithColors", () => {
       ],
     ];
 
+    const multipleSeriesDashcard: SeriesWithOneOrLessDimensions[][] = [
+      [
+        {
+          name: "Count",
+          cardName: "Bar chart",
+          yAxisPosition: "left",
+          type: "bar",
+          data: [
+            ["Doohickey", 3976],
+            ["Gadget", 4939],
+            ["Gizmo", 4784],
+            ["Widget", 5061],
+          ],
+          column: {
+            name: "count",
+            source: "aggregation",
+            display_name: "Count",
+          },
+        },
+      ],
+      [
+        {
+          name: "Count",
+          cardName: "Area chart",
+          yAxisPosition: "left",
+          type: "area",
+          data: [
+            ["Doohickey", 3976],
+            ["Gadget", 4939],
+            ["Gizmo", 4784],
+            ["Widget", 5061],
+          ],
+          column: {
+            name: "count",
+            source: "aggregation",
+            display_name: "Count",
+          },
+        },
+      ],
+    ];
+
     it("should assign colors given series", () => {
       const seriesWithColors = getSeriesWithColors(
         multipleSeries,
@@ -115,6 +156,41 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#987654", // column color
+            name: expect.anything(),
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+          },
+        ],
+      ];
+
+      expect(seriesWithColors).toEqual(expectedSeries);
+    });
+
+    it("it should assign colors on multiple series dashcard", () => {
+      const seriesWithColors = getSeriesWithColors(
+        multipleSeriesDashcard,
+        settings,
+        getPalette({}),
+      );
+
+      const expectedSeries = [
+        [
+          {
+            color: "#509EE3", // brand color
+            name: expect.anything(),
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+          },
+        ],
+        [
+          {
+            color: "#EF8C8C",
             name: expect.anything(),
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
@@ -275,6 +351,94 @@ describe("getSeriesWithColors", () => {
       ],
     ];
 
+    const multipleSeriesDashcard: SeriesWithTwoDimensions[][] = [
+      [
+        {
+          name: null,
+          cardName: "Area chart",
+          type: "area",
+          data: [
+            ["Doohickey", 177],
+            ["Gadget", 199],
+            ["Gizmo", 158],
+            ["Widget", 210],
+          ],
+          yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2016-01-01T00:00:00Z",
+        },
+        {
+          name: null,
+          cardName: "Area chart",
+          type: "area",
+          data: [
+            ["Doohickey", 1206],
+            ["Gadget", 1505],
+            ["Gizmo", 1592],
+            ["Widget", 1531],
+          ],
+          yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2017-01-01T00:00:00Z",
+        },
+      ],
+
+      [
+        {
+          name: null,
+          cardName: "Bar chart",
+          type: "bar",
+          data: [
+            ["Doohickey", 177],
+            ["Gadget", 199],
+            ["Gizmo", 158],
+            ["Widget", 210],
+          ],
+          yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2016-01-01T00:00:00Z",
+        },
+        {
+          name: null,
+          cardName: "Bar chart",
+          type: "bar",
+          data: [
+            ["Doohickey", 1206],
+            ["Gadget", 1505],
+            ["Gizmo", 1592],
+            ["Widget", 1531],
+          ],
+          yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2017-01-01T00:00:00Z",
+        },
+      ],
+    ];
+
     it("should assign colors given series", () => {
       const seriesWithColors = getSeriesWithColors(
         multipleSeries,
@@ -377,6 +541,63 @@ describe("getSeriesWithColors", () => {
           },
           {
             color: "#987654", // column color
+            name: null,
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+            breakoutValue: expect.anything(),
+          },
+        ],
+      ];
+
+      expect(seriesWithColors).toEqual(expectedSeries);
+    });
+
+    it("it should assign colors on multiple series dashcard", () => {
+      const seriesWithColors = getSeriesWithColors(
+        multipleSeriesDashcard,
+        settings,
+        getPalette({}),
+      );
+
+      const expectedSeries = [
+        [
+          {
+            color: "#F9D45C", // brand color
+            name: null,
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+            breakoutValue: expect.anything(),
+          },
+          {
+            color: "#F2A86F", // column color
+            name: null,
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+            breakoutValue: expect.anything(),
+          },
+        ],
+        [
+          {
+            color: "#98D9D9",
+            name: null,
+            cardName: expect.anything(),
+            yAxisPosition: expect.anything(),
+            type: expect.anything(),
+            data: expect.anything(),
+            column: expect.anything(),
+            breakoutValue: expect.anything(),
+          },
+          {
+            color: "#7172AD", // column color
             name: null,
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
