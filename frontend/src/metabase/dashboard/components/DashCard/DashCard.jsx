@@ -42,7 +42,7 @@ const WrappedVisualization = WithVizSettingsData(
   connect(null, dispatch => ({ dispatch }))(Visualization),
 );
 
-export default class DashCard extends Component {
+class DashCard extends Component {
   static propTypes = {
     dashcard: PropTypes.object.isRequired,
     gridItemWidth: PropTypes.number.isRequired,
@@ -309,3 +309,5 @@ export default class DashCard extends Component {
     );
   }
 }
+
+export default DashCard;
