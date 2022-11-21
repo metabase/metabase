@@ -111,7 +111,9 @@ function formatFunction([fn, ...args], options) {
   }
   const formattedName = getExpressionName(fn);
   const formattedArgs = args.map(arg => format(arg, options));
-  return `${formattedName}(${formattedArgs.join(", ")})`;
+  return args.length === 0
+    ? formattedName + "()"
+    : `${formattedName}(${formattedArgs.join(", ")})`;
 }
 
 function formatOperator([op, ...args], options) {
