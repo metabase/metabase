@@ -33,6 +33,10 @@
 
 (driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
 
+(defmethod driver/database-supports? [:oracle :convert-timezone]
+  [_driver _feat _db]
+  true)
+
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [;; Any types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107578

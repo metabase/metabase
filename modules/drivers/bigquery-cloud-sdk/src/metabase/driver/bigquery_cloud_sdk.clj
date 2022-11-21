@@ -316,13 +316,6 @@
 
 (defmethod driver/supports? [:bigquery-cloud-sdk :foreign-keys] [_ _] true)
 
-
-(defmethod driver/database-supports? [:bigquery-cloud-sdk :convert-timezone]
-  [_driver _feature _database]
-  ;; TODO: bigquery can supports convert-timezone, but it requires a change in how we parse value
-  ;; of `datetime` column.
-  false)
-
 (defmethod driver/database-supports? [:bigquery-cloud-sdk :datetime-diff]
   [_driver _feat _db]
   true)

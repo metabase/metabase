@@ -21,7 +21,6 @@
             [metabase.models.secret :as secret]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -32,11 +31,6 @@
            metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
-
-(doseq [[feature supported?] {:convert-timezone false}]
-  (defmethod driver/database-supports? [:snowflake feature]
-    [_driver _feature _database]
-    supported?))
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ message]

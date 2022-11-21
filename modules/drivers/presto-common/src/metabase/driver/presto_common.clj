@@ -208,10 +208,5 @@
                               :native-parameters               true
                               :expression-aggregations         true
                               :binning                         true
-                              :foreign-keys                    true
-                              ;; When convert timezone for a `timestamp without time zone` in Presto,
-                              ;; it'll shift the hours from the report-tz to the target timezone. ???
-                              ;; That means it behaves more or less like a `timestamp with local time zone` type.
-                              ;; Because of this, it's very hard to do timezone conversion correctly.
-                              :convert-timezone                false}]
+                              :foreign-keys                    true}]
   (defmethod driver/supports? [:presto-common feature] [_ _] supported?))

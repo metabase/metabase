@@ -228,16 +228,13 @@
           first
           Integer/parseInt))
 
-(defmethod driver/database-supports? [:mongo :expressions] [_driver _feature db]
+(defmethod driver/database-supports? [:mongo :expressions] [_ _db]
   (let [version (db-major-version db)]
     (and (some? version) (>= version 4))))
 
-(defmethod driver/database-supports? [:mongo :date-arithmetics] [_driver _feature db]
+(defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
   (let [version (db-major-version db)]
     (and (some? version) (>= version 5))))
-
-(defmethod driver/database-supports? [:mongo :convert-timezone] [_driver _feature _db]
-  false)
 
 (defmethod driver/mbql->native :mongo
   [_ query]
