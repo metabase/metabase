@@ -313,7 +313,7 @@ class DashboardHeader extends Component {
 
       extraButtons.push({
         title: t`Duplicate`,
-        icon: "copy",
+        icon: "clone",
         link: `${location.pathname}/copy`,
         event: "Dashboard;Copy",
       });

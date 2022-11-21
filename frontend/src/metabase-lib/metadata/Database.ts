@@ -20,6 +20,7 @@ import Metadata from "./Metadata";
 class DatabaseInner extends Base {
   id: number;
   name: string;
+  engine: string;
   description: string;
   tables: Table[];
   schemas: Schema[];

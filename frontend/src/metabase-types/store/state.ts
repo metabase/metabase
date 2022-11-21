@@ -1,6 +1,7 @@
 import { User } from "metabase-types/api";
 import { AdminState } from "./admin";
 import { AppState } from "./app";
+import { DashboardState } from "./dashboard";
 import { EmbedState } from "./embed";
 import { EntitiesState } from "./entities";
 import { FormState } from "./forms";
@@ -12,6 +13,7 @@ export interface State {
   admin: AdminState;
   app: AppState;
   currentUser: User | null;
+  dashboard: DashboardState;
   embed: EmbedState;
   entities: EntitiesState;
   form: FormState;
