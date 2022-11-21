@@ -1,0 +1,3 @@
+FROM postgres
+COPY ./sql/create_tables.sql /docker-entrypoint-initdb.d/create_tables.sql
+COPY ./sql/fill_tables.sql /docker-entrypoint-initdb.d/fill_tables.sql

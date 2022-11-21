@@ -1,0 +1,39 @@
+version: "3"
+
+# uffizzi integration
+x-uffizzi:
+  ingress:
+    service: metabase
+    port: 3000
+
+services:
+  db:
+   image: "${DB_IMAGE}"
+   environment:
+     - POSTGRES_USER=admin
+     - POSTGRES_PASSWORD=admin
+     - POSTGRES_DB=root
+     - PGDATA=/tmp
+   deploy:
+      resources:
+        limits:
+          memory: 250M
+   volumes:
+    - pg_data:/var/lib/postgresql/data
+
+  metabase:
+   image: "${METABASE_IMAGE}"
+   environment:
+        - MB_DB_TYPE=postgres
+        - MB_DB_DBNAME=root
+        - MB_DB_PORT=5432
+        - MB_DB_USER=admin
+        - MB_DB_PASS=admin
+        - MB_DB_HOST=localhost
+   deploy:
+      resources:
+        limits:
+          memory: 1000M
+
+volumes:
+  pg_data:
