@@ -150,13 +150,12 @@
           (mt/with-temp-file [pk-path]
             (testing "private key authentication"
               (spit pk-path pk-key)
-              (doseq [to-merge [{:private-key-value pk-key}
-                                {:private-key-value (.getBytes pk-key)}
-                                {:private-key-path pk-path}]]
+              (doseq [to-merge [{:private-key-value pk-key} ;; uploaded string
+                                {:private-key-value (.getBytes pk-key)} ;; uploaded byte array
+                                {:private-key-path pk-path}]] ;; local file path
                 (let [details (-> (:details (mt/db))
                                   (dissoc :password)
                                   (merge {:db pk-db :user pk-user} to-merge))]
-                  (println to-merge "\nq" (pr-str details))
                   (is (can-connect? details)))))))))))
 
 (deftest report-timezone-test

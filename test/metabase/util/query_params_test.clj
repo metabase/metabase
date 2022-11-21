@@ -53,4 +53,8 @@
 
   (is (= "http://example.com/demo?x=one%20&x=two%20"
          (u.qp/assoc-qp "http://example.com/demo?x=one%20" {:x "two "}))
-      "adding a query-encodable value to 1 query-encodable query param"))
+      "can add a query-encodable value to 1 query-encodable query param")
+
+  (is (= "jdbc:snowflake//abc.snowflake.com"
+         (u.qp/assoc-qp "jdbc:snowflake//abc.snowflake.com" {}))
+      "can work on non http base urls"))

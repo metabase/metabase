@@ -26,7 +26,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
-            [ring.util.codec :as codec])
+            [metabase.util.query-params :as u.qp])
   (:import [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
            java.io.File
@@ -56,15 +56,11 @@
   []
   (inc (driver.common/start-of-week->int)))
 
-(defn- byte-array? [x] (instance? (Class/forName "[B") x))
-
 (defn- handle-conn-uri [details user account private-key-file]
-  (assoc details
-         :connection-uri
-         (format "jdbc:snowflake://%s.snowflakecomputing.com?user=%s&private_key_file=%s"
-                 account
-                 (codec/url-encode user)
-                 (codec/url-encode (.getCanonicalPath ^File private-key-file)))))
+  (let [existing-conn-uri (or (:connection-uri details) (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
+        new-conn-uri (u.qp/assoc-qp existing-conn-uri {:user user
+                                                       :private_key_file (.getCanonicalPath ^File private-key-file)})]
+    (assoc details :connection-uri new-conn-uri)))
 
 (defn- resolve-private-key
   "Convert the private-key secret properties into a private_key_file property in `details`.
@@ -84,7 +80,9 @@
         private-key-file (handle-conn-uri user account private-key-file)))
 
     private-key-value
-    (let [private-key-str  (if (byte-array? private-key-value) (String. ^"[B" private-key-value) private-key-value)
+    (let [private-key-str  (if (instance? (Class/forName "[B") private-key-value)
+                             (String. ^"[B" private-key-value)
+                             private-key-value)
           private-key-file (secret/value->file! {:connection-property-name "private-key-file" :value private-key-str})]
       (handle-conn-uri details user account private-key-file))))
 
