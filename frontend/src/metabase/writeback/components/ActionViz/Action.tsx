@@ -44,10 +44,9 @@ function ActionComponent({
   onVisualizationClick,
   parameterValues,
 }: ActionProps) {
-  const dashcardSettings = dashcard.visualization_settings;
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
-    dashcardSettings?.actionDisplayType ?? actionSettings?.type ?? "button";
+    settings?.actionDisplayType ?? actionSettings?.type ?? "button";
 
   const dashcardParamValues = useMemo(
     () => getDashcardParamValues(dashcard, parameterValues),
@@ -95,14 +94,20 @@ function ActionComponent({
     [page, dashcard, dashcardParamValues, dispatch, shouldDisplayButton],
   );
 
+  const showParameterMapper = isEditing && !isSettings;
+
   if (dashcard.action) {
     return (
       <>
-        {isEditing && <ActionParameterMapper dashcard={dashcard} page={page} />}
+        {showParameterMapper && (
+          <ActionParameterMapper dashcard={dashcard} page={page} />
+        )}
         <ActionForm
           onSubmit={onSubmit}
           dashcard={dashcard}
           page={page}
+          settings={settings}
+          isSettings={isSettings}
           missingParameters={missingParameters}
           dashcardParamValues={dashcardParamValues}
           action={dashcard.action as WritebackQueryAction}

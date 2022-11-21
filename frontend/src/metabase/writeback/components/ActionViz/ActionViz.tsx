@@ -1,5 +1,9 @@
 import { t } from "ttag";
+import type { VisualizationSettings } from "metabase-types/api";
 import Action from "./Action";
+
+const isForm = (object: any, computedSettings: VisualizationSettings) =>
+  computedSettings.actionDisplayType === "form";
 
 export default Object.assign(Action, {
   uiName: t`Action`,
@@ -38,12 +42,14 @@ export default Object.assign(Action, {
       section: t`Display`,
       title: t`Label`,
       widget: "input",
+      getHidden: isForm,
     },
     "button.variant": {
       section: t`Display`,
       title: t`Variant`,
       widget: "select",
       default: "primary",
+      getHidden: isForm,
       props: {
         options: [
           { name: t`Primary`, value: "primary" },
