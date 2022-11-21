@@ -74,7 +74,7 @@ const expression = [
 ];
 
 const aggregation = [
-  ["Count()", ["count()"], "aggregation with no arguments"],
+  ["Count()", ["count"], "aggregation with no arguments"],
   ["Sum([Total])", ["sum", total], "aggregation with one argument"],
   ["1 - Count()", ["-", 1, ["count"]], "aggregation with math outside"],
   [
