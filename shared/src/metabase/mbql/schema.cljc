@@ -9,14 +9,22 @@
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
      [schema.core :as s])
-    (:import java.time.format.DateTimeFormatter)]
+    (:import java.time.format.DateTimeFormatter
+             java.time.ZoneId)]
    :cljs
    [(:require
+     ["moment" :as moment]
+     ["moment-timezone" :as mtz]
      [clojure.core :as core]
      [clojure.set :as set]
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
      [schema.core :as s])]))
+
+#?(:cljs
+   (comment
+     moment/keepme
+     mtz/keepme)) ;; to get the timezone list from moment
 
 ;; A NOTE ABOUT METADATA:
 ;;
@@ -77,6 +85,13 @@
   (s/named
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
+
+(def TimezoneId
+  "Valid timezone id."
+  (s/named
+    #?(:clj  (apply s/enum (ZoneId/getAvailableZoneIds)) ;; 600 timezones on java 17
+       :cljs (apply s/enum (.names (.-tz moment))))      ;; 596 timezones on moment-timezone 0.5.38
+    "timezone-id"))
 
 (def TemporalExtractUnits
   "Valid units to extract from a temporal."
@@ -520,7 +535,7 @@
 
 (def date+time+timezone-functions
   "Date, time, and timezone related functions."
-  (set/union temporal-extract-functions date-arithmetic-functions))
+  (set/union temporal-extract-functions date-arithmetic-functions #{:convert-timezone}))
 
 (declare ArithmeticExpression)
 (declare BooleanExpression)
@@ -555,8 +570,8 @@
    (partial is-clause? :value)
    value
 
-    ;; Recursively doing date math
-   (partial is-clause? date-arithmetic-functions)
+   ;; Recursively doing date math or convert-timezone
+   (partial is-clause? (set/union date-arithmetic-functions #{:convert-timezone}))
    (s/recursive #'DatetimeExpression)
 
    :else
@@ -720,6 +735,11 @@
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-second
   datetime DateTimeExpressionArg)
 
+(defclause ^{:requires-features #{:convert-timezone}} convert-timezone
+  datetime DateTimeExpressionArg
+  to       TimezoneId
+  from     (optional TimezoneId))
+
 (def ^:private ArithmeticDateTimeUnit
   (s/named
    (apply s/enum #{:millisecond :second :minute :hour :day :week :month :quarter :year})
@@ -736,7 +756,7 @@
   unit     ArithmeticDateTimeUnit)
 
 (def ^:private DatetimeExpression*
-  (one-of + temporal-extract datetime-add datetime-subtract
+  (one-of + temporal-extract datetime-add datetime-subtract convert-timezone
           ;; SUGAR drivers do not need to implement
           get-year get-quarter get-month get-week get-day get-day-of-week
           get-hour get-minute get-second))
