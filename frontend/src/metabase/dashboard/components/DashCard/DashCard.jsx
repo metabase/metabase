@@ -93,21 +93,31 @@ class DashCard extends Component {
       dashcard,
       dashcardData,
       slowCards,
-      isEditing,
-      clickBehaviorSidebarDashcard,
-      isEditingParameter,
-      isFullscreen,
-      isMobile,
-      onAddSeries,
-      onRemove,
-      navigateToNewCardFromDashboard,
       metadata,
       dashboard,
+      clickBehaviorSidebarDashcard,
       parameterValues,
       mode,
       headerIcon,
+      gridItemWidth,
+      totalNumGridCols,
+      isEditing,
       isNightMode,
+      isFullscreen,
+      isMobile,
+      isEditingParameter,
+      onAddSeries,
+      onRemove,
+      navigateToNewCardFromDashboard,
+      onUpdateVisualizationSettings,
+      onReplaceAllVisualizationSettings,
+      showClickBehaviorSidebar,
+      onChangeLocation,
+      dispatch,
     } = this.props;
+    const { isPreviewingCard } = this.state;
+
+    const isEmbed = Utils.isJWT(dashboardId);
 
     const mainCard = {
       ...dashcard.card,
@@ -116,9 +126,10 @@ class DashCard extends Component {
         dashcard.visualization_settings,
       ),
     };
+
     const cards = [mainCard].concat(dashcard.series || []);
     const dashboardId = dashcard.dashboard_id;
-    const isEmbed = Utils.isJWT(dashboardId);
+
     const series = cards.map(card => ({
       ...getIn(dashcardData, [dashcard.id, card.id]),
       card: card,
@@ -198,12 +209,12 @@ class DashCard extends Component {
               onRemove={onRemove}
               onAddSeries={onAddSeries}
               onReplaceAllVisualizationSettings={
-                this.props.onReplaceAllVisualizationSettings
+                onReplaceAllVisualizationSettings
               }
               showClickBehaviorSidebar={() =>
-                this.props.showClickBehaviorSidebar(dashcard.id)
+                showClickBehaviorSidebar(dashcard.id)
               }
-              isPreviewing={this.state.isPreviewingCard}
+              isPreviewing={isPreviewingCard}
               onPreviewToggle={this.handlePreviewToggle}
               dashboard={dashboard}
             />
@@ -225,17 +236,17 @@ class DashCard extends Component {
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           isDashboard
-          dispatch={this.props.dispatch}
+          dispatch={dispatch}
           dashboard={dashboard}
           dashcard={dashcard}
           parameterValues={parameterValues}
           parameterValuesBySlug={parameterValuesBySlug}
           isEditing={isEditing}
-          isPreviewing={this.state.isPreviewingCard}
+          isPreviewing={isPreviewingCard}
           isEditingParameter={isEditingParameter}
           isMobile={isMobile}
           gridSize={gridSize}
-          totalNumGridCols={this.props.totalNumGridCols}
+          totalNumGridCols={totalNumGridCols}
           actionButtons={
             isEmbed ? (
               <QueryDownloadWidget
@@ -249,9 +260,7 @@ class DashCard extends Component {
               />
             ) : null
           }
-          onUpdateVisualizationSettings={
-            this.props.onUpdateVisualizationSettings
-          }
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           replacementContent={
             clickBehaviorSidebarDashcard != null &&
             isVirtualDashCard(dashcard) ? (
@@ -271,9 +280,9 @@ class DashCard extends Component {
             ) : clickBehaviorSidebarDashcard != null ? (
               <ClickBehaviorSidebarOverlay
                 dashcard={dashcard}
-                dashcardWidth={this.props.gridItemWidth}
+                dashcardWidth={gridItemWidth}
                 dashboard={dashboard}
-                showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
+                showClickBehaviorSidebar={showClickBehaviorSidebar}
                 isShowingThisClickBehaviorSidebar={
                   clickBehaviorSidebarDashcard.id === dashcard.id
                 }
@@ -295,7 +304,7 @@ class DashCard extends Component {
                 }
               : null
           }
-          onChangeLocation={this.props.onChangeLocation}
+          onChangeLocation={onChangeLocation}
         />
       </DashCardRoot>
     );
