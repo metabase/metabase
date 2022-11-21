@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 
@@ -6,31 +5,50 @@ import Icon from "metabase/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
-import { isActionCard } from "metabase/writeback/utils";
+import { VisualizationSettings } from "metabase-types/api/card";
+import { DashboardWithCards } from "metabase-types/types/Dashboard";
+import { Series } from "metabase-types/types/Visualization";
+
+import DashCardActionButton from "./DashCardActionButton";
 
 import AddSeriesButton from "./AddSeriesButton";
 import ChartSettingsButton from "./ChartSettingsButton";
 
-import DashCardActionButton from "./DashCardActionButton";
 import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
 
+interface Props {
+  series: Series;
+  dashboard: DashboardWithCards;
+  isLoading: boolean;
+  isVirtualDashCard: boolean;
+  isPreviewing: boolean;
+  hasError: boolean;
+  onRemove: () => void;
+  onAddSeries: () => void;
+  onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
+  showClickBehaviorSidebar: () => void;
+  onPreviewToggle: () => void;
+}
+
 function DashCardActionButtons({
-  card,
   series,
+  dashboard,
   isLoading,
   isVirtualDashCard,
+  isPreviewing,
   hasError,
   onRemove,
   onAddSeries,
   onReplaceAllVisualizationSettings,
   showClickBehaviorSidebar,
   onPreviewToggle,
-  isPreviewing,
-  dashboard,
-}) {
+}: Props) {
+  const { disableSettingsConfig, supportPreviewing, supportsSeries } =
+    getVisualizationRaw(series).visualization;
+
   const buttons = [];
 
-  if (getVisualizationRaw(series).visualization.supportPreviewing) {
+  if (supportPreviewing) {
     buttons.push(
       <DashCardActionButton
         onClick={onPreviewToggle}
@@ -47,38 +65,36 @@ function DashCardActionButtons({
   }
 
   if (!isLoading && !hasError) {
-    if (
-      onReplaceAllVisualizationSettings &&
-      !getVisualizationRaw(series).visualization.disableSettingsConfig
-    ) {
+    if (onReplaceAllVisualizationSettings && !disableSettingsConfig) {
       buttons.push(
         <ChartSettingsButton
           key="chart-settings-button"
           series={series}
-          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
           dashboard={dashboard}
+          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
         />,
       );
     }
-    if (!isVirtualDashCard || isActionCard(card)) {
+
+    if (!isVirtualDashCard) {
       buttons.push(
         <DashCardActionButton
           key="click-behavior-tooltip"
-          onClick={showClickBehaviorSidebar}
           tooltip={t`Click behavior`}
           analyticsEvent="Dashboard;Open Click Behavior Sidebar"
+          onClick={showClickBehaviorSidebar}
         >
           <Icon name="click" />
         </DashCardActionButton>,
       );
     }
 
-    if (getVisualizationRaw(series).visualization.supportsSeries) {
+    if (supportsSeries) {
       buttons.push(
         <AddSeriesButton
           key="add-series-button"
           series={series}
-          onAddSeries={onAddSeries}
+          onClick={onAddSeries}
         />,
       );
     }
