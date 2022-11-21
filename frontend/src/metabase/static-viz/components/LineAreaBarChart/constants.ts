@@ -2,32 +2,29 @@ import _ from "underscore";
 
 export const LINE_AREA_BAR_CHART_TYPE = "combo-chart";
 
-// TODO: Add `cardName` and `column` and maybe `breakoutValue` so we could see the colors
 export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
-  multipleSettings: [
-    {
-      show_values: true,
-      goal: {
-        value: 140,
-        label: "Goal",
-      },
-      x: {
-        type: "timeseries",
-      },
-      y: {
-        type: "linear",
-      },
-      labels: {
-        left: "Count",
-        right: "Sum",
-        bottom: "Date",
-      },
+  settings: {
+    show_values: true,
+    goal: {
+      value: 140,
+      label: "Goal",
     },
-  ],
+    x: {
+      type: "timeseries",
+    },
+    y: {
+      type: "linear",
+    },
+    labels: {
+      left: "Count",
+      right: "Sum",
+      bottom: "Date",
+    },
+  },
   multipleSeries: [
     [
       {
-        name: "line series",
+        cardName: "line series",
         yAxisPosition: "left",
         type: "line",
         data: [
@@ -41,9 +38,19 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
           ["2020-10-27", 80],
           ["2020-10-28", 95],
         ],
+        column: {
+          semantic_type: "type/CreationTimestamp",
+          unit: "year",
+          name: "CREATED_AT",
+          source: "breakout",
+          display_name: "Created At",
+        },
+        breakoutValue: "2020-01-01T00:00:00Z",
       },
+    ],
+    [
       {
-        name: "bar series 1",
+        cardName: "bar series 1",
         yAxisPosition: "left",
         type: "bar",
         data: [
@@ -57,9 +64,19 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
           ["2020-10-27", 20],
           ["2020-10-28", 10],
         ],
+        column: {
+          semantic_type: "type/CreationTimestamp",
+          unit: "year",
+          name: "CREATED_AT",
+          source: "breakout",
+          display_name: "Created At",
+        },
+        breakoutValue: "2020-01-01T00:00:00Z",
       },
+    ],
+    [
       {
-        name: "bar series 2 with a really really really long name",
+        cardName: "bar series 2 with a really really really long name",
         yAxisPosition: "right",
         type: "bar",
         data: [
@@ -73,9 +90,19 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
           ["2020-10-27", 3],
           ["2020-10-28", 2],
         ],
+        column: {
+          semantic_type: "type/CreationTimestamp",
+          unit: "year",
+          name: "CREATED_AT",
+          source: "breakout",
+          display_name: "Created At",
+        },
+        breakoutValue: "2020-01-01T00:00:00Z",
       },
+    ],
+    [
       {
-        name: "area series",
+        cardName: "area series",
         yAxisPosition: "right",
         type: "area",
         data: [
@@ -89,36 +116,42 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
           ["2020-10-27", 12],
           ["2020-10-28", 15],
         ],
+        column: {
+          semantic_type: "type/CreationTimestamp",
+          unit: "year",
+          name: "CREATED_AT",
+          source: "breakout",
+          display_name: "Created At",
+        },
+        breakoutValue: "2020-01-01T00:00:00Z",
       },
     ],
   ],
 };
 
 export const LINE_AREA_BAR_DEFAULT_OPTIONS_2 = {
-  multipleSettings: [
-    {
-      x: {
-        type: "timeseries",
-      },
-      y: {
-        type: "linear",
-        format: {
-          number_style: "currency",
-          currency: "USD",
-          currency_style: "symbol",
-          decimals: 2,
-        },
-      },
-      labels: {
-        right: "Sum",
-        bottom: "Date",
+  settings: {
+    x: {
+      type: "timeseries",
+    },
+    y: {
+      type: "linear",
+      format: {
+        number_style: "currency",
+        currency: "USD",
+        currency_style: "symbol",
+        decimals: 2,
       },
     },
-  ],
+    labels: {
+      right: "Sum",
+      bottom: "Date",
+    },
+  },
   multipleSeries: [
     [
       {
-        name: "line series",
+        cardName: "line series",
         yAxisPosition: "right",
         type: "line",
         data: [
@@ -133,9 +166,19 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_2 = {
           ["2020-10-26", 20],
           ["2020-10-27", 80],
         ],
+        column: {
+          semantic_type: "type/CreationTimestamp",
+          unit: "year",
+          name: "CREATED_AT",
+          source: "breakout",
+          display_name: "Created At",
+        },
+        breakoutValue: "2020-01-01T00:00:00Z",
       },
+    ],
+    [
       {
-        name: "bar series",
+        cardName: "bar series",
         yAxisPosition: "right",
         type: "bar",
         data: [
@@ -149,9 +192,19 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_2 = {
           ["2020-10-27", 40],
           ["2020-10-28", 50],
         ],
+        column: {
+          semantic_type: "type/CreationTimestamp",
+          unit: "year",
+          name: "CREATED_AT",
+          source: "breakout",
+          display_name: "Created At",
+        },
+        breakoutValue: "2020-01-01T00:00:00Z",
       },
+    ],
+    [
       {
-        name: "area series",
+        cardName: "area series",
         yAxisPosition: "right",
         type: "area",
         data: [
@@ -165,35 +218,41 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_2 = {
           ["2020-10-29", -100],
           ["2020-10-30", -120],
         ],
+        column: {
+          semantic_type: "type/CreationTimestamp",
+          unit: "year",
+          name: "CREATED_AT",
+          source: "breakout",
+          display_name: "Created At",
+        },
+        breakoutValue: "2020-01-01T00:00:00Z",
       },
     ],
   ],
 };
 
 export const LINE_AREA_BAR_DEFAULT_OPTIONS_3 = {
-  multipleSettings: [
-    {
-      goal: {
-        value: 120,
-        label: "Goal",
-      },
-      x: {
-        type: "ordinal",
-      },
-      y: {
-        type: "linear",
-      },
-      labels: {
-        left: "Count",
-        right: "Sum",
-        bottom: "Date",
-      },
+  settings: {
+    goal: {
+      value: 120,
+      label: "Goal",
     },
-  ],
+    x: {
+      type: "ordinal",
+    },
+    y: {
+      type: "linear",
+    },
+    labels: {
+      left: "Count",
+      right: "Sum",
+      bottom: "Date",
+    },
+  },
   multipleSeries: [
     [
       {
-        name: "line series",
+        cardName: "line series",
         yAxisPosition: "left",
         type: "line",
         data: [
@@ -210,9 +269,14 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_3 = {
           ["Roderick Herman", 50],
           ["Ruth Dougherty", 75],
         ],
+        column: {
+          name: "count",
+          source: "aggregation",
+          display_name: "Count",
+        },
       },
       {
-        name: "bar series 1",
+        cardName: "bar series 1",
         yAxisPosition: "left",
         type: "bar",
         data: [
@@ -229,37 +293,40 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_3 = {
           ["Roderick Herman", 40],
           ["Ruth Dougherty", 65],
         ],
+        column: {
+          name: "sum",
+          source: "aggregation",
+          display_name: "Sum",
+        },
       },
     ],
   ],
 };
 
 export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
-  multipleSettings: [
-    {
-      stacking: "stack",
-      x: {
-        type: "timeseries",
-      },
-      y: {
-        type: "linear",
-        format: {
-          number_style: "currency",
-          currency: "USD",
-          currency_style: "symbol",
-          decimals: 2,
-        },
-      },
-      labels: {
-        left: "Sum",
-        bottom: "Date",
+  settings: {
+    stacking: "stack",
+    x: {
+      type: "timeseries",
+    },
+    y: {
+      type: "linear",
+      format: {
+        number_style: "currency",
+        currency: "USD",
+        currency_style: "symbol",
+        decimals: 2,
       },
     },
-  ],
+    labels: {
+      left: "Sum",
+      bottom: "Date",
+    },
+  },
   multipleSeries: [
     [
       {
-        name: "series 1",
+        cardName: "series 1",
         yAxisPosition: "left",
         type: "area",
         data: [
@@ -270,9 +337,19 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
           ["2020-10-22", 45],
           ["2020-10-23", 55],
         ],
+        column: {
+          semantic_type: "type/CreationTimestamp",
+          unit: "year",
+          name: "CREATED_AT",
+          source: "breakout",
+          display_name: "Created At",
+        },
+        breakoutValue: "2020-01-01T00:00:00Z",
       },
+    ],
+    [
       {
-        name: "series 2",
+        cardName: "series 2",
         yAxisPosition: "left",
         type: "area",
         data: [
@@ -283,9 +360,19 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
           ["2020-10-22", 70],
           ["2020-10-23", 65],
         ],
+        column: {
+          semantic_type: "type/CreationTimestamp",
+          unit: "year",
+          name: "CREATED_AT",
+          source: "breakout",
+          display_name: "Created At",
+        },
+        breakoutValue: "2020-01-01T00:00:00Z",
       },
+    ],
+    [
       {
-        name: "series 3",
+        cardName: "series 3",
         yAxisPosition: "left",
         type: "area",
         data: [
@@ -296,9 +383,19 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
           ["2020-10-22", -45],
           ["2020-10-23", -55],
         ],
+        column: {
+          semantic_type: "type/CreationTimestamp",
+          unit: "year",
+          name: "CREATED_AT",
+          source: "breakout",
+          display_name: "Created At",
+        },
+        breakoutValue: "2020-01-01T00:00:00Z",
       },
+    ],
+    [
       {
-        name: "series 4",
+        cardName: "series 4",
         yAxisPosition: "left",
         type: "area",
         data: [
@@ -309,87 +406,104 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
           ["2020-10-22", -10],
           ["2020-10-23", -5],
         ],
+        column: {
+          semantic_type: "type/CreationTimestamp",
+          unit: "year",
+          name: "CREATED_AT",
+          source: "breakout",
+          display_name: "Created At",
+        },
+        breakoutValue: "2020-01-01T00:00:00Z",
       },
     ],
   ],
 };
 
 export const LINE_AREA_BAR_DEFAULT_OPTIONS_5 = {
-  multipleSettings: [
-    {
-      x: {
-        type: "ordinal",
-      },
-      y: {
-        type: "linear",
-      },
-      labels: {
-        left: "Count",
-        bottom: "Date",
-      },
+  settings: {
+    x: {
+      type: "ordinal",
     },
-  ],
+    y: {
+      type: "linear",
+    },
+    labels: {
+      left: "Count",
+      bottom: "Date",
+    },
+  },
   multipleSeries: [
     [
       {
-        name: "bar series",
+        cardName: "bar series",
         yAxisPosition: "left",
         type: "bar",
         data: _.range(48).map(n => [`bar ${n + 1}`, n + 1]),
+        column: {
+          name: "count",
+          source: "aggregation",
+          display_name: "Count",
+        },
       },
     ],
   ],
 };
 
 export const LINE_AREA_BAR_DEFAULT_OPTIONS_6 = {
-  multipleSettings: [
-    {
-      x: {
-        type: "ordinal",
-      },
-      y: {
-        type: "linear",
-      },
-      labels: {
-        left: "Count",
-        bottom: "Date",
-      },
+  settings: {
+    x: {
+      type: "ordinal",
     },
-  ],
+    y: {
+      type: "linear",
+    },
+    labels: {
+      left: "Count",
+      bottom: "Date",
+    },
+  },
   multipleSeries: [
     [
       {
-        name: "bar series",
+        cardName: "bar series",
         yAxisPosition: "left",
         type: "bar",
         data: _.range(200).map(n => [`bar ${n + 1}`, n + 1]),
+        column: {
+          name: "count",
+          source: "aggregation",
+          display_name: "Count",
+        },
       },
     ],
   ],
 };
 
 export const LINE_AREA_BAR_DEFAULT_OPTIONS_7 = {
-  multipleSettings: [
-    {
-      x: {
-        type: "ordinal",
-      },
-      y: {
-        type: "linear",
-      },
-      labels: {
-        left: "Count",
-        bottom: "Date",
-      },
+  settings: {
+    x: {
+      type: "ordinal",
     },
-  ],
+    y: {
+      type: "linear",
+    },
+    labels: {
+      left: "Count",
+      bottom: "Date",
+    },
+  },
   multipleSeries: [
     [
       {
-        name: "bar series",
+        cardName: "bar series",
         yAxisPosition: "left",
         type: "bar",
         data: _.range(20).map(n => [`bar ${n + 1}`, n + 1]),
+        column: {
+          name: "count",
+          source: "aggregation",
+          display_name: "Count",
+        },
       },
     ],
   ],
