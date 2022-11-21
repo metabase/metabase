@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - 'release-**'
+      - 'e2e-remove-currents'
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -123,7 +124,7 @@ jobs:
     - uses: actions/checkout@v3
     # Test runs will be recorded using Deploysentinel on `master` only
     - name: Set conditional ENVs
-      if: github.ref == 'refs/heads/master'
+      if: github.ref == 'refs/heads/e2e-remove-currents'
       run: |
         echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
     - name: Prepare front-end environment
