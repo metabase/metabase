@@ -142,7 +142,7 @@ export function resolve(expression, type = "expression", fn = undefined) {
     if (!multiple) {
       const expectedArgsLength = args.length;
       const maxArgCount = hasOptions
-        ? expectedArgsLength + 1
+        ? expectedArgsLength + 2
         : expectedArgsLength;
       if (
         operands.length < expectedArgsLength ||
