@@ -183,11 +183,7 @@ class DashCard extends Component {
     return (
       <DashCardRoot
         className="Card rounded flex flex-column hover-parent hover--visibility"
-        style={
-          hideBackground
-            ? { border: 0, background: "transparent", boxShadow: "none" }
-            : null
-        }
+        hasHiddenBackground={hideBackground}
         isNightMode={isNightMode}
         isUsuallySlow={isSlow === "usually-slow"}
       >
