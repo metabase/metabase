@@ -2441,11 +2441,45 @@
                                                  (format "dashboard/%s/dashcard/%s/execute/custom" dashboard-id custom-dashcard-id)
                                                  {:parameters {field-name value}}))))))))))))))
 
-(deftest dashcard-action-execution-auth-test
+(deftest dashcard-implicit-action-execution-auth-test
+  (mt/with-temp-copy-of-db
+    (actions.test-util/with-actions-test-data
+      (testing "Executing dashcard with action"
+        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
+                        ModelAction [_ {:slug "insert" :card_id card-id :requires_pk false}]
+                        Dashboard [{dashboard-id :id}]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                          :card_id card-id
+                                                          :visualization_settings {:action_slug "insert"}}]]
+          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/insert"
+                                     dashboard-id
+                                     dashcard-id)]
+            (testing "Without actions enabled"
+              (is (= "Actions are not enabled."
+                     (mt/user-http-request :crowberto :post 400 execute-path
+                                           {:parameters {"name" "Birds"}}))))
+            (testing "Without execute rights on the DB"
+              (actions.test-util/with-actions-enabled
+                (is (partial= {:message "You do not have permissions to run this query."}
+                              (mt/user-http-request :rasta :post 403 execute-path
+                                                    {:parameters {"name" "Birds"}})))))
+            (testing "With execute rights on the DB"
+              (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
+              (try
+                (actions.test-util/with-actions-enabled
+                  (is (contains? #{{:ID 76, :NAME "Birds"}
+                                   {:id 76, :name "Birds"}}
+                         (-> (mt/user-http-request :rasta :post 200 execute-path
+                                                   {:parameters {"name" "Birds"}})
+                             :created-row))))
+                (finally
+                  (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none))))))))))
+
+(deftest dashcard-custom-action-execution-auth-test
   (mt/with-temp-copy-of-db
     (actions.test-util/with-actions-test-data
       (actions.test-util/with-action [{:keys [action-id]} {}]
-        (testing "Executing dashcard with action"
+        (testing "Executing dashcard with custom action"
           (mt/with-temp* [Card [{card-id :id} {:dataset true}]
                           ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
                           Dashboard [{dashboard-id :id}]
