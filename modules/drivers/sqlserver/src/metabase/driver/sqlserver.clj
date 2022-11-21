@@ -35,10 +35,9 @@
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
 
-(doseq [[feature supported?] {:convert-timezone true}]
-  (defmethod driver/database-supports? [:sqlserver feature]
-    [_driver _feature _database]
-    supported?))
+(defmethod driver/database-supports? [:sqlserver :convert-timezone]
+  [_driver _feature _database]
+  true)
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]

@@ -24,11 +24,6 @@
 
 (defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
 
-(doseq [[feature supported?] {:convert-timezone false}]
-  (defmethod driver/database-supports? [:vertica feature]
-    [_driver _feature _database]
-    supported?))
-
 (defmethod driver/db-start-of-week :vertica
   [_]
   :monday)

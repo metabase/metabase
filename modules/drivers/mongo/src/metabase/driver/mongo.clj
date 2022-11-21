@@ -228,7 +228,7 @@
           first
           Integer/parseInt))
 
-(defmethod driver/database-supports? [:mongo :expressions] [_ _db]
+(defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
   (let [version (db-major-version db)]
     (and (some? version) (>= version 4))))
 
