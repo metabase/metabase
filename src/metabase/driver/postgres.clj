@@ -26,6 +26,7 @@
             [metabase.models.secret :as secret]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -68,6 +69,10 @@
 (defmethod driver/database-supports? [:postgres :persist-models-enabled]
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
+
+(defmethod driver/database-supports? [:postgres :convert-timezone]
+  [_driver _feat _db]
+  true)
 
 (doseq [feature [:actions :actions/custom]]
   (defmethod driver/database-supports? [:postgres feature]
@@ -285,6 +290,24 @@
 (defn- quoted? [database-type]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
+
+(defmethod sql.qp/->honeysql [:postgres :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr         (sql.qp/->honeysql driver (cond-> arg
+                                                 (string? arg) u.date/parse))
+        timestamptz? (hx/is-of-type? expr "timestamptz")]
+    (when (and timestamptz? source-timezone)
+      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone`")
+                      {:type            qp.error-type/invalid-query
+                       :target-timezone target-timezone
+                       :source-timezone source-timezone})))
+    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
+          expr            (cond->> expr
+                            (not timestamptz?)
+                            (hsql/call :timezone source-timezone)
+                            true
+                            (hsql/call :timezone target-timezone))]
+      (hx/with-database-type-info expr "timestamp"))))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
@@ -542,8 +565,10 @@
    (keyword "double precision")           :type/Float
    (keyword "time with time zone")        :type/Time
    (keyword "time without time zone")     :type/Time
-   (keyword "timestamp with timezone")    :type/DateTime
-   (keyword "timestamp without timezone") :type/DateTime})
+   ;; TODO postgres also supports `timestamp(p) with time zone` where p is the precision
+   ;; maybe we should switch this to use `sql-jdbc.sync/pattern-based-database-type->base-type`
+   (keyword "timestamp with time zone")    :type/DateTimeWithTZ
+   (keyword "timestamp without time zone") :type/DateTime})
 
 (doseq [[base-type db-type] {:type/BigInteger          "BIGINT"
                              :type/Boolean             "BOOL"

@@ -19,9 +19,11 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.secret :as secret]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ssh :as ssh])
   (:import com.mchange.v2.c3p0.C3P0ProxyConnection
            [java.sql Connection ResultSet Types]
@@ -30,6 +32,10 @@
            oracle.sql.TIMESTAMPTZ))
 
 (driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
+
+(defmethod driver/database-supports? [:oracle :convert-timezone]
+  [_driver _feat _db]
+  true)
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
@@ -60,6 +66,7 @@
     ;; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
     [#"^SDO_"       :type/*]
     [#"STRUCT"      :type/*]
+    [#"TIMESTAMP(\(\d\))? WITH TIME ZONE" :type/DateTimeWithTZ]
     [#"TIMESTAMP"   :type/DateTime]
     [#"URI"         :type/Text]
     [#"XML"         :type/*]]))
@@ -204,6 +211,27 @@
    (hx/->integer (hsql/call :to_char v (hx/literal :d)))
    (driver.common/start-of-week-offset driver)
    (partial hsql/call (u/qualified-name ::mod))))
+
+(defmethod sql.qp/->honeysql [:oracle :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr          (sql.qp/->honeysql driver arg)
+        has-timezone? (hx/is-of-type? expr #"timestamp(\(\d\))? with time zone")]
+    (when (and has-timezone? source-timezone)
+      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone`")
+                      {:target-timezone target-timezone
+                       :source-timezone source-timezone
+                       :type            qp.error-type/invalid-parameter})))
+    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
+          hsql-from-tz    (partial hsql/call :from_tz)]
+      (cond-> expr
+        (and (not has-timezone?) source-timezone)
+        (hsql-from-tz source-timezone)
+
+        target-timezone
+        (hx/->AtTimeZone target-timezone)
+
+        true
+        hx/->timestamp))))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 

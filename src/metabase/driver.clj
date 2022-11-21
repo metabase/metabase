@@ -445,6 +445,10 @@
     ;; DEFAULTS TO TRUE
     :date-arithmetics
 
+    ;; Does the driver support converting timezone?
+    ;; DEFAULTS TO FALSE
+    :convert-timezone
+
     ;; Does the driver support :datetime-diff functions
     :datetime-diff
 

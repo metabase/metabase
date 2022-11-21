@@ -53,6 +53,10 @@
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
+(defmethod driver/database-supports? [:mysql :convert-timezone]
+  [_driver _feature _db]
+  true)
+
 (defmethod driver/database-supports? [:mysql :datetime-diff]
   [_driver _feature _db]
   true)
@@ -352,6 +356,20 @@
                                       3)
                                 2)
                           (hx/literal "-01"))))
+
+(defmethod sql.qp/->honeysql [:mysql :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr       (sql.qp/->honeysql driver arg)
+        timestamp? (hx/is-of-type? expr "timestamp")]
+    (when (and timestamp? source-timezone)
+      (throw (ex-info (tru "`timestamp` columns shouldn''t have a `source timezone` argument")
+                    {:type    qp.error-type/invalid-parameter
+                     :target-timezone   target-timezone
+                     :source-timezone source-timezone})))
+    (let [source-timezone (or source-timezone
+                              (qp.timezone/results-timezone-id))
+          expr            (hsql/call :convert_tz expr source-timezone target-timezone)]
+      (hx/with-database-type-info expr "datetime"))))
 
 (defmethod sql.qp/->honeysql [:mysql :datetime-diff]
   [driver [_ x y unit]]

@@ -1,6 +1,9 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.data.xml :as xml]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.helpers :as hh]
             [java-time :as t]
@@ -15,9 +18,11 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [trs tru]])
   (:import [java.sql Connection ResultSet Time]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
@@ -29,6 +34,10 @@
 ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
+
+(defmethod driver/database-supports? [:sqlserver :convert-timezone]
+  [_driver _feature _database]
+  true)
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]
@@ -230,6 +239,45 @@
   ;; integer overflow errors (especially for millisecond timestamps).
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
+
+(defonce
+  ^{:private true
+    :doc     "A map of all zone-id to the corresponding window-zone.
+             I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
+  zone-id->windows-zone
+  (let [data (-> (io/resource "timezones/windowsZones.xml")
+                 io/reader
+                 xml/parse
+                 :content
+                 second
+                 :content
+                 first
+                 :content)]
+    (->> (for [mapZone data
+               :let [attrs       (:attrs mapZone)
+                     window-zone (:other attrs)
+                     zone-ids    (str/split (:type attrs) #" ")]]
+           (zipmap zone-ids (repeat window-zone)))
+         (cons {"UTC""UTC"})
+         (apply merge))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr            (sql.qp/->honeysql driver arg)
+        datetimeoffset? (hx/is-of-type? expr "datetimeoffset")]
+    (when (and datetimeoffset? source-timezone)
+      (throw (ex-info (tru "`datetimeoffset` columns shouldn''t have a `source timezone`")
+                    {:type            qp.error-type/invalid-parameter
+                     :target-timezone target-timezone
+                     :source-timezone source-timezone})))
+    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))]
+      (cond-> expr
+        (and (not datetimeoffset?) source-timezone)
+        (hx/->AtTimeZone (zone-id->windows-zone source-timezone))
+        target-timezone
+        (hx/->AtTimeZone (zone-id->windows-zone target-timezone))
+        true
+        hx/->datetime))))
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
