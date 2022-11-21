@@ -1,8 +1,10 @@
-/* eslint-disable react/prop-types */
-import React from "react";
+import React, { useCallback } from "react";
+import _ from "underscore";
 import { t } from "ttag";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
+
+import { DashCard, DashCardId } from "metabase-types/types/Dashboard";
 
 import {
   Root,
@@ -12,6 +14,13 @@ import {
   ClickBehaviorDescription,
 } from "./ClickBehaviorSidebarOverlay.styled";
 
+interface Props {
+  dashcard: DashCard;
+  dashcardWidth: number;
+  showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
+  isShowingThisClickBehaviorSidebar: boolean;
+}
+
 const MIN_WIDTH_FOR_ON_CLICK_LABEL = 330;
 
 function ClickBehaviorSidebarOverlay({
@@ -19,17 +28,20 @@ function ClickBehaviorSidebarOverlay({
   dashcardWidth,
   showClickBehaviorSidebar,
   isShowingThisClickBehaviorSidebar,
-}) {
+}: Props) {
+  const onClick = useCallback(() => {
+    showClickBehaviorSidebar(
+      isShowingThisClickBehaviorSidebar ? null : dashcard.id,
+    );
+  }, [
+    dashcard.id,
+    showClickBehaviorSidebar,
+    isShowingThisClickBehaviorSidebar,
+  ]);
+
   return (
     <Root>
-      <Button
-        isActive={isShowingThisClickBehaviorSidebar}
-        onClick={() =>
-          showClickBehaviorSidebar(
-            isShowingThisClickBehaviorSidebar ? null : dashcard.id,
-          )
-        }
-      >
+      <Button isActive={isShowingThisClickBehaviorSidebar} onClick={onClick}>
         <ClickIcon name="click" isActive={isShowingThisClickBehaviorSidebar} />
         {dashcardWidth > MIN_WIDTH_FOR_ON_CLICK_LABEL && (
           <HelperText>{t`On click`}</HelperText>
