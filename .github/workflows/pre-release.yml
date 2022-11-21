@@ -124,7 +124,7 @@ jobs:
     - name: Determine the target Docker Hub repository
       run: |
           echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ env.CUSTOM_REPO }}" >> $GITHUB_ENV
-          echo "IMAGE_NAME=${{ env.COMMIT_IDENTIFIER }}-${{ matrix-edition }}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${{ env.COMMIT_IDENTIFIER }}-${{ matrix.edition }}" >> $GITHUB_ENV
     - name: Retag and push container image to Docker Hub
       run: |
         echo "Pushing container image ${{ env.IMAGE_NAME}} to ${{ env.DOCKERHUB_REPO }} ..."
@@ -155,7 +155,7 @@ jobs:
     - name: Determine the container image to pull
       run: |
           echo "DOCKERHUB_REPO=${{ github.repository_owner }}/${{ env.CUSTOM_REPO }}" >> $GITHUB_ENV
-          echo "IMAGE_NAME=${{ env.COMMIT_IDENTIFIER }}-${{ matrix-edition }}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${{ env.COMMIT_IDENTIFIER }}-${{ matrix.edition }}" >> $GITHUB_ENV
     - name: Pull the container image
       run: |
         echo "Pulling container image ${{ env.DOCKERHUB_REPO }}:${{ env.IMAGE_NAME }} ..."
