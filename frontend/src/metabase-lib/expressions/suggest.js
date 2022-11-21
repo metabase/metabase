@@ -16,7 +16,11 @@ import {
   formatSegmentName,
 } from "./index";
 
-const suggestionText = func => func.displayName + "(";
+const suggestionText = func => {
+  const { displayName, args } = func;
+  const suffix = args.length > 0 ? "(" : " ";
+  return displayName + suffix;
+};
 
 export function suggest({
   source,
