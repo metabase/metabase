@@ -14,11 +14,8 @@ import ChartSettingsButton from "./ChartSettingsButton";
 import RemoveButton from "./RemoveButton";
 import ToggleCardPreviewButton from "./ToggleCardPreviewButton";
 
+import DashCardActionButton from "./DashCardActionButton";
 import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
-
-const HEADER_ACTION_STYLE = {
-  padding: 4,
-};
 
 function DashCardActionButtons({
   card,
@@ -62,16 +59,14 @@ function DashCardActionButtons({
     }
     if (!isVirtualDashCard || isActionCard(card)) {
       buttons.push(
-        <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
-          <a
-            className="text-dark-hover drag-disabled mr1"
-            data-metabase-event="Dashboard;Open Click Behavior Sidebar"
-            onClick={showClickBehaviorSidebar}
-            style={HEADER_ACTION_STYLE}
-          >
-            <Icon name="click" />
-          </a>
-        </Tooltip>,
+        <DashCardActionButton
+          key="click-behavior-tooltip"
+          onClick={showClickBehaviorSidebar}
+          tooltip={t`Click behavior`}
+          analyticsEvent="Dashboard;Open Click Behavior Sidebar"
+        >
+          <Icon name="click" />
+        </DashCardActionButton>,
       );
     }
 
