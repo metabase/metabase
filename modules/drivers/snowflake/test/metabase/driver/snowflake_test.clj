@@ -3,7 +3,6 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models :refer [Table]]
