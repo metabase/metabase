@@ -64,7 +64,7 @@ jobs:
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   containerize:
-    if: env.CUSTOM_REPO != null
+    if: ${{ env.CUSTOM_REPO != null }}
     runs-on: ubuntu-20.04
     needs: check-uberjar-health
     timeout-minutes: 15
