@@ -1,3 +1,4 @@
+import _ from "lodash";
 import { t } from "ttag";
 import { createAction } from "redux-actions";
 
@@ -98,6 +99,7 @@ export const runQuestionQuery = ({
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
+
     const questionFromCard = card =>
       card && new Question(card, getMetadata(getState()));
 
@@ -126,7 +128,13 @@ export const runQuestionQuery = ({
 
     const queryTimer = startTimer();
 
-    question
+    const clone = _.cloneDeep(question);
+
+    checkExpressionsForConvertTimezone(
+      clone.card().dataset_query.query.expressions,
+    );
+
+    clone
       .apiGetResults({
         cancelDeferred: cancelQueryDeferred,
         ignoreCache: ignoreCache,
@@ -275,3 +283,32 @@ export const cancelQuery = () => (dispatch, getState) => {
     return { type: CANCEL_QUERY };
   }
 };
+
+function checkExpressionsForConvertTimezone(expressions) {
+  Object.keys(expressions).forEach(function (key, index) {
+    expressions[key] = maybeUseBrowserTimezoneInConvertTimezone(
+      expressions[key],
+    );
+  });
+
+  return expressions;
+}
+
+/*
+ * Function convertTimezone can take an optional second argument.
+ * If it's ommitted, or is set to "User", we will fetch the timezone string
+ * from the browser, for example "US/Hawaii", and use it in the expression.
+ */
+function maybeUseBrowserTimezoneInConvertTimezone(expression) {
+  const userTimeZone = Intl.DateTimeFormat?.().resolvedOptions?.().timeZone;
+
+  if (
+    expression[0] === "convert-timezone" &&
+    (!expression[2] || expression[2].match(/user/i)) &&
+    userTimeZone
+  ) {
+    expression[2] = userTimeZone;
+  }
+
+  return expression;
+}

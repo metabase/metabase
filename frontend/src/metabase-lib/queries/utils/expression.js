@@ -12,7 +12,6 @@ export function getExpressionsList(expressions = {}) {
 }
 
 export function addExpression(expressions = {}, name, expression) {
-  expression = maybeUseBrowserTimezoneInConvertTimezone(expression);
   return { ...expressions, [name]: expression };
 }
 export function updateExpression(expressions = {}, name, expression, oldName) {
@@ -62,23 +61,4 @@ function getUniqueName(expressionNames, originalName, index) {
   return isUnique
     ? nameWithIndexAppended
     : getUniqueName(expressionNames, originalName, index + 1);
-}
-
-/*
- * Function convertTimezone can take an optional second argument.
- * If it's ommitted, or is set to "User", we will fetch the timezone string
- * from the browser, for example "US/Hawaii", and use it in the expression.
- */
-function maybeUseBrowserTimezoneInConvertTimezone(expression) {
-  const userTimeZone = Intl.DateTimeFormat?.().resolvedOptions?.().timeZone;
-
-  if (
-    expression[0] === "convert-timezone" &&
-    (!expression[2] || expression[2] === "User") &&
-    userTimeZone
-  ) {
-    expression[2] = userTimeZone;
-  }
-
-  return expression;
 }
