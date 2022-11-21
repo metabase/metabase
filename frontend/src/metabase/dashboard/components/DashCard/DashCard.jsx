@@ -57,13 +57,9 @@ const propTypes = {
 };
 
 class DashCard extends Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      isPreviewingCard: false,
-    };
-  }
+  state = {
+    isPreviewingCard: false,
+  };
 
   async componentDidMount() {
     const { dashcard, markNewCardSeen } = this.props;
