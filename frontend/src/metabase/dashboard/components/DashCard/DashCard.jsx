@@ -33,7 +33,7 @@ import { isActionCard } from "metabase/writeback/utils";
 import Utils from "metabase/lib/utils";
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-import DashCardParameterMapper from "./DashCardParameterMapper";
+import DashCardParameterMapper from "../DashCardParameterMapper";
 import { DashCardRoot } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
