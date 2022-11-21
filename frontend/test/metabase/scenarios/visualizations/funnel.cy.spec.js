@@ -4,6 +4,7 @@ import {
   sidebar,
   getDraggableElements,
   moveColumnDown,
+  popover,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -68,5 +69,52 @@ describe("scenarios > visualizations > funnel chart", () => {
         cy.icon("eye_crossed_out").click();
       });
     cy.findAllByTestId("funnel-chart-header").should("have.length", 5);
+  });
+
+  it("should handle row items being filterd out and returned gracefully", () => {
+    moveColumnDown(getDraggableElements().first(), 2);
+
+    getDraggableElements()
+      .eq(1)
+      .within(() => {
+        cy.icon("eye_filled").click();
+      });
+
+    cy.findByText("Filter").click();
+
+    cy.findByTestId("filter-field-Source").within(() => {
+      cy.findByTestId("operator-select").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Is not").click();
+    });
+
+    cy.findByTestId("filter-field-Source").within(() => {
+      cy.findByText("Facebook").click();
+    });
+
+    cy.findByText("Apply Filters").click();
+
+    getDraggableElements().should("have.length", 4);
+
+    //Ensures that "Google" is still hidden, so it's state hasn't changed.
+    getDraggableElements()
+      .eq(0)
+      .within(() => {
+        cy.icon("eye_crossed_out").click();
+      });
+
+    cy.log("remove filter");
+
+    cy.findByTestId("qb-filters-panel").within(() => {
+      cy.icon("close").click();
+    });
+
+    getDraggableElements().should("have.length", 5);
+
+    //Re-added items should appear at the end of the list.
+    getDraggableElements().eq(0).should("have.text", "Google");
+    getDraggableElements().eq(4).should("have.text", "Facebook");
   });
 });
