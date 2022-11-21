@@ -53,6 +53,10 @@
     [driver _feature database]
     (supported? driver database)))
 
+(defmethod driver/database-supports? [:mysql :datetime-diff]
+  [_driver _feature _db]
+  true)
+
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 
@@ -362,6 +366,36 @@
                               (qp.timezone/results-timezone-id))
           expr            (hsql/call :convert_tz expr source-timezone target-timezone)]
       (hx/with-database-type-info expr "datetime"))))
+
+(defmethod sql.qp/->honeysql [:mysql :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [v]
+                            (when-let [db-type (some-> v hx/type-info hx/type-info->db-type str/upper-case keyword)]
+                              (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
+                                (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
+                                  (name db-type)))))
+                          [x y])]
+    (when (seq disallowed-types)
+      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                           (pr-str disallowed-types))
+                      {:found disallowed-types
+                       :type  qp.error-type/invalid-query})))
+    (case unit
+      (:year :month)
+      (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))
+
+      :week
+      (let [positive-diff (fn [a b] (hx/floor (hx// (hsql/call :datediff b a) 7)))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :day
+      (hsql/call :datediff y x)
+
+      (:hour :minute :second)
+      (hsql/call :timestampdiff (hsql/raw (name unit)) x y))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

@@ -1,4 +1,10 @@
-import React, { forwardRef, ReactNode, Ref } from "react";
+import React, {
+  ChangeEvent,
+  forwardRef,
+  ReactNode,
+  Ref,
+  useCallback,
+} from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Input, { InputProps } from "metabase/core/components/Input";
@@ -12,14 +18,30 @@ export interface FormInputProps
   name: string;
   title?: string;
   description?: ReactNode;
+  nullable?: boolean;
 }
 
 const FormInput = forwardRef(function FormInput(
-  { name, className, style, title, description, ...props }: FormInputProps,
+  {
+    name,
+    className,
+    style,
+    title,
+    description,
+    nullable,
+    ...props
+  }: FormInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
+  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
+
+  const handleChange = useCallback(
+    ({ target: { value } }: ChangeEvent<HTMLInputElement>) => {
+      setValue(value === "" && nullable ? null : value);
+    },
+    [nullable, setValue],
+  );
 
   return (
     <FormField
@@ -35,10 +57,10 @@ const FormInput = forwardRef(function FormInput(
         {...props}
         id={id}
         name={name}
-        value={value}
+        value={value ?? ""}
         error={touched && error != null}
         fullWidth
-        onChange={onChange}
+        onChange={handleChange}
         onBlur={onBlur}
       />
     </FormField>

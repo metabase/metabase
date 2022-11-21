@@ -11,6 +11,7 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import * as Errors from "metabase/core/utils/errors";
 import {
   FormattingSettings,
   Timeline,
@@ -19,17 +20,12 @@ import {
 import FormArchiveButton from "../FormArchiveButton";
 import { EventFormFooter } from "./EventForm.styled";
 
-const EventSchema = Yup.object({
-  name: Yup.string()
-    .required(t`required`)
-    .max(255, ({ max }) => t`must be ${max} characters or less`),
-  description: Yup.string().max(
-    255,
-    ({ max }) => t`must be ${max} characters or less`,
-  ),
-  timestamp: Yup.string().required(`required`),
+const EVENT_SCHEMA = Yup.object({
+  name: Yup.string().required(Errors.required).max(255, Errors.maxLength),
+  description: Yup.string().nullable().max(255, Errors.maxLength),
+  timestamp: Yup.string().required(Errors.required),
   time_matters: Yup.boolean(),
-  icon: Yup.string().required(`required`),
+  icon: Yup.string().required(Errors.required),
   timeline_id: Yup.number(),
 });
 
@@ -69,7 +65,7 @@ const EventForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={EventSchema}
+      validationSchema={EVENT_SCHEMA}
       onSubmit={onSubmit}
     >
       {({ dirty, values, setFieldValue }) => (
@@ -93,6 +89,7 @@ const EventForm = ({
             title={t`Description`}
             infoLabel={t`Markdown supported`}
             infoTooltip={t`Add links and formatting via markdown`}
+            nullable
           />
           <FormSelect name="icon" title={t`Icon`} options={iconOptions} />
           {timelines.length > 1 && (

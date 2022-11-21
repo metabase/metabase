@@ -58,6 +58,10 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
+(defmethod driver/database-supports? [:postgres :datetime-diff]
+  [_driver _feat _db]
+  true)
+
 (defmethod driver/database-supports? [:postgres :persist-models]
   [_driver _feat _db]
   true)
@@ -299,9 +303,9 @@
                        :source-timezone source-timezone})))
     (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
           expr            (cond->> expr
-                            (and (not timestamptz?) source-timezone)
+                            (not timestamptz?)
                             (hsql/call :timezone source-timezone)
-                            target-timezone
+                            true
                             (hsql/call :timezone target-timezone))]
       (hx/with-database-type-info expr "timestamp"))))
 
@@ -321,6 +325,66 @@
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
+(defn- datetime-diff-helper [x y unit]
+  (case unit
+    (:year :day)
+    (hx/cast
+     :integer
+     (hsql/call
+      :extract
+      unit
+      (hsql/call
+       (case unit :year :age :day :-)
+       (date-trunc :day y)
+       (date-trunc :day x))))
+
+    :week
+    (hx// (datetime-diff-helper x y :day) 7)
+
+    :month
+    (hx/cast
+     :integer
+     (hx/+
+      (hx/* 12 (datetime-diff-helper x y :year))
+      (hsql/call
+       :extract
+       :month
+       (hsql/call
+        :age
+        (date-trunc :day y)
+        (date-trunc :day x)))))
+
+    (:hour :minute :second)
+    (let [ex            (extract :epoch x)
+          ey            (extract :epoch y)
+          positive-diff (fn [a b]
+                          (hx/cast
+                           :integer
+                           (hx/floor
+                            (if (= unit :second)
+                              (hx/- b a)
+                              (hx// (hx/- b a) (case unit :hour 3600 :minute 60))))))]
+      (hsql/call :case (hsql/call :<= ex ey) (positive-diff ex ey) :else (hx/* -1 (positive-diff ey ex))))))
+
+(defmethod sql.qp/->honeysql [:postgres :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [v]
+                            (when-let [db-type (keyword (hx/type-info->db-type (hx/type-info v)))]
+                              (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
+                                (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
+                                  (name db-type)))))
+                          [x y])]
+    (when (seq disallowed-types)
+      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                           (pr-str disallowed-types))
+                      {:found disallowed-types
+                       :type  qp.error-type/invalid-query})))
+    (-> (datetime-diff-helper x y unit)
+        (hx/with-database-type-info :integer))))
 
 (p/defrecord+ RegexMatchFirst [identifier pattern]
   hformat/ToSql

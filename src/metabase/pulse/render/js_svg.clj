@@ -146,7 +146,8 @@
   [settings data]
   (let [svg-string (.asString (js/execute-fn-name (context) "row_chart"
                                                   (json/generate-string settings)
-                                                  (json/generate-string data)))]
+                                                  (json/generate-string data)
+                                                  (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-donut

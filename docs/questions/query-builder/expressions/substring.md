@@ -149,4 +149,4 @@ substring([Mission ID], 9, 3)
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/questions/)
+- [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)

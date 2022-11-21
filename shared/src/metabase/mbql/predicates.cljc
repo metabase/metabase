@@ -18,9 +18,9 @@
   "Is `unit` a valid datetime bucketing unit?"
   (complement (s/checker mbql.s/DateTimeUnit)))
 
-(def ^{:arglists '([timezone-id])} TimezoneIds?
-  "Is `timezone-id` a valid timezone-id?"
-  (complement (s/checker mbql.s/TimezoneIds)))
+(def ^{:arglists '([unit])} TimezoneId?
+  "Is `unit` a valid datetime bucketing unit?"
+  (complement (s/checker mbql.s/TimezoneId)))
 
 (def ^{:arglists '([ag-clause])} Aggregation?
   "Is this a valid Aggregation clause?"

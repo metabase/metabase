@@ -13,11 +13,18 @@
              java.time.ZoneId)]
    :cljs
    [(:require
+     ["moment" :as moment]
+     ["moment-timezone" :as mtz]
      [clojure.core :as core]
      [clojure.set :as set]
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
      [schema.core :as s])]))
+
+#?(:cljs
+   (comment
+     moment/keepme
+     mtz/keepme)) ;; to get the timezone list from moment
 
 ;; A NOTE ABOUT METADATA:
 ;;
@@ -79,13 +86,12 @@
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
 
-(def TimezoneIds
-  "Valid timezone ids."
-  #?(:clj  (s/named
-             (apply s/enum (ZoneId/getAvailableZoneIds)) ;; about 600 timezones on java 17
-             "timezone-ids")
-     ;; Should we just use helpers/NonBlankString for cljs?
-     :cljs helpers/NonBlankString))
+(def TimezoneId
+  "Valid timezone id."
+  (s/named
+    #?(:clj  (apply s/enum (ZoneId/getAvailableZoneIds)) ;; 600 timezones on java 17
+       :cljs (apply s/enum (.names (.-tz moment))))      ;; 596 timezones on moment-timezone 0.5.38
+    "timezone-id"))
 
 (def TemporalExtractUnits
   "Valid units to extract from a temporal."
@@ -102,6 +108,12 @@
                     :minute-of-hour
                     :second-of-minute})
     "temporal-extract-units"))
+
+(def DatetimeDiffUnits
+  "Valid units for a datetime-diff clause."
+  (s/named
+    (apply s/enum #{:second :minute :hour :day :week :month :year})
+    "datetime-diff-units"))
 
 (def ExtractWeekModes
   "Valid modes to extract weeks."
@@ -158,15 +170,6 @@
 (def LiteralTimeString
   "Schema for an ISO-8601-formatted time string literal."
   (s/constrained helpers/NonBlankString can-parse-time? "valid ISO-8601 time string literal"))
-
-(def TemporalLiteralString
-  "Schema for either a literal datetime string, literal date string, or a literal time string."
-  (s/named
-   (s/conditional
-    can-parse-datetime? LiteralDatetimeString
-    can-parse-date?     LiteralDateString
-    can-parse-time?     LiteralTimeString)
-   "valid ISO-8601 datetime, date, or time string literal"))
 
 ;; TODO - `unit` is not allowed if `n` is `current`
 (defclause relative-datetime
@@ -225,32 +228,56 @@
           :cljs js/Date)
   unit TimeUnit)
 
-(def ^:private DatetimeLiteral
-  "Schema for valid absolute datetime literals."
+(def ^:private DateOrDatetimeLiteral
+  "Schema for a valid date or datetime literal."
   (s/conditional
    (partial is-clause? :absolute-datetime)
    absolute-datetime
 
-   (partial is-clause? :time)
-   time
+   can-parse-datetime?
+   LiteralDatetimeString
+
+   can-parse-date?
+   LiteralDateString
 
    :else
    (s/cond-pre
     ;; literal datetime strings and Java types will get transformed to `absolute-datetime` clauses automatically by
     ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
     ;; `absolute-datetime` clauses.
-    TemporalLiteralString
-
     #?@(:clj
-        [java.time.LocalTime
-         java.time.LocalDate
+        [java.time.LocalDate
          java.time.LocalDateTime
-         java.time.OffsetTime
          java.time.OffsetDateTime
          java.time.ZonedDateTime]
 
         :cljs
         [js/Date]))))
+
+(def ^:private TimeLiteral
+  "Schema for valid time literals."
+  (s/conditional
+   (partial is-clause? :time)
+   time
+
+   can-parse-time?
+   LiteralTimeString
+
+   :else
+   (s/cond-pre
+    ;; literal datetime strings and Java types will get transformed to `time` clauses automatically by
+    ;; middleware so drivers don't need to deal with these directly. You only need to worry about handling
+    ;; `time` clauses.
+    #?@(:clj
+        [java.time.LocalTime
+         java.time.OffsetTime]
+
+        :cljs
+        [js/Date]))))
+
+(def ^:private TemporalLiteral
+  "Schema for valid temporal literals."
+  (s/cond-pre TimeLiteral DateOrDatetimeLiteral))
 
 (def DateTimeValue
   "Schema for a datetime value drivers will personally have to handle, either an `absolute-datetime` form or a
@@ -483,9 +510,10 @@
    :else
    Field))
 
+;; TODO - rename to numeric-expressions
 (def arithmetic-expressions
   "Set of valid arithmetic expression clause keywords."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case})
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :datetime-diff})
 
 (def boolean-expressions
   "Set of valid boolean expression clause keywords."
@@ -493,6 +521,7 @@
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
+;; TODO: expressions that return numerics should be in arithmetic-expressions
 (def temporal-extract-functions
   "Functions to extract components of a date, datetime."
   #{;; extraction functions (get some component of a given temporal value/column)
@@ -541,15 +570,12 @@
    (partial is-clause? :value)
    value
 
-    ;; Recursively doing date math
-   (partial is-clause? date-arithmetic-functions)
-   (s/recursive #'DatetimeExpression)
-
-   (partial is-clause? :convert-timezone)
+   ;; Recursively doing date math or convert-timezone
+   (partial is-clause? (set/union date-arithmetic-functions #{:convert-timezone}))
    (s/recursive #'DatetimeExpression)
 
    :else
-   (s/cond-pre DatetimeLiteral Field)))
+   (s/cond-pre DateOrDatetimeLiteral Field)))
 
 (def ^:private ExpressionArg
   (s/conditional
@@ -652,11 +678,28 @@
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
 
+;; TODO: rename to NumericExpression*
 (declare ArithmeticExpression*)
 
+;; TODO: rename to NumericExpression
 (def ^:private ArithmeticExpression
-  "Schema for the definition of an arithmetic expression."
+  "Schema for the definition of an arithmetic expression. All arithmetic expressions evaluate to numeric values."
   (s/recursive #'ArithmeticExpression*))
+
+;; The result is positive if x <= y, and negative otherwise.
+;;
+;; Days, weeks, months, and years are only counted if they are whole to the "day".
+;; For example, `datetimeDiff("2022-01-30", "2022-02-28", "month")` returns 0 months.
+;;
+;; If the values are datetimes, the time doesn't matter for these units.
+;; For example, `datetimeDiff("2022-01-01T09:00:00", "2022-01-02T08:00:00", "day")` returns 1 day even though it is less than 24 hours.
+;;
+;; Hours, minutes, and seconds are only counted if they are whole.
+;; For example, datetimeDiff("2022-01-01T01:00:30", "2022-01-01T02:00:29", "hour") returns 0 hours.
+(defclause ^{:requires-features #{:datetime-diff}} datetime-diff
+  datetime-x DateTimeExpressionArg
+  datetime-y DateTimeExpressionArg
+  unit       DatetimeDiffUnits)
 
 (defclause ^{:requires-features #{:temporal-extract}} temporal-extract
   datetime DateTimeExpressionArg
@@ -694,8 +737,8 @@
 
 (defclause ^{:requires-features #{:convert-timezone}} convert-timezone
   datetime DateTimeExpressionArg
-  to       TimezoneIds
-  from     (optional TimezoneIds))
+  to       TimezoneId
+  from     (optional TimezoneId))
 
 (def ^:private ArithmeticDateTimeUnit
   (s/named
@@ -756,7 +799,7 @@
     s/Bool
     s/Num
     s/Str
-    DatetimeLiteral
+    TemporalLiteral
     FieldOrRelativeDatetime
     ExpressionArg
     value)))
@@ -768,7 +811,7 @@
     (s/cond-pre
      s/Num
      s/Str
-     DatetimeLiteral
+     TemporalLiteral
      ExpressionArg
      FieldOrRelativeDatetime)))
 
@@ -892,8 +935,9 @@
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
 
+;; TODO: rename to NumericExpression?
 (def ^:private ArithmeticExpression*
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case))
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datetime-diff))
 
 (def ^:private StringExpression*
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
