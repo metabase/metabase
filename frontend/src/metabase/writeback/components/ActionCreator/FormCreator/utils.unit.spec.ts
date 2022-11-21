@@ -1,8 +1,12 @@
+import type { FieldSettingsMap } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
 
 import {
-  getFormField,
-  getForm,
+  reorderFields,
+  hasNewParams,
+  sortActionParams,
+  getDefaultFieldSettings,
+  getDefaultFormSettings,
   generateFieldSettingsFromParameters,
   getInputType,
 } from "./utils";
@@ -269,6 +273,82 @@ describe("writeback > ActionCreator > FormCreator > utils", () => {
         semantic_type: "type/Description",
       });
       expect(getInputType(createParameter(), field)).toEqual("text");
+    });
+  });
+
+  describe("reorderFields", () => {
+    it("should reorder fields", () => {
+      const fields = {
+        a: getDefaultFieldSettings({ order: 0 }),
+        b: getDefaultFieldSettings({ order: 1 }),
+        c: getDefaultFieldSettings({ order: 2 }),
+      } as FieldSettingsMap;
+      // move b to index 0
+      const reorderedFields = reorderFields(fields, 1, 0);
+      expect(reorderedFields.a.order).toEqual(1);
+      expect(reorderedFields.b.order).toEqual(0);
+      expect(reorderedFields.c.order).toEqual(2);
+    });
+  });
+
+  describe("sortActionParams", () => {
+    const formSettings = getDefaultFormSettings({
+      fields: {
+        a: getDefaultFieldSettings({ order: 0 }),
+        b: getDefaultFieldSettings({ order: 1 }),
+        c: getDefaultFieldSettings({ order: 2 }),
+      },
+    });
+
+    it("should return a sorting function", () => {
+      const sortFn = sortActionParams(formSettings);
+      expect(typeof sortFn).toBe("function");
+    });
+
+    it("should sort params by the settings-defined field order", () => {
+      const sortFn = sortActionParams(formSettings);
+
+      const params = [
+        createParameter({ id: "c" }),
+        createParameter({ id: "a" }),
+        createParameter({ id: "b" }),
+      ];
+
+      const sortedParams = params.sort(sortFn);
+
+      expect(sortedParams[0].id).toEqual("a");
+      expect(sortedParams[1].id).toEqual("b");
+      expect(sortedParams[2].id).toEqual("c");
+    });
+  });
+
+  describe("hasNewParams", () => {
+    const formSettings = getDefaultFormSettings({
+      fields: {
+        a: getDefaultFieldSettings({ order: 0 }),
+        b: getDefaultFieldSettings({ order: 1 }),
+        c: getDefaultFieldSettings({ order: 2 }),
+      },
+    });
+
+    it("should return true if there are new params", () => {
+      const params = [
+        createParameter({ id: "a" }),
+        createParameter({ id: "b" }),
+        createParameter({ id: "new" }),
+      ];
+
+      expect(hasNewParams(params, formSettings)).toBe(true);
+    });
+
+    it("should return false if there are no new params", () => {
+      const params = [
+        createParameter({ id: "a" }),
+        createParameter({ id: "b" }),
+        createParameter({ id: "c" }),
+      ];
+
+      expect(hasNewParams(params, formSettings)).toBe(false);
     });
   });
 });
