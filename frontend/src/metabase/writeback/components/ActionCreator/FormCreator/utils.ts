@@ -2,12 +2,14 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import validate from "metabase/lib/validate";
-import { slugify } from "metabase/lib/formatting";
+import { humanize, slugify } from "metabase/lib/formatting";
+import { moveElement } from "metabase/visualizations/lib/utils";
 
 import type {
   ActionFormSettings,
   WritebackAction,
   FieldSettings,
+  FieldSettingsMap,
   ParameterId,
   WritebackParameter,
   ActionFormOption,
@@ -46,7 +48,7 @@ export const getDefaultFieldSettings = (
   title: "",
   description: "",
   placeholder: "",
-  order: 0,
+  order: 100,
   fieldType: "string",
   inputType: "string",
   required: true,
@@ -123,8 +125,11 @@ export const getForm = (
   parameters: WritebackParameter[],
   fieldSettings: Record<string, FieldSettings>,
 ): ActionFormProps => {
+  const sortedParams = parameters.sort(
+    sortActionParams({ fields: fieldSettings } as ActionFormSettings),
+  );
   return {
-    fields: parameters
+    fields: sortedParams
       ?.map(param => getFormField(param, fieldSettings[param.id] ?? {}))
       .filter(Boolean) as ActionFormFieldProps[],
   };
@@ -243,3 +248,40 @@ export const getInputType = (param: Parameter, field?: Field) => {
   }
   return "string";
 };
+
+export const reorderFields = (
+  fields: FieldSettingsMap,
+  oldIndex: number,
+  newIndex: number,
+) => {
+  // we have to jump through some hoops here because fields settings are an unordered map
+  // with order properties
+  const fieldsWithIds = _.mapObject(fields, (field, key) => ({
+    ...field,
+    id: key,
+  }));
+  const orderedFields = _.sortBy(Object.values(fieldsWithIds), "order");
+  const reorderedFields = moveElement(orderedFields, oldIndex, newIndex);
+
+  const fieldsWithUpdatedOrderProperty = reorderedFields.map(
+    (field, index) => ({
+      ...field,
+      order: index,
+    }),
+  );
+
+  return _.indexBy(fieldsWithUpdatedOrderProperty, "id");
+};
+
+export const sortActionParams =
+  (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
+    const aOrder = formSettings.fields[a.id]?.order ?? 0;
+    const bOrder = formSettings.fields[b.id]?.order ?? 0;
+
+    return aOrder - bOrder;
+  };
+
+export const hasNewParams = (
+  params: Parameter[],
+  formSettings: ActionFormSettings,
+) => !!params.find(param => !formSettings.fields[param.id]);

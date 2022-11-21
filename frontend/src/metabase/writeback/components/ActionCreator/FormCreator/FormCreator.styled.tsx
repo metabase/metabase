@@ -19,6 +19,7 @@ export const FormItemWrapper = styled.div`
   padding: ${space(2)};
   border-radius: ${space(1)};
   margin-bottom: ${space(1)};
+  background-color: ${color("bg-white")};
 `;
 
 export const FormSettings = styled.div`

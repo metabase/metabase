@@ -1,11 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { t } from "ttag";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
+import type {
+  DraggableProvided,
+  OnDragEndResponder,
+  DroppableProvided,
+} from "react-beautiful-dnd";
 import type { Parameter } from "metabase-types/types/Parameter";
 import type { ActionFormSettings, FieldSettings } from "metabase-types/api";
 
+import { addMissingSettings } from "metabase/entities/actions/utils";
 import { FieldSettingsPopover } from "./FieldSettingsPopover";
-import { getDefaultFormSettings, getDefaultFieldSettings } from "./utils";
+import {
+  getDefaultFormSettings,
+  getDefaultFieldSettings,
+  reorderFields,
+  sortActionParams,
+  hasNewParams,
+} from "./utils";
 import { FormField } from "./FormField";
 import { OptionEditor } from "./OptionEditor";
 
@@ -39,6 +52,13 @@ export function FormCreator({
     onChange(formSettings);
   }, [formSettings, onChange]);
 
+  useEffect(() => {
+    // add default settings for new parameters
+    if (formSettings && params && hasNewParams(params, formSettings)) {
+      setFormSettings(addMissingSettings(formSettings, params));
+    }
+  }, [params, formSettings]);
+
   const handleChangeFieldSettings = (
     paramId: string,
     newFieldSettings: FieldSettings,
@@ -52,23 +72,67 @@ export function FormCreator({
     });
   };
 
+  const handleDragEnd: OnDragEndResponder = ({ source, destination }) => {
+    const oldOrder = source.index;
+    const newOrder = destination?.index ?? source.index;
+
+    const reorderedFields = reorderFields(
+      formSettings.fields,
+      oldOrder,
+      newOrder,
+    );
+    setFormSettings({
+      ...formSettings,
+      fields: reorderedFields,
+    });
+  };
+
+  const sortedParams = useMemo(
+    () => params.sort(sortActionParams(formSettings)),
+    [params, formSettings],
+  );
+
   return (
     <FormCreatorWrapper>
-      {params.map(param => (
-        <FormItem
-          key={param.id}
-          param={param}
-          fieldSettings={
-            formSettings.fields?.[param.id] ?? getDefaultFieldSettings()
-          }
-          onChange={(newSettings: FieldSettings) =>
-            handleChangeFieldSettings(param.id, newSettings)
-          }
-        />
-      ))}
-      {!params.length && (
-        <EmptyFormPlaceholder onExampleClick={onExampleClick} />
-      )}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="action-form-droppable">
+          {(provided: DroppableProvided) => (
+            <div {...provided.droppableProps} ref={provided.innerRef}>
+              {sortedParams.map((param, index) => (
+                <Draggable
+                  key={`draggable-${param.id}`}
+                  draggableId={param.id}
+                  index={index}
+                >
+                  {(provided: DraggableProvided) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      className="mb1"
+                    >
+                      <FormItem
+                        key={param.id}
+                        param={param}
+                        fieldSettings={
+                          formSettings.fields?.[param.id] ??
+                          getDefaultFieldSettings()
+                        }
+                        onChange={(newSettings: FieldSettings) =>
+                          handleChangeFieldSettings(param.id, newSettings)
+                        }
+                      />
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {!params.length && (
+                <EmptyFormPlaceholder onExampleClick={onExampleClick} />
+              )}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
     </FormCreatorWrapper>
   );
 }
