@@ -8,6 +8,8 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import MetabaseSettings from "metabase/lib/settings";
 
+import { getSettings } from "metabase/selectors/settings";
+
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
 
 import {
@@ -176,7 +178,7 @@ const LicenseAndBillingSettings = ({
 export default connect(
   (state: any) => ({
     settingValues: state.admin.settings.settings,
-    settings: state.settings.values,
+    settings: getSettings(state),
   }),
   {
     showLicenseAcceptedToast,
