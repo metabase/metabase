@@ -80,9 +80,9 @@ Example: `Average([Quantity])` would return the mean for the `Quantity` field.
 
 Returns the count of rows (also known as records) in the selected data.
 
-Syntax: `Count`
+Syntax: `Count()`
 
-Example: `Count` If a table or result returns 10 rows, `Count` will return `10`.
+Example: `Count()` If a table or result returns 10 rows, `Count()` will return `10`.
 
 ### CountIf
 
@@ -96,9 +96,9 @@ Example: `CountIf([Subtotal] > 100)` would return the number of rows where the s
 
 The additive total of rows across a breakout.
 
-Syntax: `CumulativeCount`.
+Syntax: `CumulativeCount()`.
 
-Example: `CumulativeCount`.
+Example: `CumulativeCount()`.
 
 ### CumulativeSum
 

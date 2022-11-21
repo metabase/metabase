@@ -4,16 +4,16 @@ import { HelpText } from "./types";
 const helperTextStrings: HelpText[] = [
   {
     name: "count",
-    structure: "Count",
+    structure: "Count()",
     description: t`Returns the count of rows in the selected data.`,
-    example: "Count",
+    example: "Count()",
     args: [],
   },
   {
     name: "cum-count",
-    structure: "CumulativeCount",
+    structure: "CumulativeCount()",
     description: t`The additive total of rows across a breakout.`,
-    example: "CumulativeCount",
+    example: "CumulativeCount()",
     args: [],
   },
   {
