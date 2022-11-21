@@ -84,8 +84,68 @@ class DashCard extends Component {
     }));
   };
 
+  handleShowClickBehaviorSidebar = () => {
+    const { dashcard, showClickBehaviorSidebar } = this.props;
+    showClickBehaviorSidebar(dashcard.id);
+  };
+
+  handleCardChangeAndRun = ({ nextCard, previousCard, objectId }) => {
+    const { dashcard, navigateToNewCardFromDashboard } = this.props;
+    navigateToNewCardFromDashboard({
+      nextCard,
+      previousCard,
+      dashcard,
+      objectId,
+    });
+  };
+
   preventDragging = e => {
     e.stopPropagation();
+  };
+
+  renderVisualizationOverlay = ({ isAction }) => {
+    const {
+      dashcard,
+      dashboard,
+      clickBehaviorSidebarDashcard,
+      gridItemWidth,
+      isMobile,
+      isEditingParameter,
+      showClickBehaviorSidebar,
+    } = this.props;
+
+    if (clickBehaviorSidebarDashcard != null) {
+      if (isVirtualDashCard(dashcard)) {
+        return (
+          <div className="flex full-height align-center justify-center">
+            <h4 className="text-medium">
+              {dashcard.visualization_settings.virtual_card.display === "text"
+                ? t`Text card`
+                : t`Action button`}
+            </h4>
+          </div>
+        );
+      }
+      return (
+        <ClickBehaviorSidebarOverlay
+          dashcard={dashcard}
+          dashcardWidth={gridItemWidth}
+          dashboard={dashboard}
+          showClickBehaviorSidebar={showClickBehaviorSidebar}
+          isShowingThisClickBehaviorSidebar={
+            clickBehaviorSidebarDashcard.id === dashcard.id
+          }
+        />
+      );
+    }
+
+    if (isEditingParameter && !isAction) {
+      return (
+        <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
+      );
+    }
+
+    return null;
   };
 
   render() {
@@ -99,7 +159,6 @@ class DashCard extends Component {
       parameterValues,
       mode,
       headerIcon,
-      gridItemWidth,
       totalNumGridCols,
       isEditing,
       isNightMode,
@@ -111,7 +170,6 @@ class DashCard extends Component {
       navigateToNewCardFromDashboard,
       onUpdateVisualizationSettings,
       onReplaceAllVisualizationSettings,
-      showClickBehaviorSidebar,
       onChangeLocation,
       dispatch,
     } = this.props;
@@ -191,6 +249,10 @@ class DashCard extends Component {
 
     const gridSize = { width: dashcard.size_x, height: dashcard.size_y };
 
+    const onChangeCardAndRun = navigateToNewCardFromDashboard
+      ? this.handleCardChangeAndRun
+      : null;
+
     return (
       <DashCardRoot
         className="Card rounded flex flex-column hover-parent hover--visibility"
@@ -211,9 +273,7 @@ class DashCard extends Component {
               onReplaceAllVisualizationSettings={
                 onReplaceAllVisualizationSettings
               }
-              showClickBehaviorSidebar={() =>
-                showClickBehaviorSidebar(dashcard.id)
-              }
+              showClickBehaviorSidebar={this.handleShowClickBehaviorSidebar}
               isPreviewing={isPreviewingCard}
               onPreviewToggle={this.handlePreviewToggle}
               dashboard={dashboard}
@@ -261,49 +321,10 @@ class DashCard extends Component {
             ) : null
           }
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          replacementContent={
-            clickBehaviorSidebarDashcard != null &&
-            isVirtualDashCard(dashcard) ? (
-              <div className="flex full-height align-center justify-center">
-                <h4 className="text-medium">
-                  {dashcard.visualization_settings.virtual_card.display ===
-                  "text"
-                    ? t`Text card`
-                    : t`Action button`}
-                </h4>
-              </div>
-            ) : isEditingParameter && !isAction ? (
-              <DashCardParameterMapper
-                dashcard={dashcard}
-                isMobile={isMobile}
-              />
-            ) : clickBehaviorSidebarDashcard != null ? (
-              <ClickBehaviorSidebarOverlay
-                dashcard={dashcard}
-                dashcardWidth={gridItemWidth}
-                dashboard={dashboard}
-                showClickBehaviorSidebar={showClickBehaviorSidebar}
-                isShowingThisClickBehaviorSidebar={
-                  clickBehaviorSidebarDashcard.id === dashcard.id
-                }
-              />
-            ) : null
-          }
+          replacementContent={this.renderVisualizationOverlay({ isAction })}
           metadata={metadata}
           mode={mode}
-          onChangeCardAndRun={
-            navigateToNewCardFromDashboard
-              ? ({ nextCard, previousCard, objectId }) => {
-                  // navigateToNewCardFromDashboard needs `dashcard` for applying active filters to the query
-                  navigateToNewCardFromDashboard({
-                    nextCard,
-                    previousCard,
-                    dashcard,
-                    objectId,
-                  });
-                }
-              : null
-          }
+          onChangeCardAndRun={onChangeCardAndRun}
           onChangeLocation={onChangeLocation}
         />
       </DashCardRoot>
