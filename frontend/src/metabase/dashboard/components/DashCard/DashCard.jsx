@@ -1,37 +1,38 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import ReactDOM from "react-dom";
+import PropTypes from "prop-types";
+import cx from "classnames";
+import { t } from "ttag";
+import _ from "underscore";
 import styled from "@emotion/styled";
 import { connect } from "react-redux";
-import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
-import { t } from "ttag";
-import cx from "classnames";
-import _ from "underscore";
 import { getIn } from "icepick";
+
+import Icon, { iconPropTypes } from "metabase/components/Icon";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Tooltip from "metabase/components/Tooltip";
+
+import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import Utils from "metabase/lib/utils";
+
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
-import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
   ERROR_MESSAGE_PERMISSION,
 } from "metabase/visualizations/components/Visualization";
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
+import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
+import { mergeSettings } from "metabase/visualizations/lib/settings";
 
-import Icon, { iconPropTypes } from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-
 import { isActionCard } from "metabase/writeback/utils";
 
-import Utils from "metabase/lib/utils";
-import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
 import DashCardParameterMapper from "./DashCardParameterMapper";
