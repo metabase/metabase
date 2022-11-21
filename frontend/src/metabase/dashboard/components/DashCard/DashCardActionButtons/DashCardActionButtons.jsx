@@ -14,6 +14,8 @@ import ChartSettingsButton from "./ChartSettingsButton";
 import RemoveButton from "./RemoveButton";
 import ToggleCardPreviewButton from "./ToggleCardPreviewButton";
 
+import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
+
 const HEADER_ACTION_STYLE = {
   padding: 4,
 };
@@ -85,12 +87,12 @@ function DashCardActionButtons({
   }
 
   return (
-    <span className="flex align-center text-medium" style={{ lineHeight: 1 }}>
+    <DashCardActionButtonsContainer>
       {buttons}
       <Tooltip tooltip={t`Remove`}>
         <RemoveButton className="ml1" onRemove={onRemove} />
       </Tooltip>
-    </span>
+    </DashCardActionButtonsContainer>
   );
 }
 
