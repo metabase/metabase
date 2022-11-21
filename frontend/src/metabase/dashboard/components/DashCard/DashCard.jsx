@@ -42,21 +42,21 @@ const WrappedVisualization = WithVizSettingsData(
   connect(null, dispatch => ({ dispatch }))(Visualization),
 );
 
-class DashCard extends Component {
-  static propTypes = {
-    dashcard: PropTypes.object.isRequired,
-    gridItemWidth: PropTypes.number.isRequired,
-    totalNumGridCols: PropTypes.number.isRequired,
-    dashcardData: PropTypes.object.isRequired,
-    slowCards: PropTypes.object.isRequired,
-    parameterValues: PropTypes.object.isRequired,
-    markNewCardSeen: PropTypes.func.isRequired,
-    fetchCardData: PropTypes.func.isRequired,
-    navigateToNewCardFromDashboard: PropTypes.func.isRequired,
-    headerIcon: PropTypes.shape(iconPropTypes),
-    isNightMode: PropTypes.bool,
-  };
+const propTypes = {
+  dashcard: PropTypes.object.isRequired,
+  gridItemWidth: PropTypes.number.isRequired,
+  totalNumGridCols: PropTypes.number.isRequired,
+  dashcardData: PropTypes.object.isRequired,
+  slowCards: PropTypes.object.isRequired,
+  parameterValues: PropTypes.object.isRequired,
+  markNewCardSeen: PropTypes.func.isRequired,
+  fetchCardData: PropTypes.func.isRequired,
+  navigateToNewCardFromDashboard: PropTypes.func.isRequired,
+  headerIcon: PropTypes.shape(iconPropTypes),
+  isNightMode: PropTypes.bool,
+};
 
+class DashCard extends Component {
   constructor(props) {
     super(props);
 
@@ -309,5 +309,7 @@ class DashCard extends Component {
     );
   }
 }
+
+DashCard.propTypes = propTypes;
 
 export default DashCard;
