@@ -31,7 +31,8 @@
                              :name      sample-database-name
                              :details   (db-details)
                              :engine    :h2
-                             :is_sample true))
+                             :is_sample true)
+                           {:scan :schema})
       (catch Throwable e
         (log/error e (trs "Failed to load sample database"))))))
 
