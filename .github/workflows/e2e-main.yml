@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - 'release-**'
+      - 'e2e-optimize-matrix'
     paths-ignore:
       - "docs/**"
       - "**.md"
