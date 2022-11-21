@@ -161,37 +161,46 @@ export const GRAPH_DATA_SETTINGS = {
     marginBottom: "1rem",
 
     getValue: (series, settings) => {
+      const seriesKeys = series.map(s => keyForSingleSeries(s));
       const seriesOrder = settings["graph.series_order"];
       const seriesOrderDimension = settings["graph.series_order_dimension"];
       const currentDimension = settings["graph.dimensions"][1];
 
-      const generateDefault = series => {
-        const keys = series.map(s => keyForSingleSeries(s));
-        return keys.map((key, index) => ({
+      const generateDefault = keys => {
+        return keys.map(key => ({
+          key,
           name: key,
-          originalIndex: index,
           enabled: true,
         }));
       };
+
+      const removeMissingOrder = (keys, order) =>
+        order.filter(o => keys.includes(o.key));
+      const newKeys = (keys, order) =>
+        keys.filter(key => !order.find(o => o.key === key));
 
       if (
         !seriesOrder ||
         !_.isArray(seriesOrder) ||
         seriesOrderDimension !== currentDimension
       ) {
-        return generateDefault(series);
+        return generateDefault(seriesKeys);
       }
 
-      return seriesOrder;
+      return [
+        ...removeMissingOrder(seriesKeys, seriesOrder),
+        ...generateDefault(newKeys(seriesKeys, seriesOrder)),
+      ];
+      // return seriesOrder;
     },
     getProps: (series, settings) => {
       const seriesSettings = settings["series_settings"] || {};
       const seriesColors = settings["series_settings.colors"] || {};
       const keys = series.map(s => keyForSingleSeries(s));
       return {
-        items: keys.map((key, index) => ({
+        items: keys.map(key => ({
+          key,
           name: seriesSettings[key]?.title || key,
-          originalIndex: index,
           color: seriesColors[key],
         })),
         series,

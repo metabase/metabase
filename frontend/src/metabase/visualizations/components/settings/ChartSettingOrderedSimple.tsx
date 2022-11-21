@@ -2,6 +2,7 @@ import { updateIn } from "icepick";
 import React from "react";
 import { t } from "ttag";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { findSeriesByKey } from "metabase/visualizations/lib/series";
 import { Series } from "metabase-types/types/Visualization";
 
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
@@ -11,8 +12,8 @@ import {
 } from "./ChartSettingOrderedSimple.styled";
 
 interface SortableItem {
+  key: string;
   enabled: boolean;
-  originalIndex: number;
   name: string;
   color?: string;
 }
@@ -40,9 +41,7 @@ export const ChartSettingOrderedSimple = ({
   onChangeSeriesColor,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = (selectedItem: SortableItem) => {
-    const index = orderedItems.findIndex(
-      item => item.originalIndex === selectedItem.originalIndex,
-    );
+    const index = orderedItems.findIndex(item => item.key === selectedItem.key);
     onChange(updateIn(orderedItems, [index, "enabled"], enabled => !enabled));
   };
 
@@ -59,15 +58,14 @@ export const ChartSettingOrderedSimple = ({
   };
 
   const getItemTitle = (item: SortableItem) => {
-    return items[item.originalIndex]?.name || "Unknown";
+    return items.find(i => i.key === item.key)?.name || "Unknown";
   };
 
   const handleOnEdit = (item: SortableItem, ref: HTMLElement | undefined) => {
-    const single = series[item.originalIndex];
     onShowWidget(
       {
         props: {
-          seriesKey: keyForSingleSeries(single),
+          seriesKey: keyForSingleSeries(item.key),
         },
       },
       ref,
@@ -75,7 +73,7 @@ export const ChartSettingOrderedSimple = ({
   };
 
   const handleColorChange = (item: SortableItem, color: string) => {
-    const singleSeries = series[item.originalIndex];
+    const singleSeries = findSeriesByKey(series, item.key);
     const seriesKey = keyForSingleSeries(singleSeries);
     onChangeSeriesColor(seriesKey, color);
   };
@@ -86,7 +84,7 @@ export const ChartSettingOrderedSimple = ({
         <ChartSettingOrderedItems
           items={orderedItems.map(item => ({
             ...item,
-            color: items[item.originalIndex].color,
+            color: items.find(i => i.key === item.key)?.color,
           }))}
           getItemName={getItemTitle}
           onRemove={toggleDisplay}

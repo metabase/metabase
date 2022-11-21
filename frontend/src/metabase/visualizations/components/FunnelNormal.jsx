@@ -29,7 +29,11 @@ export default class FunnelNormal extends Component {
     const rows = settings["funnel.rows"]
       ? settings["funnel.rows"]
           .filter(fr => fr.enabled)
-          .map(fr => series[fr.originalIndex].data.rows[0])
+          .map(
+            fr =>
+              series.find(singleSeries => singleSeries.card.name === fr.key)
+                .data.rows[0],
+          )
       : series.map(s => s.data.rows[0]);
 
     const isNarrow = gridSize && gridSize.width < 7;
