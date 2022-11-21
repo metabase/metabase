@@ -131,17 +131,24 @@
         pk-user (tx/db-test-env-var :snowflake :pk-user)
         pk-db (tx/db-test-env-var :snowflake :pk-db "SNOWFLAKE_SAMPLE_DATA")]
     (mt/test-driver :snowflake
-      (mt/with-temp-file [pk-path]
-        (let [can-connect? (partial driver/can-connect? :snowflake)]
-          (is (= true
-                 (can-connect? (:details (mt/db))))
-              "can-connect? should return true for normal Snowflake DB details")
-          (is (thrown?
-               net.snowflake.client.jdbc.SnowflakeSQLException
-               (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
-              "can-connect? should throw for Snowflake databases that don't exist (#9511)")
-          (when (and pk-key pk-user)
-            (log/fatal (str/join (repeat 1000 "[TEST DEBUG MESSAGE] - Running private key authentication Test\n")))
+      (let [can-connect? (partial driver/can-connect? :snowflake)]
+        (is (can-connect? (:details (mt/db)))
+            "can-connect? should return true for normal Snowflake DB details")
+        (let [original-query jdbc/query]
+          ;; make jdbc/query return a falsey value, but should still be able to connect
+          (with-redefs [jdbc/query (fn fake-jdbc-query
+                                     ([db sql-params] (fake-jdbc-query db sql-params {}))
+                                     ([db sql-params opts] (if (str/starts-with? sql-params "SHOW OBJECTS IN DATABASE")
+                                                             nil
+                                                             (original-query db sql-params (or opts {})))))]
+            (is (can-connect? (:details (mt/db))))))
+        (is (thrown?
+             net.snowflake.client.jdbc.SnowflakeSQLException
+             (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
+            "can-connect? should throw for Snowflake databases that don't exist (#9511)")
+
+        (when (and pk-key pk-user)
+          (mt/with-temp-file [pk-path]
             (testing "private key authentication"
               (spit pk-path pk-key)
               (doseq [to-merge [{:private-key-value pk-key}
