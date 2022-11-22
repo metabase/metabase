@@ -397,7 +397,7 @@ export const MBQL_CLAUSES = {
   },
   now: {
     displayName: `now`,
-    type: "expression",
+    type: "datetime",
     args: [],
   },
 };
