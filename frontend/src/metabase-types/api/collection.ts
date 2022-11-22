@@ -6,6 +6,14 @@ export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
+export type CollectionAuthorityLevelConfig = {
+  type: CollectionAuthorityLevel;
+  name: string;
+  icon: string;
+  color?: string;
+  tooltips?: Record<string, string>;
+};
+
 export interface Collection {
   id: CollectionId;
   name: string;
@@ -13,7 +21,9 @@ export interface Collection {
   can_write: boolean;
   archived: boolean;
   children?: Collection[];
+  authority_level?: "official" | null;
 
+  parent_id?: CollectionId;
   personal_owner_id?: number;
 
   location?: string;
