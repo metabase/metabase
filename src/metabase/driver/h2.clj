@@ -229,26 +229,27 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                (hsql/call :utf8tostring expr)))
 
-;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
-;; and then converting back to a date.
-;; Format strings are the same as those of SimpleDateFormat.
-(defn- format-datetime   [format-str expr] (hsql/call :formatdatetime expr (hx/literal format-str)))
-(defn- parse-datetime    [format-str expr] (hsql/call :parsedatetime expr  (hx/literal format-str)))
-(defn- trunc-with-format [format-str expr] (parse-datetime format-str (format-datetime format-str expr)))
-(defn- extract           [unit expr]       (hsql/call :extract unit (hx/cast :timestamp expr)))
+;; H2 v2 added date_trunc and extract, so we can borrow the Postgres implementation
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
+(defn- extract    [unit expr] (hsql/call :extract    unit              expr))
 
-(defmethod sql.qp/date [:h2 :minute]          [_ _ expr] (trunc-with-format "yyyyMMddHHmm" expr))
-(defmethod sql.qp/date [:h2 :minute-of-hour]  [_ _ expr] (hx/minute expr))
-(defmethod sql.qp/date [:h2 :hour]            [_ _ expr] (trunc-with-format "yyyyMMddHH" expr))
-(defmethod sql.qp/date [:h2 :hour-of-day]     [_ _ expr] (extract :hour expr))
-(defmethod sql.qp/date [:h2 :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:h2 :day-of-month]    [_ _ expr] (extract :day expr))
-(defmethod sql.qp/date [:h2 :day-of-year]     [_ _ expr] (extract :day_of_year expr))
-(defmethod sql.qp/date [:h2 :month]           [_ _ expr] (trunc-with-format "yyyyMM" expr))
-(defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (extract :month expr))
-(defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (extract :quarter expr))
-(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (extract :year expr)))
-(defmethod sql.qp/date [:h2 :year-of-era]     [_ _ expr] (extract :year expr))
+(def ^:private extract-integer (comp hx/->integer extract))
+
+(defmethod sql.qp/date [:h2 :default]          [_ _ expr] expr)
+(defmethod sql.qp/date [:h2 :second-of-minute] [_ _ expr] (extract-integer :second expr))
+(defmethod sql.qp/date [:h2 :minute]           [_ _ expr] (date-trunc :minute expr))
+(defmethod sql.qp/date [:h2 :minute-of-hour]   [_ _ expr] (extract-integer :minute expr))
+(defmethod sql.qp/date [:h2 :hour]             [_ _ expr] (date-trunc :hour expr))
+(defmethod sql.qp/date [:h2 :hour-of-day]      [_ _ expr] (extract-integer :hour expr))
+(defmethod sql.qp/date [:h2 :day]              [_ _ expr] (hx/->date expr))
+(defmethod sql.qp/date [:h2 :day-of-month]     [_ _ expr] (extract-integer :day expr))
+(defmethod sql.qp/date [:h2 :day-of-year]      [_ _ expr] (extract-integer :doy expr))
+(defmethod sql.qp/date [:h2 :month]            [_ _ expr] (date-trunc :month expr))
+(defmethod sql.qp/date [:h2 :month-of-year]    [_ _ expr] (extract-integer :month expr))
+(defmethod sql.qp/date [:h2 :quarter]          [_ _ expr] (date-trunc :quarter expr))
+(defmethod sql.qp/date [:h2 :quarter-of-year]  [_ _ expr] (extract-integer :quarter expr))
+(defmethod sql.qp/date [:h2 :year]             [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:h2 :year-of-era]      [_ _ expr] (extract-integer :year expr))
 
 (defmethod sql.qp/date [:h2 :day-of-week]
   [_ _ expr]
@@ -261,22 +262,6 @@
                                      :day))
 
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
-
-;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
-;; *  extract the year and quarter from the date;
-;; *  convert the quarter (1 - 4) to the corresponding starting month (1, 4, 7, or 10).
-;;    (do this by multiplying by 3, giving us [3 6 9 12]. Then subtract 2 to get [1 4 7 10]);
-;; *  concatenate the year and quarter start month together to create a yyyymm date string;
-;; *  parse the string as a date. :sunglasses:
-;;
-;; Postgres DATE_TRUNC('quarter', x)
-;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')
-(defmethod sql.qp/date [:h2 :quarter]
-  [_ _ expr]
-  (parse-datetime "yyyyMM"
-                  (hx/concat (hx/year expr) (hx/- (hx/* (hx/quarter expr)
-                                                        3)
-                                                  2))))
 
 (defmethod sql.qp/->honeysql [:h2 :log]
   [driver [_ field]]
