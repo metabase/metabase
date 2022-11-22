@@ -58,7 +58,11 @@ const AppBarLarge = ({
           onToggleClick={onToggleNavbar}
         />
         <AppBarInfoContainer
-          isVisible={!isNavBarOpen || isQuestionLineageVisible}
+          isVisible={
+            !isNavBarOpen ||
+            isQuestionLineageVisible ||
+            isEditingDataAppQuestion
+          }
         >
           {isEditingDataAppQuestion ? (
             <DataAppBackButton />
