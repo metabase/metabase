@@ -56,3 +56,14 @@ export const DashboardCardActionsPanel = styled.div`
     display: none;
   }
 `;
+
+export const VirtualDashCardOverlayRoot = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+`;
+
+export const VirtualDashCardOverlayText = styled.h4`
+  color: ${color("text-medium")};
+`;

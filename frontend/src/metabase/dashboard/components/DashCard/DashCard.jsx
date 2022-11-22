@@ -32,7 +32,12 @@ import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/paramete
 import ClickBehaviorSidebarOverlay from "./ClickBehaviorSidebarOverlay";
 import DashCardActionButtons from "./DashCardActionButtons";
 import DashCardParameterMapper from "./DashCardParameterMapper";
-import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
+import {
+  DashCardRoot,
+  DashboardCardActionsPanel,
+  VirtualDashCardOverlayRoot,
+  VirtualDashCardOverlayText,
+} from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
@@ -241,11 +246,11 @@ function DashCard({
         const isTextCard =
           dashcard.visualization_settings.virtual_card.display === "text";
         return (
-          <div className="flex full-height align-center justify-center">
-            <h4 className="text-medium">
+          <VirtualDashCardOverlayRoot>
+            <VirtualDashCardOverlayText>
               {isTextCard ? t`Text card` : t`Action button`}
-            </h4>
-          </div>
+            </VirtualDashCardOverlayText>
+          </VirtualDashCardOverlayRoot>
         );
       }
       return (
