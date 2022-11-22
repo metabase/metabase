@@ -100,7 +100,7 @@ function ActionComponent({
     return (
       <>
         {showParameterMapper && (
-          <ActionParameterMapper dashcard={dashcard} page={page} />
+          <ActionParameterOptions dashcard={dashcard} page={page} />
         )}
         <ActionForm
           onSubmit={onSubmit}
