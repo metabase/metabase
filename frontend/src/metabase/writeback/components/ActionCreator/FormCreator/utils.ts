@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import validate from "metabase/lib/validate";
 import { humanize, slugify } from "metabase/lib/formatting";
-import { moveElement } from "metabase/visualizations/lib/utils";
+import { moveElement } from "metabase/lib/array";
 
 import type {
   ActionFormSettings,
