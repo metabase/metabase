@@ -64,9 +64,9 @@ export const formatValue = (
     if (inputType === "datetime-local" && moment(value).isValid()) {
       return moment(value).utc(false).format("YYYY-MM-DDTHH:mm:ss");
     }
-  }
-  if (inputType === "time") {
-    return String(value).replace(/z/gi, "");
+    if (inputType === "time") {
+      return String(value).replace(/z/gi, "");
+    }
   }
   return value;
 };
