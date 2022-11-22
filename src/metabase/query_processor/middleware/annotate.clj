@@ -192,10 +192,10 @@
     (merge (select-keys (infer-expression-type (second expression)) [:converted_timezone])
      {:base_type :type/DateTime})
 
-    (mbql.u/is-clause? mbql.s/string-expressions expression)
+    (mbql.u/is-clause? mbql.s/string-functions expression)
     {:base_type :type/Text}
 
-    (mbql.u/is-clause? mbql.s/arithmetic-expressions expression)
+    (mbql.u/is-clause? mbql.s/numeric-functions expression)
     {:base_type :type/Float}
 
     :else

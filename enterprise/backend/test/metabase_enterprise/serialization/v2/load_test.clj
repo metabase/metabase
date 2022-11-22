@@ -671,13 +671,15 @@
                   timeline1 (first (filter #(= (:entity_id %) (:entity_id @timeline1s)) timelines))
                   timeline2 (first (filter #(= (:entity_id %) (:entity_id @timeline2s)) timelines))]
               (testing "with inline :events"
-                (is (schema= {:archived                    (s/eq false)
+                (is (schema= {:serdes/meta                 (s/eq [{:model "Timeline"
+                                                                   :id    (:entity_id timeline1)
+                                                                   :label "some_events"}])
+                              :archived                    (s/eq false)
                               :collection_id               (s/eq (:entity_id @coll1s))
                               :name                        (s/eq "Some events")
                               :creator_id                  (s/eq "tom@bost.on")
                               (s/optional-key :updated_at) OffsetDateTime
                               :created_at                  OffsetDateTime
-                              :serdes/meta                 (s/eq [{:model "Timeline" :id (:entity_id timeline1)}])
                               :entity_id                   (s/eq (:entity_id timeline1))
                               (s/optional-key :icon)       (s/maybe s/Str)
                               :description                 (s/maybe s/Str)
