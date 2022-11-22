@@ -20,14 +20,14 @@
 
 (defn- render-card
   "WIP"
-  [query-results]
-  (let [png-bytes (render/render-pulse-card-to-png (pulse-impl/defaulted-timezone card)
-                                                   card
+  [card query-results]
+  (let [png-bytes (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
+                                                   card ;; re-write this to not need card???
                                                    query-results
                                                    1000)]
     (-> png-bytes
         image-response
-        (response/header "Content-Disposition" (format "attachment; filename=\"card-%d.png\"" card-id)))))
+        (response/header "Content-Disposition" (format "attachment; filename=\"card-%d.png\"" (:id card))))))
 
 (defmethod qp.si/stream-options :png
   ([_]
@@ -40,7 +40,8 @@
                                                               (u.date/format (t/zoned-date-time)))}
     :write-keepalive-newlines? false}))
 
-(defmethod qp.si/streaming-results-writer :png
+;; WIP
+#_(defmethod qp.si/streaming-results-writer :png
   [_ ^OutputStream os]
   (reify qp.si/StreamingResultsWriter
     (begin! [_ {{:keys [ordered-cols]} :data :as asdf} _]
