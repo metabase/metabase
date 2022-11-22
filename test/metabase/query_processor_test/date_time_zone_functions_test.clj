@@ -73,6 +73,51 @@
      [9 "2nd sunday"     #t "2000-01-09"]
      [10 "2005 saturday" #t "2005-01-01"]]]])
 
+(mt/defdataset times-mixed-1
+  [["times" [{:field-name "index"
+              :base-type :type/Integer}
+             {:field-name "dt"
+              :base-type :type/DateTime}
+             {:field-name "dt_tz"
+              :base-type  :type/DateTimeWithTZ}
+             {:field-name "d"
+              :base-type :type/Date}
+             {:field-name "as_dt"
+              :base-type :type/Text
+              :effective-type :type/DateTime
+              :coercion-strategy :Coercion/ISO8601->DateTime}
+             {:field-name "as_d"
+              :base-type :type/Text
+              :effective-type :type/Date
+              :coercion-strategy :Coercion/ISO8601->Date}]
+    (for [[idx t]
+          (map-indexed vector [#t "2004-03-19 09:19:09+07:00[Asia/Ho_Chi_Minh]"
+                               #t "2008-06-20 10:20:10+07:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"
+                               #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"])]
+      [(inc idx)
+       (t/local-date-time t)                                  ;; dt
+       (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")        ;; dt_tz
+       (t/local-date t)                                       ;; d
+       (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as _dt
+       (t/format "yyyy-MM-dd" (t/local-date-time t))])]       ;; as_d
+   ["weeks" [{:field-name "index"
+              :base-type :type/Integer}
+             {:field-name "description"
+              :base-type :type/Text}
+             {:field-name "d"
+              :base-type :type/Date}]
+    [[1 "1st saturday"   #t "2000-01-01"]
+     [2 "1st sunday"     #t "2000-01-02"]
+     [3 "1st monday"     #t "2000-01-03"]
+     [4 "1st wednesday"  #t "2000-01-04"]
+     [5 "1st tuesday"    #t "2000-01-05"]
+     [6 "1st thursday"   #t "2000-01-06"]
+     [7 "1st friday"     #t "2000-01-07"]
+     [8 "2nd saturday"   #t "2000-01-08"]
+     [9 "2nd sunday"     #t "2000-01-09"]
+     [10 "2005 saturday" #t "2005-01-01"]]]])
+
 (def ^:private temporal-extraction-op->unit
   {:get-second      :second-of-minute
    :get-minute      :minute-of-hour
@@ -329,9 +374,15 @@
 ;;; |                                           Convert Timezone tests                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmacro with-results-and-report-timezone-id
+  [timezone-id & body]
+  `(mt/with-results-timezone-id ~timezone-id
+     (mt/with-report-timezone-id ~timezone-id
+       ~@body)))
+
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (mt/dataset times-mixed
+    (mt/dataset times-mixed-1
       (letfn [(test-convert-tz
                 [field
                  expression]
@@ -343,20 +394,20 @@
                      mt/rows
                      first))]
         (testing "timestamp with out timezone columns"
-          (mt/with-report-timezone-id "UTC"
+          (with-results-and-report-timezone-id "UTC"
             (testing "convert from Asia/Shanghai(+08:00) to Asia/Tokyo(+09:00)"
               (is (= ["2004-03-19T09:19:09Z"
                       "2004-03-19T10:19:09+09:00"]
                      (mt/$ids (test-convert-tz
-                                $times.dt
-                                [:convert-timezone $times.dt "Asia/Tokyo" "Asia/Shanghai"])))))
+                                 $times.dt
+                                 [:convert-timezone $times.dt "Asia/Tokyo" "Asia/Shanghai"])))))
             (testing "convert to +09:00, from_tz should have default is system-tz (UTC)"
               (is (= ["2004-03-19T09:19:09Z" "2004-03-19T18:19:09+09:00"]
                      (mt/$ids (test-convert-tz
                                 $times.dt
                                 [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo"]))))))
 
-          (mt/with-report-timezone-id "Europe/Rome"
+          (with-results-and-report-timezone-id "Europe/Rome"
             (testing "from_tz should default to report_tz"
               (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
                      (mt/$ids (test-convert-tz
@@ -370,7 +421,7 @@
                                 [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo" "UTC"])))))))
 
         (testing "timestamp with time zone columns"
-          (mt/with-report-timezone-id "UTC"
+          (with-results-and-report-timezone-id "UTC"
             (testing "convert to +09:00"
               (is (= (case driver/*driver*
                        ;; TIMEZONE FIXME
@@ -384,7 +435,7 @@
             (testing "timestamp with time zone columns shouldn't have `from_tz`"
               (is (thrown-with-msg?
                     clojure.lang.ExceptionInfo
-                    #"`timestamp with time zone` columns shouldn't have a `source timezone`"
+                    #".* columns shouldn't have a `source timezone`"
                     (mt/$ids (test-convert-tz
                                $times.dt_tz
                                [:convert-timezone [:field (mt/id :times :dt_tz) nil]
@@ -402,8 +453,8 @@
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (mt/with-report-timezone-id "UTC"
-      (mt/dataset times-mixed
+    (with-results-and-report-timezone-id "UTC"
+      (mt/dataset times-mixed-1
         (testing "convert-timezone nested with datetime extract"
           (is (= ["2004-03-19T09:19:09Z"      ;; original col
                   "2004-03-19T10:19:09+09:00" ;; converted
@@ -416,7 +467,7 @@
                          :fields      [$times.dt
                                        [:expression "converted"]
                                        [:expression "hour"]]})
-                      mt/rows
+                      (mt/formatted-rows [str str int])
                       first))))
 
         (testing "convert-timezone nested with date-math, date-extract"
@@ -434,7 +485,7 @@
                                        [:expression "converted"]
                                        [:expression "date-added"]
                                        [:expression "hour"]]})
-                      mt/rows
+                      (mt/formatted-rows [str str str int])
                       first))))
 
         (testing "extract hour should respect daylight savings times"
@@ -448,7 +499,7 @@
                          :fields      [$times.dt
                                        [:expression "converted"]
                                        [:expression "hour"]]})
-                      mt/rows))))
+                      (mt/formatted-rows [str str int])))))
 
         (testing "convert-timezone twice should works"
           (is (= ["2004-03-19T09:19:09Z"      ;; original column
@@ -515,7 +566,10 @@
                 (is (= [["2004-03-19T09:19:09Z"
                          "2004-03-19T16:19:09Z"
                          "2004-03-19T18:19:09Z"]]
-                       (->> (mt/native-query {:query         (format "select * from {{%s}} as source" card-tag)
+                       (->> (mt/native-query {:query         (format "select * from {{%s}} %s" card-tag
+                                                                    (case driver/*driver*
+                                                                      :oracle ""
+                                                                      "as source"))
                                               :template-tags {card-tag {:card-id      (:id card)
                                                                         :type         :card
                                                                         :display-name "CARD ID"

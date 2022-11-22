@@ -21,6 +21,7 @@
             [metabase.models.secret :as secret]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -31,6 +32,10 @@
            metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/supports? [:snowflake :convert-timezone]
+  [_driver _feature]
+  true)
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ message]
@@ -254,6 +259,22 @@
   [driver [_ value _unit]]
   (hx/->time (sql.qp/->honeysql driver value)))
 
+(defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [clause       (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? clause "timestamptz")]
+    (when (and timestamptz? source-timezone)
+      (throw (ex-info "`timestamptz` columns shouldn't have a `source timezone`"
+                      {:type            qp.error-type/invalid-query
+                       :target-timezone target-timezone
+                       :source-timezone source-timezone})))
+    (let [clause (if timestamptz?
+                   (hsql/call :convert_timezone target-timezone (sql.qp/->honeysql driver arg))
+                   (->> (sql.qp/->honeysql driver arg)
+                        (hsql/call :convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
+                        (hsql/call :to_timestamp_ntz)))]
+      (hx/with-database-type-info clause "timestampntz"))))
+
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
   (sql-jdbc/query driver database {:select [:*]
@@ -343,7 +364,7 @@
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]
-  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
+  (format "'%s %s %s'::timestamp_tz" (t/local-date t) (t/local-time t) (t/zone-offset t)))
 
 (defmethod unprepare/unprepare-value [:snowflake ZonedDateTime]
   [driver t]
