@@ -68,6 +68,7 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
   text: "text",
   date: "date",
   datetime: "datetime-local",
+  time: "time",
   monthyear: "date",
   quarteryear: "date",
   email: "email",
@@ -217,6 +218,9 @@ export const getInputType = (param: Parameter, field?: Field) => {
   }
   if (field.isBoolean()) {
     return "boolean";
+  }
+  if (field.isTime()) {
+    return "time";
   }
   if (field.isDate()) {
     return field.isDateWithoutTime() ? "date" : "datetime";

@@ -5,7 +5,12 @@ import type { ParameterId } from "./parameters";
 export type ActionDisplayType = "form" | "button";
 export type FieldType = "string" | "number" | "date" | "category";
 
-export type DateInputType = "date" | "datetime" | "monthyear" | "quarteryear";
+export type DateInputType =
+  | "date"
+  | "time"
+  | "datetime"
+  | "monthyear"
+  | "quarteryear";
 
 export type InputType =
   | DateInputType
