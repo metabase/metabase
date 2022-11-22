@@ -206,7 +206,8 @@
 
 (defmethod sql.qp/->honeysql [:h2 :now]
   [_driver _clause]
-  (hsql/call :current_timestamp 0))
+  (-> (hsql/call :current_timestamp 0)
+      (hx/with-database-type-info :TIMESTAMP)))
 
 (defn- add-to-1970 [expr unit-str]
   (hsql/call :timestampadd
