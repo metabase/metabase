@@ -32,7 +32,7 @@ Here, **Depart At** is a custom column with the expression:
 datetimeSubtract([Arrive By], 30, "minute")
 ```
 
-You can use the [`between`](../expressions-list.md#between) or [`interval`](../expressions-list.md#interval) expressions to check if a given date falls between your start and end datetimes.
+To check if a given date falls between your start and end datetimes, you can use functions like [`between`](../expressions-list.md#between) or [`now`](../expressions/now.md).
 
 ## Accepted data types
 
@@ -44,26 +44,11 @@ You can use the [`between`](../expressions-list.md#between) or [`interval`](../e
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-This table uses `timestamp` and `datetime` interchangeably---just make sure that your dates and times aren't stored as string or a number data types in your database.
+This table uses `timestamp` and `datetime` interchangeably---just make sure that your dates and times aren't stored as strings or numbers in your database.
 
 ## Limitations
 
-You can use `datetimeSubtract` to calculate relative dates given a column of date values, but unfortunately Metabase doesn't currently let you _generate_ a relative date (such as today's date).
-
-What if you want to check if today's date falls between **Arrive By** and **Depart At** in our [events example](#calculating-a-start-date)?
-
-1. Ask your database admin if there's table in your database that stores datetimes for reporting (sometimes called a date dimension table).
-2. Create a new question using the date dimension table, with a filter for "Today".
-3. Turn the "Today" question into a model.
-4. Create a left join between **Events** and the "Today" model on `[Arrive By] <= [Today]` and `[Depart At] >= [Today]`.
-
-The result should give you an **Today** column that's non-empty for events that are happening while the night is still young:
-
-| Event   | Arrive By           | Depart At           | Today               |
-|---------|---------------------|---------------------|---------------------|
-| Drinks  | 2022-11-12 18:30:00 | 2022-11-12 18:00:00 | 2022-11-12 00:00:00 |
-| Dinner  | 2022-11-12 20:00:00 | 2022-11-12 19:30:00 | 2022-11-12 00:00:00 |
-| Dancing | 2022-11-13 00:00:00 | 2022-11-12 23:30:00 |                     |
+If you're using MongoDB, `datetimeSubtract` will only work on versions 5 and up.
 
 ## Related functions
 
