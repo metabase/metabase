@@ -56,7 +56,11 @@
                (categories-row-count)))
         (is (thrown-with-msg? Exception (case driver/*driver*
                                           :h2       #"^Data conversion error converting \"created_row\""
-                                          :postgres #"^ERROR: invalid input syntax for (?:type )?integer: \"created_row\"")
+                                          :postgres #"^ERROR: invalid input syntax for (?:type )?integer: \"created_row\""
+                                          ;; Newer versions of MySQL check for not null fields without default values
+                                          ;; before checking the type of the parameter.
+                                          ;; MySQL 5.7 checks the type of the parameter first.
+                                          :mysql    #"Field 'name' doesn't have a default value|Incorrect integer value: 'created_row' for column 'id'")
                      ;; bad data -- ID is a string instead of an Integer.
                      (actions/perform-action! :row/create
                                               (assoc (mt/mbql-query categories) :create-row {(format-field-name :id) "created_row"}))))
@@ -224,7 +228,8 @@
                                               ;; TODO -- we need nice error messages for `:h2`, and need to implement
                                               ;; [[metabase.driver.sql-jdbc.actions/parse-sql-error]] for it
                                               :h2       #"Referential integrity constraint violation.*PUBLIC\.VENUES FOREIGN KEY\(CATEGORY_ID\) REFERENCES PUBLIC\.CATEGORIES\(ID\).*"
-                                              :postgres #"violates foreign key constraint .*")
+                                              :postgres #"violates foreign key constraint .*"
+                                              :mysql    #"Cannot delete or update a parent row: a foreign key constraint fails .*")
                                   (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))
                 "Delete should return the right shape")
             (testing "no rows should have been deleted"
@@ -267,28 +272,31 @@
                  (categories-row-count)))
           (testing "Should report indices of bad rows"
             (is-ex-data
-              {:errors [(s/one {:index (s/eq 1)
-                                :error (s/constrained
-                                         s/Str
-                                         (case driver/*driver*
-                                           :h2       #(str/starts-with? % "NULL not allowed for column \"NAME\"")
-                                           :postgres #(str/starts-with? % "ERROR: null value in column \"name\"")))}
-                               "first error")
-                        (s/one {:index (s/eq 3)
-                                :error (case driver/*driver*
-                                         :h2       #"^Data conversion error converting \"STRING\""
-                                         :postgres #"^ERROR: invalid input syntax for (?:type )?integer: \"STRING\"")}
-                               "second error")]
-               :status-code (s/eq 400)}
-              (actions/perform-action! :bulk/create
-                                       {:database (mt/id)
-                                        :table-id (mt/id :categories)
-                                        :arg [{(format-field-name :name) "NEW_A"}
-                                              ;; invalid because name has to be non-nil
-                                              {(format-field-name :name) nil}
-                                              {(format-field-name :name) "NEW_B"}
-                                              ;; invalid because ID is supposed to be an integer
-                                              {(format-field-name :id) "STRING"}]})))
+             {:errors [(s/one {:index (s/eq 1)
+                               :error (case driver/*driver*
+                                        :h2       #"^NULL not allowed for column \"NAME\""
+                                        :postgres #"^ERROR: null value in column \"name\""
+                                        :mysql    #"Column 'name' cannot be null")}
+                              "first error")
+                       (s/one {:index (s/eq 3)
+                               :error (case driver/*driver*
+                                        :h2       #"^Data conversion error converting \"STRING\""
+                                        :postgres #"^ERROR: invalid input syntax for (?:type )?integer: \"STRING\""
+                                        ;; Newer versions of MySQL check for not null fields without default values
+                                        ;; before checking the type of the parameter.
+                                        ;; MySQL 5.7 checks the type of the parameter first.
+                                        :mysql    #"Field 'name' doesn't have a default value|Incorrect integer value: 'STRING' for column 'id'")}
+                              "second error")]
+              :status-code (s/eq 400)}
+             (actions/perform-action! :bulk/create
+                                      {:database (mt/id)
+                                       :table-id (mt/id :categories)
+                                       :arg [{(format-field-name :name) "NEW_A"}
+                                             ;; invalid because name has to be non-nil
+                                             {(format-field-name :name) nil}
+                                             {(format-field-name :name) "NEW_B"}
+                                             ;; invalid because ID is supposed to be an integer
+                                             {(format-field-name :id) "STRING"}]})))
           (testing "Should not have committed any of the valid rows"
             (is (= 75
                    (categories-row-count)))))))))
@@ -419,7 +427,8 @@
           (testing "Should report the index of input rows with errors in the data warehouse"
             (let [error-message-regex (case driver/*driver*
                                         :h2       #"^NULL not allowed for column \"NAME\""
-                                        :postgres #"^ERROR: null value in column \"name\" (?:of relation \"categories\" )?violates not-null constraint")]
+                                        :postgres #"^ERROR: null value in column \"name\" (?:of relation \"categories\" )?violates not-null constraint"
+                                        :mysql    #"Column 'name' cannot be null")]
               (is-ex-data
                 {:errors   [(s/one
                               {:index (s/eq 0)
@@ -449,7 +458,8 @@
                                     {:index (s/eq 0)
                                      :error (case driver/*driver*
                                               :h2       #"^Column \"FAKE\" not found"
-                                              :postgres #"ERROR: column \"fake\" of relation \"categories\" does not exist")}
+                                              :postgres #"ERROR: column \"fake\" of relation \"categories\" does not exist"
+                                              :mysql    #"Unknown column 'fake'")}
                                     "first error")]
                          s/Keyword s/Any}
                         (update-categories! [{id 1, (format-field-name :fake) "FAKE"}])))
