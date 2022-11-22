@@ -193,4 +193,6 @@
 (when-not (get (methods driver/supports?) [:sparksql :foreign-keys])
   (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true))
 
+(defmethod driver/supports? [:sparksql :convert-timezone] [_ _ _db] true)
+
 (defmethod sql.qp/quote-style :sparksql [_] :mysql)
