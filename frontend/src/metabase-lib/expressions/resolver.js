@@ -42,7 +42,10 @@ const isCompatible = (a, b) => {
   if (a === b) {
     return true;
   }
-  if (a === "expression" && (b === "number" || b === "string")) {
+  if (
+    a === "expression" &&
+    (b === "datetime" || b === "number" || b === "string")
+  ) {
     return true;
   }
   if (a === "aggregation" && b === "number") {
