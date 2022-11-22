@@ -762,9 +762,9 @@ const helperTextStrings: HelpText[] = [
   },
   {
     name: "now",
-    structure: "now()",
+    structure: "now",
     description: t`Returns the current timestamp.`,
-    example: "now()",
+    example: "now",
     args: [],
   },
 ];
