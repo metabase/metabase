@@ -57,11 +57,11 @@ export const formatValue = (
   value: string | number | null,
   inputType?: string,
 ) => {
-  if (!isEmpty(value) && moment(value).isValid()) {
-    if (inputType === "date") {
+  if (!isEmpty(value)) {
+    if (inputType === "date" && moment(value).isValid()) {
       return moment(value).utc(false).format("YYYY-MM-DD");
     }
-    if (inputType === "datetime-local") {
+    if (inputType === "datetime-local" && moment(value).isValid()) {
       return moment(value).utc(false).format("YYYY-MM-DDTHH:mm:ss");
     }
   }
