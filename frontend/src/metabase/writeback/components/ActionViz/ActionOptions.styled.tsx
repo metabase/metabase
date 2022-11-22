@@ -28,6 +28,13 @@ export const ActionParameterTriggerContainer = styled.button`
   }
 `;
 
+export const ParameterMapperTitleContainter = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: ${space(1)};
+`;
+
 export const ParameterMapperContainer = styled.div`
   padding: 1.5rem;
   min-width: 15rem;
