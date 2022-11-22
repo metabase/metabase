@@ -308,7 +308,7 @@ async function handleQBInit(
     question = question.lockDisplay();
 
     const currentUser = getUser(getState());
-    if (currentUser.is_qbnewb) {
+    if (currentUser?.is_qbnewb) {
       uiControls.isShowingNewbModal = true;
       MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
     }

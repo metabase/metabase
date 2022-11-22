@@ -11,12 +11,12 @@ on:
     paths:
       - "docs/**"
       - "**.md"
-      - "**/frontend/test/**"
+      - "**/frontend/**"
   pull_request:
     paths:
       - "docs/**"
       - "**.md"
-      - "**/frontend/test/**"
+      - "**/frontend/**"
 
 jobs:
 

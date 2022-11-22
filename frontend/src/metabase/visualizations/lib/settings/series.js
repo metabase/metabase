@@ -14,14 +14,14 @@ export function keyForSingleSeries(single) {
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
 
+export const SETTING_ID = "series_settings";
+export const COLOR_SETTING_ID = "series_settings.colors";
+
 export function seriesSetting({
   readDependencies = [],
   noPadding,
   ...def
 } = {}) {
-  const settingId = "series_settings";
-  const colorSettingId = "series_settings.colors";
-
   const COMMON_SETTINGS = {
     // title, and color don't need widgets because they're handled direclty in ChartNestedSettingSeries
     title: {
@@ -69,7 +69,7 @@ export function seriesSetting({
     color: {
       getDefault: (single, settings, { settings: vizSettings }) =>
         // get the color for series key, computed in the setting
-        getIn(vizSettings, [colorSettingId, keyForSingleSeries(single)]),
+        getIn(vizSettings, [COLOR_SETTING_ID, keyForSingleSeries(single)]),
     },
     "line.interpolate": {
       title: t`Line style`,
@@ -156,7 +156,7 @@ export function seriesSetting({
   }
 
   return {
-    ...nestedSettings(settingId, {
+    ...nestedSettings(SETTING_ID, {
       getHidden: ([{ card }], settings, { isDashboard }) =>
         !isDashboard || card?.display === "waterfall",
       getSection: (series, settings, { isDashboard }) =>
@@ -166,17 +166,17 @@ export function seriesSetting({
       getObjectKey: keyForSingleSeries,
       getSettingDefinitionsForObject: getSettingDefinitionsForSingleSeries,
       component: ChartNestedSettingSeries,
-      readDependencies: [colorSettingId, ...readDependencies],
+      readDependencies: [COLOR_SETTING_ID, ...readDependencies],
       noPadding: true,
       ...def,
     }),
     // colors must be computed as a whole rather than individually
-    [colorSettingId]: {
+    [COLOR_SETTING_ID]: {
       getValue(series, settings) {
         const keys = series.map(single => keyForSingleSeries(single));
 
         const assignments = _.chain(keys)
-          .map(key => [key, getIn(settings, [settingId, key, "color"])])
+          .map(key => [key, getIn(settings, [SETTING_ID, key, "color"])])
           .filter(([key, color]) => color != null)
           .object()
           .value();

@@ -382,6 +382,36 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
+    name: "datetime-diff",
+    structure:
+      "datetime-diff(" +
+      t`datetime1` +
+      ", " +
+      t`datetime2` +
+      ", " +
+      t`unit` +
+      ")",
+    description: t`Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.`,
+    example:
+      "datetime-diff([" +
+      t`created_at` +
+      "], [" +
+      t`shipped_at` +
+      "], " +
+      t`month` +
+      ")",
+    args: [
+      {
+        name: t`datetime1, datetime2`,
+        description: t`The columns or expressions with your datetime values.`,
+      },
+      {
+        name: t`unit`,
+        description: t`Choose from: "year", "month", "week", "day", "hour", "minute", or "second".`,
+      },
+    ],
+  },
+  {
     name: "exp",
     structure: "exp(" + t`column` + ")",
     description: t`Returns Euler's number, e, raised to the power of the supplied number.`,
@@ -727,6 +757,34 @@ const helperTextStrings: HelpText[] = [
       {
         name: t`unit`,
         description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
+      },
+    ],
+  },
+  {
+    name: "convert-timezone",
+    structure:
+      "convertTimezone(" +
+      t`column` +
+      ", " +
+      t`target` +
+      ", [" +
+      t`source` +
+      "])",
+    description: t`Convert timezone of a date or timestamp column.`,
+    example:
+      "convertTimezone([" + t`Created At` + '], "Asia/Ho_Chi_Minh", "UTC")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The column with your date or timestamp values.`,
+      },
+      {
+        name: t`target`,
+        description: t`The timezone you want to assign to your column.`,
+      },
+      {
+        name: t`source`,
+        description: t`(Optional) The current timezone of your column. The default timezone is your report timezone.`,
       },
     ],
   },

@@ -174,11 +174,13 @@ export const GRAPH_DATA_SETTINGS = {
     },
     getProps: (series, settings) => {
       const seriesSettings = settings["series_settings"] || {};
+      const seriesColors = settings["series_settings.colors"] || {};
       const keys = series.map(s => keyForSingleSeries(s));
       return {
         items: keys.map((key, index) => ({
           name: seriesSettings[key]?.title || key,
           originalIndex: index,
+          color: seriesColors[key],
         })),
         series,
       };
@@ -187,6 +189,7 @@ export const GRAPH_DATA_SETTINGS = {
       return settings["graph.dimensions"]?.length < 2 || series.length > 20;
     },
     dashboard: false,
+    readDependencies: ["series_settings.colors"],
   },
   "graph.metrics": {
     section: t`Data`,
@@ -206,9 +209,9 @@ export const GRAPH_DATA_SETTINGS = {
             vizSettings["graph._metric_filter"],
           ),
       ),
-    getDefault: (series, vizSettings) => getDefaultColumns(series).metrics,
+    getDefault: series => getDefaultColumns(series).metrics,
     persistDefault: true,
-    getProps: ([{ card, data }], vizSettings) => {
+    getProps: ([{ card, data }], vizSettings, _onChange, extra) => {
       const options = data.cols
         .filter(vizSettings["graph._metric_filter"])
         .map(getOptionFromColumn);
@@ -230,9 +233,16 @@ export const GRAPH_DATA_SETTINGS = {
         addAnother: canAddAnother ? t`Add another series` : null,
         columns: data.cols,
         showColumnSetting: true,
+        showColorPicker: !hasBreakout,
+        colors: vizSettings["series_settings.colors"],
+        series: extra.transformedSeries,
       };
     },
-    readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
+    readDependencies: [
+      "graph._dimension_filter",
+      "graph._metric_filter",
+      "series_settings.colors",
+    ],
     writeDependencies: ["graph.dimensions"],
     dashboard: false,
     useRawSeries: true,

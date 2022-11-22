@@ -84,7 +84,10 @@
   [_]
   :sunday)
 
-
+(defmethod driver/database-supports? [:redshift :convert-timezone]
+  [_driver _feat _db]
+  ;; TODO redshift could supports convert-timezone
+  false)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -101,6 +104,15 @@
   [driver column-type]
   (or (database-type->base-type column-type)
       ((get-method sql-jdbc.sync/database-type->base-type :postgres) driver column-type)))
+
+(defmethod driver/database-supports? [:redshift :datetime-diff]
+  [_driver _feat _db]
+  ;; postgres uses `date_part` on an interval or a call to `age` to get datediffs. It seems redshift does not have
+  ;; this and errors with:
+  ;; > ERROR: function pg_catalog.pgdate_part("unknown", interval) does not exist
+  ;; It offers a datediff function that tracks number of boundaries, which could be used to implement the correct behaviour,
+  ;; similar to bigquery.
+  false)
 
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]

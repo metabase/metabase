@@ -951,9 +951,8 @@
     [[{:model "Collection" :id parent_id}]]
     []))
 
-(defmethod serdes.base/serdes-generate-path "Collection" [_ {:keys [slug] :as coll}]
-  [(cond-> (serdes.base/infer-self-path "Collection" coll)
-     slug  (assoc :label slug))])
+(defmethod serdes.base/serdes-generate-path "Collection" [_ coll]
+  (serdes.base/maybe-labeled "Collection" coll :slug))
 
 (defmethod serdes.base/serdes-descendants "Collection" [_model-name id]
   (let [location    (db/select-one-field :location Collection :id id)

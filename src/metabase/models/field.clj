@@ -407,12 +407,14 @@
 (defmethod serdes.base/extract-one "Field"
   [_model-name _opts field]
   (-> (serdes.base/extract-one-basics "Field" field)
-      (update :table_id serdes.util/export-table-fk)))
+      (update :table_id           serdes.util/export-table-fk)
+      (update :fk_target_field_id serdes.util/export-field-fk)))
 
 (defmethod serdes.base/load-xform "Field"
   [field]
   (-> (serdes.base/load-xform-basics field)
-      (update :table_id serdes.util/import-table-fk)))
+      (update :table_id           serdes.util/import-table-fk)
+      (update :fk_target_field_id serdes.util/import-field-fk)))
 
 (defmethod serdes.base/load-find-local "Field"
   [path]

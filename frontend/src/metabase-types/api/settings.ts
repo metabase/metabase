@@ -58,9 +58,27 @@ export type LoadingMessage =
 
 export type TokenStatusStatus = "unpaid" | "past-due" | string;
 
-export type TokenStatus = {
+export interface TokenStatus {
   status?: TokenStatusStatus;
-};
+}
+
+export interface TokenFeatures {
+  advanced_config: boolean;
+  advanced_permissions: boolean;
+  audit_app: boolean;
+  content_management: boolean;
+  embedding: boolean;
+  hosting: boolean;
+  sandboxes: boolean;
+  sso: boolean;
+  whitelabel: boolean;
+}
+
+export interface SettingDefinition {
+  key: string;
+  env_name: string;
+  is_env_setting: boolean;
+}
 
 export interface Settings {
   "application-font": string;
@@ -68,10 +86,14 @@ export interface Settings {
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
   "custom-formatting": FormattingSettings;
-  "deprecation-notice-version": string | undefined;
+  "deprecation-notice-version"?: string;
   "email-configured?": boolean;
+  "embedding-secret-key"?: string;
+  "enable-embedding": boolean;
+  "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
+  "experimental-enable-actions": boolean;
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-client-id": string | null;
   "google-auth-configured": boolean;
@@ -82,6 +104,7 @@ export interface Settings {
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
+  "persisted-models-enabled": boolean;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
   "session-cookies": boolean | null;
@@ -92,11 +115,15 @@ export interface Settings {
   "show-lighthouse-illustration": boolean;
   "show-metabot": boolean;
   "site-locale": string;
+  "site-url": string;
   "slack-app-token": string | null;
   "slack-files-channel": string | null;
   "slack-token": string | null;
   "slack-token-valid?": boolean;
-  "token-status": TokenStatus | undefined;
+  "token-features": TokenFeatures;
+  "token-status": TokenStatus | null;
   engines: Record<string, Engine>;
   version: Version;
 }
+
+export type SettingKey = keyof Settings;
