@@ -156,6 +156,7 @@ export function ViewTitleHeader(props) {
           isNative={isNative}
           isSummarized={isSummarized}
           areFiltersExpanded={areFiltersExpanded}
+          fromUrl={hasValidFromUrl ? fromUrl : null}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
           onQueryChange={onQueryChange}
@@ -389,6 +390,7 @@ function DataAppBackButton({ url }) {
 
 ViewTitleHeaderRightSide.propTypes = {
   question: PropTypes.object.isRequired,
+  originalQuestion: PropTypes.object,
   result: PropTypes.object,
   queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
   isDataset: PropTypes.bool,
@@ -401,6 +403,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isDirty: PropTypes.bool,
   isResultDirty: PropTypes.bool,
   isActionListVisible: PropTypes.bool,
+  fromUrl: PropTypes.string,
   runQuestionQuery: PropTypes.func,
   updateQuestion: PropTypes.func.isRequired,
   cancelQuery: PropTypes.func,
@@ -421,11 +424,13 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.bool,
   onQueryChange: PropTypes.func,
+  onSave: PropTypes.func.isRequired,
 };
 
 function ViewTitleHeaderRightSide(props) {
   const {
     question,
+    originalQuestion,
     result,
     queryBuilderMode,
     isBookmarked,
@@ -440,6 +445,7 @@ function ViewTitleHeaderRightSide(props) {
     isDirty,
     isResultDirty,
     isActionListVisible,
+    fromUrl,
     runQuestionQuery,
     updateQuestion,
     cancelQuery,
@@ -458,6 +464,7 @@ function ViewTitleHeaderRightSide(props) {
     onOpenQuestionInfo,
     onModelPersistenceChange,
     onQueryChange,
+    onSave,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
@@ -490,6 +497,17 @@ function ViewTitleHeaderRightSide(props) {
       onOpenQuestionInfo();
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
+
+  const handleSaveClick = useCallback(() => {
+    const canOverwrite = question.isDirty() && originalQuestion;
+    // Will overwrite without the question without prompting
+    // and immediately go to `fromUrl`
+    if (canOverwrite && fromUrl) {
+      onSave({ ...question.card(), id: originalQuestion.id() });
+    } else {
+      onOpenModal(MODAL_TYPES.SAVE);
+    }
+  }, [question, originalQuestion, fromUrl, onSave, onOpenModal]);
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
@@ -590,7 +608,7 @@ function ViewTitleHeaderRightSide(props) {
               ? `Notebook Mode; Click Save`
               : `View Mode; Click Save`
           }
-          onClick={() => onOpenModal("save")}
+          onClick={handleSaveClick}
         >
           {t`Save`}
         </SaveButton>
