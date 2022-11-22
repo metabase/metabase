@@ -138,14 +138,14 @@
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
 ;; details on the functions we're using.
 
-(defn- date-trunc
-  "Truncates `expr` to the specified `unit`."
+(defn- zeroed-date-part
+  "Zeroes out `unit` in `expr`. The result is such that `(date-part unit <result>)` returns zero."
   [unit expr]
-  (hsql/call :dateadd (hsql/raw (name unit)) (hx/- 1 (date-part unit expr)) expr))
+  (date-add unit (hx/- 1 (date-part unit expr)) expr))
 
 (defmethod sql.qp/->honeysql [:sqlserver :now]
   [_driver _clause]
-  (date-trunc :millisecond (hsql/call :getdate)))
+  (zeroed-date-part :millisecond (hsql/call :getdate)))
 
 (defmethod sql.qp/date [:sqlserver :default]
   [_ _ expr]
