@@ -455,9 +455,9 @@
                   "2004-03-19T18:19:09+09:00"];; at +09
                  (->> (mt/run-mbql-query
                         times
-                        {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Ho_Chi_Minh"]
+                        {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon"]
                                        "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Tokyo"
-                                                      "Asia/Ho_Chi_Minh"]}
+                                                      "Asia/Saigon"]}
                          :filter      [:= $times.index 1]
                          :fields      [$times.dt
                                        [:expression "to-07"]
@@ -491,9 +491,9 @@
                               {:dataset_query
                                (mt/mbql-query
                                  times
-                                 {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Ho_Chi_Minh"]
+                                 {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon"]
                                                 "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Tokyo"
-                                                               "Asia/Ho_Chi_Minh"]}
+                                                               "Asia/Saigon"]}
                                   :filter      [:= $times.index 1]
                                   :fields      [$times.dt
                                                 [:expression "to-07"]
