@@ -13,13 +13,13 @@ export const Root = styled.div`
 
 export const Button = styled.button<{ isActive: boolean }>`
   display: flex;
-  padding-top: 0.5rem 1rem;
+  padding: 0.5rem 1rem;
   margin-bottom: 1rem;
   border-radius: 8px;
   font-weight: bold;
   cursor: pointer;
   background-color: ${({ isActive }) =>
-    isActive ? color("bg-brand") : color("bg-light")};
+    isActive ? color("brand") : color("bg-light")};
   color: ${({ isActive }) =>
     isActive ? color("text-white") : color("text-medium")};
 `;
