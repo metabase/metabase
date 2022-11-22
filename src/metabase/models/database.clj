@@ -308,7 +308,19 @@
 
 (defmethod serdes.base/load-xform "Database"
   [database]
-  (-> (cond-> database
-        (not (:details database)) (assoc :details "{}"))
+  (-> database
       serdes.base/load-xform-basics
       (update :creator_id serdes.util/import-user)))
+
+(defmethod serdes.base/load-insert! "Database" [_ ingested]
+  (let [m (get-method serdes.base/load-insert! :default)]
+    (m "Database"
+       (if (:details ingested)
+         ingested
+         (assoc ingested :details {})))))
+
+(defmethod serdes.base/load-update! "Database" [_ ingested local]
+  (let [m (get-method serdes.base/load-update! :default)]
+    (m "Database"
+       (update ingested :details #(or % (:details local) {}))
+       local)))
