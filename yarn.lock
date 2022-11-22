@@ -9333,15 +9333,6 @@ currently-unhandled@^0.4.1:
   dependencies:
     array-find-index "^1.0.1"
 
-cy2@^1.3.0:
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/cy2/-/cy2-1.3.0.tgz#b01e731e6bef5c053602088e71be45411188a974"
-  integrity sha512-VE0YOGw9LmQHnmND1RrtJ/BJaCNCCGeOF8C4FUcV5OgS8G2zZytND3TC1TKuwEuFM/br17KIfgheql/rNRfv3g==
-  dependencies:
-    debug "^4.3.2"
-    js-yaml "^4.0.0"
-    npm-which "^3.0.1"
-
 cyclist@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/cyclist/-/cyclist-1.0.1.tgz#596e9698fd0c80e12038c2b82d6eb1b35b6224d9"

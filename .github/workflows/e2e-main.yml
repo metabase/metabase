@@ -52,7 +52,6 @@ jobs:
       MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
-      RECORDING_ENABLED: ${{ secrets.CURRENTS_KEY }}
       ELECTRON_EXTRA_LAUNCH_ARGS: '--remote-debugging-port=40500' # deploysentinel
     strategy:
       fail-fast: false
@@ -122,6 +121,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v3
+    # Test runs will be recorded using Deploysentinel on `master` only
     - name: Set conditional ENVs
       if: github.ref == 'refs/heads/master'
       run: |
@@ -156,19 +156,9 @@ jobs:
       env:
         TERM: xterm
 
-    - name: Run and record Cypress tests on ${{ matrix.folder }} - master branch
-      if: github.ref == 'refs/heads/master' && env.RECORDING_ENABLED != null && matrix.edition == 'ee'
-      run: |
-        yarn run test-cypress-run \
-          --folder ${{ matrix.folder }} \
-          --record --key ${{ secrets.CURRENTS_KEY }} \
-          --group ${{ matrix.folder }}-${{ matrix.edition }} \
-          --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
-      env:
-        TERM: xterm
-
-    - name: Run Cypress tests on ${{ matrix.folder }} - branches other than master
-      if: github.ref != 'refs/heads/master' && matrix.edition == 'ee'
+    # These are EE-specific and version-agnostic tests
+    - name: Run Cypress E2E tests against EE uberjar
+      if: matrix.edition == 'ee'
       run: |
         yarn run test-cypress-run \
           --folder ${{ matrix.folder }}
