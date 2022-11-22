@@ -439,7 +439,7 @@
 (defn- render-multiseries-area-graph [results]
   (body/render :area :inline pacific-tz render.tu/test-combo-card nil results))
 
-(deftest render-area-graph-tet
+(deftest render-area-graph-test
   (testing "Render an area graph with non-nil values for the x and y axis"
     (is (has-inline-image?
           (render-area-graph {:cols default-columns
