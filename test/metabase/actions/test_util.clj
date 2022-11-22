@@ -126,7 +126,7 @@
                                            :dataset_query {:database (mt/id)
                                                            :type     :native
                                                            :native   {:query         (str "UPDATE categories\n"
-                                                                                          "SET name = [[{{name}} || ' ' ||]] 'Shop'\n"
+                                                                                          "SET name = concat([[{{name}}, ' ', ]] 'Sh', 'op')\n"
                                                                                           "WHERE id = {{id}}")
                                                                       :template-tags {"id" {:name         "id"
                                                                                             :display-name "ID"
