@@ -6,6 +6,7 @@ export const MONOTYPE = {
   Number: "number",
   String: "string",
   Boolean: "boolean",
+  DateTime: "datetime",
 };
 
 export function infer(mbql, env) {
