@@ -26,8 +26,8 @@ export function setNumericValues(
   fieldSettings: { [tagId: string]: FieldSettings },
 ) {
   Object.entries(params).forEach(([key, value]) => {
-    if (fieldSettings[key]?.fieldType === "number") {
-      params[key] = Number(value) ?? 0;
+    if (fieldSettings[key]?.fieldType === "number" && !isEmpty(value)) {
+      params[key] = Number(value) ?? null;
     }
   });
 
@@ -41,6 +41,11 @@ export const getChangedValues = (
   const changedValues = Object.entries(newValues).filter(
     ([newKey, newValue]) => {
       const oldValue = oldValues[newKey];
+
+      // don't flag a change when the input changes itself to an empty string
+      if (oldValue === null && newValue === "") {
+        return false;
+      }
       return newValue !== oldValue;
     },
   );
@@ -48,15 +53,20 @@ export const getChangedValues = (
   return Object.fromEntries(changedValues);
 };
 
-const formatValue = (value: string | number, inputType?: string) => {
-  if (inputType === "date") {
-    return moment(value).format("YYYY-MM-DD");
-  }
-  if (inputType === "datetime-local") {
-    return moment(value).format("YYYY-MM-DD HH:mm:ss");
-  }
-  if (inputType === "time") {
-    return String(value).replace(/z/gi, "");
+export const formatValue = (
+  value: string | number | null,
+  inputType?: string,
+) => {
+  if (!isEmpty(value)) {
+    if (inputType === "date" && moment(value).isValid()) {
+      return moment(value).utc(false).format("YYYY-MM-DD");
+    }
+    if (inputType === "datetime-local" && moment(value).isValid()) {
+      return moment(value).utc(false).format("YYYY-MM-DDTHH:mm:ss");
+    }
+    if (inputType === "time") {
+      return String(value).replace(/z/gi, "");
+    }
   }
   return value;
 };
