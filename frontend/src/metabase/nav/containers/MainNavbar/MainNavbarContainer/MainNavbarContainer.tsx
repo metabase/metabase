@@ -100,7 +100,6 @@ function MainNavbarContainer({
     );
 
     preparedCollections.push(...userPersonalCollections);
-    ``;
     preparedCollections.push(...displayableCollections);
 
     const tree = buildCollectionTree(preparedCollections);
