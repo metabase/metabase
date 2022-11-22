@@ -11,7 +11,7 @@
 (api/defendpoint PUT "/settings"
   "Update Google Sign-In related settings. You must be a superuser or have `setting` permission to do this."
   [:as {{:keys [google-auth-client-id google-auth-enabled google-auth-auto-create-accounts-domain]} :body}]
-  {google-auth-client-id                   s/Str
+  {google-auth-client-id                   (s/maybe s/Str)
    google-auth-enabled                     (s/maybe s/Bool)
    google-auth-auto-create-accounts-domain (s/maybe s/Str)}
   (validation/check-has-application-permission :setting)

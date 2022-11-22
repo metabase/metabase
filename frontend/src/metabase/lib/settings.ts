@@ -296,6 +296,10 @@ class Settings {
     return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
   }
 
+  learnUrl(path = "") {
+    return `https://www.metabase.com/learn/${path}`;
+  }
+
   storeUrl(path = "") {
     return `https://store.metabase.com/${path}`;
   }
