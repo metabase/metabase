@@ -13,7 +13,7 @@ First, check if your data is outdated because of browser caching:
 Once you've confirmed that you're looking at a non-cached view of your tables and columns, tag your database admin for help with troubleshooting:
 
 - **Syncs**, if your tables or columns are missing, or your column data types are wrong.
-- **Scans**, if your column _values_ are wrong (for example, if your filter dropdown menus contain the wrong values).
+- **Scans**, if your column _values_ are missing or wrong (for example, in your filter dropdown menus).
 - **Fingerprinting**, if you've triggered a manual scan, but the changes aren't taking effect.
 
 ## Syncing
@@ -69,11 +69,7 @@ Metabase will try to unfold JSON and JSONB records during the sync process, whic
 3. Go to the column you want to update, and click the **gear** icon.
 4. Click **Discard cached field values**.
 5. Click **Re-scan this field**.
-6. Go to **Admin** > **Troubleshooting** > **Logs** to follow the status of the scan.
-7. If you get an error during the scan process, try running the scan query against your database directly, and debug the query execution error from there. Check for:
-   - Schema and table privileges
-   - Recent schema or table updates
-   - Database-specific handling of nulls and numeric, timestamp, or boolean data types.
+6. Go to **Admin** > **Troubleshooting** > **Logs** to follow the status of the scan and debug errors from there.
 
 ### Special cases
 
@@ -91,9 +87,12 @@ ORDER BY "your_table_or_view"."column" ASC
 LIMIT 1000
 ```
 
-A failed scan is caused by a failed scan query---you can debug the query just like any other query you'd try to run against your database.
+A failed scan is caused by a failed scan query---you can look at the logs to debug the query similar to other queries you'd run directly against your database.
 
-When you set a field to "A list of all values" in the Data Model, which is used to display options in dropdown menus, scanning looks at the first 1,000 distinct records (ordered ascending). For each field scanned, Metabase stores only the first 100 kilobytes of text. If more values exist, Metabase displays the stored values in the dropdown menus, and only triggers a database search query to look for more values when people type in the search box for that filter widget.
+Note that when you [change a search box filter to a dropdown filter](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) from the Data Model, you'll trigger a scan query for that field. If you have a dropdown filter that isn't picking up all the values in a field, remember that Metabase only samples the first 1,000 unique values per field, and stores a maximum of 100 kilobytes of text. If you've got more than 1,000 unique values in a column, or the values are text-heavy (like long URLs or survey responses), you can:
+
+- Stick to a search box filter for that field.
+- Clean up the data further in your [ETL or ELT](https://www.metabase.com/learn/analytics/etl-landscape) process.
 
 ## Fingerprinting
 
@@ -126,7 +125,7 @@ LIMIT 10000
 
 If the first 10,000 rows aren't representative of the data in a table (for example, if you've got sparse data with a lot of blanks or nulls), you could see issues such as:
 
-- Missing filter granularity options.
+- Incorrect [filter types](../questions/query-builder/introduction.md#filter-types), such as a category when you want a calendar.
 - Histogram visualizations that don't work (since Metabase needs a min and max value to generate the bins).
 
 Metabase doesn't have a built-in option to trigger manual fingerprinting queries. You can "reset" a field's settings using the steps above to try and force a fingerprinting query, but it's not guaranteed to work on all versions of Metabase.
