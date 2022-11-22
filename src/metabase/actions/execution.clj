@@ -53,9 +53,16 @@
 (defn- handle-action-execution-error [ex]
   (log/error ex (tru "Error executing action."))
   (if-let [ed (ex-data ex)]
-    (if (:message ed)
-      (throw ex)
-      (throw (ex-info (ex-message ex) (assoc ed :message (ex-message ex)) ex)))
+    (let [ed (cond-> ed
+               (and (nil? (:status-code ed))
+                    (= (:type ed) :missing-required-permissions))
+               (assoc :status-code 403)
+
+               (nil? (:message ed))
+               (assoc :message (ex-message ex)))]
+      (if (= (ex-data ex) ed)
+        (throw ex)
+        (throw (ex-info (ex-message ex) ed ex))))
     {:body {:message (or (ex-message ex) (tru "Error executing action."))}
      :status 500}))
 
@@ -164,7 +171,8 @@
                   (= implicit-action :row/update)
                   (assoc :update-row row-parameters))]
     (try
-      (actions/perform-action! implicit-action arg-map)
+      (binding [qp.perms/*card-id* (:model_id model-action)]
+        (actions/perform-action! implicit-action arg-map))
       (catch Exception e
         (handle-action-execution-error e)))))
 

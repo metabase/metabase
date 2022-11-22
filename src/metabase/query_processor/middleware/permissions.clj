@@ -123,19 +123,19 @@
   [{:keys [database]}]
   #{(perms/execute-query-perms-path database)})
 
-(s/defn ^:private check-query-action-permissions*
+(s/defn check-query-action-permissions*
   "Check that User with `user-id` has permissions to run query action `query`, or throw an exception."
   [outer-query :- su/Map]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
-  (check-card-read-perms *card-id*)
+  (when *card-id*
+    (check-card-read-perms *card-id*))
   (when-not (has-data-perms? (required-perms outer-query))
     (check-block-permissions outer-query))
   (when-not (has-data-perms? (query-action-perms outer-query))
     (throw (perms-exception required-perms))))
 
 (defn check-query-action-permissions
-  "Middleware that check that the current user has permissions to run the current query action. This only applies if
-  `*current-user-id*` is bound."
+  "Middleware that check that the current user has permissions to run the current query action."
   [qp]
   (fn [query rff context]
     (check-query-action-permissions* query)

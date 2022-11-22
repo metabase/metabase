@@ -10,6 +10,7 @@
    [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.setting :as setting]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [schema.core :as schema]
@@ -178,8 +179,10 @@
                 *misc-value-cache*              (atom {})]
         ;; make sure Actions are enabled for this Database
         (when-not (database-enable-actions)
-          (throw (ex-info (i18n/tru "Actions are not enabled for Database {0}." database-id)
-                          {:status-code 400})))
+          (throw (ex-info (i18n/tru "Actions are not enabled.")
+                          {:status-code 400, :database-id (:id db)})))
+        ;; check action permissions
+        (qp.perms/check-query-action-permissions* arg-map)
         ;; Ok, now we can hand off to [[perform-action!*]]
         (perform-action!* driver action db arg-map)))))
 
@@ -354,7 +357,8 @@
 
 (defn- normalize-bulk-crud-action-arg-map
   [{:keys [database table-id], rows :arg, :as _arg-map}]
-  {:database database, :table-id table-id, :rows (map #(update-keys % u/qualified-name) rows)})
+  {:type :query, :query {:source-table table-id}
+   :database database, :table-id table-id, :rows (map #(update-keys % u/qualified-name) rows)})
 
 (defmethod normalize-action-arg-map :bulk/create
   [_action arg-map]
