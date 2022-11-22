@@ -53,7 +53,7 @@ This query returns the number of rows in our saved question.
 
 ## Model, table, or saved question as a Common Table Expression (CTE)
 
-The same syntax can be used in [Common Table Expressions (CTEs)](https://en.wikipedia.org/wiki/Hierarchical_and_recursive_queries_in_SQL#Common_table_expression) (with SQL databases that support CTEs):
+The same syntax can be used in [Common Table Expressions (CTEs)](https://www.metabase.com/learn/sql-questions/sql-cte) (with SQL databases that support CTEs):
 
 ```
 WITH gizmo_orders AS {% raw %}{{#5-gizmo-orders-in-2019}}{% endraw %}
