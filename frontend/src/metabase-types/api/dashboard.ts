@@ -33,8 +33,12 @@ export type DashCardId = EntityId;
 
 export type BaseDashboardOrderedCard = {
   id: DashCardId;
+  dashboard_id: DashboardId;
+  size_x: number;
+  size_y: number;
   visualization_settings?: {
     [key: string]: unknown;
+    virtual_card?: Card;
   };
 };
 
