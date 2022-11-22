@@ -5,7 +5,7 @@
             [metabase.actions.http-action :as http-action]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
-            [metabase.models :refer [HTTPAction]]
+            [metabase.models :refer [Action HTTPAction]]
             [metabase.models.action :as action]
             [metabase.models.database :refer [Database]]
             [metabase.models.setting :as setting]
@@ -24,8 +24,8 @@
 
 (def ^:private SupportedActionType
   (su/with-api-error-message
-    (s/enum "http")
-    "Only http actions are supported at this time."))
+    (s/enum "http" "query" "implicit")
+    "Unsupported action type"))
 
 (def ^:private HTTPActionTemplate
   {:method (s/enum "GET" "POST" "PUT" "DELETE" "PATCH")
@@ -70,11 +70,16 @@
 
 (api/defendpoint POST "/"
   "Create a new HTTP action."
-  [:as {{:keys [type name template response_handle error_handle] :as action} :body}]
+  [:as {{:keys [type name template response_handle error_handle model_id] :as action} :body}]
   {type SupportedActionType
    name s/Str
+   model_id su/IntGreaterThanZero
+  ;; TODO check different types
+   #_#_
    template HTTPActionTemplate
+   #_#_
    response_handle (s/maybe JsonQuerySchema)
+   #_#_
    error_handle (s/maybe JsonQuerySchema)}
   (let [action-id (action/insert! action)]
     (if action-id
@@ -91,7 +96,11 @@
    template (s/maybe HTTPActionTemplate)
    response_handle (s/maybe JsonQuerySchema)
    error_handle (s/maybe JsonQuerySchema)}
-  (db/update! HTTPAction id action)
+  (let [action-columns [:type :name :parameters :parameter_mappings :visualization_settings]]
+    (when-let [action-row (not-empty (select-keys action action-columns))]
+      (db/update! Action id action-row))
+    (when-let [type-row (not-empty (apply dissoc action action-columns))]
+      (db/update! HTTPAction id type-row)))
   (first (action/select-actions :id id)))
 
 (api/define-routes actions/+check-actions-enabled)

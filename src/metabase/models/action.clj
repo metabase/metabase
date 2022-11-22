@@ -13,6 +13,7 @@
 
 (models/defmodel QueryAction :query_action)
 (models/defmodel HTTPAction :http_action)
+(models/defmodel ImplicitAction :implicit_action)
 (models/defmodel Action :action)
 (models/defmodel ModelAction :model_action)
 
@@ -27,7 +28,10 @@
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Action)
   models/IModel
   (merge models/IModelDefaults
-         {:types      (constantly {:type :keyword})
+         {:types      (constantly {:type :keyword
+                                   :parameter_mappings :parameters-list
+                                   :parameters :parameters-list
+                                   :visualization_settings :visualization-settings})
           :properties (constantly {:timestamped? true})}))
 
 (defn- pre-update
@@ -50,6 +54,12 @@
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class QueryAction)
   models/IModel
+  (merge
+    Action-subtype-IModel-impl
+    {:types (constantly {:dataset_query :json})}))
+
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ImplicitAction)
+  models/IModel
   Action-subtype-IModel-impl)
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class HTTPAction)
@@ -71,16 +81,17 @@
   [:entity_id])
 
 (defn insert!
-  "Inserts an Action and related HTTPAction or QueryAction. Returns the action id."
+  "Inserts an Action and related type table. Returns the action id."
   [action-data]
   (db/transaction
-    (let [action (db/insert! Action {:type (:type action-data)})
+    (let [action-columns [:type :name :model_id :parameters :parameter_mappings :visualization_settings]
+          action (db/insert! Action (select-keys action-data action-columns))
           model (case (keyword (:type action))
                   :http HTTPAction
-                  :query QueryAction)]
+                  :query QueryAction
+                  :implicit ImplicitAction)]
       (db/execute! {:insert-into model
-                    :values [(-> action-data
-                                 (dissoc :type)
+                    :values [(-> (apply dissoc action-data action-columns)
                                  (u/update-if-exists :template json/encode)
                                  (assoc :action_id (:id action)))]})
       (:id action))))
@@ -133,11 +144,8 @@
              (let [http-action (get http-actions-by-action-id (:id action))]
                (-> action
                    (merge
-                     {:disabled false
-                      :parameters []
-                      :parameter_mappings {}
-                      :visualization_settings {}}
-                     (select-keys http-action [:name :description :template :response_handle :error_handle])
+                     {:disabled false}
+                     (select-keys http-action [:description :template :response_handle :error_handle])
                      (select-keys (:template http-action) [:parameters :parameter_mappings])))))
            actions))))
 

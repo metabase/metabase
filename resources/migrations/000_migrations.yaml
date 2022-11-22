@@ -13349,9 +13349,13 @@ databaseChangeLog:
                   remarks: nocommit
                   type: int
                   constraints:
-                    referencedTableName: action
+                    referencedTableName: report_card
                     referencedColumnNames: id
                     foreignKeyName: fk_action_model_id
+              - column:
+                  name: name
+                  remarks: nocommit
+                  type: varchar(254)
               - column:
                   name: parameters
                   remarks: nocommit
@@ -13429,6 +13433,15 @@ databaseChangeLog:
         - dropColumn:
             tableName: query_action
             columnName: card_id
+
+  - changeSet:
+      id: v46.00-009
+      author: snoe
+      comment: Added 0.46.0 - nocommit
+      changes:
+        - dropColumn:
+            tableName: http_action
+            columnName: name
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

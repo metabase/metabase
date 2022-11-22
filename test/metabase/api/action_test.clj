@@ -70,6 +70,47 @@
               (is (schema= ExpectedGetCardActionAPIResponse
                            action)))))))))
 
+(deftest unified-action-create-test
+  (actions.test-util/with-actions-enabled
+    (mt/with-temp* [Card [{card-id :id} {:dataset true}]]
+      (mt/with-model-cleanup [Action]
+        (doseq [initial-action [{:name "Get example"
+                                 :type "http"
+                                 :model_id card-id
+                                 :template {:method "GET"
+                                            :url "https://example.com/{{x}}"}
+                                 :parameters [{:id "x" :type "text"}]
+                                 :response_handle ".body"
+                                 :error_handle ".status >= 400"}
+                                #_
+                                {:name "Query example"
+                                 :type "query"
+                                 :model_id card-id
+                                 :dataset_query (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                 :database_id (mt/id)
+                                 :parameters [{:id "x" :type "number"}]}
+                                #_
+                                {:name "Implicit example"
+                                 :type "implicit"
+                                 :model_id card-id
+                                 :namespace "row/insert"
+                                 :parameters [{:id "x" :type "number"}]}]]
+          (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
+                updated-action (merge initial-action {:name "New name"})
+                action-path (str "action/" (:id created-action))]
+            (testing "Create"
+              (is (partial= initial-action created-action)))
+            (testing "Update"
+              (is (partial= updated-action
+                            (mt/user-http-request :crowberto :put 200 action-path
+                                                  {:name "New name" :type "http"}))))
+            (testing "Get"
+              (is (partial= updated-action
+                            (mt/user-http-request :crowberto :get 200 action-path))))
+            (testing "Delete"
+              (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
+              (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))))
+
 (deftest action-crud-test
   (mt/with-model-cleanup [Action]
     (actions.test-util/with-actions-enabled
