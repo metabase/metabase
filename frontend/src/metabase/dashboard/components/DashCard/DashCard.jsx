@@ -148,6 +148,66 @@ class DashCard extends Component {
     return null;
   };
 
+  renderDashCardActions = ({
+    mainCard,
+    series,
+    loading,
+    errorMessage,
+    isEditingDashboardLayout,
+  }) => {
+    const {
+      dashcard,
+      dashboard,
+      onAddSeries,
+      onRemove,
+      onReplaceAllVisualizationSettings,
+    } = this.props;
+    const { isPreviewingCard } = this.state;
+
+    if (isEditingDashboardLayout) {
+      return (
+        <DashboardCardActionsPanel onMouseDown={this.preventDragging}>
+          <DashCardActionButtons
+            card={mainCard}
+            series={series}
+            dashboard={dashboard}
+            isLoading={loading}
+            isPreviewing={isPreviewingCard}
+            isVirtualDashCard={isVirtualDashCard(dashcard)}
+            hasError={!!errorMessage}
+            onAddSeries={onAddSeries}
+            onRemove={onRemove}
+            onReplaceAllVisualizationSettings={
+              onReplaceAllVisualizationSettings
+            }
+            showClickBehaviorSidebar={this.handleShowClickBehaviorSidebar}
+            onPreviewToggle={this.handlePreviewToggle}
+          />
+        </DashboardCardActionsPanel>
+      );
+    }
+
+    return null;
+  };
+
+  renderActionButtons = ({ parameterValuesBySlug, isEmbed }) => {
+    const { dashcard } = this.props;
+    if (isEmbed) {
+      return (
+        <QueryDownloadWidget
+          className="m1 text-brand-hover text-light"
+          classNameClose="hover-child"
+          card={dashcard.card}
+          params={parameterValuesBySlug}
+          dashcardId={dashcard.id}
+          token={dashcard.dashboard_id}
+          icon="download"
+        />
+      );
+    }
+    return null;
+  };
+
   render() {
     const {
       dashcard,
@@ -165,11 +225,8 @@ class DashCard extends Component {
       isFullscreen,
       isMobile,
       isEditingParameter,
-      onAddSeries,
-      onRemove,
       navigateToNewCardFromDashboard,
       onUpdateVisualizationSettings,
-      onReplaceAllVisualizationSettings,
       onChangeLocation,
       dispatch,
     } = this.props;
@@ -260,72 +317,52 @@ class DashCard extends Component {
         isNightMode={isNightMode}
         isUsuallySlow={isSlow === "usually-slow"}
       >
-        {isEditingDashboardLayout ? (
-          <DashboardCardActionsPanel onMouseDown={this.preventDragging}>
-            <DashCardActionButtons
-              card={mainCard}
-              series={series}
-              isLoading={loading}
-              isVirtualDashCard={isVirtualDashCard(dashcard)}
-              hasError={!!errorMessage}
-              onRemove={onRemove}
-              onAddSeries={onAddSeries}
-              onReplaceAllVisualizationSettings={
-                onReplaceAllVisualizationSettings
-              }
-              showClickBehaviorSidebar={this.handleShowClickBehaviorSidebar}
-              isPreviewing={isPreviewingCard}
-              onPreviewToggle={this.handlePreviewToggle}
-              dashboard={dashboard}
-            />
-          </DashboardCardActionsPanel>
-        ) : null}
+        {this.renderDashCardActions({
+          mainCard,
+          series,
+          loading,
+          errorMessage,
+          isEditingDashboardLayout,
+        })}
         <WrappedVisualization
           className={cx("flex-full overflow-hidden", {
             "pointer-events-none": isEditingDashboardLayout,
           })}
-          classNameWidgets={isEmbed && "text-light text-medium-hover"}
-          error={errorMessage}
-          headerIcon={headerIcon}
-          errorIcon={errorIcon}
-          isSlow={isSlow}
-          isDataApp={false}
-          expectedDuration={expectedDuration}
-          rawSeries={series}
-          showTitle
-          isFullscreen={isFullscreen}
-          isNightMode={isNightMode}
-          isDashboard
-          dispatch={dispatch}
+          classNameWidgets={cx({
+            "text-light text-medium-hover": isEmbed,
+          })}
           dashboard={dashboard}
           dashcard={dashcard}
           parameterValues={parameterValues}
           parameterValuesBySlug={parameterValuesBySlug}
+          rawSeries={series}
+          headerIcon={headerIcon}
+          error={errorMessage}
+          errorIcon={errorIcon}
+          gridSize={gridSize}
+          metadata={metadata}
+          mode={mode}
+          totalNumGridCols={totalNumGridCols}
+          isSlow={isSlow}
+          isDataApp={false}
+          expectedDuration={expectedDuration}
+          showTitle
+          isFullscreen={isFullscreen}
+          isNightMode={isNightMode}
+          isDashboard
           isEditing={isEditing}
           isPreviewing={isPreviewingCard}
           isEditingParameter={isEditingParameter}
           isMobile={isMobile}
-          gridSize={gridSize}
-          totalNumGridCols={totalNumGridCols}
-          actionButtons={
-            isEmbed ? (
-              <QueryDownloadWidget
-                className="m1 text-brand-hover text-light"
-                classNameClose="hover-child"
-                card={dashcard.card}
-                params={parameterValuesBySlug}
-                dashcardId={dashcard.id}
-                token={dashcard.dashboard_id}
-                icon="download"
-              />
-            ) : null
-          }
+          actionButtons={this.renderActionButtons({
+            parameterValuesBySlug,
+            isEmbed,
+          })}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           replacementContent={this.renderVisualizationOverlay({ isAction })}
-          metadata={metadata}
-          mode={mode}
           onChangeCardAndRun={onChangeCardAndRun}
           onChangeLocation={onChangeLocation}
+          dispatch={dispatch}
         />
       </DashCardRoot>
     );
