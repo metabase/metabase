@@ -10,7 +10,11 @@ import {
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
 
-import type { Collection, User } from "metabase-types/api";
+import type {
+  Collection,
+  User,
+  CollectionContentModel,
+} from "metabase-types/api";
 
 function getOurAnalyticsCollection(collectionEntity: any) {
   return {
@@ -21,7 +25,7 @@ function getOurAnalyticsCollection(collectionEntity: any) {
 }
 
 const ALL_PERSONAL_COLLECTIONS_ROOT = {
-  ...PERSONAL_COLLECTIONS,
+  ...(PERSONAL_COLLECTIONS as Collection),
 };
 
 export function buildCollectionTree({
@@ -62,7 +66,8 @@ export function buildCollectionTree({
     }
   }
 
-  const targetModels = targetModel === "model" ? ["dataset"] : ["card"];
+  const targetModels: CollectionContentModel[] =
+    targetModel === "model" ? ["dataset"] : ["card"];
   const tree = _buildCollectionTree(preparedCollections, { targetModels });
 
   if (rootCollection) {
