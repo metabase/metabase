@@ -268,7 +268,8 @@
 
 (defmethod sql.qp/->honeysql [:oracle :now]
   [_driver _clause]
-  (hsql/call :current_timestamp 0))
+  (-> (hsql/call :current_timestamp 0)
+      (hx/with-database-type-info "timestamp with time zone")))
 
 (defmethod sql.qp/->honeysql [:oracle :substring]
   [driver [_ arg start length]]

@@ -192,9 +192,16 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+<<<<<<< HEAD
 (defmethod sql.qp/current-datetime-honeysql-form :h2
   [_]
   (hx/with-database-type-info :%now :TIMESTAMP))
+=======
+(defmethod sql.qp/->honeysql [:h2 :now]
+  [_driver _clause]
+  (-> (hsql/call :current_timestamp 0)
+      (hx/with-database-type-info :TIMESTAMP)))
+>>>>>>> 0e2bfa84a1 (Wrap with database type info)
 
 (defn- add-to-1970 [expr unit-str]
   (hsql/call :timestampadd

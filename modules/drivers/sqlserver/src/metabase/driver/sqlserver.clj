@@ -145,7 +145,8 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :now]
   [_driver _clause]
-  (zeroed-date-part :millisecond (hsql/call :getdate)))
+  (-> (zeroed-date-part :millisecond (hsql/call :getdate))
+      (hx/with-database-type-info "datetime")))
 
 (defmethod sql.qp/date [:sqlserver :default]
   [_ _ expr]
