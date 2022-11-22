@@ -1,14 +1,11 @@
 name: Build + Docker Uberjar
 
 on:
-  push:
-    paths-ignore:
-    - 'docs/**'
-    - "**.md"
-    - '**/frontend/test/**'
-    - ".**"
-    - "test*"
-    - "**_test.clj"
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'A full-length commit SHA-1 hash'
+        required: true
 
 jobs:
   build:
@@ -24,6 +21,8 @@ jobs:
     steps:
     - name: Check out the code
       uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.commit }}
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -78,6 +77,8 @@ jobs:
       id: extract_branch
     - name: Check out the code (Dockerfile needed)
       uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.commit }}
     - name: Download uploaded artifacts to insert into container
       uses: actions/download-artifact@v3
       with:
