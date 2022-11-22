@@ -30,7 +30,8 @@
   (:import [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
            java.io.File
-           metabase.util.honeysql_extensions.Identifier))
+           metabase.util.honeysql_extensions.Identifier
+           java.nio.charset.StandardCharsets))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
@@ -83,8 +84,8 @@
         private-key-file (handle-conn-uri user account private-key-file)))
 
     private-key-value
-    (let [private-key-str  (if (instance? (Class/forName "[B") private-key-value)
-                             (String. ^"[B" private-key-value)
+    (let [private-key-str  (if (bytes? private-key-value)
+                             (String. ^bytes private-key-value StandardCharsets/UTF_8)
                              private-key-value)
           private-key-file (secret/value->file! {:connection-property-name "private-key-file" :value private-key-str})]
       (handle-conn-uri details user account private-key-file))))
