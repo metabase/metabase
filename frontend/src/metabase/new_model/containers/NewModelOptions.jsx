@@ -1,18 +1,13 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-
 import { t } from "ttag";
-
+import MetabaseSettings from "metabase/lib/settings";
+import * as Urls from "metabase/lib/urls";
 import { Grid } from "metabase/components/Grid";
-
 import NewModelOption from "metabase/new_model/components/NewModelOption";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
-
-import * as Urls from "metabase/lib/urls";
-
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import Database from "metabase/entities/databases";
 import {
@@ -21,7 +16,7 @@ import {
   EducationalButton,
 } from "./NewModelOptions.styled";
 
-const EDUCATIONAL_LINK = "https://www.metabase.com/learn/data-modeling/models";
+const EDUCATIONAL_LINK = MetabaseSettings.learnUrl("data-modeling/models");
 
 const mapStateToProps = state => ({
   hasDataAccess: getHasDataAccess(state),
