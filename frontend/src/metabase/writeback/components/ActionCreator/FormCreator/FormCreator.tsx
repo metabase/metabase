@@ -99,7 +99,10 @@ function FormItem({
 
   return (
     <FormItemWrapper>
-      <FormItemName>{name}</FormItemName>
+      <FormItemName>
+        {name}
+        {!!fieldSettings.required && " *"}
+      </FormItemName>
       <FormSettings>
         <FormSettingsPreviewContainer>
           {isEditingOptions && hasOptions ? (

@@ -21,6 +21,7 @@ interface FormFieldViewProps extends BaseFieldDefinition {
   className?: string;
   standAloneLabel?: boolean;
   children: React.ReactNode;
+  required: boolean;
 }
 
 function FormFieldView({
@@ -38,6 +39,7 @@ function FormFieldView({
   horizontal,
   standAloneLabel,
   children,
+  required,
 }: FormFieldViewProps) {
   const rootClassNames = cx("Form-field", className, {
     "Form--fieldError": !!error,
@@ -58,6 +60,7 @@ function FormFieldView({
                 standAlone={standAloneLabel}
               >
                 {title}
+                {required && " *"}
                 {error && <span className="text-error">: {error}</span>}
               </Label>
             )}

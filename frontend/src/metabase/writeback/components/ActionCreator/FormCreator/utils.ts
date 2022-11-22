@@ -105,6 +105,7 @@ export const getFormField = (
       parameter.id,
     description: fieldSettings.description ?? "",
     placeholder: fieldSettings?.placeholder,
+    required: fieldSettings.required,
     validate: fieldSettings.required ? validate.required() : _.noop,
     fieldInstance: fieldSettings.fieldInstance,
   };
