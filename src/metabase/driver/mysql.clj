@@ -12,6 +12,7 @@
             [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.mysql.actions :as mysql.actions]
             [metabase.driver.mysql.ddl :as mysql.ddl]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -32,6 +33,8 @@
            [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
 (comment
+  ;; method impls live in these namespaces.
+  mysql.actions/keep-me
   mysql.ddl/keep-me)
 
 (driver/register! :mysql, :parent :sql-jdbc)
@@ -65,6 +68,11 @@
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 
+(doseq [feature [:actions :actions/custom]]
+  (defmethod driver/database-supports? [:mysql feature]
+    [driver _feat _db]
+    ;; Only supported for MySQL right now. Revise when a child driver is added.
+    (= driver :mysql)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |

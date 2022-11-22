@@ -2366,26 +2366,26 @@
   {:is_write true
    :parameters [{:id field-name :slug field-name :target ["variable" ["template-tag" field-name]] :type :text}]
    :dataset_query (mt/native-query
-                    {:query (format "insert into TYPES (%s) values ({{%s}})"
+                    {:query (format "insert into types (%s) values ({{%s}})"
                                     (str/upper-case field-name)
                                     field-name)
                      :template-tags {field-name {:id field-name :name field-name :type :text :display_name field-name}}})})
 
 (deftest dashcard-action-execution-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (let [types [{:field-name "text" :base-type :type/Text ::good "hello"}
-                 {:field-name "json" :base-type :type/JSON ::good "{\"a\": 1}"}
-                 {:field-name "xml" :base-type :type/XML ::good "<xml></xml>"}
-                 {:field-name "boolean" :base-type :type/Boolean ::good true ::bad "not boolean"}
-                 {:field-name "integer" :base-type :type/Integer ::good 100}
-                 {:field-name "float" :base-type :type/Float ::good 0.4}
+    (let [types [{:field-name "atext" :base-type :type/Text ::good "hello"}
+                 {:field-name "ajson" :base-type :type/JSON ::good "{\"a\": 1}"}
+                 {:field-name "axml" :base-type :type/XML ::good "<xml></xml>"}
+                 {:field-name "aboolean" :base-type :type/Boolean ::good true ::bad "not boolean"}
+                 {:field-name "ainteger" :base-type :type/Integer ::good 100}
+                 {:field-name "afloat" :base-type :type/Float ::good 0.4}
                  ;; h2 and postgres handle this differently str vs #uuid, in and out
-                 {:field-name "uuid" :base-type :type/UUID #_#_::good (random-uuid)}
+                 {:field-name "auuid" :base-type :type/UUID #_#_::good (random-uuid)}
                  ;; These comeback with timezone, date comes back with time
-                 {:field-name "date" :base-type :type/Date #_#_::good "2020-02-02"}
-                 {:field-name "datetime" :base-type :type/DateTime #_#_::good "2020-02-02 14:39:59"}
+                 {:field-name "adate" :base-type :type/Date #_#_::good "2020-02-02"}
+                 {:field-name "adatetime" :base-type :type/DateTime #_#_::good "2020-02-02 14:39:59"}
                  ;; Difference between h2 and postgres, in and out
-                 {:field-name "datetimetz" :base-type :type/DateTimeWithTZ #_#_::good "2020-02-02 14:39:59-0700" ::bad "not date"}]]
+                 {:field-name "adatetimetz" :base-type :type/DateTimeWithTZ #_#_::good "2020-02-02 14:39:59-0700" ::bad "not date"}]]
       (actions.test-util/with-temp-test-data
         ["types"
          (map #(dissoc % ::good ::bad) types)

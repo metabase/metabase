@@ -55,7 +55,7 @@
   (if-let [ed (ex-data ex)]
     (if (:message ed)
       (throw ex)
-      (throw (ex-info (ex-message ex) (assoc ed :message (ex-message ex)))))
+      (throw (ex-info (ex-message ex) (assoc ed :message (ex-message ex)) ex)))
     {:body {:message (or (ex-message ex) (tru "Error executing action."))}
      :status 500}))
 
