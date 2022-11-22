@@ -86,8 +86,7 @@
 
 (defmethod driver/database-supports? [:redshift :convert-timezone]
   [_driver _feat _db]
-  ;; TODO redshift could supports convert-timezone
-  false)
+  true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
