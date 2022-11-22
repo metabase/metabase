@@ -5,7 +5,7 @@
             [metabase.actions.http-action :as http-action]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
-            [metabase.models :refer [Action HTTPAction]]
+            [metabase.models :refer [Action HTTPAction ImplicitAction QueryAction]]
             [metabase.models.action :as action]
             [metabase.models.database :refer [Database]]
             [metabase.models.setting :as setting]
@@ -63,9 +63,16 @@
   [action-id]
   (api/check-404 (first (action/select-actions :id action-id))))
 
+(defn- type->model [existing-action-type]
+  (case existing-action-type
+                          :http HTTPAction
+                          :implicit ImplicitAction
+                          :query QueryAction))
+
 (api/defendpoint DELETE "/:action-id"
   [action-id]
-  (db/delete! HTTPAction :action_id action-id)
+  (let [existing-action-type (db/select-one-field :type Action :id action-id)]
+    (db/delete! (type->model existing-action-type) :action_id action-id))
   api/generic-204-no-content)
 
 (api/defendpoint POST "/"
@@ -86,21 +93,27 @@
       (first (action/select-actions :id action-id))
       ;; db/insert! does not return a value when used with h2
       ;; so we return the most recently updated http action.
-      (last (action/select-actions :type "http")))))
+      (last (action/select-actions :type type)))))
 
 (api/defendpoint PUT "/:id"
   [id :as {{:keys [type name template response_handle error_handle] :as action} :body}]
   {id su/IntGreaterThanZero
-   type SupportedActionType
+   type (s/maybe SupportedActionType)
    name (s/maybe s/Str)
    template (s/maybe HTTPActionTemplate)
    response_handle (s/maybe JsonQuerySchema)
    error_handle (s/maybe JsonQuerySchema)}
-  (let [action-columns [:type :name :parameters :parameter_mappings :visualization_settings]]
+  (let [action-columns [:type :name :parameters :parameter_mappings :visualization_settings]
+        existing-action-type (db/select-one-field :type Action :id id)
+        existing-model (type->model existing-action-type)]
     (when-let [action-row (not-empty (select-keys action action-columns))]
       (db/update! Action id action-row))
     (when-let [type-row (not-empty (apply dissoc action action-columns))]
-      (db/update! HTTPAction id type-row)))
+      (if (and (:type action) (not= (:type action) existing-action-type))
+        (let [new-model (type->model (:type action))]
+          (db/delete! existing-model id)
+          (db/insert! new-model (assoc type-row :action_id id)))
+        (db/update! existing-model id type-row))))
   (first (action/select-actions :id id)))
 
 (api/define-routes actions/+check-actions-enabled)

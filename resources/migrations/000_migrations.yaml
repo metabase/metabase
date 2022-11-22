@@ -13329,6 +13329,7 @@ databaseChangeLog:
                     referencedTableName: action
                     referencedColumnNames: id
                     foreignKeyName: fk_implicit_action_action_id
+                    deleteCascade: true
               - column:
                   name: namespace
                   type: ${text.type}

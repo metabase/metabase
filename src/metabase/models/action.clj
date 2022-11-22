@@ -149,14 +149,25 @@
                      (select-keys (:template http-action) [:parameters :parameter_mappings])))))
            actions))))
 
+(defn- normalize-implicit-actions [actions]
+  (when (seq actions)
+    (let [implicit-actions (db/select ImplicitAction :action_id [:in (map :id actions)])
+          implicit-actions-by-action-id (m/index-by :action_id implicit-actions)]
+      (map (fn [action]
+             (let [implicit-action (get implicit-actions-by-action-id (:id action))]
+               (merge action
+                     (select-keys implicit-action [:namespace]))))
+           actions))))
+
 (defn select-actions
   "Select Actions and fill in sub type information.
    `options` is passed to `db/select` `& options` arg"
   [& options]
-  (let [{:keys [query http]} (group-by :type (apply db/select Action options))
+  (let [{:keys [query http implicit]} (group-by :type (apply db/select Action options))
         query-actions (normalize-query-actions query)
-        http-actions (normalize-http-actions http)]
-    (sort-by :updated_at (concat query-actions http-actions))))
+        http-actions (normalize-http-actions http)
+        implicit-actions (normalize-implicit-actions implicit)]
+    (sort-by :updated_at (concat query-actions http-actions implicit-actions))))
 
 (defn cards-by-action-id
   "Hydrates action_id from Card for is_write cards"

@@ -89,7 +89,6 @@
                                  :dataset_query (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
                                  :database_id (mt/id)
                                  :parameters [{:id "x" :type "number"}]}
-                                #_
                                 {:name "Implicit example"
                                  :type "implicit"
                                  :model_id card-id
@@ -103,7 +102,7 @@
             (testing "Update"
               (is (partial= updated-action
                             (mt/user-http-request :crowberto :put 200 action-path
-                                                  {:name "New name" :type "http"}))))
+                                                  {:name "New name"}))))
             (testing "Get"
               (is (partial= updated-action
                             (mt/user-http-request :crowberto :get 200 action-path))))
