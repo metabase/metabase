@@ -548,31 +548,33 @@
 
   overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59"
   [col-a col-b]
-  (let [[min-a min-b]    (map #(get-in % [:fingerprint :type :type/Number :min] 0) [col-a col-b])
-        [max-a max-b]    (map #(get-in % [:fingerprint :type :type/Number :max] 0) [col-a col-b])
+  (let [[min-a min-b]    (map #(get-in % [:fingerprint :type :type/Number :min]) [col-a col-b])
+        [max-a max-b]    (map #(get-in % [:fingerprint :type :type/Number :max]) [col-a col-b])
         valid-ranges?    (and min-a min-b max-a max-b)
-        non-overlapping? (or (and (< max-a min-b) (< max-a max-b) valid-ranges?)
-                             (and (> min-a min-b) (> min-a max-b) valid-ranges?))]
+        overlapping-and-valid? (and valid-ranges?
+                                    (or (<= min-a min-b max-a)
+                                        (<= min-a max-b max-a)))]
     (if
-      non-overlapping?
-      0
+      overlapping-and-valid?
       (let [[a b c d]     (sort [min-a min-b max-a max-b])
             max-width     (- d a)
             overlap-width (- c b)]
-        (/ overlap-width max-width)))))
+        (/ overlap-width max-width))
+      0)))
 
 (defn- group-axes
   [cols-meta group-threshold]
-  (let [groupable-cols (->> cols-meta
-                            (filter #(isa? (:base_type %) :type/Number)) ;; for now we only try grouping number cols
-                            (remove (comp nil? :fingerprint)))           ;; we can't group if there is not fingerprint
-        cols-by-type   (group-by (juxt :base_type :effective_type :semantic_type) groupable-cols)
-        some-grouped?  (> (apply max (map #(count (second %)) cols-by-type)) 1)]
-    (when some-grouped?
-      (let [first-axis         (first groupable-cols)
-            grouped-num-cols   (-> (group-by #(> (overlap first-axis %) group-threshold) groupable-cols)
+  (when-let [groupable-cols (->> cols-meta
+                                 (filter #(isa? (:base_type %) :type/Number)) ;; for now we only try grouping number cols
+                                 (remove (comp nil? :fingerprint)) ;; we can't group if there is no fingerprint
+                                 seq)]
+    (let [cols-by-type  (group-by (juxt :base_type :effective_type :semantic_type) groupable-cols)
+          some-grouped? (> (last (sort (map #(count (second %)) cols-by-type))) 1)]
+      (when some-grouped?
+        (let [first-axis       (first groupable-cols)
+              grouped-num-cols (-> (group-by #(> (overlap first-axis %) group-threshold) groupable-cols)
                                    (update-keys {true :left false :right}))]
-        (merge grouped-num-cols {:bottom-or-not-displayed (remove (set groupable-cols) cols-meta)})))))
+          (merge grouped-num-cols {:bottom-or-not-displayed (remove (set groupable-cols) cols-meta)}))))))
 
 (defn default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
