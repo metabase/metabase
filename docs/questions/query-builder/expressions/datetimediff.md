@@ -64,7 +64,7 @@ When you run a question using the [query_builder](https://www.metabase.com/gloss
 If our [cheese sample data](#calculating-an-end-date) is stored in a PostgreSQL database:
 
 ```sql
-SELECT opened_on + INTERVAL '14 days' AS finish_by
+SELECT DATE_PART('month', AGE(aging_start, aging_end)) AS age_in_months
 FROM cheese
 ```
 
