@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useMemo } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -20,7 +20,6 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 import QuestionActions from "../QuestionActions";
-import DataAppBackButton from "./DataAppBackButton";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
@@ -116,7 +115,7 @@ export function ViewTitleHeader(props) {
     isStructured && question.query().topLevelQuery().hasAggregations();
 
   const fromUrl = location.query["from"];
-  const hasValidFromUrl =
+  const isEditingDataAppQuestion =
     // At the moment, only data app paths are expected
     typeof fromUrl === "string" && Urls.isDataAppPath(fromUrl);
 
@@ -136,16 +135,12 @@ export function ViewTitleHeader(props) {
         isNavBarOpen={isNavBarOpen}
       >
         {isSaved ? (
-          <SavedQuestionLeftSide
-            {...props}
-            fromUrl={hasValidFromUrl ? fromUrl : null}
-          />
+          <SavedQuestionLeftSide {...props} />
         ) : (
           <AhHocQuestionLeftSide
             {...props}
             isNative={isNative}
             isSummarized={isSummarized}
-            fromUrl={hasValidFromUrl ? fromUrl : null}
           />
         )}
         <ViewTitleHeaderRightSide
@@ -155,7 +150,7 @@ export function ViewTitleHeader(props) {
           isNative={isNative}
           isSummarized={isSummarized}
           areFiltersExpanded={areFiltersExpanded}
-          fromUrl={hasValidFromUrl ? fromUrl : null}
+          hasSaveQuestionModal={!isEditingDataAppQuestion}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
           onQueryChange={onQueryChange}
@@ -175,7 +170,6 @@ export function ViewTitleHeader(props) {
 
 SavedQuestionLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
-  fromUrl: PropTypes.string,
   isObjectDetail: PropTypes.bool,
   isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
@@ -186,7 +180,6 @@ SavedQuestionLeftSide.propTypes = {
 function SavedQuestionLeftSide(props) {
   const {
     question,
-    fromUrl,
     isObjectDetail,
     isAdditionalInfoVisible,
     onOpenQuestionInfo,
@@ -204,23 +197,6 @@ function SavedQuestionLeftSide(props) {
     }, 4000);
     return () => clearTimeout(timerId);
   });
-
-  const breadcrumbs = useMemo(() => {
-    const list = [];
-    if (fromUrl) {
-      list.push(<DataAppBackButton key="back-to-data-app" url={fromUrl} />);
-    } else if (isAdditionalInfoVisible && question.isDataset()) {
-      list.push(<DatasetCollectionBadge key="collection" dataset={question} />);
-    }
-    list.push(
-      <SavedQuestionHeaderButton
-        key="question-name"
-        question={question}
-        onSave={onHeaderChange}
-      />,
-    );
-    return list;
-  }, [question, fromUrl, isAdditionalInfoVisible, onHeaderChange]);
 
   const onHeaderChange = useCallback(
     name => {
@@ -240,7 +216,22 @@ function SavedQuestionLeftSide(props) {
         <SavedQuestionHeaderButtonContainer isDataset={isDataset}>
           <HeadBreadcrumbs
             divider={<HeaderDivider>/</HeaderDivider>}
-            parts={breadcrumbs}
+            parts={[
+              ...(isAdditionalInfoVisible && isDataset
+                ? [
+                    <DatasetCollectionBadge
+                      key="collection"
+                      dataset={question}
+                    />,
+                  ]
+                : []),
+
+              <SavedQuestionHeaderButton
+                key={question.displayName()}
+                question={question}
+                onSave={onHeaderChange}
+              />,
+            ]}
           />
         </SavedQuestionHeaderButtonContainer>
       </ViewHeaderMainLeftContentContainer>
@@ -267,7 +258,6 @@ function SavedQuestionLeftSide(props) {
 
 AhHocQuestionLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
-  fromUrl: PropTypes.string,
   originalQuestion: PropTypes.object,
   isNative: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
@@ -278,7 +268,6 @@ AhHocQuestionLeftSide.propTypes = {
 function AhHocQuestionLeftSide(props) {
   const {
     question,
-    fromUrl,
     originalQuestion,
     isNative,
     isObjectDetail,
@@ -286,54 +275,30 @@ function AhHocQuestionLeftSide(props) {
     onOpenModal,
   } = props;
 
-  const handleTitleClick = useCallback(() => {
+  const handleTitleClick = () => {
     const query = question.query();
     if (!query.readOnly()) {
       onOpenModal(MODAL_TYPES.SAVE);
     }
-  }, [question, onOpenModal]);
-
-  const renderTitle = useCallback(() => {
-    if (isNative) {
-      return t`New question`;
-    }
-    if (fromUrl) {
-      return (
-        <HeadBreadcrumbs
-          divider={<HeaderDivider>/</HeaderDivider>}
-          parts={[
-            <DataAppBackButton key="back-to-data-app" url={fromUrl} />,
-            <SavedQuestionHeaderButton
-              key="question-name"
-              question={originalQuestion}
-              isRenamingDisabled
-            />,
-          ]}
-        />
-      );
-    }
-    return (
-      <QuestionDescription
-        question={question}
-        originalQuestion={originalQuestion}
-        isObjectDetail={isObjectDetail}
-        onClick={handleTitleClick}
-        fromUrl={fromUrl}
-      />
-    );
-  }, [
-    question,
-    originalQuestion,
-    isObjectDetail,
-    fromUrl,
-    isNative,
-    handleTitleClick,
-  ]);
+  };
 
   return (
     <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
-        <AdHocViewHeading color="medium">{renderTitle()}</AdHocViewHeading>
+        <AdHocViewHeading color="medium">
+          <AdHocViewHeading color="medium">
+            {isNative ? (
+              t`New question`
+            ) : (
+              <QuestionDescription
+                question={question}
+                originalQuestion={originalQuestion}
+                isObjectDetail={isObjectDetail}
+                onClick={handleTitleClick}
+              />
+            )}
+          </AdHocViewHeading>
+        </AdHocViewHeading>
       </ViewHeaderMainLeftContentContainer>
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
@@ -378,7 +343,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isDirty: PropTypes.bool,
   isResultDirty: PropTypes.bool,
   isActionListVisible: PropTypes.bool,
-  fromUrl: PropTypes.string,
+  hasSaveQuestionModal: PropTypes.bool,
   runQuestionQuery: PropTypes.func,
   updateQuestion: PropTypes.func.isRequired,
   cancelQuery: PropTypes.func,
@@ -420,7 +385,7 @@ function ViewTitleHeaderRightSide(props) {
     isDirty,
     isResultDirty,
     isActionListVisible,
-    fromUrl,
+    hasSaveQuestionModal = true,
     runQuestionQuery,
     updateQuestion,
     cancelQuery,
@@ -474,15 +439,20 @@ function ViewTitleHeaderRightSide(props) {
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
   const handleSaveClick = useCallback(() => {
-    const canOverwrite = question.isDirty() && originalQuestion;
-    // Will overwrite without the question without prompting
-    // and immediately go to `fromUrl`
-    if (canOverwrite && fromUrl) {
+    const canOverwrite = originalQuestion && isDirty;
+    if (canOverwrite && !hasSaveQuestionModal) {
       onSave({ ...question.card(), id: originalQuestion.id() });
     } else {
       onOpenModal(MODAL_TYPES.SAVE);
     }
-  }, [question, originalQuestion, fromUrl, onSave, onOpenModal]);
+  }, [
+    question,
+    originalQuestion,
+    isDirty,
+    hasSaveQuestionModal,
+    onSave,
+    onOpenModal,
+  ]);
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
