@@ -114,12 +114,12 @@
     (u.date/parse s timezone-id)))
 
 (defmethod parse-result-of-type "DATE"
-  [_ column-mode timezone-id v]
-  (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
+  [_ column-mode _timezone-id v]
+  (parse-value column-mode v (partial parse-timestamp-str nil)))
 
 (defmethod parse-result-of-type "DATETIME"
-  [_ column-mode timezone-id v]
-  (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
+  [_ column-mode _timezone-id v]
+  (parse-value column-mode v (partial parse-timestamp-str nil)))
 
 (defmethod parse-result-of-type "TIMESTAMP"
   [_ column-mode timezone-id v]
@@ -430,6 +430,24 @@
   (defmethod sql.qp/unix-timestamp->honeysql [:bigquery-cloud-sdk unix-timestamp-type]
     [_ _ expr]
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [timestamp    (partial hsql/call :timestamp)
+        datetime     (partial hsql/call :datetime)
+        clause       (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? clause "timestamp")]
+    (when (and timestamptz? source-timezone)
+      (throw (ex-info (tru "`timestamp` columns shouldn''t have a `source timezone`")
+                      {:type            qp.error-type/invalid-query
+                       :target-timezone target-timezone
+                       :source-timezone source-timezone})))
+    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))]
+      (cond-> clause
+        (and (not timestamptz?) source-timezone)
+        (timestamp source-timezone)
+        true
+        (datetime target-timezone)))))
 
 (defmethod sql.qp/->float :bigquery-cloud-sdk
   [_ value]
