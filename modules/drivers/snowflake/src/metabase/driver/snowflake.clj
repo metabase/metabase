@@ -26,7 +26,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.query-params :as u.qp])
+            [ring.util.codec :as codec])
   (:import [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
            java.io.File
@@ -57,9 +57,12 @@
   (inc (driver.common/start-of-week->int)))
 
 (defn- handle-conn-uri [details user account private-key-file]
-  (let [existing-conn-uri (or (:connection-uri details) (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
-        new-conn-uri (u.qp/assoc-qp existing-conn-uri {:user user
-                                                       :private_key_file (.getCanonicalPath ^File private-key-file)})]
+  (let [existing-conn-uri (or (:connection-uri details)
+                              (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
+        opts-str (sql-jdbc.common/additional-opts->string :url
+                                                          {:user (codec/url-encode user)
+                                                           :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))})
+        new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
     (assoc details :connection-uri new-conn-uri)))
 
 (defn- resolve-private-key
