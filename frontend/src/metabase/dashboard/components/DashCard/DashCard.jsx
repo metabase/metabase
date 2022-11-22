@@ -198,8 +198,8 @@ function DashCard({
   );
 
   const gridSize = useMemo(
-    () => ({ width: dashcard.sizeX, height: dashcard.sizeY }),
-    [dashcard.sizeX, dashcard.sizeY],
+    () => ({ width: dashcard.size_x, height: dashcard.size_y }),
+    [dashcard],
   );
 
   const hasHiddenBackground = useMemo(() => {
