@@ -214,7 +214,7 @@ function CollectionSectionHeading({
         </SidebarLink>
         {currentUser.is_superuser && (
           <SidebarLink
-            icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
+            icon={getCollectionIcon(PERSONAL_COLLECTIONS as Collection)}
             url={OTHER_USERS_COLLECTIONS_URL}
             onClick={closePopover}
           >

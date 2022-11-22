@@ -27,22 +27,24 @@
   "Result metadata for a single column"
   ;; this schema is used for both the API and the QP, so it should handle either normalized or unnormalized values. In
   ;; the QP, everything will be normalized.
-  {:name                           s/Str
-   :display_name                   s/Str
-   (s/optional-key :description)   (s/maybe s/Str)
-   :base_type                      su/FieldTypeKeywordOrString
-   (s/optional-key :semantic_type) (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
-   (s/optional-key :unit)          (s/maybe DateTimeUnitKeywordOrString)
-   (s/optional-key :fingerprint)   (s/maybe i/Fingerprint)
-   (s/optional-key :id)            (s/maybe su/IntGreaterThanZero)
+  {:name                                s/Str
+   :display_name                        s/Str
+   (s/optional-key :description)        (s/maybe s/Str)
+   :base_type                           su/FieldTypeKeywordOrString
+   (s/optional-key :semantic_type)      (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
+   (s/optional-key :unit)               (s/maybe DateTimeUnitKeywordOrString)
+   (s/optional-key :fingerprint)        (s/maybe i/Fingerprint)
+   (s/optional-key :id)                 (s/maybe su/IntGreaterThanZero)
    ;; only optional because it's not present right away, but it should be present at the end.
-   (s/optional-key :field_ref)     (s/cond-pre
-                                    mbql.s/FieldOrAggregationReference
-                                    (s/pred
-                                     (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
-                                           mbql.normalize/normalize-tokens)
-                                     "Field or aggregation reference as it comes in to the API"))
-   s/Keyword                       s/Any})
+   (s/optional-key :field_ref)          (s/cond-pre
+                                          mbql.s/FieldOrAggregationReference
+                                          (s/pred
+                                            (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
+                                                  mbql.normalize/normalize-tokens)
+                                            "Field or aggregation reference as it comes in to the API"))
+   ;; the timezone in which the column was converted to using `:convert-timezone` expression
+   (s/optional-key :converted_timezone) (s/pred mbql.preds/TimezoneId?)
+   s/Keyword                            s/Any})
 
 (def ResultsMetadata
   "Schema for valid values of the `result_metadata` column."
@@ -90,9 +92,9 @@
     (redux/post-complete
      (redux/juxt
       (apply fingerprinters/col-wise (for [{:keys [fingerprint], :as metadata} cols]
-                          (if-not fingerprint
-                            (fingerprinters/fingerprinter metadata)
-                            (fingerprinters/constant-fingerprinter fingerprint))))
+                                      (if-not fingerprint
+                                        (fingerprinters/fingerprinter metadata)
+                                        (fingerprinters/constant-fingerprinter fingerprint))))
       (insights/insights cols))
      (fn [[fingerprints insights]]
        {:metadata (map (fn [fingerprint metadata]

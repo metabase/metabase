@@ -39,7 +39,7 @@ describe("GoogleAuthForm", () => {
     render(<GoogleAuthForm {...props} />);
     userEvent.type(screen.getByLabelText("Domain"), "domain.test");
 
-    expect(screen.getByText("Save changes")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
   });
 
   it("should submit the form when required fields set by env vars", async () => {
