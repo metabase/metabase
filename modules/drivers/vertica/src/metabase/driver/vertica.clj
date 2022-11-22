@@ -13,9 +13,11 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [tru trs]])
   (:import [java.sql ResultSet Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
@@ -23,6 +25,10 @@
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
+
+(defmethod driver/database-supports? [:vertica :convert-timezone]
+  [_driver _feature _database]
+  true)
 
 (defmethod driver/db-start-of-week :vertica
   [_]
@@ -103,6 +109,22 @@
 (defmethod sql.qp/date [:vertica :day-of-week]
   [_ _ expr]
   (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
+
+(defmethod sql.qp/->honeysql [:vertica :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr         (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? expr "timestamptz")]
+    (when (and timestamptz? source-timezone)
+      (throw (ex-info (tru "`timestamptz` columns shouldn''t have a `source timezone`")
+                    {:type            qp.error-type/invalid-parameter
+                     :target-timezone target-timezone
+                     :source-timezone source-timezone})))
+    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))]
+      (cond-> expr
+        (and (not timestamptz?) source-timezone)
+        (hx/->AtTimeZone source-timezone)
+        target-timezone
+        (hx/->AtTimeZone target-timezone)))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]
