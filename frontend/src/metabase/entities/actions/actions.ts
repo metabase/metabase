@@ -44,7 +44,7 @@ const getAPIFn =
       parameters,
     );
 
-    const apiResponse = await apifn({
+    const card = await apifn({
       ...question.card(),
       name,
       description,
@@ -57,7 +57,7 @@ const getAPIFn =
 
     // because we write to the card api on change, we need to get an action object to
     // cache on the client
-    const fetchedAction = await ActionsApi.get({ id: apiResponse.action_id });
+    const fetchedAction = await ActionsApi.get({ id: card.action_id });
 
     return fetchedAction;
   };

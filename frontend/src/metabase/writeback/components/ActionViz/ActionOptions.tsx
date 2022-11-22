@@ -12,6 +12,10 @@ import Button from "metabase/core/components/Button";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { ActionCreator } from "metabase/writeback/components/ActionCreator";
 
+import Actions from "metabase/entities/actions";
+import Questions from "metabase/entities/questions";
+import { setParameterMapping } from "metabase/dashboard/actions";
+
 import type {
   ActionDashboardCard,
   ActionParametersMapping,
@@ -25,12 +29,6 @@ import type {
   ParameterTarget,
   ParameterId,
 } from "metabase-types/types/Parameter";
-
-import Actions from "metabase/entities/actions";
-import Questions from "metabase/entities/questions";
-
-import { setParameterMapping } from "metabase/dashboard/actions";
-
 import type Question from "metabase-lib/Question";
 
 import {
