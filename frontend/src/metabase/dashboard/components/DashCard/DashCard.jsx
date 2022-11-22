@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
-import ReactDOM from "react-dom";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
@@ -12,6 +11,8 @@ import { iconPropTypes } from "metabase/components/Icon";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import Utils from "metabase/lib/utils";
+
+import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
@@ -88,63 +89,68 @@ const propTypes = {
   isNightMode: PropTypes.bool,
 };
 
-class DashCard extends Component {
-  state = {
-    isPreviewingCard: false,
-  };
+function DashCard({
+  dashcard,
+  dashcardData,
+  dashboard,
+  slowCards,
+  metadata,
+  parameterValues,
+  gridItemWidth,
+  totalNumGridCols,
+  mode,
+  isEditing = false,
+  isNightMode = false,
+  isFullscreen = false,
+  isMobile = false,
+  isEditingParameter,
+  clickBehaviorSidebarDashcard,
+  headerIcon,
+  onAddSeries,
+  onRemove,
+  navigateToNewCardFromDashboard,
+  markNewCardSeen,
+  showClickBehaviorSidebar,
+  onChangeLocation,
+  onUpdateVisualizationSettings,
+  onReplaceAllVisualizationSettings,
+  dispatch,
+}) {
+  const [isPreviewingCard, setIsPreviewingCard] = useState(false);
+  const cardRootRef = useRef(null);
 
-  async componentDidMount() {
-    const { dashcard, markNewCardSeen } = this.props;
+  const handlePreviewToggle = useCallback(() => {
+    setIsPreviewingCard(wasPreviewingCard => !wasPreviewingCard);
+  }, []);
 
-    // HACK: way to scroll to a newly added card
+  useOnMount(() => {
     if (dashcard.justAdded) {
-      const element = ReactDOM.findDOMNode(this);
-      if (element && element.scrollIntoView) {
-        element.scrollIntoView({ block: "nearest" });
-      }
+      cardRootRef?.current?.scrollIntoView({
+        block: "nearest",
+      });
       markNewCardSeen(dashcard.id);
     }
-  }
+  });
 
-  componentWillUnmount() {
-    window.clearInterval(this.visibilityTimer);
-  }
-
-  handlePreviewToggle = () => {
-    this.setState(prevState => ({
-      isPreviewingCard: !prevState.isPreviewingCard,
-    }));
-  };
-
-  handleShowClickBehaviorSidebar = () => {
-    const { dashcard, showClickBehaviorSidebar } = this.props;
-    showClickBehaviorSidebar(dashcard.id);
-  };
-
-  handleCardChangeAndRun = ({ nextCard, previousCard, objectId }) => {
-    const { dashcard, navigateToNewCardFromDashboard } = this.props;
-    navigateToNewCardFromDashboard({
-      nextCard,
-      previousCard,
-      dashcard,
-      objectId,
-    });
-  };
-
-  getMainCard = () => {
-    const { dashcard } = this.props;
-    return {
+  const mainCard = useMemo(
+    () => ({
       ...dashcard.card,
       visualization_settings: mergeSettings(
         dashcard.card.visualization_settings,
         dashcard.visualization_settings,
       ),
-    };
-  };
+    }),
+    [dashcard],
+  );
 
-  getSeries = mainCard => {
-    const { dashcard, dashcardData, slowCards } = this.props;
-    const cards = [mainCard].concat(dashcard.series || []);
+  const cards = useMemo(() => {
+    if (Array.isArray(dashcard.series)) {
+      return [mainCard, ...dashcard.series];
+    }
+    return [mainCard];
+  }, [mainCard, dashcard]);
+
+  const series = useMemo(() => {
     return cards.map(card => ({
       ...getIn(dashcardData, [dashcard.id, card.id]),
       card: card,
@@ -153,18 +159,20 @@ class DashCard extends Component {
         card.query_average_duration &&
         card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
     }));
-  };
+  }, [cards, dashcard.id, dashcardData, slowCards]);
 
-  getIsLoading = series => {
-    const { dashcard } = this.props;
+  const isLoading = useMemo(() => {
     if (isVirtualDashCard(dashcard)) {
       return false;
     }
     const hasSeries = series.length > 0 && series.every(s => s.data);
     return !hasSeries;
-  };
+  }, [dashcard, series]);
 
-  getQueryStats = ({ series, isLoading }) => {
+  const isAction = isActionCard(mainCard);
+  const isEmbed = Utils.isJWT(dashcard.dashboard_id);
+
+  const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(
       ...series.map(s => s.card.query_average_duration || 0),
     );
@@ -174,11 +182,22 @@ class DashCard extends Component {
       isSlow = isUsuallyFast ? "usually-fast" : "usually-slow";
     }
     return { expectedDuration, isSlow };
-  };
+  }, [series, isLoading]);
 
-  getHasHiddenBackground = ({ mainCard, isAction }) => {
-    const { isEditing } = this.props;
+  const error = useMemo(() => getSeriesError(series), [series]);
+  const hasError = !!error;
 
+  const parameterValuesBySlug = useMemo(
+    () => getParameterValuesBySlug(dashboard.parameters, parameterValues),
+    [dashboard.parameters, parameterValues],
+  );
+
+  const gridSize = useMemo(
+    () => ({ width: dashcard.sizeX, height: dashcard.sizeY }),
+    [dashcard.sizeX, dashcard.sizeY],
+  );
+
+  const hasHiddenBackground = useMemo(() => {
     if (isEditing) {
       return false;
     }
@@ -188,31 +207,43 @@ class DashCard extends Component {
       mainCard.display === "list" ||
       isAction
     );
-  };
+  }, [isEditing, isAction, mainCard]);
 
-  renderVisualizationOverlay = ({ isAction }) => {
-    const {
-      dashcard,
-      dashboard,
-      clickBehaviorSidebarDashcard,
-      gridItemWidth,
-      isMobile,
-      isEditingParameter,
-      showClickBehaviorSidebar,
-    } = this.props;
+  const isEditingDashboardLayout =
+    isEditing && !clickBehaviorSidebarDashcard && !isEditingParameter;
 
-    const isClickBehaviorSidebarOpen = !!clickBehaviorSidebarDashcard;
-    const isEditingDashCardClickBehavior =
-      clickBehaviorSidebarDashcard?.id === dashcard.id;
+  const isClickBehaviorSidebarOpen = !!clickBehaviorSidebarDashcard;
+  const isEditingDashCardClickBehavior =
+    clickBehaviorSidebarDashcard?.id === dashcard.id;
 
+  const handleShowClickBehaviorSidebar = useCallback(() => {
+    showClickBehaviorSidebar(dashcard.id);
+  }, [dashcard.id, showClickBehaviorSidebar]);
+
+  const changeCardAndRunHandler = useMemo(() => {
+    if (!navigateToNewCardFromDashboard) {
+      return null;
+    }
+
+    return ({ nextCard, previousCard, objectId }) => {
+      navigateToNewCardFromDashboard({
+        nextCard,
+        previousCard,
+        dashcard,
+        objectId,
+      });
+    };
+  }, [dashcard, navigateToNewCardFromDashboard]);
+
+  const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
       if (isVirtualDashCard(dashcard)) {
+        const isTextCard =
+          dashcard.visualization_settings.virtual_card.display === "text";
         return (
           <div className="flex full-height align-center justify-center">
             <h4 className="text-medium">
-              {dashcard.visualization_settings.virtual_card.display === "text"
-                ? t`Text card`
-                : t`Action button`}
+              {isTextCard ? t`Text card` : t`Action button`}
             </h4>
           </div>
         );
@@ -235,24 +266,19 @@ class DashCard extends Component {
     }
 
     return null;
-  };
+  }, [
+    dashcard,
+    dashboard,
+    gridItemWidth,
+    isAction,
+    isMobile,
+    isEditingParameter,
+    isClickBehaviorSidebarOpen,
+    isEditingDashCardClickBehavior,
+    showClickBehaviorSidebar,
+  ]);
 
-  renderDashCardActions = ({
-    mainCard,
-    series,
-    loading,
-    errorMessage,
-    isEditingDashboardLayout,
-  }) => {
-    const {
-      dashcard,
-      dashboard,
-      onAddSeries,
-      onRemove,
-      onReplaceAllVisualizationSettings,
-    } = this.props;
-    const { isPreviewingCard } = this.state;
-
+  const renderDashCardActions = useCallback(() => {
     if (isEditingDashboardLayout) {
       return (
         <DashboardCardActionsPanel onMouseDown={preventDragging}>
@@ -260,27 +286,40 @@ class DashCard extends Component {
             card={mainCard}
             series={series}
             dashboard={dashboard}
-            isLoading={loading}
+            isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             isVirtualDashCard={isVirtualDashCard(dashcard)}
-            hasError={!!errorMessage}
+            hasError={hasError}
             onAddSeries={onAddSeries}
             onRemove={onRemove}
             onReplaceAllVisualizationSettings={
               onReplaceAllVisualizationSettings
             }
-            showClickBehaviorSidebar={this.handleShowClickBehaviorSidebar}
-            onPreviewToggle={this.handlePreviewToggle}
+            showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
+            onPreviewToggle={handlePreviewToggle}
           />
         </DashboardCardActionsPanel>
       );
     }
 
     return null;
-  };
+  }, [
+    dashcard,
+    dashboard,
+    mainCard,
+    series,
+    hasError,
+    isLoading,
+    isPreviewingCard,
+    isEditingDashboardLayout,
+    onAddSeries,
+    onRemove,
+    onReplaceAllVisualizationSettings,
+    handlePreviewToggle,
+    handleShowClickBehaviorSidebar,
+  ]);
 
-  renderActionButtons = ({ parameterValuesBySlug, isEmbed }) => {
-    const { dashcard } = this.props;
+  const renderActionButtons = useCallback(() => {
     if (isEmbed) {
       return (
         <QueryDownloadWidget
@@ -295,119 +334,56 @@ class DashCard extends Component {
       );
     }
     return null;
-  };
+  }, [dashcard, parameterValuesBySlug, isEmbed]);
 
-  render() {
-    const {
-      dashcard,
-      metadata,
-      dashboard,
-      clickBehaviorSidebarDashcard,
-      parameterValues,
-      mode,
-      headerIcon,
-      totalNumGridCols,
-      isEditing,
-      isNightMode,
-      isFullscreen,
-      isMobile,
-      isEditingParameter,
-      navigateToNewCardFromDashboard,
-      onUpdateVisualizationSettings,
-      onChangeLocation,
-      dispatch,
-    } = this.props;
-    const { isPreviewingCard } = this.state;
-
-    const mainCard = this.getMainCard();
-    const isAction = isActionCard(mainCard);
-    const isEmbed = Utils.isJWT(dashcard.dashboard_id);
-
-    const series = this.getSeries(mainCard);
-
-    const isLoading = this.getIsLoading(series);
-    const error = getSeriesError(series);
-    const { expectedDuration, isSlow } = this.getQueryStats({
-      series,
-      isLoading,
-    });
-
-    const parameterValuesBySlug = getParameterValuesBySlug(
-      dashboard.parameters,
-      parameterValues,
-    );
-
-    const hasHiddenBackground = this.getHasHiddenBackground({
-      mainCard,
-      isAction,
-    });
-
-    const isEditingDashboardLayout =
-      isEditing && !clickBehaviorSidebarDashcard && !isEditingParameter;
-
-    const gridSize = { width: dashcard.size_x, height: dashcard.size_y };
-
-    const onChangeCardAndRun = navigateToNewCardFromDashboard
-      ? this.handleCardChangeAndRun
-      : null;
-
-    return (
-      <DashCardRoot
-        className="Card rounded flex flex-column hover-parent hover--visibility"
-        hasHiddenBackground={hasHiddenBackground}
-        isNightMode={isNightMode}
-        isUsuallySlow={isSlow === "usually-slow"}
-      >
-        {this.renderDashCardActions({
-          mainCard,
-          series,
-          loading: isLoading,
-          errorMessage: error?.message,
-          isEditingDashboardLayout,
+  return (
+    <DashCardRoot
+      className="Card rounded flex flex-column hover-parent hover--visibility"
+      hasHiddenBackground={hasHiddenBackground}
+      isNightMode={isNightMode}
+      isUsuallySlow={isSlow === "usually-slow"}
+      ref={cardRootRef}
+    >
+      {renderDashCardActions()}
+      <WrappedVisualization
+        className={cx("flex-full overflow-hidden", {
+          "pointer-events-none": isEditingDashboardLayout,
         })}
-        <WrappedVisualization
-          className={cx("flex-full overflow-hidden", {
-            "pointer-events-none": isEditingDashboardLayout,
-          })}
-          classNameWidgets={cx({
-            "text-light text-medium-hover": isEmbed,
-          })}
-          dashboard={dashboard}
-          dashcard={dashcard}
-          parameterValues={parameterValues}
-          parameterValuesBySlug={parameterValuesBySlug}
-          rawSeries={series}
-          headerIcon={headerIcon}
-          error={error?.message}
-          errorIcon={error?.icon}
-          gridSize={gridSize}
-          metadata={metadata}
-          mode={mode}
-          totalNumGridCols={totalNumGridCols}
-          isSlow={isSlow}
-          isDataApp={false}
-          expectedDuration={expectedDuration}
-          showTitle
-          isFullscreen={isFullscreen}
-          isNightMode={isNightMode}
-          isDashboard
-          isEditing={isEditing}
-          isPreviewing={isPreviewingCard}
-          isEditingParameter={isEditingParameter}
-          isMobile={isMobile}
-          actionButtons={this.renderActionButtons({
-            parameterValuesBySlug,
-            isEmbed,
-          })}
-          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          replacementContent={this.renderVisualizationOverlay({ isAction })}
-          onChangeCardAndRun={onChangeCardAndRun}
-          onChangeLocation={onChangeLocation}
-          dispatch={dispatch}
-        />
-      </DashCardRoot>
-    );
-  }
+        classNameWidgets={cx({
+          "text-light text-medium-hover": isEmbed,
+        })}
+        dashboard={dashboard}
+        dashcard={dashcard}
+        parameterValues={parameterValues}
+        parameterValuesBySlug={parameterValuesBySlug}
+        rawSeries={series}
+        headerIcon={headerIcon}
+        error={error?.message}
+        errorIcon={error?.icon}
+        gridSize={gridSize}
+        metadata={metadata}
+        mode={mode}
+        totalNumGridCols={totalNumGridCols}
+        expectedDuration={expectedDuration}
+        showTitle
+        replacementContent={renderVisualizationOverlay()}
+        actionButtons={renderActionButtons()}
+        isSlow={isSlow}
+        isDataApp={false}
+        isFullscreen={isFullscreen}
+        isNightMode={isNightMode}
+        isDashboard
+        isEditing={isEditing}
+        isPreviewing={isPreviewingCard}
+        isEditingParameter={isEditingParameter}
+        isMobile={isMobile}
+        onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+        onChangeCardAndRun={changeCardAndRunHandler}
+        onChangeLocation={onChangeLocation}
+        dispatch={dispatch}
+      />
+    </DashCardRoot>
+  );
 }
 
 DashCard.propTypes = propTypes;

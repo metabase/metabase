@@ -18,9 +18,9 @@ const rootSlowCardStyle = css`
 `;
 
 const rootTransparentBackgroundStyle = css`
-  border: 0;
-  background: transparent;
-  box-shadow: none;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 `;
 
 export const DashCardRoot = styled.div<DashCardRootProps>`
