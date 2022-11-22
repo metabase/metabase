@@ -65,7 +65,7 @@ export const ChartSettingOrderedSimple = ({
     onShowWidget(
       {
         props: {
-          seriesKey: keyForSingleSeries(item.key),
+          seriesKey: item.key,
         },
       },
       ref,

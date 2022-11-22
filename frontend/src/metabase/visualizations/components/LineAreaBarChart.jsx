@@ -20,7 +20,7 @@ import {
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { findSeriesByKey } from "metabase/visualizations/lib/series";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import {
   isNumeric,
@@ -353,12 +353,7 @@ export default class LineAreaBarChart extends Component {
       (settings["graph.dimensions"]?.length > 1 &&
         settings["graph.series_order"]
           ?.filter(orderedItem => orderedItem.enabled)
-          .map(orderedItem =>
-            series.find(
-              singleSeries =>
-                keyForSingleSeries(singleSeries) === orderedItem.key,
-            ),
-          )) ||
+          .map(orderedItem => findSeriesByKey(series, orderedItem.key))) ||
       series;
 
     const {

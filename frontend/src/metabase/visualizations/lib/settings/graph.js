@@ -153,6 +153,8 @@ export const GRAPH_DATA_SETTINGS = {
   },
   "graph.series_order_dimension": {
     getValue: (_series, settings) => settings["graph.dimensions"][1],
+    // This read dependency is set so that "graph.series_order" is computed *before* this value, ensuring that
+    // that it uses the stored value if one exists. This is needed to check if the dimension has actually changed
     readDependencies: ["graph.series_order"],
   },
   "graph.series_order": {
@@ -163,6 +165,8 @@ export const GRAPH_DATA_SETTINGS = {
     getValue: (series, settings) => {
       const seriesKeys = series.map(s => keyForSingleSeries(s));
       const seriesOrder = settings["graph.series_order"];
+      // Because this setting is a read dependency of graph.series_order_dimension, this should
+      // Always be the stored setting, not calculated.
       const seriesOrderDimension = settings["graph.series_order_dimension"];
       const currentDimension = settings["graph.dimensions"][1];
 
@@ -191,7 +195,6 @@ export const GRAPH_DATA_SETTINGS = {
         ...removeMissingOrder(seriesKeys, seriesOrder),
         ...generateDefault(newKeys(seriesKeys, seriesOrder)),
       ];
-      // return seriesOrder;
     },
     getProps: (series, settings) => {
       const seriesSettings = settings["series_settings"] || {};
