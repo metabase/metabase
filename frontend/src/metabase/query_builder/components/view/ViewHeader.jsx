@@ -188,15 +188,15 @@ function SavedQuestionLeftSide(props) {
 
   const [showSubHeader, setShowSubHeader] = useState(true);
 
-  const hasLastEditInfo = question.lastEditInfo() != null;
-  const isDataset = question.isDataset();
-
   useOnMount(() => {
     const timerId = setTimeout(() => {
       setShowSubHeader(false);
     }, 4000);
     return () => clearTimeout(timerId);
   });
+
+  const hasLastEditInfo = question.lastEditInfo() != null;
+  const isDataset = question.isDataset();
 
   const onHeaderChange = useCallback(
     name => {
@@ -286,18 +286,16 @@ function AhHocQuestionLeftSide(props) {
     <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
         <AdHocViewHeading color="medium">
-          <AdHocViewHeading color="medium">
-            {isNative ? (
-              t`New question`
-            ) : (
-              <QuestionDescription
-                question={question}
-                originalQuestion={originalQuestion}
-                isObjectDetail={isObjectDetail}
-                onClick={handleTitleClick}
-              />
-            )}
-          </AdHocViewHeading>
+          {isNative ? (
+            t`New question`
+          ) : (
+            <QuestionDescription
+              question={question}
+              originalQuestion={originalQuestion}
+              isObjectDetail={isObjectDetail}
+              onClick={handleTitleClick}
+            />
+          )}
         </AdHocViewHeading>
       </ViewHeaderMainLeftContentContainer>
       <ViewHeaderLeftSubHeading>
