@@ -42,6 +42,9 @@ const isCompatible = (a, b) => {
   if (a === b) {
     return true;
   }
+  if (a === "datetime" && b === "string") {
+    return true;
+  }
   if (
     a === "expression" &&
     (b === "datetime" || b === "number" || b === "string")

@@ -376,7 +376,7 @@ export const MBQL_CLAUSES = {
   "datetime-add": {
     displayName: `datetimeAdd`,
     type: "expression",
-    args: ["expression", "number", "string"],
+    args: ["datetime", "number", "string"],
   },
   "datetime-subtract": {
     displayName: `datetimeSubtract`,

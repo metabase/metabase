@@ -122,6 +122,7 @@ describe("metabase-lib/expressions/typeinferencer", () => {
     expect(type('datetimeSubtract([CreatedAt], 2, "month")')).toEqual(
       "type/Datetime",
     );
+    expect(type('datetimeAdd("2022-01-01", 1, "month" )')).toEqual("string");
   });
 
   it("should infer the result of datetimeExtract functions", () => {
