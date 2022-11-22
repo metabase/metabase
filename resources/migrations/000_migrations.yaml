@@ -13311,6 +13311,125 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  - changeSet:
+      id: v46.00-000
+      author: snoe
+      comment: Added 0.46.0 - nocommit
+      changes:
+        - createTable:
+            tableName: implicit_action
+            remarks: nocommit
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: nocommit
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_implicit_action_action_id
+              - column:
+                  name: namespace
+                  type: ${text.type}
+                  remarks: nocommit
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v46.00-001
+      author: snoe
+      comment: Added 0.46.0 - nocommit
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: model_id
+                  remarks: nocommit
+                  type: int
+                  constraints:
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_action_model_id
+              - column:
+                  name: parameters
+                  remarks: nocommit
+                  type: ${text.type}
+              - column:
+                  name: parameter_mappings
+                  remarks: nocommit
+                  type: ${text.type}
+              - column:
+                  name: visualization_settings
+                  remarks: nocommit
+                  type: ${text.type}
+
+  - changeSet:
+      id: v46.00-002
+      author: snoe
+      comment: Added 0.46.0 - nocommit
+      changes:
+        - addColumns:
+            tableName: query_action
+            columns:
+              - column:
+                  name: database_id
+                  remarks: nocommit
+                  type: int
+                  constraints:
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_action_database_id
+              - column:
+                  name: dataset_query
+                  remarks: nocommit
+                  type: ${type.text}
+
+  - changeSet:
+      id: v46.00-003
+      author: snoe
+      comment: Added 0.46.0 - nocommit
+      changes:
+        - dropPrimaryKey:
+            tableName: query_action
+
+  - changeSet:
+      id: v46.00-004
+      author: snoe
+      comment: Added 0.46.0 - nocommit
+      changes:
+        - dropNotNullConstraint:
+            tableName: query_action
+            columnDataType: int
+            columnName: card_id
+
+# TODO nocommit add all not-null contrainsts
+# - changeSet:
+#    id: v46.00-003
+# TODO nocommit migrate existing actions
+# - changeSet:
+#    id: v46.00-005
+
+  - changeSet:
+      id: v46.00-007
+      author: snoe
+      comment: Added 0.46.0 - nocommit
+      changes:
+        - addPrimaryKey:
+            tableName: query_action
+            columnNames: action_id
+            constraintName: pk_query_action
+
+  - changeSet:
+      id: v46.00-008
+      author: snoe
+      comment: Added 0.46.0 - nocommit
+      changes:
+        - dropColumn:
+            tableName: query_action
+            columnName: card_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
