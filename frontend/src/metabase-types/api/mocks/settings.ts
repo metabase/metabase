@@ -1,4 +1,11 @@
-import { Engine, FontFile, Settings, Version } from "metabase-types/api";
+import {
+  Engine,
+  FontFile,
+  SettingDefinition,
+  Settings,
+  TokenFeatures,
+  Version,
+} from "metabase-types/api";
 
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
@@ -58,6 +65,30 @@ export const createMockTokenStatus = () => ({
   "valid-thru": "2022-12-30T23:00:00Z",
 });
 
+export const createMockTokenFeatures = (
+  opts?: Partial<TokenFeatures>,
+): TokenFeatures => ({
+  advanced_config: false,
+  advanced_permissions: false,
+  audit_app: false,
+  content_management: false,
+  embedding: false,
+  hosting: false,
+  sandboxes: false,
+  sso: false,
+  whitelabel: false,
+  ...opts,
+});
+
+export const createMockSettingDefinition = (
+  opts?: Partial<SettingDefinition>,
+): SettingDefinition => ({
+  key: "key",
+  env_name: "",
+  is_env_setting: false,
+  ...opts,
+});
+
 export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "application-font": "Lato",
   "application-font-files": [],
@@ -66,8 +97,11 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "custom-formatting": {},
   "deprecation-notice-version": undefined,
   "email-configured?": false,
+  "enable-embedding": false,
+  "enable-nested-queries": true,
   "enable-public-sharing": false,
   "enable-xrays": false,
+  "experimental-enable-actions": false,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
   "google-auth-configured": false,
@@ -78,6 +112,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "ldap-configured?": false,
   "ldap-enabled": false,
   "loading-message": "doing-science",
+  "persisted-models-enabled": false,
   "saml-configured": false,
   "saml-enabled": false,
   "session-cookies": null,
@@ -88,11 +123,13 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "show-lighthouse-illustration": true,
   "show-metabot": true,
   "site-locale": "en",
+  "site-url": "http://localhost:3000",
   "slack-app-token": null,
   "slack-files-channel": null,
   "slack-token": null,
   "slack-token-valid?": false,
-  "token-status": createMockTokenStatus(),
+  "token-features": createMockTokenFeatures(),
+  "token-status": null,
   engines: createMockEngines(),
   version: createMockVersion(),
   ...opts,
