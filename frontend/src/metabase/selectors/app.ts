@@ -22,6 +22,7 @@ export interface RouterProps {
 }
 
 const HOMEPAGE_PATH = /^\/$/;
+const QUERY_BUILDER_PATHS = [/\/question/, /\/model/];
 const PATHS_WITHOUT_NAVBAR = [
   /\/model\/.*\/query/,
   /\/model\/.*\/metadata/,
@@ -34,11 +35,10 @@ const EMBEDDED_PATHS_WITH_NAVBAR = [
   /^\/archive/,
 ];
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [
-  /\/question\//,
-  /\/model\//,
+  ...QUERY_BUILDER_PATHS,
   /\/dashboard\//,
 ];
-const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
+const PATHS_WITH_QUESTION_LINEAGE = QUERY_BUILDER_PATHS;
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props.location.pathname;
@@ -145,15 +145,24 @@ export const getCollectionId = createSelector(
     dashboardId ? dashboard?.collection_id : question?.collectionId(),
 );
 
-export const getIsComingFromDataApp = createSelector(
-  getRouterQueryParameters,
-  params => typeof params.from === "string" && Urls.isDataAppPath(params.from),
+export const getIsEditingDataAppQuestion = createSelector(
+  [getQuestion, getRouterQueryParameters, getRouterPath],
+  (question, params, path) => {
+    const hasValidFromUrl =
+      typeof params.from === "string" && Urls.isDataAppPath(params.from);
+    return (
+      question &&
+      hasValidFromUrl &&
+      QUERY_BUILDER_PATHS.some(pattern => pattern.test(path))
+    );
+  },
 );
 
 export const getIsCollectionPathVisible = createSelector(
-  [getQuestion, getDashboard, getIsComingFromDataApp, getRouterPath],
-  (question, dashboard, isFromDataApp, path) => {
-    if (isFromDataApp) {
+  [getQuestion, getDashboard, getIsEditingDataAppQuestion, getRouterPath],
+  (question, dashboard, isEditingDataAppQuestion, path) => {
+    if (isEditingDataAppQuestion) {
+      // "Back to app" button takes over the collection breadcrumb in this case
       return false;
     }
     const isDashboard = dashboard != null;
@@ -165,9 +174,18 @@ export const getIsCollectionPathVisible = createSelector(
 );
 
 export const getIsQuestionLineageVisible = createSelector(
-  [getQuestion, getOriginalQuestion, getIsComingFromDataApp, getRouterPath],
-  (question, originalQuestion, isFromDataApp, path) => {
-    if (!question || !originalQuestion || isFromDataApp) {
+  [
+    getQuestion,
+    getOriginalQuestion,
+    getIsEditingDataAppQuestion,
+    getRouterPath,
+  ],
+  (question, originalQuestion, isEditingDataAppQuestion, path) => {
+    if (!question || !originalQuestion) {
+      return false;
+    }
+    if (isEditingDataAppQuestion) {
+      // "Back to app" button takes over the question lineage in this case
       return false;
     }
     return (

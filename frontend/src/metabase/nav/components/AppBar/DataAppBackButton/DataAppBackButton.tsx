@@ -1,4 +1,6 @@
 import React from "react";
+import { withRouter } from "react-router";
+import type { Location } from "history";
 
 import Icon from "metabase/components/Icon";
 
@@ -9,16 +11,24 @@ import type { DataApp } from "metabase-types/api";
 
 import { DataAppLink } from "./DataAppBackButton.styled";
 
-function DataAppBackButton({ url }: { url: string }) {
-  const dataAppId = Urls.getDataAppIdFromPath(url);
+function DataAppBackButton({ location }: { location: Location }) {
+  const fromUrl = location.query.from;
+
+  if (typeof fromUrl !== "string") {
+    return null;
+  }
+
   return (
-    <DataApps.Loader id={dataAppId} loadingAndErrorWrapper={false}>
+    <DataApps.Loader
+      id={Urls.getDataAppIdFromPath(fromUrl)}
+      loadingAndErrorWrapper={false}
+    >
       {({ dataApp }: { dataApp?: DataApp }) => {
         if (!dataApp) {
           return null;
         }
         return (
-          <DataAppLink to={url}>
+          <DataAppLink to={fromUrl}>
             <Icon name="chevronleft" />
             {dataApp.collection.name}
           </DataAppLink>
@@ -28,4 +38,4 @@ function DataAppBackButton({ url }: { url: string }) {
   );
 }
 
-export default DataAppBackButton;
+export default withRouter(DataAppBackButton);
