@@ -357,6 +357,8 @@ export const fetchCardData = createThunkAction(
               parameters: datasetQuery.parameters,
               ignore_cache: ignoreCache,
               dashboard_id: dashcard.dashboard_id,
+              userTimezone:
+                Intl.DateTimeFormat?.().resolvedOptions?.().timeZone,
             },
             queryOptions,
           ),

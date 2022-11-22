@@ -1099,6 +1099,7 @@ class QuestionInner {
         ignore_cache: ignoreCache,
         collection_preview: collectionPreview,
         parameters,
+        userTimezone: Intl.DateTimeFormat?.().resolvedOptions?.().timeZone,
       };
       return [
         await maybeUsePivotEndpoint(
@@ -1111,7 +1112,11 @@ class QuestionInner {
       ];
     } else {
       const getDatasetQueryResult = datasetQuery => {
-        const datasetQueryWithParameters = { ...datasetQuery, parameters };
+        const datasetQueryWithParameters = {
+          ...datasetQuery,
+          parameters,
+          userTimezone: Intl.DateTimeFormat?.().resolvedOptions?.().timeZone,
+        };
         return maybeUsePivotEndpoint(
           MetabaseApi.dataset,
           this.card(),
