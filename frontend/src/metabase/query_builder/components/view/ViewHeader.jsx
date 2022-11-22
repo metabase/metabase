@@ -17,11 +17,10 @@ import { useOnMount } from "metabase/hooks/use-on-mount";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 
-import DataApps from "metabase/entities/data-apps";
-
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 import QuestionActions from "../QuestionActions";
+import DataAppBackButton from "./DataAppBackButton";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
@@ -361,30 +360,6 @@ function DatasetCollectionBadge({ dataset }) {
     <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="model">
       {collection?.name || t`Our analytics`}
     </HeadBreadcrumbs.Badge>
-  );
-}
-
-DataAppBackButton.propTypes = {
-  url: PropTypes.func.isRequired,
-};
-
-function DataAppBackButton({ url }) {
-  return (
-    <DataApps.Loader
-      id={Urls.getDataAppIdFromPath(url)}
-      loadingAndErrorWrapper={false}
-    >
-      {({ dataApp }) => {
-        if (!dataApp) {
-          return null;
-        }
-        return (
-          <HeadBreadcrumbs.Badge to={url} icon="chevronleft">
-            {dataApp.collection.name}
-          </HeadBreadcrumbs.Badge>
-        );
-      }}
-    </DataApps.Loader>
   );
 }
 
