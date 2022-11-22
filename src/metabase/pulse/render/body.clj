@@ -565,7 +565,7 @@
   [cols-meta group-threshold]
   (let [groupable-cols (->> cols-meta
                             (filter #(isa? (:base_type %) :type/Number)) ;; for now we only try grouping number cols
-                            (remove #(nil? (:fingerprint %))))           ;; we can't group if there is not fingerprint
+                            (remove (comp nil? :fingerprint)))           ;; we can't group if there is not fingerprint
         cols-by-type   (group-by (juxt :base_type :effective_type :semantic_type) groupable-cols)
         some-grouped?  (> (apply max (map #(count (second %)) cols-by-type)) 1)]
     (when some-grouped?
