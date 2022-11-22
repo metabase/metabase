@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.config :as config]
             [metabase.models.database :refer [Database]]
             [metabase.sync :as sync]
             [metabase.util.i18n :refer [trs]]
@@ -22,16 +23,20 @@
              (str ";USER=GUEST;PASSWORD=guest"))})) ; specify the GUEST user account created for the DB
 
 (defn add-sample-database!
-  "Add the sample database as a Metabase DB if it doesn't already exist."
+  "Add the sample database as a Metabase DB if it doesn't already exist. Only a metadata sync is done synchronously
+  when running in prod in order reduce startup time."
   []
   (when-not (db/exists? Database :is_sample true)
     (try
       (log/info (trs "Loading sample database"))
-      (sync/sync-database! (db/insert! Database
-                             :name      sample-database-name
-                             :details   (db-details)
-                             :engine    :h2
-                             :is_sample true))
+      (let [db (db/insert! Database
+                           :name      sample-database-name
+                           :details   (db-details)
+                           :engine    :h2
+                           :is_sample true)]
+        (sync/sync-database! db {:scan (if config/is-dev? :schema :full)})
+        (when config/is-dev?
+          (future (sync/sync-database! db {:scan :full}))))
       (catch Throwable e
         (log/error e (trs "Failed to load sample database"))))))
 
