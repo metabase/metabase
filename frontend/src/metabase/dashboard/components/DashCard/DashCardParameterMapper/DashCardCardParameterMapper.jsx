@@ -24,8 +24,9 @@ import {
   getEditingParameter,
   getParameterTarget,
   makeGetParameterMappingOptions,
-} from "../selectors";
-import { setParameterMapping } from "../actions";
+} from "../../../selectors";
+import { setParameterMapping } from "../../../actions";
+
 import {
   Container,
   CardLabel,
