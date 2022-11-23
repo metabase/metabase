@@ -1,12 +1,11 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { getIn } from "icepick";
+import type { LocationDescriptor } from "history";
 
-import { iconPropTypes } from "metabase/components/Icon";
+import { IconProps } from "metabase/components/Icon";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
@@ -27,7 +26,26 @@ import { isVirtualDashCard } from "metabase/dashboard/utils";
 
 import { isActionCard } from "metabase/writeback/utils";
 
+import type {
+  Card,
+  CardId,
+  Dashboard,
+  DashboardOrderedCard,
+  DashCardId,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type { DatasetData } from "metabase-types/types/Dataset";
+import type {
+  ParameterId,
+  ParameterValueOrArray,
+} from "metabase-types/types/Parameter";
+import type { Series } from "metabase-types/types/Visualization";
+import type { Dispatch } from "metabase-types/store";
+
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
+
+import type Mode from "metabase-lib/Mode";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
 import ClickBehaviorSidebarOverlay from "./ClickBehaviorSidebarOverlay";
 import DashCardActionButtons from "./DashCardActionButtons";
@@ -47,11 +65,11 @@ const WrappedVisualization = WithVizSettingsData(
   connect(null, dispatch => ({ dispatch }))(Visualization),
 );
 
-function preventDragging(event) {
+function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
 }
 
-function getSeriesError(series) {
+function getSeriesError(series: Series) {
   const isAccessRestricted = series.some(
     s =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
@@ -80,19 +98,59 @@ function getSeriesError(series) {
   return;
 }
 
-const propTypes = {
-  dashcard: PropTypes.object.isRequired,
-  gridItemWidth: PropTypes.number.isRequired,
-  totalNumGridCols: PropTypes.number.isRequired,
-  dashcardData: PropTypes.object.isRequired,
-  slowCards: PropTypes.object.isRequired,
-  parameterValues: PropTypes.object.isRequired,
-  markNewCardSeen: PropTypes.func.isRequired,
-  fetchCardData: PropTypes.func.isRequired,
-  navigateToNewCardFromDashboard: PropTypes.func.isRequired,
-  headerIcon: PropTypes.shape(iconPropTypes),
-  isNightMode: PropTypes.bool,
+type FetchCardDataOpts = {
+  reload?: boolean;
+  clear?: boolean;
+  ignoreCache?: boolean;
 };
+
+type NavigateToNewCardFromDashboardOpts = {
+  nextCard: Card;
+  previousCard: Card;
+  dashcard: DashboardOrderedCard;
+  objectId?: unknown;
+};
+
+type CardIsSlow = "usually-fast" | "usually-slow" | false;
+
+interface DashCardProps {
+  dashboard: Dashboard;
+  dashcard: DashboardOrderedCard & { justAdded?: boolean };
+  gridItemWidth: number;
+  totalNumGridCols: number;
+  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
+  slowCards: Record<CardId, boolean>;
+  parameterValues: Record<ParameterId, ParameterValueOrArray>;
+  metadata: Metadata;
+  mode?: Mode;
+
+  clickBehaviorSidebarDashcard?: DashboardOrderedCard | null;
+
+  isEditing?: boolean;
+  isEditingParameter?: boolean;
+  isFullscreen?: boolean;
+  isMobile?: boolean;
+  isNightMode?: boolean;
+
+  headerIcon?: IconProps;
+
+  dispatch: Dispatch;
+  onAddSeries: () => void;
+  onRemove: () => void;
+  markNewCardSeen: (dashcardId: DashCardId) => void;
+  fetchCardData: (
+    card: Card,
+    dashCard: DashboardOrderedCard,
+    opts?: FetchCardDataOpts,
+  ) => void;
+  navigateToNewCardFromDashboard?: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void;
+  onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
+  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
+  onChangeLocation: (location: LocationDescriptor) => void;
+}
 
 function DashCard({
   dashcard,
@@ -120,9 +178,9 @@ function DashCard({
   onUpdateVisualizationSettings,
   onReplaceAllVisualizationSettings,
   dispatch,
-}) {
+}: DashCardProps) {
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
-  const cardRootRef = useRef(null);
+  const cardRootRef = useRef<HTMLDivElement>(null);
 
   const handlePreviewToggle = useCallback(() => {
     setIsPreviewingCard(wasPreviewingCard => !wasPreviewingCard);
@@ -137,7 +195,7 @@ function DashCard({
     }
   });
 
-  const mainCard = useMemo(
+  const mainCard: Card = useMemo(
     () => ({
       ...dashcard.card,
       visualization_settings: mergeSettings(
@@ -182,7 +240,7 @@ function DashCard({
       ...series.map(s => s.card.query_average_duration || 0),
     );
     const isUsuallyFast = series.every(s => s.isUsuallyFast);
-    let isSlow = false;
+    let isSlow: CardIsSlow = false;
     if (isLoading && series.some(s => s.isSlow)) {
       isSlow = isUsuallyFast ? "usually-fast" : "usually-slow";
     }
@@ -230,7 +288,8 @@ function DashCard({
       return null;
     }
 
-    return ({ nextCard, previousCard, objectId }) => {
+    type Args = Omit<NavigateToNewCardFromDashboardOpts, "dashcard">;
+    return ({ nextCard, previousCard, objectId }: Args) => {
       navigateToNewCardFromDashboard({
         nextCard,
         previousCard,
@@ -244,7 +303,7 @@ function DashCard({
     if (isClickBehaviorSidebarOpen) {
       if (isVirtualDashCard(dashcard)) {
         const isTextCard =
-          dashcard.visualization_settings.virtual_card.display === "text";
+          dashcard?.visualization_settings?.virtual_card?.display === "text";
         return (
           <VirtualDashCardOverlayRoot>
             <VirtualDashCardOverlayText>
@@ -257,7 +316,6 @@ function DashCard({
         <ClickBehaviorSidebarOverlay
           dashcard={dashcard}
           dashcardWidth={gridItemWidth}
-          dashboard={dashboard}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
           isShowingThisClickBehaviorSidebar={isEditingDashCardClickBehavior}
         />
@@ -273,7 +331,6 @@ function DashCard({
     return null;
   }, [
     dashcard,
-    dashboard,
     gridItemWidth,
     isAction,
     isMobile,
@@ -335,6 +392,8 @@ function DashCard({
           dashcardId={dashcard.id}
           token={dashcard.dashboard_id}
           icon="download"
+          // Can be removed once QueryDownloadWidget is converted to Typescript
+          visualizationSettings={undefined}
         />
       );
     }
@@ -351,6 +410,9 @@ function DashCard({
     >
       {renderDashCardActions()}
       <WrappedVisualization
+        // Visualization has to be converted to TypeScript before we can remove the ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         className={cx("flex-full overflow-hidden", {
           "pointer-events-none": isEditingDashboardLayout,
         })}
@@ -390,7 +452,5 @@ function DashCard({
     </DashCardRoot>
   );
 }
-
-DashCard.propTypes = propTypes;
 
 export default DashCard;
