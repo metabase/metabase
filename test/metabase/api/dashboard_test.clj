@@ -2524,16 +2524,14 @@
     (mt/with-temp-copy-of-db
       (actions.test-util/with-actions-enabled
         (actions.test-util/with-actions-test-data
-          (actions.test-util/with-action [{:keys [action-id]} {}]
+          (actions.test-util/with-action [{:keys [action-id model-id]} {}]
             (testing "Executing dashcard with action"
               (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                              Card [{card-id :id} {:dataset true}]
-                              ModelAction [_ {:action_id action-id :card_id card-id :slug "custom"}]
                               DashboardCard [{dashcard-id :id}
                                              {:dashboard_id dashboard-id
-                                              :card_id card-id
-                                              :visualization_settings {:action_slug "custom"}}]]
-                (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
+                                              :action_id action-id
+                                              :card_id model-id}]]
+                (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                            dashboard-id
                                            dashcard-id)]
                   (testing "with :advanced-permissions feature flag"
