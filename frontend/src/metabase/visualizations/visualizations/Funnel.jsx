@@ -153,6 +153,9 @@ export default class Funnel extends Component {
       props: {
         hasEditSettings: false,
       },
+      getHidden: (series, settings) =>
+        settings["funnel.dimension"] === null ||
+        settings["funnel.metric"] === null,
       writeDependencies: ["funnel.order_dimension"],
       dataTestId: "funnel-row-sort",
     },

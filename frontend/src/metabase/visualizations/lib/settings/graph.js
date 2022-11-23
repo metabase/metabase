@@ -139,6 +139,9 @@ export const GRAPH_DATA_SETTINGS = {
         addAnother:
           options.length > addedDimensions.length &&
           addedDimensions.length < maxDimensionsSupported &&
+          addedDimensions.every(
+            dimension => dimension !== undefined && dimension !== null,
+          ) &&
           vizSettings["graph.metrics"].length < 2
             ? t`Add series breakout`
             : null,
@@ -171,6 +174,10 @@ export const GRAPH_DATA_SETTINGS = {
       // Always be the stored setting, not calculated.
       const seriesOrderDimension = settings["graph.series_order_dimension"];
       const currentDimension = settings["graph.dimensions"][1];
+
+      if (currentDimension === undefined) {
+        return [];
+      }
 
       const generateDefault = keys => {
         return keys.map(key => ({
