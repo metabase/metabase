@@ -292,9 +292,6 @@
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
             (is (= (set expected) (set (test-datetime-math query))))))))))
 
-(defn- second-precision? [x]
-  (zero? (mod (t/to-millis-from-epoch x) 1000)))
-
 (defn- close? [t1 t2 period]
   (and (t/before? (t/instant t1) (t/plus (t/instant t2) period))
        (t/after? (t/instant t1) (t/minus (t/instant t2) period))))
@@ -315,17 +312,6 @@
                      u.date/parse
                      (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
                      (close? (t/instant) (t/seconds 30))))))))
-    (testing "should return a datetime with second precision"
-      (is (= true
-             (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:now]}
-                    :fields [[:expression "1"]]
-                    :limit  1})
-                 mt/rows
-                 ffirst
-                 u.date/parse
-                 (t/zoned-date-time (t/zone-id "UTC"))
-                 second-precision?))))
     (testing "should work as an argument to datetime-add and datetime-subtract"
       (is (= true
              (-> (mt/run-mbql-query venues
