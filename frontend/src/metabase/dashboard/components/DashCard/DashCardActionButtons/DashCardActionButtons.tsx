@@ -5,8 +5,7 @@ import Icon from "metabase/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
-import { VisualizationSettings } from "metabase-types/api/card";
-import { DashboardWithCards } from "metabase-types/types/Dashboard";
+import { Dashboard, VisualizationSettings } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 
 import DashCardActionButton from "./DashCardActionButton";
@@ -18,7 +17,7 @@ import { DashCardActionButtonsContainer } from "./DashCardActionButtons.styled";
 
 interface Props {
   series: Series;
-  dashboard: DashboardWithCards;
+  dashboard: Dashboard;
   isLoading: boolean;
   isVirtualDashCard: boolean;
   isPreviewing: boolean;
