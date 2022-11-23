@@ -224,7 +224,7 @@
     (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
           hsql-from-tz    (partial hsql/call :from_tz)]
       (cond-> expr
-        (and (not has-timezone?) source-timezone)
+        (not has-timezone?)
         (hsql-from-tz source-timezone)
 
         target-timezone

@@ -121,7 +121,7 @@
                      :source-timezone source-timezone})))
     (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))]
       (cond-> expr
-        (and (not timestamptz?) source-timezone)
+        (not timestamptz?)
         (hx/->AtTimeZone source-timezone)
         target-timezone
         (hx/->AtTimeZone target-timezone)))))

@@ -216,8 +216,11 @@
 
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `database-type`?
+  Where `database-type` could be a string or a regex.
 
-    (is-of-type? expr \"datetime\") ; -> true"
+    (is-of-type? expr \"datetime\") ; -> true
+    (is-of-type? expr #\"int*\") ; -> true"
+
   [honeysql-form database-type]
   (let [form-type (some-> honeysql-form type-info type-info->db-type str/lower-case)]
     (if (instance? java.util.regex.Pattern database-type)

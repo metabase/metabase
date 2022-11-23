@@ -363,11 +363,10 @@
         timestamp? (hx/is-of-type? expr "timestamp")]
     (when (and timestamp? source-timezone)
       (throw (ex-info (tru "`timestamp` columns shouldn''t have a `source timezone` argument")
-                    {:type    qp.error-type/invalid-parameter
-                     :target-timezone   target-timezone
+                    {:type            qp.error-type/invalid-parameter
+                     :target-timezone target-timezone
                      :source-timezone source-timezone})))
-    (let [source-timezone (or source-timezone
-                              (qp.timezone/results-timezone-id))
+    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
           expr            (hsql/call :convert_tz expr source-timezone target-timezone)]
       (hx/with-database-type-info expr "datetime"))))
 
