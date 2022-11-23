@@ -813,12 +813,12 @@
   (api/read-check Dashboard dashboard-id)
   (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters)))
 
-(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  [dashboard-id dashcard-id _slug :as {{:keys [parameters], :as _body} :body}]
+  [dashboard-id dashcard-id :as {{:keys [parameters], :as _body} :body}]
   {dashboard-id su/IntGreaterThanZero
    dashcard-id su/IntGreaterThanZero
    parameters (s/maybe {s/Keyword s/Any})}

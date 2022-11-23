@@ -2212,14 +2212,13 @@
 (deftest dashcard-query-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (actions.test-util/with-action [{:keys [action-id]} {}]
+      (actions.test-util/with-action [{:keys [action-id model-id]} {}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
-                          ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
-                          Dashboard [{dashboard-id :id}]
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :card_id card-id}]]
-            (let [execute-path (format "dashboard/%s/dashcard/%s/execute/custom"
+                                                            :action_id action-id
+                                                            :card_id model-id}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                        dashboard-id
                                        dashcard-id)]
               (testing "Dashcard parameter"
@@ -2242,7 +2241,7 @@
                                              {:parameters {"id" Integer/MAX_VALUE}}))))
               (testing "Should 404 if bad dashcard-id"
                 (is (= "Not found."
-                       (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/execute/custom"
+                       (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/dashcard/%s/execute"
                                                                           dashboard-id
                                                                           Integer/MAX_VALUE)
                                              {}))))

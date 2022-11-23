@@ -25,30 +25,24 @@
   endpoint of shape `{<parameter-id> <value>}`.
 
   `action` should already be hydrated with its `:card`."
-  [{:keys [card] action-id :id :as action} request-parameters]
-  (when-not card
-    (throw (ex-info (tru "No Card found for Action {0}." action-id)
-                    {:status-code 400, :action action})))
-  (when-not (:is_write card)
-    (throw (ex-info (tru "Cannot execute Action {0}: Card {1} is not marked as `is_write`"
-                         action-id
-                         (:id card))
-                    {:status-code 400, :action action})))
+  [{:keys [dataset_query model_id] :as action} request-parameters]
   (log/tracef "Executing action\n\n%s" (u/pprint-to-str action))
   (try
     (let [parameters (for [parameter (:parameters action)]
                        (assoc parameter :value (get request-parameters (:id parameter))))
-          query (assoc (:dataset_query card) :parameters parameters)]
+          query (-> dataset_query
+                    (update :type keyword)
+                    (assoc :parameters parameters))]
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
-      (binding [qp.perms/*card-id* (:id card)]
+      (binding [qp.perms/*card-id* model_id]
         (qp.writeback/execute-write-query! query)))
     (catch Throwable e
       (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
         (api/throw-403 e)
         (throw (ex-info (tru "Error executing Action: {0}" (ex-message e))
-           {:action     action
-            :parameters request-parameters}
-           e))))))
+                        {:action     action
+                         :parameters request-parameters}
+                        e))))))
 
 (defn- handle-action-execution-error [ex]
   (log/error ex (tru "Error executing action."))
@@ -59,9 +53,8 @@
     {:body {:message (or (ex-message ex) (tru "Error executing action."))}
      :status 500}))
 
-(defn- execute-custom-action [action-id request-parameters]
-  (let [action (api/check-404 (first (action/select-actions :id action-id)))
-        action-type (:type action)
+(defn- execute-custom-action [action request-parameters]
+  (let [action-type (:type action)
         destination-parameters-by-id (m/index-by :id (:parameters action))]
     (doseq [[parameter-id _value] request-parameters]
       (when-not (contains? destination-parameters-by-id parameter-id)
@@ -176,10 +169,11 @@
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
-        model-action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
-    (if-let [action-id (:action_id model-action)]
-      (execute-custom-action action-id request-parameters)
-      (execute-implicit-action model-action request-parameters))))
+        action (api/check-404 (first (action/select-actions :id (:action_id dashcard))))]
+    (if (= (:type action) "implicit")
+      (let [model-action (api/check-404 (first (action/actions-with-implicit-params nil :id (:id action))))]
+        (execute-implicit-action model-action request-parameters))
+      (execute-custom-action action request-parameters))))
 
 (defn- fetch-implicit-action-values
   [dashboard-id action request-parameters]
