@@ -115,7 +115,9 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
-  (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp hsql-form)))
+  (let [hsql-form (hx/->timestamp hsql-form)]
+    (-> (hsql/call :dateadd (hx/literal unit) amount hsql-form)
+        (hx/with-type-info (hx/type-info hsql-form)))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
