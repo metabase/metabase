@@ -269,16 +269,18 @@
     (let [models (db/select Card :id [:in model-ids])
           model-id->model (m/index-by :id models)
           model-id->params (action/implicit-action-parameters models)
-          model-actions (action/actions-with-implicit-params models :model_id [:in model-ids])
-          model-id->model-actions (group-by :model_id model-actions)
-          sorter (fn [slug]
-                   (get {"update" 1 "delete" 2 "insert" 0} slug 3))
-          action-mapper (fn [{:keys [slug name]}]
-                          [slug (or name
-                                    (get {"insert" (i18n/tru "New")
-                                          "update" (i18n/tru "Edit")
-                                          "delete" (i18n/tru "Delete")}
-                                         slug))])]
+          actions (action/actions-with-implicit-params models :model_id [:in model-ids])
+          model-id->actions (group-by :model_id actions)
+          sorter (fn [kind]
+                   (get {"row/update" 1 "row/delete" 2 "row/create" 0} kind 3))
+          action-mapper (fn [{:keys [id kind name]}]
+                          [id (or name
+                                  (get {"row/create" (i18n/tru "New")
+                                        "row/update" (i18n/tru "Edit")
+                                        "row/delete" (i18n/tru "Delete")}
+                                       kind))
+                           (= "row/delete" kind)])
+          requires-pk (comp #{"row/update" "row/delete"} :kind)]
       (for [model-id model-ids
             :let [model (get model-id->model model-id)
                   params (get model-id->params model-id)
@@ -288,11 +290,13 @@
                                       {:status-code 400})))
                   pk-param (first pks)
                   pk-field-slug (:id pk-param)
-                  model-action (get model-id->model-actions model-id)
+                  actions (get model-id->actions model-id)
                   ident-type "model"]
             page-type ["list" "detail"]
-            :let [selector (if (= page-type "detail") :requires_pk (complement :requires_pk))
-                  actions (->> model-action
+            :let [selector (if (= page-type "detail")
+                             requires-pk
+                             (complement requires-pk))
+                  actions (->> actions
                                (filter selector)
                                (map action-mapper)
                                (sort-by (comp sorter first)))]]
