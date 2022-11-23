@@ -205,9 +205,10 @@
    (driver.common/start-of-week-offset driver)
    (partial hsql/call (u/qualified-name ::mod))))
 
-(def ^:private now (hsql/raw "SYSDATE"))
-
-(defmethod sql.qp/current-datetime-honeysql-form :oracle [_] now)
+(defmethod sql.qp/current-datetime-honeysql-form :oracle
+  [_]
+  (-> (hsql/raw "CURRENT_TIMESTAMP")
+      (hx/with-database-type-info "timestamp with time zone")))
 
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
@@ -222,11 +223,6 @@
   ;; (https://docs.oracle.com/cd/B19306_01/server.102/b14200/sql_elements008.htm)
   (let [s (str/replace s #"[\"\u0000]" "_")]
     (driver.impl/truncate-alias s legacy-max-identifier-length)))
-
-(defmethod sql.qp/->honeysql [:oracle :now]
-  [_driver _clause]
-  (-> (hsql/call :current_timestamp 0)
-      (hx/with-database-type-info "timestamp with time zone")))
 
 (defmethod sql.qp/->honeysql [:oracle :substring]
   [driver [_ arg start length]]

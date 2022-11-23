@@ -124,16 +124,6 @@
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
 ;; details on the functions we're using.
 
-(defn- zeroed-date-part
-  "Zeroes out `unit` in `expr`. The result is such that `(date-part unit <result>)` returns zero."
-  [unit expr]
-  (date-add unit (hx/- 1 (date-part unit expr)) expr))
-
-(defmethod sql.qp/->honeysql [:sqlserver :now]
-  [_driver _clause]
-  (-> (zeroed-date-part :millisecond (hsql/call :getdate))
-      (hx/with-database-type-info "datetime")))
-
 (defmethod sql.qp/date [:sqlserver :default]
   [_ _ expr]
   expr)
@@ -413,7 +403,9 @@
   [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod sql.qp/current-datetime-honeysql-form :sqlserver [_] :%getdate)
+(defmethod sql.qp/current-datetime-honeysql-form :sqlserver
+  [_]
+  (hx/with-database-type-info :%getdate "datetime"))
 
 (defmethod sql-jdbc.sync/excluded-schemas :sqlserver
   [_]

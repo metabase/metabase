@@ -67,7 +67,9 @@
     #"map"              :type/Dictionary
     #".*"               :type/*))
 
-(defmethod sql.qp/current-datetime-honeysql-form :hive-like [_] :%now)
+(defmethod sql.qp/current-datetime-honeysql-form :hive-like
+  [_]
+  (hx/with-database-type-info :%now "timestamp"))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:hive-like :seconds]
   [_ _ expr]
@@ -84,10 +86,6 @@
 
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
-
-(defmethod sql.qp/->honeysql [:hive-like :now]
-  [_driver _clause]
-  (trunc-with-format "yyyy-MM-dd HH:mm:ss" (hsql/call :current_timestamp)))
 
 (defmethod sql.qp/date [:hive-like :default]         [_ _ expr] (hx/->timestamp expr))
 (defmethod sql.qp/date [:hive-like :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (hx/->timestamp expr)))

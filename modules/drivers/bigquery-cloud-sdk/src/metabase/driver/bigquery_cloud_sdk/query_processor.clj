@@ -786,7 +786,8 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :now]
   [driver _clause]
-  (trunc :second (->temporal-type :timestamp (sql.qp/current-datetime-honeysql-form driver))))
+  (->> (sql.qp/current-datetime-honeysql-form driver)
+       (->temporal-type :timestamp)))
 
 (defmethod sql.qp/quote-style :bigquery-cloud-sdk
   [_]
