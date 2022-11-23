@@ -98,7 +98,7 @@ You can refer to a model in a SQL query just like you can refer to a saved quest
 
 ```
 {% raw %}
-SELECT * FROM {{#1}}
+SELECT * FROM {{#1-customer-model}}
 {% endraw %}
 ```
 
@@ -106,11 +106,15 @@ Or as a [common table expression (CTE)][cte]:
 
 ```
 {% raw %}
-WITH model AS {{#3807}}
+WITH model AS {{#3807-invoice-model}}
 SELECT *
 FROM model;
 {% endraw %}
 ```
+
+Simply typing `{% raw %}{{#}} {% endraw %}` will allow you to search for models (for example, you could type in `{% raw %}{{#customer}}{% endraw %}` to search models, questions, and tables with the word "customer" in the title.
+
+You can also use the data reference sidebar to browse the models available. To open the data reference sidebar, click on the **book** icon.
 
 ## Model history
 
