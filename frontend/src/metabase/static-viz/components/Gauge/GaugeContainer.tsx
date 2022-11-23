@@ -22,6 +22,7 @@ import {
   calculateSegmentLabelPosition,
   calculateSegmentLabelTextAnchor,
   gaugeSorter,
+  fixSwappedMinMax,
 } from "./utils";
 
 import type { Card, Data, GaugeLabelData, Position } from "./types";
@@ -42,7 +43,9 @@ export default function GaugeContainer({
   const columnSettings =
     settings.column_settings &&
     populateDefaultColumnSettings(Object.values(settings.column_settings)[0]);
-  const segments = [...settings["gauge.segments"]].sort(gaugeSorter);
+  const segments = [...settings["gauge.segments"]]
+    .sort(gaugeSorter)
+    .map(fixSwappedMinMax);
 
   const segmentMinValue = segments[0].min;
   const segmentMaxValue = segments[segments.length - 1].max;
