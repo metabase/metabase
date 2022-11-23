@@ -278,6 +278,17 @@
     [(op :guard temporal-extract-ops) field & args]
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
+(defn desugar-convert-timezone
+  "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
+  [m results-timezone-id]
+  (mbql.match/replace m
+    [(op :guard #{:convert-timezone}) field & args]
+    (into [:convert-timezone field ] (map (fn [arg]
+                                            (if (= (str/lower-case arg) "instance")
+                                             results-timezone-id
+                                             arg))
+                                          args))))
+
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything

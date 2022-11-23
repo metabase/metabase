@@ -6,6 +6,7 @@
    [(:require
      [clojure.core :as core]
      [clojure.set :as set]
+     [clojure.string :as str]
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
      [schema.core :as s])
@@ -17,6 +18,7 @@
      ["moment-timezone" :as mtz]
      [clojure.core :as core]
      [clojure.set :as set]
+     [clojure.string :as str]
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
      [schema.core :as s])]))
@@ -718,10 +720,14 @@
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-second
   datetime DateTimeExpressionArg)
 
+(def ^:private convertTimezoneArg
+  (s/cond-pre TimezoneId
+              (s/pred #(#{"instance"} (str/lower-case %)))))
+
 (defclause ^{:requires-features #{:convert-timezone}} convert-timezone
   datetime DateTimeExpressionArg
-  to       TimezoneId
-  from     (optional TimezoneId))
+  to       convertTimezoneArg
+  from     (optional convertTimezoneArg))
 
 (def ^:private ArithmeticDateTimeUnit
   (s/named
@@ -922,7 +928,6 @@
 
 (def ^:private StringExpression*
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
-
 
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
