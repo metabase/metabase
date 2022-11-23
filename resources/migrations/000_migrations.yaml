@@ -13375,7 +13375,7 @@ databaseChangeLog:
       author: snoe
       comment: Added 0.46.0 - nocommit
       changes:
-        - addColumns:
+        - addColumn:
             tableName: query_action
             columns:
               - column:
@@ -13389,7 +13389,7 @@ databaseChangeLog:
               - column:
                   name: dataset_query
                   remarks: nocommit
-                  type: ${type.text}
+                  type: ${text.type}
 
   - changeSet:
       id: v46.00-003
@@ -13411,10 +13411,10 @@ databaseChangeLog:
 
 # TODO nocommit add all not-null contrainsts
 # - changeSet:
-#    id: v46.00-003
+#    id: v46.00-005
 # TODO nocommit migrate existing actions
 # - changeSet:
-#    id: v46.00-005
+#    id: v46.00-006
 
   - changeSet:
       id: v46.00-007

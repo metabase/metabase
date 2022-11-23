@@ -93,6 +93,7 @@
       (db/execute! {:insert-into model
                     :values [(-> (apply dissoc action-data action-columns)
                                  (u/update-if-exists :template json/encode)
+                                 (u/update-if-exists :dataset_query json/encode)
                                  (assoc :action_id (:id action)))]})
       (:id action))))
 
@@ -100,41 +101,10 @@
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
-    (let [cards (->> (db/query {:select [:card.*
-                                         [:db.settings :db_settings]
-                                         :query_action.action_id]
-                                :from [[:report_card :card]]
-                                :join [:query_action [:= :query_action.card_id :card.id]
-                                       [:metabase_database :db] [:= :card.database_id :db.id]]
-                                :where [:= :card.is_write true]})
-                     (map (fn [card]
-                            (let [disabled (or (:archived card)
-                                               (-> card
-                                                   (:db_settings)
-                                                   encrypted-json-out
-                                                   :database-enable-actions
-                                                   boolean
-                                                   not))]
-                              (-> card
-                                  (assoc ::disabled disabled)
-                                  (dissoc :db_settings)))))
-                     (db/do-post-select 'Card))
-          cards-by-action-id (m/index-by :action_id cards)]
-      (keep (fn [action]
-              (let [{card-name :name :keys [description dataset_query] :as card} (get cards-by-action-id (:id action))
-                    tags (get-in dataset_query [:native :template-tags])
-                    params (for [param (:parameters card)
-                                 :let [tag (get tags (:slug param))]]
-                             (assoc param :required (:required tag)))]
-                (-> action
-                    (merge
-                      {:name card-name
-                       :description description
-                       :disabled (::disabled card)
-                       :card (dissoc card ::disabled)
-                       :parameters params}
-                      (select-keys card [:parameter_mappings :visualization_settings])))))
-            actions))))
+    (let [query-actions (db/select QueryAction :action_id [:in (map :id actions)])
+          action-id->query-actions (m/index-by :action_id query-actions)]
+      (for [action actions]
+        (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
 
 (defn- normalize-http-actions [actions]
   (when (seq actions)

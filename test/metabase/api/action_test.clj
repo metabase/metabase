@@ -82,11 +82,11 @@
                                  :parameters [{:id "x" :type "text"}]
                                  :response_handle ".body"
                                  :error_handle ".status >= 400"}
-                                #_
                                 {:name "Query example"
                                  :type "query"
                                  :model_id card-id
-                                 :dataset_query (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                 :dataset_query (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                                        :type name)
                                  :database_id (mt/id)
                                  :parameters [{:id "x" :type "number"}]}
                                 {:name "Implicit example"
