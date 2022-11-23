@@ -96,6 +96,7 @@ export type FormField<Values, Value = DefaultFieldValue> = {
   touched: boolean;
   valid: boolean;
   visited: boolean;
+  required?: boolean;
 
   onBlur: () => void;
   onFocus: () => void;
