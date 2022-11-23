@@ -27,6 +27,13 @@
     (s/enum "http" "query" "implicit")
     "Unsupported action type"))
 
+(def ^:private ImplicitActionKind
+  (su/with-api-error-message
+    (apply s/enum (for [ns ["row" "bulk"]
+                        action ["create" "update" "delete"]]
+                    (str ns "/" action)))
+    "Unsupported implicit action kind"))
+
 (def ^:private HTTPActionTemplate
   {:method (s/enum "GET" "POST" "PUT" "DELETE" "PATCH")
    :url s/Str
@@ -76,17 +83,22 @@
   api/generic-204-no-content)
 
 (api/defendpoint POST "/"
-  "Create a new HTTP action."
-  [:as {{:keys [type name template response_handle error_handle model_id] :as action} :body}]
+  "Create a new action."
+  [:as {{:keys [type name model_id parameters parameter_mappings visualization_settings
+                kind
+                database_id dataset_query
+                template response_handle error_handle] :as action} :body}]
   {type SupportedActionType
    name s/Str
    model_id su/IntGreaterThanZero
-  ;; TODO check different types
-   #_#_
-   template HTTPActionTemplate
-   #_#_
+   parameters (s/maybe [su/Map])
+   parameter_mappings (s/maybe su/Map)
+   visualization_settings (s/maybe su/Map)
+   kind (s/maybe ImplicitActionKind)
+   database_id (s/maybe su/IntGreaterThanZero)
+   dataset_query (s/maybe su/Map)
+   template (s/maybe HTTPActionTemplate)
    response_handle (s/maybe JsonQuerySchema)
-   #_#_
    error_handle (s/maybe JsonQuerySchema)}
   (let [action-id (action/insert! action)]
     (if action-id
@@ -96,10 +108,20 @@
       (last (action/select-actions :type type)))))
 
 (api/defendpoint PUT "/:id"
-  [id :as {{:keys [type name template response_handle error_handle] :as action} :body}]
+  [id :as {{:keys [type name model_id parameters parameter_mappings visualization_settings
+                   kind
+                   database_id dataset_query
+                   template response_handle error_handle] :as action} :body}]
   {id su/IntGreaterThanZero
    type (s/maybe SupportedActionType)
    name (s/maybe s/Str)
+   model_id (s/maybe su/IntGreaterThanZero)
+   parameters (s/maybe [su/Map])
+   parameter_mappings (s/maybe su/Map)
+   visualization_settings (s/maybe su/Map)
+   kind (s/maybe ImplicitActionKind)
+   database_id (s/maybe su/IntGreaterThanZero)
+   dataset_query (s/maybe su/Map)
    template (s/maybe HTTPActionTemplate)
    response_handle (s/maybe JsonQuerySchema)
    error_handle (s/maybe JsonQuerySchema)}
