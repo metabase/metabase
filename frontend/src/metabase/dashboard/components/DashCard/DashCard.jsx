@@ -1,49 +1,40 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import styled from "@emotion/styled";
-import { connect } from "react-redux";
-import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "ttag";
+import PropTypes from "prop-types";
 import cx from "classnames";
+import { t } from "ttag";
 import _ from "underscore";
+import { connect } from "react-redux";
 import { getIn } from "icepick";
-import visualizations, { getVisualizationRaw } from "metabase/visualizations";
-import { mergeSettings } from "metabase/visualizations/lib/settings";
+
+import { iconPropTypes } from "metabase/components/Icon";
+
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import Utils from "metabase/lib/utils";
+
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
   ERROR_MESSAGE_PERMISSION,
 } from "metabase/visualizations/components/Visualization";
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
+import { mergeSettings } from "metabase/visualizations/lib/settings";
 
-import Icon, { iconPropTypes } from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-
 import { isActionCard } from "metabase/writeback/utils";
 
-import Utils from "metabase/lib/utils";
-import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
+import ClickBehaviorSidebarOverlay from "./ClickBehaviorSidebarOverlay";
+import DashCardActionButtons from "./DashCardActionButtons";
 import DashCardParameterMapper from "./DashCardParameterMapper";
-import { DashCardRoot } from "./DashCard.styled";
+import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
-
-const HEADER_ICON_SIZE = 16;
-
-const HEADER_ACTION_STYLE = {
-  padding: 4,
-};
 
 // This is done to add the `getExtraDataForClick` prop.
 // We need that to pass relevant data along with the clicked object.
@@ -51,28 +42,24 @@ const WrappedVisualization = WithVizSettingsData(
   connect(null, dispatch => ({ dispatch }))(Visualization),
 );
 
-export default class DashCard extends Component {
-  static propTypes = {
-    dashcard: PropTypes.object.isRequired,
-    gridItemWidth: PropTypes.number.isRequired,
-    totalNumGridCols: PropTypes.number.isRequired,
-    dashcardData: PropTypes.object.isRequired,
-    slowCards: PropTypes.object.isRequired,
-    parameterValues: PropTypes.object.isRequired,
-    markNewCardSeen: PropTypes.func.isRequired,
-    fetchCardData: PropTypes.func.isRequired,
-    navigateToNewCardFromDashboard: PropTypes.func.isRequired,
-    headerIcon: PropTypes.shape(iconPropTypes),
-    isNightMode: PropTypes.bool,
+const propTypes = {
+  dashcard: PropTypes.object.isRequired,
+  gridItemWidth: PropTypes.number.isRequired,
+  totalNumGridCols: PropTypes.number.isRequired,
+  dashcardData: PropTypes.object.isRequired,
+  slowCards: PropTypes.object.isRequired,
+  parameterValues: PropTypes.object.isRequired,
+  markNewCardSeen: PropTypes.func.isRequired,
+  fetchCardData: PropTypes.func.isRequired,
+  navigateToNewCardFromDashboard: PropTypes.func.isRequired,
+  headerIcon: PropTypes.shape(iconPropTypes),
+  isNightMode: PropTypes.bool,
+};
+
+class DashCard extends Component {
+  state = {
+    isPreviewingCard: false,
   };
-
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      isPreviewingCard: false,
-    };
-  }
 
   async componentDidMount() {
     const { dashcard, markNewCardSeen } = this.props;
@@ -319,240 +306,6 @@ export default class DashCard extends Component {
   }
 }
 
-const DashboardCardActionsPanel = styled.div`
-  padding: 0.125em 0.25em;
-  position: absolute;
-  background: white;
-  transform: translateY(-50%);
-  top: 0;
-  right: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
-  z-index: 3;
-  cursor: default;
-  transition: opacity 200ms;
-  opacity: 0;
-  pointer-events: none;
+DashCard.propTypes = propTypes;
 
-  .Card:hover & {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .Dash--dragging & {
-    display: none;
-  }
-`;
-
-const DashCardActionButtons = ({
-  card,
-  series,
-  isLoading,
-  isVirtualDashCard,
-  hasError,
-  onRemove,
-  onAddSeries,
-  onReplaceAllVisualizationSettings,
-  showClickBehaviorSidebar,
-  onPreviewToggle,
-  isPreviewing,
-  dashboard,
-}) => {
-  const buttons = [];
-
-  if (getVisualizationRaw(series).visualization.supportPreviewing) {
-    buttons.push(
-      <ToggleCardPreviewButton
-        key="toggle-card-preview-button"
-        isPreviewing={isPreviewing}
-        onPreviewToggle={onPreviewToggle}
-      />,
-    );
-  }
-
-  if (!isLoading && !hasError) {
-    if (
-      onReplaceAllVisualizationSettings &&
-      !getVisualizationRaw(series).visualization.disableSettingsConfig
-    ) {
-      buttons.push(
-        <ChartSettingsButton
-          key="chart-settings-button"
-          series={series}
-          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
-          dashboard={dashboard}
-        />,
-      );
-    }
-    if (!isVirtualDashCard || isActionCard(card)) {
-      buttons.push(
-        <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
-          <a
-            className="text-dark-hover drag-disabled mr1"
-            data-metabase-event="Dashboard;Open Click Behavior Sidebar"
-            onClick={showClickBehaviorSidebar}
-            style={HEADER_ACTION_STYLE}
-          >
-            <Icon name="click" />
-          </a>
-        </Tooltip>,
-      );
-    }
-
-    if (getVisualizationRaw(series).visualization.supportsSeries) {
-      buttons.push(
-        <AddSeriesButton
-          key="add-series-button"
-          series={series}
-          onAddSeries={onAddSeries}
-        />,
-      );
-    }
-  }
-
-  return (
-    <span className="flex align-center text-medium" style={{ lineHeight: 1 }}>
-      {buttons}
-      <Tooltip tooltip={t`Remove`}>
-        <RemoveButton className="ml1" onRemove={onRemove} />
-      </Tooltip>
-    </span>
-  );
-};
-
-const ChartSettingsButton = ({
-  series,
-  onReplaceAllVisualizationSettings,
-  dashboard,
-}) => (
-  <ModalWithTrigger
-    wide
-    tall
-    triggerElement={
-      <Tooltip tooltip={t`Visualization options`}>
-        <Icon
-          name="palette"
-          size={HEADER_ICON_SIZE}
-          style={HEADER_ACTION_STYLE}
-        />
-      </Tooltip>
-    }
-    triggerClasses="text-dark-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
-    enableMouseEvents
-  >
-    <ChartSettingsWithState
-      className="spread"
-      series={series}
-      onChange={onReplaceAllVisualizationSettings}
-      isDashboard
-      dashboard={dashboard}
-    />
-  </ModalWithTrigger>
-);
-
-const RemoveButton = ({ onRemove }) => (
-  <a
-    className="text-dark-hover drag-disabled"
-    data-metabase-event="Dashboard;Remove Card Modal"
-    onClick={onRemove}
-    style={HEADER_ACTION_STYLE}
-  >
-    <Icon name="close" size={HEADER_ICON_SIZE} />
-  </a>
-);
-
-const AddSeriesButton = ({ series, onAddSeries }) => (
-  <a
-    data-testid="add-series-button"
-    data-metabase-event="Dashboard;Edit Series Modal;open"
-    className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
-    onClick={onAddSeries}
-    style={HEADER_ACTION_STYLE}
-  >
-    <Tooltip tooltip={series.length > 1 ? t`Edit series` : t`Add series`}>
-      <span className="flex align-center">
-        <span className="flex">
-          <Icon
-            className="absolute"
-            name="add"
-            style={{ top: 0, left: 1 }}
-            size={HEADER_ICON_SIZE / 2}
-          />
-          <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE - 2} />
-        </span>
-      </span>
-    </Tooltip>
-  </a>
-);
-
-const ToggleCardPreviewButton = ({ isPreviewing, onPreviewToggle }) => {
-  return (
-    <a
-      data-metabase-event="Dashboard;Text;edit"
-      className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
-      onClick={onPreviewToggle}
-      style={HEADER_ACTION_STYLE}
-    >
-      <Tooltip tooltip={isPreviewing ? t`Edit` : t`Preview`}>
-        <span className="flex align-center">
-          <span className="flex" style={{ width: 18 }}>
-            {isPreviewing ? (
-              <Icon name="edit_document" size={HEADER_ICON_SIZE} />
-            ) : (
-              <Icon name="eye" size={18} />
-            )}
-          </span>
-        </span>
-      </Tooltip>
-    </a>
-  );
-};
-
-function getSeriesIconName(series) {
-  try {
-    const display = series[0].card.display;
-    return visualizations.get(display === "scalar" ? "bar" : display).iconName;
-  } catch (e) {
-    return "bar";
-  }
-}
-
-const MIN_WIDTH_FOR_ON_CLICK_LABEL = 330;
-
-const ClickBehaviorSidebarOverlay = ({
-  dashcard,
-  dashcardWidth,
-  showClickBehaviorSidebar,
-  isShowingThisClickBehaviorSidebar,
-}) => {
-  return (
-    <div className="flex align-center justify-center full-height">
-      <div
-        className={cx("text-bold flex py1 px2 mb2 rounded cursor-pointer", {
-          "bg-brand text-white": isShowingThisClickBehaviorSidebar,
-          "bg-light text-medium": !isShowingThisClickBehaviorSidebar,
-        })}
-        onClick={() =>
-          showClickBehaviorSidebar(
-            isShowingThisClickBehaviorSidebar ? null : dashcard.id,
-          )
-        }
-      >
-        <Icon
-          name="click"
-          className={cx("mr1", {
-            "text-light": !isShowingThisClickBehaviorSidebar,
-          })}
-        />
-        {dashcardWidth > MIN_WIDTH_FOR_ON_CLICK_LABEL && (
-          <div className="mr2">{t`On click`}</div>
-        )}
-        <div
-          className={cx({ "text-brand": !isShowingThisClickBehaviorSidebar })}
-        >
-          {getClickBehaviorDescription(dashcard)}
-        </div>
-      </div>
-    </div>
-  );
-};
+export default DashCard;

@@ -23,3 +23,28 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
       border-color: ${color("accent4")};
     `}
 `;
+
+export const DashboardCardActionsPanel = styled.div`
+  padding: 0.125em 0.25em;
+  position: absolute;
+  background: white;
+  transform: translateY(-50%);
+  top: 0;
+  right: 20px;
+  border-radius: 8px;
+  box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
+  z-index: 3;
+  cursor: default;
+  transition: opacity 200ms;
+  opacity: 0;
+  pointer-events: none;
+
+  .Card:hover & {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .Dash--dragging & {
+    display: none;
+  }
+`;

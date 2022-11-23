@@ -3,6 +3,7 @@ import React from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
+
 import DashCardCardParameterMapper from "./DashCardCardParameterMapper";
 
 const DashCardParameterMapper = ({ dashcard, isMobile }) => (
