@@ -71,8 +71,6 @@ export const ChartSettingOrderedSimple = ({
     onChangeSeriesColor(item.key, color);
   };
 
-  console.log(orderedItems);
-
   return (
     <ChartSettingOrderedSimpleRoot>
       {orderedItems.length > 0 ? (

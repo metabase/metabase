@@ -253,5 +253,7 @@ export const getOrderedSeries = (
 
   return seriesOrder
     .filter(orderSetting => orderSetting.enabled)
-    .map(orderSetting => series[orderSetting.originalIndex]);
+    .map(orderSetting =>
+      series.find(singleSeries => singleSeries.seriesKey === orderSetting.key),
+    );
 };
