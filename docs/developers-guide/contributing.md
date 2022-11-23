@@ -93,7 +93,9 @@ By our definition, "Bugs" are situations where the program doesn't do what it wa
 
 ### Help with Documentation
 
-There are a lot of docs. We often have difficulties keeping them up to date. If you are reading them and you notice inconsistencies, errors or outdated information, please help up keep them current!
+There are a lot of docs, which means keeping them up to date is hard. If you notice inconsistencies, errors, or outdated information, please help us keep them current!
+
+Note that **we cannot accept translations for documentation at this time**. We support [in-app translations](../configuring-metabase/localization.md), and only support languages that have 100% coverage. But 1) the in-app text is orders of magnitude shorter than our docs, 2) it changes at a slower pace, and 3) we have a lot of people help out. We may consider supporting docs in multiple languages in the future, but for now we need to focus our resources on improving our existing documentation (and expanding it to include all of the new features we're adding).
 
 ### Working on features
 
