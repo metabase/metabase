@@ -197,7 +197,10 @@ export const GRAPH_DATA_SETTINGS = {
         !seriesOrder ||
         !_.isArray(seriesOrder) ||
         !seriesOrder.every(
-          order => !!order.key && !!order.name && !!order.color,
+          order =>
+            order.key !== undefined &&
+            order.name !== undefined &&
+            order.color !== undefined,
         ) ||
         seriesOrderDimension !== currentDimension
       ) {
