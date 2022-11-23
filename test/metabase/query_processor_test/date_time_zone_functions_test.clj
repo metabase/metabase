@@ -329,14 +329,6 @@
 ;;; |                                           Convert Timezone tests                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmacro with-results-and-report-timezone-id
-  [timezone-id & body]
-  ;`(mt/with-results-timezone-id ~timezone-id
-  ;   (mt/with-report-timezone-id ~timezone-id
-  ;     ~@body))
-  `(mt/with-report-timezone-id ~timezone-id
-     ~@body))
-
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
@@ -351,7 +343,7 @@
                      mt/rows
                      first))]
         (testing "timestamp with out timezone columns"
-          (with-results-and-report-timezone-id "UTC"
+          (mt/with-report-timezone-id "UTC"
             (testing "convert from Asia/Shanghai(+08:00) to Asia/Tokyo(+09:00)"
               (is (= ["2004-03-19T09:19:09Z"
                       "2004-03-19T10:19:09+09:00"]
@@ -364,21 +356,23 @@
                                 $times.dt
                                 [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo"]))))))
 
-          (with-results-and-report-timezone-id "Europe/Rome"
-            (testing "from_tz should default to report_tz"
-              (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
-                     (mt/$ids (test-convert-tz
-                                $times.dt
-                                [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo"])))))
+          ;; sqlserver doesn't support set session time zone
+          (when-not (= :sqlserver driver/*driver*)
+            (mt/with-report-timezone-id "Europe/Rome"
+              (testing "from_tz should default to report_tz"
+                (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
+                       (mt/$ids (test-convert-tz
+                                  $times.dt
+                                  [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo"])))))
 
-            (testing "if from_tz is provided, ignore report_tz"
-              (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T18:19:09+09:00"]
-                     (mt/$ids (test-convert-tz
-                                $times.dt
-                                [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo" "UTC"])))))))
+              (testing "if from_tz is provided, ignore report_tz"
+                (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T18:19:09+09:00"]
+                       (mt/$ids (test-convert-tz
+                                  $times.dt
+                                  [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo" "UTC"]))))))))
 
         (testing "timestamp with time zone columns"
-          (with-results-and-report-timezone-id "UTC"
+          (mt/with-report-timezone-id "UTC"
             (testing "convert to +09:00"
               (is (= ["2004-03-19T02:19:09Z" "2004-03-19T11:19:09+09:00"]
                      (mt/$ids (test-convert-tz
@@ -395,19 +389,20 @@
                                 "Asia/Tokyo"
                                 "UTC"]))))))
 
-          (with-results-and-report-timezone-id "Europe/Rome"
-            (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
-              (is (= (case driver/*driver*
-                       ;; TIMEZONE FIXME vertica does not format `timestamp with time zone` in the report-tz
-                       :vertica ["2004-03-19T02:19:09+01:00" "2004-03-19T11:19:09+09:00"]
-                       ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"])
-                     (mt/$ids (test-convert-tz
-                                $times.dt_tz
-                                [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Tokyo"])))))))))))
+          (when-not (= :sqlserver driver/*driver*)
+            (mt/with-report-timezone-id "Europe/Rome"
+              (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
+                (is (= (case driver/*driver*
+                         ;; TIMEZONE FIXME vertica does not format `timestamp with time zone` in the report-tz
+                         :vertica ["2004-03-19T02:19:09+01:00" "2004-03-19T11:19:09+09:00"]
+                         ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"])
+                       (mt/$ids (test-convert-tz
+                                  $times.dt_tz
+                                  [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Tokyo"]))))))))))))
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (with-results-and-report-timezone-id "UTC"
+    (mt/with-report-timezone-id "UTC"
       (mt/dataset times-mixed
         (testing "convert-timezone nested with datetime extract"
           (is (= ["2004-03-19T09:19:09Z"      ;; original col
