@@ -1,7 +1,6 @@
 import { updateIn } from "icepick";
 import React from "react";
 import { t } from "ttag";
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { Series } from "metabase-types/types/Visualization";
 
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
@@ -11,15 +10,14 @@ import {
 } from "./ChartSettingOrderedSimple.styled";
 
 interface SortableItem {
+  key: string;
   enabled: boolean;
-  originalIndex: number;
   name: string;
   color?: string;
 }
 
 interface ChartSettingOrderedSimpleProps {
   onChange: (rows: SortableItem[]) => void;
-  items: SortableItem[];
   value: SortableItem[];
   onShowWidget: (
     widget: { props: { seriesKey: string } },
@@ -32,17 +30,13 @@ interface ChartSettingOrderedSimpleProps {
 
 export const ChartSettingOrderedSimple = ({
   onChange,
-  items,
   value: orderedItems,
-  series,
   onShowWidget,
   hasEditSettings = true,
   onChangeSeriesColor,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = (selectedItem: SortableItem) => {
-    const index = orderedItems.findIndex(
-      item => item.originalIndex === selectedItem.originalIndex,
-    );
+    const index = orderedItems.findIndex(item => item.key === selectedItem.key);
     onChange(updateIn(orderedItems, [index, "enabled"], enabled => !enabled));
   };
 
@@ -59,15 +53,14 @@ export const ChartSettingOrderedSimple = ({
   };
 
   const getItemTitle = (item: SortableItem) => {
-    return items[item.originalIndex]?.name || "Unknown";
+    return item.name || "Unknown";
   };
 
   const handleOnEdit = (item: SortableItem, ref: HTMLElement | undefined) => {
-    const single = series[item.originalIndex];
     onShowWidget(
       {
         props: {
-          seriesKey: keyForSingleSeries(single),
+          seriesKey: item.key,
         },
       },
       ref,
@@ -75,19 +68,14 @@ export const ChartSettingOrderedSimple = ({
   };
 
   const handleColorChange = (item: SortableItem, color: string) => {
-    const singleSeries = series[item.originalIndex];
-    const seriesKey = keyForSingleSeries(singleSeries);
-    onChangeSeriesColor(seriesKey, color);
+    onChangeSeriesColor(item.key, color);
   };
 
   return (
     <ChartSettingOrderedSimpleRoot>
       {orderedItems.length > 0 ? (
         <ChartSettingOrderedItems
-          items={orderedItems.map(item => ({
-            ...item,
-            color: items[item.originalIndex].color,
-          }))}
+          items={orderedItems}
           getItemName={getItemTitle}
           onRemove={toggleDisplay}
           onEnable={toggleDisplay}
