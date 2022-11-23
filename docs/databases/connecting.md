@@ -105,19 +105,23 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Syncing and scanning databases
 
-Metabase runs sync and scan queries in order to show tables and columns, populate dropdown menus with the right values, and suggest helpful visualizations. Metabase does _not_ copy any data from your database---it only maintains lists of the tables and columns.
+Metabase runs syncs and scans to stay up to date with your database. Syncs get updated schemas to display in the [Data Browser](https://www.metabase.com/learn/getting-started/data-browser). Scans take samples of column values to populate filter dropdown menus and suggest helpful visualizations. Metabase does not store _complete_ tables from your database.
 
 ### How database syncs work
 
-A Metabase **sync** query gets a list of updated table names, column names, and column data types from your database. The query runs against your database during setup, and again every hour by default. It's very fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/partner-and-community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
+A Metabase **sync** is a query that gets a list of updated table and view names, column names, and column data types from your database. This query runs against your database during setup, and again every hour by default. This scanning query is fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/partner-and-community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
 
 ### How database scans work
 
-A Metabase **scan** query caches the column _values_ for filter dropdowns by looking at the first 1,000 distinct records from each table. A scan is more intensive than a sync query, so it only runs once during setup, and again once a day by default. If you [disable scans](#scheduling-database-scans) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
+A Metabase **scan** is a query that caches the column _values_ for filter dropdowns by looking at the first 1,000 distinct records from each table, in ascending order. For each record, Metabase only stores the first 100 kilobytes of text, so if you have data with 1,000 characters each (like addresses), and your column has more than 200 unique addresses, Metabase will only cache the first 100 values from the scan query.
+
+Cached column values are displayed in filter dropdown menus. If people type in the filter search box for values that aren't in the first 1,000 distinct records or 100kB of text, Metabase will run a query against your database to look for those values on the fly.
+
+A scan is more intensive than a sync query, so it only runs once during setup, and again once a day by default. If you [disable scans](#scheduling-database-scans) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
 
 ### Getting tables, columns, and values for the first time
 
-When Metabase first connects to your database, it performs a **scan** to determine the metadata of the columns in your tables and automatically assign each column a [semantic type]().
+When Metabase first connects to your database, it performs a **scan** to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md).
 
 During the scan, Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. You can map table and column metadata to new values from **Admin settings** > **Data model**. For more on editing metadata, check out [the Data Model page: editing metadata](../data-modeling/metadata-editing.md).
 
@@ -153,6 +157,14 @@ To forget the data that Metabase has stored from previous [database scans](#sync
 5. Click **Discard cached field values**.
 
 ![Re-scan options](./images/re-scan-options.png)
+
+### Syncing and scanning using the API
+
+Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API](https://www.metabase.com/learn/administration/metabase-api) to force a sync or scan. [Our API](../api-documentation.md) provides two ways to initiate a sync or scan of a database:
+
+1. Using a a session token:  the `/api/database/:id/sync_schema` or `api/database/:id/rescan_values` endpoints. These endpoints do the same things as going to the database in the Admin Panel and choosing **Sync database schema now** or **Re-scan field values now** respectively. To use these endpoints, you have to authenticate with a user ID and pass a session token in the header of your request.
+
+2. Using an API key: `/api/notify/db/:id`. We created this endpoint so that people could notify their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/analytics/etl-landscape) finishes. To use this endpoint, you must pass an API key by defining the `MB_API_KEY` environment variable.
 
 ## Deleting databases
 
