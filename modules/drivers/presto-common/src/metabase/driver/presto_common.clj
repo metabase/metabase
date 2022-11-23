@@ -168,10 +168,9 @@
             (hh/where [:> :__rownum__ offset])
             (hh/limit items))))))
 
-(defmethod sql.qp/->honeysql [:presto-common :now]
-  [_driver _clause]
-  (-> (hsql/call :date_trunc (hx/literal :second) (hsql/call :now))
-      (hx/with-database-type-info "timestamp with time zone")))
+(defmethod sql.qp/current-datetime-honeysql-form :presto-common
+  [_]
+  (hx/with-database-type-info :%now "timestamp with time zone"))
 
 (defn- date-diff [unit a b] (hsql/call :date_diff (hx/literal unit) a b))
 (defn- date-trunc [unit x] (hsql/call :date_trunc (hx/literal unit) x))
