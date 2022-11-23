@@ -73,7 +73,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :vertica
   [_]
-  (hx/with-database-type-info :%localtimestamp :Timestamp))
+  (hx/with-database-type-info (hsql/call :localtimestamp 6) :Timestamp))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]
