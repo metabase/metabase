@@ -506,7 +506,7 @@ export default class PieChart extends Component {
         showLegend={settings["pie.show_legend"]}
         isDashboard={this.props.isDashboard}
       >
-        <div className={styles.ChartAndDetail}>
+        <div>
           <div ref={this.chartDetail} className={styles.Detail}>
             <div
               data-testid="detail-value"
