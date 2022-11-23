@@ -873,9 +873,10 @@
 
 (def ^:private Filter*
   (s/conditional
-   (partial is-clause? numeric-functions) NumericExpression
-   (partial is-clause? string-functions)  StringExpression
-   (partial is-clause? boolean-functions) BooleanExpression
+   (partial is-clause? datetime-functions) DatetimeExpression
+   (partial is-clause? numeric-functions)  NumericExpression
+   (partial is-clause? string-functions)   StringExpression
+   (partial is-clause? boolean-functions)  BooleanExpression
    :else
    (one-of
     ;; filters drivers must implement
