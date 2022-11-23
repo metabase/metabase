@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
-import { DashCard, DashCardId } from "metabase-types/types/Dashboard";
+import { DashboardOrderedCard } from "metabase-types/api";
 
 import {
   Root,
@@ -15,9 +15,11 @@ import {
 } from "./ClickBehaviorSidebarOverlay.styled";
 
 interface Props {
-  dashcard: DashCard;
+  dashcard: DashboardOrderedCard;
   dashcardWidth: number;
-  showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
+  showClickBehaviorSidebar: (
+    dashCardId: DashboardOrderedCard["id"] | null,
+  ) => void;
   isShowingThisClickBehaviorSidebar: boolean;
 }
 
