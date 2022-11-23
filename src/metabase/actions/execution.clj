@@ -171,7 +171,7 @@
 (defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
    of shape `{<parameter-id> <value>}."
-  [dashboard-id dashcard-id slug request-parameters]
+  [dashboard-id dashcard-id request-parameters]
   (actions/check-actions-enabled)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
@@ -182,20 +182,22 @@
       (execute-implicit-action model-action request-parameters))))
 
 (defn- fetch-implicit-action-values
-  [dashboard-id model-action request-parameters]
-  (api/check (:requires_pk model-action) 400 (tru "Values can only be fetched for actions that require a Primary Key."))
-  (let [implicit-action (model-action->implicit-action model-action)
-        {:keys [prefetch-parameters]} (build-implicit-query model-action implicit-action request-parameters)
+  [dashboard-id action request-parameters]
+  (api/check (contains? #{"row/update" "row/delete"} (:kind action))
+             400
+             (tru "Values can only be fetched for actions that require a Primary Key."))
+  (let [implicit-action (model-action->implicit-action action)
+        {:keys [prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
         info {:executed-by api/*current-user-id*
               :context :question
               :dashboard-id dashboard-id}
-        card (db/select-one Card :id (:model_id model-action))
+        card (db/select-one Card :id (:model_id action))
         ;; prefilling a form with day old data would be bad
         result (binding [persisted-info/*allow-persisted-substitution* false]
                  (qp/process-query-and-save-execution!
                    (qp.card/query-for-card card prefetch-parameters nil nil)
                    info))
-        exposed-params (set (map :id (:parameters model-action)))]
+        exposed-params (set (map :id (:parameters action)))]
     (m/filter-keys
       #(contains? exposed-params %)
       (zipmap
@@ -205,12 +207,12 @@
 (defn fetch-values
   "Fetch values to pre-fill implicit action execution - custom actions will return no values.
    Must pass in parameters of shape `{<parameter-id> <value>}` for primary keys."
-  [dashboard-id dashcard-id slug request-parameters]
+  [dashboard-id dashcard-id request-parameters]
   (actions/check-actions-enabled)
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
-        model-action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
-    (if (:action_id model-action)
-      {}
-      (fetch-implicit-action-values dashboard-id model-action request-parameters))))
+        action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
+    (if (= :implicit (:type action))
+      (fetch-implicit-action-values dashboard-id action request-parameters)
+      {})))

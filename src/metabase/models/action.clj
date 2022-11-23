@@ -191,7 +191,7 @@
    Pass in known-models to save a second Card lookup."
   [known-models & options]
   (let [actions (apply select-actions options)
-        implicit-action-model-ids (set (map :model_id (filter (comp #(= "implicit" %) :type) actions)))
+        implicit-action-model-ids (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
         models-with-implicit-actions (if known-models
                                        (->> known-models
                                             (filter #(contains? implicit-action-model-ids (:id %)))

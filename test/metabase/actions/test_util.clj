@@ -157,7 +157,8 @@
         (let [action-id (action/insert! (merge
                                           {:type :implicit
                                            :name "Update Example"
-                                           :kind "row/update"}
+                                           :kind "row/update"
+                                           :model_id model-id}
                                           options-map))]
           (f {:action-id action-id :model-id model-id})))
 
@@ -169,14 +170,15 @@
                                            :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
                                                       :method "POST"
                                                       :body "{\"the_parameter\": {{id}}}"
-                                                      :headers "{\"x-test\": \"{{id}}\"}"
-                                                      :parameters [{:id "id"
-                                                                    :type "number"
-                                                                    :target [:template-tag "id"]}
-                                                                   {:id "fail"
-                                                                    :type "text"
-                                                                    :target [:template-tag "fail"]}]}
-                                           :response_handle ".body"}
+                                                      :headers "{\"x-test\": \"{{id}}\"}"}
+                                           :parameters [{:id "id"
+                                                         :type "number"
+                                                         :target [:template-tag "id"]}
+                                                        {:id "fail"
+                                                         :type "text"
+                                                         :target [:template-tag "fail"]}]
+                                           :response_handle ".body"
+                                           :model_id model-id}
                                           options-map))]
           (f {:action-id action-id :model-id model-id}))))))
 

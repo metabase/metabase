@@ -2191,19 +2191,20 @@
 (deftest dashcard-action-create-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (actions.test-util/with-action [{:keys [action-id]} {}]
-        (testing "Creating dashcard with action"
-          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
-                          ModelAction [_ {:card_id card-id :action_id action-id :slug "insert" :visualization_settings {:hello true}}]
-                          Dashboard [{dashboard-id :id}]]
-            (is (partial= {:visualization_settings {:action_slug "insert"}}
-                          (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
-                                                {:size_x 1 :size_y 1 :row 1 :col 1 :cardId card-id
-                                                 :visualization_settings {:action_slug "insert"}})))
-            (is (partial= {:ordered_cards [{:action {:visualization_settings {:hello true :inline true}
-                                                     :parameters []
-                                                     :slug "insert"}}]}
-                          (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))
+      (doseq [action-type [:http :implicit #_:query]]
+        (actions.test-util/with-action [{:keys [action-id model-id]} {:type action-type :visualization_settings {:hello true}}]
+          (testing (str "Creating dashcard with action: " action-type)
+            (mt/with-temp* [Dashboard [{dashboard-id :id}]]
+              (is (partial= {:visualization_settings {:label "Update"}
+                             :action_id action-id
+                             :card_id model-id}
+                            (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
+                                                  {:size_x 1 :size_y 1 :row 1 :col 1 :cardId model-id :action_id action-id
+                                                   :visualization_settings {:label "Update"}})))
+              (is (partial= {:ordered_cards [{:action {:visualization_settings {:hello true}
+                                                       :type (name action-type)
+                                                       :parameters [{:id "id"}]}}]}
+                            (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
 
 (defn- has-valid-action-execution-error-message? [response]
   (string? (:message response)))
