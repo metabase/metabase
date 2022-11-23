@@ -4,7 +4,6 @@ import type { Series as D3Series } from "d3-shape";
 import d3 from "d3";
 
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
-import { isNotNull } from "metabase/core/utils/array";
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { BarData, Series, SeriesData, StackOffset } from "../types";
 
@@ -21,37 +20,47 @@ export const calculateNonStackedBars = <TDatum>(
 ): SeriesData<TDatum>[] => {
   const defaultXValue = xScaleType === "log" ? 1 : 0;
   return multipleSeries.map((series, seriesIndex) => {
-    const bars: BarData<TDatum>[] = data
-      .map((datum, datumIndex) => {
-        const yValue = formatNullable(series.yAccessor(datum));
-        const xValue = series.xAccessor(datum);
-        const isNegative = xValue != null && xValue < 0;
+    const bars: BarData<TDatum>[] = data.map((datum, datumIndex) => {
+      const yValue = formatNullable(series.yAccessor(datum));
+      const xValue = series.xAccessor(datum);
+      const isNegative = xValue != null && xValue < 0;
 
-        if (xValue == null) {
-          return null;
-        }
+      const xStartValue = isNegative ? xValue : defaultXValue;
+      const xEndValue = isNegative ? defaultXValue : xValue;
 
-        const xStartValue = isNegative ? xValue : defaultXValue;
-        const xEndValue = isNegative ? defaultXValue : xValue;
-
-        return {
-          isNegative,
-          xStartValue,
-          xEndValue,
-          yValue,
-          datum,
-          datumIndex,
-          series,
-          seriesIndex,
-        };
-      })
-      .filter(isNotNull);
+      return {
+        isNegative,
+        xStartValue,
+        xEndValue,
+        yValue,
+        datum,
+        datumIndex,
+        series,
+        seriesIndex,
+      };
+    });
 
     return {
       bars,
       color: seriesColors[series.seriesKey],
       key: series.seriesKey,
     };
+  });
+};
+
+// For log scale starting value for stack is 1
+// Stacked log charts does not make much sense but we support them, so I replicate the behavior of line/area/bar charts
+const patchD3StackDataForLogScale = <TDatum>(
+  stackedSeries: D3Series<TDatum, string>[],
+) => {
+  stackedSeries.forEach(series => {
+    series.forEach(datum => {
+      datum.forEach((value, index) => {
+        if (value === 0) {
+          datum[index] = 1;
+        }
+      });
+    });
   });
 };
 
@@ -70,8 +79,6 @@ export const calculateStackedBars = <TDatum>(
     {},
   );
 
-  const defaultXValue = xScaleType === "log" ? 1 : 0;
-
   const d3Stack = stack<TDatum>()
     .keys(multipleSeries.map(s => s.seriesKey))
     .value((datum, seriesKey) => seriesByKey[seriesKey].xAccessor(datum) ?? 0)
@@ -79,12 +86,8 @@ export const calculateStackedBars = <TDatum>(
 
   const stackedSeries = d3Stack(data);
 
-  // For log scale starting value for stack is 1
-  // Stacked log charts does not make much sense but we support them, so I replicate the behavior of line/area/bar charts
   if (xScaleType === "log") {
-    stackedSeries[0].forEach((_, index) => {
-      stackedSeries[0][index][0] = defaultXValue;
-    });
+    patchD3StackDataForLogScale(stackedSeries);
   }
 
   const getDatumExtent = _.memoize(
