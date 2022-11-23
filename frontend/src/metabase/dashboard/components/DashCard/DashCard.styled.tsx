@@ -5,23 +5,31 @@ import { color } from "metabase/lib/colors";
 export interface DashCardRootProps {
   isNightMode: boolean;
   isUsuallySlow: boolean;
+  hasHiddenBackground: boolean;
 }
+
+const rootNightModeStyle = css`
+  border-color: ${color("bg-night")};
+  background-color: ${color("bg-night")};
+`;
+
+const rootSlowCardStyle = css`
+  border-color: ${color("accent4")};
+`;
+
+const rootTransparentBackgroundStyle = css`
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+`;
 
 export const DashCardRoot = styled.div<DashCardRootProps>`
   background-color: ${color("white")};
 
-  ${({ isNightMode }) =>
-    isNightMode &&
-    css`
-      border-color: ${color("bg-night")};
-      background-color: ${color("bg-night")};
-    `}
-
-  ${({ isUsuallySlow }) =>
-    isUsuallySlow &&
-    css`
-      border-color: ${color("accent4")};
-    `}
+  ${({ isNightMode }) => isNightMode && rootNightModeStyle}
+  ${({ isUsuallySlow }) => isUsuallySlow && rootSlowCardStyle}
+  ${({ hasHiddenBackground }) =>
+    hasHiddenBackground && rootTransparentBackgroundStyle}
 `;
 
 export const DashboardCardActionsPanel = styled.div`
@@ -47,4 +55,15 @@ export const DashboardCardActionsPanel = styled.div`
   .Dash--dragging & {
     display: none;
   }
+`;
+
+export const VirtualDashCardOverlayRoot = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+`;
+
+export const VirtualDashCardOverlayText = styled.h4`
+  color: ${color("text-medium")};
 `;
