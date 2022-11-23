@@ -356,7 +356,7 @@
                                 $times.dt
                                 [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo"]))))))
 
-          (when (driver/supports? driver :set-timezone)
+          (when (driver/supports? driver/*driver* :set-timezone)
             (mt/with-report-timezone-id "Europe/Rome"
               (testing "from_tz should default to report_tz"
                 (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
@@ -388,7 +388,7 @@
                                 "Asia/Tokyo"
                                 "UTC"]))))))
 
-          (when (driver/supports? driver :set-timezone)
+          (when (driver/supports? driver/*driver* :set-timezone)
             (mt/with-report-timezone-id "Europe/Rome"
               (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
                 (is (= (case driver/*driver*
