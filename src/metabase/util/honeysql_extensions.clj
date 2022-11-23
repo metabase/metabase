@@ -243,10 +243,8 @@
 (s/defn cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [database-type expr]
-  (let [original-type-info (type-info expr)]
-    (-> (hsql/call :cast expr (hsql/raw (name database-type)))
-        (with-type-info (merge original-type-info
-                               {::database-type database-type})))))
+  (-> (hsql/call :cast expr (hsql/raw (name database-type)))
+      (with-type-info {::database-type database-type})))
 
 (s/defn quoted-cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS \"sql-type\")`.
@@ -256,10 +254,8 @@
 
   Returns a typed HoneySQL form."
   [sql-type expr]
-  (let [original-type-info (type-info expr)]
-    (-> (hsql/call :cast expr (keyword sql-type))
-        (with-type-info (merge original-type-info
-                               {::database-type sql-type})))))
+  (-> (hsql/call :cast expr (keyword sql-type))
+      (with-type-info {::database-type sql-type})))
 
 (s/defn maybe-cast :- TypedHoneySQLForm
   "Cast `expr` to `sql-type`, unless `expr` is typed and already of that type. Returns a typed HoneySQL form."

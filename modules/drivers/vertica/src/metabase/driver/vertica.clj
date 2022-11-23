@@ -116,15 +116,14 @@
         timestamptz? (hx/is-of-type? expr "timestamptz")]
     (when (and timestamptz? source-timezone)
       (throw (ex-info (tru "`timestamptz` columns shouldn''t have a `source timezone`")
-                    {:type            qp.error-type/invalid-parameter
-                     :target-timezone target-timezone
-                     :source-timezone source-timezone})))
-    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))]
-      (cond-> expr
-        (not timestamptz?)
-        (hx/->AtTimeZone source-timezone)
-        target-timezone
-        (hx/->AtTimeZone target-timezone)))))
+                      {:type            qp.error-type/invalid-parameter
+                       :target-timezone target-timezone
+                       :source-timezone source-timezone})))
+    (-> (if timestamptz?
+          expr
+          (hx/->AtTimeZone expr (or source-timezone (qp.timezone/results-timezone-id))))
+        (hx/->AtTimeZone target-timezone)
+        (hx/with-database-type-info "timestamp"))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]

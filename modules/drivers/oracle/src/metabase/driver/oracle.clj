@@ -221,17 +221,11 @@
                       {:target-timezone target-timezone
                        :source-timezone source-timezone
                        :type            qp.error-type/invalid-parameter})))
-    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
-          hsql-from-tz    (partial hsql/call :from_tz)]
-      (cond-> expr
-        (not has-timezone?)
-        (hsql-from-tz source-timezone)
-
-        target-timezone
+    (-> (if has-timezone?
+          expr
+          (hsql/call :from_tz expr (or source-timezone (qp.timezone/results-timezone-id))))
         (hx/->AtTimeZone target-timezone)
-
-        true
-        hx/->timestamp))))
+        hx/->timestamp)))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 
