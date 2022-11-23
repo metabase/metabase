@@ -27,11 +27,33 @@
     :name       s/Str
     :steps      [sync-util/StepNameWithMetadata]}])
 
+(def ^:private ScanOptions
+  "Schema for options map accepted by `sync-database!` to control which sync steps are executed."
+  {(s/optional-key :scan)
+   (s/maybe (s/conditional
+             seq? [(s/enum :metadata :analyze :field-values)]
+             :else (s/enum :schema :full)))})
+
+(defn- steps-to-run
+  "Returns a set of sync step names to run based on the value of the :scan option passed to `sync-database!`"
+  [scan]
+  (let [all-steps #{:metadata :analyze :field-values}]
+    (cond
+      (= scan :schema)
+      #{:metadata}
+
+      (= scan :full)
+      all-steps
+
+      (sequential? scan)
+      (set (filter all-steps scan)))))
+
 (s/defn sync-database! :- SyncDatabaseResults
   "Perform all the different sync operations synchronously for `database`.
 
   By default, does a `:full` sync that performs all the different sync operations consecutively. You may instead
-  specify only a `:schema` sync that will sync just the schema but skip analysis.
+  specify only a `:schema` sync that will sync just the schema but skip analysis, or you can provide a vector
+  containing the specific steps to be run (:metadata, :analyze and/or :field-values).
 
   Please note that this function is *not* what is called by the scheduled tasks; those call different steps
   independently. This function is called when a Database is first added."
@@ -40,20 +62,22 @@
    (sync-database! database nil))
 
   ([database                         :- i/DatabaseInstance
-    {:keys [scan], :or {scan :full}} :- (s/maybe {(s/optional-key :scan) (s/maybe (s/enum :schema :full))})]
-   (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-     (mapv (fn [[f step-name]] (assoc (f database) :name step-name))
-           (filter
-            some?
-            [;; First make sure Tables, Fields, and FK information is up-to-date
-             [sync-metadata/sync-db-metadata! "metadata"]
-             ;; Next, run the 'analysis' step where we do things like scan values of fields and update semantic types
-             ;; accordingly
-             (when (= scan :full)
-               [analyze/analyze-db! "analyze"])
-             ;; Finally, update cached FieldValues
-             (when (= scan :full)
-               [field-values/update-field-values! "field-values"])])))))
+    {:keys [scan], :or {scan :full}} :- (s/maybe ScanOptions)]
+   (let [steps (steps-to-run scan)]
+     (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
+       (mapv (fn [[f step-name]] (assoc (f database) :name step-name))
+             (filter
+              some?
+              [;; First make sure Tables, Fields, and FK information is up-to-date
+               (when (steps :metadata)
+                 [sync-metadata/sync-db-metadata! "metadata"])
+               ;; Next, run the 'analysis' step where we do things like scan values of fields and update semantic types
+               ;; accordingly
+               (when (steps :analyze)
+                 [analyze/analyze-db! "analyze"])
+               ;; Finally, update cached FieldValues
+               (when (steps :field-values)
+                 [field-values/update-field-values! "field-values"])]))))))
 
 (s/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of

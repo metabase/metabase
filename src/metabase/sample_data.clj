@@ -34,9 +34,14 @@
                            :details   (db-details)
                            :engine    :h2
                            :is_sample true)]
-        (sync/sync-database! db {:scan (if config/is-dev? :schema :full)})
-        (when config/is-dev?
-          (future (sync/sync-database! db {:scan :full}))))
+        (if config/is-test?
+          ;; In test, do sample DB synchronously to ensure that it is fully synced before tests run
+          (sync/sync-database! db {:scan :full})
+          (do
+            ;; In dev & prod, spin off a separate thread for analyze + field values steps so that we don't
+            ;; block startup.
+            (sync/sync-database! db {:scan :schema})
+            (future (sync/sync-database! db {:scan [:analyze :field-values]})))))
       (catch Throwable e
         (log/error e (trs "Failed to load sample database"))))))
 
