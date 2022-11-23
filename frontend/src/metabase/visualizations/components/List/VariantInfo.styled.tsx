@@ -41,6 +41,10 @@ export const InfoRight = styled.div`
   font-weight: bold;
 `;
 
+export const RightHeader = styled.div`
+  margin-right: 1rem;
+`;
+
 export const ListHeader = styled.div<{ hasImage?: boolean }>`
   display: flex;
   padding: 0.5rem 1.5rem;
