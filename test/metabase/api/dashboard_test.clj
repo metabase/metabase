@@ -2291,73 +2291,70 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard insert"
-        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
-                        ModelAction [_ {:slug "insert" :card_id card-id :requires_pk false}]
-                        Dashboard [{dashboard-id :id}]
-                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                          :card_id card-id
-                                                          :visualization_settings {:action_slug "insert"}}]]
-          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/insert" dashboard-id dashcard-id)
-                new-row (-> (mt/user-http-request :crowberto :post 200 execute-path
-                                                  {:parameters {"name" "Birds"}})
-                            :created-row
-                            (update-keys (comp keyword str/lower-case name)))]
-            (testing "Should be able to insert"
-              (is (pos? (:id new-row)))
-              (is (partial= {:name "Birds"}
-                            new-row)))
-            (testing "Extra parameter should fail gracefully"
-              (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
-                            (mt/user-http-request :crowberto :post 400 execute-path
-                                                  {:parameters {"extra" 1}}))))
-            (testing "Missing other parameters should fail gracefully"
-              (is (partial= "Implicit parameters must be provided."
-                            (mt/user-http-request :crowberto :post 400 execute-path
-                                                  {:parameters {}})))))))
+        (actions.test-util/with-action [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :card_id model-id
+                                                            :action_id action-id}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
+                  new-row (-> (mt/user-http-request :crowberto :post 200 execute-path
+                                                    {:parameters {"name" "Birds"}})
+                              :created-row
+                              (update-keys (comp keyword str/lower-case name)))]
+              (testing "Should be able to insert"
+                (is (pos? (:id new-row)))
+                (is (partial= {:name "Birds"}
+                              new-row)))
+              (testing "Extra parameter should fail gracefully"
+                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    {:parameters {"extra" 1}}))))
+              (testing "Missing other parameters should fail gracefully"
+                (is (partial= "Implicit parameters must be provided."
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    {:parameters {}}))))))))
       (testing "Executing dashcard update"
-        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
-                        ModelAction [_ {:slug "update" :card_id card-id :requires_pk true}]
-                        Dashboard [{dashboard-id :id}]
-                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                          :card_id card-id
-                                                          :visualization_settings {:action_slug "update"}}]]
-          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/update" dashboard-id dashcard-id)]
-            (testing "Should be able to update"
-              (is (= {:rows-updated [1]}
-                     (mt/user-http-request :crowberto :post 200 execute-path
-                                           {:parameters {"id" 1 "name" "Birds"}}))))
-            (testing "Extra parameter should fail gracefully"
-              (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
-                            (mt/user-http-request :crowberto :post 400 execute-path
-                                                  {:parameters {"extra" 1 "id" 1}}))))
-            (testing "Missing pk parameter should fail gracefully"
-              (is (partial= "Missing primary key parameter: \"id\""
-                            (mt/user-http-request :crowberto :post 400 execute-path
-                                                  {:parameters {"name" "Birds"}}))))
-            (testing "Missing other parameters should fail gracefully"
-              (is (partial= "Implicit parameters must be provided."
-                            (mt/user-http-request :crowberto :post 400 execute-path
-                                                  {:parameters {"id" 1}})))))))
+        (actions.test-util/with-action [{:keys [action-id model-id]} {:type :implicit :kind "row/update"}]
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :card_id model-id
+                                                            :action_id action-id}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+              (testing "Should be able to update"
+                (is (= {:rows-updated [1]}
+                       (mt/user-http-request :crowberto :post 200 execute-path
+                                             {:parameters {"id" 1 "name" "Birds"}}))))
+              (testing "Extra parameter should fail gracefully"
+                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    {:parameters {"extra" 1 "id" 1}}))))
+              (testing "Missing pk parameter should fail gracefully"
+                (is (partial= "Missing primary key parameter: \"id\""
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    {:parameters {"name" "Birds"}}))))
+              (testing "Missing other parameters should fail gracefully"
+                (is (partial= "Implicit parameters must be provided."
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    {:parameters {"id" 1}}))))))))
       (testing "Executing dashcard delete"
-        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
-                        ModelAction [_ {:slug "delete" :card_id card-id :requires_pk true}]
-                        Dashboard [{dashboard-id :id}]
-                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                          :card_id card-id
-                                                          :visualization_settings {:action_slug "delete"}}]]
-          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/delete" dashboard-id dashcard-id)]
-            (testing "Should be able to delete"
-              (is (= {:rows-deleted [1]}
-                     (mt/user-http-request :crowberto :post 200 execute-path
-                                           {:parameters {"id" 1}}))))
-            (testing "Extra parameter should fail gracefully"
-              (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\"}"}
-                            (mt/user-http-request :crowberto :post 400 execute-path
-                                                  {:parameters {"extra" 1 "id" 1}}))))
-            (testing "Missing pk parameter should fail gracefully"
-              (is (partial= "Missing primary key parameter: \"id\""
-                            (mt/user-http-request :crowberto :post 400 execute-path
-                                                  {:parameters {"name" "Birds"}}))))))))))
+        (actions.test-util/with-action [{:keys [action-id model-id]} {:type :implicit :kind "row/delete"}]
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :card_id model-id
+                                                            :action_id action-id}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+              (testing "Should be able to delete"
+                (is (= {:rows-deleted [1]}
+                       (mt/user-http-request :crowberto :post 200 execute-path
+                                             {:parameters {"id" 1}}))))
+              (testing "Extra parameter should fail gracefully"
+                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\"}"}
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    {:parameters {"extra" 1 "id" 1}}))))
+              (testing "Missing pk parameter should fail gracefully"
+                (is (partial= "Missing primary key parameter: \"id\""
+                              (mt/user-http-request :crowberto :post 400 execute-path
+                                                    {:parameters {"name" "Birds"}})))))))))))
 
 (defn- custom-action-for-field [field-name]
   ;; It seems the :type of parameters or template-tag doesn't matter??
@@ -2509,21 +2506,20 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (testing "Prefetching dashcard update"
-        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
-                        ModelAction [_ {:slug "update" :card_id card-id :requires_pk true}]
-                        Dashboard [{dashboard-id :id}]
-                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                          :card_id card-id
-                                                          :visualization_settings {:action_slug "update"}}]]
-          (is (partial= {:id 1 :name "African"}
-                        (mt/user-http-request
-                          :crowberto :get 200
-                          (format "dashboard/%s/dashcard/%s/execute/update?parameters=%s" dashboard-id dashcard-id (json/encode {"id" 1})))))
-          (testing "Missing pk parameter should fail gracefully"
-            (is (partial= "Missing primary key parameter: \"id\""
+        (actions.test-util/with-action [{:keys [action-id model-id]} {:type :implicit}]
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :card_id model-id
+                                                            :action_id action-id}]]
+            (is (partial= {:id 1 :name "African"}
                           (mt/user-http-request
-                            :crowberto :get 400
-                            (format "dashboard/%s/dashcard/%s/execute/update?parameters=%s" dashboard-id dashcard-id (json/encode {"name" 1})))))))))))
+                            :crowberto :get 200
+                            (format "dashboard/%s/dashcard/%s/execute?parameters=%s" dashboard-id dashcard-id (json/encode {"id" 1})))))
+            (testing "Missing pk parameter should fail gracefully"
+              (is (partial= "Missing primary key parameter: \"id\""
+                            (mt/user-http-request
+                              :crowberto :get 400
+                              (format "dashboard/%s/dashcard/%s/execute?parameters=%s" dashboard-id dashcard-id (json/encode {"name" 1}))))))))))))
 
 (deftest dashcard-implicit-action-only-expose-and-allow-model-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)

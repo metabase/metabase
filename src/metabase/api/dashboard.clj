@@ -804,9 +804,9 @@
 
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
-(api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute/:slug"
+(api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
-  [dashboard-id dashcard-id _slug parameters]
+  [dashboard-id dashcard-id parameters]
   {dashboard-id su/IntGreaterThanZero
    dashcard-id su/IntGreaterThanZero
    parameters su/JSONString}
