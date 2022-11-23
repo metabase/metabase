@@ -119,58 +119,69 @@
   "Impl for [[with-action]]."
   [options-map f]
   (initialize/initialize-if-needed! :web-server)
-  (case (:type options-map)
-    :query
-    (mt/with-temp* [Card [{card-id :id} (merge
-                                          {:database_id   (mt/id)
-                                           :dataset_query {:database (mt/id)
-                                                           :type     :native
-                                                           :native   {:query         (str "UPDATE categories\n"
-                                                                                          "SET name = [[{{name}} || ' ' ||]] 'Shop'\n"
-                                                                                          "WHERE id = {{id}}")
-                                                                      :template-tags {"id" {:name         "id"
-                                                                                            :display-name "ID"
-                                                                                            :type         :number
-                                                                                            :required     true}
-                                                                                      "name" {:name         "name"
-                                                                                              :display-name "Name"
-                                                                                              :type         :text
-                                                                                              :required     false}}}}
-                                           :name          "Query Example"
-                                           :parameters    [{:id "id"
-                                                            :slug "id"
-                                                            :type "number"
-                                                            :target [:variable [:template-tag "id"]]}
-                                                           {:id "name"
-                                                            :slug "name"
-                                                            :type "text"
-                                                            :required false
-                                                            :target [:variable [:template-tag "name"]]}]
-                                           :is_write      true
-                                           :visualization_settings {:inline true}}
-                                          (dissoc options-map :type))]]
-      (let [action-id (db/select-one-field :action_id QueryAction :card_id card-id)]
-        (f {:query-action-card-id card-id
-            :action-id            action-id})))
+  (mt/with-temp* [Card [{model-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]]
+    (case (:type options-map)
+      :query
+      (mt/with-temp* [Card [{card-id :id} (merge
+                                            {:database_id   (mt/id)
+                                             :dataset_query {:database (mt/id)
+                                                             :type     :native
+                                                             :native   {:query         (str "UPDATE categories\n"
+                                                                                            "SET name = [[{{name}} || ' ' ||]] 'Shop'\n"
+                                                                                            "WHERE id = {{id}}")
+                                                                        :template-tags {"id" {:name         "id"
+                                                                                              :display-name "ID"
+                                                                                              :type         :number
+                                                                                              :required     true}
+                                                                                        "name" {:name         "name"
+                                                                                                :display-name "Name"
+                                                                                                :type         :text
+                                                                                                :required     false}}}}
+                                             :name          "Query Example"
+                                             :parameters    [{:id "id"
+                                                              :slug "id"
+                                                              :type "number"
+                                                              :target [:variable [:template-tag "id"]]}
+                                                             {:id "name"
+                                                              :slug "name"
+                                                              :type "text"
+                                                              :required false
+                                                              :target [:variable [:template-tag "name"]]}]
+                                             :is_write      true
+                                             :visualization_settings {:inline true}}
+                                            (dissoc options-map :type))]]
+        (let [action-id (db/select-one-field :action_id QueryAction :card_id card-id)]
+          (f {:query-action-card-id card-id
+              :action-id            action-id
+              :model-id             model-id})))
 
-    :http
-    (mt/with-model-cleanup [Action]
-      (let [action-id (action/insert! (merge
-                                        {:type :http
-                                         :name "Echo Example"
-                                         :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
-                                                    :method "POST"
-                                                    :body "{\"the_parameter\": {{id}}}"
-                                                    :headers "{\"x-test\": \"{{id}}\"}"
-                                                    :parameters [{:id "id"
-                                                                  :type "number"
-                                                                  :target [:template-tag "id"]}
-                                                                 {:id "fail"
-                                                                  :type "text"
-                                                                  :target [:template-tag "fail"]}]}
-                                         :response_handle ".body"}
-                                        options-map))]
-        (f {:action-id action-id})))))
+      :implicit
+      (mt/with-model-cleanup [Action]
+        (let [action-id (action/insert! (merge
+                                          {:type :implicit
+                                           :name "Update Example"
+                                           :kind "row/update"}
+                                          options-map))]
+          (f {:action-id action-id :model-id model-id})))
+
+      :http
+      (mt/with-model-cleanup [Action]
+        (let [action-id (action/insert! (merge
+                                          {:type :http
+                                           :name "Echo Example"
+                                           :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
+                                                      :method "POST"
+                                                      :body "{\"the_parameter\": {{id}}}"
+                                                      :headers "{\"x-test\": \"{{id}}\"}"
+                                                      :parameters [{:id "id"
+                                                                    :type "number"
+                                                                    :target [:template-tag "id"]}
+                                                                   {:id "fail"
+                                                                    :type "text"
+                                                                    :target [:template-tag "fail"]}]}
+                                           :response_handle ".body"}
+                                          options-map))]
+          (f {:action-id action-id :model-id model-id}))))))
 
 (defmacro with-action
   "Execute `body` with a newly created Action.
