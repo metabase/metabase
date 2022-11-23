@@ -150,13 +150,9 @@ export default class Funnel extends Component {
           ...getDefault(newKeys(seriesKeys, seriesOrder)),
         ];
       },
-      getProps: transformedSeries => ({
-        items: transformedSeries.map(s => ({
-          ...s.card,
-          key: s.card.name,
-        })),
+      props: {
         hasEditSettings: false,
-      }),
+      },
       writeDependencies: ["funnel.order_dimension"],
       dataTestId: "funnel-row-sort",
     },

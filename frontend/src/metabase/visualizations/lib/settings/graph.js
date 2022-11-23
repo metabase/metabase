@@ -164,6 +164,8 @@ export const GRAPH_DATA_SETTINGS = {
 
     getValue: (series, settings) => {
       const seriesKeys = series.map(s => keyForSingleSeries(s));
+      const seriesSettings = settings["series_settings"];
+      const seriesColors = settings["series_settings.colors"] || {};
       const seriesOrder = settings["graph.series_order"];
       // Because this setting is a read dependency of graph.series_order_dimension, this should
       // Always be the stored setting, not calculated.
@@ -173,8 +175,9 @@ export const GRAPH_DATA_SETTINGS = {
       const generateDefault = keys => {
         return keys.map(key => ({
           key,
-          name: key,
+          color: seriesColors[key],
           enabled: true,
+          name: seriesSettings[key]?.title || key,
         }));
       };
 
@@ -186,6 +189,9 @@ export const GRAPH_DATA_SETTINGS = {
       if (
         !seriesOrder ||
         !_.isArray(seriesOrder) ||
+        !seriesOrder.every(
+          order => !!order.key && !!order.name && !!order.color,
+        ) ||
         seriesOrderDimension !== currentDimension
       ) {
         return generateDefault(seriesKeys);
@@ -194,26 +200,17 @@ export const GRAPH_DATA_SETTINGS = {
       return [
         ...removeMissingOrder(seriesKeys, seriesOrder),
         ...generateDefault(newKeys(seriesKeys, seriesOrder)),
-      ];
-    },
-    getProps: (series, settings) => {
-      const seriesSettings = settings["series_settings"] || {};
-      const seriesColors = settings["series_settings.colors"] || {};
-      const keys = series.map(s => keyForSingleSeries(s));
-      return {
-        items: keys.map(key => ({
-          key,
-          name: seriesSettings[key]?.title || key,
-          color: seriesColors[key],
-        })),
-        series,
-      };
+      ].map(item => ({
+        ...item,
+        name: seriesSettings[item.key]?.title || item.key,
+        color: seriesColors[item.key],
+      }));
     },
     getHidden: (series, settings) => {
       return settings["graph.dimensions"]?.length < 2 || series.length > 20;
     },
     dashboard: false,
-    readDependencies: ["series_settings.colors"],
+    readDependencies: ["series_settings.colors", "series_settings"],
     writeDependencies: ["graph.series_order_dimension"],
   },
   "graph.metrics": {
