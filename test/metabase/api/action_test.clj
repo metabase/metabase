@@ -92,7 +92,7 @@
                                 {:name "Implicit example"
                                  :type "implicit"
                                  :model_id card-id
-                                 :namespace "row/insert"
+                                 :kind "row/insert"
                                  :parameters [{:id "x" :type "number"}]}]]
           (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
                 updated-action (merge initial-action {:name "New name"})
