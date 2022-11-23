@@ -2191,7 +2191,7 @@
 (deftest dashcard-action-create-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (doseq [action-type [:http :implicit #_:query]]
+      (doseq [action-type [:http :implicit :query]]
         (actions.test-util/with-action [{:keys [action-id model-id]} {:type action-type :visualization_settings {:hello true}}]
           (testing (str "Creating dashcard with action: " action-type)
             (mt/with-temp* [Dashboard [{dashboard-id :id}]]
