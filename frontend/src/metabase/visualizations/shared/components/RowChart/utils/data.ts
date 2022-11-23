@@ -3,7 +3,6 @@ import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3-shape";
 import type { Series as D3Series } from "d3-shape";
 import d3 from "d3";
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
-import { isNotNull } from "metabase/core/utils/types";
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { BarData, Series, SeriesData, StackOffset } from "../types";
 
@@ -20,27 +19,25 @@ export const calculateNonStackedBars = <TDatum>(
 ): SeriesData<TDatum>[] => {
   const defaultXValue = xScaleType === "log" ? 1 : 0;
   return multipleSeries.map((series, seriesIndex) => {
-    const bars: BarData<TDatum>[] = data
-      .map((datum, datumIndex) => {
-        const yValue = formatNullable(series.yAccessor(datum));
-        const xValue = series.xAccessor(datum);
-        const isNegative = xValue != null && xValue < 0;
+    const bars: BarData<TDatum>[] = data.map((datum, datumIndex) => {
+      const yValue = formatNullable(series.yAccessor(datum));
+      const xValue = series.xAccessor(datum);
+      const isNegative = xValue != null && xValue < 0;
 
-        const xStartValue = isNegative ? xValue : defaultXValue;
-        const xEndValue = isNegative ? defaultXValue : xValue;
+      const xStartValue = isNegative ? xValue : defaultXValue;
+      const xEndValue = isNegative ? defaultXValue : xValue;
 
-        return {
-          isNegative,
-          xStartValue,
-          xEndValue,
-          yValue,
-          datum,
-          datumIndex,
-          series,
-          seriesIndex,
-        };
-      })
-      .filter(isNotNull);
+      return {
+        isNegative,
+        xStartValue,
+        xEndValue,
+        yValue,
+        datum,
+        datumIndex,
+        series,
+        seriesIndex,
+      };
+    });
 
     return {
       bars,
