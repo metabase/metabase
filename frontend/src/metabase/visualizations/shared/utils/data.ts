@@ -247,7 +247,7 @@ export const getOrderedSeries = (
   series: Series<GroupedDatum, SeriesInfo>[],
   seriesOrder?: SeriesOrderSetting[],
 ) => {
-  if (seriesOrder == null) {
+  if (seriesOrder == null || seriesOrder.length === 0) {
     return series;
   }
 
