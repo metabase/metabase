@@ -253,7 +253,13 @@ export const getOrderedSeries = (
 
   return seriesOrder
     .filter(orderSetting => orderSetting.enabled)
-    .map(orderSetting =>
-      series.find(singleSeries => singleSeries.seriesKey === orderSetting.key),
-    );
+    .map(orderSetting => {
+      const foundSeries = series.find(
+        singleSeries => singleSeries.seriesKey === orderSetting.key,
+      );
+      if (foundSeries === undefined) {
+        throw new TypeError("Series not found");
+      }
+      return foundSeries;
+    });
 };
