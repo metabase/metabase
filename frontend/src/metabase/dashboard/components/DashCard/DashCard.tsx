@@ -439,7 +439,7 @@ function DashCard({
         replacementContent={renderVisualizationOverlay()}
         actionButtons={renderActionButtons()}
         isSlow={isSlow}
-        isDataApp={false}
+        isDataApp={dashboard.is_app_page}
         isFullscreen={isFullscreen}
         isNightMode={isNightMode}
         isDashboard
