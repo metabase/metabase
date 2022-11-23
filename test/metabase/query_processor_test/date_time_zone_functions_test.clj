@@ -297,7 +297,7 @@
        (t/after? (t/instant t1) (t/minus (t/instant t2) period))))
 
 (deftest now-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
+  (mt/test-drivers (mt/normal-drivers-with-feature :now)
     (testing "should return the current time"
       ;; Allow a 30 second window for the current time to account for any difference between the time in Clojure and the DB
       (doseq [timezone [nil "America/Los_Angeles"]]
@@ -311,7 +311,8 @@
                      ffirst
                      u.date/parse
                      (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
-                     (close? (t/instant) (t/seconds 30))))))))
+                     (close? (t/instant) (t/seconds 30)))))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics)
     (testing "should work as an argument to datetime-add and datetime-subtract"
       (is (= true
              (-> (mt/run-mbql-query venues
@@ -323,7 +324,7 @@
                  u.date/parse
                  (t/zoned-date-time (t/zone-id "UTC"))
                  (close? (t/instant) (t/seconds 30)))))))
-  (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics :datetime-diff)
+  (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics :datetime-diff)
     (testing "should work as an argument to datetime-diff"
       (is (= [1 1]
              (-> (mt/run-mbql-query venues
