@@ -32,7 +32,7 @@ describe("scenarios > question > native > mongo", { tags: "@external" }, () => {
 
     cy.findByText("Save").click();
 
-    cy.findByTextEnsureVisible("Save question");
+    cy.findByTextEnsureVisible("Save new question");
 
     modal().within(() => {
       cy.findByLabelText("Name").clear().should("be.empty").type("mongo count");
