@@ -331,9 +331,11 @@
 
 (defmacro with-results-and-report-timezone-id
   [timezone-id & body]
-  `(mt/with-results-timezone-id ~timezone-id
-     (mt/with-report-timezone-id ~timezone-id
-       ~@body)))
+  ;`(mt/with-results-timezone-id ~timezone-id
+  ;   (mt/with-report-timezone-id ~timezone-id
+  ;     ~@body))
+  `(mt/with-report-timezone-id ~timezone-id
+     ~@body))
 
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
