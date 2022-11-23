@@ -267,17 +267,15 @@
         datetimeoffset? (hx/is-of-type? expr "datetimeoffset")]
     (when (and datetimeoffset? source-timezone)
       (throw (ex-info (tru "`datetimeoffset` columns shouldn''t have a `source timezone`")
-                    {:type            qp.error-type/invalid-parameter
-                     :target-timezone target-timezone
-                     :source-timezone source-timezone})))
+                      {:type            qp.error-type/invalid-parameter
+                       :target-timezone target-timezone
+                       :source-timezone source-timezone})))
     (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))]
-      (cond-> expr
-        (and (not datetimeoffset?) source-timezone)
-        (hx/->AtTimeZone (zone-id->windows-zone source-timezone))
-        target-timezone
-        (hx/->AtTimeZone (zone-id->windows-zone target-timezone))
-        true
-        hx/->datetime))))
+      (-> (if datetimeoffset?
+            expr
+            (hx/->AtTimeZone expr (zone-id->windows-zone source-timezone)))
+          (hx/->AtTimeZone (zone-id->windows-zone target-timezone))
+          hx/->datetime))))
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
