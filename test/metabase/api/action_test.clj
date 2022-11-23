@@ -10,19 +10,21 @@
 
 (comment api.action/keep-me)
 
-(def ^:private ExpectedGetCardActionAPIResponse
-  "Expected schema for a CardAction as it should appear in the response for an API request to one of the GET endpoints."
-  {:id       su/IntGreaterThanOrEqualToZero
-   :card     {:id            su/IntGreaterThanOrEqualToZero
-              :dataset_query {:database su/IntGreaterThanOrEqualToZero
-                              :type     (s/eq "native")
-                              :native   {:query    s/Str
-                                         s/Keyword s/Any}
-                              s/Keyword s/Any}
-              s/Keyword      s/Any}
-   :parameters s/Any
+(def ^:private ExpectedGetQueryActionAPIResponse
+  "Expected schema for a query action as it should appear in the response for an API request to one of the GET endpoints."
+  {:id                     su/IntGreaterThanOrEqualToZero
+   :type                   (s/eq "query")
+   :model_id               su/IntGreaterThanOrEqualToZero
+   :database_id            su/IntGreaterThanOrEqualToZero
+   :dataset_query          {:database su/IntGreaterThanOrEqualToZero
+                            :type     (s/eq "native")
+                            :native   {:query    s/Str
+                                       s/Keyword s/Any}
+                            s/Keyword s/Any}
+   :parameters             s/Any
+   :parameter_mappings     s/Any
    :visualization_settings su/Map
-   s/Keyword s/Any})
+   s/Keyword               s/Any})
 
 (deftest list-actions-test
   (testing "GET /api/action"
@@ -56,19 +58,18 @@
                                  (when (= (:id action) action-id)
                                    action))
                                response)]
-              (testing "Should return Card dataset_query deserialized (#23201)"
-                (is (schema= ExpectedGetCardActionAPIResponse
+              (testing "Should return a query action deserialized (#23201)"
+                (is (schema= ExpectedGetQueryActionAPIResponse
                              action))))))))))
 
 (deftest get-action-test
   (testing "GET /api/action/:id"
-    (testing "Should return Card dataset_query deserialized (#23201)"
-      (actions.test-util/with-actions-enabled
-        (actions.test-util/with-action [{:keys [action-id]} {}]
-          (let [action (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id))]
-            (testing "Should return Card dataset_query deserialized (#23201)"
-              (is (schema= ExpectedGetCardActionAPIResponse
-                           action)))))))))
+    (actions.test-util/with-actions-enabled
+      (actions.test-util/with-action [{:keys [action-id]} {}]
+        (let [action (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id))]
+          (testing "Should return a query action deserialized (#23201)"
+            (is (schema= ExpectedGetQueryActionAPIResponse
+                         action))))))))
 
 (deftest unified-action-create-test
   (actions.test-util/with-actions-enabled
