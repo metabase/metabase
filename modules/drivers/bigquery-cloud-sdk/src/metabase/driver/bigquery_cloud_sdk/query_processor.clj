@@ -444,7 +444,7 @@
                        :source-timezone source-timezone})))
     (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))]
       (cond-> clause
-        (and (not timestamptz?) source-timezone)
+        (not timestamptz?)
         (timestamp source-timezone)
         true
         (datetime target-timezone)
