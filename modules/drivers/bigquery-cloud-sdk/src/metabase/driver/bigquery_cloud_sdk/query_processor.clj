@@ -115,11 +115,11 @@
 
 (defmethod parse-result-of-type "DATE"
   [_ column-mode _timezone-id v]
-  (parse-value column-mode v (partial parse-timestamp-str nil)))
+  (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "DATETIME"
   [_ column-mode _timezone-id v]
-  (parse-value column-mode v (partial parse-timestamp-str nil)))
+  (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "TIMESTAMP"
   [_ column-mode timezone-id v]
@@ -447,7 +447,9 @@
         (and (not timestamptz?) source-timezone)
         (timestamp source-timezone)
         true
-        (datetime target-timezone)))))
+        (datetime target-timezone)
+        true
+        (with-temporal-type :datetime)))))
 
 (defmethod sql.qp/->float :bigquery-cloud-sdk
   [_ value]
