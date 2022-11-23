@@ -164,13 +164,21 @@ const getBreakoutDistinctValues = (
   breakout: ColumnDescriptor,
   columnFormatter: ColumnFormatter,
 ) => {
-  return Array.from(
-    new Set(
-      data.rows.map(row =>
-        columnFormatter(row[breakout.index], breakout.column),
-      ),
-    ),
-  );
+  const formattedDistinctValues: string[] = [];
+  const usedRawValues = new Set<RowValue>();
+
+  data.rows.forEach(row => {
+    const rawValue = row[breakout.index];
+
+    if (usedRawValues.has(rawValue)) {
+      return;
+    }
+
+    usedRawValues.add(rawValue);
+    formattedDistinctValues.push(columnFormatter(rawValue, breakout.column));
+  });
+
+  return formattedDistinctValues;
 };
 
 const getBreakoutSeries = (

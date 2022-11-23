@@ -412,25 +412,36 @@
     \_})
 
 ;; unfortunately it seems that this doesn't fully-support Emoji :(, they get encoded as "??"
-(defn- slugify-char [^Character c]
-  (cond
-    (> (int c) 128)                   (codec/url-encode c) ; for non-ASCII characters, URL-encode them
-    (contains? slugify-valid-chars c) c                    ; for ASCII characters, if they're in the allowed set of characters, keep them
-    :else                             \_))                 ; otherwise replace them with underscores
+(defn- slugify-char [^Character c url-encode?]
+  (if (< (int c) 128)
+    ;; ASCII characters must be in the valid list, or they get replaced with underscores.
+    (if (contains? slugify-valid-chars c)
+      c
+      \_)
+    ;; Non-ASCII characters are URL-encoded or preserved, based on the option.
+    (if url-encode?
+      (codec/url-encode c)
+      c)))
 
 (defn slugify
   "Return a version of String `s` appropriate for use as a URL slug.
-   Downcase the name, remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores;
-   URL-encode non-ASCII characters. (Non-ASCII characters are encoded rather than replaced with underscores in order
-   to support languages that don't use the Latin alphabet; see metabase#3818).
+  Downcase the name and remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores.
 
-   Optionally specify `max-length` which will truncate the slug after that many characters."
+  If `unicode?` is falsy (the default), URL-encode non-ASCII characters. With `unicode?` truthy, non-ASCII characters
+  are preserved.
+  (Even when we want full ASCII output for eg. URL slugs, non-ASCII characters should be encoded rather than
+  replaced with underscores in order to support languages that don't use the Latin alphabet; see metabase#3818).
+
+  Optionally specify `:max-length` which will truncate the slug after that many characters."
   (^String [^String s]
+   (slugify s {}))
+  (^String [s {:keys [max-length unicode?]}]
    (when (seq s)
-     (str/join (for [c (remove-diacritical-marks (str/lower-case s))]
-                 (slugify-char c)))))
-  (^String [s max-length]
-   (str/join (take max-length (slugify s)))))
+     (let [slug (str/join (for [c (remove-diacritical-marks (str/lower-case s))]
+                            (slugify-char c (not unicode?))))]
+       (if max-length
+         (str/join (take max-length slug))
+         slug)))))
 
 (defn full-exception-chain
   "Gather the full exception chain into a sequence."

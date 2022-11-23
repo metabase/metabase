@@ -512,14 +512,82 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- overlap
+  "calculate the overlap, a value between 0 and 1, of the ranges of 2 columns.
+  This overlap value can be checked against `axis-group-threshold` to determine when columns can reasonably share a y-axis.
+  Consider two ranges, with min and max values:
+
+   min-a = 0                                 max-a = 43
+     *-----------------------------------------*
+                                                      min-b = 52             max-b = 75
+                                                        *----------------------*
+  The overlap above is 0. The mirror case where col-b is entirely less than col-a also has 0 overlap.
+  Otherwise, overlap is calculated as follows:
+
+     min-a = 0                                 max-a = 43
+     *-----------------------------------------*
+     |     min-b = 8                           |             max-b = 59
+     |       *---------------------------------|---------------*
+     |       |                                 |               |
+     |       |- overlap-width = (- 43 8) = 35 -|               |
+     |                                                         |
+     |--------- max-width = (- 59 0) = 59 ---------------------|
+
+  overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59
+
+  Another scenario, with a similar result may look as follows:
+
+     min-a = 0                                                 max-a = 59
+     *---------------------------------------------------------*
+     |     min-b = 8                         max-b = 43        |
+     |       *---------------------------------*               |
+     |       |                                 |               |
+     |       |- overlap-width = (- 43 8) = 35 -|               |
+     |                                                         |
+     |--------- max-width = (- 59 0) = 59 ---------------------|
+
+  overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59"
+  [col-a col-b]
+  (let [[min-a min-b]    (map #(get-in % [:fingerprint :type :type/Number :min]) [col-a col-b])
+        [max-a max-b]    (map #(get-in % [:fingerprint :type :type/Number :max]) [col-a col-b])
+        valid-ranges?    (and min-a min-b max-a max-b)
+        overlapping-and-valid? (and valid-ranges?
+                                    (or (<= min-a min-b max-a)
+                                        (<= min-a max-b max-a)))]
+    (if
+      overlapping-and-valid?
+      (let [[a b c d]     (sort [min-a min-b max-a max-b])
+            max-width     (- d a)
+            overlap-width (- c b)]
+        (/ overlap-width max-width))
+      0)))
+
+(defn- group-axes
+  [cols-meta group-threshold]
+  (when-let [groupable-cols (->> cols-meta
+                                 (filter #(isa? (:base_type %) :type/Number)) ;; for now we only try grouping number cols
+                                 (remove (comp nil? :fingerprint)) ;; we can't group if there is no fingerprint
+                                 seq)]
+    (let [cols-by-type  (group-by (juxt :base_type :effective_type :semantic_type) groupable-cols)
+          some-grouped? (> (last (sort (map #(count (second %)) cols-by-type))) 1)]
+      (when some-grouped?
+        (let [first-axis       (first groupable-cols)
+              grouped-num-cols (-> (group-by #(> (overlap first-axis %) group-threshold) groupable-cols)
+                                   (update-keys {true :left false :right}))]
+          (merge grouped-num-cols {:bottom-or-not-displayed (remove (set groupable-cols) cols-meta)}))))))
+
 (defn default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
   You kind of hope there's only two but here's for the eventuality"
-  [viz-settings]
+  [{viz-settings :viz-settings metadata :results_metadata} group-threshold]
   (if (:stackable.stack_type viz-settings)
     (repeat "left")
-    (conj (repeat "right")
-          "left")))
+    (let [grouped-axes (-> (group-axes (:columns metadata) group-threshold)
+                           (update-vals count))]
+      (if (seq grouped-axes)
+        (mapcat (fn [k] (repeat (get grouped-axes k 1) (name k))) [:left :right])
+        (conj (repeat "right")
+              "left")))))
 
 (def default-combo-chart-types
   "Default chart type seq of combo graphs (not multiple graphs)."
@@ -548,6 +616,8 @@
                                 :width   :100%})
            :src   (:image-src image-bundle)}]]})
 
+(def ^:private axis-group-threshold 0.33)
+
 (defn- render-multiple-lab-chart
   "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
   [render-type card dashcard {:keys [viz-settings] :as data}]
@@ -570,7 +640,7 @@
         colors        (take (count multi-data) colors)
         types         (replace {:scalar :bar} (map :display cards))
         settings      (->ts-viz x-col y-col labels viz-settings)
-        y-pos         (take (count names) (default-y-pos viz-settings))
+        y-pos         (take (count names) (default-y-pos data axis-group-threshold))
         series        (join-series names colors types row-seqs y-pos)]
     (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
 
@@ -614,7 +684,7 @@
 (defn- single-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
-  [chart-type joined-rows _x-cols y-cols viz-settings]
+  [chart-type joined-rows _x-cols y-cols {:keys [viz-settings] :as data}]
   (for [[idx y-col] (map-indexed vector y-cols)]
     (let [y-col-key     (keyword (:name y-col))
           card-name     (or (series-setting viz-settings y-col-key :name)
@@ -627,7 +697,7 @@
                             (nth default-combo-chart-types idx))
           selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
-                            (nth (default-y-pos viz-settings) idx))]
+                            (nth (default-y-pos data axis-group-threshold) idx))]
       {:name          card-name
        :color         card-color
        :type          card-type
@@ -640,7 +710,7 @@
 
   This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
-  [chart-type joined-rows _x-cols _y-cols viz-settings]
+  [chart-type joined-rows _x-cols _y-cols {:keys [viz-settings] :as data}]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)
         groups       (keys grouped-rows)]
     (for [[idx group-key] (map-indexed vector groups)]
@@ -655,7 +725,7 @@
                                    chart-type
                                    (nth default-combo-chart-types idx))
             y-axis-pos         (or (series-setting viz-settings group-key :axis)
-                                   (nth (default-y-pos viz-settings) idx))]
+                                   (nth (default-y-pos data axis-group-threshold) idx))]
         {:name          card-name
          :color         card-color
          :type          card-type
@@ -681,8 +751,8 @@
                           chart-type)
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
         series          (if (= (count x-cols) 1)
-                          (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings)
-                          (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings))
+                          (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols data)
+                          (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols data))
 
         labels          (combo-label-info x-cols y-cols viz-settings)
         settings        (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]

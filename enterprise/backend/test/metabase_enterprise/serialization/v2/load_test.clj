@@ -116,7 +116,9 @@
           db2s       (atom nil)
           db2d       (atom nil)
           t1s        (atom nil)
-          t2s        (atom nil)]
+          t2s        (atom nil)
+          f1s        (atom nil)
+          f2s        (atom nil)]
       (ts/with-source-and-dest-dbs
         (testing "serializing the two databases"
           (ts/with-source-db
@@ -124,6 +126,8 @@
             (reset! t1s  (ts/create! Table    :name "posts" :db_id (:id @db1s)))
             (reset! db2s (ts/create! Database :name "db2"))
             (reset! t2s  (ts/create! Table    :name "posts" :db_id (:id @db2s))) ; Deliberately the same name!
+            (reset! f1s  (ts/create! Field    :name "Target Field" :table_id (:id @t1s)))
+            (reset! f2s  (ts/create! Field    :name "Foreign Key"  :table_id (:id @t2s) :fk_target_field_id (:id @f1s)))
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
 
         (testing "serialization of databases is based on the :name"
@@ -136,6 +140,14 @@
                       (filter #(-> % :serdes/meta last :model (= "Table")))
                       (map :db_id)
                       set))))
+
+        (testing "foreign key references are serialized as a field path"
+          (is (= ["db1" nil "posts" "Target Field"]
+                 (->> @serialized
+                      (filter #(-> % :serdes/meta last :model (= "Field")))
+                      (filter #(-> % :table_id (= ["db2" nil "posts"])))
+                      (keep :fk_target_field_id)
+                      first))))
 
         (testing "deserialization works properly, keeping the same-named tables apart"
           (ts/with-dest-db
@@ -671,13 +683,15 @@
                   timeline1 (first (filter #(= (:entity_id %) (:entity_id @timeline1s)) timelines))
                   timeline2 (first (filter #(= (:entity_id %) (:entity_id @timeline2s)) timelines))]
               (testing "with inline :events"
-                (is (schema= {:archived                    (s/eq false)
+                (is (schema= {:serdes/meta                 (s/eq [{:model "Timeline"
+                                                                   :id    (:entity_id timeline1)
+                                                                   :label "some_events"}])
+                              :archived                    (s/eq false)
                               :collection_id               (s/eq (:entity_id @coll1s))
                               :name                        (s/eq "Some events")
                               :creator_id                  (s/eq "tom@bost.on")
                               (s/optional-key :updated_at) OffsetDateTime
                               :created_at                  OffsetDateTime
-                              :serdes/meta                 (s/eq [{:model "Timeline" :id (:entity_id timeline1)}])
                               :entity_id                   (s/eq (:entity_id timeline1))
                               (s/optional-key :icon)       (s/maybe s/Str)
                               :description                 (s/maybe s/Str)

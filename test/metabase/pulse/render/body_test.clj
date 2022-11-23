@@ -439,7 +439,7 @@
 (defn- render-multiseries-area-graph [results]
   (body/render :area :inline pacific-tz render.tu/test-combo-card nil results))
 
-(deftest render-area-graph-tet
+(deftest render-area-graph-test
   (testing "Render an area graph with non-nil values for the x and y axis"
     (is (has-inline-image?
           (render-area-graph {:cols default-columns
@@ -474,7 +474,7 @@
             [[[10.0] [1]] [[5.0] [10]] [[1.25] [20]]]
             [{:name "Price", :display_name "Price", :base_type :type/BigInteger, :semantic_type nil}]
             [{:name "NumPurchased", :display_name "NumPurchased", :base_type :type/BigInteger, :semantic_type nil}]
-            {:series_settings {:NumPurchased {:color "#a7cf7b"}}}))))
+            {:viz-settings {:series_settings {:NumPurchased {:color "#a7cf7b"}}}}))))
   (testing "Check if double x-axis combo series can convert colors"
     (is (= [{:name "Bob", :color "#c5a9cf", :type "line", :data [[10.0 123]], :yAxisPosition "left"}
             {:name "Dobbs", :color "#a7cf7b", :type "bar", :data [[5.0 12]], :yAxisPosition "right"}
@@ -486,10 +486,10 @@
             [{:base_type :type/BigInteger, :display_name "Price", :name "Price", :semantic_type nil}
              {:base_type :type/BigInteger, :display_name "NumPurchased", :name "NumPurchased", :semantic_type nil}]
             [{:base_type :type/BigInteger, :display_name "NumKazoos", :name "NumKazoos", :semantic_type nil}]
-            {:series_settings {:Bob {:color "#c5a9cf"}
-                               :Dobbs {:color "#a7cf7b"}
-                               :Robbs {:color "#34517d"}
-                               :Mobbs {:color "#e0be40"}}})))))
+            {:viz-settings {:series_settings {:Bob {:color "#c5a9cf"}
+                                              :Dobbs {:color "#a7cf7b"}
+                                              :Robbs {:color "#34517d"}
+                                              :Mobbs {:color "#e0be40"}}}})))))
 
 (deftest series-with-custom-names-test
   (testing "Check if single x-axis combo series uses custom series names (#21503)"
@@ -501,8 +501,9 @@
                        [{:name "Price", :display_name "Price", :base_type :type/Number}]
                        [{:name "NumPurchased", :display_name "NumPurchased", :base_type :type/Number}
                         {:name "NumSold", :display_name "NumSold", :base_type :type/Number}]
-                       {:series_settings {:NumPurchased {:color "#a7cf7b" :title "Bought"}
-                                          :NumSold      {:color "#a7cf7b" :title "Sold"}}}))))))
+                       {:viz-settings
+                        {:series_settings {:NumPurchased {:color "#a7cf7b" :title "Bought"}
+                                           :NumSold      {:color "#a7cf7b" :title "Sold"}}}}))))))
   (testing "Check if double x-axis combo series uses custom series names (#21503)"
     (is (= #{"Bobby" "Dobby" "Robby" "Mobby"}
            (set (map :name
@@ -512,10 +513,11 @@
                        [{:base_type :type/BigInteger, :display_name "Price", :name "Price", :semantic_type nil}
                         {:base_type :type/BigInteger, :display_name "NumPurchased", :name "NumPurchased", :semantic_type nil}]
                        [{:base_type :type/BigInteger, :display_name "NumKazoos", :name "NumKazoos", :semantic_type nil}]
-                       {:series_settings {:Bob   {:color "#c5a9cf" :title "Bobby"}
-                                          :Dobbs {:color "#a7cf7b" :title "Dobby"}
-                                          :Robbs {:color "#34517d" :title "Robby"}
-                                          :Mobbs {:color "#e0be40" :title "Mobby"}}})))))))
+                       {:viz-settings
+                        {:series_settings {:Bob   {:color "#c5a9cf" :title "Bobby"}
+                                           :Dobbs {:color "#a7cf7b" :title "Dobby"}
+                                           :Robbs {:color "#34517d" :title "Robby"}
+                                           :Mobbs {:color "#e0be40" :title "Mobby"}}}})))))))
 
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
@@ -655,6 +657,26 @@
     " "  "1,234,543 21%"
     nil  "1,234,543.21%"
     ""   "1,234,543.21%"))
+
+(deftest reasonable-split-axes-test
+  (let [rows        [["Category" "Series A" "Series B"]
+                     ["A"        1          1.3]
+                     ["B"        2          1.9]
+                     ["C"        3          4  ]]
+        axes-split? (fn [rows]
+                      (let [text (-> rows first last)]
+                        ;; there is always 1 node with the series name in the legend
+                        ;; so we see if the series name shows up a second time, which will
+                        ;; be the axis label, indicating that there is indeed a split
+                        (< 1 (-> rows
+                                 (render.tu/make-viz-data :bar {})
+                                 :viz-tree
+                                 (render.tu/nodes-with-text text)
+                                 count))))]
+    (testing "Multiple series with close values does not split y-axis."
+      (is (not (axes-split? rows))))
+    (testing "Multiple series with far values does split y-axis."
+      (is (axes-split? (conj rows ["D" 3 70]))))))
 
 (deftest ^:parallel x-and-y-axis-label-info-test
   (let [x-col {:display_name "X col"}
