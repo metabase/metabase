@@ -37,6 +37,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   as?: ElementType;
   className?: string;
   to?: string;
+  tooltip?: string; // available when using as={Link}
   href?: string;
 
   icon?: string | ReactNode;

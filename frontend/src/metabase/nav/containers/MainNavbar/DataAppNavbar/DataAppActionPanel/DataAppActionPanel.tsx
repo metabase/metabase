@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 
+import Link from "metabase/core/components/Link";
 import Button from "metabase/core/components/Button";
 import EntityMenu from "metabase/components/EntityMenu";
 import Tooltip from "metabase/components/Tooltip";
@@ -56,14 +57,6 @@ function DataAppActionPanel({
       },
     ];
 
-    if (hasManageContentAction) {
-      items.push({
-        title: t`Manage content`,
-        icon: "list",
-        link: Urls.dataApp(dataApp, { mode: "preview" }),
-      });
-    }
-
     if (hasArchivePageAction) {
       items.push({
         title: t`Archive this page`,
@@ -79,14 +72,7 @@ function DataAppActionPanel({
     });
 
     return items;
-  }, [
-    dataApp,
-    hasArchivePageAction,
-    hasManageContentAction,
-    onEditAppSettings,
-    onArchiveApp,
-    onArchivePage,
-  ]);
+  }, [hasArchivePageAction, onEditAppSettings, onArchiveApp, onArchivePage]);
 
   return (
     <Root>
@@ -100,10 +86,19 @@ function DataAppActionPanel({
           </Tooltip>
         )}
         {page && <DataAppPageSharingControl page={page} />}
+        {hasManageContentAction && (
+          <Button
+            icon="list"
+            onlyIcon
+            as={Link}
+            to={Urls.dataApp(dataApp, { mode: "preview" })}
+            tooltip={t`Manage app content`}
+          />
+        )}
         <EntityMenu
           items={menuItems}
           triggerIcon="ellipsis"
-          tooltip={t`Manage content, settings and more…`}
+          tooltip={t`Manage settings and more…`}
         />
       </ActionsContainer>
     </Root>
