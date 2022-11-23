@@ -460,7 +460,7 @@
         {:keys [rows percentages]}  (donut-info slice-threshold rows)
         legend-colors               (merge (zipmap (map first rows) (cycle colors))
                                            (update-keys (:pie.colors viz-settings) name))
-        settings                    {:show_values (:pie.show_data_labels viz-settings)}
+        settings                    {:percent_visibility (:pie.percent_visibility viz-settings)}
         image-bundle                (image-bundle/make-image-bundle
                                      render-type
                                      (js-svg/categorical-donut rows legend-colors settings))
@@ -555,7 +555,7 @@
                                     (or (<= min-a min-b max-a)
                                         (<= min-a max-b max-a)))]
     (if
-      overlapping-and-valid?
+     overlapping-and-valid?
       (let [[a b c d]     (sort [min-a min-b max-a max-b])
             max-width     (- d a)
             overlap-width (- c b)]
