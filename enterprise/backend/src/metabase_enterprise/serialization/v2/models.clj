@@ -17,5 +17,4 @@
    "Segment"
    "Setting"
    "Table"
-   "Timeline"
-   "TimelineEvent"])
+   "Timeline"])
