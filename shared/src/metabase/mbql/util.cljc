@@ -279,7 +279,9 @@
     [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
 
 (defn desugar-convert-timezone
-  "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
+  "Replace the magic argument of convert-timezone expression.
+
+  Currently only replace \"Instance\" with `results-timezone-id`."
   [m results-timezone-id]
   (mbql.match/replace m
     [(op :guard #{:convert-timezone}) field & args]

@@ -364,6 +364,23 @@
 
 (t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"
+    (t/is (= [:convert-timezone [:field 1 nil] "Asia/Ho_Chi_Minh" "UTC"]
+             (mbql.u/desugar-convert-timezone
+               [:convert-timezone [:field 1 nil] "instance" "UTC"]
+               "Asia/Ho_Chi_Minh")))
+
+   (t/is (= [:convert-timezone [:field 1 nil] "Asia/Ho_Chi_Minh" "UTC"]
+            (mbql.u/desugar-convert-timezone
+              [:convert-timezone [:field 1 nil] "InstAnce" "UTC"]
+              "Asia/Ho_Chi_Minh")))
+
+   (t/is (= [:convert-timezone [:field 1 nil] "Asia/Ho_Chi_Minh"]
+            (mbql.u/desugar-convert-timezone
+              [:convert-timezone [:field 1 nil] "Instance"]
+              "Asia/Ho_Chi_Minh")))))
+
+(t/deftest ^:parallel desugar-convert-timezone-test
+  (t/testing "desugaring :get-year, :get-month, etc"
     (doseq [[[op mode] unit] mbql.u/temporal-extract-ops->unit]
       (t/is (= [:temporal-extract [:field 1 nil] unit]
                (mbql.u/desugar-temporal-extract [op [:field 1 nil] mode])))
