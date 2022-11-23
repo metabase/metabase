@@ -176,7 +176,7 @@
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
-        model-action (api/check-404 (first (action/merged-model-action nil :card_id (:card_id dashcard) :slug slug)))]
+        model-action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
     (if-let [action-id (:action_id model-action)]
       (execute-custom-action action-id request-parameters)
       (execute-implicit-action model-action request-parameters))))
@@ -210,7 +210,7 @@
   (let [dashcard (api/check-404 (db/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
-        model-action (api/check-404 (first (action/merged-model-action nil :card_id (:card_id dashcard) :slug slug)))]
+        model-action (api/check-404 (first (action/actions-with-implicit-params nil :id (:action_id dashcard))))]
     (if (:action_id model-action)
       {}
       (fetch-implicit-action-values dashboard-id model-action request-parameters))))

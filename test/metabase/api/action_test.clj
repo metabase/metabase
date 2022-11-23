@@ -106,6 +106,9 @@
             (testing "Get"
               (is (partial= updated-action
                             (mt/user-http-request :crowberto :get 200 action-path))))
+            (testing "Get All"
+              (is (partial= updated-action
+                            (last (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))))
             (testing "Delete"
               (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
               (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))))

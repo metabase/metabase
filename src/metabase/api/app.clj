@@ -262,7 +262,7 @@
     (let [models (db/select Card :id [:in model-ids])
           model-id->model (m/index-by :id models)
           model-id->params (action/implicit-action-parameters models)
-          model-actions (action/merged-model-action models :card_id [:in model-ids])
+          model-actions (action/actions-with-implicit-params models :model_id [:in model-ids])
           model-id->model-actions (group-by :model_id model-actions)
           sorter (fn [slug]
                    (get {"update" 1 "delete" 2 "insert" 0} slug 3))

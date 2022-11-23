@@ -156,7 +156,7 @@
       (map (fn [action]
              (let [implicit-action (get implicit-actions-by-action-id (:id action))]
                (merge action
-                     (select-keys implicit-action [:namespace]))))
+                     (select-keys implicit-action [:kind]))))
            actions))))
 
 (defn select-actions
@@ -215,57 +215,42 @@
                                               ::pk? (isa? (:semantic_type field) :type/PK)})))]]
             [(:id card) parameters]))))
 
-(defn merged-model-action
-  "Find model-actions given options and merge in the referenced action or generate implicit parameters for execution.
-   The goal is to generally hide the existence of model-action and be able to treat this merged information as an action.
+(defn actions-with-implicit-params
+  "Find actions with given options and generate implicit parameters for execution.
 
    Pass in known-models to save a second Card lookup."
   [known-models & options]
-  (let [model-actions (apply db/select ModelAction {:order-by [:id]} options)
-        model-action-by-model-slug (m/index-by (juxt :card_id :slug)
-                                               model-actions)
-        actions-by-id (when-let [action-ids (not-empty (keep :action_id model-actions))]
-                        (m/index-by :id (select-actions :id [:in action-ids])))
-        model-ids-with-implicit-actions (set (map :card_id (remove :action_id model-actions)))
+  (let [actions (apply select-actions options)
+        implicit-action-model-ids (set (map :model_id (filter (comp #(= "implicit" %) :type) actions)))
         models-with-implicit-actions (if known-models
                                        (->> known-models
-                                            (filter #(contains? model-ids-with-implicit-actions (:id %)))
+                                            (filter #(contains? implicit-action-model-ids (:id %)))
                                             distinct)
-                                       (when (seq model-ids-with-implicit-actions)
-                                         (db/select 'Card :id [:in model-ids-with-implicit-actions])))
-        parameters-by-model-id (when (seq models-with-implicit-actions)
-                                 (implicit-action-parameters models-with-implicit-actions))]
-    (for [model-action model-actions
-          :let [model-slug [(:card_id model-action) (:slug model-action)]
-                model-action (get model-action-by-model-slug model-slug)
-                action (get actions-by-id (:action_id model-action))
-                implicit-action (when-let [parameters (get parameters-by-model-id (:card_id model-action))]
-                                  {:parameters (cond->> parameters
-                                                 (= "delete" (:slug model-action)) (filter ::pk?)
-                                                 (:requires_pk model-action) (map (fn [param] (cond-> param
-                                                                                                (::pk? param) (assoc :required true))))
-                                                 :always (map #(dissoc % ::pk? ::field-id)))
-                                   :type "implicit"})]]
-      (m/deep-merge (-> model-action
-                        (select-keys [:card_id :slug :action_id :visualization_settings :parameter_mappings :requires_pk])
-                        (set/rename-keys {:card_id :model_id}))
-                    implicit-action
-                    action))))
+                                       (when (seq implicit-action-model-ids)
+                                         (db/select 'Card :id [:in implicit-action-model-ids])))
+        implicit-parameters-by-model-id (when (seq models-with-implicit-actions)
+                                          (implicit-action-parameters models-with-implicit-actions))]
+
+    (for [action actions
+          :let [parameters (get implicit-parameters-by-model-id (:model_id action))]]
+      (m/assoc-some action
+                    :parameters (cond->> parameters
+                                  (= "row/delete" (:kind action))
+                                  (filter ::pk?)
+
+                                  (contains? #{"row/update" "row/delete"} (:kind action))
+                                  (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
+
+                                  :always
+                                  (map #(dissoc % ::pk? ::field-id))
+
+                                  :always seq)))))
 
 (defn dashcard-action
   "Hydrates action from DashboardCard"
   {:batched-hydrate :dashcard/action}
   [dashcards]
-  (let [model-slug-by-dashcard-id (->> dashcards
-                                       (keep (fn [dashcard]
-                                               (when-let [slug (get-in dashcard [:visualization_settings :action_slug])]
-                                                 [(:id dashcard) [(:card_id dashcard) slug]])))
-                                       (into {})
-                                       not-empty)
-        actions (when model-slug-by-dashcard-id
-                  (merged-model-action (map :card dashcards) [:card_id :slug] [:in (vals model-slug-by-dashcard-id)]))
-        action-by-model-slug (m/index-by (juxt :model_id :slug) actions)]
+  (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
+                        (m/index-by :id (actions-with-implicit-params (map :card dashcards) :id [:in action-ids])))]
     (for [dashcard dashcards]
-      (if-let [model-slug (get model-slug-by-dashcard-id (:id dashcard))]
-        (m/assoc-some dashcard :action (get action-by-model-slug model-slug))
-        dashcard))))
+      (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
