@@ -231,11 +231,6 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   (hsql/call :from_unixtime expr))
 
-(defmethod sql.qp/->honeysql [:mysql :now]
-  [_driver _clause]
-  (-> (hsql/call :now 0)
-      (hx/with-database-type-info "timestamp")))
-
 (defmethod sql.qp/cast-temporal-string [:mysql :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
   (hx/->datetime expr))

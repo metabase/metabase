@@ -193,6 +193,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 (defmethod sql.qp/current-datetime-honeysql-form :h2
   [_]
   (hx/with-database-type-info :%now :TIMESTAMP))
@@ -202,6 +203,11 @@
   (-> (hsql/call :current_timestamp 0)
       (hx/with-database-type-info :TIMESTAMP)))
 >>>>>>> 0e2bfa84a1 (Wrap with database type info)
+=======
+(defmethod sql.qp/current-datetime-honeysql-form :h2
+  [_]
+  (hx/with-database-type-info :%now :TIMESTAMP))
+>>>>>>> 4fe2633511 (Change from second to millisecond precision)
 
 (defn- add-to-1970 [expr unit-str]
   (hsql/call :timestampadd

@@ -277,11 +277,6 @@
 (defmethod sql.qp/date [:postgres :year]             [_ _ expr] (date-trunc :year expr))
 (defmethod sql.qp/date [:postgres :year-of-era]      [_ _ expr] (extract-integer :year expr))
 
-(defmethod sql.qp/->honeysql [:postgres :now]
-  [_driver _clause]
-  (-> (hsql/call :current_timestamp 0)
-      (hx/with-database-type-info "timestamptz")))
-
 (defmethod sql.qp/date [:postgres :week-of-year-iso] [_driver _ expr] (extract-integer :week expr))
 
 (defmethod sql.qp/date [:postgres :day-of-week]
