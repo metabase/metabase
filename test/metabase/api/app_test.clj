@@ -4,8 +4,8 @@
     [clojure.test :refer [deftest is testing]]
     [medley.core :as m]
     [metabase.actions.test-util :as actions.test-util]
-    [metabase.models :refer [App Card Collection Dashboard DashboardCard
-                             ModelAction Permissions]]
+    [metabase.models :refer [Action App Card Collection Dashboard
+                             DashboardCard ModelAction Permissions]]
     [metabase.models.collection.graph :as graph]
     [metabase.models.permissions :as perms]
     [metabase.models.permissions-group :as perms-group]
@@ -247,7 +247,7 @@
       normalized-models))
 
 (deftest scaffold-test
-  (mt/with-model-cleanup [Card Dashboard Collection Permissions]
+  (mt/with-model-cleanup [Action Card Dashboard Collection Permissions]
     (mt/with-all-users-permission (perms/app-root-collection-permission :read)
       (testing "Golden path"
         (let [app (mt/user-http-request
@@ -269,16 +269,17 @@
                         list-page))
           (testing "Implicit actions are created"
             (is (partial=
-                 [{:slug "insert"}
-                  {:slug "update"}
-                  {:slug "delete"}]
-                 (db/select ModelAction {:where [:= :model_action.card_id
-                                                 {:select [:id]
-                                                  :from [Card]
-                                                  :where [:and
-                                                          [:= :collection_id (:collection_id app)]
-                                                          [:= :dataset true]]}]
-                                         :order-by [:id]}))))
+                 [{:kind "row/create"}
+                  {:kind "row/update"}
+                  {:kind "row/delete"}]
+                 (db/select 'ImplicitAction {:where [:in :action_id
+                                                     {:select [:action.id]
+                                                      :from [Card]
+                                                      :join [Action [:= :action.model_id :report_card.id]]
+                                                      :where [:and
+                                                              [:= :collection_id (:collection_id app)]
+                                                              [:= :dataset true]]}]
+                                             :order-by [:action_id]}))))
           (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id app) :read}}}
                         (graph/graph :apps))
               "''All Users'' should have the default permission on the app collection")

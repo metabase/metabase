@@ -10,7 +10,7 @@
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.mbql.schema :as mbql.s]
-    [metabase.models :refer [App Card Dashboard ModelAction Table]]
+    [metabase.models :refer [App Card Dashboard Table]]
     [metabase.models.action :as action]
     [metabase.models.app.graph :as app.graph]
     [metabase.models.collection :as collection]
@@ -139,14 +139,21 @@
                                 (let [card (api.card/create-card! (-> card
                                                                       (replace-scaffold-targets accum)
                                                                       (assoc :collection_id collection-id)
-                                                                      (dissoc :scaffold-target)))]
-                                  (when (:dataset card)
-                                    (db/insert-many! ModelAction [{:card_id (:id card) :slug "insert" :requires_pk false}
-                                                                  {:card_id (:id card) :slug "update" :requires_pk true}
-                                                                  {:card_id (:id card) :slug "delete" :requires_pk true}]))
-                                  (cond-> (assoc accum (into ["scaffold-target-id"] scaffold-target) (:id card))
+                                                                      (dissoc :scaffold-target)))
+                                      target+action-ids (when (:dataset card)
+                                                          (for [kind ["row/create" "row/update" "row/delete"]]
+                                                            [kind (action/insert! {:model_id (:id card) :kind kind :type :implicit})]))
+                                      scaffold-path (into ["scaffold-target-id"] scaffold-target)]
+                                  (cond-> (assoc accum scaffold-path (:id card))
                                     (:dataset card)
-                                    (assoc (conj (into ["scaffold-target-id"] scaffold-target) "card") (str "card__" (:id card))))))
+                                    (assoc (conj scaffold-path "card") (str "card__" (:id card)))
+
+                                    (seq target+action-ids)
+                                    (merge (->> target+action-ids
+                                                (map (juxt (comp #(conj scaffold-path %)
+                                                                 first)
+                                                           second))
+                                                (into {}))))))
                               {}
                               cards)]
     ;; We create the dashboards (without dashcards) so we can replace scaffold-target-id elsewhere
@@ -246,9 +253,9 @@
           :page-ident table-id
           :ident-type ident-type
           :actions (if (= page-type "list")
-                     [["insert" (i18n/tru "New")]]
-                     [["update" (i18n/tru "Edit")]
-                      ["delete" (i18n/tru "Delete")]])
+                     [[["scaffold-target-id" "card" ident-type table-id "model" "row/create"] (i18n/tru "New")]]
+                     [[["scaffold-target-id" "card" ident-type table-id "model" "row/update"] (i18n/tru "Edit")]
+                      [["scaffold-target-id" "card" ident-type table-id "model" "row/delete"] (i18n/tru "Delete") true]])
           :model-ref ["scaffold-target-id" "card" ident-type table-id "model"]
           :card-ref ["scaffold-target-id" "card" ident-type table-id "model" "card"]
           :page-name (format "%s %s"
@@ -357,12 +364,12 @@
                                                                       "targetId" ["scaffold-target-id" "page" ident-type page-ident "detail"]}}}]
                                     (seq actions)
                                     (concat
-                                      (mapv (fn [[slug action-name] col]
+                                      (mapv (fn [[action-ref action-name] col]
                                               {:size_y 1 :size_x 2 :row 0 :col col
                                                :card_id model-ref
+                                               :action_id action-ref
                                                :visualization_settings {"virtual_card" {"display" "action"}
-                                                                        "button.label" action-name
-                                                                        "action_slug" slug}})
+                                                                        "button.label" action-name}})
                                             actions
                                             (range (- 18 (* 2 (count actions))) Long/MAX_VALUE 2))))
                                   (cond-> [{:size_y 12 :size_x 18 :row 1 :col 0
@@ -379,15 +386,15 @@
 
                                     (seq actions)
                                     (concat
-                                      (mapv (fn [[slug action-name] col]
+                                      (mapv (fn [[action-ref action-name danger?] col]
                                               {:size_y 1 :size_x 2 :row 0 :col col
                                                :card_id model-ref
+                                               :action_id action-ref
                                                :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
                                                                      "target" ["variable", ["template-tag", pk-field-slug]]}]
                                                :visualization_settings (cond-> {"virtual_card" {"display" "action"}
-                                                                                "button.label" action-name
-                                                                                "action_slug" slug}
-                                                                         (= "delete" slug)
+                                                                                "button.label" action-name}
+                                                                         danger?
                                                                          (assoc "button.variant" "danger"))})
                                             actions
                                             (range (- 18 (* 2 (count actions))) Long/MAX_VALUE 2)))))}
