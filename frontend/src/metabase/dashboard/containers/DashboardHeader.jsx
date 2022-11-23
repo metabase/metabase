@@ -17,7 +17,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Bookmark from "metabase/entities/bookmarks";
 
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import { ParametersPopover } from "metabase/dashboard/components/DashCardParameterMapper";
+import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";

@@ -3,7 +3,6 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { LocationDescriptor } from "history";
 
-import { IconProps } from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
@@ -17,6 +16,7 @@ import Collections, {
   buildCollectionTree,
   getCollectionIcon,
   ROOT_COLLECTION,
+  CollectionTreeItem,
 } from "metabase/entities/collections";
 import { logout } from "metabase/auth/actions";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -49,11 +49,6 @@ const mapDispatchToProps = {
   logout,
   onReorderBookmarks: Bookmarks.actions.reorder,
 };
-
-interface CollectionTreeItem extends Collection {
-  icon: string | IconProps;
-  children: CollectionTreeItem[];
-}
 
 interface Props extends MainNavbarProps {
   isAdmin: boolean;

@@ -479,6 +479,7 @@ function setParamsEndpoints(prefix) {
 }
 
 export const ActionsApi = {
+  get: GET("/api/action/:id"),
   list: GET("/api/action"),
   create: POST("/api/action/row/create"),
   update: POST("/api/action/row/update"),

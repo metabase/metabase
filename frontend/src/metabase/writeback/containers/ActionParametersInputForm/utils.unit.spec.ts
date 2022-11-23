@@ -1,5 +1,10 @@
 import type { FieldSettingsMap } from "metabase-types/api";
-import { setDefaultValues } from "./utils";
+import {
+  setDefaultValues,
+  getChangedValues,
+  setNumericValues,
+  formatValue,
+} from "./utils";
 
 describe("writeback > containers > ActionParametersInputForm > utils", () => {
   describe("setDefaultValues", () => {
@@ -107,6 +112,112 @@ describe("writeback > containers > ActionParametersInputForm > utils", () => {
         "abc-def": "bar",
         "ghi-jkl": "baz",
       });
+    });
+  });
+
+  describe("formatValue", () => {
+    it("ignores null values", () => {
+      const result = formatValue(null);
+      expect(result).toEqual(null);
+    });
+
+    it("ignores numeric values", () => {
+      const result = formatValue(123);
+      expect(result).toEqual(123);
+    });
+
+    it("ignores string values", () => {
+      const result = formatValue("123");
+      expect(result).toEqual("123");
+    });
+
+    it("formats dates", () => {
+      const result = formatValue("2020-05-01T00:00:00Z", "date");
+      expect(result).toEqual("2020-05-01");
+    });
+
+    it("formats datetimes", () => {
+      const result = formatValue("2020-05-01T05:00:00Z", "datetime-local");
+      expect(result).toEqual("2020-05-01T05:00:00");
+    });
+  });
+
+  describe("setNumericValues", () => {
+    it("should set a numeric value for a numeric form field", () => {
+      const params = {
+        "abc-def": "123",
+      };
+
+      const fieldSettings = {
+        "abc-def": {
+          fieldType: "number",
+        },
+      };
+
+      const result = setNumericValues(
+        params,
+        fieldSettings as unknown as FieldSettingsMap,
+      );
+
+      expect(result).toEqual({
+        "abc-def": 123,
+      });
+    });
+
+    it("should not alter string fields", () => {
+      const params = {
+        "abc-def": "123",
+        "ghi-jkl": "456",
+      };
+
+      const fieldSettings = {
+        "abc-def": {
+          fieldType: "number",
+        },
+        "ghi-jkl": {
+          fieldType: "string",
+        },
+      };
+
+      const result = setNumericValues(
+        params,
+        fieldSettings as unknown as FieldSettingsMap,
+      );
+
+      expect(result).toEqual({
+        "abc-def": 123,
+        "ghi-jkl": "456",
+      });
+    });
+  });
+
+  describe("getChangedValues", () => {
+    it("should flag changed fields", () => {
+      const oldValues = {
+        "abc-def": null,
+      };
+
+      const newValues = {
+        "abc-def": "abc",
+      };
+
+      const result = getChangedValues(newValues, oldValues);
+
+      expect(result).toEqual(newValues);
+    });
+
+    it("should not flag fields changed from null to empty string", () => {
+      const oldValues = {
+        "abc-def": null,
+      };
+
+      const newValues = {
+        "abc-def": "",
+      };
+
+      const result = getChangedValues(newValues, oldValues);
+
+      expect(result).toEqual({});
     });
   });
 });

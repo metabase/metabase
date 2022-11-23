@@ -57,7 +57,7 @@ export type WritebackAction = WritebackActionBase & (QueryAction | HttpAction);
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
 export type ParametersForActionExecution = {
-  [id: ParameterId]: string | number;
+  [id: ParameterId]: string | number | null;
 };
 
 export interface ActionFormSubmitResult {

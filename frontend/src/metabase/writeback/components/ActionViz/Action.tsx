@@ -25,7 +25,7 @@ import LinkButton from "./LinkButton";
 import ActionForm from "./ActionForm";
 
 import { shouldShowConfirmation } from "./utils";
-import { ActionParameterMapper } from "./ActionParameterMapper";
+import { ActionParameterOptions } from "./ActionOptions";
 
 interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;
@@ -100,7 +100,7 @@ function ActionComponent({
     return (
       <>
         {showParameterMapper && (
-          <ActionParameterMapper dashcard={dashcard} page={page} />
+          <ActionParameterOptions dashcard={dashcard} page={page} />
         )}
         <ActionForm
           onSubmit={onSubmit}
