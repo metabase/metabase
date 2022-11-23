@@ -10,6 +10,7 @@ export interface Card extends UnsavedCard {
   database_id?: number;
   can_write: boolean;
   cache_ttl: number | null;
+  query_average_duration?: number | null;
   last_query_start: string | null;
   result_metadata?: Field[];
 

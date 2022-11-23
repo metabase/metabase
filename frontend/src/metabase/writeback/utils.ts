@@ -1,12 +1,12 @@
 import type {
   ActionDashboardCard,
   BaseDashboardOrderedCard,
+  DashboardOrderedCard,
+  Card,
   Dashboard,
   Database as IDatabase,
   WritebackAction,
 } from "metabase-types/api";
-import type { SavedCard } from "metabase-types/types/Card";
-import type { DashCard } from "metabase-types/types/Dashboard";
 import type { Parameter } from "metabase-types/types/Parameter";
 
 import { TYPE } from "metabase-lib/types/constants";
@@ -64,13 +64,13 @@ export const isEditableField = (field: Field, parameter: Parameter) => {
   return true;
 };
 
-export const isActionCard = (card: SavedCard) => card?.display === "action";
+export const isActionCard = (card: Card) => card?.display === "action";
 
 export function isActionDashCard(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionDashboardCard {
   const virtualCard = dashCard?.visualization_settings?.virtual_card;
-  return isActionCard(virtualCard as SavedCard);
+  return isActionCard(virtualCard as Card);
 }
 
 export const isButtonLinkDashCard = (dashCard: BaseDashboardOrderedCard) =>
@@ -116,7 +116,7 @@ const VIZ_TYPES_TO_HIDE_HEADER_IN_APPS = ["object", "list"];
 
 export const shouldHideDashcardHeader = (
   dashboard: Dashboard,
-  dashcard: DashCard,
+  dashcard: DashboardOrderedCard,
 ): boolean => {
   const headerHiddenVizTypes = dashboard.is_app_page
     ? VIZ_TYPES_TO_HIDE_HEADER_IN_APPS
