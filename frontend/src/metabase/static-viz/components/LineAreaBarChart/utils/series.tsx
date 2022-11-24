@@ -61,6 +61,11 @@ export function getSeriesWithLegends(
       return questionSeries.map(series => {
         index++;
 
+        const customSeriesTitle = seriesTitles?.[keys[index]];
+        if (customSeriesTitle) {
+          return customSeriesTitle;
+        }
+
         if (!hasTwoDimensions(series)) {
           // One or zero dimensions
 
@@ -87,7 +92,7 @@ export function getSeriesWithLegends(
           });
 
           if (!isMultipleSeries) {
-            return seriesTitles?.[keys[index]] ?? columnKey;
+            return columnKey;
           }
 
           // is multiple series card
