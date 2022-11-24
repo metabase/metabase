@@ -5,7 +5,7 @@ import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
 import { assoc } from "icepick";
 
-import { formatNumber } from "metabase/static-viz/lib/numbers";
+import { formatNumber } from "metabase/lib/formatting/numbers";
 import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
 import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
 import { AreaSeries } from "metabase/static-viz/components/XYChart/shapes/AreaSeries";
