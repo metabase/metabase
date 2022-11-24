@@ -236,26 +236,24 @@
      :export-format :api
      :parameters    parameters)))
 
-(api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute/:slug"
+(api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
-  [uuid dashcard-id slug parameters]
+  [uuid dashcard-id parameters]
   {dashcard-id su/IntGreaterThanZero
-   slug su/NonBlankString
    parameters su/JSONString}
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
-    (actions.execution/fetch-values dashboard-id dashcard-id slug (json/parse-string parameters))))
+    (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters))))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
 
-(api/defendpoint POST "/dashboard/:uuid/dashcard/:dashcard-id/execute/:slug"
+(api/defendpoint POST "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  [uuid dashcard-id slug :as {{:keys [parameters], :as _body} :body}]
+  [uuid dashcard-id :as {{:keys [parameters], :as _body} :body}]
   {dashcard-id su/IntGreaterThanZero
-   slug su/NonBlankString
    parameters (s/maybe {s/Keyword s/Any})}
   (let [throttle-message (try
                            (throttle/check dashcard-execution-throttle dashcard-id)
@@ -276,7 +274,7 @@
           ;; you're by definition allowed to run it without a perms check anyway
           (binding [api/*current-user-permissions-set* (delay #{"/"})]
             ;; Undo middleware string->keyword coercion
-            (actions.execution/execute-dashcard! dashboard-id dashcard-id slug (update-keys parameters name))))))))
+            (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
 (api/defendpoint GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."

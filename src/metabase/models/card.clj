@@ -5,7 +5,6 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.action :as action]
             [metabase.models.collection :as collection]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as mi]
@@ -194,15 +193,6 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
-(defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
-  (when is-write?
-    (when-not (db/select-one action/QueryAction :card_id card-id)
-      (action/insert! {:card_id card-id :type :query}))))
-
-(defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
-  (when (not is-write?)
-    (db/delete! action/QueryAction :card_id card-id)))
-
 (defn- assert-valid-model
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
   [{:keys [dataset dataset_query]}]
@@ -234,8 +224,7 @@
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (create-actions-when-is-writable! card)))
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))))
 
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
@@ -283,10 +272,6 @@
       (params/assert-valid-parameter-mappings changes)
       ;; additional checks (Enterprise Edition only)
       (@pre-update-check-sandbox-constraints changes)
-      ;; create Action and QueryAction when is_write is set true
-      (create-actions-when-is-writable! changes)
-      ;; delete Action and QueryAction when is_write is set false
-      (delete-actions-when-not-writable! changes)
       (assert-valid-model (merge old-card-info changes)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
