@@ -1,7 +1,9 @@
 import { resolve } from "metabase-lib/expressions/resolver";
+const util = require("util");
 
 describe("metabase-lib/expressions/resolve", () => {
   function collect(expr, startRule = "expression") {
+    console.log(util.inspect({ expr, startRule }, false, null));
     const dimensions = [];
     const segments = [];
     const metrics = [];
@@ -67,7 +69,7 @@ describe("metabase-lib/expressions/resolve", () => {
     });
 
     it("should reject a number literal", () => {
-      expect(() => filter("3.14159")).toThrow();
+      expect(() => filter("3.14159")).toThrow("not this");
     });
 
     it("should reject a string literal", () => {

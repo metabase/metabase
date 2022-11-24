@@ -287,6 +287,7 @@ class ExpressionEditorTextfield extends React.Component {
   diagnoseExpression() {
     const { source } = this.state;
     const { query, startRule, name } = this.props;
+    console.log("🚀", "in diagnoseExpression", { query, startRule, name });
     if (!source || source.length === 0) {
       return { message: "Empty expression" };
     }

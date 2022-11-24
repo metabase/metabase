@@ -39,6 +39,7 @@ export function infer(mbql, env) {
       return infer(mbql[1][0][1], env);
     case "coalesce":
       return infer(mbql[1], env);
+    }
   }
 
   const func = MBQL_CLAUSES[op];
