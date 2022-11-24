@@ -501,6 +501,10 @@
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
+(defmethod ->rvalue :now
+  [[_]]
+  ($date-from-string (t/offset-date-time (t/zone-id "Europe/Helsinki"))))
+
 (defmethod ->rvalue :datetime-add        [[_ inp amount unit]] (do
                                                                  (check-date-operations-supported)
                                                                  {"$dateAdd" {:startDate (->rvalue inp)
