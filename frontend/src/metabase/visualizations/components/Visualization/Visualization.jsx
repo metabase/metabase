@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import { assoc } from "icepick";
 import _ from "underscore";
-import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
@@ -41,6 +40,8 @@ import ErrorView from "./ErrorView";
 import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
+  Root,
+  Header,
   VisualizationActionButtonsContainer,
   VisualizationSlowSpinner,
 } from "./Visualization.styled";
@@ -447,12 +448,9 @@ class Visualization extends React.PureComponent {
       (replacementContent && (dashcard.size_y !== 1 || isMobile));
 
     return (
-      <div
-        className={cx(className, "flex flex-column full-height")}
-        style={style}
-      >
+      <Root className={className} style={style}>
         {!!hasHeader && (
-          <div className="p1 flex-no-shrink">
+          <Header>
             <ChartCaption
               series={series}
               settings={settings}
@@ -464,7 +462,7 @@ class Visualization extends React.PureComponent {
                   : null
               }
             />
-          </div>
+          </Header>
         )}
         {replacementContent ? (
           replacementContent
@@ -517,7 +515,7 @@ class Visualization extends React.PureComponent {
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           />
         )}
-      </div>
+      </Root>
     );
   }
 }

@@ -2,6 +2,17 @@ import styled from "@emotion/styled";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { color } from "metabase/lib/colors";
 
+export const Root = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+`;
+
+export const Header = styled.div`
+  padding: 0.5rem;
+  flex-shrink: 0;
+`;
+
 export interface VisualizationSlowSpinnerProps {
   isUsuallySlow: boolean;
 }
