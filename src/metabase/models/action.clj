@@ -5,7 +5,6 @@
             [metabase.models.query :as query]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
-            [metabase.util.encryption :as encryption]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
