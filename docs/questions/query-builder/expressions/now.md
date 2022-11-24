@@ -72,7 +72,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### SQL
 
-When you run a question using the [query_builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
 For example, the PostgreSQL function `CURRENT_TIMESTAMP()` gets the current date and time in your _database_ timezone. Database functions like `CURRENT_TIMESTAMP()` may give you different results from `now`, which uses your Metabase report timezone. 
 
