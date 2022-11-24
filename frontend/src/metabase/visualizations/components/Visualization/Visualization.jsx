@@ -8,8 +8,6 @@ import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { duration, formatNumber } from "metabase/lib/formatting";
@@ -40,6 +38,7 @@ import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
+import ErrorView from "./ErrorView";
 import NoResultsView from "./NoResultsView";
 import {
   VisualizationActionButtonsContainer,
@@ -472,17 +471,12 @@ class Visualization extends React.PureComponent {
         ) : isDashboard && noResults ? (
           <NoResultsView isSmall={small} />
         ) : error ? (
-          <div
-            className={
-              "flex-full px1 pb1 text-centered flex flex-column layout-centered " +
-              (isDashboard ? "text-slate-light" : "text-slate")
-            }
-          >
-            <Tooltip tooltip={error} isEnabled={small}>
-              <Icon className="mb2" name={errorIcon || "warning"} size={50} />
-            </Tooltip>
-            {!small && <span className="h4 text-bold">{error}</span>}
-          </div>
+          <ErrorView
+            error={error}
+            icon={errorIcon}
+            isSmall={small}
+            isDashboard={isDashboard}
+          />
         ) : loading ? (
           <div className="flex-full p1 text-centered text-brand flex flex-column layout-centered">
             {isSlow ? (
