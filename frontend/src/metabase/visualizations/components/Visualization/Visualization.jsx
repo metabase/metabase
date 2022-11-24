@@ -41,6 +41,7 @@ import Mode from "metabase-lib/Mode";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
 
+import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { VisualizationSlowSpinner } from "./Visualization.styled";
 
 const defaultProps = {
@@ -374,17 +375,11 @@ class Visualization extends React.PureComponent {
             isPlaceholder = true;
           } else if (e instanceof ChartSettingsError && onOpenChartSettings) {
             error = (
-              <div>
-                <div>{error}</div>
-                <div className="mt2">
-                  <button
-                    className="Button Button--primary Button--medium"
-                    onClick={() => this.props.onOpenChartSettings(e.initial)}
-                  >
-                    {e.buttonText}
-                  </button>
-                </div>
-              </div>
+              <ChartSettingsErrorButton
+                message={error}
+                buttonLabel={e.buttonText}
+                onClick={() => onOpenChartSettings(e.initial)}
+              />
             );
           } else if (e instanceof MinRowsError) {
             noResults = true;
