@@ -91,47 +91,47 @@
   (and (vector? x) (= (first x) "#text")))
 
 (defn- combo-chart-string
-  [series-seqs settings-seqs]
+  [series-seqs settings]
   (let [s (.asString (js/execute-fn-name context
                                          "combo_chart"
                                          (json/generate-string series-seqs)
-                                         (json/generate-string settings-seqs)
-                                         (json/generate-string (:colors (first settings-seqs)))))]
+                                         (json/generate-string settings)
+                                         (json/generate-string (:colors settings))))]
     s))
 
 (defn- combo-chart-hiccup
-  [series-seqs settings-seqs]
+  [series-seqs settings]
   (let [s (.asString (js/execute-fn-name context
                                          "combo_chart"
                                          (json/generate-string series-seqs)
-                                         (json/generate-string settings-seqs)
-                                         (json/generate-string (:colors (first settings-seqs)))))]
+                                         (json/generate-string settings)
+                                         (json/generate-string (:colors settings))))]
     (-> s parse-svg document-tag-hiccup)))
 
 (deftest timelineseries-line-test
-  (let [rows          [[#t "2020" 2]
-                       [#t "2021" 3]]
-        series-seqs   [[{:type          :line
-                         :color         "#999AC4"
-                         :data          rows
-                         :yAxisPosition "left"
-                         :column        {:name "count"}}]]
-        settings-seqs [{:colors {:brand     "#5E81AC"
-                                 :filter    "#A3BE8C"
-                                 :summarize "#B48EAD"},
-                        :x      {:type   "timeseries"
-                                 :format {:date_style "YYYY/MM/DD"}}
-                        :y      {:type   "linear"
-                                 :format {:prefix   "prefix"
-                                          :decimals 2}}
-                        :labels {:bottom ""
-                                 :left   ""
-                                 :right  ""}}]
-        svg-string    (combo-chart-string series-seqs settings-seqs)]
+  (let [rows        [[#t "2020" 2]
+                     [#t "2021" 3]]
+        series-seqs [[{:type          :line
+                       :color         "#999AC4"
+                       :data          rows
+                       :yAxisPosition "left"
+                       :column        {:name "count"}}]]
+        settings    {:colors {:brand     "#5E81AC"
+                              :filter    "#A3BE8C"
+                              :summarize "#B48EAD"},
+                     :x      {:type   "timeseries"
+                              :format {:date_style "YYYY/MM/DD"}}
+                     :y      {:type   "linear"
+                              :format {:prefix   "prefix"
+                                       :decimals 2}}
+                     :labels {:bottom ""
+                              :left   ""
+                              :right  ""}}
+        svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series-seqs settings-seqs)]
+      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-hiccup (combo-chart-hiccup series-seqs settings-seqs)]
+    (let [svg-hiccup (combo-chart-hiccup series-seqs settings)]
       (testing "it returns a valid svg string with no html"
         (validate-svg-string :timelineseries-line svg-string))
       (testing "The svg string has formatted axes"
@@ -150,29 +150,29 @@
               text-nodes))))))
 
 (deftest timelineseries-bar-test
-  (let [rows          [[#t "2020" 2]
-                       [#t "2021" 3]]
-        series-seqs   [[{:type          :bar
-                         :color         "#999AC4"
-                         :data          rows
-                         :yAxisPosition "left"
-                         :column        {:name "count"}}]]
-        settings-seqs [{:colors {:brand     "#5E81AC"
-                                 :filter    "#A3BE8C"
-                                 :summarize "#B48EAD"},
-                        :x      {:type   "timeseries"
-                                 :format {:date_style "YYYY/MM/DD"}}
-                        :y      {:type   "linear"
-                                 :format {:prefix   "prefix"
-                                          :decimals 4}}
-                        :labels {:bottom ""
-                                 :left   ""
-                                 :right  ""}}]
-        svg-string    (combo-chart-string series-seqs settings-seqs)]
+  (let [rows        [[#t "2020" 2]
+                     [#t "2021" 3]]
+        series-seqs [[{:type          :bar
+                       :color         "#999AC4"
+                       :data          rows
+                       :yAxisPosition "left"
+                       :column        {:name "count"}}]]
+        settings    {:colors {:brand     "#5E81AC"
+                              :filter    "#A3BE8C"
+                              :summarize "#B48EAD"},
+                     :x      {:type   "timeseries"
+                              :format {:date_style "YYYY/MM/DD"}}
+                     :y      {:type   "linear"
+                              :format {:prefix   "prefix"
+                                       :decimals 4}}
+                     :labels {:bottom ""
+                              :left   ""
+                              :right  ""}}
+        svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series-seqs settings-seqs)]
+      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-hiccup (combo-chart-hiccup series-seqs settings-seqs)]
+    (let [svg-hiccup (combo-chart-hiccup series-seqs settings)]
       (testing "it returns a valid svg string with no html"
         (validate-svg-string :timelineseries-bar svg-string))
       (testing "The svg string has formatted axes"
@@ -191,28 +191,28 @@
               text-nodes))))))
 
 (deftest area-test
-  (let [rows          [["bob" 2]
-                       ["dobbs" 3]]
-        series-seqs   [[{:type          :area
-                         :color         "#999AC4"
-                         :data          rows
-                         :yAxisPosition "left"
-                         :column        {:name "count"}}]]
-        settings-seqs [{:colors {:brand     "#5E81AC"
-                                 :filter    "#A3BE8C"
-                                 :summarize "#B48EAD"},
-                        :x      {:type "ordinal"}
-                        :y      {:type   "linear"
-                                 :format {:prefix   "prefix"
-                                          :decimals 4}}
-                        :labels {:bottom ""
-                                 :left   ""
-                                 :right  ""}}]
-        svg-string    (combo-chart-string series-seqs settings-seqs)]
+  (let [rows        [["bob" 2]
+                     ["dobbs" 3]]
+        series-seqs [[{:type          :area
+                       :color         "#999AC4"
+                       :data          rows
+                       :yAxisPosition "left"
+                       :column        {:name "count"}}]]
+        settings    {:colors {:brand     "#5E81AC"
+                              :filter    "#A3BE8C"
+                              :summarize "#B48EAD"},
+                     :x      {:type "ordinal"}
+                     :y      {:type   "linear"
+                              :format {:prefix   "prefix"
+                                       :decimals 4}}
+                     :labels {:bottom ""
+                              :left   ""
+                              :right  ""}}
+        svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series-seqs settings-seqs)]
+      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-hiccup (combo-chart-hiccup series-seqs settings-seqs)]
+    (let [svg-hiccup (combo-chart-hiccup series-seqs settings)]
       (testing "it returns a valid svg string with no html"
         (validate-svg-string :categorical-area svg-string))
       (testing "The svg string has formatted axes"
@@ -234,18 +234,16 @@
                            :data          [["A" 1] ["B" 20] ["C" -4] ["D" 100]]
                            :yAxisPosition "left"
                            :column        {:name "count"}}]]
-        settings-seqs   [{:x      {:type "ordinal"}
-                          :y      {:type "linear"}
-                          :labels {:bottom ""
-                                   :left   ""
-                                   :right  ""}}]
-        non-goal-hiccup (combo-chart-hiccup series-seqs settings-seqs)
+        settings        {:x      {:type "ordinal"}
+                         :y      {:type "linear"}
+                         :labels {:bottom ""
+                                  :left   ""
+                                  :right  ""}}
+        non-goal-hiccup (combo-chart-hiccup series-seqs settings)
         non-goal-node   (->> non-goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
     (testing "No goal line exists when there are no goal settings."
       (is (= nil (second non-goal-node))))
-    (let [goal-hiccup (combo-chart-hiccup series-seqs (->> settings-seqs
-                                                          (map (partial merge {:goal {:value 0
-                                                                         :label goal-label}}))))
+    (let [goal-hiccup (combo-chart-hiccup series-seqs (merge settings {:goal {:value 0 :label goal-label}}))
           goal-node   (->> goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
       (testing "A goal line does exist when goal settings are present in the viz-settings"
         (is (= goal-label (second goal-node)))))))
@@ -282,39 +280,39 @@
           (validate-svg-string :categorical-waterfall svg-string))))))
 
 (deftest combo-test
-  (let [rows1         [[#t "1998-03-01T00:00:00Z" 2]
-                       [#t "1999-03-01T00:00:00Z" 3]]
-        rows2         [[#t "2000-03-01T00:00:00Z" 3]
-                       [#t "2002-03-01T00:00:00Z" 4]]
+  (let [rows1       [[#t "1998-03-01T00:00:00Z" 2]
+                     [#t "1999-03-01T00:00:00Z" 3]]
+        rows2       [[#t "2000-03-01T00:00:00Z" 3]
+                     [#t "2002-03-01T00:00:00Z" 4]]
         ;; this one needs more stuff because of stricter ts types
-        series-seqs   [[{:name          "bob"
-                         :color         "#cccccc"
-                         :type          "area"
-                         :data          rows1
-                         :yAxisPosition "left"
-                         :column        {:name "count"}}
-                        {:name          "bob2"
-                         :color         "#cccccc"
-                         :type          "line"
-                         :data          rows2
-                         :yAxisPosition "right"
-                         :column        {:name "count"}}]]
-        labels        {:left   "count"
-                       :bottom "year"
-                       :right  "something"}
-        settings-seqs [{:x      {:type   "timeseries"
-                                 :format {:date_style "YYYY"}}
-                        :y      {:type   "linear"
-                                 :format {:number_style "decimal"
-                                          :decimals     4}}
-                        :colors {}
-                        :labels labels}]]
+        series-seqs [[{:name          "bob"
+                       :color         "#cccccc"
+                       :type          "area"
+                       :data          rows1
+                       :yAxisPosition "left"
+                       :column        {:name "count"}}
+                      {:name          "bob2"
+                       :color         "#cccccc"
+                       :type          "line"
+                       :data          rows2
+                       :yAxisPosition "right"
+                       :column        {:name "count"}}]]
+        labels      {:left   "count"
+                     :bottom "year"
+                     :right  "something"}
+        settings    {:x      {:type   "timeseries"
+                              :format {:date_style "YYYY"}}
+                     :y      {:type   "linear"
+                              :format {:number_style "decimal"
+                                       :decimals     4}}
+                     :colors {}
+                     :labels labels}]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series-seqs settings-seqs)]
+      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
         (is (bytes? svg-bytes))))
     (let [svg-string (.asString (js/execute-fn-name context "combo_chart"
                                                     (json/generate-string series-seqs)
-                                                    (json/generate-string settings-seqs)
+                                                    (json/generate-string settings)
                                                     (json/generate-string {})))]
       (testing "it returns a valid svg string (no html in it)"
         (validate-svg-string :combo-chart svg-string)))))

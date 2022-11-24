@@ -712,7 +712,7 @@
         labels            (x-and-y-axis-label-info x-col y-col viz-settings)
         names             (map :name cards)
         types             (replace {:scalar :bar} (map :display cards))
-        settings-seqs     (map (partial ->ts-viz x-col y-col labels) viz-settings-seqs)
+        settings          (->ts-viz x-col y-col labels viz-settings)
         y-axis-positions  (take (count names) (default-y-pos data axis-group-threshold))
         series            (for [[enforced-type rows cols viz-settings [x-axis-rowfn y-axis-rowfn] y-axis-position card-name]
                                 (map vector types row-seqs col-seqs viz-settings-seqs rowfns y-axis-positions names)]
@@ -727,7 +727,7 @@
                                (if (= (count x-cols) 1)
                                  (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings card-name)
                                  (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings card-name)))))]
-    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings-seqs)))))
+    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
 
 (defn- lab-image-bundle
   "Generate an image-bundle for a Line Area Bar chart (LAB)
@@ -753,7 +753,7 @@
                            (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name))]
 
         labels          (combo-label-info x-cols y-cols viz-settings)
-        settings        [(->ts-viz (first x-cols) (first y-cols) labels viz-settings)]]
+        settings        (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
     (image-bundle/make-image-bundle
      render-type
      (js-svg/combo-chart series settings))))

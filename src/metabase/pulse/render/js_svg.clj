@@ -133,13 +133,13 @@
   Series should be list of dicts of {rows: rows, cols: cols, type: type}, where types is 'line' or 'bar' or 'area'.
   Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [series-seqs settings-seqs]
+  [series-seqs settings]
   (svg-string->bytes
    (.asString (js/execute-fn-name (context)
                                   "combo_chart"
                                   (json/generate-string series-seqs)
-                                  (json/generate-string settings-seqs)
-                                  (json/generate-string (:colors (first settings-seqs)))))))
+                                  (json/generate-string settings)
+                                  (json/generate-string (:colors settings))))))
 
 (defn row-chart
   "Clojure entrypoint to render a row chart."

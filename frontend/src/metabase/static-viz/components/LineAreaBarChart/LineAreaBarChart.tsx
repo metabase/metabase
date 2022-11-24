@@ -23,14 +23,14 @@ import {
 
 interface LineAreaBarChartProps {
   multipleSeries: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][];
-  multipleSettings: ChartSettings[];
+  settings: ChartSettings;
   colors: Colors;
   getColor: ColorGetter;
 }
 
 const LineAreaBarChart = ({
   multipleSeries,
-  multipleSettings,
+  settings,
   getColor,
   colors: instanceColors,
 }: LineAreaBarChartProps) => {
@@ -64,23 +64,19 @@ const LineAreaBarChart = ({
   };
 
   const palette = { ...colors, ...instanceColors };
-  const mainSettings = multipleSettings[0];
   const seriesWithColors = getSeriesWithColors(
     multipleSeries,
-    mainSettings,
+    settings,
     palette,
   );
-  const seriesWithLegends = getSeriesWithLegends(
-    seriesWithColors,
-    mainSettings,
-  );
+  const seriesWithLegends = getSeriesWithLegends(seriesWithColors, settings);
   const series = removeNoneSeriesFields(seriesWithLegends);
 
   const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;
   const xValuesCount = getXValuesCount(series);
-  const chartSize = calculateChartSize(mainSettings, xValuesCount, minTickSize);
+  const chartSize = calculateChartSize(settings, xValuesCount, minTickSize);
   const adjustedSettings = adjustSettings(
-    mainSettings,
+    settings,
     xValuesCount,
     minTickSize,
     chartSize,
