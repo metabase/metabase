@@ -42,6 +42,12 @@
      java.time.format.TextStyle/SHORT
      (java.util.Locale/getDefault))))
 
+(defn- long-timezone-name [timezone-id]
+  (let [^java.time.ZoneId zone (if (seq timezone-id)
+                                 (t/zone-id timezone-id)
+                                 (t/zone-id))]
+     zone ))
+
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
@@ -55,6 +61,13 @@
   :visibility :public
   :setter     :none
   :getter     (fn [] (short-timezone-name (report-timezone)))
+  :doc        false)
+
+(defsetting report-timezone-long
+  "Current report timezone string"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (long-timezone-name (report-timezone)))
   :doc        false)
 
 
