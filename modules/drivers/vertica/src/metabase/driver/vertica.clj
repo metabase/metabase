@@ -64,7 +64,6 @@
   [_ _ expr]
   (hsql/call :to_timestamp expr))
 
-;; TODO - not sure if needed or not
 (defn- cast-timestamp
   "Vertica requires stringified timestamps (what Date/DateTime/Timestamps are converted to) to be cast as timestamps
   before date operations can be performed. This function will add that cast if it is a timestamp, otherwise this is a
@@ -75,7 +74,7 @@
     expr))
 
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (cast-timestamp expr)))
-(defn- extract    [unit expr] (hsql/call :extract    unit              expr))
+(defn- extract    [unit expr] (hsql/call :extract    unit              (cast-timestamp expr)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 

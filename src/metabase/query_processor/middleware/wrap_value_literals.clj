@@ -104,12 +104,6 @@
 
 (def ^:private raw-value? (complement mbql.u/mbql-clause?))
 
-(defn- parse-date-if-string
-  [x]
-  (if (string? x)
-    (add-type-info (u.date/parse x) nil)
-    x))
-
 (defn wrap-value-literals-in-mbql
   "Given a normalized mbql query (important to desugar forms like `[:does-not-contain ...]` -> `[:not [:contains
   ...]]`), walks over the clause and annotates literals with type information.
@@ -128,17 +122,11 @@
     [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
     [clause field (add-type-info x (type-info field))]
 
-    [:datetime-diff x y unit]
-    [:datetime-diff (parse-date-if-string x) (parse-date-if-string y) unit]
+    [:datetime-diff (x :guard string?) (y :guard string?) unit]
+    [:datetime-diff (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]
 
-    [:temporal-extract field & args]
-    (into [:temporal-extract (parse-date-if-string field)] args)
-
-    [(clause :guard #{:datetime-add :datetime-subtract}) field amount unit]
-    [clause (parse-date-if-string field) amount unit]
-
-    [:convert-timezone field & args]
-    (into [:convert-timezone (parse-date-if-string field)] args)
+    [(clause :guard #{:datetime-add :datetime-subtract :convert-timezone :temporal-extract}) (field :guard string?) & args]
+    (into [clause (add-type-info (u.date/parse field) nil)] args)
 
     [:between field (min-val :guard raw-value?) (max-val :guard raw-value?)]
     [:between
