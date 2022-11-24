@@ -77,6 +77,16 @@ interface DashCardVisualizationProps {
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
+function mapDispatchToProps(dispatch: Dispatch) {
+  return { dispatch };
+}
+
+// This is done to add the `getExtraDataForClick` prop.
+// We need that to pass relevant data along with the clicked object.
+const WrappedVisualization = WithVizSettingsData(
+  connect(null, mapDispatchToProps)(Visualization),
+);
+
 function DashCardVisualization({
   dashcard,
   dashboard,
@@ -170,7 +180,7 @@ function DashCardVisualization({
   }, [dashcard, parameterValuesBySlug, isEmbed]);
 
   return (
-    <Visualization
+    <WrappedVisualization
       // Visualization has to be converted to TypeScript before we can remove the ts-ignore
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
@@ -213,8 +223,4 @@ function DashCardVisualization({
   );
 }
 
-// This is done to add the `getExtraDataForClick` prop.
-// We need that to pass relevant data along with the clicked object.
-export default WithVizSettingsData(
-  connect(null, dispatch => ({ dispatch }))(DashCardVisualization),
-) as unknown as React.ComponentType<DashCardVisualizationProps>;
+export default DashCardVisualization;
