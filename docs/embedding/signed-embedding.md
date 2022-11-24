@@ -108,18 +108,20 @@ You can change the way an embedded question or dashboard looks in an iframe (whi
 - Border
 - Title
 - Theme (light, dark, transparent)
-- Font\*
-- Download data\* (Note: This setting only hides the download button. To disable the feature entirely, use the [Download results permission](../permissions/data.md#download-results).)
-
-\* Available on paid plans.
+- Font¹
+- Download data²
 
 To update the appearance of a signed embed:
 
 1. Optional: Preview the appearance changes from your question or dashboard's embedding settings (**sharing icon** > **Embed this item in an application**).
-2. Optional: Click **Code** to find the updated server code snippet in the top block.
-3. Change the [parameters](./signed-embedding-parameters.md#customizing-the-appearance-of-a-signed-embed) in your actual server code.
+2. Optional: Click **Code** to find the updated server code snippet in the top code block.
+3. Change the [parameters](./signed-embedding-parameters#customizing-the-appearance-of-a-signed-embed) in your actual server code.
 
-For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance).
+
+¹ Available on paid plans.
+
+² Available on paid plans and hides the download button on questions only (not dashboards). To completely disable downloads, use the [Download results permission](../permissions/data.md#download-results).
 
 ## Removing the "Powered by Metabase" banner
 

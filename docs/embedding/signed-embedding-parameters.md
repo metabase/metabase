@@ -108,18 +108,20 @@ You can change the appearance of an embedded item by adding parameters with the 
 | bordered               | true, false                                   |
 | titled                 | true, false                                   |
 | theme                  | null, transparent, night                      |
-| font\*                 | [font name](../configuring-metabase/fonts.md) |
-| hide_download_button\* | true, false                                   |
+| font¹                  | [font name](../configuring-metabase/fonts.md) |
+| hide_download_button²  | true, false                                   |
 
-\* Available on paid plans.
-
-You can preview the changes from your question or dashboard's [embedded appearance settings](./signed-embedding.md#customizing-the-appearance-of-signed-embeds).
+You can preview the changes from your question or dashboard's [embedded appearance settings](./signed-embedding#customizing-the-appearance-of-signed-embeds).
 
 For example, the following embedding URL will display an embedded item in dark mode, with its original title, and without a border:
 
 ```
 your_embedding_url#theme=night&titled=true&bordered=false
 ```
+
+¹ Available on paid plans.
+
+² Available on paid plans and works on questions only (not dashboards). To completely disable downloads, use the [Download results permission](../permissions/data.md#download-results).
 
 ## Further reading
 
