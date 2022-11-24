@@ -13,6 +13,7 @@ export interface AppBarProps {
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
+  isEditingDataAppQuestion?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;

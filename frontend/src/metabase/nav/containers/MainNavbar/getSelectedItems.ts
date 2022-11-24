@@ -31,7 +31,6 @@ function getSelectedItems({
   const isModelPath = pathname.startsWith("/model");
   const isModelDetailPath = isModelPath && pathname.endsWith("/detail");
   const isDataAppPath = Urls.isDataAppPath(pathname);
-  const isDataAppPagePath = Urls.isDataAppPagePath(pathname);
   const isDashboardPath = pathname.startsWith("/dashboard");
 
   if (isCollectionPath) {
@@ -42,7 +41,7 @@ function getSelectedItems({
       },
     ];
   }
-  if (isDataAppPath || isDataAppPagePath) {
+  if (isDataAppPath) {
     return [
       {
         id: Urls.extractEntityId(slug),

@@ -56,6 +56,8 @@ const viewTitleHeaderPropTypes = {
 
   result: PropTypes.object,
 
+  location: PropTypes.object.isRequired,
+
   isDirty: PropTypes.bool,
   isRunnable: PropTypes.bool,
   isRunning: PropTypes.bool,
@@ -81,7 +83,8 @@ const viewTitleHeaderPropTypes = {
 };
 
 export function ViewTitleHeader(props) {
-  const { question, className, style, isNavBarOpen, updateQuestion } = props;
+  const { question, location, className, style, isNavBarOpen, updateQuestion } =
+    props;
 
   const [
     areFiltersExpanded,
@@ -110,6 +113,11 @@ export function ViewTitleHeader(props) {
 
   const isSummarized =
     isStructured && question.query().topLevelQuery().hasAggregations();
+
+  const fromUrl = location?.query?.["from"];
+  const isEditingDataAppQuestion =
+    // At the moment, only data app paths are expected
+    typeof fromUrl === "string" && Urls.isDataAppPath(fromUrl);
 
   const onQueryChange = useCallback(
     newQuery => {
@@ -142,6 +150,7 @@ export function ViewTitleHeader(props) {
           isNative={isNative}
           isSummarized={isSummarized}
           areFiltersExpanded={areFiltersExpanded}
+          hasSaveQuestionModal={!isEditingDataAppQuestion}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
           onQueryChange={onQueryChange}
@@ -319,6 +328,7 @@ function DatasetCollectionBadge({ dataset }) {
 
 ViewTitleHeaderRightSide.propTypes = {
   question: PropTypes.object.isRequired,
+  originalQuestion: PropTypes.object,
   result: PropTypes.object,
   queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
   isDataset: PropTypes.bool,
@@ -331,6 +341,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isDirty: PropTypes.bool,
   isResultDirty: PropTypes.bool,
   isActionListVisible: PropTypes.bool,
+  hasSaveQuestionModal: PropTypes.bool,
   runQuestionQuery: PropTypes.func,
   updateQuestion: PropTypes.func.isRequired,
   cancelQuery: PropTypes.func,
@@ -351,11 +362,13 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.bool,
   onQueryChange: PropTypes.func,
+  onSave: PropTypes.func.isRequired,
 };
 
 function ViewTitleHeaderRightSide(props) {
   const {
     question,
+    originalQuestion,
     result,
     queryBuilderMode,
     isBookmarked,
@@ -370,6 +383,7 @@ function ViewTitleHeaderRightSide(props) {
     isDirty,
     isResultDirty,
     isActionListVisible,
+    hasSaveQuestionModal = true,
     runQuestionQuery,
     updateQuestion,
     cancelQuery,
@@ -388,6 +402,7 @@ function ViewTitleHeaderRightSide(props) {
     onOpenQuestionInfo,
     onModelPersistenceChange,
     onQueryChange,
+    onSave,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
@@ -420,6 +435,22 @@ function ViewTitleHeaderRightSide(props) {
       onOpenQuestionInfo();
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
+
+  const handleSaveClick = useCallback(() => {
+    const canOverwrite = originalQuestion && isDirty;
+    if (canOverwrite && !hasSaveQuestionModal) {
+      onSave({ ...question.card(), id: originalQuestion.id() });
+    } else {
+      onOpenModal(MODAL_TYPES.SAVE);
+    }
+  }, [
+    question,
+    originalQuestion,
+    isDirty,
+    hasSaveQuestionModal,
+    onSave,
+    onOpenModal,
+  ]);
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
@@ -520,7 +551,7 @@ function ViewTitleHeaderRightSide(props) {
               ? `Notebook Mode; Click Save`
               : `View Mode; Click Save`
           }
-          onClick={() => onOpenModal("save")}
+          onClick={handleSaveClick}
         >
           {t`Save`}
         </SaveButton>

@@ -14,6 +14,7 @@ import {
   ListItemSubtitle,
   InfoLeft,
   InfoRight,
+  RightHeader,
 } from "./VariantInfo.styled";
 
 import ListCell from "./ListCell";
@@ -56,7 +57,7 @@ export const VariantInfoHeader = ({
   return (
     <ListHeader hasImage={!isEmpty(imageIndex)}>
       <div>{leftTitle}</div>
-      <div>{getColumnTitle(infoIndex)}</div>
+      <RightHeader>{getColumnTitle(infoIndex)}</RightHeader>
     </ListHeader>
   );
 };

@@ -1,6 +1,7 @@
 import { assocIn } from "icepick";
 import { VisualizationSettings } from "metabase-types/api/card";
-import { SETTING_ID } from "./settings/series";
+import { Series } from "metabase-types/types/Visualization";
+import { SETTING_ID, keyForSingleSeries } from "./settings/series";
 
 export const updateSeriesColor = (
   settings: VisualizationSettings,
@@ -8,4 +9,8 @@ export const updateSeriesColor = (
   color: string,
 ) => {
   return assocIn(settings, [SETTING_ID, seriesKey, "color"], color);
+};
+
+export const findSeriesByKey = (series: Series, key: string) => {
+  return series.find(singleSeries => keyForSingleSeries(singleSeries) === key);
 };

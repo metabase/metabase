@@ -6,10 +6,12 @@ import { getIn } from "icepick";
 import type { LocationDescriptor } from "history";
 
 import { IconProps } from "metabase/components/Icon";
+import EntityMenu from "metabase/components/EntityMenu";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import Utils from "metabase/lib/utils";
+import * as Urls from "metabase/lib/urls";
 
 import { useOnMount } from "metabase/hooks/use-on-mount";
 
@@ -37,6 +39,7 @@ import type {
   DashCardId,
   VisualizationSettings,
 } from "metabase-types/api";
+import { Card as LegacyCard } from "metabase-types/types/Card";
 import type { DatasetData } from "metabase-types/types/Dataset";
 import type {
   ParameterId,
@@ -55,6 +58,7 @@ import DashCardActionButtons from "./DashCardActionButtons";
 import DashCardParameterMapper from "./DashCardParameterMapper";
 import {
   DashCardRoot,
+  DataAppActionsPanel,
   DashboardCardActionsPanel,
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
@@ -348,7 +352,7 @@ function DashCard({
       return (
         <DashboardCardActionsPanel onMouseDown={preventDragging}>
           <DashCardActionButtons
-            card={mainCard}
+            dashCard={dashcard}
             series={series}
             dashboard={dashboard}
             isLoading={isLoading}
@@ -367,6 +371,30 @@ function DashCard({
       );
     }
 
+    if (dashboard.is_app_page && !isAction && !isEditing) {
+      return (
+        <DataAppActionsPanel display={mainCard.display}>
+          <EntityMenu
+            items={[
+              {
+                title: t`Tweak data`,
+                icon: "insight",
+                link: Urls.question(mainCard as LegacyCard, {
+                  query: { from: location.pathname },
+                }),
+              },
+              {
+                title: t`Remove`,
+                icon: "close",
+                action: onRemove,
+              },
+            ]}
+            triggerIcon="ellipsis"
+          />
+        </DataAppActionsPanel>
+      );
+    }
+
     return null;
   }, [
     dashcard,
@@ -376,6 +404,8 @@ function DashCard({
     hasError,
     isLoading,
     isPreviewingCard,
+    isAction,
+    isEditing,
     isEditingDashboardLayout,
     onAddSeries,
     onRemove,

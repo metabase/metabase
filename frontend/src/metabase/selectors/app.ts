@@ -1,7 +1,9 @@
-import { Location } from "history";
 import { createSelector } from "reselect";
-import { t } from "ttag";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import type { Location } from "history";
+
+import * as Urls from "metabase/lib/urls";
+
+import { getUser } from "metabase/selectors/user";
 import {
   getIsEditing as getIsEditingDashboard,
   getDashboard,
@@ -12,13 +14,15 @@ import {
   getQuestion,
 } from "metabase/query_builder/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { State } from "metabase-types/store";
+
+import type { State } from "metabase-types/store";
 
 export interface RouterProps {
   location: Location;
 }
 
 const HOMEPAGE_PATH = /^\/$/;
+const QUERY_BUILDER_PATHS = [/\/question/, /\/model/];
 const PATHS_WITHOUT_NAVBAR = [
   /\/model\/.*\/query/,
   /\/model\/.*\/metadata/,
@@ -31,14 +35,17 @@ const EMBEDDED_PATHS_WITH_NAVBAR = [
   /^\/archive/,
 ];
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [
-  /\/question\//,
-  /\/model\//,
+  ...QUERY_BUILDER_PATHS,
   /\/dashboard\//,
 ];
-const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
+const PATHS_WITH_QUESTION_LINEAGE = QUERY_BUILDER_PATHS;
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props.location.pathname;
+};
+
+export const getRouterQueryParameters = (state: State, props: RouterProps) => {
+  return props.location.query || {};
 };
 
 export const getRouterHash = (state: State, props: RouterProps) => {
@@ -138,21 +145,55 @@ export const getCollectionId = createSelector(
     dashboardId ? dashboard?.collection_id : question?.collectionId(),
 );
 
+export const getIsEditingDataAppQuestion = createSelector(
+  [getQuestion, getRouterQueryParameters, getRouterPath],
+  (question, params, path) => {
+    const hasValidFromUrl =
+      typeof params.from === "string" && Urls.isDataAppPath(params.from);
+    return (
+      question &&
+      hasValidFromUrl &&
+      QUERY_BUILDER_PATHS.some(pattern => pattern.test(path))
+    );
+  },
+);
+
 export const getIsCollectionPathVisible = createSelector(
-  [getQuestion, getDashboard, getRouterPath],
-  (question, dashboard, path) =>
-    ((question != null && question.isSaved()) || dashboard != null) &&
-    PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
+  [getQuestion, getDashboard, getIsEditingDataAppQuestion, getRouterPath],
+  (question, dashboard, isEditingDataAppQuestion, path) => {
+    if (isEditingDataAppQuestion) {
+      // "Back to app" button takes over the collection breadcrumb in this case
+      return false;
+    }
+    const isDashboard = dashboard != null;
+    return (
+      (isDashboard || question?.isSaved()) &&
+      PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path))
+    );
+  },
 );
 
 export const getIsQuestionLineageVisible = createSelector(
-  [getQuestion, getOriginalQuestion, getRouterPath],
-  (question, originalQuestion, path) =>
-    question != null &&
-    !question.isSaved() &&
-    originalQuestion != null &&
-    !originalQuestion.isDataset() &&
-    PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
+  [
+    getQuestion,
+    getOriginalQuestion,
+    getIsEditingDataAppQuestion,
+    getRouterPath,
+  ],
+  (question, originalQuestion, isEditingDataAppQuestion, path) => {
+    if (!question || !originalQuestion) {
+      return false;
+    }
+    if (isEditingDataAppQuestion) {
+      // "Back to app" button takes over the question lineage in this case
+      return false;
+    }
+    return (
+      !question.isSaved() &&
+      !originalQuestion.isDataset() &&
+      PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path))
+    );
+  },
 );
 
 export const getSettings = createSelector(
