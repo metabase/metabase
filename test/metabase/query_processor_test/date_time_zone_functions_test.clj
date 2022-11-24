@@ -327,10 +327,11 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :now)
     (testing "now works in a filter"
       (is (= 1000
-             (-> (mt/run-mbql-query checkins
-                   {:aggregation [[:count]]
-                    :filter      [:<= $date [:now]]})
-                 mt/rows ffirst)))))
+             (->> (mt/run-mbql-query checkins
+                    {:aggregation [[:count]]
+                     :filter      [:<= $date [:now]]})
+                  (mt/formatted-rows [int])
+                  ffirst)))))
   (mt/test-drivers (mt/normal-drivers-with-feature :now :datetime-diff)
     (testing "should work as an argument to datetime-diff"
       (is (= 0
