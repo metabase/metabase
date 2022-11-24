@@ -1,6 +1,5 @@
 (ns metabase.models.action
   (:require [cheshire.core :as json]
-            [clojure.set :as set]
             [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.models.query :as query]
@@ -96,8 +95,6 @@
                                  (u/update-if-exists :dataset_query json/encode)
                                  (assoc :action_id (:id action)))]})
       (:id action))))
-
-(def ^:private encrypted-json-out (comp mi/json-out-with-keywordization encryption/maybe-decrypt))
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
