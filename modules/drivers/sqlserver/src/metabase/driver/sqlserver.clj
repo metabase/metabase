@@ -29,6 +29,7 @@
 ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
+(defmethod driver/supports? [:sqlserver :now] [_ _] true)
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]

@@ -29,6 +29,8 @@
            [oracle.jdbc OracleConnection OracleTypes]
            oracle.sql.TIMESTAMPTZ))
 
+(defmethod driver/database-supports? [:oracle :now] [_driver _feat _db] true)
+
 (driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (def ^:private database-type->base-type

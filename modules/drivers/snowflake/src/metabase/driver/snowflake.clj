@@ -32,6 +32,8 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+(defmethod driver/database-supports? [:snowflake :now] [_driver _feat _db] true)
+
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ message]
   (log/spy :error (type message))

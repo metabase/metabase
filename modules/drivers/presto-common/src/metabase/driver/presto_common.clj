@@ -18,6 +18,8 @@
   (:import java.sql.Time
            [java.time OffsetDateTime ZonedDateTime]))
 
+(defmethod driver/database-supports? [:presto-common :now] [_driver _feat _db] true)
+
 (driver/register! :presto-common, :abstract? true, :parent :sql)
 
 ;;; Presto API helpers
@@ -212,5 +214,6 @@
                               :native-parameters               true
                               :expression-aggregations         true
                               :binning                         true
-                              :foreign-keys                    true}]
+                              :foreign-keys                    true
+                              :now                             true}]
   (defmethod driver/supports? [:presto-common feature] [_ _] supported?))

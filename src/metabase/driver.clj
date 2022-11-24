@@ -445,6 +445,9 @@
     ;; DEFAULTS TO TRUE
     :date-arithmetics
 
+    ;; Does the driver support the :now function
+    :now
+
     ;; Does the driver support :datetime-diff functions
     :datetime-diff
 

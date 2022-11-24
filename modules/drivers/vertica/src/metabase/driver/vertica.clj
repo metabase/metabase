@@ -24,6 +24,8 @@
 
 (defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
 
+(defmethod driver/supports? [:vertica :now] [_ _] true)
+
 (defmethod driver/db-start-of-week :vertica
   [_]
   :monday)

@@ -57,6 +57,7 @@
   [_driver _feature _db]
   true)
 
+(defmethod driver/database-supports? [:mysql :now] [_ _ _] true)
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 
