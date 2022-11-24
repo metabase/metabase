@@ -1,16 +1,15 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import { assoc } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { duration, formatNumber } from "metabase/lib/formatting";
+import { formatNumber } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
 
 import {
@@ -39,6 +38,7 @@ import { memoizeClass } from "metabase-lib/utils";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import ErrorView from "./ErrorView";
+import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
   VisualizationActionButtonsContainer,
@@ -478,30 +478,7 @@ class Visualization extends React.PureComponent {
             isDashboard={isDashboard}
           />
         ) : loading ? (
-          <div className="flex-full p1 text-centered text-brand flex flex-column layout-centered">
-            {isSlow ? (
-              <div className="text-slate">
-                <div className="h4 text-bold mb1">{t`Still Waiting...`}</div>
-                {isSlow === "usually-slow" ? (
-                  <div>
-                    {jt`This usually takes an average of ${(
-                      <span style={{ whiteSpace: "nowrap" }}>
-                        {duration(expectedDuration)}
-                      </span>
-                    )}.`}
-                    <br />
-                    {t`(This is a bit long for a dashboard)`}
-                  </div>
-                ) : (
-                  <div>
-                    {t`This is usually pretty fast but seems to be taking a while right now.`}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <LoadingSpinner className="text-slate" />
-            )}
-          </div>
+          <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
         ) : (
           <CardVisualization
             {...this.props}
