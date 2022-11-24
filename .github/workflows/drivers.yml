@@ -8,13 +8,13 @@ on:
     paths-ignore:
       - "docs/**"
       - "**.md"
-      - "**/frontend/**"
+      - "**/frontend/**.unit.*"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - "docs/**"
       - "**.md"
-      - "**/frontend/**"
+      - "**/frontend/**.unit.*"
 
 jobs:
 
