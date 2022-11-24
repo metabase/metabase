@@ -111,7 +111,7 @@ You can change the appearance of an embedded item by adding parameters with the 
 | font¹                  | [font name](../configuring-metabase/fonts.md) |
 | hide_download_button²  | true, false                                   |
 
-You can preview the changes from your question or dashboard's [embedded appearance settings](./signed-embedding#customizing-the-appearance-of-signed-embeds.md).
+You can preview the changes from your question or dashboard's [embedded appearance settings](./signed-embedding.md#customizing-the-appearance-of-signed-embeds).
 
 For example, the following embedding URL will display an embedded item in dark mode, with its original title, and without a border:
 
