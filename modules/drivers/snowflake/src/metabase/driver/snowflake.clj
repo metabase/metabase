@@ -262,7 +262,7 @@
 (defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [hsql-form    (sql.qp/->honeysql driver arg)
-        timestamptz? (hx/is-of-type? clause "timestamptz")]
+        timestamptz? (hx/is-of-type? hsql-form "timestamptz")]
     (when (and timestamptz? source-timezone)
       (throw (ex-info "`timestamptz` columns shouldn't have a `source timezone`"
                       {:type            qp.error-type/invalid-query
