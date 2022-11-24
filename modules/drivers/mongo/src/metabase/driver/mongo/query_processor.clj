@@ -503,7 +503,7 @@
 
 (defmethod ->rvalue :now
   [[_]]
-  ($date-from-string (t/offset-date-time (t/zone-id "Europe/Helsinki"))))
+  ($date-from-string (t/offset-date-time (t/zone-id (qp.timezone/results-timezone-id)))))
 
 (defmethod ->rvalue :datetime-add        [[_ inp amount unit]] (do
                                                                  (check-date-operations-supported)
