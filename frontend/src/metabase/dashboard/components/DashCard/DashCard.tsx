@@ -348,7 +348,7 @@ function DashCard({
       return (
         <DashboardCardActionsPanel onMouseDown={preventDragging}>
           <DashCardActionButtons
-            card={mainCard}
+            dashCard={dashcard}
             series={series}
             dashboard={dashboard}
             isLoading={isLoading}
@@ -371,7 +371,6 @@ function DashCard({
   }, [
     dashcard,
     dashboard,
-    mainCard,
     series,
     hasError,
     isLoading,
