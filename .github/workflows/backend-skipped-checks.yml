@@ -11,11 +11,15 @@ on:
     paths:
       - "docs/**"
       - "**.md"
+      # frontend and E2E tests
+      - "**/frontend/test/**"
       - "**/frontend/**.unit.*"
   pull_request:
     paths:
       - "docs/**"
       - "**.md"
+      # frontend and E2E tests
+      - "**/frontend/test/**"
       - "**/frontend/**.unit.*"
 
 jobs:
