@@ -34,14 +34,13 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { getMode } from "metabase/modes/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
 
-import NoResults from "assets/img/no_results.svg";
-
 import Question from "metabase-lib/Question";
 import Mode from "metabase-lib/Mode";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
+import NoResultsView from "./NoResultsView";
 import {
   VisualizationActionButtonsContainer,
   VisualizationSlowSpinner,
@@ -471,17 +470,7 @@ class Visualization extends React.PureComponent {
         {replacementContent ? (
           replacementContent
         ) : isDashboard && noResults ? (
-          <div
-            className={
-              "flex-full px1 pb1 text-centered flex flex-column layout-centered " +
-              (isDashboard ? "text-slate-light" : "text-slate")
-            }
-          >
-            <Tooltip tooltip={t`No results!`} isEnabled={small}>
-              <img data-testid="no-results-image" src={NoResults} />
-            </Tooltip>
-            {!small && <span className="h4 text-bold">{t`No results!`}</span>}
-          </div>
+          <NoResultsView isSmall={small} />
         ) : error ? (
           <div
             className={
