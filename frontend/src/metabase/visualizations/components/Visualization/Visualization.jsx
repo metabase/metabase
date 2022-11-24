@@ -36,9 +36,6 @@ import {
 import NoResults from "assets/img/no_results.svg";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 
-export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart.`;
-export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
-
 import Question from "metabase-lib/Question";
 import Mode from "metabase-lib/Mode";
 import { memoizeClass } from "metabase-lib/utils";
