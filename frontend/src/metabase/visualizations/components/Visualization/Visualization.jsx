@@ -1,44 +1,46 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
-
 import { t, jt } from "ttag";
 import { assoc } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
+
 import ExplicitSize from "metabase/components/ExplicitSize";
-import ChartCaption from "metabase/visualizations/components/ChartCaption";
-import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
-import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { duration, formatNumber } from "metabase/lib/formatting";
+
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { duration, formatNumber } from "metabase/lib/formatting";
+import Utils from "metabase/lib/utils";
 
 import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { isSameSeries } from "metabase/visualizations/lib/utils";
+import ChartCaption from "metabase/visualizations/components/ChartCaption";
+import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
+import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
+
 import { performDefaultAction } from "metabase/visualizations/lib/action";
-import { getFont } from "metabase/styled-components/selectors";
-
-import { getMode } from "metabase/modes/lib/modes";
-import Utils from "metabase/lib/utils";
-
 import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
+
+import { getMode } from "metabase/modes/lib/modes";
+import { getFont } from "metabase/styled-components/selectors";
 
 import NoResults from "assets/img/no_results.svg";
-import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 
 import Question from "metabase-lib/Question";
 import Mode from "metabase-lib/Mode";
+import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
+
 import { VisualizationSlowSpinner } from "./Visualization.styled";
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
