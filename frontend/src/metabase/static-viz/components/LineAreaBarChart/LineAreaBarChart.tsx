@@ -3,12 +3,7 @@ import { merge } from "icepick";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
 import { colors } from "metabase/lib/colors";
 import { XYChart } from "../XYChart";
-import {
-  ChartSettings,
-  ChartStyle,
-  SeriesWithOneOrLessDimensions,
-  SeriesWithTwoDimensions,
-} from "../XYChart/types";
+import { CardSeries, ChartSettings, ChartStyle } from "../XYChart/types";
 import { Colors } from "./types";
 import {
   adjustSettings,
@@ -22,7 +17,7 @@ import {
 } from "./utils/series";
 
 interface LineAreaBarChartProps {
-  multipleSeries: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][];
+  multipleSeries: CardSeries[];
   settings: ChartSettings;
   colors: Colors;
   getColor: ColorGetter;

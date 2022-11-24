@@ -34,6 +34,11 @@ export interface SeriesWithTwoDimensions extends BaseSeries {
   breakoutValue: string;
 }
 
+export type CardSeries = (
+  | SeriesWithOneOrLessDimensions
+  | SeriesWithTwoDimensions
+)[];
+
 export interface Series extends BaseSeries {
   name: string;
   color: string;
