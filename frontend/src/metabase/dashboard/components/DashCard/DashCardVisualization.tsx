@@ -117,8 +117,7 @@ function DashCardVisualization({
   showClickBehaviorSidebar,
   onChangeLocation,
   onUpdateVisualizationSettings,
-  dispatch,
-}: DashCardVisualizationProps & { dispatch: Dispatch }) {
+}: DashCardVisualizationProps) {
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
       if (isVirtualDashCard(dashcard)) {
@@ -218,7 +217,6 @@ function DashCardVisualization({
       onUpdateVisualizationSettings={onUpdateVisualizationSettings}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
-      dispatch={dispatch}
     />
   );
 }
