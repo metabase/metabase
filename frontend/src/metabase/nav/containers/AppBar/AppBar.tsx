@@ -6,6 +6,7 @@ import { logout } from "metabase/auth/actions";
 import { closeNavbar, getIsNavbarOpen, toggleNavbar } from "metabase/redux/app";
 import {
   getIsCollectionPathVisible,
+  getIsEditingDataAppQuestion,
   getIsNewButtonVisible,
   getIsProfileLinkVisible,
   getIsQuestionLineageVisible,
@@ -23,6 +24,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isSearchVisible: getIsSearchVisible(state),
   isNewButtonVisible: getIsNewButtonVisible(state),
   isProfileLinkVisible: getIsProfileLinkVisible(state),
+  isEditingDataAppQuestion: getIsEditingDataAppQuestion(state, props),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
 });

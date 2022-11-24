@@ -1,11 +1,17 @@
 import React from "react";
-import { CollectionId, User } from "metabase-types/api";
+
+import type { CollectionId, User } from "metabase-types/api";
+
+import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
+import QuestionLineage from "../../containers/QuestionLineage";
+
 import NewItemButton from "../NewItemButton";
 import ProfileLink from "../ProfileLink";
 import SearchBar from "../SearchBar";
-import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
-import QuestionLineage from "../../containers/QuestionLineage";
+
+import DataAppBackButton from "./DataAppBackButton";
 import AppBarLogo from "./AppBarLogo";
+
 import {
   AppBarLeftContainer,
   AppBarRightContainer,
@@ -22,6 +28,7 @@ export interface AppBarLargeProps {
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
+  isEditingDataAppQuestion?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
@@ -36,6 +43,7 @@ const AppBarLarge = ({
   isSearchVisible,
   isNewButtonVisible,
   isProfileLinkVisible,
+  isEditingDataAppQuestion,
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
@@ -50,9 +58,15 @@ const AppBarLarge = ({
           onToggleClick={onToggleNavbar}
         />
         <AppBarInfoContainer
-          isVisible={!isNavBarOpen || isQuestionLineageVisible}
+          isVisible={
+            !isNavBarOpen ||
+            isQuestionLineageVisible ||
+            isEditingDataAppQuestion
+          }
         >
-          {isQuestionLineageVisible ? (
+          {isEditingDataAppQuestion ? (
+            <DataAppBackButton />
+          ) : isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />

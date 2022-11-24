@@ -7,14 +7,15 @@ import { HeaderRoot, HeaderTitle } from "./SavedQuestionHeaderButton.styled";
 SavedQuestionHeaderButton.propTypes = {
   className: PropTypes.string,
   question: PropTypes.object.isRequired,
+  isRenamingDisabled: PropTypes.bool,
   onSave: PropTypes.func,
 };
 
-function SavedQuestionHeaderButton({ question, onSave }) {
+function SavedQuestionHeaderButton({ question, isRenamingDisabled, onSave }) {
   return (
     <HeaderRoot>
       <HeaderTitle
-        isDisabled={!question.canWrite()}
+        isDisabled={!question.canWrite() || isRenamingDisabled}
         initialValue={question.displayName()}
         placeholder={t`Add title`}
         onChange={onSave}

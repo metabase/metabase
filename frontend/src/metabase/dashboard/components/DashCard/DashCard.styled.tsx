@@ -57,6 +57,13 @@ export const DashboardCardActionsPanel = styled.div`
   }
 `;
 
+export const DataAppActionsPanel = styled.div<{ display?: string }>`
+  position: absolute;
+  top: ${({ display }) => (display === "list" ? "4px" : "6px")};
+  right: 6px;
+  z-index: 3;
+`;
+
 export const VirtualDashCardOverlayRoot = styled.div`
   display: flex;
   align-items: center;
