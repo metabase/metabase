@@ -6,7 +6,7 @@ export const ACCENT_COUNT = 8;
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
 /* eslint-disable no-color-literals */
-export const colors: ColorPalette = {
+export const colors = {
   brand: "#509EE3",
   summarize: "#88BF4D",
   filter: "#7172AD",
@@ -80,9 +80,19 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
   "accent7-dark": palette => shade(color(`accent7`, palette)),
 };
 
-export const color = (color: string, palette = colors) => {
+export function color(
+  colorName: keyof ColorPalette,
+  palette?: ColorPalette,
+): string;
+export function color(color: string, palette?: ColorPalette): string;
+export function color(color: any, palette: ColorPalette = colors) {
+  const fullPalette = {
+    ...colors,
+    ...palette,
+  };
+
   if (color in palette) {
-    return palette[color];
+    return fullPalette[color as keyof ColorPalette];
   }
 
   if (color in aliases) {
@@ -90,7 +100,7 @@ export const color = (color: string, palette = colors) => {
   }
 
   return color;
-};
+}
 
 export const alpha = (c: string, a: number) => {
   return Color(color(c)).alpha(a).string();
