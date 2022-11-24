@@ -119,6 +119,10 @@
   [_driver]
   :%now)
 
+(defmethod ->honeysql [:sql :now]
+  [driver _clause]
+  (current-datetime-honeysql-form driver))
+
 ;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
 (defmulti date
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
