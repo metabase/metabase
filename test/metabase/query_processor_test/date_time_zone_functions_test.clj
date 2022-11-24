@@ -324,15 +324,23 @@
                  u.date/parse
                  (t/zoned-date-time (t/zone-id "UTC"))
                  (close? (t/instant) (t/seconds 30)))))))
-  (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics :datetime-diff)
+  (mt/test-drivers (mt/normal-drivers-with-feature :now)
     (testing "now works in a filter"
       (is (= 1000
              (-> (mt/run-mbql-query checkins
                    {:aggregation [[:count]]
                     :filter      [:<= $date [:now]]})
                  mt/rows ffirst)))))
-  (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics :datetime-diff)
+  (mt/test-drivers (mt/normal-drivers-with-feature :now :datetime-diff)
     (testing "should work as an argument to datetime-diff"
+      (is (= 0
+             (-> (mt/run-mbql-query venues
+                   {:expressions {"1" [:datetime-diff [:now] [:now] :month]}
+                    :fields [[:expression "1"]]
+                    :limit  1})
+                 mt/rows ffirst)))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics :datetime-diff)
+    (testing "should work in combination with datetime-diff and date-arithmetics"
       (is (= [1 1]
              (-> (mt/run-mbql-query venues
                    {:expressions {"1" [:datetime-diff [:now] [:datetime-add [:now] 1 :month] :month]
