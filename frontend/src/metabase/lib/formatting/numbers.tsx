@@ -24,7 +24,7 @@ interface FormatNumberOptionsType {
   negativeInParentheses?: boolean;
   number_separators?: string;
   number_style?: string;
-  scale?: number;
+  scale?: string;
   type?: string;
 }
 
