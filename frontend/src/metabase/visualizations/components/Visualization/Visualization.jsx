@@ -43,33 +43,33 @@ import { memoizeClass } from "metabase-lib/utils";
 
 import { VisualizationSlowSpinner } from "./Visualization.styled";
 
+const defaultProps = {
+  showTitle: false,
+  isDashboard: false,
+  isEditing: false,
+  isSettings: false,
+  isQueryBuilder: false,
+  onUpdateVisualizationSettings: () => {},
+  // prefer passing in a function that doesn't cause the application to reload
+  onChangeLocation: location => {
+    window.location = location;
+  },
+};
+
+const mapStateToProps = state => ({
+  fontFamily: getFont(state),
+});
+
 class Visualization extends React.PureComponent {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      hovered: null,
-      clicked: null,
-      error: null,
-      warnings: [],
-      yAxisSplit: null,
-      series: null,
-      visualization: null,
-      computedSettings: {},
-    };
-  }
-
-  static defaultProps = {
-    showTitle: false,
-    isDashboard: false,
-    isEditing: false,
-    isSettings: false,
-    isQueryBuilder: false,
-    onUpdateVisualizationSettings: () => {},
-    // prefer passing in a function that doesn't cause the application to reload
-    onChangeLocation: location => {
-      window.location = location;
-    },
+  state = {
+    hovered: null,
+    clicked: null,
+    error: null,
+    warnings: [],
+    yAxisSplit: null,
+    series: null,
+    visualization: null,
+    computedSettings: {},
   };
 
   UNSAFE_componentWillMount() {
@@ -224,7 +224,7 @@ class Visualization extends React.PureComponent {
       return [];
     }
     const { metadata, getExtraDataForClick = () => ({}) } = this.props;
-    // TODO: push this logic into Question?
+
     const seriesIndex = clicked.seriesIndex || 0;
     const card = this.state.series[seriesIndex].card;
     const question = this._getQuestionForCardCached(metadata, card);
@@ -564,9 +564,7 @@ class Visualization extends React.PureComponent {
   }
 }
 
-const mapStateToProps = state => ({
-  fontFamily: getFont(state),
-});
+Visualization.defaultProps = defaultProps;
 
 export default _.compose(
   ExplicitSize({
