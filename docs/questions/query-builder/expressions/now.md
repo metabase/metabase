@@ -56,11 +56,11 @@ case(now >= [Start] AND now < [Deadline], "In progress",
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-This table uses `timestamp` and `datetime` interchangeably---just make sure that your dates and times aren't stored as strings or numbers in your database.
+This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../data-modeling/metadata-editing#casting-to-a-specific-data-type) from the Data Model page.
 
 ## Limitations
 
-`now` might not actually be _now_ if you don't live in the same timezone as your Metabase report timezone.
+`now` might not actually be _now_ (in your local time) if you don't live in the same timezone as your Metabase [report timezone](../configuring-metabase/settings#report-timezone).
 
 ## Related functions
 

@@ -47,7 +47,7 @@ datetimeDiff([Aging Start], now, 'month')
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-This table uses `timestamp` and `datetime` interchangeably---just make sure that your dates and times aren't stored as strings or numbers in your database.
+This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../data-modeling/metadata-editing#casting-to-a-specific-data-type) from the Data Model page.
 
 ## Related functions
 
@@ -74,6 +74,8 @@ is equivalent to the Metabase `datetimeDiff` expression:
 datetimeDiff([Aging Start], [Aging End], 'month')
 ```
 
+Some databases, such as Snowflake and BigQuery, support functions like `DATEDIFF` or `DATE_DIFF`. For more info, check out our list of [common SQL reference guides](https://www.metabase.com/learn/debugging-sql/sql-syntax#common-sql-reference-guides).
+
 ### Spreadsheets
 
 If our [cheese sample data](#calculating-the-age-of-an-entity) is in a spreadsheet where "Aging Start" is in column B and "Aging End" is in column C:
@@ -87,6 +89,8 @@ produces the same result as
 ```
 datetimeDiff([Aging Start], [Aging End], 'month')
 ```
+
+Yes, it looks kind of wrong, but the spreadsheet function really is `DATEDIF()`, not `DATEDIFF()`.
 
 ### Python
 
