@@ -8,9 +8,16 @@ interface RadioIconProps {
 }
 
 export const RadioIcon = styled(Icon)<RadioIconProps>`
-  margin-left: 1rem;
+  margin-left: 0.5rem;
   cursor: pointer;
   user-select: none;
+  border: 1px solid ${color("border")};
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+
+  &:hover {
+    color: ${color("brand")};
+  }
 
   ${props => props.isSelected && `color: ${color("brand")}`}
 `;
