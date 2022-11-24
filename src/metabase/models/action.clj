@@ -135,19 +135,6 @@
         implicit-actions (normalize-implicit-actions implicit)]
     (sort-by :updated_at (concat query-actions http-actions implicit-actions))))
 
-(defn cards-by-action-id
-  "Hydrates action_id from Card for is_write cards"
-  {:batched-hydrate :card/action-id}
-  [cards]
-  (if-let [card-id->action-id (not-empty (db/select-field->field
-                                           :card_id :action_id
-                                           'QueryAction
-                                           :card_id [:in (map :id cards)]))]
-
-    (for [card cards]
-      (m/assoc-some card :action_id (get card-id->action-id (:id card))))
-    cards))
-
 (defn unique-field-slugs?
   "Makes sure that if `coll` is indexed by `index-by`, no keys will be in conflict."
   [fields]

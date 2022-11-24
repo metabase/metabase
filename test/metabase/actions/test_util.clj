@@ -121,62 +121,61 @@
   (case (:type options-map)
     :query
     (let [action-id (action/insert!
-                        (merge {:model_id model-id
-                                :name "Query Example"
-                                :parameters [{:id "id"
-                                              :slug "id"
-                                              :type "number"
-                                              :target [:variable [:template-tag "id"]]}
-                                             {:id "name"
-                                              :slug "name"
-                                              :type "text"
-                                              :required false
-                                              :target [:variable [:template-tag "name"]]}]
-                                :visualization_settings {:inline true}
-                                :database_id (mt/id)
-                                :dataset_query {:database (mt/id)
-                                                :type :native
-                                                :native {:query (str "UPDATE categories\n"
-                                                                     "SET name = concat([[{{name}}, ' ',]] 'Sh', 'op')\n"
-                                                                     "WHERE id = {{id}}")
-                                                         :template-tags {"id" {:name         "id"
-                                                                               :display-name "ID"
-                                                                               :type         :number
-                                                                               :required     true}
-                                                                         "name" {:name         "name"
-                                                                                 :display-name "Name"
-                                                                                 :type         :text
-                                                                                 :required     false}}}}}
-                               options-map))]
-        {:action-id action-id :model-id model-id})
+                     (merge {:model_id model-id
+                             :name "Query Example"
+                             :parameters [{:id "id"
+                                           :slug "id"
+                                           :type "number"
+                                           :target [:variable [:template-tag "id"]]}
+                                          {:id "name"
+                                           :slug "name"
+                                           :type "text"
+                                           :required false
+                                           :target [:variable [:template-tag "name"]]}]
+                             :visualization_settings {:inline true}
+                             :database_id (mt/id)
+                             :dataset_query {:database (mt/id)
+                                             :type :native
+                                             :native {:query (str "UPDATE categories\n"
+                                                                  "SET name = concat([[{{name}}, ' ',]] 'Sh', 'op')\n"
+                                                                  "WHERE id = {{id}}")
+                                                      :template-tags {"id" {:name         "id"
+                                                                            :display-name "ID"
+                                                                            :type         :number
+                                                                            :required     true}
+                                                                      "name" {:name         "name"
+                                                                              :display-name "Name"
+                                                                              :type         :text
+                                                                              :required     false}}}}}
+                            options-map))]
+      {:action-id action-id :model-id model-id})
     :implicit
     (let [action-id (action/insert! (merge
-                                        {:type :implicit
-                                         :name "Update Example"
-                                         :kind "row/update"
-                                         :model_id model-id}
-                                        options-map))]
-        {:action-id action-id :model-id model-id})
+                                     {:type :implicit
+                                      :name "Update Example"
+                                      :kind "row/update"
+                                      :model_id model-id}
+                                     options-map))]
+      {:action-id action-id :model-id model-id})
 
     :http
-    (mt/with-model-cleanup [Action]
-      (let [action-id (action/insert! (merge
-                                        {:type :http
-                                         :name "Echo Example"
-                                         :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
-                                                    :method "POST"
-                                                    :body "{\"the_parameter\": {{id}}}"
-                                                    :headers "{\"x-test\": \"{{id}}\"}"}
-                                         :parameters [{:id "id"
-                                                       :type "number"
-                                                       :target [:template-tag "id"]}
-                                                      {:id "fail"
-                                                       :type "text"
-                                                       :target [:template-tag "fail"]}]
-                                         :response_handle ".body"
-                                         :model_id model-id}
-                                        options-map))]
-        {:action-id action-id :model-id model-id}))))
+    (let [action-id (action/insert! (merge
+                                     {:type :http
+                                      :name "Echo Example"
+                                      :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
+                                                 :method "POST"
+                                                 :body "{\"the_parameter\": {{id}}}"
+                                                 :headers "{\"x-test\": \"{{id}}\"}"}
+                                      :parameters [{:id "id"
+                                                    :type "number"
+                                                    :target [:template-tag "id"]}
+                                                   {:id "fail"
+                                                    :type "text"
+                                                    :target [:template-tag "fail"]}]
+                                      :response_handle ".body"
+                                      :model_id model-id}
+                                     options-map))]
+      {:action-id action-id :model-id model-id})))
 
 (defmacro with-action
   "Execute `body` with a newly created Action.
@@ -187,19 +186,34 @@
    (do-something))"
   {:style/indent 1}
   [binding-forms-and-option-maps & body]
-  (let [model-id (gensym "model-id_")]
+  (let [model (gensym "model-")
+        [_ maybe-model-def :as model-part] (subvec binding-forms-and-option-maps 0 2)
+        [[custom-binding model-def] binding-forms-and-option-maps]
+        (if (and (map? maybe-model-def)
+                 (:dataset maybe-model-def)
+                 (contains? maybe-model-def :dataset_query))
+          [model-part (drop 2 binding-forms-and-option-maps)]
+          ['[_ {:dataset true :dataset_query (mt/mbql-query categories)}]
+           binding-forms-and-option-maps])]
     `(do
        (initialize/initialize-if-needed! :web-server)
-       (mt/with-temp* [Card [{~model-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]]
+       (mt/with-temp Card ~[model model-def]
          (mt/with-model-cleanup [Action]
-           (let [~@(mapcat (fn [[binding-form option-map]]
-                             [binding-form `(do-with-action (merge {:type :query} ~option-map) ~model-id)])
+           (let [~custom-binding ~model
+                 ~@(mapcat (fn [[binding-form option-map]]
+                             [binding-form `(do-with-action (merge {:type :query} ~option-map) (:id ~model))])
                            (partition-all 2 binding-forms-and-option-maps))]
              ~@body))))))
 
-#_(macroexpand-1 '(with-action [{id :action-id} {}
-                                {id2 :action-id} {}]
-                  (something)))
+(comment
+  (with-action [{id :action-id} {:type :implicit :kind "row/create"}
+                {:keys [action-id model-id]} {:type :http}]
+    (something id action-id model-id))
+  (with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+                {id :action-id} {:type :implicit :kind "row/create"}
+                {:keys [action-id model-id]} {}]
+    (something card-id id action-id model-id))
+  nil)
 
 (defn do-with-actions-enabled
   "Impl for [[with-actions-enabled]]."

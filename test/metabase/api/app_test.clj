@@ -333,7 +333,7 @@
                           detail-page))))))))
 
 (deftest scaffold-app-test
-  (mt/with-model-cleanup [Card Dashboard]
+  (mt/with-model-cleanup [Action Card Dashboard]
     (mt/with-temp* [Collection [{collection-id :id} {:namespace :apps}]
                     App [{app-id :id} {:collection_id collection-id}]]
       (testing "Without existing pages"

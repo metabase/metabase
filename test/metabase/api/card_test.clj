@@ -2419,18 +2419,10 @@
     (doseq [f [test-update-is-write-card
                test-create-is-write-card]]
       (f {:status-code 200
-          :get-fn (fn [result is-write]
-                    (if is-write
-                      (is (contains? result :action_id))
-                      (is (not (contains? result :action_id)))))
-          :result-fn (fn [result is-write]
-                       (if is-write
-                         (do
-                           (is (contains? result :action_id))
-                           (is (some? (db/select-one 'QueryAction :card_id (:id result)))))
-                         (do
-                           (is (not (contains? result :action_id)))
-                           (is (nil? (db/select-one 'QueryAction :card_id (:id result))))))
+          :get-fn (fn [result _is-write]
+                    (is (not (contains? result :action_id))))
+          :result-fn (fn [result _is-write]
+                       (is (not (contains? result :action_id)))
                        (is (map? result)))}))))
 
 (defn- do-with-persistence-setup [f]

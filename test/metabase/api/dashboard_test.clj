@@ -2359,7 +2359,7 @@
 (defn- custom-action-for-field [field-name]
   ;; It seems the :type of parameters or template-tag doesn't matter??
   ;; How to go from base-type (type/Integer) to param type (number)?
-  {:is_write true
+  {:type :query
    :parameters [{:id field-name :slug field-name :target ["variable" ["template-tag" field-name]] :type :text}]
    :dataset_query (mt/native-query
                     {:query (format "insert into types (%s) values ({{%s}})"
@@ -2387,89 +2387,88 @@
          (map #(dissoc % ::good ::bad) types)
          [["init"]]]
         (actions.test-util/with-actions-enabled
-          (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}]
-                          ModelAction [_ {:slug "insert" :card_id card-id}]
-                          Dashboard [{dashboard-id :id}]
-                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                            :card_id card-id
-                                                            :visualization_settings {:action_slug "insert"}}]]
-            (testing "Good data"
-              (doseq [{:keys [field-name] value ::good} (filter ::good types)]
-                (testing (str "Attempting to implicitly insert " field-name)
-                  (mt/user-http-request :crowberto :post 200  (format "dashboard/%s/dashcard/%s/execute/insert" dashboard-id dashcard-id)
-                                        {:parameters {field-name value}})
-                  (let [{{:keys [rows cols]} :data} (qp/process-query
-                                                      (assoc-in (mt/mbql-query types)
-                                                                [:query :order_by] [["asc", ["field", (mt/id :types :id) nil]]]))]
-                    (is (partial= {field-name value}
-                                  (zipmap (map (comp str/lower-case :name) cols)
-                                          (last rows))))))
-                (actions.test-util/with-action [{action-id :action-id} (custom-action-for-field field-name)]
-                  (mt/with-temp* [ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
-                                  DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
-                                                                           :card_id card-id
-                                                                           :visualization_settings {:action_slug "custom"}}]]
-                    (testing (str "Attempting to custom insert " field-name)
-                      (mt/user-http-request :crowberto :post 200
-                                            (format "dashboard/%s/dashcard/%s/execute/custom" dashboard-id custom-dashcard-id)
-                                            {:parameters {field-name value}})
-                      (let [{{:keys [rows cols]} :data} (qp/process-query
-                                                          (assoc-in (mt/mbql-query types)
-                                                                    [:query :order_by] [["asc", ["field", (mt/id :types :id) nil]]]))]
-                        (is (partial= {field-name value}
-                                      (zipmap (map (comp str/lower-case :name) cols)
-                                              (last rows))))))))))
-            (testing "Bad data"
-              (doseq [{:keys [field-name] value ::bad} (filter ::bad types)]
-                (testing (str "Attempting to implicitly insert bad " field-name)
-                  (is (has-valid-action-execution-error-message?
-                       (mt/user-http-request :crowberto :post 400
-                                             (format "dashboard/%s/dashcard/%s/execute/insert" dashboard-id dashcard-id)
-                                             {:parameters {field-name value}}))))
-                (actions.test-util/with-action [{action-id :action-id} (custom-action-for-field field-name)]
-                  (mt/with-temp* [ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
-                                  DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
-                                                                           :card_id card-id
-                                                                           :visualization_settings {:action_slug "custom"}}]]
-                    (testing (str "Attempting to custom insert bad " field-name)
-                      (is (has-valid-action-execution-error-message?
-                           (mt/user-http-request :crowberto :post 500
-                                                 (format "dashboard/%s/dashcard/%s/execute/custom" dashboard-id custom-dashcard-id)
-                                                 {:parameters {field-name value}}))))))))))))))
+          (actions.test-util/with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+                                          {:keys [action-id]} {:type :implicit :kind "row/create"}]
+            (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                            DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                              :action_id action-id
+                                                              :card_id card-id}]]
+              (testing "Good data"
+                (doseq [{:keys [field-name] value ::good} (filter ::good types)]
+                  (testing (str "Attempting to implicitly insert " field-name)
+                    (mt/user-http-request :crowberto :post 200  (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
+                                          {:parameters {field-name value}})
+                    (let [{{:keys [rows cols]} :data} (qp/process-query
+                                                       (assoc-in (mt/mbql-query types)
+                                                                 [:query :order_by] [["asc", ["field", (mt/id :types :id) nil]]]))]
+                      (is (partial= {field-name value}
+                                    (zipmap (map (comp str/lower-case :name) cols)
+                                            (last rows))))))
+                  (actions.test-util/with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+                                                  {:keys [action-id]} (custom-action-for-field field-name)]
+                    (mt/with-temp DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
+                                                                           :action_id action-id
+                                                                           :card_id card-id}]
+                      (testing (str "Attempting to custom insert " field-name)
+                        (mt/user-http-request :crowberto :post 200
+                                              (format "dashboard/%s/dashcard/%s/execute" dashboard-id custom-dashcard-id)
+                                              {:parameters {field-name value}})
+                        (let [{{:keys [rows cols]} :data} (qp/process-query
+                                                           (assoc-in (mt/mbql-query types)
+                                                                     [:query :order_by] [["asc", ["field", (mt/id :types :id) nil]]]))]
+                          (is (partial= {field-name value}
+                                        (zipmap (map (comp str/lower-case :name) cols)
+                                                (last rows))))))))))
+              (testing "Bad data"
+                (doseq [{:keys [field-name] value ::bad} (filter ::bad types)]
+                  (testing (str "Attempting to implicitly insert bad " field-name)
+                    (is (has-valid-action-execution-error-message?
+                         (mt/user-http-request :crowberto :post 400
+                                               (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
+                                               {:parameters {field-name value}}))))
+                  (actions.test-util/with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+                                                  {action-id :action-id} (custom-action-for-field field-name)]
+                    (mt/with-temp DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
+                                                                           :action_id action-id
+                                                                           :card_id card-id}]
+                      (testing (str "Attempting to custom insert bad " field-name)
+                        (is (has-valid-action-execution-error-message?
+                             (mt/user-http-request :crowberto :post 500
+                                                   (format "dashboard/%s/dashcard/%s/execute" dashboard-id custom-dashcard-id)
+                                                   {:parameters {field-name value}})))))))))))))))
 
 (deftest dashcard-implicit-action-execution-auth-test
   (mt/with-temp-copy-of-db
     (actions.test-util/with-actions-test-data
       (testing "Executing dashcard with action"
-        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
-                        ModelAction [_ {:slug "insert" :card_id card-id :requires_pk false}]
-                        Dashboard [{dashboard-id :id}]
-                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                          :card_id card-id
-                                                          :visualization_settings {:action_slug "insert"}}]]
-          (let [execute-path (format "dashboard/%s/dashcard/%s/execute/insert"
-                                     dashboard-id
-                                     dashcard-id)]
-            (testing "Without actions enabled"
-              (is (= "Actions are not enabled."
-                     (mt/user-http-request :crowberto :post 400 execute-path
-                                           {:parameters {"name" "Birds"}}))))
-            (testing "Without execute rights on the DB"
-              (actions.test-util/with-actions-enabled
-                (is (partial= {:message "You do not have permissions to run this query."}
-                              (mt/user-http-request :rasta :post 403 execute-path
-                                                    {:parameters {"name" "Birds"}})))))
-            (testing "With execute rights on the DB"
-              (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
-              (try
+        (actions.test-util/with-action [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id action-id
+                                                            :card_id model-id}]]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
+                                       dashboard-id
+                                       dashcard-id)]
+              (testing "Without actions enabled"
+                (is (= "Actions are not enabled."
+                       (mt/user-http-request :crowberto :post 400 execute-path
+                                             {:parameters {"name" "Birds"}}))))
+              (testing "Without execute rights on the DB"
                 (actions.test-util/with-actions-enabled
-                  (is (contains? #{{:ID 76, :NAME "Birds"}
-                                   {:id 76, :name "Birds"}}
-                         (-> (mt/user-http-request :rasta :post 200 execute-path
-                                                   {:parameters {"name" "Birds"}})
-                             :created-row))))
-                (finally
-                  (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none))))))))))
+                  (is (partial= {:message "You do not have permissions to run this query."}
+                                (mt/user-http-request :rasta :post 403 execute-path
+                                                      {:parameters {"name" "Birds"}})))))
+              (testing "With execute rights on the DB"
+                (perms/update-global-execution-permission! (:id (perms-group/all-users)) :all)
+                (try
+                  (actions.test-util/with-actions-enabled
+                    (is (contains? #{{:ID 76, :NAME "Birds"}
+                                     {:id 76, :name "Birds"}}
+                                   (-> (mt/user-http-request :rasta :post 200 execute-path
+                                                             {:parameters {"name" "Birds"}})
+                                       :created-row))))
+                  (finally
+                    (perms/update-global-execution-permission! (:id (perms-group/all-users)) :none)))))))))))
 
 (deftest dashcard-custom-action-execution-auth-test
   (mt/with-temp-copy-of-db
