@@ -114,7 +114,7 @@ export function ViewTitleHeader(props) {
   const isSummarized =
     isStructured && question.query().topLevelQuery().hasAggregations();
 
-  const fromUrl = location.query["from"];
+  const fromUrl = location?.query?.["from"];
   const isEditingDataAppQuestion =
     // At the moment, only data app paths are expected
     typeof fromUrl === "string" && Urls.isDataAppPath(fromUrl);
