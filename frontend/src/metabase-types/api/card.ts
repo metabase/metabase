@@ -37,8 +37,9 @@ export type SeriesSettings = {
 
 export type SeriesOrderSetting = {
   name: string;
-  originalIndex: number;
+  key: string;
   enabled: boolean;
+  color?: string;
 };
 
 export type VisualizationSettings = {

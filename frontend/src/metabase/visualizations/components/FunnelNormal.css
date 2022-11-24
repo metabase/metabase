@@ -53,9 +53,6 @@
   font-size: 16px;
 }
 
-:local .Infos .Title {
-}
-
 :local .Infos .Subtitle {
   font-size: 0.6875em;
   margin-top: 1em;
