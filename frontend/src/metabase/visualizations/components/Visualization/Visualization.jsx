@@ -42,7 +42,10 @@ import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
-import { VisualizationSlowSpinner } from "./Visualization.styled";
+import {
+  VisualizationActionButtonsContainer,
+  VisualizationSlowSpinner,
+} from "./Visualization.styled";
 
 const defaultProps = {
   showTitle: false,
@@ -396,7 +399,7 @@ class Visualization extends React.PureComponent {
     }
 
     const extra = (
-      <span className="flex align-center">
+      <VisualizationActionButtonsContainer>
         {isSlow && !loading && (
           <VisualizationSlowSpinner
             className="Visualization-slow-spinner"
@@ -405,7 +408,7 @@ class Visualization extends React.PureComponent {
           />
         )}
         {actionButtons}
-      </span>
+      </VisualizationActionButtonsContainer>
     );
 
     let { gridSize, gridUnit } = this.props;

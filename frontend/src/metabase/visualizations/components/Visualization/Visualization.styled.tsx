@@ -6,6 +6,11 @@ export interface VisualizationSlowSpinnerProps {
   isUsuallySlow: boolean;
 }
 
+export const VisualizationActionButtonsContainer = styled.span`
+  display: flex;
+  align-items: center;
+`;
+
 export const VisualizationSlowSpinner = styled(
   LoadingSpinner,
 )<VisualizationSlowSpinnerProps>`
