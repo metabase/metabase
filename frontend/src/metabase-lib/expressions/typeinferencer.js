@@ -40,8 +40,9 @@ export function infer(mbql, env) {
     case "coalesce":
     case "convert-timezone":
     case "datetime-add":
-    case "datetime-subtract":
+    case "datetime-subtract": {
       return infer(mbql[1], env);
+    }
   }
 
   const func = MBQL_CLAUSES[op];

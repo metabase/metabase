@@ -339,7 +339,7 @@ export const MBQL_CLAUSES = {
   "get-week": {
     displayName: `week`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
     hasOptions: true, // optional mode parameter
   },
   "get-day": {
@@ -370,7 +370,7 @@ export const MBQL_CLAUSES = {
   "datetime-diff": {
     displayName: `datetimeDiff`,
     type: "number",
-    args: ["expression", "expression", "string"],
+    args: ["datetime", "datetime", "string"],
     requiresFeature: "datetime-diff",
   },
   "datetime-add": {
