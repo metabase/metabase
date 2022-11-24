@@ -43,8 +43,6 @@ import { memoizeClass } from "metabase-lib/utils";
 
 import { VisualizationSlowSpinner } from "./Visualization.styled";
 
-// NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
-
 class Visualization extends React.PureComponent {
   constructor(props) {
     super(props);
@@ -111,13 +109,8 @@ class Visualization extends React.PureComponent {
     });
   }
 
-  // NOTE: this is a PureComponent
-  // shouldComponentUpdate(nextProps, nextState) {
-  // }
-
   getWarnings(props = this.props, state = this.state) {
     let warnings = state.warnings || [];
-    // don't warn about truncated data for table since we show a warning in the row count
     if (state.series && state.series[0].card.display !== "table") {
       warnings = warnings.concat(
         props.rawSeries
@@ -148,7 +141,6 @@ class Visualization extends React.PureComponent {
       : null;
     this.setState({
       hovered: null,
-      //clicked: null,
       error: null,
       warnings: [],
       yAxisSplit: null,
@@ -187,7 +179,7 @@ class Visualization extends React.PureComponent {
         this._resetHoverTimer = null;
       }
     } else {
-      // When reseting the hover wait in case we're simply transitioning from one
+      // When resetting the hover wait in case we're simply transitioning from one
       // element to another. This allows visualizations to use mouseleave events etc.
       this._resetHoverTimer = setTimeout(() => {
         this.setState({ hovered: null });
@@ -480,8 +472,7 @@ class Visualization extends React.PureComponent {
         )}
         {replacementContent ? (
           replacementContent
-        ) : // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
-        isDashboard && noResults ? (
+        ) : isDashboard && noResults ? (
           <div
             className={
               "flex-full px1 pb1 text-centered flex flex-column layout-centered " +
