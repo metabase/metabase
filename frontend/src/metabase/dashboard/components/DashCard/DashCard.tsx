@@ -399,6 +399,7 @@ function DashCard({
   }, [
     dashcard,
     dashboard,
+    mainCard,
     series,
     hasError,
     isLoading,
