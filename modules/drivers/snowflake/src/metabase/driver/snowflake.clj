@@ -32,6 +32,8 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+(defmethod driver/database-supports? [:snowflake :datetime-diff] [_ _ _] true)
+
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ message]
   (log/spy :error (type message))
@@ -194,6 +196,47 @@
 (defmethod sql.qp/date [:snowflake :day-of-week]
   [_driver _unit expr]
   (extract :dayofweek expr))
+
+(defmethod sql.qp/->honeysql [:snowflake :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x'               (sql.qp/->honeysql driver x)
+        y'               (sql.qp/->honeysql driver y)]
+    (case unit
+      (:year :month)
+      (let [; timestamp_diff doesn't support months or years, so convert to datetime to use datetime_diff
+            x'       (hx/->datetime (date-trunc :day x'))
+            y'       (hx/->datetime (date-trunc :day y'))
+            raw-unit (hsql/raw (name unit))
+            positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             (hsql/call :datediff raw-unit a b)
+                             (hx/cast
+                              :integer
+                              (hsql/call
+                               :>
+                               (hsql/call :datediff (hsql/raw "day") (date-trunc unit a) a)
+                               (hsql/call :datediff (hsql/raw "day") (date-trunc raw-unit b) b)))))]
+        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
+
+      :week
+      (let [x' (date-trunc :day x')
+            y' (date-trunc :day y')
+            positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (hsql/call :datediff (hsql/raw "day") a b) 7))))]
+        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
+
+      :day
+      (let [x' (date-trunc :day x')
+            y' (date-trunc :day y')]
+        (hsql/call :datediff (hsql/raw (name unit)) x' y'))
+
+      (:hour :minute :second)
+      (let [x' (hx/->timestamp x')
+            y' (hx/->timestamp y')]
+        (hsql/call :datediff (hsql/raw (name unit)) x' y')))))
 
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
   [driver [_ arg pattern]]

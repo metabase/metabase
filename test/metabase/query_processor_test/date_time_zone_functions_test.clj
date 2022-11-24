@@ -302,7 +302,6 @@
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
             (is (= (set expected) (set (test-datetime-math query))))))))))
 
-
 (deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
     (mt/dataset times-mixed
@@ -674,7 +673,8 @@
                                                         [(name unit) [:datetime-diff x y unit]]))
                                 :fields (into [] (for [unit units]
                                                    [:expression (name unit)]))})
-                             mt/rows first
+                             (mt/formatted-rows (for [_ units] int))
+                             first
                              (zipmap units))))]
           (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :year 1}
                  (diffs [:datetime-add #t "2022-10-03T00:00:00" 1 "day"] [:datetime-add #t "2023-10-03T00:00:00" 4 "day"])))))
