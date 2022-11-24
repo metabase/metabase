@@ -435,21 +435,18 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [timestamp    (partial hsql/call :timestamp)
         datetime     (partial hsql/call :datetime)
-        clause       (sql.qp/->honeysql driver arg)
-        timestamptz? (hx/is-of-type? clause "timestamp")]
+        hsql-form    (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? hsql-form "timestamp")]
     (when (and timestamptz? source-timezone)
       (throw (ex-info (tru "`timestamp` columns shouldn''t have a `source timezone`")
                       {:type            qp.error-type/invalid-query
                        :target-timezone target-timezone
                        :source-timezone source-timezone})))
-    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))]
-      (cond-> clause
-        (not timestamptz?)
-        (timestamp source-timezone)
-        true
+    (-> (if timestamptz?
+          hsql-form
+          (timestamp hsql-form (or source-timezone (qp.timezone/results-timezone-id))))
         (datetime target-timezone)
-        true
-        (with-temporal-type :datetime)))))
+        (with-temporal-type :datetime))))
 
 (defmethod sql.qp/->float :bigquery-cloud-sdk
   [_ value]
