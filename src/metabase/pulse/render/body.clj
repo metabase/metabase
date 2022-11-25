@@ -687,6 +687,31 @@
          :column        (second x-cols)
          :breakoutValue group-key}))))
 
+(defn- axis-row-fns
+  [card data]
+  [(or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
+   (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))])
+
+(defn- card-result->series
+  "Helper function for `render-multiple-lab-chart` that turns a card query result into a series-settings map in the shape expected by `js-svg/combo chart` (and the combo-chart js code)."
+  [idx result]
+  (let [card            (:card result)
+        data            (get-in result [:result :data])
+        display         (:display card)
+        [x-fn y-fn]     (axis-row-fns card data)
+        enforced-type   (if (= display :scalar) :bar display)
+        card-name       (:name card)
+        viz-settings    (:visualization_settings card)
+        joined-rows     (map (juxt x-fn y-fn)
+                             (common/row-preprocess x-fn y-fn (:rows data)))
+        [x-cols y-cols] ((juxt x-fn y-fn) (get-in result [:result :data :cols]))
+        y-axis-position (nth (default-y-pos data axis-group-threshold) idx)]
+    (->>
+     (if (= (count x-cols) 1)
+       (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings card-name)
+       (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings card-name))
+     (map #(assoc % :yAxisPosition y-axis-position)))))
+
 (defn- render-multiple-lab-chart
   "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
   [render-type card dashcard {:keys [viz-settings]
@@ -696,37 +721,15 @@
         ;; multi-res gets the other results from the set of multis.
         ;; we shove cards and data here all together below for uniformity's sake
         viz-settings      (set-default-stacked viz-settings card)
-        viz-settings-seqs (cons viz-settings (map (comp :visualization_settings :card) multi-res))
         cards             (cons card (map :card multi-res))
         multi-data        (cons data (map #(get-in % [:result :data]) multi-res))
-        axis-row-fns      (fn [card data]
-                            [(or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
-                             (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))])
         rowfns            (mapv axis-row-fns cards multi-data)
-        row-seqs          (for [[row-seq [x-rowfn y-rowfn]] (map vector (map :rows multi-data) rowfns)]
-                            (map (comp flatten (juxt x-rowfn y-rowfn))
-                                 (common/row-preprocess x-rowfn y-rowfn row-seq)))
         col-seqs          (map :cols multi-data)
         first-rowfns      (first rowfns)
         [[x-col] [y-col]] ((juxt (first first-rowfns) (second first-rowfns)) (first col-seqs))
         labels            (x-and-y-axis-label-info x-col y-col viz-settings)
-        names             (map :name cards)
-        types             (replace {:scalar :bar} (map :display cards))
         settings          (->ts-viz x-col y-col labels viz-settings)
-        y-axis-positions  (take (count names) (default-y-pos data axis-group-threshold))
-        series            (for [[enforced-type rows cols viz-settings [x-axis-rowfn y-axis-rowfn] y-axis-position card-name]
-                                (map vector types row-seqs col-seqs viz-settings-seqs rowfns y-axis-positions names)]
-                            (let [
-                                  x-cols      (x-axis-rowfn cols)
-                                  y-cols      (y-axis-rowfn cols)
-                                  x-rows      (map x-axis-rowfn rows)
-                                  y-rows      (map y-axis-rowfn rows)
-                                  joined-rows (map vector x-rows y-rows)]
-                              (map
-                               #(assoc % :yAxisPosition y-axis-position)
-                               (if (= (count x-cols) 1)
-                                 (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings card-name)
-                                 (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings card-name)))))]
+        series            (map-indexed card-result->series (cons {:card card :result {:data data}} multi-res))]
     (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
 
 (defn- lab-image-bundle
