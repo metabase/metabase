@@ -13314,16 +13314,16 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-000
       author: snoe
-      comment: Added 0.46.0 - nocommit
+      comment: Added 0.46.0 - Unify action representation
       changes:
         - createTable:
             tableName: implicit_action
-            remarks: nocommit
+            remarks: An action with dynamic parameters based on the underlying model
             columns:
               - column:
                   name: action_id
                   type: int
-                  remarks: nocommit
+                  remarks: The associated action
                   constraints:
                     nullable: false
                     referencedTableName: action
@@ -13333,21 +13333,21 @@ databaseChangeLog:
               - column:
                   name: kind
                   type: ${text.type}
-                  remarks: nocommit
+                  remarks: The kind of implicit action create/update/delete
                   constraints:
                     nullable: false
 
   - changeSet:
       id: v46.00-001
       author: snoe
-      comment: Added 0.46.0 - nocommit
+      comment: Added 0.46.0 - Unify action representation
       changes:
         - addColumn:
             tableName: action
             columns:
               - column:
                   name: model_id
-                  remarks: nocommit
+                  remarks: The associated model
                   type: int
                   constraints:
                     referencedTableName: report_card
@@ -13355,32 +13355,36 @@ databaseChangeLog:
                     foreignKeyName: fk_action_model_id
               - column:
                   name: name
-                  remarks: nocommit
+                  remarks: The name of the action
                   type: varchar(254)
               - column:
+                  name: description
+                  remarks: The description of the action
+                  type: ${text.type}
+              - column:
                   name: parameters
-                  remarks: nocommit
+                  remarks: The saved parameters for this action
                   type: ${text.type}
               - column:
                   name: parameter_mappings
-                  remarks: nocommit
+                  remarks: The saved parameter mappings for this action
                   type: ${text.type}
               - column:
                   name: visualization_settings
-                  remarks: nocommit
+                  remarks: The UI visualization_settings for this action
                   type: ${text.type}
 
   - changeSet:
       id: v46.00-002
       author: snoe
-      comment: Added 0.46.0 - nocommit
+      comment: Added 0.46.0 - Unify action representation
       changes:
         - addColumn:
             tableName: query_action
             columns:
               - column:
                   name: database_id
-                  remarks: nocommit
+                  remarks: The associated database
                   type: int
                   constraints:
                     referencedTableName: metabase_database
@@ -13388,13 +13392,13 @@ databaseChangeLog:
                     foreignKeyName: fk_query_action_database_id
               - column:
                   name: dataset_query
-                  remarks: nocommit
+                  remarks: The MBQL writeback query
                   type: ${text.type}
 
   - changeSet:
       id: v46.00-003
       author: snoe
-      comment: Added 0.46.0 - nocommit
+      comment: Added 0.46.0 - Unify action representation
       changes:
         - dropPrimaryKey:
             tableName: query_action
@@ -13402,7 +13406,7 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-004
       author: snoe
-      comment: Added 0.46.0 - nocommit
+      comment: Added 0.46.0 - Unify action representation
       changes:
         - dropNotNullConstraint:
             tableName: query_action
@@ -13419,7 +13423,7 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-007
       author: snoe
-      comment: Added 0.46.0 - nocommit
+      comment: Added 0.46.0 - Unify action representation
       changes:
         - addPrimaryKey:
             tableName: query_action
@@ -13429,7 +13433,7 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-008
       author: snoe
-      comment: Added 0.46.0 - nocommit
+      comment: Added 0.46.0 - Unify action representation
       changes:
         - dropColumn:
             tableName: query_action
@@ -13438,7 +13442,7 @@ databaseChangeLog:
   - changeSet:
       id: v46.00-009
       author: snoe
-      comment: Added 0.46.0 - nocommit
+      comment: Added 0.46.0 - Unify action representation
       changes:
         - dropColumn:
             tableName: http_action
