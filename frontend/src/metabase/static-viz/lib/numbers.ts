@@ -25,9 +25,13 @@ const DEFAULT_OPTIONS = {
 };
 
 export const formatNumber = (number: number, options?: NumberFormatOptions) => {
-  const { prefix, suffix } = { ...DEFAULT_OPTIONS, ...options };
+  const optionsWithDefault = {
+    ...DEFAULT_OPTIONS,
+    ...options,
+  };
+  const { prefix, suffix } = optionsWithDefault;
 
-  return `${prefix}${appFormatNumber(number, options)}${suffix}`;
+  return `${prefix}${appFormatNumber(number, optionsWithDefault)}${suffix}`;
 };
 
 export const formatPercent = (percent: number) =>
