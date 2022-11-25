@@ -95,15 +95,26 @@
                                  :model_id card-id
                                  :kind "row/create"
                                  :parameters [{:id "x" :type "number"}]}]]
-          (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
-                updated-action (merge initial-action {:name "New name"})
+          (let [update-fn (fn [m]
+                            (cond-> (assoc m :name "New name")
+                              (= (:type initial-action) "implicit")
+                              (assoc :kind "row/update")
+
+                              (= (:type initial-action) "query")
+                              (assoc :dataset_query (update (mt/native-query {:query "update venues set name = 'bar' where id = {{x}}"})
+                                                            :type name))
+
+                              (= (:type initial-action) "http")
+                              (assoc :response_handle ".body.result")))
+                created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
+                updated-action (update-fn initial-action)
                 action-path (str "action/" (:id created-action))]
             (testing "Create"
               (is (partial= initial-action created-action)))
             (testing "Update"
               (is (partial= updated-action
                             (mt/user-http-request :crowberto :put 200 action-path
-                                                  {:name "New name"}))))
+                                                  (update-fn {})))))
             (testing "Get"
               (is (partial= updated-action
                             (mt/user-http-request :crowberto :get 200 action-path))))

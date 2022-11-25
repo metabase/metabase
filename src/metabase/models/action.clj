@@ -35,7 +35,9 @@
 (defn- pre-update
   [action]
   ;; All possible sub-type columns
-  (when-let [sub-type-action (not-empty (select-keys action [:card_id :name :description :template :response_handle :error_handle]))]
+  (when-let [sub-type-action (not-empty (select-keys action [:kind
+                                                             :database_id :dataset_query
+                                                             :template :response_handle :error_handle]))]
     (assoc sub-type-action :action_id (or (:id action) (:action_id action)))))
 
 (defn- pre-delete
