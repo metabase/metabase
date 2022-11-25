@@ -73,8 +73,9 @@
 
 (deftest unified-action-create-test
   (actions.test-util/with-actions-enabled
-    (mt/with-temp* [Card [{card-id :id} {:dataset true}]]
-      (mt/with-model-cleanup [Action]
+    (actions.test-util/with-actions-test-data-tables #{"users" "categories"}
+      (actions.test-util/with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
+                                      {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
         (doseq [initial-action [{:name "Get example"
                                  :type "http"
                                  :model_id card-id
@@ -86,22 +87,21 @@
                                 {:name "Query example"
                                  :type "query"
                                  :model_id card-id
-                                 :dataset_query (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
+                                 :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
                                                         :type name)
                                  :database_id (mt/id)
-                                 :parameters [{:id "x" :type "number"}]}
+                                 :parameters [{:id "x" :type "type/biginteger"}]}
                                 {:name "Implicit example"
                                  :type "implicit"
                                  :model_id card-id
-                                 :kind "row/create"
-                                 :parameters [{:id "x" :type "number"}]}]]
+                                 :kind "row/create"}]]
           (let [update-fn (fn [m]
                             (cond-> (assoc m :name "New name")
                               (= (:type initial-action) "implicit")
                               (assoc :kind "row/update")
 
                               (= (:type initial-action) "query")
-                              (assoc :dataset_query (update (mt/native-query {:query "update venues set name = 'bar' where id = {{x}}"})
+                              (assoc :dataset_query (update (mt/native-query {:query "update users set name = 'bar' where id = {{x}}"})
                                                             :type name))
 
                               (= (:type initial-action) "http")
@@ -119,8 +119,9 @@
               (is (partial= updated-action
                             (mt/user-http-request :crowberto :get 200 action-path))))
             (testing "Get All"
-              (is (partial= updated-action
-                            (last (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))))
+              (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
+                             updated-action]
+                            (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id)))))
             (testing "Delete"
               (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
               (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))))

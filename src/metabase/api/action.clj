@@ -68,7 +68,7 @@
 
 (api/defendpoint GET "/:action-id"
   [action-id]
-  (api/check-404 (first (action/select-actions :id action-id))))
+  (api/check-404 (first (action/actions-with-implicit-params nil :id action-id))))
 
 (defn- type->model [existing-action-type]
   (case existing-action-type
@@ -102,10 +102,10 @@
    error_handle (s/maybe JsonQuerySchema)}
   (let [action-id (action/insert! action)]
     (if action-id
-      (first (action/select-actions :id action-id))
+      (first (action/actions-with-implicit-params nil :id action-id))
       ;; db/insert! does not return a value when used with h2
       ;; so we return the most recently updated http action.
-      (last (action/select-actions :type type)))))
+      (last (action/actions-with-implicit-params nil :type type)))))
 
 (api/defendpoint PUT "/:id"
   [id :as {{:keys [type name model_id parameters parameter_mappings visualization_settings
@@ -136,6 +136,6 @@
           (db/delete! existing-model id)
           (db/insert! new-model (assoc type-row :action_id id)))
         (db/update! existing-model id type-row))))
-  (first (action/select-actions :id id)))
+  (first (action/actions-with-implicit-params nil :id id)))
 
 (api/define-routes actions/+check-actions-enabled)

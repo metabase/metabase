@@ -186,20 +186,20 @@
         implicit-parameters-by-model-id (when (seq models-with-implicit-actions)
                                           (implicit-action-parameters models-with-implicit-actions))]
 
-    (for [action actions
-          :let [parameters (get implicit-parameters-by-model-id (:model_id action))]]
-      (m/assoc-some action
-                    :parameters (cond->> parameters
-                                  (= "row/delete" (:kind action))
-                                  (filter ::pk?)
+    (for [action actions]
+      (cond-> action
+        (= (:type action) :implicit)
+        (m/assoc-some :parameters (cond->> (get implicit-parameters-by-model-id (:model_id action))
+                                    (= "row/delete" (:kind action))
+                                    (filter ::pk?)
 
-                                  (contains? #{"row/update" "row/delete"} (:kind action))
-                                  (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
+                                    (contains? #{"row/update" "row/delete"} (:kind action))
+                                    (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
 
-                                  :always
-                                  (map #(dissoc % ::pk? ::field-id))
+                                    :always
+                                    (map #(dissoc % ::pk? ::field-id))
 
-                                  :always seq)))))
+                                    :always seq))))))
 
 (defn dashcard-action
   "Hydrates action from DashboardCard"
