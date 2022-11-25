@@ -169,6 +169,15 @@ export default function FilterPopover({
 
   const dimension = filter && filter.dimension();
   if (!filter || choosingField || !dimension) {
+    const sections = isTopLevel
+      ? query.topLevelFilterFieldOptionSections()
+      : ((filter && filter.query()) || query).filterFieldOptionSections(
+          filter,
+          {
+            includeSegments: showCustom,
+          },
+        );
+
     return (
       <div
         className={className}
@@ -181,16 +190,7 @@ export default function FilterPopover({
           style={{ color: color("filter") }}
           maxHeight={Infinity}
           dimension={dimension}
-          sections={
-            isTopLevel
-              ? query.topLevelFilterFieldOptionSections()
-              : ((filter && filter.query()) || query).filterFieldOptionSections(
-                  filter,
-                  {
-                    includeSegments: showCustom,
-                  },
-                )
-          }
+          sections={sections}
           onChangeDimension={(dimension: FieldDimension) =>
             handleDimensionChange(dimension)
           }

@@ -256,7 +256,7 @@ export const useShorthands = tree =>
   });
 
 export const adjustOptions = tree => {
-  console.log("🚀", "In adjustOptions", tree);
+  // console.log("🚀", "In adjustOptions", tree);
   return modify(tree, node => {
     if (Array.isArray(node)) {
       const [operator, ...operands] = node;

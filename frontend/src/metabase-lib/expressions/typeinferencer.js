@@ -10,6 +10,9 @@ export const MONOTYPE = {
 };
 
 export function infer(mbql, env) {
+  // console.log("🚀", { mbql, env });
+  /* eslint-disable */
+  // debugger;
   if (!Array.isArray(mbql)) {
     return typeof mbql;
   }
