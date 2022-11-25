@@ -10,9 +10,6 @@ export const MONOTYPE = {
 };
 
 export function infer(mbql, env) {
-  // console.log("🚀", { mbql, env });
-  /* eslint-disable */
-  // debugger;
   if (!Array.isArray(mbql)) {
     return typeof mbql;
   }
@@ -43,9 +40,8 @@ export function infer(mbql, env) {
     case "coalesce":
     case "convert-timezone":
     case "datetime-add":
-    case "datetime-subtract": {
+    case "datetime-subtract":
       return infer(mbql[1], env);
-    }
   }
 
   const func = MBQL_CLAUSES[op];

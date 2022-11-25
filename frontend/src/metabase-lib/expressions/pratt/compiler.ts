@@ -38,7 +38,6 @@ export interface Options {
 type CompileFn = (node: Node, opts: Options) => Expr;
 
 export function compile(node: Node, opts: Options): Expr {
-  console.log("🚀", "In compile", { node });
   assert(node.type === ROOT, "Must be root node");
   if (node.children.length > 1) {
     throw new CompileError(t`Unexpected expression`, {
@@ -48,12 +47,6 @@ export function compile(node: Node, opts: Options): Expr {
   }
   const func = compileUnaryOp(node);
   let expr = func(node.children[0], opts);
-  console.log("🚀", "After applying compileUnaryOp in compile function", {
-    node,
-    expr,
-    func,
-    opts,
-  });
   const { passes = [] } = opts;
   for (const pass of passes) {
     expr = pass(expr);
@@ -309,8 +302,6 @@ const COMPILE = new Map<NodeType, CompileFn>([
 
 function getCompileFunction(node: Node): (node: Node, opts: Options) => Expr {
   const func = COMPILE.get(node.type);
-  console.log("🚀", "In getCompileFunction", { node, func });
-  console.log("🚀");
   if (!func) {
     throw new CompileError(t`Invalid node type`, { node, token: node.token });
   }

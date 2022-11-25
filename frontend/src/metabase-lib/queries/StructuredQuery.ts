@@ -858,7 +858,6 @@ class StructuredQueryInner extends AtomicQuery {
     const filterSegmentOptions = includeSegments
       ? this.filterSegmentOptions(filter, includeAppliedSegments)
       : [];
-
     return filterDimensionOptions.sections({
       extraItems: filterSegmentOptions.map(segment => ({
         name: segment.name,
@@ -913,7 +912,6 @@ class StructuredQueryInner extends AtomicQuery {
       sections.push(summarySection);
     }
 
-    console.log("🚀", { sections });
     return sections;
   }
 
