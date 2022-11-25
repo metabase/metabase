@@ -6,10 +6,10 @@ title: DatetimeDiff
 
 `datetimeDiff` gets the amount of time between two datetime values, using the specified unit of time. Note that the difference is calculated in _whole_ units (see the example below).
 
-| Syntax                                                                                                    | Example                                                                           |
-|-----------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
-| `datetimeDiff(datetime1, datetime2, unit)`                                                                | `datetimeDiff("February 1, 2021, 12:00:00", "March 15, 2021, 12:00:00", "month")` |
-| Gets the difference between two datetimes (datetime2 minus datetime 1) using the specified unit of time.  | `1`                                                                               |
+| Syntax                                                                                                    | Example                                                       |
+|-----------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
+| `datetimeDiff(datetime1, datetime2, unit)`                                                                | `datetimeDiff("February 1, 2021", "March 15, 2021", "month")` |
+| Gets the difference between two datetimes (datetime2 minus datetime 1) using the specified unit of time.  | `1`                                                           |
 
 ## Parameters
 

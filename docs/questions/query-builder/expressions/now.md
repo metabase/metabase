@@ -6,13 +6,9 @@ title: Now
 
 `now` returns the current date and time using your Metabase [report timezone](../configuring-metabase/settings#report-timezone).
 
-| Syntax         | Example                     |
-|----------------|-----------------------------|
-|`now`           | November 22, 2022, 16:00:00 |
-
 ## Creating conditional logic using the current date or time
 
-Let's say you have some project data, and you want to add a status column for each task. Assume today's date and time is November 22, 2022, 16:00:00.
+Let's say you have some project data, and you want to add a status column for each task. We'll assume today's date and time is November 22, 2022, 16:00:00.
 
 | Task     | Start                       | Deadline                    | Status          |
 |----------|-----------------------------|-----------------------------|-----------------|
@@ -60,7 +56,7 @@ This table uses `timestamp` and `datetime` interchangeably. If your dates and ti
 
 ## Limitations
 
-`now` might not actually be _now_ (in your local time) if you don't live in the same timezone as your Metabase [report timezone](../configuring-metabase/settings#report-timezone).
+`now` might not actually be _now_ (in your local time) if you don't live in the same timezone as your Metabase [report time zone](../configuring-metabase/settings#report-timezone).
 
 ## Related functions
 
@@ -74,15 +70,15 @@ This section covers functions and formulas that work the same way as the Metabas
 
 When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-For example, the PostgreSQL function `CURRENT_TIMESTAMP()` gets the current date and time in your _database_ timezone. Database functions like `CURRENT_TIMESTAMP()` may give you different results from `now`, which uses your Metabase report timezone. 
+For example, the PostgreSQL function `CURRENT_TIMESTAMP` gets the current date and time in your _database_ time zone. Database functions like `CURRENT_TIMESTAMP` may give you different results from `now`, which uses your Metabase [report time zone](../configuring-metabase/settings#report-timezone).
 
 ### Spreadsheets
 
-The spreadsheet function `NOW()` gets the current date and time in your operating system's timezone (the time that's on your computer or mobile device).
+The spreadsheet function `NOW()` gets the current date and time in your operating system's time zone (the time that's on your computer or mobile device).
 
 ### Python
 
-You can use `pd.datetime.now()` if you're using the `pandas` and `datetime` modules. This will give you the current date and time in your operating system's timezone.
+You can use `pd.datetime.now()` if you're using the `pandas` and `datetime` modules. This will give you the current date and time in your operating system's time zone.
 
 ## Further reading
 

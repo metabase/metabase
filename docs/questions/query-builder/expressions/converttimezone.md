@@ -21,7 +21,7 @@ title: ConvertTimezone
 When you're working with time series data, there's a few different kinds of "source" time zones:
 
 - **Original time zone**: the time zone where the event happened. For example, if you collect web analaytics, your analytics service might capture the local time zone of each person who visited your website.
-- **No time zone**: time zone metadata is missing. Or maybe your events took place in a fifth dimension.
+- **No time zone**: time zone metadata is missing. Maybe your events took place in a fifth dimension.
 - **Database time zone**: the time zone that your database uses to _store_ datetime data. For example, your data team might convert all "original" time zones to UTC in the database.
 - **Metabase report time zone**: the time zone that Metabase uses to _display_ datetime data. For example, if your database time zone is in UTC, your Metabase admin can choose to display all dates and times in PST.
 
@@ -35,6 +35,10 @@ You should only change these source time zones to target time zones if it'll hel
 | December 28, 2022, 00:00:00  | December 28, 2022, 18:00:00  | December 28, 2022, 10:00:00  | December 28, 2022, 07:00:00  | December 28, 2022, 12:00:00  |
 | December 28, 2022, 00:00:00  | December 28, 2022, 05:00:00  | December 28, 2022, 21:00:00  | December 28, 2022, 19:00:00  | December 29, 2022, 00:00:00  |
 | December 28, 2022, 00:00:00  | December 27, 2022, 16:00:00  | December 27, 2022, 08:00:00  | December 27, 2022, 05:00:00  | December 27, 2022, 10:00:00  |
+
+Before you do time zone conversions, make sure you know the source time zone that you're working with. The example here shows you how the source time zones can be different depending on the system that it comes from (original event capture, database, Metabase), but your datasets might not make it so obvious. 
+
+When you make a custom column with a new time zone, it's usually a good idea to name the column with that time zone. We promise that this makes life a lot easier when someone inevitably asks why certain numbers don't match.
 
 For example, you could create **Team Report Time (EST)** differently depending on the source:
 
@@ -61,10 +65,6 @@ Once you've created **Team Report Time (EST)**, you could convert it again to a 
 ```
 convertTimezone([Team Report Time (EST)], 'GMT', 'EST')
 ```
-
-Before you do time zone conversions, make sure you know the source time zone that you're working with. The example here shows you how the source time zones can be different depending on the system that it comes from (original event capture, database, Metabase), but your datasets might not make it so obvious. 
-
-When you make a custom column with a new time zone, it's usually a good idea to name the column with that time zone. We promise that this a life a lot easier when someone inevitably asks why certain numbers don't match.
 
 ## Accepted data types
 
