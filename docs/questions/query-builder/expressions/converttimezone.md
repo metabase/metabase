@@ -4,63 +4,72 @@ title: ConvertTimezone
 
 # ConvertTimezone
 
-`convertTimezone` assigns a new time zone to a datetime value (by adding to, or subtracting from the original datetime).
+`convertTimezone` shifts a datetime into a specified time zone by adding or subtracting the right number of hours from the datetime.
 
-| Syntax                                                                                                    | Example                                                       |
-|-----------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
-| `convertTimezone(column, target, source)`                                                                 | `convertTimezone("December 28, 2022, 12:00:00", "EST, "PST")` |
-| Assigns the target time zone to your datetime column. You can optionally specify a source time zone too.  | `December 28, 2022, 9:00:00`                                  |
+Time zones are rather nasty to work with (easy to misunderstand, difficult to notice), so we recommend using `convertTimezone` if
+
+- You've checked all the possible [source time zones](#source-time-zones) that could come into play, and
+- the [converted report dates](#creating-custom-report-dates) make a big difference in interpreting the data.
+
+| Syntax                                                               | Example                                                       |
+|----------------------------------------------------------------------|---------------------------------------------------------------|
+| `convertTimezone(column, target, source)`                            | `convertTimezone("December 28, 2022, 12:00:00", "EST, "PST")` |
+| Shifts a datetime from the source time zone to the target time zone. | `December 28, 2022, 9:00:00`                                  |
 
 ## Parameters
 
 - Target is the time zone you want to assign to your column.
-- Source is optional. By default, the source time zone is your Metabase's [report time zone](../configuring-metabase/settings#report-timezone).
+- Source is only a required parameter if your datetimes have no time zone metadata. See the table below for more info.
+
+## Source time zones
+
+Before you do time zone conversions, make sure you know the source time zones that you're working with:
+
+| Possible source time zones     | Description                                                         | Example                                                                                                          |
+|--------------------------------|---------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
+| Client time zone               | Time zone where an event happened.                                  | A web analytics service might capture data in the local time zone of each person who visited your website.       |
+| Database time zone             | Time zone metadata that's been added to datetimes in your database. | It's a common database practice to store all datetimes in UTC.                                                   |
+| No time zone                   | Missing time zone metadata.                                         | Databases don't _require_ you to store datetimes with time zone metadata.                                        |
+| Metabase report time zone      | Time zone that Metabase uses to _display_ datetimes.                | Metabase can display dates and times in PST, even if the dates and times are stored as UTC in your database.     |
 
 ## Creating custom report dates
 
-When you're working with time series data, there's a few different kinds of "source" time zones:
+The example below uses data that's explicitly named after each possible source time zone. Your datasets might not make it so obvious---that is, you won't be able to tell, just from looking at the datetime `December 28, 2022, 12:00:00`, whether it's:
 
-- **Original time zone**: the time zone where the event happened. For example, if you collect web analaytics, your analytics service might capture the local time zone of each person who visited your website.
-- **No time zone**: time zone metadata is missing. Maybe your events took place in a fifth dimension.
-- **Database time zone**: the time zone that your database uses to _store_ datetime data. For example, your data team might convert all "original" time zones to UTC in the database.
-- **Metabase report time zone**: the time zone that Metabase uses to _display_ datetime data. For example, if your database time zone is in UTC, your Metabase admin can choose to display all dates and times in PST.
+- _stored_ in somebody's local time zone or your database time zone, and
+- _displayed_ in your Metabase report time zone. 
 
-You should only change these source time zones to target time zones if it'll help people interpret the data:
+So, if you're making custom columns with a new time zone, it's a good idea to name them explicitly with the target time zone (such as **Team Report Time (EST)**). We promise that this makes life a lot easier when someone inevitably asks why the numbers don't match.
 
-- A custom report time zone (for example, say you live in HKT, but you're making a report for a team in EST).
-- Local time, if it's important for people to see data in the time zone that they live in.
-
-| Original Time                | Database Time                | Metabase Report Time         | Team Report Time (EST)       |  Local Report Time (GMT)     |
+| Client Time                  | Database Time                | Metabase Report Time         | Team Report Time (EST)       |  Local Report Time (GMT)     |
 |------------------------------|------------------------------|------------------------------|------------------------------|------------------------------|
 | December 28, 2022, 00:00:00  | December 28, 2022, 18:00:00  | December 28, 2022, 10:00:00  | December 28, 2022, 07:00:00  | December 28, 2022, 12:00:00  |
 | December 28, 2022, 00:00:00  | December 28, 2022, 05:00:00  | December 28, 2022, 21:00:00  | December 28, 2022, 19:00:00  | December 29, 2022, 00:00:00  |
 | December 28, 2022, 00:00:00  | December 27, 2022, 16:00:00  | December 27, 2022, 08:00:00  | December 27, 2022, 05:00:00  | December 27, 2022, 10:00:00  |
 
-Before you do time zone conversions, make sure you know the source time zone that you're working with. The example here shows you how the source time zones can be different depending on the system that it comes from (original event capture, database, Metabase), but your datasets might not make it so obvious. 
+Let's say you want to create custom reporting dates for a team that lives in a different time zone from the client, database, or Metabase reporting time zones.
 
-When you make a custom column with a new time zone, it's usually a good idea to name the column with that time zone. We promise that this makes life a lot easier when someone inevitably asks why certain numbers don't match.
+You could create **Team Report Time (EST)** differently depending on the source time zone. If your column uses:
 
-For example, you could create **Team Report Time (EST)** differently depending on the source:
-
-1. **Original Time**
+1. **Client Time**
 
 ```
-convertTimezone([Original Time)], 'EST')
+convertTimezone([Client Time)], 'EST')
 ```
 
-2. **Database Time** (say you know your database is in UTC)
+2. **Database Time** (say your database is in UTC)
 
 ```
 convertTimezone([Database time (UTC)], 'EST', 'UTC')
 ```
 
-3. **Metabase Report Time** (if you know that Metabase reports in PST)
+3. **Metabase Report Time** (if Metabase reports in PST)
 
 ```
 convertTimezone([Metabase Report Time (PST)], 'EST', 'PST')
 ```
 
-Once you've created **Team Report Time (EST)**, you could convert it again to a **Local Report Time (GMT)** (maybe for a teammate on the move):
+Once you've created **Team Report Time (EST)**, you could convert it again to a **Local Report Time (GMT)** (perhaps for a teammate who's temporarily living in the UK). Note that the output of a `convertTimezone` expression has no time zone metadata. Since **Team Report Time (EST)** is already the output of a `convertTimezone` expression, you _must_ provide the source parameter 'EST' here:
 
 ```
 convertTimezone([Team Report Time (EST)], 'GMT', 'EST')
@@ -78,6 +87,7 @@ convertTimezone([Team Report Time (EST)], 'GMT', 'EST')
 
 This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../data-modeling/metadata-editing#casting-to-a-specific-data-type) from the Data Model page.
 
+
 ## Related functions
 
 This section covers functions and formulas that work the same way as the Metabase `convertTimezone` expression, with notes on how to choose the best option for your use case.
@@ -90,21 +100,33 @@ This section covers functions and formulas that work the same way as the Metabas
 
 When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-If our [datetime sample data](#creating-custom-report-dates) is stored in a PostgreSQL database:
+If our [datetime sample data](#creating-custom-report-dates) is stored in a PostgreSQL database (Postgres databases are [missing time zone metadata](#source-time-zones):
 
 ```sql
-SELECT original_time::TIMESTAMP AT TIME ZONE 'EST' AS team_report_time_est
+SELECT (client_time::TIMESTAMP AT TIME ZONE 'UTC') AT TIME ZONE 'EST' AS team_report_time_est
 ```
 
 is equivalent to the Metabase `convertTimezone` expression:
 
 ```
-convertTimezone([Original Time)], 'EST')
+convertTimezone([Client Time], 'EST', 'UTC')
+```
+
+If a column is stored _with_ time zone metadata, for example in a Snowflake database:
+
+```sql
+SELECT convert_timezone('UTC', 'EST', client_time::timestamp_ntz) AS team_report_time_est
+```
+
+is equivalent to the Metabase `convertTimezone` expression:
+
+```
+convertTimezone([Client Time], 'EST', 'UTC')
 ```
 
 ### Spreadsheets
 
-If our [datetime sample data](#creating-custom-report-dates) is in a spreadsheet where "Original Time" is in column A, we can add the hours explicitly
+If our [datetime sample data](#creating-custom-report-dates) is in a spreadsheet where "Client Time" is in column A, we can change it to EST by subtracting the hours explicitly:
 
 ```
 A1 - TIME(5, 0, 0)
@@ -113,7 +135,7 @@ A1 - TIME(5, 0, 0)
 to get the same result as
 
 ```
-convertTimezone([Original Time)], 'EST')
+convertTimezone([Client Time)], 'EST')
 ```
 
 ### Python
@@ -121,13 +143,13 @@ convertTimezone([Original Time)], 'EST')
 If the [datetime sample data](#creating-custom-report-dates) is stored in a `pandas` dataframe columns as `timestamp` objects, you can use `tz_convert`:
 
 ```
-df['Team Report Time (EST)'] = df['Original Time'].tz_convert(tz = 'EST')
+df['Team Report Time (EST)'] = df['Client Time'].tz_convert(tz = 'EST')
 ```
 
 to do the same thing as
 
 ```
-convertTimezone([Original Time)], 'EST')
+convertTimezone([Client Time)], 'EST')
 ```
 
 ## Further reading
