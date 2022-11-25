@@ -265,7 +265,7 @@
       (let [[snippet & args]
             (as-> (assoc params :target [:template-tag (field->clause driver field param-type)]) form
               (params.ops/to-clause form)
-              (mbql.u/desugar-filter-clause form)
+              (mbql.u/desugar-filter-clause form (qp.timezone/results-timezone-id))
               (qp.wrap-value-literals/wrap-value-literals-in-mbql form)
               (sql.qp/->honeysql driver form)
               (hsql/format-predicate form :quoting (sql.qp/quote-style driver)))]
