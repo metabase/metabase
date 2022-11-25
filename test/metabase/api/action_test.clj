@@ -77,6 +77,7 @@
       (actions.test-util/with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
                                       {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
         (doseq [initial-action [{:name "Get example"
+                                 :description "A dummy HTTP action"
                                  :type "http"
                                  :model_id card-id
                                  :template {:method "GET"
@@ -85,6 +86,7 @@
                                  :response_handle ".body"
                                  :error_handle ".status >= 400"}
                                 {:name "Query example"
+                                 :description "A simple update query action"
                                  :type "query"
                                  :model_id card-id
                                  :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
@@ -98,14 +100,14 @@
           (let [update-fn (fn [m]
                             (cond-> (assoc m :name "New name")
                               (= (:type initial-action) "implicit")
-                              (assoc :kind "row/update")
+                              (assoc :kind "row/update" :description "A new description")
 
                               (= (:type initial-action) "query")
                               (assoc :dataset_query (update (mt/native-query {:query "update users set name = 'bar' where id = {{x}}"})
                                                             :type name))
 
                               (= (:type initial-action) "http")
-                              (assoc :response_handle ".body.result")))
+                              (-> (assoc :response_handle ".body.result"  :description nil))))
                 created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
                 updated-action (update-fn initial-action)
                 action-path (str "action/" (:id created-action))]

@@ -84,7 +84,7 @@
   "Inserts an Action and related type table. Returns the action id."
   [action-data]
   (db/transaction
-    (let [action-columns [:type :name :model_id :parameters :parameter_mappings :visualization_settings]
+    (let [action-columns [:type :name :description :model_id :parameters :parameter_mappings :visualization_settings]
           action (db/insert! Action (select-keys action-data action-columns))
           model (case (keyword (:type action))
                   :http HTTPAction
@@ -113,7 +113,7 @@
                (-> action
                    (merge
                      {:disabled false}
-                     (select-keys http-action [:description :template :response_handle :error_handle])
+                     (select-keys http-action [:template :response_handle :error_handle])
                      (select-keys (:template http-action) [:parameters :parameter_mappings])))))
            actions))))
 

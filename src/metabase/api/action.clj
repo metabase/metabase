@@ -84,12 +84,13 @@
 
 (api/defendpoint POST "/"
   "Create a new action."
-  [:as {{:keys [type name model_id parameters parameter_mappings visualization_settings
+  [:as {{:keys [type name description model_id parameters parameter_mappings visualization_settings
                 kind
                 database_id dataset_query
                 template response_handle error_handle] :as action} :body}]
   {type SupportedActionType
    name s/Str
+   description (s/maybe s/Str)
    model_id su/IntGreaterThanZero
    parameters (s/maybe [su/Map])
    parameter_mappings (s/maybe su/Map)
@@ -108,13 +109,14 @@
       (last (action/actions-with-implicit-params nil :type type)))))
 
 (api/defendpoint PUT "/:id"
-  [id :as {{:keys [type name model_id parameters parameter_mappings visualization_settings
+  [id :as {{:keys [type name description model_id parameters parameter_mappings visualization_settings
                    kind
                    database_id dataset_query
                    template response_handle error_handle] :as action} :body}]
   {id su/IntGreaterThanZero
    type (s/maybe SupportedActionType)
    name (s/maybe s/Str)
+   description (s/maybe s/Str)
    model_id (s/maybe su/IntGreaterThanZero)
    parameters (s/maybe [su/Map])
    parameter_mappings (s/maybe su/Map)
@@ -125,7 +127,7 @@
    template (s/maybe HTTPActionTemplate)
    response_handle (s/maybe JsonQuerySchema)
    error_handle (s/maybe JsonQuerySchema)}
-  (let [action-columns [:type :name :parameters :parameter_mappings :visualization_settings]
+  (let [action-columns [:type :name :description :parameters :parameter_mappings :visualization_settings]
         existing-action-type (db/select-one-field :type Action :id id)
         existing-model (type->model existing-action-type)]
     (when-let [action-row (not-empty (select-keys action action-columns))]
