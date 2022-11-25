@@ -70,14 +70,14 @@ const isCompatible = (a, b) => {
 };
 
 export function resolve(expression, type = "expression", fn = undefined) {
-  console.log("🚀", util.inspect({ expression, type }, false, null));
+  // console.log("🚀", util.inspect({ expression, type }, false, null));
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
-    console.log("🚀", util.inspect({ op, operands }, false, null));
+    // console.log("🚀", util.inspect({ op, operands }, false, null));
 
     if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
-      console.log({ kind });
+      // console.log({ kind });
       const [name] = operands;
       if (fn) {
         try {
@@ -97,18 +97,18 @@ export function resolve(expression, type = "expression", fn = undefined) {
 
     let operandType = null;
     if (LOGICAL_OPS.includes(op)) {
-      console.log("🚀", "LOGICAL_OPS.includes(op)");
+      // console.log("🚀", "LOGICAL_OPS.includes(op)");
       operandType = "boolean";
     } else if (NUMBER_OPS.includes(op)) {
-      console.log("🚀", "NUMBER_OPS.includes(op)");
+      // console.log("🚀", "NUMBER_OPS.includes(op)");
       operandType = type === "aggregation" ? type : "number";
     } else if (op === "true" || op === "false") {
       operandType = "expression";
     } else if (COMPARISON_OPS.includes(op)) {
-      console.log("🚀", "COMPARISON_OPS.includes(op)");
+      // console.log("🚀", "COMPARISON_OPS.includes(op)");
       operandType = "expression";
       const [firstOperand] = operands;
-      console.log("typeof firstOperand", { firstOperand }, typeof firstOperand);
+      // console.log("typeof firstOperand", { firstOperand }, typeof firstOperand);
       if (typeof firstOperand === "number" && !Array.isArray(firstOperand)) {
         throw new ResolverError(
           t`Expecting field but found ${firstOperand}`,
@@ -144,7 +144,7 @@ export function resolve(expression, type = "expression", fn = undefined) {
     }
 
     if (operandType) {
-      console.log("if (operandType)", { op, operands });
+      // console.log("if (operandType)", { op, operands });
       return [
         op,
         ...operands.map(operand => resolve(operand, operandType, fn)),
@@ -199,6 +199,6 @@ export function resolve(expression, type = "expression", fn = undefined) {
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,
     );
   }
-  console.log("🚀", "at bottom of resolve");
+  // console.log("🚀", "at bottom of resolve");
   return expression;
 }
