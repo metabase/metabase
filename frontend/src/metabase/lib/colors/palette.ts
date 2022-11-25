@@ -91,7 +91,7 @@ export function color(color: any, palette: ColorPalette = colors) {
     ...palette,
   };
 
-  if (color in palette) {
+  if (color in fullPalette) {
     return fullPalette[color as keyof ColorPalette];
   }
 
