@@ -324,17 +324,17 @@ export const MBQL_CLAUSES = {
   "get-year": {
     displayName: `year`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-quarter": {
     displayName: `quarter`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-month": {
     displayName: `month`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-week": {
     displayName: `week`,
@@ -345,27 +345,27 @@ export const MBQL_CLAUSES = {
   "get-day": {
     displayName: `day`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-day-of-week": {
     displayName: `weekday`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-hour": {
     displayName: `hour`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-minute": {
     displayName: `minute`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-second": {
     displayName: `second`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "datetime-diff": {
     displayName: `datetimeDiff`,
@@ -375,18 +375,18 @@ export const MBQL_CLAUSES = {
   },
   "datetime-add": {
     displayName: `datetimeAdd`,
-    type: "expression",
+    type: "datetime",
     args: ["datetime", "number", "string"],
   },
   "datetime-subtract": {
     displayName: `datetimeSubtract`,
-    type: "expression",
-    args: ["expression", "number", "string"],
+    type: "datetime",
+    args: ["datetime", "number", "string"],
   },
   "convert-timezone": {
     displayName: `convertTimezone`,
-    type: "expression",
-    args: ["expression", "string"],
+    type: "datetime",
+    args: ["datetime", "string"],
     hasOptions: true,
     requiresFeature: "convert-timezone",
   },
