@@ -42,11 +42,10 @@
      java.time.format.TextStyle/SHORT
      (java.util.Locale/getDefault))))
 
-(defn- long-timezone-name [timezone-id]
-  (let [^java.time.ZoneId zone (if (seq timezone-id)
-                                 (t/zone-id timezone-id)
-                                 (t/zone-id))]
-     zone ))
+(defn- long-timezone-name ^java.time.ZoneId [timezone-id]
+  (if (seq timezone-id)
+    (t/zone-id timezone-id)
+    (t/zone-id)))
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")

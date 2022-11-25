@@ -182,6 +182,10 @@ class MetabaseSettings {
     return this.currentVersion() !== this.deprecationNoticeVersion();
   }
 
+  reportTimezoneShort() {
+    return this.get("report-timezone-short");
+  }
+
   token() {
     return this.get("premium-embedding-token");
   }
