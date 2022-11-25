@@ -8,19 +8,13 @@ import MetabaseSettings from "metabase/lib/settings";
 import { HelpText } from "./types";
 >>>>>>> 381e26baf9 (Make long-timezone-name fn terse):frontend/src/metabase-lib/expressions/helper-text-strings.ts
 
-const timezoneShort = MetabaseSettings.reportTimezoneShort();
+const serverTimezone = MetabaseSettings.get("report-timezone-long");
 
-const now = new Date();
+const now = new Date().toLocaleString("en-US");
 
-// const nowMoment = moment();
-// console.log("🚀", nowMoment.zoneAbbr("PT").format("ha z"));
-
-// const nowAtServerTimezone = new Date(
-//   now.toLocaleString("en-US", {
-//     timeZoneName: "short",
-//     timeZone: "PT",
-//   }),
-// );
+const nowAtServerTimezone = new Date().toLocaleString("en-US", {
+  timeZone: serverTimezone,
+});
 
 const helperTextStrings: HelpText[] = [
   {
@@ -787,7 +781,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "now",
     structure: "now",
-    description: t`Returns the current timestamp. Server timezone is ${timezoneShort}. Your time: ${now}. Time at server: ${"nowAtServerTimezone"}`,
+    description: t`Returns the current timestamp. Server timezone is ${serverTimezone}. Your time: ${now}. Time at server: ${nowAtServerTimezone}`,
     example: "now",
     args: [],
   },

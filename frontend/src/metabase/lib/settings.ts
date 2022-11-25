@@ -53,6 +53,67 @@ const PASSWORD_COMPLEXITY_CLAUSES = {
   },
 };
 
+// TODO: dump this from backend settings definitions
+export type SettingName =
+  | "application-name"
+  | "admin-email"
+  | "analytics-uuid"
+  | "anon-tracking-enabled"
+  | "site-locale"
+  | "user-locale"
+  | "available-locales"
+  | "available-timezones"
+  | "custom-formatting"
+  | "custom-geojson"
+  | "email-configured?"
+  | "enable-embedding"
+  | "enable-enhancements?"
+  | "enable-public-sharing"
+  | "enable-xrays"
+  | "experimental-enable-actions"
+  | "persisted-models-enabled"
+  | "engines"
+  | "ga-code"
+  | "ga-enabled"
+  | "google-auth-enabled"
+  | "google-auth-client-id"
+  | "has-sample-database?"
+  | "has-user-setup"
+  | "hide-embed-branding?"
+  | "is-hosted?"
+  | "ldap-enabled"
+  | "ldap-configured?"
+  | "other-sso-enabled?"
+  | "enable-password-login"
+  | "map-tile-server-url"
+  | "password-complexity"
+  | "persisted-model-refresh-interval-hours"
+  | "premium-features"
+  | "search-typeahead-enabled"
+  | "setup-token"
+  | "site-url"
+  | "site-uuid"
+  | "token-status"
+  | "types"
+  | "version-info-last-checked"
+  | "version-info"
+  | "version"
+  | "subscription-allowed-domains"
+  | "cloud-gateway-ips"
+  | "snowplow-enabled"
+  | "snowplow-url"
+  | "deprecation-notice-version"
+  | "show-database-syncing-modal"
+  | "premium-embedding-token"
+  | "metabase-store-managed"
+  | "application-colors"
+  | "application-font"
+  | "available-fonts"
+  | "enable-query-caching"
+  | "start-of-week";
+
+type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
+
 type SettingListener = (value: any) => void;
 
 class MetabaseSettings {
@@ -180,10 +241,6 @@ class MetabaseSettings {
 
   deprecationNoticeEnabled() {
     return this.currentVersion() !== this.deprecationNoticeVersion();
-  }
-
-  reportTimezoneShort() {
-    return this.get("report-timezone-short");
   }
 
   token() {
