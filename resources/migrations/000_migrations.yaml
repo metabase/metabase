@@ -13400,13 +13400,39 @@ databaseChangeLog:
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
-        - dropPrimaryKey:
-            tableName: query_action
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE query_action DROP PRIMARY KEY, ADD PRIMARY KEY pk_query_action (action_id);
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE query_action DROP PRIMARY KEY;
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE query_action DROP CONSTRAINT pk_query_action;
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id);
       rollback:
-        - addPrimaryKey:
-            tableName: query_action
-            columnNames: action_id, card_id
-            constraintName: pk_query_action
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE query_action DROP PRIMARY KEY, ADD PRIMARY KEY pk_query_action (action_id, card_id);
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE query_action DROP PRIMARY KEY;
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE query_action DROP CONSTRAINT pk_query_action;
+        - sql:
+            dbms: h2,postgresql
+            sql: >-
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id, card_id);
 
   - changeSet:
       id: v46.00-004
@@ -13510,10 +13536,10 @@ databaseChangeLog:
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
-        - addPrimaryKey:
-            tableName: query_action
-            columnNames: action_id
-            constraintName: pk_query_action
+        - dropForeignKeyConstraint:
+            baseTableName: query_action
+            constraintName: fk_query_action_ref_card_id
+      rollback:
 
   - changeSet:
       id: v46.00-007
