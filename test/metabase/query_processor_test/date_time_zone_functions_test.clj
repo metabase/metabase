@@ -417,12 +417,7 @@
         (testing "timestamp with time zone columns"
           (mt/with-report-timezone-id "UTC"
             (testing "convert to +09:00"
-              (is (= (case driver/*driver*
-                       ;; TIMEZONE FIXME
-                       ;; for some reasons test data for redshift is inserting the dt_tz column with timezone = UTC,
-                       ;; it should be Asia/Ho_Chi_Minh.
-                       :redshift ["2004-03-19T09:19:09Z" "2004-03-19T18:19:09+09:00"]
-                       ["2004-03-19T02:19:09Z" "2004-03-19T11:19:09+09:00"])
+              (is (= ["2004-03-19T02:19:09Z" "2004-03-19T11:19:09+09:00"]
                      (mt/$ids (test-convert-tz
                                 $times.dt_tz
                                 [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Tokyo"])))))
@@ -441,9 +436,7 @@
              ;; TIMEZONE FIXME
              ;; for some reasons test data for redshift is inserting the dt_tz column with timezone = UTC,
              ;; it should be Asia/Ho_Chi_Minh.
-             (is (= (case driver/*driver*
-                      :redshift ["2004-03-19T10:19:09+01:00" "2004-03-19T18:19:09+09:00"]
-                     ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"])
+             (is (= ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"]
                    (mt/$ids (test-convert-tz
                               $times.dt_tz
                               [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Tokyo"])))))))))))
