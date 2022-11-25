@@ -103,6 +103,12 @@ describe("formatting", () => {
       });
       it("should format percentages", () => {
         const options = { compact: true, number_style: "percent" };
+        expect(formatNumber(0.867, { number_style: "percent" })).toEqual(
+          "86.7%",
+        );
+        expect(formatNumber(1.2345, { number_style: "percent" })).toEqual(
+          "123.45%",
+        );
         expect(formatNumber(0, options)).toEqual("0%");
         expect(formatNumber(0.001, options)).toEqual("0.1%");
         expect(formatNumber(0.0001, options)).toEqual("0.01%");
