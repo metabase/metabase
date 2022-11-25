@@ -58,11 +58,10 @@ const LineAreaBarChart = ({
     goalColor: getColor("text-medium"),
   };
 
-  const palette = { ...colors, ...instanceColors };
   const seriesWithColors = getSeriesWithColors(
     multipleSeries,
     settings,
-    palette,
+    instanceColors,
   );
   const seriesWithLegends = getSeriesWithLegends(seriesWithColors, settings);
   const series = removeNoneSeriesFields(seriesWithLegends);
