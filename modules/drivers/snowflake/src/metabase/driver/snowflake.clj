@@ -156,8 +156,9 @@
     (hsql/raw (int amount))
     (hx/->timestamp hsql-form)))
 
-(defn- extract    [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
-(defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))
+(defn- ->timestamp-tz [x] (hx/maybe-cast :timestamp_tz x))
+(defn- extract    [unit expr] (hsql/call :date_part unit (->timestamp-tz expr)))
+(defn- date-trunc [unit expr] (hsql/call :date_trunc unit (->timestamp-tz expr)))
 
 (defmethod sql.qp/date [:snowflake :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:snowflake :minute]          [_ _ expr] (date-trunc :minute expr))
@@ -228,13 +229,11 @@
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :day
-      (let [x (date-trunc :day x)
-            y (date-trunc :day y)]
-        (hsql/call :datediff (hsql/raw (name unit)) x y))
+      (hsql/call :datediff (hsql/raw (name unit)) x y)
 
       (:hour :minute :second)
-      (let [x (hx/->timestamp x)
-            y (hx/->timestamp y)
+      (let [x (->timestamp-tz x)
+            y (->timestamp-tz y)
             positive-diff (fn [a b]
                             (hx/cast
                              :integer
@@ -391,7 +390,7 @@
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]
-  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
+  (format "'%s %s %s'::timestamp_tz" (t/local-date t) (t/local-time t) (t/zone-offset t)))
 
 (defmethod unprepare/unprepare-value [:snowflake ZonedDateTime]
   [driver t]
