@@ -121,7 +121,7 @@ For global appearance settings, such as the colors and fonts used across your en
 
 ¹ Available on paid plans.
 
-² Available on paid plans and hides the download button on questions only (not dashboards). To completely disable downloads, use the [Download results permission](../permissions/data.md#download-results.md).
+² Available on paid plans and hides the download button on questions only (not dashboards).
 
 ## Removing the "Powered by Metabase" banner
 

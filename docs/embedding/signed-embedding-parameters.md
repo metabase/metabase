@@ -121,7 +121,7 @@ your_embedding_url#theme=night&titled=true&bordered=false
 
 ¹ Available on paid plans.
 
-² Available on paid plans and works on questions only (not dashboards). To completely disable downloads, use the [Download results permission](../permissions/data.md#download-results).
+² Available on paid plans and works on questions only (not dashboards).
 
 ## Further reading
 
