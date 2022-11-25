@@ -1,9 +1,7 @@
 import { resolve } from "metabase-lib/expressions/resolver";
-const util = require("util");
 
 describe("metabase-lib/expressions/resolve", () => {
   function collect(expr, startRule = "expression") {
-    console.log(util.inspect({ expr, startRule }, false, null));
     const dimensions = [];
     const segments = [];
     const metrics = [];

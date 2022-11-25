@@ -69,7 +69,6 @@ export function diagnose(source, startRule, query, name = null) {
   }
 
   try {
-    console.log("🚀", "Will prattCompile", { source, startRule, query, name });
     return prattCompiler(source, startRule, query, name);
   } catch (err) {
     return err;

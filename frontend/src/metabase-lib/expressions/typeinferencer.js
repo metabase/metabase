@@ -10,9 +10,6 @@ export const MONOTYPE = {
 };
 
 export function infer(mbql, env) {
-  // console.log("🚀", { mbql, env });
-  /* eslint-disable */
-  // debugger;
   if (!Array.isArray(mbql)) {
     return typeof mbql;
   }
@@ -42,7 +39,6 @@ export function infer(mbql, env) {
       return infer(mbql[1][0][1], env);
     case "coalesce":
       return infer(mbql[1], env);
-    }
   }
 
   const func = MBQL_CLAUSES[op];

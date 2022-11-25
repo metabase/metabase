@@ -255,9 +255,8 @@ export const useShorthands = tree =>
     return node;
   });
 
-export const adjustOptions = tree => {
-  // console.log("🚀", "In adjustOptions", tree);
-  return modify(tree, node => {
+export const adjustOptions = tree =>
+  modify(tree, node => {
     if (Array.isArray(node)) {
       const [operator, ...operands] = node;
       if (operands.length > 0) {
@@ -282,7 +281,6 @@ export const adjustOptions = tree => {
     }
     return node;
   });
-};
 
 // ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
 export const adjustCase = tree =>

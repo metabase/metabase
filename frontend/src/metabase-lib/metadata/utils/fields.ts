@@ -27,7 +27,6 @@ const ICON_MAPPING: Record<string, string> = {
 
 export function getIconForField(fieldOrColumn: any) {
   const type = getFieldType(fieldOrColumn);
-  console.log("🚀", { fieldOrColumn, type });
   return type && ICON_MAPPING[type] ? ICON_MAPPING[type] : "unknown";
 }
 
