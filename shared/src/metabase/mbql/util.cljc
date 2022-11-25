@@ -281,7 +281,11 @@
 (defn desugar-convert-timezone
   "Replace the magic argument of convert-timezone expression.
 
-  Currently only replace \"Instance\" with `results-timezone-id`."
+  Currently only replace \"Instance\" with `results-timezone-id`.
+
+  We need to handle this magic value in desugar but not in the driver itself because with convertTimezone
+  we need to annotate the column with the exact timezone id, so that the column will be formatted with the correct offset
+  in `format-rows` middleware."
   [m results-timezone-id]
   (mbql.match/replace m
     [(op :guard #{:convert-timezone}) field & args]
