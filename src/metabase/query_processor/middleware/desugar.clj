@@ -17,7 +17,7 @@
                                      (mbql.u/desugar-convert-timezone &match (qp.timezone/results-timezone-id))
 
                                      (filter-clause :guard mbql.preds/Filter?)
-                                     (mbql.u/desugar-filter-clause filter-clause)
+                                     (mbql.u/desugar-filter-clause filter-clause (qp.timezone/results-timezone-id))
 
                                      (temporal-extract-clause :guard mbql.preds/DatetimeExpression?)
                                      (mbql.u/desugar-temporal-extract temporal-extract-clause)))))

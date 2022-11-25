@@ -11,6 +11,7 @@
             :query    {:source-table 1
                        :filter       [:and
                                       [:= [:field 1 nil] "Run Query"]
+                                      [:= [:field 4 nil] [:convert-timezone [:field 4 nil] "Asia/Ho_Chi_Minh" "UTC"]]
                                       [:between
                                        [:field 2 {:temporal-unit :day}]
                                        [:relative-datetime -30 :day]
@@ -34,6 +35,7 @@
              :query    {:source-table 1
                         :filter       [:and
                                        [:= [:field 1 nil] "Run Query"]
+                                       [:= [:field 4 nil] [:convert-timezone [:field 4 nil] "instance" "UTC"]]
                                        [:time-interval [:field 2 nil] -30 :day]
                                        [:!= [:field 3 nil] "(not set)" "url"]
                                        [:> [:get-year [:field 4 nil]] 2004]]

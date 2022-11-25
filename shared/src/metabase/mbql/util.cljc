@@ -296,7 +296,7 @@
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types (such as driver query processor implementations, or the
   implementation `negate-filter-clause` below.)"
-  [filter-clause :- mbql.s/Filter]
+  [filter-clause :- mbql.s/Filter results-timezone-id :- (s/maybe schema.helpers/NonBlankString)]
   (-> filter-clause
       desugar-current-relative-datetime
       desugar-equals-and-not-equals-with-extra-args
@@ -306,7 +306,8 @@
       desugar-is-empty-and-not-empty
       desugar-inside
       simplify-compound-filter
-      desugar-temporal-extract))
+      desugar-temporal-extract
+      (desugar-convert-timezone results-timezone-id)))
 
 (defmulti ^:private negate* first)
 

@@ -720,14 +720,14 @@
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-second
   datetime DateTimeExpressionArg)
 
-(def ^:private convertTimezoneArg
+(def ^:private ConvertTimezoneArg
   (s/cond-pre TimezoneId
               (s/pred #(#{"instance"} (str/lower-case %)))))
 
 (defclause ^{:requires-features #{:convert-timezone}} convert-timezone
   datetime DateTimeExpressionArg
-  to       convertTimezoneArg
-  from     (optional convertTimezoneArg))
+  to       ConvertTimezoneArg
+  from     (optional ConvertTimezoneArg))
 
 (def ^:private ArithmeticDateTimeUnit
   (s/named
