@@ -13,7 +13,7 @@ title: DatetimeDiff
 
 ## Parameters
 
-- Units can be any of: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+Units can be any of: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
 
 ## Calculating the age of an entity
 
@@ -64,7 +64,7 @@ When you run a question using the [query builder](https://www.metabase.com/gloss
 If our [cheese sample data](#calculating-an-end-date) is stored in a PostgreSQL database:
 
 ```sql
-SELECT DATE_PART('month', AGE(aging_start, aging_end)) AS age_in_months
+SELECT DATE_PART('month', AGE(aging_end, aging_start)) AS age_in_months
 FROM cheese
 ```
 
@@ -81,7 +81,7 @@ Some databases, such as Snowflake and BigQuery, support functions like `DATEDIFF
 If our [cheese sample data](#calculating-the-age-of-an-entity) is in a spreadsheet where "Aging Start" is in column B and "Aging End" is in column C:
 
 ```
-DATEDIF(A22,B22,"M")
+DATEDIF(B1, C1, "M")
 ```
 
 produces the same result as
@@ -90,14 +90,14 @@ produces the same result as
 datetimeDiff([Aging Start], [Aging End], 'month')
 ```
 
-Yes, it looks kind of wrong, but the spreadsheet function really is `DATEDIF()`, not `DATEDIFF()`.
+Yes, it looks a bit wrong, but the spreadsheet function really is `DATEDIF()`, not `DATEDIFF()`.
 
 ### Python
 
-Assuming the [cheese sample data](#calculating-the-age-of-an-entity) is in a `pandas` dataframe column called `df`, you can subtract the dates directly and use `numpy`'s `timedelta` to convert the difference to months:
+Assuming the [cheese sample data](#calculating-the-age-of-an-entity) is in a `pandas` dataframe column called `df`, you can subtract the dates directly and use `numpy`'s `timedelta64` to convert the difference to months:
 
 ```
-df['Age in Months'] = (df['Aging End'] - df['Aging Start']) / np.timedelta(1, 'M')
+df['Age in Months'] = (df['Aging End'] - df['Aging Start']) / np.timedelta64(1, 'M')
 ```
 
 is equivalent to
