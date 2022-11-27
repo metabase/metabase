@@ -177,15 +177,28 @@
                                      options-map))]
       {:action-id action-id :model-id model-id})))
 
-(defmacro with-action
-  "Execute `body` with a newly created Action.
-   `binding-form` is a returned map with key `:action-id`, and `:query-action-card-id` for QueryActions.
-   `options-map` contains overrides for the action. Defaults to a sane QueryAction.
+(defmacro with-actions
+  "Execute `body` with newly created Actions.
+  `binding-forms-and-options-maps` is a vector of even number of elements, binding and options-map,
+  similar to a `let` form.
+  The first two elements of `binding-forms-and-options-maps` can describe the model, for this the
+  first option-map should map :dataset to a truthy value and contain :dataset_query. In this case
+  the first binding is bound to the model card created.
+  For actions, the binding form is bound to a map with :action-id and :model-id set to the ID of
+  the created action and model card respectively. The options-map overrides the defaults in
+  `do-with-action`.
 
-   (with-action [{:keys [action-id], :as context} {:type :http :name \"Temp HTTP Action\"}]
-   (do-something))"
+  (with-actions [{model-card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+                 {id :action-id} {}
+                 {:keys [action-id model-id]} {:type :http :name \"Temp HTTP Action\"}]
+    (assert (= model-card-id model-id))
+    (something model-card-id id action-id model-id))"
   {:style/indent 1}
   [binding-forms-and-option-maps & body]
+  (assert (vector? binding-forms-and-option-maps)
+          "binding-forms-and-option-maps should be a vector")
+  (assert (even? (count binding-forms-and-option-maps))
+          "binding-forms-and-option-maps should have an even number of elements")
   (let [model (gensym "model-")
         [_ maybe-model-def :as model-part] (subvec binding-forms-and-option-maps 0 2)
         [[custom-binding model-def] binding-forms-and-option-maps]
@@ -202,17 +215,17 @@
            (let [~custom-binding ~model
                  ~@(mapcat (fn [[binding-form option-map]]
                              [binding-form `(do-with-action (merge {:type :query} ~option-map) (:id ~model))])
-                           (partition-all 2 binding-forms-and-option-maps))]
+                           (partition 2 binding-forms-and-option-maps))]
              ~@body))))))
 
 (comment
-  (with-action [{id :action-id} {:type :implicit :kind "row/create"}
-                {:keys [action-id model-id]} {:type :http}]
+  (with-actions [{id :action-id} {:type :implicit :kind "row/create"}
+                 {:keys [action-id model-id]} {:type :http}]
     (something id action-id model-id))
-  (with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
-                {id :action-id} {:type :implicit :kind "row/create"}
-                {:keys [action-id model-id]} {}]
-    (something card-id id action-id model-id))
+  (with-actions [{model-card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+                 {id :action-id} {:type :implicit :kind "row/create"}
+                 {:keys [action-id model-id]} {}]
+    (something model-card-id id action-id model-id))
   nil)
 
 (defn do-with-actions-enabled

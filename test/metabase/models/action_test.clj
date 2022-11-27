@@ -7,7 +7,7 @@
 (deftest hydrate-query-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (actions.test-util/with-action [{:keys [query-action-card-id action-id] :as _context} {}]
+      (actions.test-util/with-actions [{:keys [query-action-card-id action-id] :as _context} {}]
         (is (partial=
               {:id action-id
                :name "Query Example"
@@ -18,7 +18,7 @@
 (deftest hydrate-http-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (actions.test-util/with-action [{:keys [action-id] :as _context} {:type :http}]
+      (actions.test-util/with-actions [{:keys [action-id] :as _context} {:type :http}]
         (is (partial=
               {:id action-id
                :name "Echo Example"

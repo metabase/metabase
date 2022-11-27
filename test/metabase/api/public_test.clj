@@ -1134,7 +1134,7 @@
   (actions.test-util/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash {:parameters []}]
-        (actions.test-util/with-action [{:keys [action-id model-id]} {}]
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {}]
           (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
                                                             :action_id action-id
                                                             :card_id model-id}]]
@@ -1161,7 +1161,7 @@
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-dashboard [dash {:parameters []}]
-          (actions.test-util/with-action [{:keys [action-id model-id]} {}]
+          (actions.test-util/with-actions [{:keys [action-id model-id]} {}]
             (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
                                                               :action_id action-id
                                                               :card_id model-id}]]
@@ -1177,7 +1177,7 @@
   (actions.test-util/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash {:parameters []}]
-        (actions.test-util/with-action [{:keys [action-id model-id]} {:type :implicit}]
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
                                                             :action_id action-id
                                                             :card_id model-id}]]

@@ -301,11 +301,11 @@
   (mt/with-model-cleanup [Card Dashboard Collection Permissions]
     (mt/with-all-users-permission (perms/app-root-collection-permission :read)
       (testing "Golden path"
-        (actions.test-util/with-action [{action-create :action-id} {:type :implicit :kind "row/create"}
-                                        {action-update :action-id} {:type :implicit :kind "row/update"}
-                                        {action-delete :action-id} {:type :implicit :kind "row/delete"}
-                                        {action1-id :action-id} {}
-                                        {action2-id :action-id card-id :model-id} {}]
+        (actions.test-util/with-actions [{action-create :action-id} {:type :implicit :kind "row/create"}
+                                         {action-update :action-id} {:type :implicit :kind "row/update"}
+                                         {action-delete :action-id} {:type :implicit :kind "row/delete"}
+                                         {action1-id :action-id} {}
+                                         {action2-id :action-id card-id :model-id} {}]
           (let [app (mt/user-http-request
                       :crowberto :post 200 "app/scaffold"
                       {:table-ids [(str "card__" card-id)]

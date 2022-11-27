@@ -65,7 +65,7 @@
 (deftest get-action-test
   (testing "GET /api/action/:id"
     (actions.test-util/with-actions-enabled
-      (actions.test-util/with-action [{:keys [action-id]} {}]
+      (actions.test-util/with-actions [{:keys [action-id]} {}]
         (let [action (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id))]
           (testing "Should return a query action deserialized (#23201)"
             (is (schema= ExpectedGetQueryActionAPIResponse
@@ -74,8 +74,8 @@
 (deftest unified-action-create-test
   (actions.test-util/with-actions-enabled
     (actions.test-util/with-actions-test-data-tables #{"users" "categories"}
-      (actions.test-util/with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
-                                      {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
+      (actions.test-util/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
+                                       {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
         (doseq [initial-action [{:name "Get example"
                                  :description "A dummy HTTP action"
                                  :type "http"

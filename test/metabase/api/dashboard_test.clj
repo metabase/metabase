@@ -2192,7 +2192,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (doseq [action-type [:http :implicit :query]]
-        (actions.test-util/with-action [{:keys [action-id model-id]} {:type action-type :visualization_settings {:hello true}}]
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {:type action-type :visualization_settings {:hello true}}]
           (testing (str "Creating dashcard with action: " action-type)
             (mt/with-temp* [Dashboard [{dashboard-id :id}]]
               (is (partial= {:visualization_settings {:label "Update"}
@@ -2212,7 +2212,7 @@
 (deftest dashcard-query-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (actions.test-util/with-action [{:keys [action-id model-id]} {}]
+      (actions.test-util/with-actions [{:keys [action-id model-id]} {}]
         (testing "Executing dashcard with action"
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
@@ -2257,7 +2257,7 @@
 (deftest dashcard-http-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
-      (actions.test-util/with-action [{:keys [action-id model-id]} {:type :http}]
+      (actions.test-util/with-actions [{:keys [action-id model-id]} {:type :http}]
         (testing "Executing dashcard with action"
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
@@ -2291,7 +2291,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard insert"
-        (actions.test-util/with-action [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                             :card_id model-id
@@ -2314,7 +2314,7 @@
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {}}))))))))
       (testing "Executing dashcard update"
-        (actions.test-util/with-action [{:keys [action-id model-id]} {:type :implicit :kind "row/update"}]
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/update"}]
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                             :card_id model-id
@@ -2337,7 +2337,7 @@
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"id" 1}}))))))))
       (testing "Executing dashcard delete"
-        (actions.test-util/with-action [{:keys [action-id model-id]} {:type :implicit :kind "row/delete"}]
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/delete"}]
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                             :card_id model-id
@@ -2387,8 +2387,8 @@
          (map #(dissoc % ::good ::bad) types)
          [["init"]]]
         (actions.test-util/with-actions-enabled
-          (actions.test-util/with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
-                                          {:keys [action-id]} {:type :implicit :kind "row/create"}]
+          (actions.test-util/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+                                           {:keys [action-id]} {:type :implicit :kind "row/create"}]
             (mt/with-temp* [Dashboard [{dashboard-id :id}]
                             DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                               :action_id action-id
@@ -2404,8 +2404,8 @@
                       (is (partial= {field-name value}
                                     (zipmap (map (comp str/lower-case :name) cols)
                                             (last rows))))))
-                  (actions.test-util/with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
-                                                  {:keys [action-id]} (custom-action-for-field field-name)]
+                  (actions.test-util/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+                                                   {:keys [action-id]} (custom-action-for-field field-name)]
                     (mt/with-temp DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
                                                                            :action_id action-id
                                                                            :card_id card-id}]
@@ -2426,8 +2426,8 @@
                          (mt/user-http-request :crowberto :post 400
                                                (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
                                                {:parameters {field-name value}}))))
-                  (actions.test-util/with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
-                                                  {action-id :action-id} (custom-action-for-field field-name)]
+                  (actions.test-util/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query types)}
+                                                   {action-id :action-id} (custom-action-for-field field-name)]
                     (mt/with-temp DashboardCard [{custom-dashcard-id :id} {:dashboard_id dashboard-id
                                                                            :action_id action-id
                                                                            :card_id card-id}]
@@ -2441,7 +2441,7 @@
   (mt/with-temp-copy-of-db
     (actions.test-util/with-actions-test-data
       (testing "Executing dashcard with action"
-        (actions.test-util/with-action [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {:type :implicit :kind "row/create"}]
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                             :action_id action-id
@@ -2473,7 +2473,7 @@
 (deftest dashcard-custom-action-execution-auth-test
   (mt/with-temp-copy-of-db
     (actions.test-util/with-actions-test-data
-      (actions.test-util/with-action [{:keys [action-id model-id]} {}]
+      (actions.test-util/with-actions [{:keys [action-id model-id]} {}]
         (testing "Executing dashcard with action"
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
@@ -2505,7 +2505,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (testing "Prefetching dashcard update"
-        (actions.test-util/with-action [{:keys [action-id model-id]} {:type :implicit}]
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                             :card_id model-id
@@ -2524,8 +2524,8 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (actions.test-util/with-actions-test-data-tables #{"venues" "categories"}
       (actions.test-util/with-actions-test-data-and-actions-enabled
-        (actions.test-util/with-action [{card-id :id} {:dataset true :dataset_query (mt/mbql-query venues {:fields [$id $name]})}
-                                        {:keys [action-id]} {:type :implicit :kind "row/update"}]
+        (actions.test-util/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query venues {:fields [$id $name]})}
+                                         {:keys [action-id]} {:type :implicit :kind "row/update"}]
           (mt/with-temp* [Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
                                                             :action_id action-id
@@ -2553,7 +2553,7 @@
     (mt/with-temp-copy-of-db
       (actions.test-util/with-actions-enabled
         (actions.test-util/with-actions-test-data
-          (actions.test-util/with-action [{:keys [action-id model-id]} {}]
+          (actions.test-util/with-actions [{:keys [action-id model-id]} {}]
             (testing "Executing dashcard with action"
               (mt/with-temp* [Dashboard [{dashboard-id :id}]
                               DashboardCard [{dashcard-id :id}
