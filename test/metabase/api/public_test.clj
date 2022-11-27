@@ -453,16 +453,6 @@
                                                                :value  ["PizzaHacker"]
                                                                :id     "_VENUE_NAME_"}])))))))))))
 
-(deftest execute-public-dashcard-params-validation-test-with-writable-card
-  (testing "GET /api/public/dashboard/:uuid/card/:card-id"
-    (testing "Should not work with a writable card"
-      (mt/with-temporary-setting-values [enable-public-sharing true]
-        (with-temp-public-dashboard [dash]
-          (with-temp-public-card [card {:is_write true}]
-            (let [dashcard (add-card-to-dashboard! card dash)]
-              ;; the 405 is caught and rethrown as a 400
-              (client/client :get 400 (dashcard-url dash card dashcard)))))))))
-
 (deftest execute-public-dashcard-additional-series-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
     (testing "should work with an additional Card series"

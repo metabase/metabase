@@ -16,7 +16,6 @@
                                      Dashboard
                                      DashboardCard
                                      DashboardCardSeries
-                                     Database
                                      Field
                                      FieldValues
                                      ModelAction
@@ -263,7 +262,6 @@
                                                                                        :display                "table"
                                                                                        :entity_id              (:entity_id card)
                                                                                        :visualization_settings {}
-                                                                                       :is_write               false
                                                                                        :result_metadata        nil})
                                                    :series                     []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
@@ -316,7 +314,6 @@
                                                                                              :display                "table"
                                                                                              :query_type             nil
                                                                                              :visualization_settings {}
-                                                                                             :is_write               false
                                                                                              :result_metadata        nil})
                                                          :series                     []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
@@ -1255,18 +1252,6 @@
            (is (= new-mappings
                   (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
 
-(deftest disallow-adding-is-write-card-to-dashboard-test
-  (testing "PUT /api/dashboard/:id/cards"
-    (testing "Disallow adding a QueryAction is_write Card to a Dashboard (#22846)"
-      (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                      Card      [{card-id :id} {:is_write true}]]
-        (is (= "You cannot add an is_write Card to a Dashboard."
-               (mt/user-http-request :crowberto :post 400
-                                     (format "dashboard/%d/cards" dashboard-id)
-                                     {:cardId card-id
-                                      :row    0
-                                      :col    0})))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        DELETE /api/dashboard/:id/cards                                         |
@@ -2072,17 +2057,7 @@
                 (testing "Should return error if current User doesn't have query perms for the Card"
                   (mt/with-temp-vals-in-db Card card-id {:collection_id collection-id}
                     (is (= "You don't have permissions to do that."
-                           (mt/user-http-request :rasta :post 403 (url)))))))))
-          (testing "with writable card"
-            (mt/with-temp*
-              [Database   [db    {:details (:details (mt/db)), :engine :h2}]
-               Card       [card  {:is_write true
-                                  :dataset_query
-                                  {:database (u/the-id db)
-                                   :type     :native
-                                   :native   {:query "delete from users;"}}}]]
-              (is (= "Write queries are only executable via the Actions API."
-                     (:message (mt/user-http-request :rasta :post 405 (url :card-id (:id card))))))))))))
+                           (mt/user-http-request :rasta :post 403 (url)))))))))))))
 
   ;; see also [[metabase.query-processor.dashboard-test]]
   (deftest dashboard-card-query-parameters-test
@@ -2150,17 +2125,7 @@
                                           {:request-options {:as :byte-array}}
                                           :parameters (json/generate-string [{:id    "_PRICE_"
                                                                               :value 4}]))
-                    export-format))))))
-      (testing "with writable card"
-        (mt/with-temp*
-          [Database   [db    {:details (:details (mt/db)), :engine :h2}]
-           Card       [card  {:is_write true
-                              :dataset_query
-                              {:database (u/the-id db)
-                               :type     :native
-                               :native   {:query "delete from users;"}}}]]
-          (is (= "Write queries are only executable via the Actions API."
-                 (:message (mt/user-http-request :rasta :post 405 (str (dashboard-card-query-url dashboard-id (:id card) dashcard-id) "/csv"))))))))))
+                    export-format)))))))))
 
 (defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]
   (format "dashboard/pivot/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))
@@ -2180,13 +2145,7 @@
             (is (= 1144 (count rows)))
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
-            (is (= [nil nil nil 7 18760 69540] (last rows))))
-          (testing "with writable card"
-            (mt/with-temp*
-              [Card       [card (assoc (api.pivots/pivot-card)
-                                       :is_write true)]]
-              (is (= "Write queries are only executable via the Actions API."
-                     (:message (mt/user-http-request :rasta :post 405 (dashcard-pivot-query-endpoint dashboard-id (:id card) dashcard-id))))))))))))
+            (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
 (deftest dashcard-action-create-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
