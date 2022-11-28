@@ -111,35 +111,29 @@ describe("CreateDashboardModal", () => {
   it("displays empty form fields", () => {
     setup();
 
-    expect(screen.queryByLabelText("Name")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Name")).toHaveValue("");
+    expect(screen.getByLabelText("Name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("");
 
-    expect(screen.queryByLabelText("Description")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Description")).toHaveValue("");
+    expect(screen.getByLabelText("Description")).toBeInTheDocument();
+    expect(screen.getByLabelText("Description")).toHaveValue("");
 
-    expect(screen.queryByText("Our analytics")).toBeInTheDocument();
+    expect(screen.getByText("Our analytics")).toBeInTheDocument();
 
-    expect(
-      screen.queryByRole("button", { name: "Create" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Create" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
   });
 
   it("can't submit if name is empty", async () => {
     setup();
     const submitButton = await waitFor(() =>
-      screen.queryByRole("button", { name: "Create" }),
+      screen.getByRole("button", { name: "Create" }),
     );
     expect(submitButton).toBeDisabled();
   });
 
   it("calls onClose when Cancel button is clicked", () => {
     const { onClose } = setup();
-    fireEvent.click(
-      screen.queryByRole("button", { name: "Cancel" }) as Element,
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
