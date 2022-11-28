@@ -780,7 +780,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "now",
     structure: "now",
-    description: t`Returns the current timestamp in the ${applicationName} timezone.<br/>Your local time is: ${now} in ${userTimezone}.<br/>The ${applicationName} instance time is: ${nowAtServerTimezone} in ${serverTimezone}.`,
+    description: t`Returns the current timestamp in the ${applicationName} timezone.<br/>Your local time is ${now} in ${userTimezone}.<br/>The ${applicationName} instance time is ${nowAtServerTimezone} in ${serverTimezone}.`,
     example: "now",
     args: [],
   },
