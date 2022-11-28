@@ -1,11 +1,13 @@
 import _ from "underscore";
 
+import { IconProps } from "metabase/components/Icon";
+
 import { color } from "metabase/lib/colors";
 
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import {
+  isRootCollection,
   isPersonalCollection,
-  canonicalCollectionId,
 } from "metabase/collections/utils";
 import {
   getDataAppIcon,
@@ -14,9 +16,19 @@ import {
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
+import type { Collection, CollectionContentModel } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import { ROOT_COLLECTION, PERSONAL_COLLECTIONS } from "./constants";
 
-export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
+export function normalizedCollection(collection: Collection) {
+  return isRootCollection(collection) ? ROOT_COLLECTION : collection;
+}
+
+export function getCollectionIcon(
+  collection: Collection,
+  { tooltip = "default" } = {},
+) {
   if (isDataAppCollection(collection)) {
     return getDataAppIcon();
   }
@@ -27,41 +39,46 @@ export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
     return { name: "person" };
   }
   const authorityLevel =
-    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
+    PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level as string];
 
   return authorityLevel
     ? {
         name: authorityLevel.icon,
-        color: color(authorityLevel.color),
+        color: authorityLevel.color ? color(authorityLevel.color) : undefined,
         tooltip: authorityLevel.tooltips?.[tooltip],
       }
     : { name: "folder" };
 }
 
-export function normalizedCollection(collection) {
-  if (canonicalCollectionId(collection.id) === null) {
-    return ROOT_COLLECTION;
+export function getCollectionType(
+  collectionId: Collection["id"] | undefined,
+  state: State,
+) {
+  if (collectionId === null || collectionId === "root") {
+    return "root";
   }
-  return collection;
+  if (collectionId === getUserPersonalCollectionId(state)) {
+    return "personal";
+  }
+  return collectionId !== undefined ? "other" : null;
 }
 
-export const getCollectionType = (collectionId, state) =>
-  collectionId === null || collectionId === "root"
-    ? "root"
-    : collectionId === getUserPersonalCollectionId(state)
-    ? "personal"
-    : collectionId !== undefined
-    ? "other"
-    : null;
-
-function hasIntersection(list1, list2) {
+function hasIntersection(list1: unknown[], list2?: unknown[]) {
   if (!list2) {
     return false;
   }
   return _.intersection(list1, list2).length > 0;
 }
 
-export function buildCollectionTree(collections, { targetModels } = {}) {
+export interface CollectionTreeItem extends Collection {
+  icon: string | IconProps;
+  children: CollectionTreeItem[];
+}
+
+export function buildCollectionTree(
+  collections: Collection[],
+  { targetModels }: { targetModels?: CollectionContentModel[] } = {},
+): CollectionTreeItem[] {
   if (collections == null) {
     return [];
   }

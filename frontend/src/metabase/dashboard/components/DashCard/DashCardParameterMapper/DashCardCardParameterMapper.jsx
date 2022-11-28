@@ -4,28 +4,32 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
+
+import MetabaseSettings from "metabase/lib/settings";
 import { getMetadata } from "metabase/selectors/metadata";
+
+import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import {
   getNativeDashCardEmptyMappingText,
   isNativeDashCard,
   isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
+
+import Question from "metabase-lib/Question";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
-import Question from "metabase-lib/Question";
 
 import {
   getEditingParameter,
   getParameterTarget,
   makeGetParameterMappingOptions,
-} from "../selectors";
-import { setParameterMapping } from "../actions";
+} from "../../../selectors";
+import { setParameterMapping } from "../../../actions";
+
 import {
   Container,
   CardLabel,

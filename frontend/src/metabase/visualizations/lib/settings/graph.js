@@ -139,6 +139,9 @@ export const GRAPH_DATA_SETTINGS = {
         addAnother:
           options.length > addedDimensions.length &&
           addedDimensions.length < maxDimensionsSupported &&
+          addedDimensions.every(
+            dimension => dimension !== undefined && dimension !== null,
+          ) &&
           vizSettings["graph.metrics"].length < 2
             ? t`Add series breakout`
             : null,
@@ -151,45 +154,74 @@ export const GRAPH_DATA_SETTINGS = {
     dashboard: false,
     useRawSeries: true,
   },
+  "graph.series_order_dimension": {
+    getValue: (_series, settings) => settings["graph.dimensions"][1],
+    // This read dependency is set so that "graph.series_order" is computed *before* this value, ensuring that
+    // that it uses the stored value if one exists. This is needed to check if the dimension has actually changed
+    readDependencies: ["graph.series_order"],
+  },
   "graph.series_order": {
     section: t`Data`,
     widget: ChartSettingOrderedSimple,
     marginBottom: "1rem",
-    isValid: (series, settings) => {
-      const seriesOrder = settings["graph.series_order"];
 
-      if (!seriesOrder || !_.isArray(seriesOrder)) {
-        return false;
+    getValue: (series, settings) => {
+      const seriesKeys = series.map(s => keyForSingleSeries(s));
+      const seriesSettings = settings["series_settings"];
+      const seriesColors = settings["series_settings.colors"] || {};
+      const seriesOrder = settings["graph.series_order"];
+      // Because this setting is a read dependency of graph.series_order_dimension, this should
+      // Always be the stored setting, not calculated.
+      const seriesOrderDimension = settings["graph.series_order_dimension"];
+      const currentDimension = settings["graph.dimensions"][1];
+
+      if (currentDimension === undefined) {
+        return [];
       }
 
-      return seriesOrder.length === series.length;
-    },
-    getDefault: series => {
-      const keys = series.map(s => keyForSingleSeries(s));
-      return keys.map((key, index) => ({
-        name: key,
-        originalIndex: index,
-        enabled: true,
-      }));
-    },
-    getProps: (series, settings) => {
-      const seriesSettings = settings["series_settings"] || {};
-      const seriesColors = settings["series_settings.colors"] || {};
-      const keys = series.map(s => keyForSingleSeries(s));
-      return {
-        items: keys.map((key, index) => ({
-          name: seriesSettings[key]?.title || key,
-          originalIndex: index,
+      const generateDefault = keys => {
+        return keys.map(key => ({
+          key,
           color: seriesColors[key],
-        })),
-        series,
+          enabled: true,
+          name: seriesSettings[key]?.title || key,
+        }));
       };
+
+      const removeMissingOrder = (keys, order) =>
+        order.filter(o => keys.includes(o.key));
+      const newKeys = (keys, order) =>
+        keys.filter(key => !order.find(o => o.key === key));
+
+      if (
+        !seriesOrder ||
+        !_.isArray(seriesOrder) ||
+        !seriesOrder.every(
+          order =>
+            order.key !== undefined &&
+            order.name !== undefined &&
+            order.color !== undefined,
+        ) ||
+        seriesOrderDimension !== currentDimension
+      ) {
+        return generateDefault(seriesKeys);
+      }
+
+      return [
+        ...removeMissingOrder(seriesKeys, seriesOrder),
+        ...generateDefault(newKeys(seriesKeys, seriesOrder)),
+      ].map(item => ({
+        ...item,
+        name: seriesSettings[item.key]?.title || item.key,
+        color: seriesColors[item.key],
+      }));
     },
     getHidden: (series, settings) => {
       return settings["graph.dimensions"]?.length < 2 || series.length > 20;
     },
     dashboard: false,
-    readDependencies: ["series_settings.colors"],
+    readDependencies: ["series_settings.colors", "series_settings"],
+    writeDependencies: ["graph.series_order_dimension"],
   },
   "graph.metrics": {
     section: t`Data`,
