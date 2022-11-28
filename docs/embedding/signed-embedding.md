@@ -111,6 +111,10 @@ You can change the way an embedded question or dashboard looks in an iframe (whi
 - Font¹
 - Download data²
 
+¹ Available on [paid plans](https://www.metabase.com/pricing).
+
+² Available on [paid plans](https://www.metabase.com/pricing) and hides the download button on questions only (not dashboards).
+
 To update the appearance of a signed embed:
 
 1. Optional: Preview the appearance changes from your question or dashboard's embedding settings (**sharing icon** > **Embed this item in an application**).
@@ -118,10 +122,6 @@ To update the appearance of a signed embed:
 3. Change the [parameters](./signed-embedding-parameters.md#customizing-the-appearance-of-a-signed-embed) in your actual server code.
 
 For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
-
-¹ Available on paid plans.
-
-² Available on paid plans and hides the download button on questions only (not dashboards).
 
 ## Removing the "Powered by Metabase" banner
 
