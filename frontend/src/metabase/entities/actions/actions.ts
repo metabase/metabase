@@ -92,6 +92,7 @@ function createQueryAction({
     ...action,
     type: "query",
     dataset_query,
+    database_id: dataset_query.database,
     parameters,
     visualization_settings,
   });
