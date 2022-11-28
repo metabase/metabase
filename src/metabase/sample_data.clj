@@ -22,6 +22,17 @@
              (str/replace #"%20" " ") ; for some reason the path can get URL-encoded and replace spaces with `%20`; this breaks things so switch them back to spaces
              (str ";USER=GUEST;PASSWORD=guest"))})) ; specify the GUEST user account created for the DB
 
+(defn- sync-sample-database!
+  [db]
+  (if config/is-test?
+    ;; In test, do sample DB synchronously to ensure that it is fully synced before tests run
+    (sync/sync-database! db {:scan :full})
+    (do
+      ;; In dev & prod, spin off a separate thread for analyze + field values steps so that we don't
+      ;; block startup.
+      (sync/sync-database! db {:scan :schema})
+      (future (sync/sync-database! db {:scan [:analyze :field-values]})))))
+
 (defn add-sample-database!
   "Add the sample database as a Metabase DB if it doesn't already exist. Only a metadata sync is done synchronously
   when running in prod in order reduce startup time."
@@ -34,14 +45,7 @@
                            :details   (db-details)
                            :engine    :h2
                            :is_sample true)]
-        (if config/is-test?
-          ;; In test, do sample DB synchronously to ensure that it is fully synced before tests run
-          (sync/sync-database! db {:scan :full})
-          (do
-            ;; In dev & prod, spin off a separate thread for analyze + field values steps so that we don't
-            ;; block startup.
-            (sync/sync-database! db {:scan :schema})
-            (future (sync/sync-database! db {:scan [:analyze :field-values]})))))
+        (sync-sample-database! db))
       (catch Throwable e
         (log/error e (trs "Failed to load sample database"))))))
 
