@@ -2,7 +2,7 @@ import * as Yup from "yup";
 import type { TestContext } from "yup";
 import * as Errors from "metabase/core/utils/errors";
 import { Engine, EngineField } from "metabase-types/api";
-import { DatabaseTestContext, DatabaseValues } from "./types";
+import { DatabaseValues } from "./types";
 
 export const getValidationSchema = (engine?: Engine, engineName?: string) => {
   const fields = engine?.["details-fields"] ?? [];
@@ -41,10 +41,8 @@ const isFieldValid = (
   value: unknown,
   context: TestContext,
 ) => {
-  const { from } = context as DatabaseTestContext;
-  const values = from[from.length - 1].value;
   const isEmpty = value == null || value === "";
-  const isVisible = isFieldVisible(field, values);
+  const isVisible = isFieldVisible(field, context.parent);
 
   if (field.required && isEmpty && isVisible) {
     return context.createError({ message: Errors.required });
@@ -53,17 +51,20 @@ const isFieldValid = (
   }
 };
 
-const isFieldVisible = (field: EngineField, values: DatabaseValues) => {
+const isFieldVisible = (
+  field: EngineField,
+  details: Record<string, unknown>,
+) => {
   const rules = field["visible-if"] ?? {};
 
   return Object.entries(rules).every(([name, value]) =>
     Array.isArray(value)
-      ? value.includes(values.details?.[name])
-      : value === values.details?.[name],
+      ? value.includes(details?.[name])
+      : value === details?.[name],
   );
 };
 
 export const getVisibleFields = (engine: Engine, values: DatabaseValues) => {
   const fields = engine["details-fields"] ?? [];
-  return fields.filter(field => isFieldVisible(field, values));
+  return fields.filter(field => isFieldVisible(field, values.details));
 };
