@@ -7,7 +7,7 @@ import {
 
 export interface DatabaseValues {
   id?: DatabaseId;
-  engine: string | null;
+  engine: string | undefined;
   details: Record<string, unknown>;
 }
 

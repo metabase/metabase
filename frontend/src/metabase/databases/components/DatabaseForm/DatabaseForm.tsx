@@ -20,8 +20,8 @@ const DatabaseForm = ({
   engines,
   onSubmit,
 }: DatabaseFormProps): JSX.Element => {
-  const [engineName, setEngineName] = useState<string | null>(null);
-  const engine = engineName ? engines[engineName] : null;
+  const [engineName, setEngineName] = useState<string>();
+  const engine = engineName ? engines[engineName] : undefined;
 
   const validationSchema = useMemo(() => {
     return getValidationSchema(engine, engineName);
@@ -51,7 +51,7 @@ const DatabaseForm = ({
 };
 
 interface DatabaseFormBodyProps {
-  engine: Engine | null;
+  engine: Engine | undefined;
   engines: Record<string, Engine>;
   values: DatabaseValues;
   onEngineChange: (engineName: string) => void;
@@ -63,19 +63,13 @@ const DatabaseFormBody = ({
   values,
   onEngineChange,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const engineName = values.engine;
-
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values) : [];
   }, [engine, values]);
 
-  useLayoutEffect(() => {
-    engineName && onEngineChange(engineName);
-  }, [engineName, onEngineChange]);
-
   return (
     <Form>
-      <DatabaseEngineField engines={engines} />
+      <DatabaseEngineField engines={engines} onChange={onEngineChange} />
       {engine && <DatabaseNameField engine={engine} />}
       {fields.map(field => (
         <DatabaseDetailField key={field.name} field={field} />
