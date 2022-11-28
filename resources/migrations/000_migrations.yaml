@@ -13499,20 +13499,51 @@ databaseChangeLog:
               DELETE FROM action WHERE model_id is null;
 
         - sql:
+            dbms: mysql,h2
             sql: >-
               UPDATE report_dashboardcard
               SET action_id = (SELECT action.id
                                FROM action
-                               INNER JOIN implicit_action ON action.id = implicit_action.action_id
-                               INNER JOIN model_action ON action.model_id = model_action.card_id
+                               LEFT JOIN implicit_action ON implicit_action.action_id = action.id
                                WHERE action.model_id = report_dashboardcard.card_id
-                               AND model_action.slug = regexp_replace(report_dashboardcard.visualization_settings,
-                                                                      '.*"action_slug"\s*:\s*"([^"]+)".*', '\1')
-                               AND implicit_action.kind = CASE model_action.slug
-                                                            WHEN 'insert' THEN 'row/create'
-                                                            WHEN 'delete' THEN 'row/delete'
-                                                            WHEN 'update' THEN 'row/update'
-                                                          END)
+                               AND coalesce((
+                                  CASE implicit_action.kind
+                                     WHEN 'row/create' THEN 'insert'
+                                     WHEN 'row/delete' THEN 'delete'
+                                     WHEN 'row/update' THEN 'update'
+                                  END), ('action_' || action.id)) = regexp_replace(report_dashboardcard.visualization_settings, '.*"action_slug"\s*:\s*"([^"]+)".*', '$1'))
+              WHERE report_dashboardcard.visualization_settings like '%action_slug%';
+
+        - sql:
+            dbms: mariadb
+            sql: >-
+              UPDATE report_dashboardcard
+              SET action_id = (SELECT action.id
+                               FROM action
+                               LEFT JOIN implicit_action ON implicit_action.action_id = action.id
+                               WHERE action.model_id = report_dashboardcard.card_id
+                               AND coalesce((
+                                  CASE implicit_action.kind
+                                     WHEN 'row/create' THEN 'insert'
+                                     WHEN 'row/delete' THEN 'delete'
+                                     WHEN 'row/update' THEN 'update'
+                                  END), ('action_' || action.id)) = regexp_replace(report_dashboardcard.visualization_settings, '.*"action_slug"\s*:\s*"([^"]+)".*', '\\1'))
+              WHERE report_dashboardcard.visualization_settings like '%action_slug%';
+
+        - sql:
+            dbms: postgres
+            sql: >-
+              UPDATE report_dashboardcard
+              SET action_id = (SELECT action.id
+                               FROM action
+                               LEFT JOIN implicit_action ON implicit_action.action_id = action.id
+                               WHERE action.model_id = report_dashboardcard.card_id
+                               AND coalesce((
+                                  CASE implicit_action.kind
+                                     WHEN 'row/create' THEN 'insert'
+                                     WHEN 'row/delete' THEN 'delete'
+                                     WHEN 'row/update' THEN 'update'
+                                  END), ('action_' || action.id)) = regexp_replace(report_dashboardcard.visualization_settings, '.*"action_slug"\s*:\s*"([^"]+)".*', '\1'))
               WHERE report_dashboardcard.visualization_settings like '%action_slug%';
 
         - sql:
@@ -13709,6 +13740,74 @@ databaseChangeLog:
             tableName: action
             columnName: name
             columnDataType: varchar(254)
+
+  - changeSet:
+      id: v46.00-019
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropTable:
+            tableName: model_action
+      rollback:
+        - createTable:
+            tableName: model_action
+            remarks: Ties actions to models
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: slug
+                  type: varchar(254)
+                  remarks: The referenceable name for this action
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The associated model
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_card_id
+                    deleteCascade: true
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The associated action
+                  constraints:
+                    nullable: true
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: requires_pk
+                  remarks: Indicates that the primary key(s) need to be passed in as parameters
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parameter_mappings
+                  type: ${text.type}
+                  remarks: Mappings for primary keys to action parameters
+              - column:
+                  name: visualization_settings
+                  type: ${text.type}
+                  remarks: Settings for rendering the action
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
