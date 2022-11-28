@@ -304,6 +304,7 @@
    :LONGTEXT                            :type/Text
    :LONGVARBINARY                       :type/*
    :LONGVARCHAR                         :type/Text
+   (keyword "CHARACTER VARYING")        :type/Text
    :MEDIUMBLOB                          :type/*
    :MEDIUMINT                           :type/Integer
    :MEDIUMTEXT                          :type/Text
