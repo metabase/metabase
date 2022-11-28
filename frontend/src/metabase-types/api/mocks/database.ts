@@ -17,7 +17,7 @@ export const createMockDatabase = (opts?: Partial<Database>): Database => ({
 export const createMockDatabaseData = (
   opts?: Partial<DatabaseData>,
 ): DatabaseData => ({
-  engine: null,
+  engine: undefined,
   details: {},
   ...opts,
 });
