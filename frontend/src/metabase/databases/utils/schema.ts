@@ -20,14 +20,18 @@ const getFieldSchema = (field: EngineField) => {
 
 const getFieldTypeSchema = (field: EngineField) => {
   switch (field.type) {
+    case "integer":
+      return Yup.number()
+        .nullable()
+        .default(field.default != null ? Number(field.default) : null);
     case "boolean":
     case "section":
       return Yup.boolean()
         .defined()
-        .default(field.default ? Boolean(field.default) : false);
+        .default(field.default != null ? Boolean(field.default) : false);
     default:
       return Yup.string()
         .nullable()
-        .default(field.default ? String(field.default) : null);
+        .default(field.default != null ? String(field.default) : null);
   }
 };

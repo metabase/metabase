@@ -4,6 +4,7 @@ import FormNumericInput from "metabase/core/components/FormNumericInput";
 import FormInput from "metabase/core/components/FormInput";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import FormToggle from "metabase/core/components/FormToggle";
+import FormFileInput from "metabase/core/components/FormFileInput";
 import DatabaseInfoField from "../DatabaseInfoField";
 import DatabaseSectionField from "../DatabaseSectionField";
 import { FIELD_OVERRIDES } from "../../constants";
@@ -32,6 +33,8 @@ const DatabaseDetailField = ({
       return <FormNumericInput {...props} {...getInputProps(field)} nullable />;
     case "boolean":
       return <FormToggle {...props} />;
+    case "textFile":
+      return <FormFileInput {...props} />;
     case "info":
       return <DatabaseInfoField {...props} />;
     case "section":
