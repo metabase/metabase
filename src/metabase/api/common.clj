@@ -279,7 +279,8 @@
               (and content-length
                    (zero? content-length)
                    ;; trust but verify
-                   (neg? (.read ^java.io.InputStream (:body request))))
+                   (or (nil? (:body request))
+                       (neg? (.read ^java.io.InputStream (:body request)))))
               matched
 
               ;; provided type matches
@@ -289,7 +290,8 @@
 
               ;; no content length (ie, no body) don't care about content-type
               (and (nil? content-length)
-                   (neg? (.read ^java.io.InputStream (:body request))))
+                   (or (nil? (:body request))
+                       (neg? (.read ^java.io.InputStream (:body request)))))
               matched
 
               :else
