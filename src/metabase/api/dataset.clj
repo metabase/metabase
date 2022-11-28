@@ -68,7 +68,7 @@
       (qp.streaming/streaming-response [context export-format]
         (qp-runner query info context)))))
 
-(api/defendpoint ^:streaming POST "/"
+(api/defendpoint ^:streaming ^{:content-types #{:content/form}} POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database (s/maybe s/Int)}
