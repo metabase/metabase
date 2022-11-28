@@ -36,6 +36,7 @@ export interface EngineField {
   "helper-text"?: string;
   placeholder?: string;
   required?: boolean;
+  default?: unknown;
 }
 
 export type EngineFieldType = "string" | "boolean";
