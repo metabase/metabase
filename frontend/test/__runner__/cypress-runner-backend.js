@@ -31,6 +31,7 @@ const CypressBackend = {
       ];
 
       const metabaseConfig = {
+        MB_RUN_MODE: "test",
         MB_DB_TYPE: "h2",
         MB_DB_FILE: server.dbFile,
         MB_JETTY_HOST: "0.0.0.0",
