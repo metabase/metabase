@@ -34,7 +34,7 @@ const DatabaseForm = ({
           {getDetailFields(values.engine, engines).map(field => (
             <DatabaseDetailField key={field.name} field={field} />
           ))}
-          <FormSubmitButton title={t`Save`} />
+          <FormSubmitButton title={t`Save`} primary />
           <FormErrorMessage />
         </Form>
       )}
