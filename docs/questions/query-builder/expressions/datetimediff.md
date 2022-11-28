@@ -15,7 +15,7 @@ title: DatetimeDiff
 
 Units can be any of: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
 
-## Calculating the age of an entity
+## Calculating age
 
 Let's say you're a cheesemaker, and you want to keep track of your ripening process:
 
@@ -28,13 +28,19 @@ Let's say you're a cheesemaker, and you want to keep track of your ripening proc
 **Age in Months** is a custom column with the expression:
 
 ```
-datetimeDiff([Aging Start], [Aging End], 'month')
+datetimeDiff([Aging Start], [Aging End], "month")
 ```
 
-To calculate the _current_ age of a cheese, you use [`now`](../expressions/now.md) as the second datetime parameter, like this:
+To calculate the _current_ age of a cheese in months, you use [`now`](../expressions/now.md) as the second datetime parameter, like this:
 
 ```
-datetimeDiff([Aging Start], now, 'month')
+datetimeDiff([Aging Start], now, "month")
+```
+
+To calculate the current age of a cheese in days, you'd use:
+
+```
+datetimeDiff([Aging Start], now, "day")
 ```
 
 ## Accepted data types
@@ -71,7 +77,7 @@ FROM cheese
 is equivalent to the Metabase `datetimeDiff` expression:
 
 ```
-datetimeDiff([Aging Start], [Aging End], 'month')
+datetimeDiff([Aging Start], [Aging End], "month")
 ```
 
 Some databases, such as Snowflake and BigQuery, support functions like `DATEDIFF` or `DATE_DIFF`. For more info, check out our list of [common SQL reference guides](https://www.metabase.com/learn/debugging-sql/sql-syntax#common-sql-reference-guides).
@@ -87,7 +93,7 @@ DATEDIF(B1, C1, "M")
 produces the same result as
 
 ```
-datetimeDiff([Aging Start], [Aging End], 'month')
+datetimeDiff([Aging Start], [Aging End], "month")
 ```
 
 Yes, it looks a bit wrong, but the spreadsheet function really is `DATEDIF()`, not `DATEDIFF()`.
@@ -103,7 +109,7 @@ df['Age in Months'] = (df['Aging End'] - df['Aging Start']) / np.timedelta64(1, 
 is equivalent to
 
 ```
-datetimeDiff([Aging Start], [Aging End], 'month')
+datetimeDiff([Aging Start], [Aging End], "month")
 ```
 
 ## Further reading
