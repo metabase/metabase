@@ -53,7 +53,7 @@ const isFieldValid = (
 
 const isFieldVisible = (
   field: EngineField,
-  details: Record<string, unknown>,
+  details?: Record<string, unknown>,
 ) => {
   const rules = field["visible-if"] ?? {};
 
