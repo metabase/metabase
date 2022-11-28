@@ -38,6 +38,7 @@ export interface EngineField {
   required?: boolean;
   default?: unknown;
   "visible-if"?: Record<string, unknown>;
+  "treat-before-posting"?: EngineFieldTreatType;
 }
 
 export type EngineFieldType =
@@ -47,6 +48,8 @@ export type EngineFieldType =
   | "boolean"
   | "info"
   | "section";
+
+export type EngineFieldTreatType = "base64";
 
 export interface EngineSource {
   type?: "official" | "community" | "partner";
