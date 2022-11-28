@@ -13349,10 +13349,6 @@ databaseChangeLog:
                   name: model_id
                   remarks: The associated model
                   type: int
-                  constraints:
-                    referencedTableName: report_card
-                    referencedColumnNames: id
-                    foreignKeyName: fk_action_model_id
               - column:
                   name: name
                   remarks: The name of the action
@@ -13379,6 +13375,18 @@ databaseChangeLog:
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_action_model_id
+
+  - changeSet:
+      id: v46.00-003
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
         - addColumn:
             tableName: query_action
             columns:
@@ -13386,17 +13394,26 @@ databaseChangeLog:
                   name: database_id
                   remarks: The associated database
                   type: int
-                  constraints:
-                    referencedTableName: metabase_database
-                    referencedColumnNames: id
-                    foreignKeyName: fk_query_action_database_id
               - column:
                   name: dataset_query
                   remarks: The MBQL writeback query
                   type: ${text.type}
 
   - changeSet:
-      id: v46.00-003
+      id: v46.00-004
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: query_action
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_query_action_database_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v46.00-005
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13435,7 +13452,7 @@ databaseChangeLog:
               ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id, card_id);
 
   - changeSet:
-      id: v46.00-004
+      id: v46.00-006
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13445,14 +13462,14 @@ databaseChangeLog:
             columnName: card_id
 
   - changeSet:
-      id: v46.00-005
+      id: v46.00-007
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
         - sql:
             sql: >-
-              INSERT INTO action (type, model_id)
-              SELECT 'implicit.' || slug, card_id
+              INSERT INTO action (type, model_id, name)
+              SELECT 'implicit', card_id, slug
               FROM model_action
               WHERE action_id is null AND slug in ('insert','update','delete');
 
@@ -13461,19 +13478,13 @@ databaseChangeLog:
               INSERT INTO implicit_action (action_id, kind)
               SELECT
                 id,
-                case substring(type, 10, length(type))
+                case name
                   when 'insert' then 'row/create'
                   when 'update' then 'row/update'
                   when 'delete' then 'row/delete'
                 end
               FROM action
-              WHERE type like 'implicit.%';
-
-        - sql:
-            sql: >-
-              UPDATE action
-              SET type = 'implicit'
-              WHERE type like 'implicit.%';
+              WHERE type = 'implicit';
 
         - sql:
             sql: >-
@@ -13532,7 +13543,7 @@ databaseChangeLog:
       rollback: # no-op, we do not care to preserve actions from 46->45
 
   - changeSet:
-      id: v46.00-006
+      id: v46.00-008
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13542,7 +13553,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v46.00-007
+      id: v46.00-009
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13565,13 +13576,8 @@ databaseChangeLog:
                     foreignKeyName: fk_query_action_ref_card_id
                     deleteCascade: true
 
-
-# TODO nocommit add all not-null contrainsts
-# - changeSet:
-#    id: v46.00-008
-
   - changeSet:
-      id: v46.00-009
+      id: v46.00-010
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13581,16 +13587,15 @@ databaseChangeLog:
               WHERE is_write = true;
         - sql:
             sql: >-
-              TRUNCATE TABLE model_action;
+              DELETE FROM model_action;
       rollback: # we do not care to preserve actions from 46->45
         - sql:
-          sql: DELETE FROM report_dashboardcard WHERE action_id is not null;
+            sql: DELETE FROM report_dashboardcard WHERE action_id is not null;
         - sql:
-          sql: DELETE FROM action;
-
+            sql: DELETE FROM action;
 
   - changeSet:
-      id: v46.00-010
+      id: v46.00-011
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13609,7 +13614,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v46.00-011
+      id: v46.00-012
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13626,7 +13631,7 @@ databaseChangeLog:
                   remarks: An optional description for this action
 
   - changeSet:
-      id: v46.00-012
+      id: v46.00-013
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13644,6 +13649,56 @@ databaseChangeLog:
                   constraints:
                     nullable: false
             tableName: report_card
+
+  - changeSet:
+      id: v46.00-014
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: query_action
+            columnName: database_id
+            columnDataType: int
+
+  - changeSet:
+      id: v46.00-015
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: query_action
+            columnName: dataset_query
+            columnDataType: ${text.type}
+
+  - changeSet:
+      id: v46.00-016
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: query_action
+            columnName: dataset_query
+            columnDataType: ${text.type}
+
+  - changeSet:
+      id: v46.00-017
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: action
+            columnName: model_id
+            columnDataType: int
+
+  - changeSet:
+      id: v46.00-018
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: action
+            columnName: name
+            columnDataType: varchar(254)
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
