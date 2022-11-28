@@ -14,7 +14,7 @@ const DatabaseDetailField = ({
 }: DatabaseDetailFieldProps): JSX.Element => {
   const override = FIELD_OVERRIDES[field.name];
 
-  if (override.type) {
+  if (override?.type) {
     const Field = override.type;
     return <Field />;
   }
