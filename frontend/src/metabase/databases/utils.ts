@@ -1,6 +1,6 @@
 import * as Yup from "yup";
 import * as Errors from "metabase/core/utils/errors";
-import { Engine, EngineField } from "metabase-types/api";
+import { DatabaseData, Engine, EngineField } from "metabase-types/api";
 
 export const getSchema = (engine: Engine | null, name: string | null) => {
   const fields = engine?.["details-fields"] ?? [];
@@ -34,4 +34,18 @@ const getFieldTypeSchema = (field: EngineField) => {
         .nullable()
         .default(field.default != null ? String(field.default) : null);
   }
+};
+
+export const getVisibleFields = (engine: Engine, values: DatabaseData) => {
+  const fields = engine["details-fields"] ?? [];
+
+  return fields.filter(field => {
+    const rules = field["visible-if"] ?? {};
+
+    return Object.entries(rules).every(([name, value]) =>
+      Array.isArray(value)
+        ? value.includes(values.details?.[name])
+        : value === values.details?.[name],
+    );
+  });
 };

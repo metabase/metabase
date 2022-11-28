@@ -8,8 +8,7 @@ import { DatabaseData, Engine } from "metabase-types/api";
 import DatabaseEngineField from "../DatabaseEngineField";
 import DatabaseNameField from "../DatabaseNameField";
 import DatabaseDetailField from "../DatabaseDetailField";
-import { getSchema } from "../../utils/schema";
-import { getVisibleFields } from "../../utils/visibility";
+import { getSchema, getVisibleFields } from "../../utils";
 
 export interface DatabaseFormProps {
   engines: Record<string, Engine>;
