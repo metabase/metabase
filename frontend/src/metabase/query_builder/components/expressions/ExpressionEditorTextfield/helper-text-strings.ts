@@ -4,9 +4,13 @@ import { HelpText } from "metabase-lib/expressions/types";
 =======
 import moment from "moment-timezone";
 import MetabaseSettings from "metabase/lib/settings";
+<<<<<<< HEAD
 
 import { HelpText } from "./types";
 >>>>>>> 381e26baf9 (Make long-timezone-name fn terse):frontend/src/metabase-lib/expressions/helper-text-strings.ts
+=======
+import { HelpText } from "metabase-lib/expressions/types";
+>>>>>>> 223e85f1bd (Move files to component namespace)
 
 const serverTimezone = MetabaseSettings.get("report-timezone-long");
 const userTimezone = Intl.DateTimeFormat?.().resolvedOptions?.().timeZone;
