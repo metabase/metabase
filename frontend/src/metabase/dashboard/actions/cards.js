@@ -97,7 +97,7 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
   });
 };
 
-const esitmateCardSize = (displayType, action, buttonLabel) => {
+const estimateCardSize = (displayType, action, buttonLabel) => {
   const BASE_HEIGHT = 3;
   const HEIGHT_PER_FIELD = 1.5;
 
@@ -144,7 +144,7 @@ export const addActionToDashboard =
       action,
       card_id: action.model_id,
       card: virtualActionsCard,
-      ...esitmateCardSize(displayType, action, buttonLabel),
+      ...estimateCardSize(displayType, action, buttonLabel),
       visualization_settings: {
         actionDisplayType: displayType ?? "button",
         virtual_card: virtualActionsCard,
