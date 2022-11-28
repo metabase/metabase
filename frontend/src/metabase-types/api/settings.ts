@@ -47,6 +47,7 @@ export type EngineFieldType =
   | "text"
   | "integer"
   | "boolean"
+  | "select"
   | "textFile"
   | "info"
   | "section";

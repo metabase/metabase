@@ -1,10 +1,11 @@
 import React from "react";
 import { EngineField } from "metabase-types/api";
 import FormNumericInput from "metabase/core/components/FormNumericInput";
+import FormFileInput from "metabase/core/components/FormFileInput";
 import FormInput from "metabase/core/components/FormInput";
+import FormSelect from "metabase/core/components/FormSelect";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import FormToggle from "metabase/core/components/FormToggle";
-import FormFileInput from "metabase/core/components/FormFileInput";
 import DatabaseInfoField from "../DatabaseInfoField";
 import DatabaseSectionField from "../DatabaseSectionField";
 import { FIELD_OVERRIDES } from "../../constants";
@@ -33,6 +34,8 @@ const DatabaseDetailField = ({
       return <FormNumericInput {...props} {...getInputProps(field)} nullable />;
     case "boolean":
       return <FormToggle {...props} />;
+    case "select":
+      return <FormSelect {...props} {...getSelectProps(field, override)} />;
     case "textFile":
       return <FormFileInput {...props} />;
     case "info":
@@ -62,6 +65,12 @@ const getInputProps = (field: EngineField) => {
     infoTooltip: field["helper-text"],
     rightIcon: field["helper-text"] && "info",
     rightIconTooltip: field["helper-text"],
+  };
+};
+
+const getSelectProps = (field: EngineField, override?: EngineFieldOverride) => {
+  return {
+    options: override?.options ?? field.options ?? [],
   };
 };
 
