@@ -17,26 +17,32 @@ const DatabaseDetailField = ({
   field,
 }: DatabaseDetailFieldProps): JSX.Element => {
   const override = FIELD_OVERRIDES[field.name];
+  const type = getFieldType(field, override);
+  const props = getFieldProps(field, override);
 
-  if (override?.type) {
-    const Field = override.type;
-    return <Field {...getFieldProps(field, override)} />;
+  if (typeof type === "function") {
+    const Component = type;
+    return <Component {...props} />;
   }
 
-  switch (field.type) {
+  switch (type) {
     case "text":
-      return <FormTextArea {...getFieldProps(field, override)} />;
+      return <FormTextArea {...props} />;
     case "integer":
-      return <FormNumericInput {...getInputProps(field, override)} nullable />;
+      return <FormNumericInput {...props} {...getInputProps(field)} nullable />;
     case "boolean":
-      return <FormToggle {...getFieldProps(field, override)} />;
+      return <FormToggle {...props} />;
     case "info":
-      return <DatabaseInfoField {...getFieldProps(field, override)} />;
+      return <DatabaseInfoField {...props} />;
     case "section":
-      return <DatabaseSectionField {...getFieldProps(field, override)} />;
+      return <DatabaseSectionField {...props} />;
     default:
-      return <FormInput {...getInputProps(field, override)} nullable />;
+      return <FormInput {...props} {...getInputProps(field)} nullable />;
   }
+};
+
+const getFieldType = (field: EngineField, override?: EngineFieldOverride) => {
+  return override?.type ?? field.type;
 };
 
 const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
@@ -48,9 +54,8 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
   };
 };
 
-const getInputProps = (field: EngineField, override?: EngineFieldOverride) => {
+const getInputProps = (field: EngineField) => {
   return {
-    ...getFieldProps(field, override),
     infoTooltip: field["helper-text"],
     rightIcon: field["helper-text"] && "info",
     rightIconTooltip: field["helper-text"],

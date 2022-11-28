@@ -37,6 +37,7 @@ export interface EngineField {
   placeholder?: string;
   required?: boolean;
   default?: unknown;
+  options?: EngineFieldOption[];
   "visible-if"?: Record<string, unknown>;
   "treat-before-posting"?: EngineFieldTreatType;
 }
@@ -50,6 +51,11 @@ export type EngineFieldType =
   | "section";
 
 export type EngineFieldTreatType = "base64";
+
+export interface EngineFieldOption {
+  name: string;
+  value: string;
+}
 
 export interface EngineSource {
   type?: "official" | "community" | "partner";

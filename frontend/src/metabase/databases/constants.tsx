@@ -1,7 +1,8 @@
 import React from "react";
 import { t } from "ttag";
-import DatabaseSshDescription from "./components/DatabaseSshDescription";
+import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
+import DatabaseSshDescription from "./components/DatabaseSshDescription";
 import { EngineFieldOverride } from "./types";
 
 export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
@@ -23,5 +24,34 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   },
   "client-id": {
     description: <DatabaseClientIdDescription />,
+  },
+  "auth-code": {
+    description: <DatabaseAuthCodeDescription />,
+  },
+  "tunnel-private-key": {
+    title: t`SSH private key`,
+    placeholder: t`Paste the contents of your ssh private key here`,
+    type: "text",
+  },
+  "tunnel-private-key-passphrase": {
+    title: t`Passphrase for the SSH private key`,
+  },
+  "tunnel-auth-option": {
+    title: t`SSH authentication`,
+    options: [
+      { name: t`SSH Key`, value: "ssh-key" },
+      { name: t`Password`, value: "password" },
+    ],
+  },
+  "ssl-cert": {
+    title: t`Server SSL certificate chain`,
+    placeholder: t`Paste the contents of the server's SSL certificate chain here`,
+    type: "text",
+  },
+  auto_run_queries: {
+    name: "auto_run_queries",
+  },
+  refingerprint: {
+    name: "refingerprint",
   },
 };

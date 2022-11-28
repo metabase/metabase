@@ -13,24 +13,24 @@ const DatabaseClientIdDescription = (): JSX.Element | null => {
   const { values } = useFormikContext<DatabaseData>();
   const { engine, details } = values;
 
-  if (engine && CREDENTIAL_URLS[engine]) {
-    const url = new URL(CREDENTIAL_URLS[engine]);
-    const projectId = details["project-id"] ?? "";
-    url.searchParams.set("project", String(projectId).trim());
-
-    return (
-      <span>
-        {jt`${(
-          <ExternalLink className="link" href={url.href}>
-            {t`Click here`}
-          </ExternalLink>
-        )} to generate a Client ID and Client Secret for your project.`}{" "}
-        {t`Choose "Desktop App" as the application type. Name it whatever you'd like.`}
-      </span>
-    );
+  if (!engine || !CREDENTIAL_URLS[engine]) {
+    return null;
   }
 
-  return null;
+  const projectId = details["project-id"] ?? "";
+  const projectUrl = new URL(CREDENTIAL_URLS[engine]);
+  projectUrl.searchParams.set("project", String(projectId));
+
+  return (
+    <span>
+      {jt`${(
+        <ExternalLink className="link" href={projectUrl.href}>
+          {t`Click here`}
+        </ExternalLink>
+      )} to generate a Client ID and Client Secret for your project.`}{" "}
+      {t`Choose "Desktop App" as the application type. Name it whatever you'd like.`}
+    </span>
+  );
 };
 
 export default DatabaseClientIdDescription;
