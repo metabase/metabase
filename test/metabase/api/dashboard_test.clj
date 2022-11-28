@@ -1355,7 +1355,7 @@
       (mt/with-temp* [Dashboard     [{dashboard-id :id}]
                       Card          [{model-id :id} {:dataset true}]
                       Card          [{model-id-2 :id} {:dataset true}]
-                      Action        [{action-id :id} {:model_id model-id :type :implicit}]
+                      Action        [{action-id :id} {:model_id model-id :type :implicit :name "action"}]
                       DashboardCard [action-card {:dashboard_id dashboard-id,
                                                   :action_id action-id
                                                   :card_id model-id}]
