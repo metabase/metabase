@@ -240,6 +240,7 @@ class PivotTable extends Component {
       title: t`Sort order`,
       widget: ChartSettingIconRadio,
       inline: true,
+      borderBottom: true,
       props: {
         options: [
           {
