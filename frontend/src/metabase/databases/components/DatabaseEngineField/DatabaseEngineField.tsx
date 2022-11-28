@@ -1,14 +1,16 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 import FormSelect from "metabase/core/components/FormSelect";
-import { Engine } from "metabase-types/api";
+import { DatabaseId, Engine } from "metabase-types/api";
 
 export interface DatabaseEngineFieldProps {
   engines: Record<string, Engine>;
+  isNew: boolean;
 }
 
 const DatabaseEngineField = ({
   engines,
+  isNew,
 }: DatabaseEngineFieldProps): JSX.Element => {
   const options = useMemo(() => getEngineOptions(engines), [engines]);
 
@@ -18,6 +20,7 @@ const DatabaseEngineField = ({
       title={t`Database type`}
       placeholder={t`Select a database`}
       options={options}
+      disabled={!isNew}
     />
   );
 };

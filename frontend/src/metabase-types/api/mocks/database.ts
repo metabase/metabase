@@ -1,4 +1,4 @@
-import { Database } from "metabase-types/api";
+import { Database, DatabaseData } from "metabase-types/api";
 
 export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   id: 1,
@@ -11,5 +11,13 @@ export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   timezone: "UTC",
   native_permissions: "write",
   initial_sync_status: "complete",
+  ...opts,
+});
+
+export const createMockDatabaseData = (
+  opts?: Partial<DatabaseData>,
+): DatabaseData => ({
+  engine: null,
+  details: {},
   ...opts,
 });

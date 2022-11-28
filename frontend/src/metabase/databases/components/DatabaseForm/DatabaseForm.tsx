@@ -7,6 +7,8 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { DatabaseData, Engine } from "metabase-types/api";
 import DatabaseEngineField from "../DatabaseEngineField";
 import DatabaseNameField from "../DatabaseNameField";
+import DatabaseDetailField from "../DatabaseDetailField";
+import { getDetailFields } from "../../utils";
 
 export interface DatabaseFormProps {
   initialValues: DatabaseData;
@@ -19,14 +21,19 @@ const DatabaseForm = ({
   engines,
   onSubmit,
 }: DatabaseFormProps): JSX.Element => {
+  const isNew = initialValues.id == null;
+
   return (
     <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
       {({ values }) => (
         <Form>
-          <DatabaseEngineField engines={engines} />
+          <DatabaseEngineField engines={engines} isNew={isNew} />
           {values.engine && (
             <DatabaseNameField engine={values.engine} engines={engines} />
           )}
+          {getDetailFields(values.engine, engines).map(field => (
+            <DatabaseDetailField key={field.name} field={field} />
+          ))}
           <FormSubmitButton title={t`Save`} />
           <FormErrorMessage />
         </Form>

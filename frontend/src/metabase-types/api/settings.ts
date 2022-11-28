@@ -23,9 +23,22 @@ export interface CurrencyFormattingSettings {
 
 export interface Engine {
   "driver-name": string;
-  "superseded-by": string | undefined;
+  "details-fields": EngineField[];
   source: EngineSource;
+  "superseded-by": string | undefined;
 }
+
+export interface EngineField {
+  name: string;
+  type?: EngineFieldType;
+  "display-name": string;
+  description?: string;
+  "helper-text"?: string;
+  placeholder?: string;
+  required?: boolean;
+}
+
+export type EngineFieldType = "string" | "boolean";
 
 export interface EngineSource {
   type?: "official" | "community" | "partner";
