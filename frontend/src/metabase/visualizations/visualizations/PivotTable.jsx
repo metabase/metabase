@@ -237,7 +237,7 @@ class PivotTable extends Component {
 
   static columnSettings = {
     [COLUMN_SORT_ORDER]: {
-      title: t`Sort Order`,
+      title: t`Sort order`,
       widget: ChartSettingIconRadio,
       inline: true,
       props: {

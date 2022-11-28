@@ -11,14 +11,14 @@
             [metabase.api.dashboard :as api.dashboard]
             [metabase.api.pivots :as api.pivots]
             [metabase.http-client :as client]
-            [metabase.models :refer [Card
+            [metabase.models :refer [Action
+                                     Card
                                      Collection
                                      Dashboard
                                      DashboardCard
                                      DashboardCardSeries
                                      Field
                                      FieldValues
-                                     ModelAction
                                      PermissionsGroup
                                      PermissionsGroupMembership
                                      Pulse
@@ -1355,11 +1355,10 @@
       (mt/with-temp* [Dashboard     [{dashboard-id :id}]
                       Card          [{model-id :id} {:dataset true}]
                       Card          [{model-id-2 :id} {:dataset true}]
-                      ModelAction   [_ {:card_id model-id :slug "insert"}]
-                      ModelAction   [_ {:card_id model-id-2 :slug "insert"}]
+                      Action        [{action-id :id} {:model_id model-id :type :implicit}]
                       DashboardCard [action-card {:dashboard_id dashboard-id,
-                                                  :card_id model-id
-                                                  :visualization_settings {:action_slug "insert"}}]
+                                                  :action_id action-id
+                                                  :card_id model-id}]
                       DashboardCard [question-card {:dashboard_id dashboard-id, :card_id model-id}]]
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= {:status "ok"}
