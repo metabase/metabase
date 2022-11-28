@@ -14,7 +14,7 @@ const DatabaseDetailField = ({
     case "boolean":
       return <FormToggle {...getDetailFieldProps(field)} />;
     default:
-      return <FormInput {...getDetailFieldProps(field)} />;
+      return <FormInput {...getDetailFieldProps(field)} nullable />;
   }
 };
 
@@ -25,6 +25,8 @@ const getDetailFieldProps = (field: EngineField) => {
     description: field.description,
     placeholder: field.placeholder,
     infoTooltip: field["helper-text"],
+    rightIcon: field["helper-text"] && "info",
+    rightIconTooltip: field["helper-text"],
   };
 };
 
