@@ -49,7 +49,6 @@ function ActionParametersInputForm({
   page,
   dashcard,
   onCancel,
-  submitButtonColor,
   onSubmit,
   onSubmitSuccess,
 }: Props) {
