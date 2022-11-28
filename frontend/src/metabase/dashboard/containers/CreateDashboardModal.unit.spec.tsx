@@ -12,9 +12,6 @@ import MetabaseSettings from "metabase/lib/settings";
 import { createMockDashboard } from "metabase-types/api/mocks";
 import CreateDashboardModal from "./CreateDashboardModal";
 
-console.error = jest.fn();
-console.warn = jest.fn();
-
 function mockCachingEnabled(enabled = true) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);
   const spy = jest.spyOn(MetabaseSettings, "get");
