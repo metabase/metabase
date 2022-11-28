@@ -42,7 +42,7 @@ function CreateDashboardModal({
         onCreate(dashboard);
       } else {
         onClose?.();
-        onChangeLocation(Urls.dashboard(dashboard));
+        onChangeLocation(Urls.dashboard(dashboard, { editMode: true }));
       }
     },
     [onCreate, onChangeLocation, onClose],
