@@ -218,14 +218,15 @@
   ([db-type conn ^Liquibase liquibase target-version]
    (when (or (not (integer? target-version)) (< target-version 44))
      (throw (IllegalArgumentException.
-             (trs "target version must be a number between 44 and the previous major version ({0}), inclusive" (current-major-version)))))
+             (format "target version must be a number between 44 and the previous major version (%d), inclusive"
+                     (current-major-version)))))
    ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC"
                                  (changelog-table-name db-type))
          changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
          ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
          ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
-     (log/info (trs "Rolling back app database schema to version {0}" target-version))
+     (log/infof "Rolling back app database schema to version %d" target-version)
      (.rollback liquibase (count ids-to-drop) ""))))
 
 (defn force-release-locks!
