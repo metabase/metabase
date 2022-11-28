@@ -68,7 +68,9 @@
       (qp.streaming/streaming-response [context export-format]
         (qp-runner query info context)))))
 
-(api/defendpoint ^:streaming ^{:content-types #{:content/form}} POST "/"
+;; :content/form is proper. We have lots of tests in [[metabase-enterprise.audit-app.pages-test]] that use json type
+;; so just allow both
+(api/defendpoint ^:streaming ^{:content-types #{:content/form :content/json}} POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database (s/maybe s/Int)}
