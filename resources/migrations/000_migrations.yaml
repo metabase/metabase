@@ -13524,6 +13524,16 @@ databaseChangeLog:
         - sql:
             sql: >-
               UPDATE action SET
+                name = (
+                  select name
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id),
+                description = (
+                  select description
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id),
                 parameters = (
                   select parameters
                   from query_action
