@@ -304,7 +304,6 @@
    :LONGTEXT                            :type/Text
    :LONGVARBINARY                       :type/*
    :LONGVARCHAR                         :type/Text
-   (keyword "CHARACTER VARYING")        :type/Text
    :MEDIUMBLOB                          :type/*
    :MEDIUMINT                           :type/Integer
    :MEDIUMTEXT                          :type/Text
@@ -335,6 +334,9 @@
    :VARCHAR_CASESENSITIVE               :type/Text
    :VARCHAR_IGNORECASE                  :type/Text
    :YEAR                                :type/Integer
+   (keyword "BINARY VARYING")           :type/*
+   (keyword "CHARACTER VARYING")        :type/Text
+   (keyword "CHARACTER LARGE OBJECT")   :type/Text
    (keyword "DOUBLE PRECISION")         :type/Float
    (keyword "TIMESTAMP WITH TIME ZONE") :type/DateTimeWithLocalTZ})
 
