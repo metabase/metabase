@@ -36,7 +36,7 @@
     (apply-middleware qp* (concat execution-middleware qp/around-middleware))))
 
 (defn execute-write-query!
-  "Execute an writeback query from an `is_write` SavedQuestion."
+  "Execute an writeback query from an action."
   [{query-type :type, :as query}]
   ;; make sure this is a native query.
   (when-not (= query-type :native)
