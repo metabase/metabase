@@ -377,6 +377,10 @@
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
+(defmethod sql-jdbc.sync/excluded-schemas :h2
+  [_]
+  #{"INFORMATION_SCHEMA"})
+
 (defmethod sql-jdbc.execute/connection-with-timezone :h2
   [driver database ^String _timezone-id]
   ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
