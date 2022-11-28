@@ -16,19 +16,21 @@ export interface FormInputProps
     "value" | "error" | "fullWidth" | "onChange" | "onBlur"
   > {
   name: string;
+  nullable?: boolean;
   title?: string;
   description?: ReactNode;
-  nullable?: boolean;
+  infoTooltip?: string;
 }
 
 const FormInput = forwardRef(function FormInput(
   {
     name,
+    nullable,
     className,
     style,
     title,
     description,
-    nullable,
+    infoTooltip,
     ...props
   }: FormInputProps,
   ref: Ref<HTMLDivElement>,
@@ -50,6 +52,7 @@ const FormInput = forwardRef(function FormInput(
       style={style}
       title={title}
       description={description}
+      infoTooltip={infoTooltip}
       htmlFor={id}
       error={touched ? error : undefined}
     >

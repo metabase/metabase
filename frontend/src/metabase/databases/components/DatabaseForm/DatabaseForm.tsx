@@ -6,6 +6,7 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { DatabaseData, Engine } from "metabase-types/api";
 import DatabaseEngineField from "../DatabaseEngineField";
+import DatabaseNameField from "../DatabaseNameField";
 
 export interface DatabaseFormProps {
   initialValues: DatabaseData;
@@ -20,11 +21,16 @@ const DatabaseForm = ({
 }: DatabaseFormProps): JSX.Element => {
   return (
     <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
-      <Form>
-        <DatabaseEngineField engines={engines} />
-        <FormSubmitButton title={t`Save`} />
-        <FormErrorMessage />
-      </Form>
+      {({ values }) => (
+        <Form>
+          <DatabaseEngineField engines={engines} />
+          {values.engine && (
+            <DatabaseNameField engine={values.engine} engines={engines} />
+          )}
+          <FormSubmitButton title={t`Save`} />
+          <FormErrorMessage />
+        </Form>
+      )}
     </FormProvider>
   );
 };
