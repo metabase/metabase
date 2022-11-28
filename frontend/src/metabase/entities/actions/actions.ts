@@ -177,24 +177,6 @@ const enableImplicitActionsForModel =
     dispatch(Actions.actions.invalidateLists());
   };
 
-function formatActionName(action: WritebackAction) {
-  if (action.name) {
-    return action.name;
-  }
-  if (action.type === "implicit") {
-    if (action.kind === "row/create") {
-      return t`Create`;
-    }
-    if (action.kind === "row/update") {
-      return t`Update`;
-    }
-    if (action.kind === "row/delete") {
-      return t`Delete`;
-    }
-  }
-  return t`Action`;
-}
-
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",
@@ -215,13 +197,6 @@ const Actions = createEntity({
         return updateQueryAction(params);
       }
       return updateImplicitAction(params);
-    },
-    list: async (params: any) => {
-      const actions = await ActionsApi.list(params);
-      return actions.map((action: WritebackAction) => ({
-        ...action,
-        name: formatActionName(action),
-      }));
     },
   },
   actions: {
