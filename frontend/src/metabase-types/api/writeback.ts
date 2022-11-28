@@ -1,4 +1,8 @@
-import { Card, ActionFormSettings, ParameterId } from "metabase-types/api";
+import {
+  ActionFormSettings,
+  NativeDatasetQuery,
+  ParameterId,
+} from "metabase-types/api";
 import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
 
 export interface WritebackParameter extends Parameter {
@@ -10,8 +14,7 @@ export type WritebackActionType = "http" | "query" | "implicit";
 export interface WritebackActionBase {
   id?: number;
   action_id?: number;
-  model_id?: number;
-  slug?: string;
+  model_id: number;
   name: string;
   description: string | null;
   parameters: WritebackParameter[];
@@ -20,15 +23,14 @@ export interface WritebackActionBase {
   "created-at": string;
 }
 
-export type QueryActionCard = Card & {
-  is_write: true;
-  action_id: number;
-};
-
 export interface QueryAction {
-  type: "query" | "implicit";
-  card: QueryActionCard;
-  card_id: number;
+  type: "query";
+  dataset_query: NativeDatasetQuery;
+}
+
+export interface ImplicitQueryAction {
+  type: "implicit";
+  kind: "row/create" | "row/update" | "row/delete";
 }
 
 export interface HttpAction {
@@ -51,8 +53,11 @@ export interface HttpActionTemplate {
 }
 
 export type WritebackQueryAction = WritebackActionBase & QueryAction;
+export type WritebackImplicitQueryAction = WritebackActionBase &
+  ImplicitQueryAction;
 export type WritebackHttpAction = WritebackActionBase & HttpAction;
-export type WritebackAction = WritebackActionBase & (QueryAction | HttpAction);
+export type WritebackAction = WritebackActionBase &
+  (QueryAction | ImplicitQueryAction | HttpAction);
 
 export type ParameterMappings = Record<ParameterId, ParameterTarget>;
 
@@ -77,7 +82,6 @@ export interface ModelAction {
   card_id: number; // the card id of the model
   entity_id: string;
   requires_pk: boolean;
-  slug: string;
   parameter_mappings?: ParameterMappings;
   visualization_settings?: ActionFormSettings;
 }
