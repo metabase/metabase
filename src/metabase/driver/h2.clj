@@ -35,7 +35,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:full-join               false
-                              :regex                   false
+                              :regex                   true
                               :percentile-aggregations false
                               :actions                 true
                               :actions/custom          true
