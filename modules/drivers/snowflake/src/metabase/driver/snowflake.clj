@@ -391,3 +391,26 @@
 (defmethod sql-jdbc.execute/set-parameter [:snowflake java.time.ZonedDateTime]
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
+
+;; Metabase attempts to display all timestamps into either the :report-timezone setting's value if it is set 
+;; or the timezone of the server. The below methods display timestamps in user's respective timezone to avoid
+;; timezone conversion for every user. ( The method accomplishes this somewhat hackily)
+
+(defn- read-timestamp-column-thunk [^ResultSet rs ^Integer i]
+	  (fn []
+	    (when-let [s (.getString rs i)]
+	      (let [timestamp-string (str/join " " (take 2 (str/split s #" ")))]
+	        (u.date/parse timestamp-string)))))
+	
+	(defmethod sql-jdbc.execute/read-column-thunk
+	  [:snowflake Types/TIME]
+	  [_driver rs _rsmeta i]
+	  (read-timestamp-column-thunk rs i))
+	
+	(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIMESTAMP]
+	  [_driver rs _rsmeta i]
+	  (read-timestamp-column-thunk rs i))
+	
+	(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/DATE]
+	  [_driver rs _rsmeta i]
+	  (read-timestamp-column-thunk rs i))
