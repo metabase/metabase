@@ -143,20 +143,6 @@ describe("CreateDashboardModal", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("submits a create request correctly", done => {
-    const FORM = {
-      name: "New fancy dashboard",
-      description: "Just testing the form",
-    };
-    setupCreateRequestAssertion(done, FORM);
-    setup({ mockCreateDashboardResponse: false });
-
-    fillForm(FORM);
-    fireEvent.click(
-      screen.queryByRole("button", { name: "Create" }) as Element,
-    );
-  });
-
   describe("Cache TTL field", () => {
     beforeEach(() => {
       mockCachingEnabled();
