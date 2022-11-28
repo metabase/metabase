@@ -39,7 +39,7 @@ export interface EngineField {
   default?: unknown;
 }
 
-export type EngineFieldType = "string" | "boolean";
+export type EngineFieldType = "string" | "boolean" | "section";
 
 export interface EngineSource {
   type?: "official" | "community" | "partner";

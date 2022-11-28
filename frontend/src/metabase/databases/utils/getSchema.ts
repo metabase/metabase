@@ -21,6 +21,7 @@ const getFieldSchema = (field: EngineField) => {
 const getFieldTypeSchema = (field: EngineField) => {
   switch (field.type) {
     case "boolean":
+    case "section":
       return Yup.boolean()
         .defined()
         .default(field.default ? Boolean(field.default) : false);

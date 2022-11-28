@@ -27,6 +27,10 @@ const DatabaseForm = ({
     return getSchema(engine, engineName);
   }, [engine, engineName]);
 
+  const fields = useMemo(() => {
+    return engine ? getVisibleFields(engine) : [];
+  }, [engine]);
+
   const initialValues = useMemo(() => {
     return schema.getDefault();
   }, [schema]);
@@ -38,49 +42,22 @@ const DatabaseForm = ({
       enableReinitialize
       onSubmit={onSubmit}
     >
-      {({ values }) => (
-        <DatabaseFormBody
-          engine={engine}
-          engines={engines}
-          engineName={values.engine}
-          onEngineChange={setEngineName}
-        />
-      )}
+      {({ values }) => {
+        setEngineName(values.engine);
+
+        return (
+          <Form>
+            <DatabaseEngineField engines={engines} />
+            {engine && <DatabaseNameField engine={engine} />}
+            {fields.map(field => (
+              <DatabaseDetailField key={field.name} field={field} />
+            ))}
+            <FormSubmitButton title={t`Save`} primary />
+            <FormErrorMessage />
+          </Form>
+        );
+      }}
     </FormProvider>
-  );
-};
-
-interface DatabaseFormBodyProps {
-  engine: Engine | null;
-  engines: Record<string, Engine>;
-  engineName: string | null;
-  onEngineChange: (engineName: string) => void;
-}
-
-const DatabaseFormBody = ({
-  engine,
-  engines,
-  engineName,
-  onEngineChange,
-}: DatabaseFormBodyProps): JSX.Element => {
-  const fields = useMemo(() => {
-    return engine ? getVisibleFields(engine) : [];
-  }, [engine]);
-
-  useLayoutEffect(() => {
-    engineName && onEngineChange(engineName);
-  }, [engineName, onEngineChange]);
-
-  return (
-    <Form>
-      <DatabaseEngineField engines={engines} />
-      {engine && <DatabaseNameField engine={engine} />}
-      {fields.map(field => (
-        <DatabaseDetailField key={field.name} field={field} />
-      ))}
-      <FormSubmitButton title={t`Save`} primary />
-      <FormErrorMessage />
-    </Form>
   );
 };
 

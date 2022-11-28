@@ -2,6 +2,7 @@ import React from "react";
 import { EngineField } from "metabase-types/api";
 import FormToggle from "metabase/core/components/FormToggle";
 import FormInput from "metabase/core/components/FormInput";
+import DatabaseSectionField from "../DatabaseSectionFIeld";
 import { FIELD_OVERRIDES } from "../../constants";
 import { EngineFieldOverride } from "../../types";
 
@@ -22,6 +23,8 @@ const DatabaseDetailField = ({
   switch (field.type) {
     case "boolean":
       return <FormToggle {...getFieldProps(field, override)} />;
+    case "section":
+      return <DatabaseSectionField {...getFieldProps(field, override)} />;
     default:
       return <FormInput {...getStringFieldProps(field, override)} nullable />;
   }

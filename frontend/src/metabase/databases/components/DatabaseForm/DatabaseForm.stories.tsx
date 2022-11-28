@@ -30,6 +30,11 @@ Default.args = {
           required: true,
         }),
         createMockEngineField({
+          name: "advanced-options",
+          type: "section",
+          default: false,
+        }),
+        createMockEngineField({
           name: "auto_run_queries",
           type: "boolean",
           "display-name": "Rerun queries for simple explorations",
