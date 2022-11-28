@@ -142,7 +142,10 @@
                                                                       (dissoc :scaffold-target)))
                                       target+action-ids (when (:dataset card)
                                                           (for [kind ["row/create" "row/update" "row/delete"]]
-                                                            [kind (action/insert! {:model_id (:id card) :kind kind :type :implicit})]))
+                                                            [kind (action/insert! {:model_id (:id card)
+                                                                                   :kind kind
+                                                                                   :type :implicit
+                                                                                   :name (get {"row/create" "insert" "row/update" "update" "row/delete" "delete"} kind)})]))
                                       scaffold-path (into ["scaffold-target-id"] scaffold-target)]
                                   (cond-> (assoc accum scaffold-path (:id card))
                                     (:dataset card)
