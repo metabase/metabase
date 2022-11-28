@@ -1,8 +1,12 @@
 import * as Yup from "yup";
 import * as Errors from "metabase/core/utils/errors";
-import { DatabaseData, Engine, EngineField } from "metabase-types/api";
+import { Engine, EngineField } from "metabase-types/api";
+import { DatabaseValues } from "./types";
 
-export const getSchema = (engine: Engine | null, name: string | null) => {
+export const getValidationSchema = (
+  engine: Engine | null,
+  name: string | null,
+) => {
   const fields = engine?.["details-fields"] ?? [];
   const entries = fields.map(field => [field.name, getFieldSchema(field)]);
 
@@ -36,7 +40,7 @@ const getFieldTypeSchema = (field: EngineField) => {
   }
 };
 
-export const getVisibleFields = (engine: Engine, values: DatabaseData) => {
+export const getVisibleFields = (engine: Engine, values: DatabaseValues) => {
   const fields = engine["details-fields"] ?? [];
 
   return fields.filter(field => {

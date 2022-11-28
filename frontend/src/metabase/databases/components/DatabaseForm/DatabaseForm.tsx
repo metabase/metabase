@@ -4,15 +4,16 @@ import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import { DatabaseData, Engine } from "metabase-types/api";
+import { Engine } from "metabase-types/api";
+import { DatabaseValues } from "../../types";
+import { getValidationSchema, getVisibleFields } from "../../utils";
 import DatabaseEngineField from "../DatabaseEngineField";
 import DatabaseNameField from "../DatabaseNameField";
 import DatabaseDetailField from "../DatabaseDetailField";
-import { getSchema, getVisibleFields } from "../../utils";
 
 export interface DatabaseFormProps {
   engines: Record<string, Engine>;
-  onSubmit: (values: DatabaseData) => void;
+  onSubmit: (values: DatabaseValues) => void;
 }
 
 const DatabaseForm = ({
@@ -22,18 +23,18 @@ const DatabaseForm = ({
   const [engineName, setEngineName] = useState<string | null>(null);
   const engine = engineName ? engines[engineName] : null;
 
-  const schema = useMemo(() => {
-    return getSchema(engine, engineName);
+  const validationSchema = useMemo(() => {
+    return getValidationSchema(engine, engineName);
   }, [engine, engineName]);
 
   const initialValues = useMemo(() => {
-    return schema.getDefault();
-  }, [schema]);
+    return validationSchema.getDefault();
+  }, [validationSchema]);
 
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={schema}
+      validationSchema={validationSchema}
       enableReinitialize
       onSubmit={onSubmit}
     >
@@ -52,7 +53,7 @@ const DatabaseForm = ({
 interface DatabaseFormBodyProps {
   engine: Engine | null;
   engines: Record<string, Engine>;
-  values: DatabaseData;
+  values: DatabaseValues;
   onEngineChange: (engineName: string) => void;
 }
 

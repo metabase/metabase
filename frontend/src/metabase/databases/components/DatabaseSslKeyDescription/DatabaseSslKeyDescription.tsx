@@ -3,10 +3,10 @@ import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { DatabaseData } from "metabase-types/api";
+import { DatabaseValues } from "../../types";
 
 const DatabaseSslKeyDescription = (): JSX.Element | null => {
-  const { values } = useFormikContext<DatabaseData>();
+  const { values } = useFormikContext<DatabaseValues>();
   const { engine } = values;
 
   if (engine !== "postgres") {

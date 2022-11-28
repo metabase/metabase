@@ -1,8 +1,8 @@
 import React from "react";
 import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
-import { DatabaseData } from "metabase-types/api";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { DatabaseValues } from "../../types";
 
 const AUTH_CODE_URLS: Record<string, string> = {
   bigquery:
@@ -12,7 +12,7 @@ const AUTH_CODE_URLS: Record<string, string> = {
 };
 
 const DatabaseAuthCodeDescription = (): JSX.Element | null => {
-  const { values } = useFormikContext<DatabaseData>();
+  const { values } = useFormikContext<DatabaseValues>();
   const { engine, details } = values;
 
   if (!engine || !AUTH_CODE_URLS[engine]) {

@@ -1,7 +1,7 @@
 import React, { useMemo, useRef } from "react";
 import { t } from "ttag";
 import FormSelect from "metabase/core/components/FormSelect";
-import { DatabaseId, Engine } from "metabase-types/api";
+import { Engine } from "metabase-types/api";
 
 export interface DatabaseEngineFieldProps {
   engine?: string;
