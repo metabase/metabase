@@ -9,7 +9,11 @@ import {
 } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import MetabaseSettings from "metabase/lib/settings";
+import { createMockDashboard } from "metabase-types/api/mocks";
 import CreateDashboardModal from "./CreateDashboardModal";
+
+console.error = jest.fn();
+console.warn = jest.fn();
 
 function mockCachingEnabled(enabled = true) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);
@@ -50,22 +54,30 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   };
 }
 
-function setupCreateRequestAssertion(doneCallback, changedValues) {
-  xhrMock.post("/api/dashboard", req => {
+function setupCreateRequestAssertion(
+  doneCallback: (...args: any[]) => any,
+  changedValues: Record<string, unknown>,
+) {
+  xhrMock.post("/api/dashboard", (req, res) => {
     try {
+      console.log("### POST /api/dashboard", { body: req.body() });
       expect(JSON.parse(req.body())).toEqual({
         ...changedValues,
         collection_id: null,
       });
       doneCallback();
+      const dashboard = createMockDashboard(changedValues);
+      return res.status(200).body(dashboard);
     } catch (err) {
       doneCallback(err);
     }
   });
 }
 
-function fillForm({ name, description } = {}) {
-  const nextDashboardState = {};
+type FormInputValues = { name?: string; description?: string };
+
+function fillForm({ name, description }: FormInputValues = {}) {
+  const nextDashboardState: FormInputValues = {};
   if (name) {
     const input = screen.getByLabelText("Name");
     userEvent.clear(input);
@@ -128,7 +140,9 @@ describe("CreateDashboardModal", () => {
 
   it("calls onClose when Cancel button is clicked", () => {
     const { onClose } = setup();
-    fireEvent.click(screen.queryByRole("button", { name: "Cancel" }));
+    fireEvent.click(
+      screen.queryByRole("button", { name: "Cancel" }) as Element,
+    );
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -141,7 +155,9 @@ describe("CreateDashboardModal", () => {
     setup({ mockCreateDashboardResponse: false });
 
     fillForm(FORM);
-    fireEvent.click(screen.queryByRole("button", { name: "Create" }));
+    fireEvent.click(
+      screen.queryByRole("button", { name: "Create" }) as Element,
+    );
   });
 
   describe("Cache TTL field", () => {
