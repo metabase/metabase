@@ -146,7 +146,7 @@ export const GRAPH_DATA_SETTINGS = {
             ? t`Add series breakout`
             : null,
         columns: data.cols,
-        showColumnSetting: true,
+        showColumnSetting: [0],
       };
     },
     readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
