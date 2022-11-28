@@ -54,11 +54,13 @@ const getFieldType = (field: EngineField, override?: EngineFieldOverride) => {
 };
 
 const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
+  const placeholder = override?.placeholder ?? field.placeholder;
+
   return {
     name: override?.name ?? `details.${field.name}`,
     title: override?.title ?? field["display-name"],
     description: override?.description ?? field.description,
-    placeholder: field.placeholder,
+    placeholder: placeholder != null ? String(placeholder) : undefined,
   };
 };
 

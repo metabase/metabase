@@ -6,7 +6,7 @@ export interface EngineFieldOverride {
   name?: string;
   title?: string;
   description?: ReactNode;
-  placeholder?: string;
+  placeholder?: unknown;
   options?: EngineFieldOption[];
 }
 

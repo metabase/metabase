@@ -31,10 +31,10 @@ export interface Engine {
 export interface EngineField {
   name: string;
   type?: EngineFieldType;
-  "display-name": string;
+  "display-name"?: string;
   description?: string;
   "helper-text"?: string;
-  placeholder?: string;
+  placeholder?: unknown;
   required?: boolean;
   default?: unknown;
   options?: EngineFieldOption[];
