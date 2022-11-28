@@ -16,7 +16,7 @@ const DatabaseDetailField = ({
 
   if (override?.type) {
     const Field = override.type;
-    return <Field />;
+    return <Field {...getFieldProps(field, override)} />;
   }
 
   switch (field.type) {
