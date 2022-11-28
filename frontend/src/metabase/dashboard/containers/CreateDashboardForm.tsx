@@ -26,9 +26,7 @@ import type { State } from "metabase-types/store";
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required).max(100, Errors.maxLength),
   description: Yup.string().nullable().max(255, Errors.maxLength),
-  collection_id: Yup.number()
-    .nullable()
-    .required(() => t`Collection is required`),
+  collection_id: Yup.number().nullable(),
 });
 
 interface CreateDashboardProperties {
