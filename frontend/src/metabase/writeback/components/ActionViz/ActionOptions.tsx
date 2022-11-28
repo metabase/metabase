@@ -162,7 +162,7 @@ export const ActionParameterMappingForm = ({
   const dashboardParameters = page.parameters ?? [];
 
   const actionName = useMemo(
-    () => action?.name ?? action?.slug ?? action?.id ?? t`Action`,
+    () => action?.name ?? action?.id ?? t`Action`,
     [action],
   );
 

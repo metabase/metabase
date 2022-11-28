@@ -11,12 +11,13 @@ import { addUndo } from "metabase/redux/undo";
 import { ActionsApi, PublicApi } from "metabase/services";
 
 import type {
-  DataAppPage,
   ActionDashboardCard,
-  ParametersForActionExecution,
   ActionFormSubmitResult,
-  WritebackAction,
   ActionParametersMapping,
+  DataAppPage,
+  ImplicitQueryAction,
+  ParametersForActionExecution,
+  WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -64,14 +65,14 @@ function hasDataFromExplicitAction(result: any) {
   return !isInsert && !isUpdate && !isDelete;
 }
 
-function getImplicitActionExecutionMessage(action: WritebackAction) {
-  if (action.slug === "insert") {
+function getImplicitActionExecutionMessage(action: ImplicitQueryAction) {
+  if (action.kind === "row/create") {
     return t`Successfully saved`;
   }
-  if (action.slug === "update") {
+  if (action.kind === "row/update") {
     return t`Successfully updated`;
   }
-  if (action.slug === "delete") {
+  if (action.kind === "row/delete") {
     return t`Successfully deleted`;
   }
   return t`Successfully ran the action`;
@@ -108,7 +109,6 @@ export const executeRowAction = async ({
       dashboardId: page.id,
       dashcardId: dashcard.id,
       modelId: dashcard.card_id,
-      slug: dashcard.action?.slug,
       parameters,
     });
 

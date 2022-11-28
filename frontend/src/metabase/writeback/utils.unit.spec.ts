@@ -1,7 +1,7 @@
 import {
   createMockDashboardActionButton,
+  createMockImplicitQueryAction,
   createMockQueryAction,
-  createMockImplictQueryAction,
 } from "metabase-types/api/mocks";
 import type {
   ActionDashboardCard,
@@ -20,7 +20,6 @@ const EXPLICIT_ACTION = createMockDashboardActionButton({
   action: QUERY_ACTION,
   visualization_settings: {
     click_behavior: undefined,
-    action_slug: "action_1337",
   },
 });
 
@@ -32,24 +31,15 @@ const PARAMETER_MAPPINGS: ActionParametersMapping[] = [
 ];
 
 const IMPLICIT_INSERT_ACTION = createMockDashboardActionButton({
-  action: createMockImplictQueryAction({ slug: "insert" }),
-  visualization_settings: {
-    action_slug: "insert",
-  },
+  action: createMockImplicitQueryAction({ kind: "row/create" }),
 });
 
 const IMPLICIT_UPDATE_ACTION = createMockDashboardActionButton({
-  action: createMockImplictQueryAction({ slug: "update" }),
-  visualization_settings: {
-    action_slug: "update",
-  },
+  action: createMockImplicitQueryAction({ kind: "row/update" }),
 });
 
 const IMPLICIT_DELETE_ACTION = createMockDashboardActionButton({
-  action: createMockImplictQueryAction({ slug: "delete" }),
-  visualization_settings: {
-    action_slug: "delete",
-  },
+  action: createMockImplicitQueryAction({ kind: "row/delete" }),
 });
 
 const NAVIGATION_ACTION_BUTTON = createMockDashboardActionButton({
@@ -79,6 +69,18 @@ describe("isMappedExplicitActionButton", () => {
 
   it("returns false for plain button", () => {
     expect(isMappedExplicitActionButton(PLAIN_BUTTON)).toBe(false);
+  });
+
+  it("returns false for implicit create action button", () => {
+    expect(isMappedExplicitActionButton(IMPLICIT_INSERT_ACTION)).toBe(false);
+  });
+
+  it("returns false for implicit update action button", () => {
+    expect(isMappedExplicitActionButton(IMPLICIT_UPDATE_ACTION)).toBe(false);
+  });
+
+  it("returns false for implicit delete action button", () => {
+    expect(isMappedExplicitActionButton(IMPLICIT_DELETE_ACTION)).toBe(false);
   });
 
   it("returns false for button without an explicit action attached, but with parameter mappings", () => {
