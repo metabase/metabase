@@ -28,6 +28,8 @@ const DatabaseDetailField = ({
   }
 
   switch (type) {
+    case "password":
+      return <FormInput {...props} {...getPasswordProps(field)} nullable />;
     case "text":
       return <FormTextArea {...props} />;
     case "integer":
@@ -65,6 +67,13 @@ const getInputProps = (field: EngineField) => {
     infoTooltip: field["helper-text"],
     rightIcon: field["helper-text"] && "info",
     rightIconTooltip: field["helper-text"],
+  };
+};
+
+const getPasswordProps = (field: EngineField) => {
+  return {
+    ...getInputProps(field),
+    type: "password",
   };
 };
 

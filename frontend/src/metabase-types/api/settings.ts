@@ -44,6 +44,7 @@ export interface EngineField {
 
 export type EngineFieldType =
   | "string"
+  | "password"
   | "text"
   | "integer"
   | "boolean"
