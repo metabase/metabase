@@ -33,6 +33,18 @@ databaseChangeLog:
       name: databasechangelog.name
       value: databasechangelog
       dbms: postgresql
+  - property:
+      name: capturegroup.ref
+      value: \1
+      dbms: postgresql
+  - property:
+      name: capturegroup.ref
+      value: $1
+      dbms: h2,mysql
+  - property:
+      name: capturegroup.ref
+      value: \\1
+      dbms: mariadb
 
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
@@ -13349,29 +13361,73 @@ databaseChangeLog:
                   name: model_id
                   remarks: The associated model
                   type: int
+
+  - changeSet:
+      id: v46.00-002
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
               - column:
                   name: name
                   remarks: The name of the action
                   type: varchar(254)
+
+  - changeSet:
+      id: v46.00-003
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
               - column:
                   name: description
                   remarks: The description of the action
                   type: ${text.type}
+
+  - changeSet:
+      id: v46.00-004
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
               - column:
                   name: parameters
                   remarks: The saved parameters for this action
                   type: ${text.type}
+
+  - changeSet:
+      id: v46.00-005
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
               - column:
                   name: parameter_mappings
                   remarks: The saved parameter mappings for this action
                   type: ${text.type}
+  - changeSet:
+      id: v46.00-006
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
               - column:
                   name: visualization_settings
                   remarks: The UI visualization_settings for this action
                   type: ${text.type}
 
   - changeSet:
-      id: v46.00-002
+      id: v46.00-007
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13383,7 +13439,7 @@ databaseChangeLog:
             constraintName: fk_action_model_id
 
   - changeSet:
-      id: v46.00-003
+      id: v46.00-008
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13394,13 +13450,22 @@ databaseChangeLog:
                   name: database_id
                   remarks: The associated database
                   type: int
+
+  - changeSet:
+      id: v46.00-009
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: query_action
+            columns:
               - column:
                   name: dataset_query
                   remarks: The MBQL writeback query
                   type: ${text.type}
 
   - changeSet:
-      id: v46.00-004
+      id: v46.00-010
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13413,7 +13478,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v46.00-005
+      id: v46.00-011
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13425,13 +13490,11 @@ databaseChangeLog:
             dbms: h2
             sql: >-
               ALTER TABLE query_action DROP PRIMARY KEY;
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id);
         - sql:
             dbms: postgresql
             sql: >-
               ALTER TABLE query_action DROP CONSTRAINT pk_query_action;
-        - sql:
-            dbms: h2,postgresql
-            sql: >-
               ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id);
       rollback:
         - sql:
@@ -13442,17 +13505,15 @@ databaseChangeLog:
             dbms: h2
             sql: >-
               ALTER TABLE query_action DROP PRIMARY KEY;
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id, card_id);
         - sql:
             dbms: postgresql
             sql: >-
               ALTER TABLE query_action DROP CONSTRAINT pk_query_action;
-        - sql:
-            dbms: h2,postgresql
-            sql: >-
               ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id, card_id);
 
   - changeSet:
-      id: v46.00-006
+      id: v46.00-012
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13462,7 +13523,7 @@ databaseChangeLog:
             columnName: card_id
 
   - changeSet:
-      id: v46.00-007
+      id: v46.00-013
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13473,8 +13534,6 @@ databaseChangeLog:
               FROM model_action
               WHERE action_id is null AND slug in ('insert','update','delete');
 
-        - sql:
-            sql: >-
               INSERT INTO implicit_action (action_id, kind)
               SELECT
                 id,
@@ -13486,21 +13545,14 @@ databaseChangeLog:
               FROM action
               WHERE type = 'implicit';
 
-        - sql:
-            sql: >-
               UPDATE action
               SET model_id = (SELECT card_id
                               FROM model_action
                               WHERE model_action.action_id = action.id)
               WHERE model_id is null;
 
-        - sql:
-            sql: >-
               DELETE FROM action WHERE model_id is null;
 
-        - sql:
-            dbms: mysql,h2
-            sql: >-
               UPDATE report_dashboardcard
               SET action_id = (SELECT action.id
                                FROM action
@@ -13511,49 +13563,13 @@ databaseChangeLog:
                                      WHEN 'row/create' THEN 'insert'
                                      WHEN 'row/delete' THEN 'delete'
                                      WHEN 'row/update' THEN 'update'
-                                  END), ('action_' || action.id)) = regexp_replace(report_dashboardcard.visualization_settings, '.*"action_slug"\s*:\s*"([^"]+)".*', '$1'))
+                                  END), ('action_' || action.id)) = regexp_replace(report_dashboardcard.visualization_settings, '.*"action_slug"\s*:\s*"([^"]+)".*', '${capturegroup.ref}'))
               WHERE report_dashboardcard.visualization_settings like '%action_slug%';
 
-        - sql:
-            dbms: mariadb
-            sql: >-
-              UPDATE report_dashboardcard
-              SET action_id = (SELECT action.id
-                               FROM action
-                               LEFT JOIN implicit_action ON implicit_action.action_id = action.id
-                               WHERE action.model_id = report_dashboardcard.card_id
-                               AND coalesce((
-                                  CASE implicit_action.kind
-                                     WHEN 'row/create' THEN 'insert'
-                                     WHEN 'row/delete' THEN 'delete'
-                                     WHEN 'row/update' THEN 'update'
-                                  END), ('action_' || action.id)) = regexp_replace(report_dashboardcard.visualization_settings, '.*"action_slug"\s*:\s*"([^"]+)".*', '\\1'))
-              WHERE report_dashboardcard.visualization_settings like '%action_slug%';
-
-        - sql:
-            dbms: postgres
-            sql: >-
-              UPDATE report_dashboardcard
-              SET action_id = (SELECT action.id
-                               FROM action
-                               LEFT JOIN implicit_action ON implicit_action.action_id = action.id
-                               WHERE action.model_id = report_dashboardcard.card_id
-                               AND coalesce((
-                                  CASE implicit_action.kind
-                                     WHEN 'row/create' THEN 'insert'
-                                     WHEN 'row/delete' THEN 'delete'
-                                     WHEN 'row/update' THEN 'update'
-                                  END), ('action_' || action.id)) = regexp_replace(report_dashboardcard.visualization_settings, '.*"action_slug"\s*:\s*"([^"]+)".*', '\1'))
-              WHERE report_dashboardcard.visualization_settings like '%action_slug%';
-
-        - sql:
-            sql: >-
               UPDATE query_action SET
                 dataset_query = (select dataset_query from report_card where report_card.id = query_action.card_id),
                 database_id = (select database_id from report_card where report_card.id = query_action.card_id);
 
-        - sql:
-            sql: >-
               UPDATE action SET
                 name = (
                   select name
@@ -13584,7 +13600,7 @@ databaseChangeLog:
       rollback: # no-op, we do not care to preserve actions from 46->45
 
   - changeSet:
-      id: v46.00-008
+      id: v46.00-014
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13594,7 +13610,7 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v46.00-009
+      id: v46.00-015
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13618,7 +13634,7 @@ databaseChangeLog:
                     deleteCascade: true
 
   - changeSet:
-      id: v46.00-010
+      id: v46.00-016
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13626,17 +13642,16 @@ databaseChangeLog:
             sql: >-
               DELETE FROM report_card
               WHERE is_write = true;
-        - sql:
-            sql: >-
+
               DELETE FROM model_action;
       rollback: # we do not care to preserve actions from 46->45
         - sql:
-            sql: DELETE FROM report_dashboardcard WHERE action_id is not null;
-        - sql:
-            sql: DELETE FROM action;
+            sql: >-
+              DELETE FROM report_dashboardcard WHERE action_id is not null;
+              DELETE FROM action;
 
   - changeSet:
-      id: v46.00-011
+      id: v46.00-017
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13655,7 +13670,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v46.00-012
+      id: v46.00-018
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13672,7 +13687,7 @@ databaseChangeLog:
                   remarks: An optional description for this action
 
   - changeSet:
-      id: v46.00-013
+      id: v46.00-019
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13692,7 +13707,7 @@ databaseChangeLog:
             tableName: report_card
 
   - changeSet:
-      id: v46.00-014
+      id: v46.00-020
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13702,7 +13717,7 @@ databaseChangeLog:
             columnDataType: int
 
   - changeSet:
-      id: v46.00-015
+      id: v46.00-021
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13712,7 +13727,7 @@ databaseChangeLog:
             columnDataType: ${text.type}
 
   - changeSet:
-      id: v46.00-016
+      id: v46.00-022
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13722,7 +13737,7 @@ databaseChangeLog:
             columnDataType: ${text.type}
 
   - changeSet:
-      id: v46.00-017
+      id: v46.00-023
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13732,7 +13747,7 @@ databaseChangeLog:
             columnDataType: int
 
   - changeSet:
-      id: v46.00-018
+      id: v46.00-024
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
@@ -13742,7 +13757,7 @@ databaseChangeLog:
             columnDataType: varchar(254)
 
   - changeSet:
-      id: v46.00-019
+      id: v46.00-025
       author: snoe
       comment: Added 0.46.0 - Unify action representation
       changes:
