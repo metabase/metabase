@@ -706,11 +706,8 @@
                              (common/row-preprocess x-fn y-fn (:rows data)))
         [x-cols y-cols] ((juxt x-fn y-fn) (get-in result [:result :data :cols]))
         y-axis-position (nth (default-y-pos data axis-group-threshold) idx)]
-    (->>
-     (if (= (count x-cols) 1)
-       (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings card-name)
-       (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings card-name))
-     (map #(assoc % :yAxisPosition y-axis-position)))))
+    (map #(assoc % :yAxisPosition y-axis-position)
+         ((if (= (count x-cols) 1) single-x-axis-combo-series double-x-axis-combo-series) enforced-type joined-rows x-cols y-cols viz-settings card-name))))
 
 (defn- render-multiple-lab-chart
   "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
@@ -721,12 +718,10 @@
         ;; multi-res gets the other results from the set of multis.
         ;; we shove cards and data here all together below for uniformity's sake
         viz-settings      (set-default-stacked viz-settings card)
-        cards             (cons card (map :card multi-res))
         multi-data        (cons data (map #(get-in % [:result :data]) multi-res))
-        rowfns            (mapv axis-row-fns cards multi-data)
         col-seqs          (map :cols multi-data)
-        first-rowfns      (first rowfns)
-        [[x-col] [y-col]] ((juxt (first first-rowfns) (second first-rowfns)) (first col-seqs))
+        [x-fn y-fn]       (axis-row-fns card data)
+        [[x-col] [y-col]] ((juxt x-fn y-fn) (first col-seqs))
         labels            (x-and-y-axis-label-info x-col y-col viz-settings)
         settings          (->ts-viz x-col y-col labels viz-settings)
         series            (map-indexed card-result->series (cons {:card card :result {:data data}} multi-res))]
