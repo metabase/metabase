@@ -7,7 +7,7 @@ redirect_from:
 
 # Data reference
 
-Sometimes when you're composing a question, you might forget the exact names of different tables or columns, or  orwhiceh table contains what. That’s where the **Data reference** comes in handy. 
+Sometimes when you're composing a question, you might forget the exact names of different tables or columns, or orwhiceh table contains what. That’s where the **Data reference** comes in handy.
 
 You can open the data reference from:
 
@@ -30,11 +30,10 @@ Click on the model or table you would like to explore further to see a descripti
 
 If you click on a column you’re interested in, you’ll see a description of its contents, as well as a list of sample values for columns that don't have a huge number of distinct values.
 
-### Connections 
+### Connections
 
 ![Connections](./images/connections.png)
 
 In the data reference sidebar, under **Connections**, you can find a list of table relationships (defined by [foreign keys](https://www.metabase.com/glossary/foreign_key)).
 
 If a foreign key relationship exists in your database, but doesn't show up in your Metabase, your Metabase admin will need to update your [Metabase data model](../data-modeling/metadata-editing.md).
-
