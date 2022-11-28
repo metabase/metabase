@@ -2,6 +2,7 @@ import React from "react";
 import { EngineField } from "metabase-types/api";
 import FormToggle from "metabase/core/components/FormToggle";
 import FormInput from "metabase/core/components/FormInput";
+import FormNumericInput from "metabase/core/components/FormNumericInput";
 import DatabaseSectionField from "../DatabaseSectionFIeld";
 import { FIELD_OVERRIDES } from "../../constants";
 import { EngineFieldOverride } from "../../types";
@@ -25,8 +26,11 @@ const DatabaseDetailField = ({
       return <FormToggle {...getFieldProps(field, override)} />;
     case "section":
       return <DatabaseSectionField {...getFieldProps(field, override)} />;
+    case "integer":
+      return <FormNumericInput {...getInputProps(field, override)} nullable />;
+    case "string":
     default:
-      return <FormInput {...getStringFieldProps(field, override)} nullable />;
+      return <FormInput {...getInputProps(field, override)} nullable />;
   }
 };
 
@@ -39,10 +43,7 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
   };
 };
 
-const getStringFieldProps = (
-  field: EngineField,
-  override?: EngineFieldOverride,
-) => {
+const getInputProps = (field: EngineField, override?: EngineFieldOverride) => {
   return {
     ...getFieldProps(field, override),
     infoTooltip: field["helper-text"],
