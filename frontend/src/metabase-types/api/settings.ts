@@ -37,6 +37,7 @@ export interface EngineField {
   placeholder?: string;
   required?: boolean;
   default?: unknown;
+  "visible-if"?: Record<string, unknown>;
 }
 
 export type EngineFieldType = "string" | "boolean" | "section";

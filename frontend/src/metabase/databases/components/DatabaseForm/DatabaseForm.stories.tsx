@@ -37,10 +37,13 @@ Default.args = {
         createMockEngineField({
           name: "auto_run_queries",
           type: "boolean",
+          default: true,
           "display-name": "Rerun queries for simple explorations",
           description:
             "We execute the underlying query when you explore data using Summarize or Filter. This is on by default but you can turn it off if performance is slow.",
-          default: true,
+          "visible-if": {
+            "advanced-options": true,
+          },
         }),
         createMockEngineField({
           name: "let-user-control-scheduling",
@@ -48,6 +51,9 @@ Default.args = {
           "display-name": "Choose when syncs and scans happen",
           description:
             "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.",
+          "visible-if": {
+            "advanced-options": true,
+          },
         }),
         createMockEngineField({
           name: "refingerprint",
@@ -55,6 +61,9 @@ Default.args = {
           "display-name": "Periodically refingerprint tables",
           description:
             "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.",
+          "visible-if": {
+            "advanced-options": true,
+          },
         }),
       ],
     }),
