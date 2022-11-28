@@ -12,18 +12,24 @@ const DatabaseDetailField = ({
 }: DatabaseDetailFieldProps): JSX.Element => {
   switch (field.type) {
     case "boolean":
-      return <FormToggle {...getDetailFieldProps(field)} />;
+      return <FormToggle {...getFieldProps(field)} />;
     default:
-      return <FormInput {...getDetailFieldProps(field)} nullable />;
+      return <FormInput {...getStringFieldProps(field)} nullable />;
   }
 };
 
-const getDetailFieldProps = (field: EngineField) => {
+const getFieldProps = (field: EngineField) => {
   return {
     name: `details.${field.name}`,
     title: field["display-name"],
     description: field.description,
     placeholder: field.placeholder,
+  };
+};
+
+const getStringFieldProps = (field: EngineField) => {
+  return {
+    ...getFieldProps(field),
     infoTooltip: field["helper-text"],
     rightIcon: field["helper-text"] && "info",
     rightIconTooltip: field["helper-text"],
