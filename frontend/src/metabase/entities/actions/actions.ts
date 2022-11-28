@@ -88,7 +88,7 @@ function createQueryAction({
   const { dataset_query, parameters, visualization_settings } =
     cleanUpQueryAction(question, formSettings);
 
-  return Actions.actions.create({
+  return ActionsApi.create({
     ...action,
     type: "query",
     dataset_query,
@@ -105,7 +105,7 @@ function updateQueryAction({
   const { dataset_query, parameters, visualization_settings } =
     cleanUpQueryAction(question, formSettings);
 
-  return Actions.actions.update({
+  return ActionsApi.update({
     ...action,
     dataset_query,
     parameters,
