@@ -43,8 +43,6 @@ import SetupApp from "metabase/setup/containers/SetupApp";
 
 import NewModelOptions from "metabase/new_model/containers/NewModelOptions";
 
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
-
 import { Unauthorized } from "metabase/containers/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 
@@ -76,6 +74,7 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
+import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
