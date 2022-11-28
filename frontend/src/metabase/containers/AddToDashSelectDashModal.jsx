@@ -46,7 +46,7 @@ class AddToDashSelectDashModal extends Component {
       return (
         <CreateDashboardModal
           collectionId={this.props.card.collection_id}
-          onSaved={this.navigateToDashboard}
+          onCreate={this.navigateToDashboard}
           onClose={() => this.setState({ shouldCreateDashboard: false })}
         />
       );
