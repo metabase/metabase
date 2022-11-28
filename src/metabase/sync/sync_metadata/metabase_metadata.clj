@@ -38,29 +38,23 @@
      :field-name (when third-part second-part)
      :k          (keyword (or third-part second-part first-part))}))
 
-(def ^:private coercions
-  "Type coercion functions to apply to values for particular keys before storing them in the app db, since all values
-  in the _metabase_metadata table have type varchar."
-  {:fingerprint_version #(Integer/parseInt %)})
-
 (s/defn ^:private set-property! :- s/Bool
   "Set a property for a Field or Table in DATABASE. Returns `true` if a property was successfully set."
   [database :- i/DatabaseInstance, {:keys [table-name field-name k]} :- KeypathComponents, value]
   (boolean
    ;; ignore legacy entries that try to set field_type since it's no longer part of Field
    (when-not (= k :field_type)
-     (let [maybe-coerced-value ((get coercions k identity) value)]
-       ;; fetch the corresponding Table, then set the Table or Field property
-       (if table-name
-         (when-let [table-id (db/select-one-id Table
-                               ;; TODO: this needs to support schemas
-                               :db_id  (u/the-id database)
-                               :name   table-name
-                               :active true)]
-           (if field-name
-             (db/update-where! Field {:name field-name, :table_id table-id} k maybe-coerced-value)
-             (db/update! Table table-id k maybe-coerced-value)))
-         (db/update! Database (u/the-id database) k maybe-coerced-value))))))
+     ;; fetch the corresponding Table, then set the Table or Field property
+     (if table-name
+       (when-let [table-id (db/select-one-id Table
+                             ;; TODO: this needs to support schemas
+                             :db_id  (u/the-id database)
+                             :name   table-name
+                             :active true)]
+         (if field-name
+           (db/update-where! Field {:name field-name, :table_id table-id} k value)
+           (db/update! Table table-id k value)))
+       (db/update! Database (u/the-id database) k value)))))
 
 (s/defn ^:private sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other
