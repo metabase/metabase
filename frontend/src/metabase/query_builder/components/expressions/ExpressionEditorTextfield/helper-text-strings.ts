@@ -1,26 +1,19 @@
 import { t } from "ttag";
-<<<<<<< HEAD:frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield/helper-text-strings.ts
-import { HelpText } from "metabase-lib/expressions/types";
-=======
 import moment from "moment-timezone";
 import MetabaseSettings from "metabase/lib/settings";
-<<<<<<< HEAD
 
-import { HelpText } from "./types";
->>>>>>> 381e26baf9 (Make long-timezone-name fn terse):frontend/src/metabase-lib/expressions/helper-text-strings.ts
-=======
+import { formatTime } from "metabase/lib/formatting";
 import { HelpText } from "metabase-lib/expressions/types";
->>>>>>> 223e85f1bd (Move files to component namespace)
-
-const serverTimezone = MetabaseSettings.get("report-timezone-long");
-const userTimezone = Intl.DateTimeFormat?.().resolvedOptions?.().timeZone;
 
 const applicationName = MetabaseSettings.get("application-name");
-const now = new Date().toLocaleString("en-US");
+const serverTimezone = MetabaseSettings.get("report-timezone-long");
 
-const nowAtServerTimezone = new Date().toLocaleString("en-US", {
-  timeZone: serverTimezone,
-});
+const userTimezone = Intl.DateTimeFormat?.().resolvedOptions?.().timeZone;
+const now = moment().format("LT");
+
+const nowAtServerTimezone = serverTimezone
+  ? moment().tz(serverTimezone).format("LT")
+  : moment().format("LT");
 
 const helperTextStrings: HelpText[] = [
   {
@@ -825,9 +818,6 @@ See the full list here: https://w.wiki/4Jx`,
   {
     name: "now",
     structure: "now()",
-=======
-    structure: "now",
->>>>>>> 9aa1d27d46 (Update helper-text-strings)
     description: t`Returns the current timestamp.`,
     example: "now",
     args: [],
