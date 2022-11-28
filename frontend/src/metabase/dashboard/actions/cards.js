@@ -142,6 +142,7 @@ export const addActionToDashboard =
 
     const dashcardOverrides = {
       action,
+      action_id: action.id,
       card_id: action.model_id,
       card: virtualActionsCard,
       ...estimateCardSize(displayType, action, buttonLabel),
@@ -149,9 +150,9 @@ export const addActionToDashboard =
         actionDisplayType: displayType ?? "button",
         virtual_card: virtualActionsCard,
         "button.label": buttonLabel,
-        action_slug: action.slug,
       },
     };
+
     dispatch(
       addDashCardToDashboard({
         dashId: dashId,
