@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
@@ -12,39 +12,75 @@ import { getSchema } from "../../utils/getSchema";
 import { getVisibleFields } from "../../utils/getVisibleFields";
 
 export interface DatabaseFormProps {
-  initialValues: DatabaseData;
   engines: Record<string, Engine>;
   onSubmit: (values: DatabaseData) => void;
 }
 
 const DatabaseForm = ({
-  initialValues,
   engines,
   onSubmit,
 }: DatabaseFormProps): JSX.Element => {
-  const isNew = initialValues.id == null;
-  const schema = useMemo(() => getSchema(engines), [engines]);
+  const [engineName, setEngineName] = useState<string | null>(null);
+  const engine = engineName ? engines[engineName] : null;
+
+  const schema = useMemo(() => {
+    return getSchema(engine, engineName);
+  }, [engine, engineName]);
+
+  const initialValues = useMemo(() => {
+    return schema.getDefault();
+  }, [schema]);
 
   return (
     <FormProvider
       initialValues={initialValues}
       validationSchema={schema}
+      enableReinitialize
       onSubmit={onSubmit}
     >
       {({ values }) => (
-        <Form>
-          <DatabaseEngineField engines={engines} isNew={isNew} />
-          {values.engine && (
-            <DatabaseNameField engine={values.engine} engines={engines} />
-          )}
-          {getVisibleFields(engines, values.engine).map(field => (
-            <DatabaseDetailField key={field.name} field={field} />
-          ))}
-          <FormSubmitButton title={t`Save`} primary />
-          <FormErrorMessage />
-        </Form>
+        <DatabaseFormBody
+          engine={engine}
+          engines={engines}
+          engineName={values.engine}
+          onEngineChange={setEngineName}
+        />
       )}
     </FormProvider>
+  );
+};
+
+interface DatabaseFormBodyProps {
+  engine: Engine | null;
+  engines: Record<string, Engine>;
+  engineName: string | null;
+  onEngineChange: (engineName: string) => void;
+}
+
+const DatabaseFormBody = ({
+  engine,
+  engines,
+  engineName,
+  onEngineChange,
+}: DatabaseFormBodyProps): JSX.Element => {
+  const fields = useMemo(() => {
+    return engine ? getVisibleFields(engine) : [];
+  }, [engine]);
+
+  useLayoutEffect(() => {
+    engineName && onEngineChange(engineName);
+  }, [engineName, onEngineChange]);
+
+  return (
+    <Form>
+      <DatabaseEngineField engines={engines} />
+      {engine && <DatabaseNameField engine={engine} />}
+      {fields.map(field => (
+        <DatabaseDetailField key={field.name} field={field} />
+      ))}
+      <FormSubmitButton title={t`Save`} primary />
+      <FormErrorMessage />
+    </Form>
   );
 };
 

@@ -1,40 +1,28 @@
 import * as Yup from "yup";
-import type { AnyObjectSchema } from "yup";
 import * as Errors from "metabase/core/utils/errors";
 import { Engine, EngineField } from "metabase-types/api";
 
-export const getSchema = (engines: Record<string, Engine>) => {
+export const getSchema = (engine: Engine | null, name: string | null) => {
+  const fields = engine?.["details-fields"] ?? [];
+  const entries = fields.map(field => [field.name, getFieldSchema(field)]);
+
   return Yup.object({
-    engine: Yup.string().required(Errors.required),
-    name: Yup.string().required(Errors.required),
-    details: Object.entries(engines).reduce(
-      (schema, [name, engine]) =>
-        schema.when("engine", {
-          is: name,
-          then: schema => getDetailsSchema(engine, schema),
-        }),
-      Yup.object(),
-    ),
+    engine: Yup.string().nullable().default(name).required(Errors.required),
+    name: Yup.string().nullable().default(null).required(Errors.required),
+    details: Yup.object(Object.fromEntries(entries)),
   });
 };
 
-const getDetailsSchema = (engine: Engine, schema: AnyObjectSchema) => {
-  const fields = engine["details-fields"] ?? [];
-  const entries = fields.map(field => [field.name, getFieldSchema(field)]);
-
-  return schema.shape(Object.fromEntries(entries));
-};
-
 const getFieldSchema = (field: EngineField) => {
-  const schema = getFieldTypeSchema(field).nullable();
+  const schema = getFieldTypeSchema(field);
   return field.required ? schema.required(Errors.required) : schema;
 };
 
 const getFieldTypeSchema = (field: EngineField) => {
   switch (field.type) {
     case "boolean":
-      return Yup.boolean();
+      return Yup.boolean().default(false);
     default:
-      return Yup.string();
+      return Yup.string().nullable().default(null);
   }
 };

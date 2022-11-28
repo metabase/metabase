@@ -1,7 +1,6 @@
 import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import {
-  createMockDatabaseData,
   createMockEngine,
   createMockEngineField,
 } from "metabase-types/api/mocks";
@@ -18,7 +17,6 @@ const Template: ComponentStory<typeof DatabaseForm> = args => {
 
 export const Default = Template.bind({});
 Default.args = {
-  initialValues: createMockDatabaseData(),
   engines: {
     h2: createMockEngine({
       "driver-name": "H2",

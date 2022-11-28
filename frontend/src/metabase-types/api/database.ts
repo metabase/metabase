@@ -29,6 +29,6 @@ export interface Database {
 
 export interface DatabaseData {
   id?: DatabaseId;
-  engine: string | undefined;
+  engine: string | null;
   details: Record<string, unknown>;
 }
