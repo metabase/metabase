@@ -133,7 +133,7 @@ function ActionCreatorComponent({
         id: (question.card() as SavedCard).id,
         name: question?.displayName() ?? "",
         description: question.description() ?? null,
-        model_id: defaultModelId,
+        model_id: defaultModelId as number,
         formSettings: formSettings as ActionFormSettings,
         question,
       });
