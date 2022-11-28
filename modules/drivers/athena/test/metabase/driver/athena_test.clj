@@ -1,13 +1,13 @@
 (ns metabase.driver.athena-test
   (:require [clojure.test :refer :all]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
+            [metabase.driver :as driver]
             [metabase.driver.athena :as athena]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
             [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.driver :as driver]))
+            [metabase.test :as mt]))
 
 (def ^:private nested-schema
   [{:col_name "key", :data_type "int"}
