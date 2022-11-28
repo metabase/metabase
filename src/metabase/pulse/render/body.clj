@@ -629,10 +629,10 @@
         x-cols       [{:base_type :type/Text
                        :effective_type :type/Text}]
         y-cols       (select-keys (first (:cols data)) [:base_type :effective_type])
-        series       (multiple-scalar-series (mapv vector x-rows (flatten y-rows)) x-cols y-cols viz-settings)
+        series-seqs  (multiple-scalar-series (mapv vector x-rows (flatten y-rows)) x-cols y-cols viz-settings)
         labels       (combo-label-info x-cols y-cols viz-settings)
         settings     (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
-    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
+    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series-seqs settings)))))
 
 (defn- series-setting [viz-settings outer-key inner-key]
   (get-in viz-settings [:series_settings (keyword outer-key) inner-key]))
@@ -724,8 +724,8 @@
         [[x-col] [y-col]] ((juxt x-fn y-fn) (first col-seqs))
         labels            (x-and-y-axis-label-info x-col y-col viz-settings)
         settings          (->ts-viz x-col y-col labels viz-settings)
-        series            (map-indexed card-result->series (cons {:card card :result {:data data}} multi-res))]
-    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
+        series-seqs       (map-indexed card-result->series (cons {:card card :result {:data data}} multi-res))]
+    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series-seqs settings)))))
 
 (defn- lab-image-bundle
   "Generate an image-bundle for a Line Area Bar chart (LAB)
@@ -746,7 +746,7 @@
                           chart-type)
         card-name       (:name card)
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
-        series          [(if (= (count x-cols) 1)
+        series-seqs     [(if (= (count x-cols) 1)
                            (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name)
                            (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name))]
 
@@ -754,7 +754,7 @@
         settings        (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
     (image-bundle/make-image-bundle
      render-type
-     (js-svg/combo-chart series settings))))
+     (js-svg/combo-chart series-seqs settings))))
 
 (s/defmethod render :multiple
   [_ render-type _timezone-id card dashcard data]
