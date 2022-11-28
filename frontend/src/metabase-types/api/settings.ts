@@ -40,7 +40,13 @@ export interface EngineField {
   "visible-if"?: Record<string, unknown>;
 }
 
-export type EngineFieldType = "string" | "integer" | "boolean" | "section";
+export type EngineFieldType =
+  | "string"
+  | "text"
+  | "integer"
+  | "boolean"
+  | "info"
+  | "section";
 
 export interface EngineSource {
   type?: "official" | "community" | "partner";
