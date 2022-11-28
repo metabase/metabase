@@ -8,6 +8,7 @@ export interface Card extends UnsavedCard {
   dataset: boolean;
   can_write: boolean;
   cache_ttl: number | null;
+  query_average_duration?: number | null;
   last_query_start: string | null;
   archived: boolean;
 
@@ -36,8 +37,9 @@ export type SeriesSettings = {
 
 export type SeriesOrderSetting = {
   name: string;
-  originalIndex: number;
+  key: string;
   enabled: boolean;
+  color?: string;
 };
 
 export type VisualizationSettings = {

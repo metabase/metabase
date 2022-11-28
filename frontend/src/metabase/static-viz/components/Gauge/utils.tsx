@@ -141,6 +141,18 @@ export function gaugeSorter(
   return thisSegment.min - thatSegment.min;
 }
 
+export function fixSwappedMinMax(segment: GaugeSegment): GaugeSegment {
+  if (segment.min > segment.max) {
+    return {
+      ...segment,
+      min: segment.max,
+      max: segment.min,
+    };
+  }
+
+  return segment;
+}
+
 export function colorGetter(pieArcDatum: PieArcDatum<GaugeSegment>) {
   return pieArcDatum.data.color;
 }
