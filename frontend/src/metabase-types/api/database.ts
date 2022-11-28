@@ -26,3 +26,8 @@ export interface Database {
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
 }
+
+export interface DatabaseData {
+  id?: DatabaseId;
+  engine: string | null;
+}

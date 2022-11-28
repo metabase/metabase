@@ -19,7 +19,7 @@ export interface Timeline {
 }
 
 export interface TimelineData {
-  id?: number;
+  id?: TimelineId;
   collection_id: RegularCollectionId | null;
   name: string;
   description: string | null;
@@ -29,7 +29,7 @@ export interface TimelineData {
 }
 
 export interface TimelineEvent {
-  id: number;
+  id: TimelineEventId;
   timeline_id: TimelineId;
   name: string;
   description: string | null;
