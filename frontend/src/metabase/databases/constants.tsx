@@ -3,6 +3,7 @@ import { t } from "ttag";
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
 import DatabaseSshDescription from "./components/DatabaseSshDescription";
+import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
 import { EngineFieldOverride } from "./types";
 
 export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
@@ -47,6 +48,9 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
     title: t`Server SSL certificate chain`,
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
+  },
+  "ssl-key-options": {
+    description: <DatabaseSslKeyDescription />,
   },
   auto_run_queries: {
     name: "auto_run_queries",
