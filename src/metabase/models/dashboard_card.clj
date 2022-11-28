@@ -153,10 +153,10 @@
                                    :col                    col
                                    :parameter_mappings     parameter_mappings
                                    :visualization_settings visualization_settings}
-                                  ;; Allow changing card for model_actions
+                                  ;; Allow changing card for actions
                                   ;; This is to preserve the existing behavior of questions and card_id
                                   ;; I don't know why card_id couldn't be changed for questions though.
-                                  (:action_slug visualization_settings) (assoc :card_id card_id))))
+                                  action_id (assoc :card_id card_id))))
      ;; update series (only if they changed)
      (when-not (= series (map :card_id (db/select [DashboardCardSeries :card_id]
                                                   :dashboardcard_id id

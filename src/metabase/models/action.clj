@@ -3,7 +3,6 @@
             [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.models.query :as query]
-            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
@@ -13,7 +12,6 @@
 (models/defmodel HTTPAction :http_action)
 (models/defmodel ImplicitAction :implicit_action)
 (models/defmodel Action :action)
-(models/defmodel ModelAction :model_action)
 
 (models/add-type! ::json-with-nested-parameters
   :in  (comp mi/json-in
@@ -66,19 +64,6 @@
   models/IModel
   (merge Action-subtype-IModel-impl
          {:types (constantly {:template ::json-with-nested-parameters})}))
-
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ModelAction)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties (constantly {:entity_id    true})
-          :types      (constantly {:parameter_mappings     :parameters-list
-                                   :visualization_settings :visualization-settings})}))
-
-;;; TODO -- this doesn't seem right. [[serdes.hash/identity-hash-fields]] is used to calculate `entity_id`, so we
-;;; shouldn't use it in the calculation. We can fix this later
-(defmethod serdes.hash/identity-hash-fields ModelAction
-  [_model-action]
-  [:entity_id])
 
 (defn insert!
   "Inserts an Action and related type table. Returns the action id."
