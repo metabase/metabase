@@ -19,8 +19,7 @@ const COLORS = {
   "fill-background": {
     background: ({ isSelected, selectedColor }) =>
       isSelected ? color(selectedColor) : "transparent",
-    border: ({ isSelected, selectedColor }) =>
-      isSelected ? color(selectedColor) : getDefaultBorderColor(),
+    border: ({ selectedColor }) => color(selectedColor),
     text: ({ isSelected, inactiveColor }) =>
       color(isSelected ? "text-white" : inactiveColor),
   },

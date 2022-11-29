@@ -1,25 +1,31 @@
 import React from "react";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
 import { XYChart } from "../XYChart";
-import { ChartSettings, ChartStyle, Series } from "../XYChart/types";
+import { CardSeries, ChartSettings, ChartStyle } from "../XYChart/types";
 import { Colors } from "./types";
 import {
   adjustSettings,
   calculateChartSize,
   getXValuesCount,
 } from "./utils/settings";
+import {
+  getSeriesWithColors,
+  getSeriesWithLegends,
+  removeNoneSeriesFields,
+} from "./utils/series";
 
 interface LineAreaBarChartProps {
-  series: Series[];
+  multipleSeries: CardSeries[];
   settings: ChartSettings;
   colors: Colors;
   getColor: ColorGetter;
 }
 
 const LineAreaBarChart = ({
-  series,
+  multipleSeries,
   settings,
   getColor,
+  colors: instanceColors,
 }: LineAreaBarChartProps) => {
   const chartStyle: ChartStyle = {
     fontFamily: "Lato, sans-serif",
@@ -49,6 +55,14 @@ const LineAreaBarChart = ({
     },
     goalColor: getColor("text-medium"),
   };
+
+  const seriesWithColors = getSeriesWithColors(
+    multipleSeries,
+    settings,
+    instanceColors,
+  );
+  const seriesWithLegends = getSeriesWithLegends(seriesWithColors, settings);
+  const series = removeNoneSeriesFields(seriesWithLegends);
 
   const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;
   const xValuesCount = getXValuesCount(series);
