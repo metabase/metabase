@@ -60,7 +60,7 @@ export function getSeriesWithLegends(
 
   let index = -1;
   const legends = multipleSeries
-    .flatMap((questionSeries, seriesIndex) => {
+    .flatMap(questionSeries => {
       return questionSeries.map(series => {
         index++;
 
@@ -76,10 +76,6 @@ export function getSeriesWithLegends(
 
         if (!hasTwoDimensions(series)) {
           // One or zero dimensions
-
-          if (seriesIndex === 0 && series.name) {
-            return series.name;
-          }
 
           const hasOneMetric = questionSeries.length === 1;
           if (hasOneMetric) {

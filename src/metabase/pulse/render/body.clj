@@ -608,8 +608,7 @@
 (defn- multiple-scalar-series
   [joined-rows _x-cols _y-cols _viz-settings]
   [(for [[row-val] (map vector joined-rows)]
-     {:name          nil
-      :cardName      (first row-val)
+     {:cardName      (first row-val)
       :type          :bar
       :data          [row-val]
       :yAxisPosition "left"
@@ -643,16 +642,13 @@
   [chart-type joined-rows _x-cols y-cols {:keys [viz-settings] :as data} card-name]
   (for [[idx y-col] (map-indexed vector y-cols)]
     (let [y-col-key     (keyword (:name y-col))
-          metric-name          (or (series-setting viz-settings y-col-key :name)
-                                   (series-setting viz-settings y-col-key :title))
           card-type     (or (series-setting viz-settings y-col-key :display)
                             chart-type
                             (nth default-combo-chart-types idx))
           selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
                             (nth (default-y-pos data axis-group-threshold) idx))]
-      {:name          metric-name
-       :cardName      card-name
+      {:cardName      card-name
        :type          card-type
        :data          selected-rows
        :yAxisPosition y-axis-pos
@@ -670,15 +666,12 @@
     (for [[idx group-key] (map-indexed vector groups)]
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
-            column-name          (or (series-setting viz-settings group-key :name)
-                                   (series-setting viz-settings group-key :title))
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
                                    (nth default-combo-chart-types idx))
             y-axis-pos         (or (series-setting viz-settings group-key :axis)
                                    (nth (default-y-pos data axis-group-threshold) idx))]
-        {:name          column-name
-         :cardName      card-name
+        {:cardName      card-name
          :type          card-type
          :data          selected-row-group
          :yAxisPosition y-axis-pos

@@ -17,7 +17,6 @@ export type YAxisPosition = "left" | "right";
 export type VisualizationType = "line" | "area" | "bar" | "waterfall";
 
 interface BaseSeries {
-  name: string | null;
   data: SeriesData;
   type: VisualizationType;
   yAxisPosition: YAxisPosition;

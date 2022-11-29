@@ -13,6 +13,7 @@ const settings: ChartSettings = {
     left: "Count",
     bottom: "Date",
   },
+  visualization_settings: {},
 };
 
 const chartSize = {

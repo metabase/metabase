@@ -32,7 +32,6 @@ describe("getSeriesWithColors", () => {
     const multipleSeries: SeriesWithOneOrLessDimensions[][] = [
       [
         {
-          name: "Count",
           cardName: "Bar chart",
           yAxisPosition: "left",
           type: "bar",
@@ -54,7 +53,6 @@ describe("getSeriesWithColors", () => {
     const multipleSeriesDashcard: SeriesWithOneOrLessDimensions[][] = [
       [
         {
-          name: "Count",
           cardName: "Bar chart",
           yAxisPosition: "left",
           type: "bar",
@@ -73,7 +71,6 @@ describe("getSeriesWithColors", () => {
       ],
       [
         {
-          name: "Count",
           cardName: "Area chart",
           yAxisPosition: "left",
           type: "area",
@@ -103,7 +100,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#509EE3", // brand color
-            name: expect.anything(),
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -127,7 +123,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#123456", // whitelabel color
-            name: expect.anything(),
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -159,7 +154,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#987654", // column color
-            name: expect.anything(),
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -183,7 +177,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#509EE3", // brand color
-            name: expect.anything(),
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -194,7 +187,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#EF8C8C",
-            name: expect.anything(),
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -212,7 +204,6 @@ describe("getSeriesWithColors", () => {
     const multipleSeries: SeriesWithOneOrLessDimensions[][] = [
       [
         {
-          name: "Sum of Total",
           cardName: "Bar chart",
           yAxisPosition: "left",
           type: "bar",
@@ -237,7 +228,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#88BF4D", // accent1 color
-            name: expect.anything(),
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -263,7 +253,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#123456", // whitelabel color
-            name: expect.anything(),
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -296,7 +285,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#987654", // column color
-            name: expect.anything(),
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -314,7 +302,6 @@ describe("getSeriesWithColors", () => {
     const multipleSeries: SeriesWithTwoDimensions[][] = [
       [
         {
-          name: null,
           cardName: "Area chart",
           type: "area",
           data: [
@@ -334,7 +321,6 @@ describe("getSeriesWithColors", () => {
           breakoutValue: "2016-01-01T00:00:00Z",
         },
         {
-          name: null,
           cardName: "Area chart",
           type: "area",
           data: [
@@ -359,7 +345,6 @@ describe("getSeriesWithColors", () => {
     const multipleSeriesDashcard: SeriesWithTwoDimensions[][] = [
       [
         {
-          name: null,
           cardName: "Area chart",
           type: "area",
           data: [
@@ -379,7 +364,6 @@ describe("getSeriesWithColors", () => {
           breakoutValue: "2016-01-01T00:00:00Z",
         },
         {
-          name: null,
           cardName: "Area chart",
           type: "area",
           data: [
@@ -402,7 +386,6 @@ describe("getSeriesWithColors", () => {
 
       [
         {
-          name: null,
           cardName: "Bar chart",
           type: "bar",
           data: [
@@ -422,7 +405,6 @@ describe("getSeriesWithColors", () => {
           breakoutValue: "2016-01-01T00:00:00Z",
         },
         {
-          name: null,
           cardName: "Bar chart",
           type: "bar",
           data: [
@@ -457,7 +439,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#EF8C8C", // accent3 color
-            name: null,
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -467,7 +448,6 @@ describe("getSeriesWithColors", () => {
           },
           {
             color: "#F9D45C", // accent4 color
-            name: null,
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -494,7 +474,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#123456", // whitelabel color
-            name: null,
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -504,7 +483,6 @@ describe("getSeriesWithColors", () => {
           },
           {
             color: "#F9D45C", // accent4 color
-            name: null,
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -538,7 +516,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#123456", // whitelabel color
-            name: null,
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -548,7 +525,6 @@ describe("getSeriesWithColors", () => {
           },
           {
             color: "#987654", // column color
-            name: null,
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -573,7 +549,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#F9D45C", // brand color
-            name: null,
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -583,7 +558,6 @@ describe("getSeriesWithColors", () => {
           },
           {
             color: "#F2A86F", // column color
-            name: null,
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -595,7 +569,6 @@ describe("getSeriesWithColors", () => {
         [
           {
             color: "#98D9D9",
-            name: null,
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -605,7 +578,6 @@ describe("getSeriesWithColors", () => {
           },
           {
             color: "#7172AD", // column color
-            name: null,
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -639,7 +611,6 @@ describe("getSeriesWithLegends", () => {
     const multipleSeries: SeriesWithOneOrLessDimensions[][] = [
       [
         {
-          name: "Count",
           cardName: "Bar chart",
           yAxisPosition: "left",
           type: "bar",
@@ -661,7 +632,6 @@ describe("getSeriesWithLegends", () => {
     const multipleSeriesDashcard: SeriesWithOneOrLessDimensions[][] = [
       [
         {
-          name: "Count",
           cardName: "Bar chart",
           yAxisPosition: "left",
           type: "bar",
@@ -680,7 +650,6 @@ describe("getSeriesWithLegends", () => {
       ],
       [
         {
-          name: "Count",
           cardName: "Area chart",
           yAxisPosition: "left",
           type: "area",
@@ -705,7 +674,7 @@ describe("getSeriesWithLegends", () => {
       const expectedSeries = [
         [
           {
-            name: "Count",
+            name: "Bar chart",
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -720,10 +689,17 @@ describe("getSeriesWithLegends", () => {
 
     it("should assign legends from column custom name", () => {
       const seriesWithLegends = getSeriesWithLegends(
-        settings,
-        // This might not be apparent, but series' `name` would be set to
-        // custom metric name for series with one or less dimensions.
-        setIn(multipleSeries, [0, 0, "name"], "Custom count"),
+        merge(settings, {
+          x: { type: "timeseries" },
+          visualization_settings: {
+            series_settings: {
+              count: {
+                title: "Custom count",
+              },
+            },
+          },
+        }),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -751,7 +727,7 @@ describe("getSeriesWithLegends", () => {
       const expectedSeries = [
         [
           {
-            name: "Count",
+            name: "Bar chart",
             cardName: expect.anything(),
             yAxisPosition: expect.anything(),
             type: expect.anything(),
@@ -779,7 +755,6 @@ describe("getSeriesWithLegends", () => {
     const multipleSeries: SeriesWithTwoDimensions[][] = [
       [
         {
-          name: null,
           cardName: "Area chart",
           type: "area",
           data: [
@@ -799,7 +774,6 @@ describe("getSeriesWithLegends", () => {
           breakoutValue: "2016-01-01T00:00:00Z",
         },
         {
-          name: null,
           cardName: "Area chart",
           type: "area",
           data: [
@@ -824,7 +798,6 @@ describe("getSeriesWithLegends", () => {
     const multipleSeriesDashcard: SeriesWithTwoDimensions[][] = [
       [
         {
-          name: null,
           cardName: "Area chart",
           type: "area",
           data: [
@@ -844,7 +817,6 @@ describe("getSeriesWithLegends", () => {
           breakoutValue: "2016-01-01T00:00:00Z",
         },
         {
-          name: null,
           cardName: "Area chart",
           type: "area",
           data: [
@@ -867,7 +839,6 @@ describe("getSeriesWithLegends", () => {
 
       [
         {
-          name: null,
           cardName: "Bar chart",
           type: "bar",
           data: [
@@ -887,7 +858,6 @@ describe("getSeriesWithLegends", () => {
           breakoutValue: "2016-01-01T00:00:00Z",
         },
         {
-          name: null,
           cardName: "Bar chart",
           type: "bar",
           data: [
