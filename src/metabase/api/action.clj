@@ -6,7 +6,6 @@
             [metabase.api.common :as api]
             [metabase.models :refer [Action Card HTTPAction ImplicitAction QueryAction]]
             [metabase.models.action :as action]
-            [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
