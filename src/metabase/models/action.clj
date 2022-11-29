@@ -181,10 +181,16 @@
         implicit-parameters-by-model-id (when (seq models-with-implicit-actions)
                                           (implicit-action-parameters models-with-implicit-actions))]
 
-    (for [action actions]
+    (for [{:keys [parameters] :as action} actions
+          :let [implicit-params (when (= (:type action) :implicit)
+                                  (let [implicit-params (get implicit-parameters-by-model-id (:model_id action))
+                                        saved-params (m/index-by :id parameters)]
+                                    (for [param implicit-params
+                                          :let [saved-param (get saved-params (:id param))]]
+                                      (merge param saved-param))))]]
       (cond-> action
-        (= (:type action) :implicit)
-        (m/assoc-some :parameters (cond->> (get implicit-parameters-by-model-id (:model_id action))
+        implicit-params
+        (m/assoc-some :parameters (cond->> implicit-params
                                     (= "row/delete" (:kind action))
                                     (filter ::pk?)
 
