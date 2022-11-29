@@ -12,7 +12,7 @@ import title from "metabase/hoc/Title";
 import Button from "metabase/core/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
-import DriverWarning from "metabase/containers/DriverWarning";
+import DriverWarning from "metabase/databases/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getWritebackEnabled } from "metabase/writeback/selectors";
 

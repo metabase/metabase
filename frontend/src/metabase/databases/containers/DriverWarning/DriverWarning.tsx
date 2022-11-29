@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
-import DriverWarning from "metabase/components/DriverWarning";
 import { Engine } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import DriverWarning from "../../components/DriverWarning";
 
 export interface DriverWarningProps {
   engine?: string;

@@ -4,7 +4,7 @@ import _ from "underscore";
 import { updateIn } from "icepick";
 import Button from "metabase/core/components/Button";
 import Databases from "metabase/entities/databases";
-import DriverWarning from "metabase/containers/DriverWarning";
+import DriverWarning from "metabase/databases/containers/DriverWarning";
 import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
