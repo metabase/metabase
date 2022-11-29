@@ -21,7 +21,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.interface :as qp.i]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]])
+            [metabase.util.i18n :refer [trs]])
   (:import [java.sql Connection ResultSet Time]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 

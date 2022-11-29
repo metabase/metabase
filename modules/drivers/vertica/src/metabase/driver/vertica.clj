@@ -14,11 +14,10 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
             [metabase.driver.sql.util :as sql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [tru trs]])
+            [metabase.util.i18n :refer [trs]])
   (:import [java.sql ResultSet Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
