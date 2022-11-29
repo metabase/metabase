@@ -1,16 +1,21 @@
 import React, { useMemo, useRef } from "react";
 import { Engine } from "metabase-types/api";
 import DatabaseEngineSelect from "./DatabaseEngineSelect";
+import DatabaseEngineWidget from "./DatabaseEngineWidget";
 
 export interface DatabaseEngineFieldProps {
   engineKey: string | undefined;
   engines: Record<string, Engine>;
-  onChange: (engine: string) => void;
+  isSetup: boolean;
+  isHosted: boolean;
+  onChange: (engine: string | undefined) => void;
 }
 
 const DatabaseEngineField = ({
   engineKey,
   engines,
+  isSetup,
+  isHosted,
   onChange,
 }: DatabaseEngineFieldProps): JSX.Element => {
   const { current: isNew } = useRef(engineKey == null);
@@ -19,7 +24,14 @@ const DatabaseEngineField = ({
     return getEngineOptions(engines, engineKey);
   }, [engines, engineKey]);
 
-  return (
+  return isSetup ? (
+    <DatabaseEngineWidget
+      engineKey={engineKey}
+      options={options}
+      isHosted={isHosted}
+      onChange={onChange}
+    />
+  ) : (
     <DatabaseEngineSelect
       options={options}
       disabled={!isNew}

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useFormikContext } from "formik";
 import { t } from "ttag";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
@@ -14,11 +15,15 @@ import DatabaseEngineWarning from "../DatabaseEngineWarning";
 
 export interface DatabaseFormProps {
   engines: Record<string, Engine>;
+  isSetup?: boolean;
+  isHosted?: boolean;
   onSubmit: (values: DatabaseValues) => void;
 }
 
 const DatabaseForm = ({
   engines,
+  isSetup = false,
+  isHosted = false,
   onSubmit,
 }: DatabaseFormProps): JSX.Element => {
   const [engineKey, setEngineKey] = useState<string>();
@@ -39,15 +44,14 @@ const DatabaseForm = ({
       enableReinitialize
       onSubmit={onSubmit}
     >
-      {({ values }) => (
-        <DatabaseFormBody
-          engine={engine}
-          engineKey={engineKey}
-          engines={engines}
-          values={values}
-          onEngineChange={setEngineKey}
-        />
-      )}
+      <DatabaseFormBody
+        engine={engine}
+        engineKey={engineKey}
+        engines={engines}
+        isSetup={isSetup}
+        isHosted={isHosted}
+        onEngineChange={setEngineKey}
+      />
     </FormProvider>
   );
 };
@@ -56,26 +60,32 @@ interface DatabaseFormBodyProps {
   engine: Engine | undefined;
   engineKey: string | undefined;
   engines: Record<string, Engine>;
-  values: DatabaseValues;
-  onEngineChange: (engineKey: string) => void;
+  isSetup: boolean;
+  isHosted: boolean;
+  onEngineChange: (engineKey: string | undefined) => void;
 }
 
 const DatabaseFormBody = ({
   engine,
   engineKey,
   engines,
-  values,
+  isSetup,
+  isHosted,
   onEngineChange,
 }: DatabaseFormBodyProps): JSX.Element => {
+  const { values, dirty } = useFormikContext<DatabaseValues>();
+
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values) : [];
   }, [engine, values]);
 
   return (
-    <Form>
+    <Form disabled={!dirty}>
       <DatabaseEngineField
         engineKey={engineKey}
         engines={engines}
+        isSetup={isSetup}
+        isHosted={isHosted}
         onChange={onEngineChange}
       />
       <DatabaseEngineWarning
@@ -87,7 +97,7 @@ const DatabaseFormBody = ({
       {fields.map(field => (
         <DatabaseDetailField key={field.name} field={field} />
       ))}
-      <FormSubmitButton title={t`Save`} primary />
+      <FormSubmitButton title={t`Save`} disabled={!dirty} primary />
       <FormErrorMessage />
     </Form>
   );
