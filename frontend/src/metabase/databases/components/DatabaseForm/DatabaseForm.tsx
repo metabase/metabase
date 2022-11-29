@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { t } from "ttag";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
@@ -10,6 +10,7 @@ import { getValidationSchema, getVisibleFields } from "../../utils";
 import DatabaseEngineField from "../DatabaseEngineField";
 import DatabaseNameField from "../DatabaseNameField";
 import DatabaseDetailField from "../DatabaseDetailField";
+import DatabaseEngineWarning from "../DatabaseEngineWarning";
 
 export interface DatabaseFormProps {
   engines: Record<string, Engine>;
@@ -41,6 +42,7 @@ const DatabaseForm = ({
       {({ values }) => (
         <DatabaseFormBody
           engine={engine}
+          engineName={engineName}
           engines={engines}
           values={values}
           onEngineChange={setEngineName}
@@ -52,6 +54,7 @@ const DatabaseForm = ({
 
 interface DatabaseFormBodyProps {
   engine: Engine | undefined;
+  engineName: string | undefined;
   engines: Record<string, Engine>;
   values: DatabaseValues;
   onEngineChange: (engineName: string) => void;
@@ -59,6 +62,7 @@ interface DatabaseFormBodyProps {
 
 const DatabaseFormBody = ({
   engine,
+  engineName,
   engines,
   values,
   onEngineChange,
@@ -70,6 +74,7 @@ const DatabaseFormBody = ({
   return (
     <Form>
       <DatabaseEngineField engines={engines} onChange={onEngineChange} />
+      <DatabaseEngineWarning engine={engineName} engines={engines} />
       {engine && <DatabaseNameField engine={engine} />}
       {fields.map(field => (
         <DatabaseDetailField key={field.name} field={field} />
