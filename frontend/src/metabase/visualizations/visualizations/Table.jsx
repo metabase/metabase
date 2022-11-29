@@ -242,7 +242,6 @@ export default class Table extends Component {
         title: t`Column title`,
         widget: "input",
         getDefault: column => formatColumn(column),
-        variant: "form-field",
       },
       click_behavior: {},
     };

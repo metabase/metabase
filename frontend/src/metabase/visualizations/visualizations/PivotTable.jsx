@@ -275,7 +275,6 @@ class PivotTable extends Component {
       title: t`Column title`,
       widget: "input",
       getDefault: column => formatColumn(column),
-      variant: "form-field",
     },
   };
 
