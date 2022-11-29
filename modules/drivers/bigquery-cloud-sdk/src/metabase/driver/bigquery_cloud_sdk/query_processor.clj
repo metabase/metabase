@@ -10,6 +10,7 @@
             [metabase.driver.sql :as sql]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
@@ -436,11 +437,7 @@
   (let [datetime     (partial hsql/call :datetime)
         hsql-form    (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? hsql-form "timestamp")]
-    (when (and timestamptz? source-timezone)
-      (throw (ex-info (tru "`timestamp` columns shouldn''t have a `source timezone`")
-                      {:type            qp.error-type/invalid-query
-                       :target-timezone target-timezone
-                       :source-timezone source-timezone})))
+    (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           hsql-form
           (hsql/call :timestamp hsql-form (or source-timezone (qp.timezone/results-timezone-id))))

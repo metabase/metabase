@@ -16,6 +16,7 @@
             [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.driver.sync :as driver.s]
             [metabase.models.secret :as secret]
@@ -285,17 +286,13 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [hsql-form    (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? hsql-form "timestamptz")]
-    (when (and timestamptz? source-timezone)
-      (throw (ex-info "`timestamptz` columns shouldn't have a `source timezone`"
-                      {:type            qp.error-type/invalid-query
-                       :target-timezone target-timezone
-                       :source-timezone source-timezone})))
-    (let [hsql-form (if timestamptz?
-                      (hsql/call :convert_timezone target-timezone hsql-form)
-                      (->> hsql-form
-                           (hsql/call :convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
-                           (hsql/call :to_timestamp_ntz)))]
-      (hx/with-database-type-info hsql-form "timestampntz"))))
+    (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+    (-> (if timestamptz?
+          (hsql/call :convert_timezone target-timezone hsql-form)
+          (->> hsql-form
+               (hsql/call :convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
+               (hsql/call :to_timestamp_ntz)))
+        (hx/with-database-type-info "timestampntz"))))
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
