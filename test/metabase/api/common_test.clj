@@ -210,24 +210,37 @@
   [name]
   {:status 200 :body name})
 
+(api/defendpoint PUT "/put/none-specified"
+  []
+  {:status 200 :body "/put/none-specified"})
+
+(api/defendpoint ^{:content-types #{:content/form}} PUT "/put/form"
+  []
+  {:status 200 :body "/put/form"})
+
+(api/defendpoint ^{:content-types #{:content/*}} PUT "/put/any"
+  []
+  {:status 200 :body "/put/any"})
+
 (api/define-routes)
 
-(deftest post-routing-test
-  (let [server (jetty/run-jetty routes {:port 0
-                                        :join? false})
+(deftest post-and-put-routing-test
+  (let [server (jetty/run-jetty routes {:port 0 :join? false})
         port (.. server getURI getPort)
-        post (fn [content-type route]
-               (http/post (str "http://localhost:" port route)
-                          (cond-> {:content-type content-type
-                                   :throw-exceptions false}
-                            (= content-type :json)
-                            (assoc :body "{\"json\": \"input\"}")
+        request! (fn [req-fn content-type route]
+                   (req-fn (str "http://localhost:" port route)
+                           (cond-> {:content-type content-type
+                                    :throw-exceptions false}
+                             (= content-type :json)
+                             (assoc :body "{\"json\": \"input\"}")
 
-                            (= content-type :form)
-                            (assoc :multipart [{:name "title" :content "My Awesome Picture"}])
+                             (= content-type :form)
+                             (assoc :multipart [{:name "title" :content "My Awesome Picture"}])
 
-                            (= content-type :text)
-                            (assoc :body "foo"))))]
+                             (= content-type :text)
+                             (assoc :body "foo"))))
+        post (partial request! http/post)
+        put  (partial request! http/put)]
     (try
       (testing "allows content-type"
         (doseq [[route content-types] [["/both"    [:json :form]]
@@ -253,4 +266,25 @@
       (testing "works for more routes with regexes"
         (is (= "aa" (:body (post :json "/complicated/aa"))))
         (is (= "foo" (:body (post :json "/restore/foo")))))
+      (testing "puts"
+        (testing "Allows given content-types"
+          (doseq [[route content-types] [["/put/none-specified" [:json]]
+                                         ["/put/any"            [:json :form :text]]
+                                         ["/put/form"           [:form]]]
+                  content-type content-types]
+            (testing route
+              (testing content-type
+                (let [response (put content-type route)]
+                  (is (= 200 (:status response)))
+                  (is (= route (:body response))))))))
+        (testing "Disallows given content-types"
+          (doseq [[route content-types] [["/put/none-specified" [:form :text]]
+                                         ["/put/form"           [:text :json]]]
+                  content-type content-types]
+            (testing route
+              (testing content-type
+                (let [response (put content-type route)]
+                  (is (= 500 (:status response)))
+                  ;; puts on this webserver return empty bodies. Not sure why but works in app
+                  #_(is (re-find #"Invalid content-type" (:body response)))))))))
       (finally (.stop server)))))

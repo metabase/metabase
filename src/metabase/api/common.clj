@@ -313,7 +313,7 @@
       args vector: [card-id export-format :as {{:keys [parameters]} :params}]
   does require a check because it pulls parameters from the request."
   [route method content-types]
-  (if (= (str/lower-case (name method)) "post")
+  (if (#{"post" "put"} (str/lower-case (name method)))
     (do
       (when (seq content-types)
         (run! (fn [content-type]
