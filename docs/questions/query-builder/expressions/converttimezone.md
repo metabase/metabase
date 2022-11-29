@@ -58,7 +58,7 @@ See [Limitations](#limitations) if you're interested in more gory details.
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../data-modeling/metadata-editing#casting-to-a-specific-data-type) from the Data Model page.
+This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
 
 ## Limitations
 

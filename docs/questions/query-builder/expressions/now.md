@@ -4,7 +4,7 @@ title: Now
 
 # Now
 
-`now` returns the current date and time using your Metabase [report timezone](../configuring-metabase/settings#report-timezone).
+`now` returns the current date and time using your Metabase [report timezone](../../../configuring-metabase/settings.md#report-timezone).
 
 ## Creating conditional logic using the current date or time
 
@@ -52,7 +52,7 @@ case(now >= [Start] AND now < [Deadline], "In progress",
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../data-modeling/metadata-editing#casting-to-a-specific-data-type) from the Data Model page.
+This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
 
 ## Limitations
 
@@ -70,7 +70,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-By default, `now` uses your Metabase's [report time zone](../configuring-metabase/settings#report-timezone). If your admin hasn't set a report time zone, `now` will use your database's time zone.
+By default, `now` uses your Metabase's [report time zone](../../../configuring-metabase/settings#report-timezone). If your admin hasn't set a report time zone, `now` will use your database's time zone.
 
 For example, let's say you're using a Postgres database with time zone UTC.
 

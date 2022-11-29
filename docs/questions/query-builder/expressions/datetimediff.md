@@ -53,7 +53,7 @@ datetimeDiff([Aging Start], now, "day")
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../data-modeling/metadata-editing#casting-to-a-specific-data-type) from the Data Model page.
+This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
 
 ## Related functions
 
@@ -67,7 +67,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-If our [cheese sample data](#calculating-an-end-date) is stored in a PostgreSQL database:
+If our [cheese sample data](#calculating-age) is stored in a PostgreSQL database:
 
 ```sql
 SELECT DATE_PART('month', AGE(aging_end, aging_start)) AS age_in_months
@@ -84,7 +84,7 @@ Some databases, such as Snowflake and BigQuery, support functions like `DATEDIFF
 
 ### Spreadsheets
 
-If our [cheese sample data](#calculating-the-age-of-an-entity) is in a spreadsheet where "Aging Start" is in column B and "Aging End" is in column C:
+If our [cheese sample data](#calculating-age) is in a spreadsheet where "Aging Start" is in column B and "Aging End" is in column C:
 
 ```
 DATEDIF(B1, C1, "M")
@@ -100,7 +100,7 @@ Yes, it looks a bit wrong, but the spreadsheet function really is `DATEDIF()`, n
 
 ### Python
 
-Assuming the [cheese sample data](#calculating-the-age-of-an-entity) is in a `pandas` dataframe column called `df`, you can subtract the dates directly and use `numpy`'s `timedelta64` to convert the difference to months:
+Assuming the [cheese sample data](#calculating-age) is in a `pandas` dataframe column called `df`, you can subtract the dates directly and use `numpy`'s `timedelta64` to convert the difference to months:
 
 ```
 df['Age in Months'] = (df['Aging End'] - df['Aging Start']) / np.timedelta64(1, 'M')
