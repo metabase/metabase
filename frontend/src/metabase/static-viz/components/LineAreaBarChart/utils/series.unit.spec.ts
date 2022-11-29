@@ -18,16 +18,17 @@ const settings: ChartSettings = {
     left: "Count",
     bottom: "Date",
   },
+  visualization_settings: {},
 };
 
 describe("getSeriesWithColors", () => {
   it("should return an empty series given an empty series", () => {
-    const seriesWithColors = getSeriesWithColors([], settings, getPalette({}));
+    const seriesWithColors = getSeriesWithColors(settings, getPalette({}), []);
 
     expect(seriesWithColors).toEqual([]);
   });
 
-  describe("Series without ones or less dimensions", () => {
+  describe("Series without one or less dimensions", () => {
     const multipleSeries: SeriesWithOneOrLessDimensions[][] = [
       [
         {
@@ -93,9 +94,9 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors given series", () => {
       const seriesWithColors = getSeriesWithColors(
-        multipleSeries,
         settings,
         getPalette({}),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -117,9 +118,9 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors from whitelabel colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        multipleSeries,
         settings,
         getPalette({ brand: "#123456", summarize: "#ffffff" }),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -141,15 +142,17 @@ describe("getSeriesWithColors", () => {
 
     it("it should assign colors from column colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        multipleSeries,
         merge(settings, {
-          series_settings: {
-            count: {
-              color: "#987654",
+          visualization_settings: {
+            series_settings: {
+              count: {
+                color: "#987654",
+              },
             },
           },
         }),
         getPalette({ brand: "#123456", summarize: "#ffffff" }),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -171,9 +174,9 @@ describe("getSeriesWithColors", () => {
 
     it("it should assign colors on multiple series dashcard", () => {
       const seriesWithColors = getSeriesWithColors(
-        multipleSeriesDashcard,
         settings,
         getPalette({}),
+        multipleSeriesDashcard,
       );
 
       const expectedSeries = [
@@ -225,9 +228,9 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors from preferred color", () => {
       const seriesWithColors = getSeriesWithColors(
-        multipleSeries,
         merge(settings, { x: { type: "timeseries" } }),
         getPalette({ brand: "#123456", summarize: "#ffffff" }),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -249,11 +252,11 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors from whitelabel colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        multipleSeries,
         merge(settings, {
           x: { type: "timeseries" },
         }),
         getPalette({ accent1: "#123456", summarize: "#ffffff" }),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -275,16 +278,18 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors from column colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        multipleSeries,
         merge(settings, {
           x: { type: "timeseries" },
-          series_settings: {
-            sum: {
-              color: "#987654",
+          visualization_settings: {
+            series_settings: {
+              sum: {
+                color: "#987654",
+              },
             },
           },
         }),
         getPalette({ brand: "#123456", summarize: "#ffffff" }),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -441,11 +446,11 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors given series", () => {
       const seriesWithColors = getSeriesWithColors(
-        multipleSeries,
         merge(settings, {
           x: { type: "timeseries" },
         }),
         getPalette({}),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -478,11 +483,11 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors from whitelabel colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        multipleSeries,
         merge(settings, {
           x: { type: "timeseries" },
         }),
         getPalette({ accent3: "#123456" }),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -515,16 +520,18 @@ describe("getSeriesWithColors", () => {
 
     it("should assign colors from column colors", () => {
       const seriesWithColors = getSeriesWithColors(
-        multipleSeries,
         merge(settings, {
           x: { type: "timeseries" },
-          series_settings: {
-            2017: {
-              color: "#987654",
+          visualization_settings: {
+            series_settings: {
+              2017: {
+                color: "#987654",
+              },
             },
           },
         }),
         getPalette({ accent3: "#123456" }),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -557,9 +564,9 @@ describe("getSeriesWithColors", () => {
 
     it("it should assign colors on multiple series dashcard", () => {
       const seriesWithColors = getSeriesWithColors(
-        multipleSeriesDashcard,
         settings,
         getPalette({}),
+        multipleSeriesDashcard,
       );
 
       const expectedSeries = [
@@ -623,7 +630,7 @@ function getPalette(instanceColors: Record<string, string>) {
 
 describe("getSeriesWithLegends", () => {
   it("should return an empty series given an empty series", () => {
-    const seriesWithLegends = getSeriesWithLegends([], settings);
+    const seriesWithLegends = getSeriesWithLegends(settings, []);
 
     expect(seriesWithLegends).toEqual([]);
   });
@@ -693,7 +700,7 @@ describe("getSeriesWithLegends", () => {
     ];
 
     it("should assign legends given series", () => {
-      const seriesWithLegends = getSeriesWithLegends(multipleSeries, settings);
+      const seriesWithLegends = getSeriesWithLegends(settings, multipleSeries);
 
       const expectedSeries = [
         [
@@ -713,10 +720,10 @@ describe("getSeriesWithLegends", () => {
 
     it("it should assign legends from column custom name", () => {
       const seriesWithLegends = getSeriesWithLegends(
+        settings,
         // This might not be apparent, but series' `name` would be set to
         // custom metric name for series with one or less dimensions.
         setIn(multipleSeries, [0, 0, "name"], "Custom count"),
-        settings,
       );
 
       const expectedSeries = [
@@ -737,8 +744,8 @@ describe("getSeriesWithLegends", () => {
 
     it("it should assign legends on multiple series dashcard", () => {
       const seriesWithLegends = getSeriesWithLegends(
-        multipleSeriesDashcard,
         settings,
+        multipleSeriesDashcard,
       );
 
       const expectedSeries = [
@@ -904,10 +911,10 @@ describe("getSeriesWithLegends", () => {
 
     it("should assign legends given series", () => {
       const seriesWithLegends = getSeriesWithLegends(
-        multipleSeries,
         merge(settings, {
           x: { type: "timeseries" },
         }),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -938,15 +945,17 @@ describe("getSeriesWithLegends", () => {
 
     it("should assign legends from column custom name", () => {
       const seriesWithLegends = getSeriesWithLegends(
-        multipleSeries,
         merge(settings, {
           x: { type: "timeseries" },
-          series_settings: {
-            2017: {
-              title: "custom 2017",
+          visualization_settings: {
+            series_settings: {
+              2017: {
+                title: "custom 2017",
+              },
             },
           },
         }),
+        multipleSeries,
       );
 
       const expectedSeries = [
@@ -977,8 +986,8 @@ describe("getSeriesWithLegends", () => {
 
     it("it should assign legends on multiple series dashcard", () => {
       const seriesWithLegends = getSeriesWithLegends(
-        multipleSeriesDashcard,
         settings,
+        multipleSeriesDashcard,
       );
 
       const expectedSeries = [

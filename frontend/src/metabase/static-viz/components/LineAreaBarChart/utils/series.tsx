@@ -5,6 +5,7 @@ import { getColorsForValues } from "metabase/lib/colors/charts";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { ColorPalette } from "metabase/lib/colors/types";
 import {
+  CardSeries,
   ChartSettings,
   Series,
   SeriesWithOneOrLessDimensions,
@@ -12,15 +13,16 @@ import {
 } from "../../XYChart/types";
 
 export function getSeriesWithColors(
-  multipleSeries: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][],
   settings: ChartSettings,
   palette: ColorPalette,
+  multipleSeries: CardSeries[],
 ): (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][] {
   const isMultipleSeries = multipleSeries.length > 1;
   const keys = getSeriesKeys(multipleSeries, isMultipleSeries);
 
-  const seriesColors = settings.series_settings
-    ? _.mapObject(settings.series_settings, value => {
+  const seriesSettings = settings.visualization_settings.series_settings;
+  const seriesColors = seriesSettings
+    ? _.mapObject(seriesSettings, value => {
         return value.color;
       })
     : undefined;
@@ -43,14 +45,15 @@ export function getSeriesWithColors(
 }
 
 export function getSeriesWithLegends(
-  multipleSeries: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][],
   settings: ChartSettings,
+  multipleSeries: CardSeries[],
 ): (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][] {
   const keys = getSeriesKeys(multipleSeries, multipleSeries.length > 1);
   const isMultipleSeries = multipleSeries.length > 1;
 
-  const seriesTitles = settings.series_settings
-    ? _.mapObject(settings.series_settings, value => {
+  const seriesSettings = settings.visualization_settings.series_settings;
+  const seriesTitles = seriesSettings
+    ? _.mapObject(seriesSettings, value => {
         return value.title;
       })
     : undefined;
@@ -120,7 +123,7 @@ export function getSeriesWithLegends(
 }
 
 function getSeriesKeys(
-  multipleSeries: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][],
+  multipleSeries: CardSeries[],
   isMultipleSeries: boolean,
 ) {
   return multipleSeries
@@ -168,14 +171,10 @@ function hasTwoDimensions(
   return "breakoutValue" in series;
 }
 
-export function removeNoneSeriesFields(
-  series: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][],
-): Series[] {
-  return series
-    .flat()
-    .map(
-      series => _.omit(series, "cardName", "column", "breakoutValue") as Series,
-    );
+export function removeNoneSeriesFields(series: CardSeries): Series[] {
+  return series.map(
+    series => _.omit(series, "cardName", "column", "breakoutValue") as Series,
+  );
 }
 
 function removeEmptyValues(

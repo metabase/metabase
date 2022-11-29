@@ -325,19 +325,17 @@
                          "timeseries"
                          "ordinal")]
     (merge
-     {:colors      (public-settings/application-colors)
-      :stacking    (if (:stackable.stack_type viz-settings) "stack" "none")
-      :show_values (boolean (:graph.show_values viz-settings))
-      :x           {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
-                    :format x-format}
-      :y           {:type   (or (:graph.y_axis.scale viz-settings) "linear")
-                    :format y-format}
-      :labels      labels}
+     {:colors                 (public-settings/application-colors)
+      :stacking               (if (:stackable.stack_type viz-settings) "stack" "none")
+      :x                      {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
+                               :format x-format}
+      :y                      {:type   (or (:graph.y_axis.scale viz-settings) "linear")
+                               :format y-format}
+      :labels                 labels
+      :visualization_settings viz-settings}
      (when (:graph.show_goal viz-settings)
        {:goal {:value (:graph.goal_value viz-settings)
-               :label (or (:graph.goal_label viz-settings) (tru "Goal"))}})
-     (when (:series_settings viz-settings)
-       {:series_settings (:series_settings viz-settings)}))))
+               :label (or (:graph.goal_label viz-settings) (tru "Goal"))}}))))
 
 (defn- set-default-stacked
   "Default stack type is stacked for area chart with more than one metric.

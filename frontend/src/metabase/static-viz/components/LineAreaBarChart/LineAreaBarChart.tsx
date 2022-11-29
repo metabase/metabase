@@ -1,4 +1,5 @@
 import React from "react";
+import _ from "underscore";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
 import { XYChart } from "../XYChart";
 import { CardSeries, ChartSettings, ChartStyle } from "../XYChart/types";
@@ -56,13 +57,12 @@ const LineAreaBarChart = ({
     goalColor: getColor("text-medium"),
   };
 
-  const seriesWithColors = getSeriesWithColors(
-    multipleSeries,
-    settings,
-    instanceColors,
-  );
-  const seriesWithLegends = getSeriesWithLegends(seriesWithColors, settings);
-  const series = removeNoneSeriesFields(seriesWithLegends);
+  const series = pipe(
+    _.partial(getSeriesWithColors, settings, instanceColors),
+    _.partial(getSeriesWithLegends, settings),
+    _.flatten,
+    removeNoneSeriesFields,
+  )(multipleSeries);
 
   const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;
   const xValuesCount = getXValuesCount(series);
@@ -84,5 +84,9 @@ const LineAreaBarChart = ({
     />
   );
 };
+
+function pipe(...functions: ((arg: any) => any)[]) {
+  return _.compose(...functions.reverse());
+}
 
 export default LineAreaBarChart;
