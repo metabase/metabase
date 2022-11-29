@@ -32,7 +32,9 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [coalesce](./expressions/coalesce.md)
   - [concat](./expressions/concat.md)
   - [contains](#contains)
+  - [convertTimezone](./expressions/converttimezone.md)
   - [datetimeAdd](./expressions/datetimeadd.md)
+  - [datetimeDiff](./expressions/datetimediff.md)
   - [datetimeSubtract](./expressions/datetimesubtract.md)
   - [day](#day)
   - [endswith](#endswith)
@@ -48,6 +50,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [lower](#lower)
   - [minute](#minute)
   - [month](#month)
+  - [now](./expressions/now.md)
   - [power](#power)
   - [quarter](#quarter)
   - [regexextract](./expressions/regexextract.md)
@@ -268,6 +271,18 @@ Example: `contains([Status], "Class")`. If `Status` were "Classified", the expre
 
 Related: [regexextract](#regexextract).
 
+### [convertTimezone](./expressions/converttimezone.md)
+
+Convert the timezone of a date or timezone column.
+
+Syntax: `convertTimezone(column, target, source)`.
+
+- column: the column with your date or timestamp values.
+- target: the timezone you want to assign to your column.
+- source: the current time zone of your column.
+
+Example: `convertTimezone("December 28, 2022, 12:00:00", "EST, "PST")` would return `December 28, 2022, 9:00:00`.
+
 ### [datetimeAdd](./expressions/datetimeadd.md)
 
 Adds some unit of time to a date or timestamp value.
@@ -279,6 +294,17 @@ Syntax: `datetimeAdd(column, amount, unit)`.
 - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
 
 Example: `datetimeAdd("March 25, 2021, 12:52:37", 1, "month")` would return `April 25, 2021, 12:52:37`.
+
+### [datetimeDiff](./expressions/datetimediff.md)
+
+Gets the difference between two datetimes (datetime2 minus datetime 1) using the specified unit of time.
+
+Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
+
+- datetime1, datetime2: the columns or expressions with your datetime values.
+- units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+
+Example: ``datetimeDiff("February 1, 2021", "March 15, 2021", "month")` would return `1`.
 
 ### [datetimeSubtract](./expressions/datetimesubtract.md)
 
@@ -415,6 +441,12 @@ Takes a datetime and returns the month number (1-12) as an integer.
 Syntax: `month(datetime)`.
 
 Example: `month("March 25, 2021, 12:52:37")` would return the month as an integer, `3`.
+
+### now
+
+Returns the current date and time using your Metabase [report timezone](../../../configuring-metabase/settings.md#report-timezone)
+
+Syntax: `now`.
 
 ### power
 
