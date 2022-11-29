@@ -1,9 +1,9 @@
 import React from "react";
-
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
 import { t } from "ttag";
+
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 
@@ -50,6 +50,7 @@ import MetricListContainer from "metabase/reference/metrics/MetricListContainer"
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
 import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
 import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
+
 // Reference Segments
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
@@ -57,6 +58,7 @@ import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuesti
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
+
 // Reference Databases
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
