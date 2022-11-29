@@ -49,7 +49,6 @@ function ActionParametersInputForm({
   page,
   dashcard,
   onCancel,
-  submitButtonColor,
   onSubmit,
   onSubmitSuccess,
 }: Props) {
@@ -63,10 +62,9 @@ function ActionParametersInputForm({
       ActionsApi.prefetchValues({
         dashboardId: page?.id,
         dashcardId: dashcard?.id,
-        slug: action.slug,
         parameters: JSON.stringify(dashcardParamValues),
       }).then(setPrefetchValues),
-    [action.slug, page?.id, dashcard?.id, dashcardParamValues],
+    [page?.id, dashcard?.id, dashcardParamValues],
   );
 
   useEffect(() => {

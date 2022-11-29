@@ -34,10 +34,6 @@ export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   cache_ttl?: number | null;
   archived?: boolean;
   collection_id?: number | null;
-
-  // Only for native queries
-  is_write?: boolean;
-  action_id?: number;
 };
 
 export type Card<Query = DatasetQuery> = SavedCard<Query> | UnsavedCard<Query>;

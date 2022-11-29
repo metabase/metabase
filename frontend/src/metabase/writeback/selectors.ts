@@ -1,7 +1,7 @@
 import { getSetting } from "metabase/selectors/settings";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import type { WritebackQueryAction } from "metabase-types/api";
+import type { WritebackActionBase, QueryAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 
@@ -11,9 +11,15 @@ export function getWritebackEnabled(state: State) {
 
 export function createQuestionFromAction(
   state: State,
-  action: WritebackQueryAction,
+  action: WritebackActionBase & QueryAction,
 ) {
-  return new Question(action.card, getMetadata(state)).setParameters(
-    action.parameters,
-  );
+  return new Question(
+    {
+      id: action.id,
+      name: action.name,
+      description: action.description,
+      dataset_query: action.dataset_query,
+    },
+    getMetadata(state),
+  ).setParameters(action.parameters);
 }

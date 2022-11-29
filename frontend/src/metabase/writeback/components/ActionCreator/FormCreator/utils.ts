@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import validate from "metabase/lib/validate";
-import { humanize, slugify } from "metabase/lib/formatting";
+import { slugify } from "metabase/lib/formatting";
 
 import type {
   ActionFormSettings,
@@ -132,10 +132,7 @@ export const getForm = (
 
 export const getFormTitle = (action: WritebackAction): string => {
   let title =
-    action.visualization_settings?.name ||
-    action.name ||
-    humanize(action.slug ?? "") ||
-    "Action form";
+    action.visualization_settings?.name || action.name || t`Action form`;
 
   if (shouldShowConfirmation(action)) {
     title += "?";
@@ -145,7 +142,7 @@ export const getFormTitle = (action: WritebackAction): string => {
 };
 
 export const getSubmitButtonColor = (action: WritebackAction): string => {
-  if (action.slug === "delete") {
+  if (action.type === "implicit" && action.kind === "row/delete") {
     return "danger";
   }
   return action.visualization_settings?.submitButtonColor ?? "primary";
@@ -156,12 +153,14 @@ export const getSubmitButtonLabel = (action: WritebackAction): string => {
     return action.visualization_settings.submitButtonLabel;
   }
 
-  if (action.slug === "delete") {
-    return t`Delete`;
-  }
+  if (action.type === "implicit") {
+    if (action.kind === "row/delete") {
+      return t`Delete`;
+    }
 
-  if (action.slug === "update") {
-    return t`Update`;
+    if (action.kind === "row/update") {
+      return t`Update`;
+    }
   }
 
   return t`Save`;

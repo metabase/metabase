@@ -1,9 +1,15 @@
+import { t } from "ttag";
 import { createEntity } from "metabase/lib/entities";
 
-import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
+import type {
+  ActionFormSettings,
+  ImplicitQueryAction,
+  WritebackActionBase,
+  WritebackAction,
+} from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import { ActionsApi, CardApi, ModelActionsApi } from "metabase/services";
+import { ActionsApi } from "metabase/services";
 
 import {
   removeOrphanSettings,
@@ -15,69 +21,112 @@ import type Question from "metabase-lib/Question";
 import { saveForm, updateForm } from "./forms";
 
 export type ActionParams = {
-  id: number;
-  name: string;
-  description: string | null;
-  model_id?: number;
-  collection_id?: number;
-  question: Question;
-  formSettings: ActionFormSettings;
+  id?: WritebackAction["id"];
+  name: WritebackAction["name"];
+  type?: WritebackAction["type"];
+  kind?: ImplicitQueryAction["kind"];
+  description?: WritebackAction["description"];
+  model_id: WritebackAction["model_id"];
+  question?: Question;
+  formSettings?: ActionFormSettings;
 };
 
-const getAPIFn =
-  (apifn: (args: any) => Promise<any>) =>
-  async ({
-    name,
-    description,
-    question,
-    collection_id,
+interface BaseCreateActionParams {
+  model_id: WritebackActionBase["model_id"];
+  name: WritebackActionBase["name"];
+  description: WritebackActionBase["description"];
+  parameters: WritebackActionBase["parameters"];
+}
+
+interface UpdateActionParams {
+  id: WritebackActionBase["id"];
+}
+
+export interface CreateQueryActionOptions extends BaseCreateActionParams {
+  question: Question;
+  formSettings: ActionFormSettings;
+}
+
+export type UpdateQueryActionOptions = CreateQueryActionOptions &
+  UpdateActionParams;
+
+export interface CreateImplicitActionOptions extends BaseCreateActionParams {
+  kind: ImplicitQueryAction["kind"];
+}
+
+export type UpdateImplicitActionOptions = CreateImplicitActionOptions &
+  UpdateActionParams;
+
+function cleanUpQueryAction(
+  question: Question,
+  formSettings: ActionFormSettings,
+) {
+  question = setTemplateTagTypesFromFieldSettings(formSettings, question);
+
+  const parameters = setParameterTypesFromFieldSettings(
     formSettings,
-  }: ActionParams) => {
-    question = setTemplateTagTypesFromFieldSettings(formSettings, question);
+    question.parameters(),
+  );
 
-    const parameters = setParameterTypesFromFieldSettings(
-      formSettings,
-      question.parameters(),
-    );
-    const settings = removeOrphanSettings(
-      addMissingSettings(formSettings, parameters),
-      parameters,
-    );
+  const visualization_settings = removeOrphanSettings(
+    addMissingSettings(formSettings, parameters),
+    parameters,
+  );
 
-    const card = await apifn({
-      ...question.card(),
-      name,
-      description,
-      parameters,
-      is_write: true,
-      display: "table",
-      visualization_settings: settings,
-      collection_id,
-    });
-
-    // because we write to the card api on change, we need to get an action object to
-    // cache on the client
-    const fetchedAction = await ActionsApi.get({ id: card.action_id });
-
-    return fetchedAction;
+  return {
+    dataset_query: question.datasetQuery(),
+    parameters,
+    visualization_settings,
   };
+}
 
-const createAction = getAPIFn(CardApi.create);
-const updateAction = getAPIFn(CardApi.update);
+function createQueryAction({
+  question,
+  formSettings,
+  ...action
+}: CreateQueryActionOptions) {
+  const { dataset_query, parameters, visualization_settings } =
+    cleanUpQueryAction(question, formSettings);
 
-const associateAction = ({
-  model_id,
-  action_id,
-}: {
-  model_id: number;
-  action_id: number;
-}) =>
-  ModelActionsApi.connectActionToModel({
-    card_id: model_id,
-    action_id: action_id,
-    slug: `action_${action_id}`,
-    requires_pk: false,
+  return ActionsApi.create({
+    ...action,
+    type: "query",
+    dataset_query,
+    database_id: dataset_query.database,
+    parameters,
+    visualization_settings,
   });
+}
+
+function updateQueryAction({
+  question,
+  formSettings,
+  ...action
+}: UpdateQueryActionOptions) {
+  const { dataset_query, parameters, visualization_settings } =
+    cleanUpQueryAction(question, formSettings);
+
+  return ActionsApi.update({
+    ...action,
+    dataset_query,
+    parameters,
+    visualization_settings,
+  });
+}
+
+function createImplicitAction(action: CreateImplicitActionOptions) {
+  return Actions.actions.create({
+    ...action,
+    type: "implicit",
+  });
+}
+
+function updateImplicitAction(action: UpdateImplicitActionOptions) {
+  return Actions.actions.update({
+    ...action,
+    type: "implicit",
+  });
+}
 
 const defaultImplicitActionCreateOptions = {
   insert: true,
@@ -88,21 +137,44 @@ const defaultImplicitActionCreateOptions = {
 const enableImplicitActionsForModel =
   async (modelId: number, options = defaultImplicitActionCreateOptions) =>
   async (dispatch: Dispatch) => {
-    const methodsToCreate = Object.entries(options)
-      .filter(([, shouldCreate]) => !!shouldCreate)
-      .map(([method]) => method);
+    const requests = [];
 
-    const apiCalls = methodsToCreate.map(method =>
-      ModelActionsApi.createImplicitAction({
-        card_id: modelId,
-        slug: method,
-        requires_pk: method !== "insert",
-      }),
-    );
+    if (options.insert) {
+      requests.push(
+        ActionsApi.create({
+          name: t`Create`,
+          type: "implicit",
+          kind: "row/create",
+          model_id: modelId,
+        }),
+      );
+    }
 
-    await Promise.all(apiCalls);
+    if (options.update) {
+      requests.push(
+        ActionsApi.create({
+          name: t`Update`,
+          type: "implicit",
+          kind: "row/update",
+          model_id: modelId,
+        }),
+      );
+    }
 
-    dispatch({ type: Actions.actionTypes.INVALIDATE_LISTS_ACTION });
+    if (options.delete) {
+      requests.push(
+        ActionsApi.create({
+          name: t`Delete`,
+          type: "implicit",
+          kind: "row/delete",
+          model_id: modelId,
+        }),
+      );
+    }
+
+    await Promise.all(requests);
+
+    dispatch(Actions.actions.invalidateLists());
   };
 
 const Actions = createEntity({
@@ -110,26 +182,21 @@ const Actions = createEntity({
   nameOne: "action",
   path: "/api/action",
   api: {
-    create: async ({ model_id, ...params }: ActionParams) => {
-      const card = await createAction(params);
-      if (card?.action_id && model_id) {
-        const association = await associateAction({
-          model_id,
-          action_id: card.action_id,
-        });
-        return { ...card, association };
+    create: (
+      params: CreateQueryActionOptions | CreateImplicitActionOptions,
+    ) => {
+      if ("question" in params) {
+        return createQueryAction(params);
       }
-      return card;
+      return createImplicitAction(params);
     },
-    update: updateAction,
-    list: async (params: any) => {
-      const actions = await ActionsApi.list(params);
-
-      return actions.map((action: WritebackAction) => ({
-        ...action,
-        id: action.id ?? `implicit-${action.slug}-${action.model_id}`,
-        name: action.name ?? action.slug,
-      }));
+    update: (
+      params: UpdateQueryActionOptions | UpdateImplicitActionOptions,
+    ) => {
+      if ("question" in params) {
+        return updateQueryAction(params);
+      }
+      return updateImplicitAction(params);
     },
   },
   actions: {

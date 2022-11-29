@@ -92,7 +92,7 @@ function ModelActionPicker({
                 <ActionName onClick={() => onClick(action)}>
                   {action.name}
                 </ActionName>
-                {!!action.action_id && (
+                {!!action.id && (
                   <EditButton
                     icon="pencil"
                     onlyIcon
