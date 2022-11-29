@@ -112,6 +112,7 @@ function CreateDashboardForm({
             name="description"
             title={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
+            nullable
           />
           <FormCollectionPicker
             name="collection_id"
