@@ -134,13 +134,15 @@
 (defmethod date [:sql :second-of-minute] [_driver _ expr] (hx/second expr))
 (defmethod date [:sql :minute-of-hour]   [_driver _ expr] (hx/minute expr))
 (defmethod date [:sql :hour-of-day]      [_driver _ expr] (hx/hour expr))
-(defmethod date [:sql :week-of-year]     [driver _ expr]
+
+(defmethod date [:sql :week-of-year]
+  [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetics
   (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)]))
+
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (hx/month expr))
 (defmethod date [:sql :quarter-of-year]  [_driver _ expr] (hx/quarter expr))
 (defmethod date [:sql :year-of-era]      [_driver _ expr] (hx/year expr))
-
 (defmethod date [:sql :week-of-year-iso] [_driver _ expr] (hx/week expr))
 
 (defn- days-till-start-of-first-full-week
@@ -936,11 +938,11 @@
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :limit]
-  [_ _ honeysql-form {value :limit}]
+  [_driver _top-level-clause honeysql-form {value :limit}]
   (hh/limit honeysql-form value))
 
 (defmethod apply-top-level-clause [:sql :page]
-  [_ _ honeysql-form {{:keys [items page]} :page}]
+  [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
   (-> honeysql-form
       (hh/limit items)
       (hh/offset (* items (dec page)))))
@@ -987,16 +989,17 @@
   (try
     (binding [hformat/*subquery?* false]
       (hsql/format honeysql-form
-        :quoting             (quote-style driver)
-        :allow-dashed-names? true))
+                   :quoting             (quote-style driver)
+                   :allow-dashed-names? true))
     (catch Throwable e
       (try
-        (log/error (u/format-color 'red
-                       (str (deferred-tru "Invalid HoneySQL form:")
-                            "\n"
-                            (u/pprint-to-str honeysql-form))))
+        (log/error e
+                   (u/format-color 'red
+                                   (str (deferred-tru "Invalid HoneySQL form: {0}" (ex-message e))
+                                        "\n"
+                                        (u/pprint-to-str honeysql-form))))
         (finally
-          (throw (ex-info (tru "Error compiling HoneySQL form")
+          (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
                           {:driver driver
                            :form   honeysql-form
                            :type   qp.error-type/driver}
