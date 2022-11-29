@@ -216,16 +216,12 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr          (sql.qp/->honeysql driver arg)
         has-timezone? (hx/is-of-type? expr #"timestamp(\(\d\))? with time zone")]
-    (when (and has-timezone? source-timezone)
-      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone`")
-                      {:target-timezone target-timezone
-                       :source-timezone source-timezone
-                       :type            qp.error-type/invalid-parameter})))
-    (-> (if has-timezone?
-          expr
-          (hsql/call :from_tz expr (or source-timezone (qp.timezone/results-timezone-id))))
-        (hx/->AtTimeZone target-timezone)
-        hx/->timestamp)))
+   (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
+   (-> (if has-timezone?
+         expr
+         (hsql/call :from_tz expr (or source-timezone (qp.timezone/results-timezone-id))))
+       (hx/->AtTimeZone target-timezone)
+       hx/->timestamp)))
 
 (def ^:private now (hsql/raw "SYSDATE"))
 

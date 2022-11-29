@@ -16,11 +16,10 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]])
   (:import [java.sql Connection ResultSet Time]
@@ -264,17 +263,12 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr            (sql.qp/->honeysql driver arg)
         datetimeoffset? (hx/is-of-type? expr "datetimeoffset")]
-    (when (and datetimeoffset? source-timezone)
-      (throw (ex-info (tru "`datetimeoffset` columns shouldn''t have a `source timezone`")
-                      {:type            qp.error-type/invalid-parameter
-                       :target-timezone target-timezone
-                       :source-timezone source-timezone})))
-    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))]
-      (-> (if datetimeoffset?
-            expr
-            (hx/->AtTimeZone expr (zone-id->windows-zone source-timezone)))
-          (hx/->AtTimeZone (zone-id->windows-zone target-timezone))
-          hx/->datetime))))
+    (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
+    (-> (if datetimeoffset?
+          expr
+          (hx/->AtTimeZone expr (zone-id->windows-zone source-timezone)))
+        (hx/->AtTimeZone (zone-id->windows-zone target-timezone))
+        hx/->datetime)))
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]

@@ -13,6 +13,7 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
@@ -114,11 +115,7 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? expr "timestamptz")]
-    (when (and timestamptz? source-timezone)
-      (throw (ex-info (tru "`timestamptz` columns shouldn''t have a `source timezone`")
-                      {:type            qp.error-type/invalid-parameter
-                       :target-timezone target-timezone
-                       :source-timezone source-timezone})))
+    (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           expr
           (hx/->AtTimeZone expr (or source-timezone (qp.timezone/results-timezone-id))))

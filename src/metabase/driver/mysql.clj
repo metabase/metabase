@@ -20,6 +20,7 @@
             [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.models.field :as field]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
@@ -361,14 +362,10 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr       (sql.qp/->honeysql driver arg)
         timestamp? (hx/is-of-type? expr "timestamp")]
-    (when (and timestamp? source-timezone)
-      (throw (ex-info (tru "`timestamp` columns shouldn''t have a `source timezone` argument")
-                    {:type            qp.error-type/invalid-parameter
-                     :target-timezone target-timezone
-                     :source-timezone source-timezone})))
-    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
-          expr            (hsql/call :convert_tz expr source-timezone target-timezone)]
-      (hx/with-database-type-info expr "datetime"))))
+    (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
+    (hx/with-database-type-info
+      (hsql/call :convert_tz expr source-timezone target-timezone)
+      "datetime")))
 
 (defmethod sql.qp/->honeysql [:mysql :datetime-diff]
   [driver [_ x y unit]]
