@@ -140,7 +140,7 @@ describe("getSeriesWithColors", () => {
       expect(seriesWithColors).toEqual(expectedSeries);
     });
 
-    it("it should assign colors from column colors", () => {
+    it("should assign colors from column colors", () => {
       const seriesWithColors = getSeriesWithColors(
         merge(settings, {
           visualization_settings: {
@@ -172,7 +172,7 @@ describe("getSeriesWithColors", () => {
       expect(seriesWithColors).toEqual(expectedSeries);
     });
 
-    it("it should assign colors on multiple series dashcard", () => {
+    it("should assign colors on multiple series dashcard", () => {
       const seriesWithColors = getSeriesWithColors(
         settings,
         getPalette({}),
@@ -562,7 +562,7 @@ describe("getSeriesWithColors", () => {
       expect(seriesWithColors).toEqual(expectedSeries);
     });
 
-    it("it should assign colors on multiple series dashcard", () => {
+    it("should assign colors on multiple series dashcard", () => {
       const seriesWithColors = getSeriesWithColors(
         settings,
         getPalette({}),
@@ -718,7 +718,7 @@ describe("getSeriesWithLegends", () => {
       expect(seriesWithLegends).toEqual(expectedSeries);
     });
 
-    it("it should assign legends from column custom name", () => {
+    it("should assign legends from column custom name", () => {
       const seriesWithLegends = getSeriesWithLegends(
         settings,
         // This might not be apparent, but series' `name` would be set to
@@ -742,7 +742,7 @@ describe("getSeriesWithLegends", () => {
       expect(seriesWithLegends).toEqual(expectedSeries);
     });
 
-    it("it should assign legends on multiple series dashcard", () => {
+    it("should assign legends on multiple series dashcard", () => {
       const seriesWithLegends = getSeriesWithLegends(
         settings,
         multipleSeriesDashcard,
@@ -984,7 +984,7 @@ describe("getSeriesWithLegends", () => {
       expect(seriesWithLegends).toEqual(expectedSeries);
     });
 
-    it("it should assign legends on multiple series dashcard", () => {
+    it("should assign legends on multiple series dashcard", () => {
       const seriesWithLegends = getSeriesWithLegends(
         settings,
         multipleSeriesDashcard,
