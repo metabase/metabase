@@ -32,7 +32,6 @@ import TableBrowser from "metabase/browse/containers/TableBrowser";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
@@ -74,7 +73,6 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
-import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
@@ -215,8 +213,6 @@ export const getRoutes = store => (
         <Route path="collection/:slug" component={CollectionLanding}>
           <ModalRoute path="move" modal={MoveCollectionModal} />
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
-          <ModalRoute path="new_collection" modal={CollectionCreate} />
-          <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
           {getCollectionTimelineRoutes()}
         </Route>
@@ -263,10 +259,6 @@ export const getRoutes = store => (
         {/* INDIVIDUAL DASHBOARDS */}
 
         <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
-
-        <Route path="/collections">
-          <Route path="create" component={CollectionCreate} />
-        </Route>
 
         {/* REFERENCE */}
         <Route path="/reference" title={t`Data Reference`}>
