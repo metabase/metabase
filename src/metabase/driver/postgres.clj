@@ -21,12 +21,12 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
             [metabase.models.secret :as secret]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -295,19 +295,14 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        timestamptz? (hx/is-of-type? expr "timestamptz")]
-    (when (and timestamptz? source-timezone)
-      (throw (ex-info (tru "`timestamp with time zone` columns shouldn''t have a `source timezone`")
-                      {:type            qp.error-type/invalid-query
-                       :target-timezone target-timezone
-                       :source-timezone source-timezone})))
-    (let [source-timezone (or source-timezone (qp.timezone/results-timezone-id))
-          expr            (cond->> expr
-                            (not timestamptz?)
-                            (hsql/call :timezone source-timezone)
-                            true
-                            (hsql/call :timezone target-timezone))]
-      (hx/with-database-type-info expr "timestamp"))))
+        timestamptz? (hx/is-of-type? expr "timestamptz")
+        _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+        expr         (cond->> expr
+                       (not timestamptz?)
+                       (hsql/call :timezone source-timezone)
+                       :always
+                       (hsql/call :timezone target-timezone))]
+    (hx/with-database-type-info expr "timestamp")))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
