@@ -25,7 +25,8 @@ interface BaseSeries {
 
 export interface SeriesWithOneOrLessDimensions extends BaseSeries {
   cardName: string;
-  column: DatasetColumn;
+  // this could be null when rendering multiple scalars
+  column: DatasetColumn | null;
 }
 
 export interface SeriesWithTwoDimensions extends BaseSeries {

@@ -609,13 +609,13 @@
 
 (defn- multiple-scalar-series
   [joined-rows _x-cols _y-cols _viz-settings]
-  ;; TODO: Extra vars could be used for color settings
-  (for [[idx row-val] (map-indexed vector joined-rows)]
-    {:name  (first row-val)
-     :color (nth colors idx)
-     :type  :bar
-     :data [row-val]
-     :yAxisPosition "left"}))
+  [(for [[row-val] (map vector joined-rows)]
+     {:name          nil
+      :cardName      (first row-val)
+      :type          :bar
+      :data          [row-val]
+      :yAxisPosition "left"
+      :column        nil})])
 
 (defn- render-multiple-scalars
   "When multiple scalar cards are combined, they render as a bar chart"

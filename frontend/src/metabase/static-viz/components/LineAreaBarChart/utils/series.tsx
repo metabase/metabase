@@ -66,6 +66,11 @@ export function getSeriesWithLegends(
           return customSeriesTitle;
         }
 
+        // When rendering multiple scalars `column` would be null.
+        if (series.column == null) {
+          return series.cardName;
+        }
+
         if (!hasTwoDimensions(series)) {
           // One or zero dimensions
 
@@ -121,6 +126,11 @@ function getSeriesKeys(
   return multipleSeries
     .flatMap((questionSeries, seriesIndex) => {
       return questionSeries.map(series => {
+        // When rendering multiple scalars `column` would be null.
+        if (series.column == null) {
+          return series.cardName;
+        }
+
         if (!hasTwoDimensions(series)) {
           // One or zero dimensions
           if (seriesIndex === 0) {
