@@ -66,33 +66,33 @@ describe("DatabaseEngineWarning", () => {
   };
 
   it("should render a warning when the driver is deprecated", () => {
-    render(<DatabaseEngineWarning engine="presto" engines={engines} />);
+    render(<DatabaseEngineWarning engineKey="presto" engines={engines} />);
     expect(screen.getByText(/This driver will be removed/)).toBeInTheDocument();
   });
 
   it("should render a warning when the driver is new", () => {
-    render(<DatabaseEngineWarning engine="presto-jdbc" engines={engines} />);
+    render(<DatabaseEngineWarning engineKey="presto-jdbc" engines={engines} />);
     expect(screen.getByText(/This is our new Presto/)).toBeInTheDocument();
   });
 
   it("should render nothing when the driver does not exist", () => {
-    render(<DatabaseEngineWarning engine="invalid" engines={engines} />);
+    render(<DatabaseEngineWarning engineKey="invalid" engines={engines} />);
     expect(screen.queryByText(/driver/)).not.toBeInTheDocument();
   });
 
   it("should render a warning when the driver is new", () => {
-    render(<DatabaseEngineWarning engine="presto-jdbc" engines={engines} />);
+    render(<DatabaseEngineWarning engineKey="presto-jdbc" engines={engines} />);
     expect(screen.getByText(/This is our new Presto/)).toBeInTheDocument();
   });
 
   it("should render nothing when there is no new driver, and the driver is official", () => {
-    render(<DatabaseEngineWarning engine="postgres" engines={engines} />);
+    render(<DatabaseEngineWarning engineKey="postgres" engines={engines} />);
     expect(screen.queryByText(/driver/)).not.toBeInTheDocument();
   });
 
   it("should render a community driver warning for drivers from community sources", () => {
     render(
-      <DatabaseEngineWarning engine="communityEngine" engines={engines} />,
+      <DatabaseEngineWarning engineKey="communityEngine" engines={engines} />,
     );
     expect(
       screen.queryByText(/community-developed driver/),
@@ -101,7 +101,10 @@ describe("DatabaseEngineWarning", () => {
 
   it("should render both community and deprecated warnings together", () => {
     render(
-      <DatabaseEngineWarning engine="deprecatedCommunity" engines={engines} />,
+      <DatabaseEngineWarning
+        engineKey="deprecatedCommunity"
+        engines={engines}
+      />,
     );
     expect(
       screen.queryByText(/community-developed driver/),
@@ -110,13 +113,15 @@ describe("DatabaseEngineWarning", () => {
   });
 
   it("should render a partner driver warning for drivers from partner sources", () => {
-    render(<DatabaseEngineWarning engine="partnerEngine" engines={engines} />);
+    render(
+      <DatabaseEngineWarning engineKey="partnerEngine" engines={engines} />,
+    );
     expect(screen.queryByText(/partner-developed driver/)).toBeInTheDocument();
   });
 
   it("should render a partner contact information web link", () => {
     const { container } = render(
-      <DatabaseEngineWarning engine="partnerEngine" engines={engines} />,
+      <DatabaseEngineWarning engineKey="partnerEngine" engines={engines} />,
     );
     expect(container.querySelector("a")).toHaveAttribute(
       "href",
@@ -127,7 +132,7 @@ describe("DatabaseEngineWarning", () => {
   it("should render a partner contact information email link", () => {
     const { container } = render(
       <DatabaseEngineWarning
-        engine="partnerEngineWithEmail"
+        engineKey="partnerEngineWithEmail"
         engines={engines}
       />,
     );
@@ -140,7 +145,7 @@ describe("DatabaseEngineWarning", () => {
   it("should render a partner warning when missing contact name", () => {
     const { container } = render(
       <DatabaseEngineWarning
-        engine="anonymousPartnerEngine"
+        engineKey="anonymousPartnerEngine"
         engines={engines}
       />,
     );
@@ -150,7 +155,7 @@ describe("DatabaseEngineWarning", () => {
   it("should render a partner warning when missing contact information", () => {
     const { container } = render(
       <DatabaseEngineWarning
-        engine="partnerWithoutContactInfoEngine"
+        engineKey="partnerWithoutContactInfoEngine"
         engines={engines}
       />,
     );
