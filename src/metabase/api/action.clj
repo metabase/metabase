@@ -4,13 +4,9 @@
             [metabase.actions :as actions]
             [metabase.actions.http-action :as http-action]
             [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.models :refer [Action HTTPAction ImplicitAction QueryAction]]
+            [metabase.models :refer [Action Card HTTPAction ImplicitAction QueryAction]]
             [metabase.models.action :as action]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.setting :as setting]
             [metabase.util :as u]
-            [metabase.util.i18n :as i18n]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -42,33 +38,18 @@
    (s/optional-key :parameters) (s/maybe [su/Map])
    (s/optional-key :parameter_mappings) (s/maybe su/Map)})
 
-(defn check-actions-enabled
-  "Check whether Actions are enabled and allowed for the [[metabase.models.database]] with `database-id`, or return a
-  400 status code."
-  [database-id]
-  {:pre [(integer? database-id)]}
-  (let [{db-settings :settings, driver :engine, :as db} (db/select-one Database :id database-id)]
-    ;; make sure the Driver supports Actions.
-    (when-not (driver/database-supports? driver :actions db)
-      (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
-                                (u/qualified-name driver)
-                                (format "%d %s" (:id db) (pr-str (:name db))))
-                      {:status-code 400, :database-id (:id db)})))
-    (binding [setting/*database-local-values* db-settings]
-      ;; make sure Actions are enabled for this Database
-      (when-not (actions/database-enable-actions)
-        (throw (ex-info (i18n/tru "Actions are not enabled for Database {0}." database-id)
-                        {:status-code 400}))))))
-
 (api/defendpoint GET "/"
   "Returns cards that can be used for QueryActions"
   [model-id]
   {model-id su/IntGreaterThanZero}
-  (action/actions-with-implicit-params nil :model_id model-id))
+  (let [model (api/read-check Card model-id)]
+    ;; We don't check the permissions on the actions, we assume they are
+    ;; readable if the model is readable.
+    (action/actions-with-implicit-params [model] :model_id model-id)))
 
 (api/defendpoint GET "/:action-id"
   [action-id]
-  (api/check-404 (first (action/actions-with-implicit-params nil :id action-id))))
+  (api/read-check (first (action/actions-with-implicit-params nil :id action-id))))
 
 (defn- type->model [existing-action-type]
   (case existing-action-type
@@ -78,7 +59,7 @@
 
 (api/defendpoint DELETE "/:action-id"
   [action-id]
-  (let [existing-action-type (db/select-one-field :type Action :id action-id)]
+  (let [{existing-action-type :type} (api/write-check Action action-id)]
     (db/delete! (type->model existing-action-type) :action_id action-id))
   api/generic-204-no-content)
 
@@ -101,6 +82,7 @@
    template (s/maybe HTTPActionTemplate)
    response_handle (s/maybe JsonQuerySchema)
    error_handle (s/maybe JsonQuerySchema)}
+  (api/write-check Card model_id)
   (let [action-id (action/insert! action)]
     (if action-id
       (first (action/actions-with-implicit-params nil :id action-id))
@@ -128,7 +110,8 @@
    response_handle (s/maybe JsonQuerySchema)
    error_handle (s/maybe JsonQuerySchema)}
   (let [action-columns [:type :name :description :parameters :parameter_mappings :visualization_settings]
-        existing-action-type (db/select-one-field :type Action :id id)
+        existing-action (api/write-check Action id)
+        existing-action-type (:type existing-action)
         existing-model (type->model existing-action-type)]
     (when-let [action-row (not-empty (select-keys action action-columns))]
       (db/update! Action id action-row))

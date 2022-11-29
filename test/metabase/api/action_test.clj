@@ -28,56 +28,10 @@
 
 (deftest list-actions-test
   (actions.test-util/with-actions-enabled
-    (mt/with-temp* [Card [{card-id :id} {:dataset true}]]
-      (mt/with-model-cleanup [Action]
-        (let [posted-actions [{:name "Get example"
-                               :type "http"
-                               :model_id card-id
-                               :template {:method "GET"
-                                          :url "https://example.com/{{x}}"}
-                               :parameters [{:id "x" :type "text"}]
-                               :response_handle ".body"
-                               :error_handle ".status >= 400"}
-                              {:name "Query example"
-                               :type "query"
-                               :model_id card-id
-                               :dataset_query (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
-                                                      :type name)
-                               :database_id (mt/id)
-                               :parameters [{:id "x" :type "number"}]
-                               :visualization_settings {:position "top"}}
-                              {:name "Implicit example"
-                               :type "implicit"
-                               :model_id card-id
-                               :kind "row/create"
-                               :parameters [{:id "x" :type "number"}]}]]
-          (doseq [initial-action posted-actions]
-            (mt/user-http-request :crowberto :post 200 "action" initial-action))
-          (let [response (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))]
-            (is (partial= posted-actions
-                          response))
-            (doseq [action response
-                    :when (= (:type action) "query")]
-              (testing "Should return a query action deserialized (#23201)"
-                (is (schema= ExpectedGetQueryActionAPIResponse
-                             action))))))))))
-
-(deftest get-action-test
-  (testing "GET /api/action/:id"
-    (actions.test-util/with-actions-enabled
-      (actions.test-util/with-actions [{:keys [action-id]} {}]
-        (let [action (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id))]
-          (testing "Should return a query action deserialized (#23201)"
-            (is (schema= ExpectedGetQueryActionAPIResponse
-                         action))))))))
-
-(deftest unified-action-create-test
-  (actions.test-util/with-actions-enabled
-    (actions.test-util/with-actions-test-data-tables #{"users" "categories"}
-      (actions.test-util/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
-                                       {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
-        (doseq [initial-action [{:name "Get example"
-                                 :description "A dummy HTTP action"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp* [Card [{card-id :id} {:dataset true}]]
+        (mt/with-model-cleanup [Action]
+          (let [posted-actions [{:name "Get example"
                                  :type "http"
                                  :model_id card-id
                                  :template {:method "GET"
@@ -86,47 +40,117 @@
                                  :response_handle ".body"
                                  :error_handle ".status >= 400"}
                                 {:name "Query example"
-                                 :description "A simple update query action"
                                  :type "query"
                                  :model_id card-id
-                                 :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
+                                 :dataset_query (update (mt/native-query {:query "update venues set name = 'foo' where id = {{x}}"})
                                                         :type name)
                                  :database_id (mt/id)
-                                 :parameters [{:id "x" :type "type/biginteger"}]}
+                                 :parameters [{:id "x" :type "number"}]
+                                 :visualization_settings {:position "top"}}
                                 {:name "Implicit example"
                                  :type "implicit"
                                  :model_id card-id
-                                 :kind "row/create"}]]
-          (let [update-fn (fn [m]
-                            (cond-> (assoc m :name "New name")
-                              (= (:type initial-action) "implicit")
-                              (assoc :kind "row/update" :description "A new description")
+                                 :kind "row/create"
+                                 :parameters [{:id "x" :type "number"}]}]]
+            (doseq [initial-action posted-actions]
+              (mt/user-http-request :crowberto :post 200 "action" initial-action))
+            (let [response (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))]
+              (is (partial= posted-actions
+                            response))
+              (doseq [action response
+                      :when (= (:type action) "query")]
+                (testing "Should return a query action deserialized (#23201)"
+                  (is (schema= ExpectedGetQueryActionAPIResponse
+                               action)))))
+            (testing "Should not be allowed to list actions without permission on the model"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
+                  "Should not be able to list actions without read permission on the model"))))))))
 
-                              (= (:type initial-action) "query")
-                              (assoc :dataset_query (update (mt/native-query {:query "update users set name = 'bar' where id = {{x}}"})
-                                                            :type name))
+(deftest get-action-test
+  (testing "GET /api/action/:id"
+    (actions.test-util/with-actions-enabled
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (actions.test-util/with-actions [{:keys [action-id]} {}]
+          (let [action (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id))]
+            (testing "Should return a query action deserialized (#23201)"
+              (is (schema= ExpectedGetQueryActionAPIResponse
+                           action))))
+          (testing "Should not be allowed to get the action without permission on the model"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (format "action/%d" action-id))))))))))
 
-                              (= (:type initial-action) "http")
-                              (-> (assoc :response_handle ".body.result"  :description nil))))
-                created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
-                updated-action (update-fn initial-action)
-                action-path (str "action/" (:id created-action))]
-            (testing "Create"
-              (is (partial= initial-action created-action)))
-            (testing "Update"
-              (is (partial= updated-action
-                            (mt/user-http-request :crowberto :put 200 action-path
-                                                  (update-fn {})))))
-            (testing "Get"
-              (is (partial= updated-action
-                            (mt/user-http-request :crowberto :get 200 action-path))))
-            (testing "Get All"
-              (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
-                             updated-action]
-                            (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id)))))
-            (testing "Delete"
-              (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
-              (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path))))))))))
+(deftest unified-action-create-test
+  (actions.test-util/with-actions-enabled
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (actions.test-util/with-actions-test-data-tables #{"users" "categories"}
+        (actions.test-util/with-actions [{card-id :id} {:dataset true :dataset_query (mt/mbql-query users)}
+                                         {exiting-implicit-action-id :action-id} {:type :implicit :kind "row/update"}]
+          (doseq [initial-action [{:name "Get example"
+                                   :description "A dummy HTTP action"
+                                   :type "http"
+                                   :model_id card-id
+                                   :template {:method "GET"
+                                              :url "https://example.com/{{x}}"}
+                                   :parameters [{:id "x" :type "text"}]
+                                   :response_handle ".body"
+                                   :error_handle ".status >= 400"}
+                                  {:name "Query example"
+                                   :description "A simple update query action"
+                                   :type "query"
+                                   :model_id card-id
+                                   :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
+                                                          :type name)
+                                   :database_id (mt/id)
+                                   :parameters [{:id "x" :type "type/biginteger"}]}
+                                  {:name "Implicit example"
+                                   :type "implicit"
+                                   :model_id card-id
+                                   :kind "row/create"}]]
+            (let [update-fn (fn [m]
+                              (cond-> (assoc m :name "New name")
+                                (= (:type initial-action) "implicit")
+                                (assoc :kind "row/update" :description "A new description")
+
+                                (= (:type initial-action) "query")
+                                (assoc :dataset_query (update (mt/native-query {:query "update users set name = 'bar' where id = {{x}}"})
+                                                              :type name))
+
+                                (= (:type initial-action) "http")
+                                (-> (assoc :response_handle ".body.result"  :description nil))))
+                  created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
+                  updated-action (update-fn initial-action)
+                  action-path (str "action/" (:id created-action))]
+              (testing "Create"
+                (is (partial= initial-action created-action))
+                (testing "Should not be possible without permission"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :post 403 "action" initial-action)))))
+              (testing "Update"
+                (is (partial= updated-action
+                              (mt/user-http-request :crowberto :put 200 action-path (update-fn {}))))
+                (testing "Should not be possible without permission"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :put 403 action-path (update-fn {}))))))
+              (testing "Get"
+                (is (partial= updated-action
+                              (mt/user-http-request :crowberto :get 200 action-path)))
+                (testing "Should not be possible without permission"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :get 403 action-path)))))
+              (testing "Get All"
+                (is (partial= [{:id exiting-implicit-action-id, :type "implicit", :kind "row/update"}
+                               updated-action]
+                              (mt/user-http-request :crowberto :get 200 (str "action?model-id=" card-id))))
+                (testing "Should not be possible without permission"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id))))))
+              (testing "Delete"
+                (testing "Should not be possible without permission"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :delete 403 action-path))))
+                (is (nil? (mt/user-http-request :crowberto :delete 204 action-path)))
+                (is (= "Not found." (mt/user-http-request :crowberto :get 404 action-path)))))))))))
 
 (deftest action-parameters-test
   (actions.test-util/with-actions-enabled

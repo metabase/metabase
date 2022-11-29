@@ -1,6 +1,7 @@
 (ns metabase.models.action
   (:require [cheshire.core :as json]
             [medley.core :as m]
+            [metabase.models.card :refer [Card]]
             [metabase.models.interface :as mi]
             [metabase.models.query :as query]
             [metabase.util :as u]
@@ -12,6 +13,15 @@
 (models/defmodel HTTPAction :http_action)
 (models/defmodel ImplicitAction :implicit_action)
 (models/defmodel Action :action)
+
+;;; You can read/write an Action if you can read/write its model (Card)
+(doto Action
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
+(defmethod mi/perms-objects-set Action
+  [instance read-or-write]
+  (mi/perms-objects-set (db/select-one Card :id (:model_id instance)) read-or-write))
 
 (models/add-type! ::json-with-nested-parameters
   :in  (comp mi/json-in
