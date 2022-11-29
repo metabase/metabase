@@ -1,7 +1,5 @@
 import React from "react";
-import { merge } from "icepick";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
-import { colors } from "metabase/lib/colors";
 import { XYChart } from "../XYChart";
 import { CardSeries, ChartSettings, ChartStyle } from "../XYChart/types";
 import { Colors } from "./types";
