@@ -17,7 +17,7 @@ const propTypes = {
   }),
   settings: PropTypes.shape({
     metric: PropTypes.object,
-    percent_visibility: PropTypes.string,
+    percent_visibility: PropTypes.oneOf(["off", "legend", "inside"]),
   }),
 };
 

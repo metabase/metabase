@@ -555,7 +555,7 @@
                                     (or (<= min-a min-b max-a)
                                         (<= min-a max-b max-a)))]
     (if
-     overlapping-and-valid?
+    overlapping-and-valid?
       (let [[a b c d]     (sort [min-a min-b max-a max-b])
             max-width     (- d a)
             overlap-width (- c b)]
