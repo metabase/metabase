@@ -14,7 +14,6 @@ import {
 import { VariableTarget } from "metabase-types/types/Parameter";
 import { IconName } from "metabase-types/types";
 import { infer, MONOTYPE } from "metabase-lib/expressions/typeinferencer";
-import { MBQL_CLAUSES } from "metabase-lib/expressions/config";
 import { TYPE } from "metabase-lib/types/constants";
 import {
   DATETIME_UNITS,
@@ -1287,18 +1286,6 @@ export class ExpressionDimension extends Dimension {
       });
       if (fieldMetadata) {
         return this._createField(fieldMetadata);
-      }
-    }
-
-    // This is likely in an unsaved question.
-    // This expression can be about datetime, but using a "string" as a date.
-    // For example: datetimeAdd("2025-01-01", 1, "month")
-    if (query) {
-      const datasetQuery = query.query();
-      const expressions = datasetQuery?.expressions ?? {};
-      const expr = expressions[this.name()];
-      if (MBQL_CLAUSES[expr?.[0]]?.type === "datetime") {
-        semantic_type = "type/DateTime";
       }
     }
 
