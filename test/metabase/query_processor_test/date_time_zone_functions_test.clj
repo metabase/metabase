@@ -564,20 +564,20 @@
           (testing (name unit)
             (testing description
               (is (= [expected (- expected)] (query x y unit))))))))
-    (mt/dataset attempted-murders
+    (mt/dataset times-mixed
       (testing "Can compare across dates, datetimes, and with timezones from a table"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
-        (is (= [[-25200 -26598 1398]]
+        (is (= [[25200 -8349 33549]]
                (mt/rows
-                (mt/run-mbql-query attempts
+                (mt/run-mbql-query times
                   {:fields [[:expression "tz,dt"]
                             [:expression "tz,d"]
                             [:expression "d,dt"]]
                    :limit 1
                    :expressions
-                   {"tz,dt" [:datetime-diff $datetime_tz $datetime :second]
-                    "tz,d"  [:datetime-diff $datetime_tz $date :second]
-                    "d,dt"  [:datetime-diff $date $datetime :second]}}))))))))
+                   {"tz,dt" [:datetime-diff $dt_tz $dt :second]
+                    "tz,d"  [:datetime-diff $dt_tz $d :second]
+                    "d,dt"  [:datetime-diff $d $dt :second]}}))))))))
 
 (deftest datetime-diff-time-zones-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
@@ -700,15 +700,19 @@
 (deftest datetime-diff-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (testing "Cannot datetime-diff against integer column"
-      (mt/dataset attempted-murders
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Only datetime, timestamp, or date types allowed. Found .*"
-             (mt/rows
-              (mt/run-mbql-query attempts
-                {:limit 1
-                 :fields      [[:expression "diff-day"]]
-                 :expressions {"diff-day" [:datetime-diff $num_crows $datetime_tz :day]}}))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Only datetime, timestamp, or date types allowed. Found .*"
+           (mt/rows
+            (mt/run-mbql-query checkins
+              {:limit 1
+               :fields      [[:expression "diff-day"]]
+               :expressions {"diff-day" [:datetime-diff $user_id $date :day]}}))))))
+  ;; TIMEZONE FIXME — The excluded drivers below don't have TIME types, so the `attempted-murders` dataset doesn't
+  ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
+  ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :datetime-diff)
+                         :oracle :presto :redshift :sparksql :snowflake)
     (testing "Cannot datetime-diff against time column"
       (mt/dataset attempted-murders
         (is (thrown-with-msg?
