@@ -1,6 +1,9 @@
 name: Build + Docker Uberjar
 
 on:
+  push:
+    branches:
+      - "master"
   workflow_dispatch:
     inputs:
       commit:
