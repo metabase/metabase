@@ -5,7 +5,7 @@ import { Engine } from "metabase-types/api";
 import { SelectChangeEvent } from "metabase/core/components/Select";
 
 export interface DatabaseEngineFieldProps {
-  engineKey?: string;
+  engineKey: string | undefined;
   engines: Record<string, Engine>;
   onChange: (engine: string) => void;
 }
@@ -45,8 +45,8 @@ const getEngineOptions = (
   engineKey?: string,
 ) => {
   return Object.entries(engines)
-    .filter(([name, engine]) => name === engineKey || !engine["superseded-by"])
-    .map(([name, engine]) => ({ name: engine["driver-name"], value: name }))
+    .filter(([key, engine]) => key === engineKey || !engine["superseded-by"])
+    .map(([key, engine]) => ({ name: engine["driver-name"], value: key }))
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
