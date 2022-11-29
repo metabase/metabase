@@ -121,6 +121,8 @@
     (when-not (= ::client-side-session h2-parser)
       (let [command      (.prepareCommand h2-parser query)
             command-type (.getCommandType command)]
+        ;; Command types are organized with all DDL commands listed first
+        ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
         (< command-type CommandInterface/ALTER_SEQUENCE)))))
 
 (defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
