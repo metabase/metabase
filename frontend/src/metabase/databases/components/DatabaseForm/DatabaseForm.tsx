@@ -7,7 +7,7 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { Engine } from "metabase-types/api";
 import { DatabaseValues } from "../../types";
-import { getValidationSchema, getVisibleFields } from "../../utils";
+import { getValidationSchema, getVisibleFields } from "../../utils/schema";
 import DatabaseEngineField from "../DatabaseEngineField";
 import DatabaseNameField from "../DatabaseNameField";
 import DatabaseDetailField from "../DatabaseDetailField";

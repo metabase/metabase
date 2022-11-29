@@ -11,6 +11,12 @@ export interface DatabaseValues {
   details: Record<string, unknown>;
 }
 
+export interface EngineOption {
+  name: string;
+  value: string;
+  index: number;
+}
+
 export interface EngineFieldOverride {
   type?: EngineFieldType | ComponentType<EngineFieldProps>;
   name?: string;

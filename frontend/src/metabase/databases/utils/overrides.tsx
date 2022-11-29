@@ -1,10 +1,10 @@
 import React from "react";
 import { t } from "ttag";
-import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
-import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
-import DatabaseSshDescription from "./components/DatabaseSshDescription";
-import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
-import { EngineFieldOverride } from "./types";
+import DatabaseAuthCodeDescription from "../components/DatabaseAuthCodeDescription";
+import DatabaseClientIdDescription from "../components/DatabaseClientIdDescription";
+import DatabaseSshDescription from "../components/DatabaseSshDescription";
+import DatabaseSslKeyDescription from "../components/DatabaseSslKeyDescription";
+import { EngineFieldOverride } from "../types";
 
 export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   "tunnel-enabled": {

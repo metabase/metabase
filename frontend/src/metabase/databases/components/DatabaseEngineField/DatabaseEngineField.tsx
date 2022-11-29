@@ -1,5 +1,6 @@
 import React, { useMemo, useRef } from "react";
 import { Engine } from "metabase-types/api";
+import { getEngineOptions } from "../../utils/engine";
 import DatabaseEngineSelect from "./DatabaseEngineSelect";
 import DatabaseEngineWidget from "./DatabaseEngineWidget";
 
@@ -38,16 +39,6 @@ const DatabaseEngineField = ({
       onChange={onChange}
     />
   );
-};
-
-const getEngineOptions = (
-  engines: Record<string, Engine>,
-  engineKey?: string,
-) => {
-  return Object.entries(engines)
-    .filter(([key, engine]) => key === engineKey || !engine["superseded-by"])
-    .map(([key, engine]) => ({ name: engine["driver-name"], value: key }))
-    .sort((a, b) => a.name.localeCompare(b.name));
 };
 
 export default DatabaseEngineField;

@@ -1,10 +1,17 @@
-import React, { KeyboardEvent, useCallback, useMemo, useState } from "react";
+import React, {
+  ChangeEvent,
+  KeyboardEvent,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
-import { getEngineLogo } from "metabase/lib/engine";
-import Settings from "metabase/lib/settings";
-import TextInput from "metabase/components/TextInput";
+import MetabaseSettings from "metabase/lib/settings";
+import Input from "metabase/core/components/Input";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { getEngineLogo } from "../../utils/engine";
+import { EngineOption } from "../../types";
 import {
   EngineButtonRoot,
   EngineCardIcon,
@@ -18,7 +25,6 @@ import {
   EngineSearchRoot,
   EngineToggleRoot,
 } from "./DatabaseEngineWidget.styled";
-import { EngineOption } from "./types";
 
 const DEFAULT_OPTIONS_COUNT = 6;
 
@@ -109,8 +115,8 @@ const EngineSearch = ({
   const optionCount = visibleOptions.length;
   const activeOption = isNavigating ? visibleOptions[activeIndex] : undefined;
 
-  const handleSearch = useCallback((value: string) => {
-    setSearchText(value);
+  const handleSearch = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setSearchText(event.target.value);
     setActiveIndex(undefined);
   }, []);
 
@@ -134,13 +140,14 @@ const EngineSearch = ({
 
   return (
     <EngineSearchRoot role="combobox" aria-expanded="true">
-      <TextInput
+      <Input
         value={searchText}
         placeholder={t`Search for a database…`}
         autoFocus
         aria-autocomplete="list"
         aria-controls={getListBoxId(rootId)}
         aria-activedescendant={getListOptionId(rootId, activeOption)}
+        fullWidth
         onChange={handleSearch}
         onKeyDown={handleKeyDown}
       />
@@ -242,7 +249,7 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
         <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
           <ExternalLink
             key="link"
-            href={Settings.docsUrl("developers-guide-drivers")}
+            href={MetabaseSettings.docsUrl("developers-guide-drivers")}
           >
             {t`Community Drivers`}
           </ExternalLink>
