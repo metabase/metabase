@@ -28,19 +28,19 @@ import {
 
 const DEFAULT_OPTIONS_COUNT = 6;
 
-export interface EngineWidget {
+export interface DatabaseEngineWidgetProps {
   engineKey: string | undefined;
   options: EngineOption[];
   onChange: (engineKey: string | undefined) => void;
   isHosted: boolean;
 }
 
-const EngineWidget = ({
+const DatabaseEngineWidget = ({
   engineKey,
   options,
   onChange,
   isHosted,
-}: EngineWidget): JSX.Element => {
+}: DatabaseEngineWidgetProps): JSX.Element => {
   if (engineKey) {
     return (
       <EngineButton
@@ -339,4 +339,4 @@ const getActiveIndex = (
   }
 };
 
-export default EngineWidget;
+export default DatabaseEngineWidget;
