@@ -31,6 +31,8 @@
   [_driver _feature _database]
   true)
 
+(defmethod driver/database-supports? [:vertica :datetime-diff] [_ _ _] true)
+
 (defmethod driver/db-start-of-week :vertica
   [_]
   :monday)
@@ -127,6 +129,59 @@
   (->> args
        (map (partial sql.qp/->honeysql driver))
        (reduce (partial hsql/call :concat))))
+
+(defmethod sql.qp/->honeysql [:vertica :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)]
+    (case unit
+      :year
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             (hsql/call :datediff (hx/literal unit) a b)
+                             (hx/cast
+                              :integer
+                              (hsql/call
+                               :or
+                               (hsql/call :> (hsql/call :extract :month a) (hsql/call :extract :month b))
+                               (hsql/call
+                                :and
+                                (hsql/call := (hsql/call :extract :month a) (hsql/call :extract :month b))
+                                (hsql/call :> (hsql/call :extract :day a) (hsql/call :extract :day b)))))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :month
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             (hsql/call :datediff (hx/literal :month) a b)
+                             (hx/cast
+                              :integer
+                              (hsql/call
+                               :>
+                               (hsql/call :datediff (hx/literal :day) (date-trunc :month a) a)
+                               (hsql/call :datediff (hx/literal :day) (date-trunc :month b) b)))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :week
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (hsql/call :datediff (hx/literal :day) a b) 7))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :day
+      (-> (hsql/call :datediff (hx/literal :day) x y)
+          (hx/with-database-type-info :integer))
+
+      (:hour :minute :second)
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (hsql/call :- (extract :epoch b) (extract :epoch a))
+                                    (case unit :hour 3600 :minute 60 :second 1)))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x)))))))
 
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
   [driver [_ arg pattern]]
