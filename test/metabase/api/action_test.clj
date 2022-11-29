@@ -29,7 +29,7 @@
 (deftest list-actions-test
   (actions.test-util/with-actions-enabled
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp* [Card [{card-id :id} {:dataset true}]]
+      (mt/with-temp Card [{card-id :id} {:dataset true}]
         (mt/with-model-cleanup [Action]
           (let [posted-actions [{:name "Get example"
                                  :type "http"
@@ -65,7 +65,11 @@
             (testing "Should not be allowed to list actions without permission on the model"
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
-                  "Should not be able to list actions without read permission on the model"))))))))
+                  "Should not be able to list actions without read permission on the model"))
+            (testing "Should not be possible to demote a model with actions"
+              (is (partial= {:message "Cannot make a question from a model with actions"}
+                            (mt/user-http-request :crowberto :put 500 (str "card/" card-id)
+                                                  {:dataset false}))))))))))
 
 (deftest get-action-test
   (testing "GET /api/action/:id"

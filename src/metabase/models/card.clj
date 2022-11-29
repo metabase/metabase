@@ -241,8 +241,8 @@
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
   (u/prog1 changes
-    (let [;; Fetch old card data if necessary, and share the data between multiple checks.
-          old-card-info (when (or (:dataset changes)
+    (let [ ;; Fetch old card data if necessary, and share the data between multiple checks.
+          old-card-info (when (or (contains? changes :dataset)
                                   (get-in changes [:dataset_query :native]))
                           (db/select-one [Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
@@ -264,6 +264,12 @@
       ;; make sure this Card doesn't have circular source query references if we're updating the query
       (when (:dataset_query changes)
         (check-for-circular-source-query-references changes))
+      ;; prevent demoting a model if it has actions
+      (when (and (not (:dataset changes))
+                 (:dataset old-card-info)
+                 (db/select-one ['Action :id] :model_id id))
+        (throw (ex-info (tru "Cannot make a question from a model with actions")
+                        {:id id})))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
