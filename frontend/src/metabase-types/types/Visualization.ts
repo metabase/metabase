@@ -15,7 +15,8 @@ export type ActionCreator = (props: ClickActionProps) => ClickAction[];
 
 export type QueryMode = {
   name: string;
-  drills: () => ActionCreator[];
+  drills: ActionCreator[];
+  fallback?: ActionCreator;
 };
 
 export type HoverData = Array<{ key: string; value: any; col?: Column }>;
@@ -81,7 +82,16 @@ export type ClickActionPopoverProps = {
   onClose: () => void;
 };
 
-export type SingleSeries = { card: Card; data: DatasetData };
+export type SingleSeries = {
+  card: Card;
+  data: DatasetData;
+  error_type?: string;
+  error?: {
+    status: number; // HTTP status code
+    data?: string;
+  };
+};
+
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };
 export type Series = RawSeries | TransformedSeries;

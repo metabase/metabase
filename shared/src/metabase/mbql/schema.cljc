@@ -9,14 +9,22 @@
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
      [schema.core :as s])
-    (:import java.time.format.DateTimeFormatter)]
+    (:import java.time.format.DateTimeFormatter
+             java.time.ZoneId)]
    :cljs
    [(:require
+     ["moment" :as moment]
+     ["moment-timezone" :as mtz]
      [clojure.core :as core]
      [clojure.set :as set]
      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
      [metabase.mbql.schema.macros :refer [defclause one-of]]
      [schema.core :as s])]))
+
+#?(:cljs
+   (comment
+     moment/keepme
+     mtz/keepme)) ;; to get the timezone list from moment
 
 ;; A NOTE ABOUT METADATA:
 ;;
@@ -78,6 +86,13 @@
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
 
+(def TimezoneId
+  "Valid timezone id."
+  (s/named
+    #?(:clj  (apply s/enum (ZoneId/getAvailableZoneIds)) ;; 600 timezones on java 17
+       :cljs (apply s/enum (.names (.-tz moment))))      ;; 596 timezones on moment-timezone 0.5.38
+    "timezone-id"))
+
 (def TemporalExtractUnits
   "Valid units to extract from a temporal."
   (s/named
@@ -126,8 +141,6 @@
      [s]
      (when (string? s)
        (not= (.parse js/Date s) ##NaN))))
-
-;; TODO -- currently these are all the same between date/time/datetime
 
 (def ^{:arglists '([s])} can-parse-date?
   "Returns whether a string can be parsed to an ISO 8601 date or not."
@@ -475,8 +488,8 @@
 
 ;; Expressions are "calculated column" definitions, defined once and then used elsewhere in the MBQL query.
 
-(def string-expressions
-  "String functions"
+(def string-functions
+  "Functions that return string values. Should match [[StringExpression]]."
   #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case})
 
 (declare StringExpression)
@@ -486,7 +499,7 @@
    string?
    s/Str
 
-   (partial is-clause? string-expressions)
+   (partial is-clause? string-functions)
    (s/recursive #'StringExpression)
 
    (partial is-clause? :value)
@@ -495,34 +508,25 @@
    :else
    Field))
 
-;; TODO - rename to numeric-expressions
-(def arithmetic-expressions
-  "Set of valid arithmetic expression clause keywords."
-  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :datetime-diff})
-
-(def boolean-expressions
-  "Set of valid boolean expression clause keywords."
-  #{:and :or :not :< :<= :> :>= := :!=})
-
-(def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
-
-;; TODO: expressions that return numerics should be in arithmetic-expressions
-(def temporal-extract-functions
-  "Functions to extract components of a date, datetime."
-  #{;; extraction functions (get some component of a given temporal value/column)
+(def numeric-functions
+  "Functions that return numeric values. Should match [[NumericExpression]]."
+  #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case :datetime-diff
+    ;; extraction functions (get some component of a given temporal value/column)
     :temporal-extract
     ;; SUGAR drivers do not need to implement
     :get-year :get-quarter :get-month :get-week :get-day :get-day-of-week :get-hour :get-minute :get-second})
 
-(def date-arithmetic-functions
-  "Functions to do math with date, datetime."
-  #{:+ :datetime-add :datetime-subtract})
+(def boolean-functions
+  "Functions that return boolean values. Should match [[BooleanExpression]]."
+  #{:and :or :not :< :<= :> :>= := :!=})
 
-(def date+time+timezone-functions
-  "Date, time, and timezone related functions."
-  (set/union temporal-extract-functions date-arithmetic-functions))
+(def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
-(declare ArithmeticExpression)
+(def datetime-functions
+  "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
+  #{:+ :datetime-add :datetime-subtract :convert-timezone})
+
+(declare NumericExpression)
 (declare BooleanExpression)
 (declare DatetimeExpression)
 (declare Aggregation)
@@ -532,11 +536,8 @@
    number?
    s/Num
 
-   (partial is-clause? arithmetic-expressions)
-   (s/recursive #'ArithmeticExpression)
-
-   (partial is-clause? temporal-extract-functions)
-   (s/recursive #'DatetimeExpression)
+   (partial is-clause? numeric-functions)
+   (s/recursive #'NumericExpression)
 
    (partial is-clause? aggregations)
    (s/recursive #'Aggregation)
@@ -555,8 +556,7 @@
    (partial is-clause? :value)
    value
 
-    ;; Recursively doing date math
-   (partial is-clause? date-arithmetic-functions)
+   (partial is-clause? datetime-functions)
    (s/recursive #'DatetimeExpression)
 
    :else
@@ -570,20 +570,20 @@
    boolean?
    s/Bool
 
-   (partial is-clause? boolean-expressions)
+   (partial is-clause? boolean-functions)
    (s/recursive #'BooleanExpression)
 
-   (partial is-clause? arithmetic-expressions)
-   (s/recursive #'ArithmeticExpression)
+   (partial is-clause? numeric-functions)
+   (s/recursive #'NumericExpression)
+
+   (partial is-clause? datetime-functions)
+   (s/recursive #'DatetimeExpression)
 
    string?
    s/Str
 
-   (partial is-clause? string-expressions)
+   (partial is-clause? string-functions)
    (s/recursive #'StringExpression)
-
-   (partial is-clause? temporal-extract-functions)
-   (s/recursive #'DatetimeExpression)
 
    (partial is-clause? :value)
    value
@@ -663,13 +663,11 @@
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
 
-;; TODO: rename to NumericExpression*
-(declare ArithmeticExpression*)
+(declare NumericExpression*)
 
-;; TODO: rename to NumericExpression
-(def ^:private ArithmeticExpression
-  "Schema for the definition of an arithmetic expression. All arithmetic expressions evaluate to numeric values."
-  (s/recursive #'ArithmeticExpression*))
+(def ^:private NumericExpression
+  "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values."
+  (s/recursive #'NumericExpression*))
 
 ;; The result is positive if x <= y, and negative otherwise.
 ;;
@@ -720,6 +718,11 @@
 (defclause ^{:requires-features #{:temporal-extract}} ^:sugar get-second
   datetime DateTimeExpressionArg)
 
+(defclause ^{:requires-features #{:convert-timezone}} convert-timezone
+  datetime DateTimeExpressionArg
+  to       TimezoneId
+  from     (optional TimezoneId))
+
 (def ^:private ArithmeticDateTimeUnit
   (s/named
    (apply s/enum #{:millisecond :second :minute :hour :day :week :month :quarter :year})
@@ -736,10 +739,7 @@
   unit     ArithmeticDateTimeUnit)
 
 (def ^:private DatetimeExpression*
-  (one-of + temporal-extract datetime-add datetime-subtract
-          ;; SUGAR drivers do not need to implement
-          get-year get-quarter get-month get-week get-day get-day-of-week
-          get-hour get-minute get-second))
+  (one-of + datetime-add datetime-subtract convert-timezone))
 
 (def DatetimeExpression
   "Schema for the definition of a date function expression."
@@ -891,9 +891,9 @@
 
 (def ^:private Filter*
   (s/conditional
-   (partial is-clause? arithmetic-expressions) ArithmeticExpression
-   (partial is-clause? string-expressions)     StringExpression
-   (partial is-clause? boolean-expressions)    BooleanExpression
+   (partial is-clause? numeric-functions) NumericExpression
+   (partial is-clause? string-functions)  StringExpression
+   (partial is-clause? boolean-functions) BooleanExpression
    :else
    (one-of
     ;; filters drivers must implement
@@ -915,9 +915,10 @@
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
 
-;; TODO: rename to NumericExpression?
-(def ^:private ArithmeticExpression*
-  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datetime-diff))
+(def ^:private NumericExpression*
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case datetime-diff
+          temporal-extract get-year get-quarter get-month get-week get-day get-day-of-week
+          get-hour get-minute get-second))
 
 (def ^:private StringExpression*
   (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
@@ -927,10 +928,10 @@
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
   `:+` clause or a `:field` clause."
   (s/conditional
-   (partial is-clause? arithmetic-expressions)       ArithmeticExpression
-   (partial is-clause? string-expressions)           StringExpression
-   (partial is-clause? boolean-expressions)          BooleanExpression
-   (partial is-clause? date+time+timezone-functions) DatetimeExpression
+   (partial is-clause? numeric-functions)  NumericExpression
+   (partial is-clause? string-functions)   StringExpression
+   (partial is-clause? boolean-functions)  BooleanExpression
+   (partial is-clause? datetime-functions) DatetimeExpression
    (partial is-clause? :case)                        case
    :else                                             Field))
 
@@ -993,8 +994,8 @@
 ;;    [:+ [:sum [:field 10 nil]] [:sum [:field 20 nil]]]
 
 (def ^:private UnnamedAggregation*
-  (s/if (partial is-clause? arithmetic-expressions)
-    ArithmeticExpression
+  (s/if (partial is-clause? numeric-functions)
+    NumericExpression
     (one-of avg cum-sum distinct stddev sum min max metric share count-where
             sum-where case median percentile ag:var
             ;; SUGAR clauses

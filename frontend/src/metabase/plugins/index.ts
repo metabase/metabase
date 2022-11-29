@@ -11,6 +11,7 @@ import type {
 import type {
   Bookmark,
   Collection,
+  CollectionAuthorityLevelConfig,
   Dataset,
   Group,
   GroupsPermissions,
@@ -99,7 +100,7 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
   Component: undefined,
 };
 
-const AUTHORITY_LEVEL_REGULAR = {
+const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   type: null,
   name: t`Regular`,
   icon: "folder",

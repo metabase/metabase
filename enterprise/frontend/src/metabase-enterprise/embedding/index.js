@@ -17,7 +17,11 @@ const APP_ORIGIN_SETTING = {
   description: (
     <>
       {jt`With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder. ${(
-        <ExternalLink href="https://www.metabase.com/learn/embedding/multi-tenant-self-service-analytics.html">
+        <ExternalLink
+          href={MetabaseSettings.learnUrl(
+            "embedding/multi-tenant-self-service-analytics",
+          )}
+        >
           {t`Learn more.`}
         </ExternalLink>
       )}`}

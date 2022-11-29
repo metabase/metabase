@@ -52,6 +52,7 @@ const PASSWORD_COMPLEXITY_CLAUSES = {
 
 // TODO: dump this from backend settings definitions
 export type SettingName =
+  | "application-name"
   | "admin-email"
   | "analytics-uuid"
   | "anon-tracking-enabled"
@@ -294,6 +295,10 @@ class Settings {
     }
 
     return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
+  }
+
+  learnUrl(path = "") {
+    return `https://www.metabase.com/learn/${path}`;
   }
 
   storeUrl(path = "") {

@@ -19,7 +19,7 @@ describe("MoveEventModal", () => {
     });
 
     render(<MoveEventModal {...props} />);
-    expect(screen.getByText("Move")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move" })).toBeDisabled();
 
     userEvent.click(screen.getByText(newTimeline.name));
     userEvent.click(screen.getByText("Move"));

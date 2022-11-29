@@ -33,3 +33,9 @@ export const getLabelsMetricColumn = (chartColumns: ChartColumns) => {
     ? chartColumns.metric
     : chartColumns.metrics[0];
 };
+
+export const getChartMetrics = (chartColumns: ChartColumns) => {
+  return "breakout" in chartColumns
+    ? [chartColumns.metric]
+    : chartColumns.metrics;
+};
