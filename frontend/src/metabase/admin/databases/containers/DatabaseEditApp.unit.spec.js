@@ -30,7 +30,7 @@ const ENGINES_MOCK = {
 
 const ComponentMock = () => <div />;
 jest.mock("metabase/containers/DatabaseHelpCard", () => ComponentMock);
-jest.mock("metabase/containers/DriverWarning", () => ComponentMock);
+jest.mock("metabase/containers/DatabaseEngineWarning", () => ComponentMock);
 
 function mockSettings({ cachingEnabled = false }) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);

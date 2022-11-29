@@ -12,7 +12,7 @@ import title from "metabase/hoc/Title";
 import Button from "metabase/core/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
-import DriverWarning from "metabase/databases/containers/DriverWarning";
+import DatabaseEngineWarning from "metabase/databases/containers/DatabaseEngineWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getWritebackEnabled } from "metabase/writeback/selectors";
 
@@ -170,7 +170,7 @@ class DatabaseEditApp extends Component {
                                 name="engine"
                                 disabled={database.is_sample}
                               />
-                              <DriverWarning
+                              <DatabaseEngineWarning
                                 engine={values.engine}
                                 onChange={engine =>
                                   onChangeField("engine", engine)

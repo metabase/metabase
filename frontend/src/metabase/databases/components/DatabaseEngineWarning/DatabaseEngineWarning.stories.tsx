@@ -1,16 +1,16 @@
 import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import { createMockEngine } from "metabase-types/api/mocks";
-import DriverWarning from "./DriverWarning";
+import DatabaseEngineWarning from "./DatabaseEngineWarning";
 
 export default {
-  title: "Components/DriverWarning",
-  component: DriverWarning,
+  title: "Databases/DatabaseEngineWarning",
+  component: DatabaseEngineWarning,
   argTypes: { onChange: { action: "onChange" } },
 };
 
-const Template: ComponentStory<typeof DriverWarning> = args => {
-  return <DriverWarning {...args} />;
+const Template: ComponentStory<typeof DatabaseEngineWarning> = args => {
+  return <DatabaseEngineWarning {...args} />;
 };
 Template.args = {
   engines: {
