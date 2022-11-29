@@ -1,12 +1,7 @@
 import { ComponentType, ReactNode } from "react";
-import {
-  DatabaseId,
-  EngineFieldOption,
-  EngineFieldType,
-} from "metabase-types/api";
+import { EngineFieldOption, EngineFieldType } from "metabase-types/api";
 
 export interface DatabaseValues {
-  id?: DatabaseId;
   engine: string | undefined;
   details: Record<string, unknown>;
 }

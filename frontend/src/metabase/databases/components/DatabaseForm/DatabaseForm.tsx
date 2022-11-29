@@ -15,6 +15,7 @@ import DatabaseEngineWarning from "../DatabaseEngineWarning";
 
 export interface DatabaseFormProps {
   engines: Record<string, Engine>;
+  initialValues?: DatabaseValues;
   isHosted?: boolean;
   isAdvanced?: boolean;
   onSubmit: (values: DatabaseValues) => void;
@@ -22,11 +23,12 @@ export interface DatabaseFormProps {
 
 const DatabaseForm = ({
   engines,
+  initialValues: initialData,
   isHosted = false,
   isAdvanced = false,
   onSubmit,
 }: DatabaseFormProps): JSX.Element => {
-  const [engineKey, setEngineKey] = useState<string>();
+  const [engineKey, setEngineKey] = useState(initialData?.engine);
   const engine = engineKey ? engines[engineKey] : undefined;
 
   const validationSchema = useMemo(() => {
@@ -34,8 +36,10 @@ const DatabaseForm = ({
   }, [engine, engineKey]);
 
   const initialValues = useMemo(() => {
-    return validationSchema.getDefault();
-  }, [validationSchema]);
+    return initialData
+      ? validationSchema.cast(initialData, { stripUnknown: true })
+      : validationSchema.getDefault();
+  }, [initialData, validationSchema]);
 
   return (
     <FormProvider
