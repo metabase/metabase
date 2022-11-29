@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 import Form from "metabase/core/components/Form";
@@ -19,6 +19,7 @@ export interface DatabaseFormProps {
   isHosted?: boolean;
   isAdvanced?: boolean;
   onSubmit: (values: DatabaseValues) => void;
+  onEngineChange?: (engineKey: string | undefined) => void;
 }
 
 const DatabaseForm = ({
@@ -27,6 +28,7 @@ const DatabaseForm = ({
   isHosted = false,
   isAdvanced = false,
   onSubmit,
+  onEngineChange,
 }: DatabaseFormProps): JSX.Element => {
   const [engineKey, setEngineKey] = useState(initialData?.engine);
   const engine = engineKey ? engines[engineKey] : undefined;
@@ -41,6 +43,14 @@ const DatabaseForm = ({
       : validationSchema.getDefault();
   }, [initialData, validationSchema]);
 
+  const handleEngineChange = useCallback(
+    (engineKey: string | undefined) => {
+      setEngineKey(engineKey);
+      onEngineChange?.(engineKey);
+    },
+    [onEngineChange],
+  );
+
   return (
     <FormProvider
       initialValues={initialValues}
@@ -54,7 +64,7 @@ const DatabaseForm = ({
         engines={engines}
         isHosted={isHosted}
         isAdvanced={isAdvanced}
-        onEngineChange={setEngineKey}
+        onEngineChange={handleEngineChange}
       />
     </FormProvider>
   );
