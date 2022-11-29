@@ -277,12 +277,14 @@
           sorter (fn [kind]
                    (get {"row/update" 1 "row/delete" 2 "row/create" 0} kind 3))
           action-mapper (fn [{:keys [id kind name]}]
-                          [id (or name
-                                  (get {"row/create" (i18n/tru "New")
-                                        "row/update" (i18n/tru "Edit")
-                                        "row/delete" (i18n/tru "Delete")}
-                                       kind))
-                           (= "row/delete" kind)])
+                          [id
+                           (or name
+                               (get {"row/create" (i18n/tru "New")
+                                     "row/update" (i18n/tru "Edit")
+                                     "row/delete" (i18n/tru "Delete")}
+                                    kind))
+                           (= "row/delete" kind)
+                           kind])
           requires-pk (comp #{"row/update" "row/delete"} :kind)]
       (for [model-id model-ids
             :let [model (get model-id->model model-id)
@@ -302,7 +304,7 @@
                   actions (->> actions
                                (filter selector)
                                (map action-mapper)
-                               (sort-by (comp sorter first)))]]
+                               (sort-by (comp sorter last)))]]
         {:page-type page-type
          :pk-field-slug pk-field-slug
          :pk-field-id (::action/field-id pk-param)
