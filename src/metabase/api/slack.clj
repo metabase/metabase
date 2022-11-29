@@ -4,7 +4,6 @@
             [compojure.core :refer [PUT]]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
-            [metabase.config :as config]
             [metabase.integrations.slack :as slack]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -22,7 +21,6 @@
   (validation/check-has-application-permission :setting)
   (try
     (when (and slack-app-token
-               (not config/is-test?)
                (not (slack/valid-token? slack-app-token)))
       (slack/clear-channel-cache!)
       (throw (ex-info (tru "Invalid Slack token.")
