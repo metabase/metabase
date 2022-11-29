@@ -10,7 +10,10 @@ jest.mock("metabase/entities/databases", () => ({
   Form: ComponentMock,
 }));
 
-jest.mock("metabase/containers/DatabaseEngineWarning", () => ComponentMock);
+jest.mock(
+  "metabase/databases/containers/DatabaseEngineWarning",
+  () => ComponentMock,
+);
 
 describe("DatabaseStep", () => {
   it("should render in active state", () => {
