@@ -1,8 +1,6 @@
-import React, { useCallback, useMemo, useRef } from "react";
-import { t } from "ttag";
-import FormSelect from "metabase/core/components/FormSelect";
+import React, { useMemo, useRef } from "react";
 import { Engine } from "metabase-types/api";
-import { SelectChangeEvent } from "metabase/core/components/Select";
+import DatabaseEngineSelect from "./DatabaseEngineSelect";
 
 export interface DatabaseEngineFieldProps {
   engineKey: string | undefined;
@@ -15,27 +13,17 @@ const DatabaseEngineField = ({
   engines,
   onChange,
 }: DatabaseEngineFieldProps): JSX.Element => {
-  const { current: isDisabled } = useRef(engineKey != null);
+  const { current: isNew } = useRef(engineKey == null);
 
   const options = useMemo(() => {
     return getEngineOptions(engines, engineKey);
   }, [engines, engineKey]);
 
-  const handleChange = useCallback(
-    (event: SelectChangeEvent<string>) => {
-      onChange(event.target.value);
-    },
-    [onChange],
-  );
-
   return (
-    <FormSelect
-      name="engine"
-      title={t`Database type`}
-      placeholder={t`Select a database`}
+    <DatabaseEngineSelect
       options={options}
-      disabled={isDisabled}
-      onChange={handleChange}
+      disabled={!isNew}
+      onChange={onChange}
     />
   );
 };
