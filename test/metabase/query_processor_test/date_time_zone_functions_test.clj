@@ -1,5 +1,6 @@
 (ns metabase.query-processor-test.date-time-zone-functions-test
-  (:require [clojure.string :as str]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
@@ -102,14 +103,21 @@
 
 (deftest extract-timestamp-test
   (mt/dataset times-mixed
-    (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
-      (is (= #{2 3 4}
-             (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
-                                        :fields      [[:expression "hour"]]})
-                  mt/process-query
-                  mt/rows
-                  (map first)
-                  set))))))
+    (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
+      (letfn [(run []
+                (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
+                                           :fields      [$dt_tz [:expression "hour"]]
+                                           :filter      [:= $id 1]})
+                     mt/process-query
+                     (mt/formatted-rows [str int])
+                     first))]
+        (mt/test-drivers (mt/normal-drivers-with-feature :set-timezone)
+          (is (= ["2004-03-19T09:19:09+07:00" 9]
+                 (run))))
+        (mt/test-drivers (set/difference (mt/normal-drivers)
+                                         (mt/normal-drivers-with-feature :set-timezone))
+          (is (= ["2004-03-19T02:19:09Z" 2]
+                 (run))))))))
 
 (deftest extraction-function-tests
   (mt/dataset times-mixed
