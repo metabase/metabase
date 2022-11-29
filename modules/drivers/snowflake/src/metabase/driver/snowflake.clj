@@ -1,6 +1,7 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -27,11 +28,11 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec])
-  (:import [java.sql ResultSet Types]
+  (:import java.io.File
+           java.nio.charset.StandardCharsets
+           [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
-           java.io.File
-           metabase.util.honeysql_extensions.Identifier
-           java.nio.charset.StandardCharsets))
+           metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
@@ -283,12 +284,12 @@
                                               (qp.store/fetch-and-store-database! (u/the-id database))
                                               (sql.qp/->honeysql driver table))]}))
 
-(defmethod driver/describe-database :snowflake
-  [driver database]
+(defn describe-database* [database]
   ;; using the JDBC `.getTables` method seems to be pretty buggy -- it works sometimes but other times randomly
-  ;; returns nothing
+  ;; returns nothing. Probably why it was removed some time ago.
+  (log/info "defmethod driver/describe-database :snowflake called.")
   (let [db-name          (db-name database)
-        excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
+        excluded-schemas (set (sql-jdbc.sync/excluded-schemas :snowflake))]
     (qp.store/with-store
       (qp.store/fetch-and-store-database! (u/the-id database))
       (let [spec            (sql-jdbc.conn/db->pooled-connection-spec database)
@@ -304,7 +305,7 @@
                                          (driver.s/include-schema? inclusion-patterns
                                                                    exclusion-patterns
                                                                    schema)
-                                         (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
+                                         (sql-jdbc.sync/have-select-privilege? :snowflake conn schema table-name))))
                           (map (fn [{schema :schema_name, table-name :name, remark :comment}]
                                  {:name        table-name
                                   :schema      schema
@@ -313,6 +314,12 @@
                       (jdbc/reducible-query {:connection conn} sql)
                       (catch Throwable e
                         (throw (ex-info (trs "Error executing query: {0}" (ex-message e)) {:sql sql} e)))))})))))
+
+(def ^{:arglists '([database])} describe-database-ttl
+  (let [five-minutes (* 1000 60 5)]
+    (memoize/ttl describe-database* {} :ttl/threshold five-minutes)))
+
+(defmethod driver/describe-database :snowflake [driver database] (describe-database-ttl database))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
