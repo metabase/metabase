@@ -4,26 +4,30 @@ title: ConvertTimezone
 
 # ConvertTimezone
 
-`convertTimezone` shifts a datetime into a specified time zone by adding or subtracting the right number of hours from the datetime.
-
-Time zones are rather nasty to work with (it's easy to make mistakes, and difficult to catch them), so you should only try to use `convertTimezone` if the interpretation of your data is very sensitive to time-based cutoffs.
-
-For example, if you're tracking user logins over time, you probably won't run your business differently if some logins get counted on Mondays instead of Tuesdays. However, if you're using Metabase to do something precise, like your taxes, you (and the government) will probably care a lot more about the difference between transactions that occurred on Dec 31 vs. Jan 1.
+`convertTimezone` shifts a datetime into a specified time zone by adding or subtracting the right interval from the datetime. 
 
 | Syntax                                                               | Example                                                       |
 |----------------------------------------------------------------------|---------------------------------------------------------------|
 | `convertTimezone(column, target, source)`                            | `convertTimezone("December 28, 2022, 12:00:00", "EST, "PST")` |
 | Shifts a datetime from the source time zone to the target time zone. | `December 28, 2022, 9:00:00`                                  |
 
+Time zones are rather nasty to work with (it's easy to make mistakes, and difficult to catch them), so you should only try to use `convertTimezone` if the interpretation of your data is very sensitive to time-based cutoffs.
+
+For example, if you're tracking user logins over time, you probably won't run your business differently if some logins get counted on Mondays instead of Tuesdays. However, if you're using Metabase to do something precise, like your taxes, you (and the government) will probably care a lot more about the difference between transactions that occurred on Dec 31 vs. Jan 1.
+
+Note that `convertTimezone` returns the data type `timestamp without time zone` (or your database's equivalent).
+
 ## Parameters
 
 - `target` is the time zone you want to assign to your column.
-- The name of the `target` time zone depends on your database. For example, you may have to use "Canada/Eastern" instead of "EST".
-- `source` is only a required parameter if you have timestamps without time zones in your database. See [Limitations](#limitations) for more info.
+- The name of the `target` time zone depends on your database (for example, "Canada/Eastern" vs. "EST").
+- `source` is only a required parameter if you're using `convertTimezone` on a column or expression with the data type `timestamp without time zone`.
+
+See [Limitations](#limitations) for more info.
 
 ## Creating custom report dates
 
-Let's say that you have some time series data that's stored in one or more time zones (**Source Time**). You want to create custom reporting dates for a team that lives in EST. We recommend labeling `convertTimezone` columns with the name of the target time zone (or adding the time zone to the metadata of a model).
+Let's say that you have some time series data that's stored in one or more time zones (**Source Time**). You want to create custom reporting dates for a team that lives in EST.
 
 | Source Time                        | Team Report Time (EST)       |
 |------------------------------------|------------------------------|
@@ -31,22 +35,21 @@ Let's say that you have some time series data that's stored in one or more time 
 | December 28, 2022, 21:00:00        | December 28, 2022, 19:00:00  |
 | December 27, 2022, 08:00:00        | December 27, 2022, 05:00:00  |
 
-If you're unsure about the time zone for **Source Time**, you should use two `convertTimezone` expressions to create **Team Report Time (EST)** :
+If **Source Time** is stored as a timestamp with time zone, you only need to provide the `target` time zone to create **Team Report Time (EST)**:
 
 ```
-convertTimezone(convertTimezone([Source Time], 'UTC'), 'EST', 'UTC')
+convertTimezone([Source Time], 'EST')
 ```
 
-- The inner `convertTimezone` converts your column to UTC (basically, you're setting your own "source" time zone).
-- The outer `convertTimezone` converts the UTC output to your actual target time zone (EST).
-- You must provide the `source` parameter in the outer expression (because the output of the inner `convertTimezone` expression is a timestamp without time zone metadata).
+If **Source Time** is stored as a timestamp without time zone, you _must_ provide the `source` time zone (or you'll get an error):
 
-You should only write something like `convertTimezone([Source Time], 'EST')` if you're certain that:
+```
+convertTimezone([Source Time], 'EST', 'UTC')
+```
 
-- **Source Time** is stored _with_ time zone metadata in your database, and
-- your Metabase displays datetimes or timestamps in your database's time zone.
+Unfortunately, it's difficult to tell whether a timestamp is stored with or without time zone metadata in your database---you may need to ask your Metabase admin to help you confirm. For more gory details, see [Limitations](#limitations).
 
-See [Limitations](#limitations) if you're interested in more gory details.
+Also, it's usually a good idea to label `convertTimezone` columns with the name of the target time zone (or adding the target time zone to the metadata of a model). We promise that this makes life easier when someone inevitably asks why the numbers don't match.
 
 ## Accepted data types
 
@@ -71,7 +74,7 @@ Before you do time zone conversions, make sure you know the source time zone tha
 | No time zone                  | Missing time zone metadata                                          | Databases don't _require_ you to store datetimes with time zone metadata.                                        |
 | Metabase report time zone     | Time zone that Metabase uses to _display_ datetimes.                | Metabase can display dates and times in PST, even if the dates and times are stored as UTC in your database.     |
 
-For example, say you have a table with one row for each person who visited your website. It's hard to tell, just from looking at `December 28, 2022, 12:00:00`, whether it's:
+For example, say you have a table with one row for each person who visited your website. It's hard to tell, just from looking at `December 28, 2022, 12:00:00`, whether the timestamp is:
 
 - stored using your database's time zone (usually UTC),
 - stored without time zone metadata (for example, if the website visitor is in HKT, then the datetime `December 28, 2022, 12:00:00` might "implicitly" use Hong Kong time),

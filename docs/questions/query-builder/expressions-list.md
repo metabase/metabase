@@ -273,7 +273,7 @@ Related: [regexextract](#regexextract).
 
 ### [convertTimezone](./expressions/converttimezone.md)
 
-Convert the timezone of a date or timezone column.
+Shifts a date or timestamp value into a specified time zone.
 
 Syntax: `convertTimezone(column, target, source)`.
 
@@ -297,7 +297,7 @@ Example: `datetimeAdd("March 25, 2021, 12:52:37", 1, "month")` would return `Apr
 
 ### [datetimeDiff](./expressions/datetimediff.md)
 
-Gets the difference between two datetimes (datetime2 minus datetime 1) using the specified unit of time.
+Returns the difference between two datetimes in some unit of time: day, week, month, etc (for example, `datetimeDiff(d1, d2, "day") ` will return the number of days between `d1` and `d2`).
 
 Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
 
@@ -442,7 +442,7 @@ Syntax: `month(datetime)`.
 
 Example: `month("March 25, 2021, 12:52:37")` would return the month as an integer, `3`.
 
-### now
+### [now](./expressions/now.md)
 
 Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/settings.md#report-timezone).
 

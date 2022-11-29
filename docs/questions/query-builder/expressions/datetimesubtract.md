@@ -13,8 +13,15 @@ title: DatetimeSubtract
 
 ## Parameters
 
-- Units can be any of: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
-- Amounts can be negative: `datetimeSubtract("March 25, 2021, 12:52:37", -1, "month")` will return `April 25, 2021, 12:52:37`.
+- Possible values for `unit`:
+    - "year"
+    - "quarter" 
+    - "month"
+    - "day"
+    - "hour"
+    - "second"
+    - "millisecond"
+- `amount` can be negative: `datetimeSubtract("March 25, 2021, 12:52:37", -1, "month")` will return `April 25, 2021, 12:52:37`.
 
 ## Calculating a start date
 

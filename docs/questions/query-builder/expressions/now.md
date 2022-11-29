@@ -4,7 +4,7 @@ title: Now
 
 # Now
 
-`now` returns the current date and time using your Metabase [report timezone](../../../configuring-metabase/settings.md#report-timezone).
+`now` returns the current datetime using your Metabase [report timezone](../../../configuring-metabase/settings.md#report-timezone).
 
 ## Creating conditional logic using the current date or time
 
@@ -57,6 +57,12 @@ This table uses `timestamp` and `datetime` interchangeably. If your dates and ti
 ## Limitations
 
 `now` might not actually be _now_ (in your local time) if you don't live in the same timezone as your Metabase [report time zone](../../../configuring-metabase/settings.md#report-timezone).
+
+If you need to compare `now` to a column in a different time zone, use  [convertTimezone](./converttimezone.md) to shift both columns into the same time zone. For example, to compare `now` in UTC with **Deadline** in UTC:
+
+```
+convertTimezone(now, 'UTC', <report timezone>) >= convertTimezone([Deadline], 'UTC', <source time zone>)
+```
 
 ## Related functions
 

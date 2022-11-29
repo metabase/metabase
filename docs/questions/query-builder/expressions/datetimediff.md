@@ -13,7 +13,14 @@ title: DatetimeDiff
 
 ## Parameters
 
-Units can be any of: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
+Possible values for `unit`:
+- "year"
+- "quarter" 
+- "month"
+- "day"
+- "hour"
+- "second"
+- "millisecond"
 
 ## Calculating age
 
@@ -96,7 +103,7 @@ produces the same result as
 datetimeDiff([Aging Start], [Aging End], "month")
 ```
 
-Yes, it looks a bit wrong, but the spreadsheet function really is `DATEDIF()`, not `DATEDIFF()`.
+Yes, `DATEDIF` looks a bit wrong, but the spreadsheet function really is `DATEDIF()` with one "f", not `DATEDIFF()`.
 
 ### Python
 
