@@ -56,7 +56,7 @@ This table uses `timestamp` and `datetime` interchangeably. If your dates and ti
 
 ## Limitations
 
-`now` might not actually be _now_ (in your local time) if you don't live in the same timezone as your Metabase [report time zone](../configuring-metabase/settings#report-timezone).
+`now` might not actually be _now_ (in your local time) if you don't live in the same timezone as your Metabase [report time zone](../../../configuring-metabase/settings.md#report-timezone).
 
 ## Related functions
 
@@ -70,7 +70,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-By default, `now` uses your Metabase's [report time zone](../../../configuring-metabase/settings#report-timezone). If your admin hasn't set a report time zone, `now` will use your database's time zone.
+By default, `now` uses your Metabase's [report time zone](../../../configuring-metabase/settings.md#report-timezone). If your admin hasn't set a report time zone, `now` will use your database's time zone.
 
 For example, let's say you're using a Postgres database with time zone UTC.
 
