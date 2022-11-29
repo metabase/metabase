@@ -2,14 +2,14 @@ import React from "react";
 import { Group } from "@visx/group";
 import { AxisBottom, AxisLeft, AxisScale } from "@visx/axis";
 import { Bar } from "@visx/shape";
-import type { NumberValue, ScaleBand, ScaleContinuousNumeric } from "d3-scale";
+import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
 import { Text } from "@visx/text";
 import { GridColumns } from "@visx/grid";
 import { scaleBand, StringLike, NumberLike } from "@visx/scale";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
 import { Margin } from "metabase/visualizations/shared/types/layout";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
-import { BarData, RowChartTheme, SeriesData, YValue } from "../RowChart/types";
+import { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
 import { DATA_LABEL_OFFSET } from "./constants";
 import { getDataLabel } from "./utils/data-labels";
 
@@ -94,7 +94,7 @@ const RowChartView = <TDatum,>({
               bar;
             let y = yScale(yValue);
 
-            if (y == null) {
+            if (y == null || xStartValue == null || xEndValue == null) {
               return null;
             }
 
