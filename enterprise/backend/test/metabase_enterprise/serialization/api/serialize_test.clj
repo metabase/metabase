@@ -31,7 +31,7 @@
 
 (deftest serialize-data-model-happy-path-test
   (do-serialize-data-model
-   (fn [{:keys [collection-id collection-filename dir]}]
+   (fn [{:keys [collection-id dir]}]
      (is (= {:status "ok"}
             (mt/user-http-request :crowberto :post 200 "ee/serialization/serialize/data-model"
                                   {:collection_ids [collection-id]
