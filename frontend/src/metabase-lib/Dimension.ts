@@ -1227,6 +1227,37 @@ export class ExpressionDimension extends Dimension {
 
   field() {
     const query = this._query;
+
+    const fieldFromMetadata = this.getFieldFromMetadata();
+
+    if (fieldFromMetadata) {
+      return fieldFromMetadata;
+    }
+
+    return this.buildFieldFromNoMetadata();
+  }
+
+  // If a dimension has access to a question with result metadata,
+  // we try to find the field using the metadata directly,
+  // so that we don't have to try to infer field metadata from the expression
+  getFieldFromMetadata() {
+    const query = this._query;
+
+    const resultMetadata = query?.question()?.getResultMetadata?.();
+    if (resultMetadata) {
+      const fieldMetadata = _.findWhere(resultMetadata, {
+        name: this.name(),
+      });
+      if (fieldMetadata) {
+        return this._createField(fieldMetadata);
+      }
+    }
+
+    return null;
+  }
+
+  buildFieldFromNoMetadata() {
+    const query = this._query;
     const table = query ? query.table() : null;
 
     // fallback
@@ -1274,19 +1305,6 @@ export class ExpressionDimension extends Dimension {
           break;
       }
       semantic_type = base_type;
-    }
-
-    // if a dimension has access to a question with result metadata,
-    // we try to find the field using the metadata directly,
-    // so that we don't have to try to infer field metadata from the expression
-    const resultMetadata = query?.question()?.getResultMetadata?.();
-    if (resultMetadata) {
-      const fieldMetadata = _.findWhere(resultMetadata, {
-        name: this.name(),
-      });
-      if (fieldMetadata) {
-        return this._createField(fieldMetadata);
-      }
     }
 
     const subsOptions = getOptions(semantic_type ? semantic_type : base_type);
