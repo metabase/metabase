@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.v2.extract-test
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
+            [java-time :as t]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Dimension Field FieldValues Metric
@@ -211,7 +212,7 @@
                                                                 {(str "[\"ref\",[\"field\"," field2-id ",null]]") {:column_title "Locus"}}}}]]
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes.base/extract-one "Card" {} (db/select-one 'Card :id c1-id))]
-          (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c1-eid}])
+          (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c1-eid :label "some_question"}])
                         :table_id                    (s/eq ["My Database" nil "Schemaless Table"])
                         :creator_id                  (s/eq "mark@direstrai.ts")
                         :collection_id               (s/eq coll-eid)
@@ -235,7 +236,7 @@
                    (set (serdes.base/serdes-dependencies ser))))))
 
         (let [ser (serdes.base/extract-one "Card" {} (db/select-one 'Card :id c2-id))]
-          (is (schema= {:serdes/meta         (s/eq [{:model "Card" :id c2-eid}])
+          (is (schema= {:serdes/meta         (s/eq [{:model "Card" :id c2-eid :label "second_question"}])
                         :table_id            (s/eq ["My Database" "PUBLIC" "Schema'd Table"])
                         :creator_id          (s/eq "mark@direstrai.ts")
                         :collection_id       (s/eq coll-eid)
@@ -266,7 +267,7 @@
                    (set (serdes.base/serdes-dependencies ser))))))
 
         (let [ser (serdes.base/extract-one "Card" {} (db/select-one 'Card :id c3-id))]
-          (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c3-eid}])
+          (is (schema= {:serdes/meta                 (s/eq [{:model "Card" :id c3-eid :label "third_question"}])
                         :table_id                    (s/eq ["My Database" "PUBLIC" "Schema'd Table"])
                         :creator_id                  (s/eq "mark@direstrai.ts")
                         :collection_id               (s/eq coll-eid)
@@ -314,7 +315,7 @@
 
       (testing "Cards can be based on other cards"
         (let [ser (serdes.base/extract-one "Card" {} (db/select-one 'Card :id c5-id))]
-          (is (schema= {:serdes/meta    (s/eq [{:model "Card" :id c5-eid}])
+          (is (schema= {:serdes/meta    (s/eq [{:model "Card" :id c5-eid :label "dependent_question"}])
                         :table_id       (s/eq ["My Database" "PUBLIC" "Schema'd Table"])
                         :creator_id     (s/eq "mark@direstrai.ts")
                         :collection_id  (s/eq coll-eid)
@@ -337,7 +338,7 @@
 
       (testing "Dashboards include their Dashcards"
         (let [ser (serdes.base/extract-one "Dashboard" {} (db/select-one 'Dashboard :id other-dash-id))]
-          (is (schema= {:serdes/meta            (s/eq [{:model "Dashboard" :id other-dash}])
+          (is (schema= {:serdes/meta            (s/eq [{:model "Dashboard" :id other-dash :label "dave_s_dash"}])
                         :entity_id              (s/eq other-dash)
                         :ordered_cards
                         [{:visualization_settings (s/eq {:table.pivot_column "SOURCE"
@@ -414,60 +415,90 @@
                        Database   [{db-id        :id}        {:name "My Database"}]
                        Table      [{no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}]
                        Field      [{email-id     :id}        {:name "email" :table_id no-schema-id}]
-                       Dimension  [{dim1-id      :id
-                                    dim1-eid     :entity_id} {:name     "Vanilla Dimension"
+                       Dimension  [{dim1-eid     :entity_id} {:name       "Vanilla Dimension"
+                                                              :field_id   email-id
+                                                              :type       "internal"
+                                                              :created_at (t/minus (t/offset-date-time)
+                                                                                   (t/days 3))}]
+                       Dimension  [{dim2-eid     :entity_id} {:name     "Bonus Dimension"
                                                               :field_id email-id
-                                                              :type     "internal"}]
+                                                              :type     "internal"
+                                                              :created_at (t/minus (t/offset-date-time)
+                                                                                   (t/days 6))}]
 
-                       ;; Advanced case: :field_id is the foreign key, :human_readable_field_id the real target field.
-                       Table      [{this-table   :id}        {:name        "Schema'd Table"
+                       ;; Advanced case: Dimension capturing a foreign relationship.
+                       ;; The parent field (Orders.customer_id) is the foreign key.
+                       ;; Dimension.field_id (Customers.id) is the foreign ID field;
+                       ;; Dimension.human_readable_field_id (Customers.name) is what we want to render.
+                       Table      [{customers    :id}        {:name        "Customers"
                                                               :db_id       db-id
                                                               :schema      "PUBLIC"}]
-                       Field      [{fk-id        :id}        {:name "foreign_id" :table_id this-table}]
-                       Table      [{other-table  :id}        {:name        "Foreign Table"
+                       Field      [{cust-id      :id}        {:name "id" :table_id customers}]
+                       Field      [{cust-name    :id}        {:name "name" :table_id customers}]
+                       Table      [{orders       :id}        {:name        "Orders"
                                                               :db_id       db-id
                                                               :schema      "PUBLIC"}]
-                       Field      [{target-id    :id}        {:name "real_field" :table_id other-table}]
-                       Dimension  [{dim2-id      :id
-                                    dim2-eid     :entity_id} {:name     "Foreign Dimension"
+                       Field      [{fk-id        :id}        {:name     "customer_id"
+                                                              :table_id orders
+                                                              :fk_target_field_id cust-id}]
+                       Dimension  [_                         {:name     "Customer Name"
                                                               :type     "external"
                                                               :field_id fk-id
-                                                              :human_readable_field_id target-id}]]
-      (testing "vanilla user-created dimensions"
-        (let [ser (serdes.base/extract-one "Dimension" {} (db/select-one 'Dimension :id dim1-id))]
-          (is (schema= {:serdes/meta             (s/eq [{:model "Dimension" :id dim1-eid}])
-                        :field_id                (s/eq ["My Database" nil "Schemaless Table" "email"])
-                        :human_readable_field_id (s/eq nil)
-                        :created_at              LocalDateTime
-                        s/Keyword                s/Any}
+                                                              :human_readable_field_id cust-name}]]
+      (testing "dimensions without foreign keys are inlined into their Fields"
+        (let [ser (serdes.base/extract-one "Field" {} (db/select-one Field :id email-id))]
+          (is (schema= {:serdes/meta   (s/eq [{:model "Database" :id "My Database"}
+                                              {:model "Table"    :id "Schemaless Table"}
+                                              {:model "Field"    :id "email"}])
+                        :dimensions    [{(s/optional-key :human_readable_field_id) [(s/maybe s/Str)]
+                                         :created_at                               LocalDateTime
+                                         s/Keyword                                 s/Any}]
+                        s/Keyword      s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "depend on the one Field"
+          (testing "ordered by ascending :created_at"
+            (is (= [dim2-eid dim1-eid]
+                   (->> ser :dimensions (map :entity_id)))))
+
+          (testing "which depend on just the table"
             (is (= #{[{:model "Database"   :id "My Database"}
-                      {:model "Table"      :id "Schemaless Table"}
-                      {:model "Field"      :id "email"}]}
+                      {:model "Table"      :id "Schemaless Table"}]}
                    (set (serdes.base/serdes-dependencies ser)))))))
 
-      (testing "foreign key dimensions"
-        (let [ser (serdes.base/extract-one "Dimension" {} (db/select-one 'Dimension :id dim2-id))]
-          (is (schema= {:serdes/meta             (s/eq [{:model "Dimension" :id dim2-eid}])
-                        :field_id                (s/eq ["My Database" "PUBLIC" "Schema'd Table" "foreign_id"])
-                        :human_readable_field_id (s/eq ["My Database" "PUBLIC" "Foreign Table"  "real_field"])
-                        :created_at              LocalDateTime
-                        s/Keyword                s/Any}
+      (testing "foreign key dimensions are inlined into their Fields"
+        (let [ser (serdes.base/extract-one "Field" {} (db/select-one Field :id fk-id))]
+          (is (schema= {:serdes/meta        (s/eq [{:model "Database" :id "My Database"}
+                                                   {:model "Schema"   :id "PUBLIC"}
+                                                   {:model "Table"    :id "Orders"}
+                                                   {:model "Field"    :id "customer_id"}])
+                        :name               (s/eq "customer_id")
+                        :fk_target_field_id (s/eq ["My Database" "PUBLIC" "Customers" "id"])
+                        :dimensions         [{:human_readable_field_id [s/Str]
+                                              :created_at              LocalDateTime
+                                              s/Keyword                s/Any}]
+                        s/Keyword           s/Any}
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "depend on both Fields"
+          (testing "dimensions are properly inlined"
+            (is (schema= [{:human_readable_field_id (s/eq ["My Database" "PUBLIC" "Customers" "name"])
+                           :created_at              LocalDateTime
+                           s/Keyword                s/Any}]
+                         (:dimensions ser))))
+
+          (testing "which depend on the Table and both real and human-readable foreign Fields"
             (is (= #{[{:model "Database"   :id "My Database"}
                       {:model "Schema"     :id "PUBLIC"}
-                      {:model "Table"      :id "Schema'd Table"}
-                      {:model "Field"      :id "foreign_id"}]
+                      {:model "Table"      :id "Orders"}]
                      [{:model "Database"   :id "My Database"}
                       {:model "Schema"     :id "PUBLIC"}
-                      {:model "Table"      :id "Foreign Table"}
-                      {:model "Field"      :id "real_field"}]}
+                      {:model "Table"      :id "Customers"}
+                      {:model "Field"      :id "id"}]
+                     [{:model "Database"   :id "My Database"}
+                      {:model "Schema"     :id "PUBLIC"}
+                      {:model "Table"      :id "Customers"}
+                      {:model "Field"      :id "name"}]}
                    (set (serdes.base/serdes-dependencies ser))))))))))
 
 (deftest metrics-test
@@ -487,7 +518,7 @@
                                                                :aggregation [[:sum [:field field-id nil]]]}}]]
       (testing "metrics"
         (let [ser (serdes.base/extract-one "Metric" {} (db/select-one 'Metric :id m1-id))]
-          (is (schema= {:serdes/meta (s/eq [{:model "Metric" :id m1-eid :label "My Metric"}])
+          (is (schema= {:serdes/meta (s/eq [{:model "Metric" :id m1-eid :label "my_metric"}])
                         :table_id    (s/eq ["My Database" nil "Schemaless Table"])
                         :creator_id  (s/eq "ann@heart.band")
                         :definition  (s/eq {:source-table ["My Database" nil "Schemaless Table"]
@@ -529,7 +560,7 @@
           (let [ser (serdes.base/extract-one "NativeQuerySnippet" {} (db/select-one 'NativeQuerySnippet :id s1-id))]
             (is (schema= {:serdes/meta   (s/eq [{:model "NativeQuerySnippet"
                                                  :id s1-eid
-                                                 :label "Snippet 1"}])
+                                                 :label "snippet_1"}])
                           :collection_id (s/eq coll-eid)
                           :creator_id    (s/eq "ann@heart.band")
                           :created_at    OffsetDateTime
@@ -545,7 +576,7 @@
           (let [ser (serdes.base/extract-one "NativeQuerySnippet" {} (db/select-one 'NativeQuerySnippet :id s2-id))]
             (is (schema= {:serdes/meta                    (s/eq [{:model "NativeQuerySnippet"
                                                                   :id s2-eid
-                                                                  :label "Snippet 2"}])
+                                                                  :label "snippet_2"}])
                           (s/optional-key :collection_id) (s/eq nil)
                           :creator_id                     (s/eq "ann@heart.band")
                           :created_at                     OffsetDateTime
@@ -579,7 +610,7 @@
       (testing "timelines"
         (testing "with no events"
           (let [ser (serdes.base/extract-one "Timeline" {} (db/select-one 'Timeline :id empty-id))]
-            (is (schema= {:serdes/meta   (s/eq [{:model "Timeline" :id empty-eid}])
+            (is (schema= {:serdes/meta   (s/eq [{:model "Timeline" :id empty-eid :label "empty_timeline"}])
                           :collection_id (s/eq coll-eid)
                           :creator_id    (s/eq "ann@heart.band")
                           :created_at    OffsetDateTime
@@ -594,7 +625,7 @@
         (testing "with events"
           (let [ser   (serdes.base/extract-one "Timeline" {} (db/select-one 'Timeline :id line-id))
                 stamp "2020-04-11T00:00:00Z"]
-            (is (schema= {:serdes/meta   (s/eq [{:model "Timeline" :id line-eid}])
+            (is (schema= {:serdes/meta   (s/eq [{:model "Timeline" :id line-eid :label "populated_timeline"}])
                           :collection_id (s/eq coll-eid)
                           :creator_id    (s/eq "ann@heart.band")
                           :created_at    OffsetDateTime
@@ -628,7 +659,7 @@
                                                                            :filter [:< [:field field-id nil] 18]}}]]
       (testing "segment"
         (let [ser (serdes.base/extract-one "Segment" {} (db/select-one 'Segment :id s1-id))]
-          (is (schema= {:serdes/meta (s/eq [{:model "Segment" :id s1-eid :label "My Segment"}])
+          (is (schema= {:serdes/meta (s/eq [{:model "Segment" :id s1-eid :label "my_segment"}])
                         :table_id    (s/eq ["My Database" nil "Schemaless Table"])
                         :creator_id  (s/eq "ann@heart.band")
                         :definition  (s/eq {:source-table ["My Database" nil "Schemaless Table"]
@@ -718,7 +749,9 @@
                                                               :dashboard_id  dash-id}]]
       (testing "pulse with neither collection nor dashboard"
         (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-none-id))]
-          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-none-eid}])
+          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse"
+                                                                :id    p-none-eid
+                                                                :label "pulse_w_o_collection_or_dashboard"}])
                         :creator_id                     (s/eq "ann@heart.band")
                         (s/optional-key :dashboard_id)  (s/eq nil)
                         (s/optional-key :collection_id) (s/eq nil)
@@ -733,7 +766,9 @@
 
       (testing "pulse with just collection"
         (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-coll-id))]
-          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-coll-eid}])
+          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse"
+                                                                :id    p-coll-eid
+                                                                :label "pulse_with_only_collection"}])
                         :creator_id                     (s/eq "ann@heart.band")
                         (s/optional-key :dashboard_id)  (s/eq nil)
                         :collection_id                  (s/eq coll-eid)
@@ -748,7 +783,9 @@
 
       (testing "pulse with just dashboard"
         (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-dash-id))]
-          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse" :id p-dash-eid}])
+          (is (schema= {:serdes/meta                    (s/eq [{:model "Pulse"
+                                                                :id    p-dash-eid
+                                                                :label "pulse_with_only_dashboard"}])
                         :creator_id                     (s/eq "ann@heart.band")
                         :dashboard_id                   (s/eq dash-eid)
                         (s/optional-key :collection_id) (s/eq nil)
@@ -763,7 +800,9 @@
 
       (testing "pulse with both collection and dashboard"
         (let [ser (serdes.base/extract-one "Pulse" {} (db/select-one 'Pulse :id p-both-id))]
-          (is (schema= {:serdes/meta   (s/eq [{:model "Pulse" :id p-both-eid}])
+          (is (schema= {:serdes/meta   (s/eq [{:model "Pulse"
+                                               :id    p-both-eid
+                                               :label "pulse_with_both_collection_and_dashboard"}])
                         :creator_id    (s/eq "ann@heart.band")
                         :dashboard_id  (s/eq dash-eid)
                         :collection_id (s/eq coll-eid)
@@ -969,45 +1008,45 @@
 
       (testing "selecting a dashboard gets all cards its dashcards depend on"
         (testing "grandparent dashboard"
-          (is (= #{[{:model "Dashboard" :id dash1-eid}]
-                   [{:model "Card" :id c1-1-eid}]
-                   [{:model "Card" :id c1-2-eid}]}
+          (is (= #{[{:model "Dashboard" :id dash1-eid :label "dashboard_1"}]
+                   [{:model "Card"      :id c1-1-eid  :label "question_1_1"}]
+                   [{:model "Card"      :id c1-2-eid  :label "question_1_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash1-id]]})
                       (map serdes.base/serdes-path)
                       set))))
 
         (testing "middle dashboard"
-          (is (= #{[{:model "Dashboard" :id dash2-eid}]
-                   [{:model "Card" :id c2-1-eid}]
-                   [{:model "Card" :id c2-2-eid}]}
+          (is (= #{[{:model "Dashboard" :id dash2-eid :label "dashboard_2"}]
+                   [{:model "Card"      :id c2-1-eid  :label "question_2_1"}]
+                   [{:model "Card"      :id c2-2-eid  :label "question_2_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash2-id]]})
                       (map serdes.base/serdes-path)
                       set))))
 
         (testing "grandchild dashboard"
-          (is (= #{[{:model "Dashboard" :id dash3-eid}]
-                   [{:model "Card" :id c3-1-eid}]
-                   [{:model "Card" :id c3-2-eid}]}
+          (is (= #{[{:model "Dashboard" :id dash3-eid :label "dashboard_3"}]
+                   [{:model "Card"      :id c3-1-eid  :label "question_3_1"}]
+                   [{:model "Card"      :id c3-2-eid  :label "question_3_2"}]}
                  (->> (extract/extract-subtrees {:targets [["Dashboard" dash3-id]]})
                       (map serdes.base/serdes-path)
                       set)))))
 
       (testing "selecting a collection gets all its contents"
         (let [grandchild-paths  #{[{:model "Collection"    :id coll3-eid :label "grandchild_collection"}]
-                                  [{:model "Dashboard"     :id dash3-eid}]
-                                  [{:model "Card"          :id c3-1-eid}]
-                                  [{:model "Card"          :id c3-2-eid}]
-                                  [{:model "Card"          :id c3-3-eid}]}
+                                  [{:model "Dashboard"     :id dash3-eid :label "dashboard_3"}]
+                                  [{:model "Card"          :id c3-1-eid  :label "question_3_1"}]
+                                  [{:model "Card"          :id c3-2-eid  :label "question_3_2"}]
+                                  [{:model "Card"          :id c3-3-eid  :label "question_3_3"}]}
               middle-paths      #{[{:model "Collection"    :id coll2-eid :label "nested_collection"}]
-                                  [{:model "Dashboard"     :id dash2-eid}]
-                                  [{:model "Card"          :id c2-1-eid}]
-                                  [{:model "Card"          :id c2-2-eid}]
-                                  [{:model "Card"          :id c2-3-eid}]}
+                                  [{:model "Dashboard"     :id dash2-eid :label "dashboard_2"}]
+                                  [{:model "Card"          :id c2-1-eid  :label "question_2_1"}]
+                                  [{:model "Card"          :id c2-2-eid  :label "question_2_2"}]
+                                  [{:model "Card"          :id c2-3-eid  :label "question_2_3"}]}
               grandparent-paths #{[{:model "Collection"    :id coll1-eid :label "some_collection"}]
-                                  [{:model "Dashboard"     :id dash1-eid}]
-                                  [{:model "Card"          :id c1-1-eid}]
-                                  [{:model "Card"          :id c1-2-eid}]
-                                  [{:model "Card"          :id c1-3-eid}]}]
+                                  [{:model "Dashboard"     :id dash1-eid :label "dashboard_1"}]
+                                  [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
+                                  [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]
+                                  [{:model "Card"          :id c1-3-eid  :label "question_1_3"}]}]
           (testing "grandchild collection has all its own contents"
             (is (= grandchild-paths ; Includes the third card not found in the collection
                    (->> (extract/extract-subtrees {:targets [["Collection" coll3-id]]})
@@ -1023,3 +1062,22 @@
                    (->> (extract/extract-subtrees {:targets [["Collection" coll1-id]]})
                         (map serdes.base/serdes-path)
                         set)))))))))
+
+(deftest foreign-key-field-test
+  (ts/with-empty-h2-app-db
+    (ts/with-temp-dpc [Database   [{db-id         :id}        {:name "My Database"}]
+                       Table      [{no-schema-id  :id}        {:name "Schemaless Table" :db_id db-id}]
+                       Field      [{some-field-id :id}        {:name "Some Field" :table_id no-schema-id}]
+                       Table      [{schema-id     :id}        {:name        "Schema'd Table"
+                                                               :db_id       db-id
+                                                               :schema      "PUBLIC"}]
+                       Field      [_                          {:name "Other Field" :table_id schema-id}]
+                       Field      [{fk-id         :id}        {:name     "Foreign Key"
+                                                               :table_id schema-id
+                                                               :fk_target_field_id some-field-id}]]
+
+      (testing "fields that reference foreign keys are properly exported as Field references"
+        (is (= ["My Database" nil "Schemaless Table" "Some Field"]
+               (->> (db/select-one Field :id fk-id)
+                    (serdes.base/extract-one "Field" {})
+                    :fk_target_field_id)))))))

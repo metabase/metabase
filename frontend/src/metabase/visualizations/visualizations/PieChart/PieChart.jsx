@@ -122,18 +122,21 @@ export default class PieChart extends Component {
       title: t`Show legend`,
       widget: "toggle",
       default: true,
+      inline: true,
     },
     "pie.show_legend_perecent": {
       section: t`Display`,
       title: t`Show percentages in legend`,
       widget: "toggle",
       default: true,
+      inline: true,
     },
     "pie.show_data_labels": {
       section: t`Display`,
       title: t`Show data labels`,
       widget: "toggle",
       default: false,
+      inline: true,
     },
     "pie.slice_threshold": {
       section: t`Display`,
@@ -506,7 +509,7 @@ export default class PieChart extends Component {
         showLegend={settings["pie.show_legend"]}
         isDashboard={this.props.isDashboard}
       >
-        <div className={styles.ChartAndDetail}>
+        <div>
           <div ref={this.chartDetail} className={styles.Detail}>
             <div
               data-testid="detail-value"

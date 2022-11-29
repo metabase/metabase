@@ -55,6 +55,7 @@ jobs:
       MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090"  # Snowplow micro
+      ELECTRON_EXTRA_LAUNCH_ARGS: '--remote-debugging-port=40500' # deploysentinel
     strategy:
       fail-fast: false
       matrix:
@@ -123,6 +124,11 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v3
+    - name: Set conditional ENVs
+      run: |
+        if [[ ${{ github.event.pull_request.base.ref }} != release* ]]; then
+          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
+        fi
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare JDK ${{ matrix.java-version }}

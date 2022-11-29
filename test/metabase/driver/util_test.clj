@@ -231,5 +231,5 @@
               :keystore-password-value "my-keystore-pw"
               :use-keystore            true}
              (select-keys transformed [:host :password-value :keystore-password-value :use-keystore])))
-      ;; the keystore-value should have been base64 decoded because of treat-before-posting being base64 (see above)e
+      ;; the keystore-value should have been base64 decoded because of treat-before-posting being base64 (see above)
       (is (mt/secret-value-equals? ks-val (:keystore-value transformed))))))

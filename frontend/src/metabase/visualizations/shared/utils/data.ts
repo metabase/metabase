@@ -164,13 +164,21 @@ const getBreakoutDistinctValues = (
   breakout: ColumnDescriptor,
   columnFormatter: ColumnFormatter,
 ) => {
-  return Array.from(
-    new Set(
-      data.rows.map(row =>
-        columnFormatter(row[breakout.index], breakout.column),
-      ),
-    ),
-  );
+  const formattedDistinctValues: string[] = [];
+  const usedRawValues = new Set<RowValue>();
+
+  data.rows.forEach(row => {
+    const rawValue = row[breakout.index];
+
+    if (usedRawValues.has(rawValue)) {
+      return;
+    }
+
+    usedRawValues.add(rawValue);
+    formattedDistinctValues.push(columnFormatter(rawValue, breakout.column));
+  });
+
+  return formattedDistinctValues;
 };
 
 const getBreakoutSeries = (
@@ -239,11 +247,19 @@ export const getOrderedSeries = (
   series: Series<GroupedDatum, SeriesInfo>[],
   seriesOrder?: SeriesOrderSetting[],
 ) => {
-  if (seriesOrder == null) {
+  if (seriesOrder == null || seriesOrder.length === 0) {
     return series;
   }
 
   return seriesOrder
     .filter(orderSetting => orderSetting.enabled)
-    .map(orderSetting => series[orderSetting.originalIndex]);
+    .map(orderSetting => {
+      const foundSeries = series.find(
+        singleSeries => singleSeries.seriesKey === orderSetting.key,
+      );
+      if (foundSeries === undefined) {
+        throw new TypeError("Series not found");
+      }
+      return foundSeries;
+    });
 };
