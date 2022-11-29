@@ -4,8 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       commit:
-        description: 'A full-length commit SHA-1 hash'
-        required: true
+        description: 'Optional full-length commit SHA-1 hash'
 
 jobs:
   build:
