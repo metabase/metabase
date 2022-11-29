@@ -146,9 +146,9 @@ export const GRAPH_DATA_SETTINGS = {
             ? t`Add series breakout`
             : null,
         columns: data.cols,
-        // When this prop is passed an array, it will only show the
+        // When this prop is passed it will only show the
         // column settings for any index that is included in the array
-        showColumnSetting: [0],
+        showColumnSettingForIndicies: [0],
       };
     },
     readDependencies: ["graph._dimension_filter", "graph._metric_filter"],

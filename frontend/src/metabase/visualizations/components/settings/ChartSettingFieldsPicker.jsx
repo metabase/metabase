@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 import { moveElement } from "metabase/visualizations/lib/utils";
@@ -15,6 +14,7 @@ const ChartSettingFieldsPicker = ({
   onChange,
   addAnother,
   showColumnSetting,
+  showColumnSettingForIndicies,
   ...props
 }) => {
   const handleDragEnd = ({ source, destination }) => {
@@ -54,9 +54,8 @@ const ChartSettingFieldsPicker = ({
                           <ChartSettingFieldPicker
                             {...props}
                             showColumnSetting={
-                              _.isArray(showColumnSetting)
-                                ? showColumnSetting.includes(fieldIndex)
-                                : showColumnSetting
+                              showColumnSetting ||
+                              showColumnSettingForIndicies?.includes(fieldIndex)
                             }
                             key={fieldIndex}
                             value={field}
