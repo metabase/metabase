@@ -3,7 +3,8 @@ import React from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import DashCardCardParameterMapper from "../components/DashCardCardParameterMapper";
+
+import DashCardCardParameterMapper from "./DashCardCardParameterMapper";
 
 const DashCardParameterMapper = ({ dashcard, isMobile }) => (
   <div className="relative flex-full flex flex-column layout-centered">

@@ -188,7 +188,7 @@ describe("Dimension", () => {
   });
 
   describe("INSTANCE METHODS", () => {
-    describe("foriegn", () => {
+    describe("foreign", () => {
       it("should return a FieldDimension", () => {
         const dimension = ORDERS.PRODUCT_ID.dimension().foreign(
           PRODUCTS.CATEGORY.dimension(),

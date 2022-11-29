@@ -1,31 +1,34 @@
 import _ from "underscore";
 import { ACCENT_COUNT, color } from "./palette";
-import { AccentColorOptions } from "./types";
+import { AccentColorOptions, ColorPalette } from "./types";
 
-export const getAccentColors = ({
-  main = true,
-  light = true,
-  dark = true,
-  harmony = false,
-}: AccentColorOptions = {}) => {
+export const getAccentColors = (
+  {
+    main = true,
+    light = true,
+    dark = true,
+    harmony = false,
+  }: AccentColorOptions = {},
+  palette?: ColorPalette,
+) => {
   const ranges = [];
-  main && ranges.push(getMainAccentColors());
-  light && ranges.push(getLightAccentColors());
-  dark && ranges.push(getDarkAccentColors());
+  main && ranges.push(getMainAccentColors(palette));
+  light && ranges.push(getLightAccentColors(palette));
+  dark && ranges.push(getDarkAccentColors(palette));
 
   return harmony ? _.unzip(ranges).flat() : ranges.flat();
 };
 
-export const getMainAccentColors = () => {
-  return _.times(ACCENT_COUNT, i => color(`accent${i}`));
+export const getMainAccentColors = (palette?: ColorPalette) => {
+  return _.times(ACCENT_COUNT, i => color(`accent${i}`, palette));
 };
 
-export const getLightAccentColors = () => {
-  return _.times(ACCENT_COUNT, i => color(`accent${i}-light`));
+export const getLightAccentColors = (palette?: ColorPalette) => {
+  return _.times(ACCENT_COUNT, i => color(`accent${i}-light`, palette));
 };
 
-export const getDarkAccentColors = () => {
-  return _.times(ACCENT_COUNT, i => color(`accent${i}-dark`));
+export const getDarkAccentColors = (palette?: ColorPalette) => {
+  return _.times(ACCENT_COUNT, i => color(`accent${i}-dark`, palette));
 };
 
 export const getStatusColorRanges = () => {
@@ -35,7 +38,7 @@ export const getStatusColorRanges = () => {
   ];
 };
 
-export const getPreferredColor = (key: string) => {
+export const getPreferredColor = (key: string, palette?: ColorPalette) => {
   switch (key.toLowerCase()) {
     case "success":
     case "succeeded":
@@ -47,7 +50,7 @@ export const getPreferredColor = (key: string) => {
     case "accepted":
     case "active":
     case "profit":
-      return color("success");
+      return color("success", palette);
     case "cancel":
     case "canceled":
     case "cancelled":
@@ -63,17 +66,17 @@ export const getPreferredColor = (key: string) => {
     case "cost":
     case "deleted":
     case "pending":
-      return color("error");
+      return color("error", palette);
     case "warn":
     case "warning":
     case "incomplete":
     case "unstable":
-      return color("warning");
+      return color("warning", palette);
     case "count":
-      return color("brand");
+      return color("brand", palette);
     case "sum":
-      return color("accent1");
+      return color("accent1", palette);
     case "average":
-      return color("accent2");
+      return color("accent2", palette);
   }
 };
