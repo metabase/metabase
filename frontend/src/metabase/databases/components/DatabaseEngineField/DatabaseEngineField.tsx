@@ -5,18 +5,21 @@ import { Engine } from "metabase-types/api";
 import { SelectChangeEvent } from "metabase/core/components/Select";
 
 export interface DatabaseEngineFieldProps {
-  engine?: string;
+  engineKey: string | undefined;
   engines: Record<string, Engine>;
   onChange: (engine: string) => void;
 }
 
 const DatabaseEngineField = ({
-  engine,
+  engineKey,
   engines,
   onChange,
 }: DatabaseEngineFieldProps): JSX.Element => {
-  const { current: isDisabled } = useRef(engine != null);
-  const options = useMemo(() => getEngineOptions(engines), [engines]);
+  const { current: isDisabled } = useRef(engineKey != null);
+
+  const options = useMemo(() => {
+    return getEngineOptions(engines, engineKey);
+  }, [engines, engineKey]);
 
   const handleChange = useCallback(
     (event: SelectChangeEvent<string>) => {
@@ -37,9 +40,13 @@ const DatabaseEngineField = ({
   );
 };
 
-const getEngineOptions = (engines: Record<string, Engine>) => {
+const getEngineOptions = (
+  engines: Record<string, Engine>,
+  engineKey?: string,
+) => {
   return Object.entries(engines)
-    .map(([value, engine]) => ({ name: engine["driver-name"], value }))
+    .filter(([key, engine]) => key === engineKey || !engine["superseded-by"])
+    .map(([key, engine]) => ({ name: engine["driver-name"], value: key }))
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 

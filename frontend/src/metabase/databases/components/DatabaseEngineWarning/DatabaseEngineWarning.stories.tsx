@@ -1,16 +1,16 @@
 import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import { createMockEngine } from "metabase-types/api/mocks";
-import DriverWarning from "./DriverWarning";
+import DatabaseEngineWarning from "./DatabaseEngineWarning";
 
 export default {
-  title: "Components/DriverWarning",
-  component: DriverWarning,
+  title: "Databases/DatabaseEngineWarning",
+  component: DatabaseEngineWarning,
   argTypes: { onChange: { action: "onChange" } },
 };
 
-const Template: ComponentStory<typeof DriverWarning> = args => {
-  return <DriverWarning {...args} />;
+const Template: ComponentStory<typeof DatabaseEngineWarning> = args => {
+  return <DatabaseEngineWarning {...args} />;
 };
 Template.args = {
   engines: {
@@ -48,24 +48,24 @@ Template.args = {
 
 export const New = Template.bind({});
 New.args = {
-  engine: "presto-jdbc",
+  engineKey: "presto-jdbc",
   ...Template.args,
 };
 
 export const Deprecated = Template.bind({});
 Deprecated.args = {
-  engine: "presto",
+  engineKey: "presto",
   ...Template.args,
 };
 
 export const Community = Template.bind({});
 Community.args = {
-  engine: "communityEngine",
+  engineKey: "communityEngine",
   ...Template.args,
 };
 
 export const Partner = Template.bind({});
 Partner.args = {
-  engine: "partnerEngine",
+  engineKey: "partnerEngine",
   ...Template.args,
 };
