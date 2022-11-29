@@ -6,10 +6,10 @@ import EntityMenu from "metabase/components/EntityMenu";
 
 import * as Urls from "metabase/lib/urls";
 
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
 
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 type ModalType = "new-app" | "new-dashboard" | "new-collection";
 
@@ -37,7 +37,6 @@ const NewItemMenu = ({
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
-  onChangeLocation,
   onCloseNavbar,
 }: NewItemMenuProps) => {
   const [modal, setModal] = useState<ModalType>();
@@ -45,14 +44,6 @@ const NewItemMenu = ({
   const handleModalClose = useCallback(() => {
     setModal(undefined);
   }, []);
-
-  const handleCollectionSave = useCallback(
-    (collection: Collection) => {
-      handleModalClose();
-      onChangeLocation(Urls.collection(collection));
-    },
-    [handleModalClose, onChangeLocation],
-  );
 
   const menuItems = useMemo(() => {
     const items = [];
@@ -130,10 +121,9 @@ const NewItemMenu = ({
         <>
           {modal === "new-collection" ? (
             <Modal onClose={handleModalClose}>
-              <CollectionCreate
+              <CreateCollectionModal
                 collectionId={collectionId}
                 onClose={handleModalClose}
-                onSaved={handleCollectionSave}
               />
             </Modal>
           ) : modal === "new-dashboard" ? (
