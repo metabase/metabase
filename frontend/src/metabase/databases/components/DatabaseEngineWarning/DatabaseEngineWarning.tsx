@@ -3,19 +3,19 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 import { Engine } from "metabase-types/api";
 import Icon from "metabase/components/Icon";
-import { WarningLink, WarningRoot } from "./DriverWarning.styled";
+import { WarningLink, WarningRoot } from "./DatabaseEngineWarning.styled";
 
-export interface DriverWarningProps {
-  engine?: string;
+export interface DatabaseEngineWarningProps {
+  engineKey?: string;
   engines: Record<string, Engine>;
   onChange?: (engine: string) => void;
 }
 
-const DriverWarning = ({
-  engine: engineKey,
+const DatabaseEngineWarning = ({
+  engineKey,
   engines,
   onChange,
-}: DriverWarningProps): JSX.Element | null => {
+}: DatabaseEngineWarningProps): JSX.Element | null => {
   const engine = engineKey ? engines[engineKey] : undefined;
 
   if (!engine) {
@@ -41,7 +41,7 @@ const DriverWarning = ({
       <NewEngineWarning
         key="new"
         engineName={newEngineName || ""}
-        handleChange={handleChangeToNew}
+        onChange={handleChangeToNew}
       />,
     );
   }
@@ -51,16 +51,16 @@ const DriverWarning = ({
       <OldEngineWarning
         key="old"
         engineName={engineName}
-        handleChange={handleChangeToOld}
+        onChange={handleChangeToOld}
       />,
     );
   }
 
   if (engineSourceType === "community") {
-    warnings.push(<CommunityDriverWarning key="community" />);
+    warnings.push(<CommunityEngineWarning key="community" />);
   } else if (engineSourceType === "partner") {
     warnings.push(
-      <PartnerDriverWarning
+      <PartnerEngineWarning
         key="partner"
         sourceName={engine?.source?.contact?.name}
         sourceContact={engine?.source?.contact?.address}
@@ -71,18 +71,17 @@ const DriverWarning = ({
   return <>{warnings}</>;
 };
 
-const NewEngineWarning = ({
-  engineName,
-  handleChange,
-}: {
+interface NewEngineWarningProps {
   engineName: string;
-  handleChange: () => void;
-}) => (
+  onChange: () => void;
+}
+
+const NewEngineWarning = ({ engineName, onChange }: NewEngineWarningProps) => (
   <WarningRoot hasBorder>
     <p>
       {t`This driver will be removed in a future release.`}{" "}
       {jt`We recommend you upgrade to the ${(
-        <WarningLink key="link" onClick={handleChange}>
+        <WarningLink key="link" onClick={onChange}>
           {t`new ${engineName} driver`}
         </WarningLink>
       )}.`}
@@ -90,19 +89,18 @@ const NewEngineWarning = ({
   </WarningRoot>
 );
 
-const OldEngineWarning = ({
-  engineName,
-  handleChange,
-}: {
+interface OldEngineWarningProps {
   engineName: string;
-  handleChange: () => void;
-}) => (
+  onChange: () => void;
+}
+
+const OldEngineWarning = ({ engineName, onChange }: OldEngineWarningProps) => (
   <WarningRoot hasBorder>
     <p>
       {t`This is our new ${engineName} driver.`}{" "}
       {t`The old driver has been deprecated and will be removed in a future release.`}{" "}
       {jt`If you really need to use it, you can ${(
-        <WarningLink key="link" onClick={handleChange}>
+        <WarningLink key="link" onClick={onChange}>
           {t`find it here`}
         </WarningLink>
       )}.`}
@@ -110,7 +108,7 @@ const OldEngineWarning = ({
   </WarningRoot>
 );
 
-const CommunityDriverWarning = () => (
+const CommunityEngineWarning = () => (
   <WarningRoot hasBorder>
     <Icon name="info" className="pr2" />
     <p>
@@ -119,13 +117,15 @@ const CommunityDriverWarning = () => (
   </WarningRoot>
 );
 
-const PartnerDriverWarning = ({
-  sourceName,
-  sourceContact,
-}: {
+interface PartnerEngineWarningProps {
   sourceName: string | undefined;
   sourceContact: string | undefined;
-}) => {
+}
+
+const PartnerEngineWarning = ({
+  sourceName,
+  sourceContact,
+}: PartnerEngineWarningProps) => {
   const contactLink = sourceContact ? (
     <WarningLink
       href={
@@ -150,4 +150,4 @@ const PartnerDriverWarning = ({
   );
 };
 
-export default DriverWarning;
+export default DatabaseEngineWarning;

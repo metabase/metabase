@@ -1,15 +1,15 @@
 import { connect } from "react-redux";
-import DriverWarning from "metabase/components/DriverWarning";
 import { Engine } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import DatabaseEngineWarning from "../../components/DatabaseEngineWarning";
 
-export interface DriverWarningProps {
-  engine?: string;
+export interface DatabaseEngineWarningProps {
+  engineKey?: string;
   hasBorder?: boolean;
   onChange?: (engine: string) => void;
 }
 
-interface DriverWarningStateProps {
+interface DatabaseEngineWarningStateProps {
   engines: Record<string, Engine>;
 }
 
@@ -18,8 +18,8 @@ const mapStateToProps = (state: State) => ({
 });
 
 export default connect<
-  DriverWarningStateProps,
+  DatabaseEngineWarningStateProps,
   unknown,
-  DriverWarningProps,
+  DatabaseEngineWarningProps,
   State
->(mapStateToProps)(DriverWarning);
+>(mapStateToProps)(DatabaseEngineWarning);
