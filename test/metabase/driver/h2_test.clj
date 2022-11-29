@@ -161,20 +161,14 @@
 
 (deftest classify-ddl-test
   (mt/test-driver :h2
-    (is (= [org.h2.command.query.Select]
-           (mapv type (#'h2/parse (u/the-id (mt/db)) "select 1"))))
-    (is (= [org.h2.command.dml.Update]
-           (mapv type (#'h2/parse (u/the-id (mt/db)) "update venues set name = 'bill'"))))
-    (is (= [org.h2.command.dml.Delete]
-           (mapv type (#'h2/parse (u/the-id (mt/db)) "delete venues"))))
-    (is (= [org.h2.command.query.Select
-            org.h2.command.dml.Update
-            org.h2.command.dml.Delete]
-           (mapv type (#'h2/parse (u/the-id (mt/db))
-                                  (str/join "; "
-                                            ["select 1"
-                                             "update venues set name = 'bill'"
-                                             "delete venues"])))))
+    (are [query] (= false (#'h2/contains-ddl? (u/the-id (mt/db)) query))
+      "select 1"
+      "update venues set name = 'bill'"
+      "delete venues"
+      "select 1;
+       update venues set name = 'bill';
+       delete venues;")
+
     (is (= nil (#'h2/check-disallow-ddl-commands
                 {:database (u/the-id (mt/db))
                  :engine :h2
@@ -187,7 +181,7 @@
                           "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                           "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
       (is (thrown?
-           clojure.lang.ExceptionInfo
+           IllegalArgumentException
            #"DDL commands are not allowed to be used with h2."
            (#'h2/check-disallow-ddl-commands
             {:database (u/the-id (mt/db))

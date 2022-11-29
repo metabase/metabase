@@ -21,9 +21,8 @@
             [metabase.util.ssh :as ssh])
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime
-           org.h2.command.Parser
-           org.h2.engine.Session
-           org.h2.engine.SessionRemote))
+           [org.h2.command Parser CommandInterface]
+           [org.h2.engine SessionLocal SessionRemote]))
 
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
@@ -116,36 +115,18 @@
         :else
         (throw (ex-info "Unknown session type" {:session session}))))))
 
-(defn- parse
-  ([h2-db-id s]
-   (let [h2-parser (make-h2-parser h2-db-id)]
-     (when-not (= ::client-side-session h2-parser)
-       ;; parser moves parseIndex, so get-offset will be the index in the string that was parsed "up to"
-       (parse s
-              (fn parser [s]
-                (try
-                  (.parseExpression h2-parser s)
-                  ;; need to chew through error scenarios because of a query like:
-                  ;;
-                  ;; vulnerability; abc;
-                  ;;
-                  ;; which would cause this parser to break w/o the error handling here, but this way we
-                  ;; still return the org.h2.command.ddl.* classes.
-                  (catch Throwable _ ::parse-fail)))
-              (fn get-offset [] (inc (.getLastParseIndex h2-parser)))))))
-  ([s parser get-offset]
-   (vec (concat
-         [(parser s)] ;; this call to parser parses up to the end of the first sql statement
-         (let [more (apply str (drop (get-offset) s))] ;; more is the unparsed part of s
-           (when-not (str/blank? more)
-             (parse more parser get-offset)))))))
+(defn- contains-ddl?
+  [database query]
+  (let [h2-parser (make-h2-parser database)]
+    (when-not (= ::client-side-session h2-parser)
+      (let [command      (.prepareCommand h2-parser query)
+            command-type (.getCommandType command)]
+        (< command-type CommandInterface/ALTER_SEQUENCE)))))
 
-(defn- check-disallow-ddl-commands [{:keys [database] :as query}]
+(defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
   (when query
-    (let [operations (parse database (-> query :native :query))
-          op-classes (map class operations)]
-      (when (some #(re-find #"org.h2.command.ddl." (str %)) op-classes)
-        (throw (ex-info "DDL commands are not allowed to be used with h2." {:classes op-classes}))))))
+    (when (contains-ddl? database query)
+      (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2.")))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
