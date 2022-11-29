@@ -23,7 +23,6 @@ export interface NewItemMenuProps {
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
-  onChangeLocation: (location: string) => void;
   onCloseNavbar: () => void;
 }
 
