@@ -13,12 +13,13 @@ import FormInput from "metabase/core/components/FormInput";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormCollectionPicker from "metabase/core/components/FormCollectionPicker";
 
 import * as Errors from "metabase/core/utils/errors";
 
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
+
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 
 import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
