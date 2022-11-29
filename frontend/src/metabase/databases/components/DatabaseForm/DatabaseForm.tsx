@@ -32,8 +32,8 @@ const DatabaseForm = ({
   const engine = engineKey ? engines[engineKey] : undefined;
 
   const validationSchema = useMemo(() => {
-    return getValidationSchema(engine, engineKey);
-  }, [engine, engineKey]);
+    return getValidationSchema(engine, engineKey, isAdvanced);
+  }, [engine, engineKey, isAdvanced]);
 
   const initialValues = useMemo(() => {
     return initialData
@@ -80,8 +80,8 @@ const DatabaseFormBody = ({
   const { values, dirty } = useFormikContext<DatabaseValues>();
 
   const fields = useMemo(() => {
-    return engine ? getVisibleFields(engine, values) : [];
-  }, [engine, values]);
+    return engine ? getVisibleFields(engine, values, isAdvanced) : [];
+  }, [engine, values, isAdvanced]);
 
   return (
     <Form disabled={!dirty}>

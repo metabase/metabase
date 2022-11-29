@@ -2,10 +2,15 @@ import * as Yup from "yup";
 import type { TestContext } from "yup";
 import * as Errors from "metabase/core/utils/errors";
 import { Engine, EngineField } from "metabase-types/api";
+import { ADVANCED_FIELDS } from "../constants";
 import { DatabaseValues } from "../types";
 
-export const getValidationSchema = (engine?: Engine, engineKey?: string) => {
-  const fields = engine?.["details-fields"] ?? [];
+export const getValidationSchema = (
+  engine: Engine | undefined,
+  engineKey: string | undefined,
+  isAdvanced: boolean,
+) => {
+  const fields = getFields(engine, isAdvanced);
   const entries = fields.map(field => [field.name, getFieldSchema(field)]);
 
   return Yup.object({
@@ -13,6 +18,23 @@ export const getValidationSchema = (engine?: Engine, engineKey?: string) => {
     name: Yup.string().nullable().default(null).required(Errors.required),
     details: Yup.object(Object.fromEntries(entries)),
   });
+};
+
+export const getVisibleFields = (
+  engine: Engine,
+  values: DatabaseValues,
+  isAdvanced: boolean,
+) => {
+  const fields = getFields(engine, isAdvanced);
+  return fields.filter(field => isFieldVisible(field, values.details));
+};
+
+const getFields = (engine: Engine | undefined, isAdvanced: boolean) => {
+  const fields = engine?.["details-fields"] ?? [];
+
+  return isAdvanced
+    ? fields
+    : fields.filter(field => !ADVANCED_FIELDS.includes(field.name));
 };
 
 const getFieldSchema = (field: EngineField) => {
@@ -62,9 +84,4 @@ const isFieldVisible = (
       ? value.includes(details?.[name])
       : value === details?.[name],
   );
-};
-
-export const getVisibleFields = (engine: Engine, values: DatabaseValues) => {
-  const fields = engine["details-fields"] ?? [];
-  return fields.filter(field => isFieldVisible(field, values.details));
 };

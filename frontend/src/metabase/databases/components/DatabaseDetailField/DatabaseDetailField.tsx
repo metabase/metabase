@@ -8,7 +8,7 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import FormToggle from "metabase/core/components/FormToggle";
 import DatabaseInfoField from "../DatabaseInfoField";
 import DatabaseSectionField from "../DatabaseSectionField";
-import { FIELD_OVERRIDES } from "../../utils/overrides";
+import { FIELD_OVERRIDES } from "../../constants";
 import { EngineFieldOverride } from "../../types";
 
 export interface DatabaseDetailFieldProps {

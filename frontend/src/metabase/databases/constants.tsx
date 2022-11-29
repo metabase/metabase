@@ -36,6 +36,12 @@ export const ENGINES_WITH_LOGO = [
   "presto-jdbc",
 ];
 
+export const ADVANCED_FIELDS = [
+  "auto_run_queries",
+  "let-user-control-scheduling",
+  "cache_ttl",
+];
+
 export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   "tunnel-enabled": {
     title: t`Use an SSH-tunnel`,
