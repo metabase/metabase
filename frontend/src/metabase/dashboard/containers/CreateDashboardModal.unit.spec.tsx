@@ -1,14 +1,10 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
-import {
-  fireEvent,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import MetabaseSettings from "metabase/lib/settings";
+import { createMockDashboard } from "metabase-types/api/mocks";
 import CreateDashboardModal from "./CreateDashboardModal";
 
 function mockCachingEnabled(enabled = true) {
@@ -50,22 +46,30 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   };
 }
 
-function setupCreateRequestAssertion(doneCallback, changedValues) {
-  xhrMock.post("/api/dashboard", req => {
+function setupCreateRequestAssertion(
+  doneCallback: (...args: any[]) => any,
+  changedValues: Record<string, unknown>,
+) {
+  xhrMock.post("/api/dashboard", (req, res) => {
     try {
+      console.log("### POST /api/dashboard", { body: req.body() });
       expect(JSON.parse(req.body())).toEqual({
         ...changedValues,
         collection_id: null,
       });
       doneCallback();
+      const dashboard = createMockDashboard(changedValues);
+      return res.status(200).body(dashboard);
     } catch (err) {
       doneCallback(err);
     }
   });
 }
 
-function fillForm({ name, description } = {}) {
-  const nextDashboardState = {};
+type FormInputValues = { name?: string; description?: string };
+
+function fillForm({ name, description }: FormInputValues = {}) {
+  const nextDashboardState: FormInputValues = {};
   if (name) {
     const input = screen.getByLabelText("Name");
     userEvent.clear(input);
@@ -102,46 +106,30 @@ describe("CreateDashboardModal", () => {
   it("displays empty form fields", () => {
     setup();
 
-    expect(screen.queryByLabelText("Name")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Name")).toHaveValue("");
+    expect(screen.getByLabelText("Name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toHaveValue("");
 
-    expect(screen.queryByLabelText("Description")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Description")).toHaveValue("");
+    expect(screen.getByLabelText("Description")).toBeInTheDocument();
+    expect(screen.getByLabelText("Description")).toHaveValue("");
 
-    expect(screen.queryByText("Our analytics")).toBeInTheDocument();
+    expect(screen.getByText("Our analytics")).toBeInTheDocument();
 
-    expect(
-      screen.queryByRole("button", { name: "Create" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Create" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create" })).toBeInTheDocument();
   });
 
   it("can't submit if name is empty", async () => {
     setup();
     const submitButton = await waitFor(() =>
-      screen.queryByRole("button", { name: "Create" }),
+      screen.getByRole("button", { name: "Create" }),
     );
     expect(submitButton).toBeDisabled();
   });
 
   it("calls onClose when Cancel button is clicked", () => {
     const { onClose } = setup();
-    fireEvent.click(screen.queryByRole("button", { name: "Cancel" }));
+    userEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
     expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("submits a create request correctly", done => {
-    const FORM = {
-      name: "New fancy dashboard",
-      description: "Just testing the form",
-    };
-    setupCreateRequestAssertion(done, FORM);
-    setup({ mockCreateDashboardResponse: false });
-
-    fillForm(FORM);
-    fireEvent.click(screen.queryByRole("button", { name: "Create" }));
   });
 
   describe("Cache TTL field", () => {
