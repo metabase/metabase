@@ -13,7 +13,7 @@ export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
   "details-fields": [],
   source: createMockEngineSource(),
-  "superseded-by": undefined,
+  "superseded-by": null,
   ...opts,
 });
 
@@ -29,6 +29,7 @@ export const createMockEngineSource = (
   opts?: Partial<EngineSource>,
 ): EngineSource => ({
   type: "official",
+  contact: null,
   ...opts,
 });
 
@@ -38,15 +39,15 @@ export const createMockEngines = (
   postgres: createMockEngine(),
   communityEngine: createMockEngine({
     "driver-name": "CommunityEngine",
-    source: {
+    source: createMockEngineSource({
       type: "community",
-    },
+    }),
   }),
   partnerEngine: createMockEngine({
     "driver-name": "PartnerEngine",
-    source: {
+    source: createMockEngineSource({
       type: "partner",
-    },
+    }),
   }),
   ...opts,
 });

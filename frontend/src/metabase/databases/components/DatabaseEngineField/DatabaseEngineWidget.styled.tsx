@@ -6,6 +6,7 @@ import Icon from "metabase/components/Icon";
 
 export const EngineSearchRoot = styled.div`
   display: block;
+  margin-bottom: 1.25rem;
 `;
 
 export const EngineListRoot = styled.ul`
@@ -83,6 +84,7 @@ export const EngineEmptyText = styled.div`
 `;
 
 export const EngineButtonRoot = styled(Button)`
+  margin-bottom: 1.25rem;
   padding: 0.8125rem 0.75rem;
 
   ${Button.Content} {
