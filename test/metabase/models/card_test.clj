@@ -377,3 +377,47 @@
       (is (empty? (serdes.base/serdes-descendants "Card" (:id card1))))
       (is (= #{["Card" (:id card1)]}
              (serdes.base/serdes-descendants "Card" (:id card2)))))))
+
+
+;;; ------------------------------------------ Viz Settings Tests  ------------------------------------------
+
+(deftest upgrade-to-v2-db-test
+  (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
+    (mt/with-temp Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
+        (is (= {:version 2
+                :pie.show_legend true
+                :pie.percent_visibility "inside"}
+               (db/select-one-field :visualization_settings Card :id card-id)))))
+  (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
+    (mt/with-temp Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
+      (db/update! Card card-id :name "Favorite Toucan Foods")
+      (is (= {:version 2
+              :pie.show_legend true
+              :pie.percent_visibility "inside"}
+             (:visualization_settings (db/simple-select-one Card {:where [:= :id card-id]})))))))
+
+(deftest upgrade-to-v2-viz-settings-test
+  (let [migrate #(select-keys (:visualization_settings (#'card/migrate-viz-settings {:visualization_settings %}))
+                              [:version :pie.percent_visibility])]
+    (testing "show_legend -> inside"
+      (is (= {:version 2
+              :pie.percent_visibility "inside"}
+             (migrate {:pie.show_legend          true
+                       :pie.show_legend_perecent true
+                       :pie.show_data_labels     true}))))
+    (testing "show_legend_percent -> legend"
+      (is (= {:version 2
+              :pie.percent_visibility "legend"}
+             (migrate {:pie.show_legend          false
+                       :pie.show_legend_perecent true
+                       :pie.show_data_labels     true}))))
+    (testing "anything else -> off"
+      (doseq [legend  [false nil]
+              percent [false nil]
+              labels  [true false nil]
+              version [nil 1]]
+        (is (= {:version 2
+                :pie.percent_visibility "off"}
+               (migrate {:pie.show_legend          legend
+                         :pie.show_legend_perecent percent
+                         :pie.show_data_labels     labels})))))))
