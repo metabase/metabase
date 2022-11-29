@@ -534,7 +534,8 @@
                                       "diff-rev" [:datetime-diff y x unit]}
                         :fields [[:expression "diff"]
                                  [:expression "diff-rev"]]})
-                     mt/rows first))]
+                     (mt/formatted-rows [int int])
+                     first))]
         (doseq [[unit cases] [[:year [["2021-10-03T09:18:09" "2022-10-02T09:18:09" 0 "day under a year"]
                                       ["2021-10-03T09:19:09" "2022-10-03T09:18:09" 1 "ignores time"]
                                       ["2017-06-10T08:30:00" "2019-07-10T08:30:00" 2 "multiple years"]]]
@@ -567,17 +568,18 @@
     (mt/dataset times-mixed
       (testing "Can compare across dates, datetimes, and with timezones from a table"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
-        (is (= [[25200 -8349 33549]]
-               (mt/rows
-                (mt/run-mbql-query times
-                  {:fields [[:expression "tz,dt"]
-                            [:expression "tz,d"]
-                            [:expression "d,dt"]]
-                   :limit 1
-                   :expressions
-                   {"tz,dt" [:datetime-diff $dt_tz $dt :second]
-                    "tz,d"  [:datetime-diff $dt_tz $d :second]
-                    "d,dt"  [:datetime-diff $d $dt :second]}}))))))))
+        (is (= [25200 -8349 33549]
+               (->> (mt/run-mbql-query times
+                      {:fields [[:expression "tz,dt"]
+                                [:expression "tz,d"]
+                                [:expression "d,dt"]]
+                       :limit 1
+                       :expressions
+                       {"tz,dt" [:datetime-diff $dt_tz $dt :second]
+                        "tz,d"  [:datetime-diff $dt_tz $d :second]
+                        "d,dt"  [:datetime-diff $d $dt :second]}})
+                    (mt/formatted-rows [int int int])
+                    first)))))))
 
 (deftest datetime-diff-time-zones-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
@@ -590,7 +592,8 @@
                                                       [(name unit) [:datetime-diff x y unit]]))
                               :fields (into [] (for [unit units]
                                                  [:expression (name unit)]))})
-                           mt/rows first
+                           (mt/formatted-rows (repeat (count units) int))
+                           first
                            (zipmap units))))]
         (testing "a day"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
@@ -677,25 +680,27 @@
                                                         [(name unit) [:datetime-diff x y unit]]))
                                 :fields (into [] (for [unit units]
                                                    [:expression (name unit)]))})
-                             mt/rows first
+                             (mt/formatted-rows (repeat (count units) int))
+                             first
                              (zipmap units))))]
           (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :year 1}
                  (diffs [:datetime-add #t "2022-10-03T00:00:00" 1 "day"] [:datetime-add #t "2023-10-03T00:00:00" 4 "day"])))))
       (testing "Result works in arithmetic expressions"
         (let [start "2021-10-03T09:19:09"
               end   "2022-10-03T09:18:09"]
-          (is (= [[1 6 365 370]]
-                 (mt/rows
-                  (mt/run-mbql-query orders
-                    {:limit       1
-                     :expressions {"datediff1"     [:datetime-diff start end :year]
-                                   "datediff1-add" [:+ [:datetime-diff start end :year] 5]
-                                   "datediff2"     [:datetime-diff start end :day]
-                                   "datediff2-add" [:+ 5 [:datetime-diff start end :day]]}
-                     :fields      [[:expression "datediff1"]
-                                   [:expression "datediff1-add"]
-                                   [:expression "datediff2"]
-                                   [:expression "datediff2-add"]]})))))))))
+          (is (= [1 6 365 370]
+                 (->> (mt/run-mbql-query orders
+                        {:limit       1
+                         :expressions {"datediff1"     [:datetime-diff start end :year]
+                                       "datediff1-add" [:+ [:datetime-diff start end :year] 5]
+                                       "datediff2"     [:datetime-diff start end :day]
+                                       "datediff2-add" [:+ 5 [:datetime-diff start end :day]]}
+                         :fields      [[:expression "datediff1"]
+                                       [:expression "datediff1-add"]
+                                       [:expression "datediff2"]
+                                       [:expression "datediff2-add"]]})
+                      (mt/formatted-rows [int int int int])
+                      first))))))))
 
 (deftest datetime-diff-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
