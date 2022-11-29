@@ -108,7 +108,8 @@
      json-key
      (keyword json-key)))
 
-(api/defendpoint ^:streaming POST ["/:export-format", :export-format export-format-regex]
+(api/defendpoint ^:streaming ^{:content-types #{:content/form :content/json}} POST
+  ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
   [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
   {query                  su/JSONString

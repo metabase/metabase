@@ -297,7 +297,8 @@
               :else
               (throw (ex-info (tru "Invalid content-type")
                               {:provided content-type
-                               :available allowable-types})))))))))
+                               :available allowable-types
+                               :status-code 400})))))))))
 
 (defn make-route
   "Create a route for our defendpoint. For non-POST methods, just returns the route. For POST methods, adds a second
