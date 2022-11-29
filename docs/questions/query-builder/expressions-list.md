@@ -444,7 +444,7 @@ Example: `month("March 25, 2021, 12:52:37")` would return the month as an intege
 
 ### now
 
-Returns the current date and time using your Metabase [report timezone](../../../configuring-metabase/settings.md#report-timezone)
+Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/settings.md#report-timezone).
 
 Syntax: `now`.
 
