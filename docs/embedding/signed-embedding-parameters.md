@@ -108,10 +108,12 @@ You can change the appearance of an embedded item by adding parameters with the 
 | bordered               | true, false                                   |
 | titled                 | true, false                                   |
 | theme                  | null, transparent, night                      |
-| font\*                 | [font name](../configuring-metabase/fonts.md) |
-| hide_download_button\* | true, false                                   |
+| font¹                  | [font name](../configuring-metabase/fonts.md) |
+| hide_download_button²  | true, false                                   |
 
-\* Available on paid plans.
+¹ Available on [paid plans](https://www.metabase.com/pricing).
+
+² Available on [paid plans](https://www.metabase.com/pricing) and works on questions only (not dashboards).
 
 You can preview the changes from your question or dashboard's [embedded appearance settings](./signed-embedding.md#customizing-the-appearance-of-signed-embeds).
 

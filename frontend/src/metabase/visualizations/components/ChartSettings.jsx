@@ -93,8 +93,7 @@ class ChartSettings extends Component {
 
   // allows a widget to temporarily replace itself with a different widget
   handleShowWidget = (widget, ref) => {
-    this.setState({ popoverRef: ref });
-    this.setState({ currentWidget: widget });
+    this.setState({ popoverRef: ref, currentWidget: widget });
   };
 
   // go back to previously selected section
