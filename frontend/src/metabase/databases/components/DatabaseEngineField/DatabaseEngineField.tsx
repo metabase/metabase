@@ -7,16 +7,16 @@ import DatabaseEngineWidget from "./DatabaseEngineWidget";
 export interface DatabaseEngineFieldProps {
   engineKey: string | undefined;
   engines: Record<string, Engine>;
-  isSetup: boolean;
   isHosted: boolean;
+  isAdvanced: boolean;
   onChange: (engine: string | undefined) => void;
 }
 
 const DatabaseEngineField = ({
   engineKey,
   engines,
-  isSetup,
   isHosted,
+  isAdvanced,
   onChange,
 }: DatabaseEngineFieldProps): JSX.Element => {
   const { current: isNew } = useRef(engineKey == null);
@@ -25,17 +25,17 @@ const DatabaseEngineField = ({
     return getEngineOptions(engines, engineKey);
   }, [engines, engineKey]);
 
-  return isSetup ? (
+  return isAdvanced ? (
+    <DatabaseEngineSelect
+      options={options}
+      disabled={!isNew}
+      onChange={onChange}
+    />
+  ) : (
     <DatabaseEngineWidget
       engineKey={engineKey}
       options={options}
       isHosted={isHosted}
-      onChange={onChange}
-    />
-  ) : (
-    <DatabaseEngineSelect
-      options={options}
-      disabled={!isNew}
       onChange={onChange}
     />
   );

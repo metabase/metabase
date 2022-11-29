@@ -15,15 +15,15 @@ import DatabaseEngineWarning from "../DatabaseEngineWarning";
 
 export interface DatabaseFormProps {
   engines: Record<string, Engine>;
-  isSetup?: boolean;
   isHosted?: boolean;
+  isAdvanced?: boolean;
   onSubmit: (values: DatabaseValues) => void;
 }
 
 const DatabaseForm = ({
   engines,
-  isSetup = false,
   isHosted = false,
+  isAdvanced = false,
   onSubmit,
 }: DatabaseFormProps): JSX.Element => {
   const [engineKey, setEngineKey] = useState<string>();
@@ -48,8 +48,8 @@ const DatabaseForm = ({
         engine={engine}
         engineKey={engineKey}
         engines={engines}
-        isSetup={isSetup}
         isHosted={isHosted}
+        isAdvanced={isAdvanced}
         onEngineChange={setEngineKey}
       />
     </FormProvider>
@@ -60,8 +60,8 @@ interface DatabaseFormBodyProps {
   engine: Engine | undefined;
   engineKey: string | undefined;
   engines: Record<string, Engine>;
-  isSetup: boolean;
   isHosted: boolean;
+  isAdvanced: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
 }
 
@@ -69,8 +69,8 @@ const DatabaseFormBody = ({
   engine,
   engineKey,
   engines,
-  isSetup,
   isHosted,
+  isAdvanced,
   onEngineChange,
 }: DatabaseFormBodyProps): JSX.Element => {
   const { values, dirty } = useFormikContext<DatabaseValues>();
@@ -84,15 +84,17 @@ const DatabaseFormBody = ({
       <DatabaseEngineField
         engineKey={engineKey}
         engines={engines}
-        isSetup={isSetup}
         isHosted={isHosted}
+        isAdvanced={isAdvanced}
         onChange={onEngineChange}
       />
-      <DatabaseEngineWarning
-        engineKey={engineKey}
-        engines={engines}
-        onChange={onEngineChange}
-      />
+      {!isAdvanced && (
+        <DatabaseEngineWarning
+          engineKey={engineKey}
+          engines={engines}
+          onChange={onEngineChange}
+        />
+      )}
       {engine && <DatabaseNameField engine={engine} />}
       {fields.map(field => (
         <DatabaseDetailField key={field.name} field={field} />
