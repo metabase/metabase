@@ -1,12 +1,7 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
-import {
-  fireEvent,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import MetabaseSettings from "metabase/lib/settings";
 import { createMockDashboard } from "metabase-types/api/mocks";
@@ -133,7 +128,7 @@ describe("CreateDashboardModal", () => {
 
   it("calls onClose when Cancel button is clicked", () => {
     const { onClose } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
+    userEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
