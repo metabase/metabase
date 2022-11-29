@@ -24,8 +24,11 @@ import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 const DASHBOARD_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required).max(100, Errors.maxLength),
-  description: Yup.string().nullable().max(255, Errors.maxLength),
+  name: Yup.string()
+    .required(Errors.required)
+    .max(100, Errors.maxLength)
+    .default(""),
+  description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
   collection_id: Yup.number().nullable(),
 });
 
@@ -76,8 +79,7 @@ function CreateDashboardForm({
 }: Props) {
   const initialValues = useMemo(
     () => ({
-      name: "",
-      description: null,
+      ...DASHBOARD_SCHEMA.getDefault(),
       collection_id: initialCollectionId,
     }),
     [initialCollectionId],
@@ -93,7 +95,7 @@ function CreateDashboardForm({
   );
 
   return (
-    <FormProvider<CreateDashboardProperties>
+    <FormProvider
       initialValues={initialValues}
       validationSchema={DASHBOARD_SCHEMA}
       onSubmit={handleCreate}
