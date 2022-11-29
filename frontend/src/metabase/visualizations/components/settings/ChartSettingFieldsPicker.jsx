@@ -37,12 +37,12 @@ const ChartSettingFieldsPicker = ({
           <Droppable droppableId="droppable">
             {provided => (
               <div {...provided.droppableProps} ref={provided.innerRef}>
-                {fields.map((field, index) => {
+                {fields.map((field, fieldIndex) => {
                   return (
                     <Draggable
                       key={`draggable-${field}`}
                       draggableId={`draggable-${field}`}
-                      index={index}
+                      index={fieldIndex}
                     >
                       {provided => (
                         <div
@@ -55,10 +55,10 @@ const ChartSettingFieldsPicker = ({
                             {...props}
                             showColumnSetting={
                               _.isArray(showColumnSetting)
-                                ? showColumnSetting.includes(index)
+                                ? showColumnSetting.includes(fieldIndex)
                                 : showColumnSetting
                             }
-                            key={index}
+                            key={fieldIndex}
                             value={field}
                             options={calculateOptions(field)}
                             onChange={updatedField => {
@@ -70,11 +70,11 @@ const ChartSettingFieldsPicker = ({
                                 fieldsCopy.splice(
                                   existingIndex,
                                   1,
-                                  fields[index],
+                                  fields[fieldIndex],
                                 );
                               }
                               // replace with the new value
-                              fieldsCopy.splice(index, 1, updatedField);
+                              fieldsCopy.splice(fieldIndex, 1, updatedField);
                               onChange(fieldsCopy);
                             }}
                             onRemove={
@@ -83,8 +83,8 @@ const ChartSettingFieldsPicker = ({
                               (fields.length > 1 && field == null)
                                 ? () =>
                                     onChange([
-                                      ...fields.slice(0, index),
-                                      ...fields.slice(index + 1),
+                                      ...fields.slice(0, fieldIndex),
+                                      ...fields.slice(fieldIndex + 1),
                                     ])
                                 : null
                             }
