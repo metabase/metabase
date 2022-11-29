@@ -1,6 +1,5 @@
 (ns metabase.driver.h2
-  (:require [clojure.math.combinatorics :as combo]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
@@ -273,45 +272,73 @@
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Datatype grammar adapted from BNF at https://h2database.com/html/datatypes.html
-
-(defn- expand-grammar
-  "Expands BNF-like grammar to all possible keywords"
-  [grammar]
-  (cond
-    (set? grammar)  (mapcat expand-grammar grammar)
-    (list? grammar) (map (partial str/join " ")
-                         (apply combo/cartesian-product
-                                (map expand-grammar grammar)))
-    :else           [grammar]))
-
-(def ^:private base-type->db-type-grammar
-  '{:type/Boolean             #{BOOLEAN}
-    :type/Integer             #{TINYINT SMALLINT INTEGER INT}
-    :type/BigInteger          #{BIGINT}
-    :type/Decimal             #{NUMERIC DECIMAL DEC}
-    :type/Float               #{REAL FLOAT "DOUBLE PRECISION" DECFLOAT}
-    :type/Text                #{CHARACTER CHAR
-                                (NATIONAL #{CHARACTER CHAR}) NCHAR
-                                (#{CHARACTER CHAR} VARYING) VARCHAR
-                                (#{(NATIONAL #{CHARACTER CHAR}) NCHAR} VARYING)
-                                VARCHAR_CASESENSITIVE
-                                (#{CHARACTER CHAR} LARGE OBJECT) CLOB
-                                (#{NATIONAL CHARACTER NCHAR} LARGE OBJECT) NCLOB
-                                UUID}
-    :type/*                   #{ARRAY BINARY "BINARY VARYING" VARBINARY
-                                "BINARY LARGE OBJECT" BLOB GEOMETRY IMAGE}
-    :type/Date                #{DATE}
-    :type/DateTime            #{TIMESTAMP}
-    :type/Time                #{TIME "TIME WITHOUT TIME ZONE"}
-    :type/TimeWithLocalTZ     #{"TIME WITH TIME ZONE"}
-    :type/DateTimeWithLocalTZ #{"TIMEZONE WITH TIME ZONE"}})
-
 (def ^:private db-type->base-type
-  (into {}
-        (for [[base-type grammar] base-type->db-type-grammar
-              db-type (expand-grammar grammar)]
-          [(keyword db-type) base-type])))
+  {:ARRAY                               :type/*
+   :BIGINT                              :type/BigInteger
+   :BINARY                              :type/*
+   :BIT                                 :type/Boolean
+   :BLOB                                :type/*
+   :BOOL                                :type/Boolean
+   :BOOLEAN                             :type/Boolean
+   :BYTEA                               :type/*
+   :CHAR                                :type/Text
+   :CHARACTER                           :type/Text
+   :CLOB                                :type/Text
+   :DATE                                :type/Date
+   :DATETIME                            :type/DateTime
+   :DEC                                 :type/Decimal
+   :DECIMAL                             :type/Decimal
+   :DOUBLE                              :type/Float
+   :FLOAT                               :type/Float
+   :FLOAT4                              :type/Float
+   :FLOAT8                              :type/Float
+   :GEOMETRY                            :type/*
+   :IDENTITY                            :type/Integer
+   :IMAGE                               :type/*
+   :INT                                 :type/Integer
+   :INT2                                :type/Integer
+   :INT4                                :type/Integer
+   :INT8                                :type/BigInteger
+   :INTEGER                             :type/Integer
+   :LONGBLOB                            :type/*
+   :LONGTEXT                            :type/Text
+   :LONGVARBINARY                       :type/*
+   :LONGVARCHAR                         :type/Text
+   :MEDIUMBLOB                          :type/*
+   :MEDIUMINT                           :type/Integer
+   :MEDIUMTEXT                          :type/Text
+   :NCHAR                               :type/Text
+   :NCLOB                               :type/Text
+   :NTEXT                               :type/Text
+   :NUMBER                              :type/Decimal
+   :NUMERIC                             :type/Decimal
+   :NVARCHAR                            :type/Text
+   :NVARCHAR2                           :type/Text
+   :OID                                 :type/*
+   :OTHER                               :type/*
+   :RAW                                 :type/*
+   :REAL                                :type/Float
+   :SIGNED                              :type/Integer
+   :SMALLDATETIME                       :type/DateTime
+   :SMALLINT                            :type/Integer
+   :TEXT                                :type/Text
+   :TIME                                :type/Time
+   :TIMESTAMP                           :type/DateTime
+   :TINYBLOB                            :type/*
+   :TINYINT                             :type/Integer
+   :TINYTEXT                            :type/Text
+   :UUID                                :type/Text
+   :VARBINARY                           :type/*
+   :VARCHAR                             :type/Text
+   :VARCHAR2                            :type/Text
+   :VARCHAR_CASESENSITIVE               :type/Text
+   :VARCHAR_IGNORECASE                  :type/Text
+   :YEAR                                :type/Integer
+   (keyword "BINARY VARYING")           :type/*
+   (keyword "CHARACTER VARYING")        :type/Text
+   (keyword "CHARACTER LARGE OBJECT")   :type/Text
+   (keyword "DOUBLE PRECISION")         :type/Float
+   (keyword "TIMESTAMP WITH TIME ZONE") :type/DateTimeWithLocalTZ})
 
 (defmethod sql-jdbc.sync/database-type->base-type :h2
   [_ database-type]
