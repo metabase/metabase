@@ -6,13 +6,13 @@ import Icon from "metabase/components/Icon";
 import { WarningLink, WarningRoot } from "./DatabaseEngineWarning.styled";
 
 export interface DatabaseEngineWarningProps {
-  engine?: string;
+  engineKey?: string;
   engines: Record<string, Engine>;
   onChange?: (engine: string) => void;
 }
 
 const DatabaseEngineWarning = ({
-  engine: engineKey,
+  engineKey,
   engines,
   onChange,
 }: DatabaseEngineWarningProps): JSX.Element | null => {

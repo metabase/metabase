@@ -48,24 +48,24 @@ Template.args = {
 
 export const New = Template.bind({});
 New.args = {
-  engine: "presto-jdbc",
+  engineKey: "presto-jdbc",
   ...Template.args,
 };
 
 export const Deprecated = Template.bind({});
 Deprecated.args = {
-  engine: "presto",
+  engineKey: "presto",
   ...Template.args,
 };
 
 export const Community = Template.bind({});
 Community.args = {
-  engine: "communityEngine",
+  engineKey: "communityEngine",
   ...Template.args,
 };
 
 export const Partner = Template.bind({});
 Partner.args = {
-  engine: "partnerEngine",
+  engineKey: "partnerEngine",
   ...Template.args,
 };

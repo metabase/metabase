@@ -146,7 +146,7 @@ const DatabaseForm = ({
         <Form>
           <FormField name="engine" onChange={handleEngineChange} />
           <DatabaseEngineWarning
-            engine={values.engine}
+            engineKey={values.engine}
             onChange={engine => onChangeField("engine", engine)}
           />
           {_.reject(formFields, { name: "engine" }).map(({ name }) => (

@@ -171,7 +171,7 @@ class DatabaseEditApp extends Component {
                                 disabled={database.is_sample}
                               />
                               <DatabaseEngineWarning
-                                engine={values.engine}
+                                engineKey={values.engine}
                                 onChange={engine =>
                                   onChangeField("engine", engine)
                                 }

@@ -4,7 +4,7 @@ import { State } from "metabase-types/store";
 import DatabaseEngineWarning from "../../components/DatabaseEngineWarning";
 
 export interface DatabaseEngineWarningProps {
-  engine?: string;
+  engineKey?: string;
   hasBorder?: boolean;
   onChange?: (engine: string) => void;
 }
