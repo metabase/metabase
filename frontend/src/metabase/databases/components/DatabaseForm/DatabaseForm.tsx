@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { t } from "ttag";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
@@ -10,6 +10,7 @@ import { getValidationSchema, getVisibleFields } from "../../utils";
 import DatabaseEngineField from "../DatabaseEngineField";
 import DatabaseNameField from "../DatabaseNameField";
 import DatabaseDetailField from "../DatabaseDetailField";
+import DatabaseEngineWarning from "../DatabaseEngineWarning";
 
 export interface DatabaseFormProps {
   engines: Record<string, Engine>;
@@ -20,12 +21,12 @@ const DatabaseForm = ({
   engines,
   onSubmit,
 }: DatabaseFormProps): JSX.Element => {
-  const [engineName, setEngineName] = useState<string>();
-  const engine = engineName ? engines[engineName] : undefined;
+  const [engineKey, setEngineKey] = useState<string>();
+  const engine = engineKey ? engines[engineKey] : undefined;
 
   const validationSchema = useMemo(() => {
-    return getValidationSchema(engine, engineName);
-  }, [engine, engineName]);
+    return getValidationSchema(engine, engineKey);
+  }, [engine, engineKey]);
 
   const initialValues = useMemo(() => {
     return validationSchema.getDefault();
@@ -41,9 +42,10 @@ const DatabaseForm = ({
       {({ values }) => (
         <DatabaseFormBody
           engine={engine}
+          engineKey={engineKey}
           engines={engines}
           values={values}
-          onEngineChange={setEngineName}
+          onEngineChange={setEngineKey}
         />
       )}
     </FormProvider>
@@ -52,13 +54,15 @@ const DatabaseForm = ({
 
 interface DatabaseFormBodyProps {
   engine: Engine | undefined;
+  engineKey: string | undefined;
   engines: Record<string, Engine>;
   values: DatabaseValues;
-  onEngineChange: (engineName: string) => void;
+  onEngineChange: (engineKey: string) => void;
 }
 
 const DatabaseFormBody = ({
   engine,
+  engineKey,
   engines,
   values,
   onEngineChange,
@@ -69,7 +73,16 @@ const DatabaseFormBody = ({
 
   return (
     <Form>
-      <DatabaseEngineField engines={engines} onChange={onEngineChange} />
+      <DatabaseEngineField
+        engineKey={engineKey}
+        engines={engines}
+        onChange={onEngineChange}
+      />
+      <DatabaseEngineWarning
+        engineKey={engineKey}
+        engines={engines}
+        onChange={onEngineChange}
+      />
       {engine && <DatabaseNameField engine={engine} />}
       {fields.map(field => (
         <DatabaseDetailField key={field.name} field={field} />

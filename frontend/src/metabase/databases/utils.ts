@@ -4,12 +4,12 @@ import * as Errors from "metabase/core/utils/errors";
 import { Engine, EngineField } from "metabase-types/api";
 import { DatabaseValues } from "./types";
 
-export const getValidationSchema = (engine?: Engine, engineName?: string) => {
+export const getValidationSchema = (engine?: Engine, engineKey?: string) => {
   const fields = engine?.["details-fields"] ?? [];
   const entries = fields.map(field => [field.name, getFieldSchema(field)]);
 
   return Yup.object({
-    engine: Yup.string().default(engineName).required(Errors.required),
+    engine: Yup.string().default(engineKey).required(Errors.required),
     name: Yup.string().nullable().default(null).required(Errors.required),
     details: Yup.object(Object.fromEntries(entries)),
   });
