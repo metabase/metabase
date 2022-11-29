@@ -258,8 +258,7 @@
                      window-zone (:other attrs)
                      zone-ids    (str/split (:type attrs) #" ")]]
            (zipmap zone-ids (repeat window-zone)))
-         (cons {"UTC""UTC"})
-         (apply merge))))
+         (apply merge {"UTC" "UTC"}))))
 
 (defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
