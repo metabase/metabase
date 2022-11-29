@@ -433,8 +433,7 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
-  (let [timestamp    (partial hsql/call :timestamp)
-        datetime     (partial hsql/call :datetime)
+  (let [datetime     (partial hsql/call :datetime)
         hsql-form    (sql.qp/->honeysql driver arg)
         timestamptz? (hx/is-of-type? hsql-form "timestamp")]
     (when (and timestamptz? source-timezone)
@@ -444,7 +443,7 @@
                        :source-timezone source-timezone})))
     (-> (if timestamptz?
           hsql-form
-          (timestamp hsql-form (or source-timezone (qp.timezone/results-timezone-id))))
+          (hsql/call :timestamp hsql-form (or source-timezone (qp.timezone/results-timezone-id))))
         (datetime target-timezone)
         (with-temporal-type :datetime))))
 
