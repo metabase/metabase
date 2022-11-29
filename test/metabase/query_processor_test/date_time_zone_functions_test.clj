@@ -587,7 +587,8 @@
                                                       [(name unit) [:datetime-diff x y unit]]))
                               :fields (into [] (for [unit units]
                                                  [:expression (name unit)]))})
-                           mt/rows first
+                           (mt/formatted-rows (for [_ units] int))
+                           first
                            (zipmap units))))]
         (testing "a day"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"] ; UTC-1 all year
@@ -607,7 +608,7 @@
             (is (partial= {:second 82800 :minute 1380 :hour 23 :day 0}
                           (diffs "2022-10-02T00:00:00+00:00"      ; 2022-10-02T00:00:00+00:00
                                  "2022-10-03T00:00:00+01:00"))))) ; 2022-10-02T23:00:00+00:00
-        #_(testing "hour under a week"
+        (testing "hour under a week"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:hour 167 :day 7 :week 1}
                           (diffs "2022-10-02T00:00:00+00:00"     ; 2022-10-01T23:00:00-01:00
@@ -616,7 +617,7 @@
             (is (partial= {:hour 167 :day 6 :week 0}
                           (diffs "2022-10-02T00:00:00+00:00"      ; 2022-10-02T00:00:00+00:00
                                  "2022-10-09T00:00:00+01:00"))))) ; 2022-10-08T23:00:00+00:00
-        #_(testing "week"
+        (testing "week"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:hour 168 :day 7 :week 1}
                           (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-01T23:00:00-01:00
@@ -625,7 +626,7 @@
             (is (partial= {:hour 168 :day 7 :week 1}
                           (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00+00:00
                                  "2022-10-09T00:00:00+00:00"))))) ; 2022-10-09T00:00:00+00:00
-        #_(testing "hour under a month"
+        (testing "hour under a month"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:hour 743 :day 31 :week 4 :month 1}
                           (diffs "2022-10-02T00:00:00+00:00"     ; 2022-10-01T23:00:00-01:00
@@ -634,7 +635,7 @@
             (is (partial= {:hour 743 :day 30 :week 4 :month 0}
                           (diffs "2022-10-02T00:00:00+00:00"      ; 2022-10-02T00:00:00+00:00
                                  "2022-11-02T00:00:00+01:00"))))) ; 2022-11-01T23:00:00+00:00
-        #_(testing "month"
+        (testing "month"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:hour 744 :day 31 :month 1 :year 0}
                           (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-01T23:00:00-01:00
@@ -643,7 +644,7 @@
             (is (partial= {:hour 744 :day 31 :month 1 :year 0}
                           (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00+00:00
                                  "2022-11-02T00:00:00+00:00"))))) ; 2022-11-02T00:00:00+00:00
-        #_(testing "year"
+        (testing "year"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:day 365, :week 52, :month 12, :year 1}
                           (diffs "2022-10-02T01:00:00+01:00"     ; 2022-10-01T23:00:00-01:00
@@ -652,7 +653,7 @@
            (is (partial= {:day 365, :week 52, :month 12, :year 1}
                          (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00+00:00
                                 "2023-10-02T00:00:00+00:00"))))) ; 2023-10-02T00:00:00+00:00
-        #_(testing "hour under a year"
+        (testing "hour under a year"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:day 365 :month 12 :year 1}
                           (diffs "2022-10-02T00:00:00+00:00"     ; 2022-10-01T23:00:00-01:00
