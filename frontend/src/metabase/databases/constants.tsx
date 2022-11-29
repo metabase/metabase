@@ -1,10 +1,40 @@
 import React from "react";
 import { t } from "ttag";
-import DatabaseAuthCodeDescription from "../components/DatabaseAuthCodeDescription";
-import DatabaseClientIdDescription from "../components/DatabaseClientIdDescription";
-import DatabaseSshDescription from "../components/DatabaseSshDescription";
-import DatabaseSslKeyDescription from "../components/DatabaseSslKeyDescription";
-import { EngineFieldOverride } from "../types";
+import DatabaseSshDescription from "./components/DatabaseSshDescription";
+import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
+import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
+import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
+import { EngineFieldOverride } from "./types";
+
+export const ELEVATED_ENGINES = [
+  "mysql",
+  "postgres",
+  "sqlserver",
+  "redshift",
+  "bigquery-cloud-sdk",
+  "snowflake",
+];
+
+export const ENGINES_WITH_LOGO = [
+  "bigquery",
+  "druid",
+  "googleanalytics",
+  "h2",
+  "mongo",
+  "mysql",
+  "oracle",
+  "postgres",
+  "presto",
+  "redshift",
+  "snowflake",
+  "sparksql",
+  "starburst",
+  "sqlite",
+  "sqlserver",
+  "vertica",
+  "bigquery-cloud-sdk",
+  "presto-jdbc",
+];
 
 export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   "tunnel-enabled": {

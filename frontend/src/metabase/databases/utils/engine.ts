@@ -1,14 +1,6 @@
 import { Engine } from "metabase-types/api";
+import { ELEVATED_ENGINES, ENGINES_WITH_LOGO } from "../constants";
 import { EngineOption } from "../types";
-
-const ELEVATED_ENGINES = [
-  "mysql",
-  "postgres",
-  "sqlserver",
-  "redshift",
-  "bigquery-cloud-sdk",
-  "snowflake",
-];
 
 export const getEngineOptions = (
   engines: Record<string, Engine>,
@@ -35,29 +27,9 @@ export const getEngineOptions = (
 };
 
 export const getEngineLogo = (engine: string): string | undefined => {
-  const path = `app/assets/img/drivers`;
-
-  switch (engine) {
-    case "bigquery":
-    case "druid":
-    case "googleanalytics":
-    case "h2":
-    case "mongo":
-    case "mysql":
-    case "oracle":
-    case "postgres":
-    case "presto":
-    case "redshift":
-    case "snowflake":
-    case "sparksql":
-    case "starburst":
-    case "sqlite":
-    case "sqlserver":
-    case "vertica":
-      return `${path}/${engine}.svg`;
-    case "bigquery-cloud-sdk":
-      return `${path}/bigquery.svg`;
-    case "presto-jdbc":
-      return `${path}/presto.svg`;
+  if (ENGINES_WITH_LOGO.includes(engine)) {
+    return `app/assets/img/drivers/${engine}.svg`;
+  } else {
+    return undefined;
   }
 };
