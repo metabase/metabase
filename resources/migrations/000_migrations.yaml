@@ -33,18 +33,6 @@ databaseChangeLog:
       name: databasechangelog.name
       value: databasechangelog
       dbms: postgresql
-  - property:
-      name: capturegroup.ref
-      value: \1
-      dbms: postgresql
-  - property:
-      name: capturegroup.ref
-      value: $1
-      dbms: h2,mysql
-  - property:
-      name: capturegroup.ref
-      value: \\1
-      dbms: mariadb
 
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
@@ -13216,10 +13204,12 @@ databaseChangeLog:
             columnDataType: int
             columnName: card_id
 
+  # migration for developers and internal use of actions created in 45 during a short period.
   - changeSet:
       id: v46.00-013
       author: snoe
       comment: Added 0.46.0 - Unify action representation
+      validCheckSum: ANY
       changes:
         - sql:
             sql: >-
@@ -13257,7 +13247,12 @@ databaseChangeLog:
                                      WHEN 'row/create' THEN 'insert'
                                      WHEN 'row/delete' THEN 'delete'
                                      WHEN 'row/update' THEN 'update'
-                                  END), ('action_' || action.id)) = regexp_replace(report_dashboardcard.visualization_settings, '.*"action_slug"\s*:\s*"([^"]+)".*', '${capturegroup.ref}'))
+                                  END), ('action_' || action.id)) =
+                                  substring(report_dashboardcard.visualization_settings,
+                                    position('"action_slug":"' in report_dashboardcard.visualization_settings)+15,
+                                    position('"' in
+                                      substring(report_dashboardcard.visualization_settings,
+                                        position('"action_slug":"' in visualization_settings)+15)) - 1))
               WHERE report_dashboardcard.visualization_settings like '%action_slug%';
 
               UPDATE query_action SET
