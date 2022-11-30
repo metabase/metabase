@@ -159,6 +159,44 @@ describe("metabase-lib/expressions/resolve", () => {
     it("should honor CONCAT's implicit casting", () => {
       expect(() => expr(["concat", ["coalesce", "B", 1]])).not.toThrow();
     });
+
+    describe("datetime commands", () => {
+      it("should resolve unchained commmands", () => {
+        expect(() => expr(["get-week", "2022-01-01"])).not.toThrow();
+        expect(() => expr(["get-week", A])).not.toThrow();
+
+        expect(() =>
+          expr(["datetime-add", "2022-01-01", 1, "month"]),
+        ).not.toThrow();
+      });
+
+      it("should resolve chained commmands", () => {
+        expect(() =>
+          expr([
+            "datetime-subtract",
+            ["datetime-add", "2022-01-01", 1, "month"],
+            2,
+            "minute",
+          ]),
+        ).not.toThrow();
+      });
+
+      it("should chain datetime commands onto commands of compatible types", () => {
+        expect(() =>
+          expr([
+            "concat",
+            ["datetime-add", "2022-01-01", 1, "month"],
+            "a string",
+          ]),
+        ).not.toThrow();
+      });
+
+      it("should throw if chaining datetime commands onto commands of incompatible types", () => {
+        expect(() =>
+          expr(["trim", ["datetime-add", "2022-01-01", 1, "month"]]),
+        ).toThrow();
+      });
+    });
   });
 
   describe("for aggregations", () => {
