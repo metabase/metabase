@@ -84,4 +84,4 @@ You can export Metabase application data and use that to spin up new instances p
 
 ## Configuration file
 
-For self-hosted installations, you can load Metabase from a [configuration file](../installation-and-operation/config-file.md).
+For self-hosted installations, you can load Metabase from a [configuration file](../configuring-metabase/config-file.md).
