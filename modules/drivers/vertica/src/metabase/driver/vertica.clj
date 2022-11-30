@@ -1,6 +1,7 @@
 (ns metabase.driver.vertica
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
@@ -13,9 +14,10 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [trs tru]])
   (:import [java.sql ResultSet Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
@@ -157,8 +159,8 @@
                             (hx/cast
                              :integer
                              (hx/floor
-                              (cond-> (= unit :second)
-                                (hsql/call :- (extract :epoch b) (extract :epoch a))
+                              (cond-> (hsql/call :- (extract :epoch b) (extract :epoch a))
+                               (not= unit :second)
                                 (hx// (case unit :hour 3600 :minute 60))))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x)))))))
 
