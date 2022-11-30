@@ -37,8 +37,8 @@
           (setting.cache/update-settings-last-updated!)
           (jdbc/update! t-conn
                         :setting
-                        {:value (encrypt-str-fn value)}
-                        ["setting.key = ?" key])))
+                        {"\"VALUE\"" (encrypt-str-fn value)}
+                        ["setting.\"KEY\" = ?" key])))
       ;; update all secret values according to the new encryption key
       ;; fortunately, we don't need to fetch the latest secret instance per ID, as we would need to in order to update
       ;; a secret value through the regular database save API path; instead, ALL secret values in the app DB (regardless
