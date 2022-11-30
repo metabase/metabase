@@ -380,7 +380,11 @@
     (mt/dataset sample-dataset
       (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                           source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE
+<<<<<<< HEAD
                           parsedatetime (extract (year from CAST (source.CREATED_AT AS timestamp)) "yyyy") AS CREATED_AT
+=======
+                          date_trunc ("year" source.CREATED_AT) AS CREATED_AT
+>>>>>>> fe5a3ddcc0 (Fixes more H2 tests)
                           source.pivot-grouping AS pivot-grouping
                           count (*) AS count]
                :from     [{:select    [ORDERS.ID                          AS ID
@@ -408,16 +412,16 @@
                            AND
                            (source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ? OR source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?)
                            AND
-                           source.CREATED_AT >= parsedatetime (extract (year from CAST (dateadd ("year" CAST (-2 AS long) now ()) AS timestamp)) "yyyy")
+                           source.CREATED_AT >= date_trunc ("year" dateadd ("year" CAST (-2 AS long) now ()))
                            AND
-                           source.CREATED_AT < parsedatetime (extract (year from CAST (now () AS timestamp)) "yyyy"))]
+                           source.CREATED_AT < date_trunc ("year" now ()))]
                :group-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY
                           source.PEOPLE__via__USER_ID__SOURCE
-                          parsedatetime (extract (year from CAST (source.CREATED_AT AS timestamp)) "yyyy")
+                          date_trunc ("year" source.CREATED_AT)
                           source.pivot-grouping]
                :order-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY ASC
                           source.PEOPLE__via__USER_ID__SOURCE ASC
-                          parsedatetime (extract (year from CAST (source.CREATED_AT AS timestamp)) "yyyy") ASC
+                          date_trunc ("year" source.CREATED_AT) ASC
                           source.pivot-grouping ASC]}
              (-> (mt/mbql-query orders
                    {:aggregation [[:aggregation-options [:count] {:name "count"}]]
@@ -658,12 +662,12 @@
   (is (= '{:select [source.DATE  AS DATE
                     source.sum   AS sum
                     source.sum_2 AS sum_2]
-           :from   [{:select   [parsedatetime (formatdatetime (CHECKINS.DATE "yyyyMM") "yyyyMM") AS DATE
+           :from   [{:select   [date_trunc ("month" CHECKINS.DATE) AS DATE
                                 sum (CHECKINS.USER_ID)                                           AS sum
                                 sum (CHECKINS.VENUE_ID)                                          AS sum_2]
                      :from     [CHECKINS]
-                     :group-by [parsedatetime (formatdatetime (CHECKINS.DATE "yyyyMM") "yyyyMM")]
-                     :order-by [parsedatetime (formatdatetime (CHECKINS.DATE "yyyyMM") "yyyyMM") ASC]}
+                     :group-by [date_trunc ("month" CHECKINS.DATE)]
+                     :order-by [date_trunc ("month" CHECKINS.DATE) ASC]}
                     source]
            :where  [source.sum > 300]
            :limit  [2]}
