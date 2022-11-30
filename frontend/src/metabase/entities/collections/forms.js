@@ -1,14 +1,6 @@
-import { createSelector } from "reselect";
 import { t } from "ttag";
 
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { color } from "metabase/lib/colors";
-import { getUser } from "metabase/selectors/user";
-
-import {
-  isPersonalCollection,
-  isPersonalCollectionChild,
-} from "metabase/collections/utils";
 
 import { DEFAULT_COLLECTION_COLOR_ALIAS } from "./constants";
 
@@ -60,38 +52,4 @@ function createForm({ extraFields = [] } = {}) {
   };
 }
 
-function isPersonalOrPersonalChild(collection, collectionList) {
-  if (!collection) {
-    return false;
-  }
-  return (
-    isPersonalCollection(collection) ||
-    isPersonalCollectionChild(collection, collectionList)
-  );
-}
-
-export const getFormSelector = createSelector(
-  [
-    (state, props) => props.collection || {},
-    (state, props) => props.parentCollectionId,
-    state => state.entities.collections || {},
-    getUser,
-  ],
-  (collection, parentCollectionId, allCollections, user) => {
-    const collectionList = Object.values(allCollections);
-    const extraFields = [];
-
-    const parentId = parentCollectionId || collection?.parent_id;
-    const parentCollection = allCollections[parentId];
-    const canManageAuthorityLevel =
-      user.is_superuser &&
-      !isPersonalCollection(collection) &&
-      !isPersonalOrPersonalChild(parentCollection, collectionList);
-
-    if (canManageAuthorityLevel) {
-      extraFields.push(...PLUGIN_COLLECTIONS.getAuthorityLevelFormFields());
-    }
-
-    return createForm({ extraFields });
-  },
-);
+export const getFormSelector = () => createForm();

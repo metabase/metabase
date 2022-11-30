@@ -89,9 +89,7 @@ export const PLUGIN_SELECTORS = {
   getLoadingMessage: (state: State) => t`Doing science...`,
 };
 
-export const PLUGIN_FORM_WIDGETS: Record<string, React.ComponentType<any>> = {
-  collectionAuthorityLevel: PluginPlaceholder,
-};
+export const PLUGIN_FORM_WIDGETS: Record<string, React.ComponentType<any>> = {};
 
 // snippet sidebar
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
@@ -115,21 +113,14 @@ type AuthorityLevelMenuItem = {
   action: () => void;
 };
 
-type AuthorityLevelFormField = {
-  name: string;
-  title: string;
-  info?: string;
-  type: string;
-  options?: any[];
-};
-
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
+  FormCollectionAuthorityLevelPicker:
+    PluginPlaceholder as React.ComponentType<any>,
   isRegularCollection: (_: Collection | Bookmark) => true,
-  getAuthorityLevelFormFields: (): AuthorityLevelFormField[] => [],
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
