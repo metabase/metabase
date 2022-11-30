@@ -7,7 +7,8 @@
             [metabase.sync :as sync]
             [metabase.util.files :as u.files]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import java.net.URL))
 
 (def ^:private ^String sample-database-name     "Sample Database")
 (def ^:private ^String sample-database-filename "sample-database.db.mv.db")
@@ -33,7 +34,7 @@
 
 (defn- jar-db-details
   [resource]
-  (-> (.getPath resource)
+  (-> (.getPath ^URL resource)
       (str/replace #"^file:" "zip:") ; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't do anything when running from the Clojure CLI, which has no `file:` prefix)
       process-sample-db-path))
 
