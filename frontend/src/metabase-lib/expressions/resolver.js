@@ -42,6 +42,8 @@ const isCompatible = (a, b) => {
   if (a === b) {
     return true;
   }
+  // datetime type is a subset of "string" type,
+  // for example: "2022-01-01"
   if (a === "datetime" && b === "string") {
     return true;
   }
