@@ -22,7 +22,7 @@ import { logout } from "metabase/auth/actions";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
 
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
@@ -138,9 +138,9 @@ function MainNavbarContainer({
   const renderModalContent = useCallback(() => {
     if (modal === "MODAL_NEW_COLLECTION") {
       return (
-        <CollectionCreate
+        <CreateCollectionModal
           onClose={closeModal}
-          onSaved={(collection: Collection) => {
+          onCreate={(collection: Collection) => {
             closeModal();
             onChangeLocation(Urls.collection(collection));
           }}

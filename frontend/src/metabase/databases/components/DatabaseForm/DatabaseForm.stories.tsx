@@ -18,15 +18,9 @@ Default.args = {
     presto: createMockEngine({
       "driver-name": "Presto (Deprecated Driver)",
       "superseded-by": "presto-jdbc",
-      source: {
-        type: "official",
-      },
     }),
     "presto-jdbc": createMockEngine({
       "driver-name": "Presto",
-      source: {
-        type: "official",
-      },
     }),
   },
 };

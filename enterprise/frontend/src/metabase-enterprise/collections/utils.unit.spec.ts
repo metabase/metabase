@@ -1,17 +1,14 @@
+import { createMockCollection } from "metabase-types/api/mocks";
 import { isRegularCollection } from "./utils";
 
 describe("Collections plugin utils", () => {
   const COLLECTION = {
-    NO_AUTHORITY_LEVEL: {
+    NO_AUTHORITY_LEVEL: createMockCollection({
       id: "root",
       name: "Our analytics",
-    },
-    REGULAR: {
-      authority_level: null,
-    },
-    OFFICIAL: {
-      authority_level: "official",
-    },
+    }),
+    REGULAR: createMockCollection({ authority_level: null }),
+    OFFICIAL: createMockCollection({ authority_level: "official" }),
   };
 
   describe("isRegularCollection", () => {

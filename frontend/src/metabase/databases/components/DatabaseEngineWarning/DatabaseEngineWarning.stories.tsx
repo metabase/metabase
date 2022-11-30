@@ -1,6 +1,9 @@
 import React from "react";
 import type { ComponentStory } from "@storybook/react";
-import { createMockEngine } from "metabase-types/api/mocks";
+import {
+  createMockEngine,
+  createMockEngineSource,
+} from "metabase-types/api/mocks";
 import DatabaseEngineWarning from "./DatabaseEngineWarning";
 
 export default {
@@ -17,31 +20,31 @@ Template.args = {
     presto: createMockEngine({
       "driver-name": "Presto (Deprecated Driver)",
       "superseded-by": "presto-jdbc",
-      source: {
+      source: createMockEngineSource({
         type: "official",
-      },
+      }),
     }),
     "presto-jdbc": createMockEngine({
       "driver-name": "Presto",
-      source: {
+      source: createMockEngineSource({
         type: "official",
-      },
+      }),
     }),
     communityEngine: createMockEngine({
       "driver-name": "CommunityEngine",
-      source: {
+      source: createMockEngineSource({
         type: "community",
-      },
+      }),
     }),
     partnerEngine: createMockEngine({
       "driver-name": "PartnerEngine",
-      source: {
+      source: createMockEngineSource({
         type: "partner",
         contact: {
           name: "Partners Incorporated",
           address: "https://example.com/contact",
         },
-      },
+      }),
     }),
   },
 };

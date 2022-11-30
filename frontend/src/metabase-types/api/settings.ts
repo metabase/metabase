@@ -25,7 +25,7 @@ export interface Engine {
   "driver-name": string;
   "details-fields"?: EngineField[];
   source: EngineSource;
-  "superseded-by": string | undefined;
+  "superseded-by": string | null;
 }
 
 export interface EngineField {
@@ -61,8 +61,8 @@ export interface EngineFieldOption {
 }
 
 export interface EngineSource {
-  type?: "official" | "community" | "partner";
-  contact?: EngineSourceContact;
+  type: "official" | "community" | "partner";
+  contact: EngineSourceContact | null;
 }
 
 export interface EngineSourceContact {

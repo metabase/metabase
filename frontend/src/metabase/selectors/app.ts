@@ -154,13 +154,3 @@ export const getIsQuestionLineageVisible = createSelector(
     !originalQuestion.isDataset() &&
     PATHS_WITH_QUESTION_LINEAGE.some(pattern => pattern.test(path)),
 );
-
-export const getSettings = createSelector(
-  (state: State) => state.settings,
-  settings => settings.values,
-);
-
-export const getTokenStatusStatus = createSelector(
-  [getSettings],
-  settings => settings["token-status"]?.status,
-);
