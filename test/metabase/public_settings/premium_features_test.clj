@@ -79,23 +79,28 @@
                   :error-details "network issues"}
                  (premium-features/fetch-token-status (apply str (repeat 64 "b")))))))
       (testing "Only attempt the token once"
-        ;; flush any cached results for `fetch-token-status` to make sure a new call
-        ;; to [[premium-features/fetch-token-status*]] is triggered
-        (memoize/memo-clear! premium-features/fetch-token-status)
-        (let [call-count (atom 0)]
+        (let [call-count (atom 0)
+              token      (random-token)]
           (binding [clj-http.client/request (fn [& _]
                                               (swap! call-count inc)
                                               (throw (Exception. "no internet")))]
-            (mt/with-temporary-raw-setting-values [:premium-embedding-token (random-token)]
-              (doseq [premium-setting [premium-features/hide-embed-branding?
-                                       premium-features/enable-whitelabeling?
-                                       premium-features/enable-audit-app?
-                                       premium-features/enable-sandboxes?
-                                       premium-features/enable-sso?
-                                       premium-features/enable-advanced-config?
-                                       premium-features/enable-content-management?]]
-                (testing (str (:name (meta premium-setting)) "is not false")
-                  (is (false? (premium-setting)))))
+
+            (mt/with-temporary-raw-setting-values [:premium-embedding-token token]
+              (testing "Sanity check"
+                (is (= token
+                       (premium-features/premium-embedding-token)))
+                (is (= #{}
+                       (#'premium-features/token-features))))
+              (doseq [has-feature? [#'premium-features/hide-embed-branding?
+                                    #'premium-features/enable-whitelabeling?
+                                    #'premium-features/enable-audit-app?
+                                    #'premium-features/enable-sandboxes?
+                                    #'premium-features/enable-sso?
+                                    #'premium-features/enable-advanced-config?
+                                    #'premium-features/enable-content-management?
+                                    #'premium-features/enable-serialization?]]
+                (testing (format "\n%s is false" (:name (meta has-feature?)))
+                  (is (not (has-feature?)))))
               (is (= 1
                      @call-count))))))
 
