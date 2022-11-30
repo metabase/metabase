@@ -55,6 +55,7 @@ export default class Smart extends React.Component {
     "scalar.switch_positive_negative": {
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
+      inline: true,
     },
     click_behavior: {},
   };
