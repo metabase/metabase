@@ -1,11 +1,15 @@
 import { ComponentType, ReactNode } from "react";
-import { EngineFieldOption, EngineFieldType } from "metabase-types/api";
+import {
+  DatabaseSchedules,
+  EngineFieldOption,
+  EngineFieldType,
+} from "metabase-types/api";
 
 export interface DatabaseValues {
   name: string;
   engine: string | undefined;
   details: Record<string, unknown>;
-  schedules: Record<string, unknown>;
+  schedules: DatabaseSchedules;
   auto_run_queries: boolean;
   refingerprint: boolean;
 }
