@@ -289,10 +289,11 @@
   - there are some date overrides done from lib/formatting.js
   - chop off and underscore the nasty keys in our map
   - backfill currency to the default of USD if not present"
-  [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
+  [x-col y-col {::mb.viz/keys [column-settings] :as viz-settings}]
   (let [x-col-settings (settings-from-column x-col column-settings)
         y-col-settings (settings-from-column y-col column-settings)]
-    (cond-> {:colors (public-settings/application-colors)}
+    (cond-> {:colors (public-settings/application-colors)
+             :visualization_settings viz-settings}
       x-col-settings
       (assoc :x x-col-settings)
       y-col-settings
