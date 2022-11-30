@@ -14,12 +14,14 @@
 
 ;; Reuse the plugins directory for the destination to extract the sample database because it's pretty much guaranteed
 ;; to exist and be writable.
-(def ^:private target-path (u.files/append-to-path (plugins/plugins-dir) sample-database-filename))
+(defn- target-path
+  []
+  (u.files/append-to-path (plugins/plugins-dir) sample-database-filename))
 
 (defn- extract-sample-database!
   []
   (u.files/with-open-path-to-resource [sample-db-path sample-database-filename]
-    (u.files/copy-file! sample-db-path target-path)))
+    (u.files/copy-file! sample-db-path (target-path))))
 
 (defn- process-sample-db-path
   [base-path]
@@ -49,12 +51,13 @@
       (throw (Exception. (trs "Sample database DB file ''{0}'' cannot be found."
                               sample-database-filename))))
     {:db
-     (try
-       (extract-sample-database!)
-       (extracted-db-details)
-       (catch Throwable _e
-        (log/warn (trs (str "Error extracting the sample database; this may result in a slow startup time.")))
-        (jar-db-details resource)))}))
+      (if-not (:temp plugins/plugins-dir-info)
+        (do
+         (extract-sample-database!)
+         (extracted-db-details))
+        (do
+         (log/warn (trs (str "Sample database could not be extracted to the plugins directory; this may result in slow startup times.")))
+         (jar-db-details resource)))}))
 
 (defn add-sample-database!
   "Add the sample database as a Metabase DB if it doesn't already exist."
