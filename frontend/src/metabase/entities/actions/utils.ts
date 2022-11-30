@@ -4,7 +4,6 @@ import type {
   FieldType,
   InputType,
   ParameterType,
-  ModelAction,
 } from "metabase-types/api";
 
 import { getDefaultFieldSettings } from "metabase/writeback/components/ActionCreator/FormCreator";

@@ -178,7 +178,7 @@ export const PublicApi = {
     PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
   ),
   executeAction: POST(
-    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute/:slug",
+    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
 };
 
@@ -479,24 +479,12 @@ function setParamsEndpoints(prefix) {
 }
 
 export const ActionsApi = {
-  get: GET("/api/action/:id"),
   list: GET("/api/action"),
-  create: POST("/api/action/row/create"),
-  update: POST("/api/action/row/update"),
-  delete: POST("/api/action/row/delete"),
-  bulkUpdate: POST("/api/action/bulk/update/:tableId"),
-  bulkDelete: POST("/api/action/bulk/delete/:tableId"),
+  get: GET("/api/action/:id"),
+  create: POST("/api/action"),
+  update: PUT("/api/action/:id"),
   prefetchValues: GET(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute/:slug",
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-  execute: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute/:slug",
-  ),
-};
-
-export const ModelActionsApi = {
-  connectActionToModel: POST("/api/model-action"),
-  createImplicitAction: POST("/api/model-action"),
-  updateConnection: PUT("/api/model-action/:id"),
-  disconnectActionFromModel: POST("/api/model-action"),
+  execute: POST("/api/dashboard/:dashboardId/dashcard/:dashcardId/execute"),
 };

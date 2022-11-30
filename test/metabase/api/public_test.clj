@@ -16,8 +16,7 @@
                                      DashboardCardSeries
                                      Dimension
                                      Field
-                                     FieldValues
-                                     ModelAction]]
+                                     FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
@@ -453,16 +452,6 @@
                                                                :target [:dimension (mt/id :venues :name)]
                                                                :value  ["PizzaHacker"]
                                                                :id     "_VENUE_NAME_"}])))))))))))
-
-(deftest execute-public-dashcard-params-validation-test-with-writable-card
-  (testing "GET /api/public/dashboard/:uuid/card/:card-id"
-    (testing "Should not work with a writable card"
-      (mt/with-temporary-setting-values [enable-public-sharing true]
-        (with-temp-public-dashboard [dash]
-          (with-temp-public-card [card {:is_write true}]
-            (let [dashcard (add-card-to-dashboard! card dash)]
-              ;; the 405 is caught and rethrown as a 400
-              (client/client :get 400 (dashcard-url dash card dashcard)))))))))
 
 (deftest execute-public-dashcard-additional-series-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
@@ -1135,27 +1124,26 @@
   (actions.test-util/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash {:parameters []}]
-        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
-                        ModelAction [_ {:slug "update" :card_id card-id :requires_pk true}]
-                        DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
-                                                          :card_id card-id
-                                                          :visualization_settings {:action_slug "update"}}]]
-          (with-redefs [api.public/dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 1)]
-            (is (partial= {:rows-updated [1]}
-                          (client/client
-                            :post 200
-                            (format "public/dashboard/%s/dashcard/%s/execute/update"
-                                    (:public_uuid dash)
-                                    dashcard-id)
-                            {:parameters {:id 1 :name "European"}})))
-            (let [throttled-response (client/client-full-response
-                                       :post 429
-                                       (format "public/dashboard/%s/dashcard/%s/execute/update"
-                                               (:public_uuid dash)
-                                               dashcard-id)
-                                       {:parameters {:id 1 :name "European"}})]
-              (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
-              (is (contains? (:headers throttled-response) "Retry-After")))))))))
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {}]
+          (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
+                                                            :action_id action-id
+                                                            :card_id model-id}]]
+            (with-redefs [api.public/dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 1)]
+              (is (partial= {:rows-affected 1}
+                            (client/client
+                             :post 200
+                             (format "public/dashboard/%s/dashcard/%s/execute"
+                                     (:public_uuid dash)
+                                     dashcard-id)
+                             {:parameters {:id 1 :name "European"}})))
+              (let [throttled-response (client/client-full-response
+                                        :post 429
+                                        (format "public/dashboard/%s/dashcard/%s/execute"
+                                                (:public_uuid dash)
+                                                dashcard-id)
+                                        {:parameters {:id 1 :name "European"}})]
+                (is (str/starts-with? (:body throttled-response) "Too many attempts!"))
+                (is (contains? (:headers throttled-response) "Retry-After"))))))))))
 
 (deftest execute-public-dashcard-custom-action-test
   (mt/with-temp-copy-of-db
@@ -1163,15 +1151,14 @@
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-dashboard [dash {:parameters []}]
-          (actions.test-util/with-action [{:keys [action-id]} {}]
-            (mt/with-temp* [Card [{card-id :id} {:dataset true}]
-                            ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
-                            DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
-                                                              :card_id card-id}]]
+          (actions.test-util/with-actions [{:keys [action-id model-id]} {}]
+            (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
+                                                              :action_id action-id
+                                                              :card_id model-id}]]
               (is (partial= {:rows-affected 1}
                             (client/client
                              :post 200
-                             (format "public/dashboard/%s/dashcard/%s/execute/custom"
+                             (format "public/dashboard/%s/dashcard/%s/execute"
                                      (:public_uuid dash)
                                      dashcard-id)
                              {:parameters {:id 1 :name "European"}}))))))))))
@@ -1180,15 +1167,14 @@
   (actions.test-util/with-actions-test-data-and-actions-enabled
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash {:parameters []}]
-        (mt/with-temp* [Card [{card-id :id} {:dataset true :dataset_query (mt/mbql-query categories)}]
-                        ModelAction [_ {:slug "update" :card_id card-id :requires_pk true}]
-                        DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
-                                                          :card_id card-id
-                                                          :visualization_settings {:action_slug "update"}}]]
-          (is (partial= {:id 1 :name "African"}
-                        (client/client
-                          :get 200
-                          (format "public/dashboard/%s/dashcard/%s/execute/update?parameters=%s"
-                                  (:public_uuid dash)
-                                  dashcard-id
-                                  (json/encode {:id 1}))))))))))
+        (actions.test-util/with-actions [{:keys [action-id model-id]} {:type :implicit}]
+          (mt/with-temp* [DashboardCard [{dashcard-id :id} {:dashboard_id (:id dash)
+                                                            :action_id action-id
+                                                            :card_id model-id}]]
+            (is (partial= {:id 1 :name "African"}
+                          (client/client
+                           :get 200
+                           (format "public/dashboard/%s/dashcard/%s/execute?parameters=%s"
+                                   (:public_uuid dash)
+                                   dashcard-id
+                                   (json/encode {:id 1})))))))))))

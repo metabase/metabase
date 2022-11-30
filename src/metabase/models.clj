@@ -90,7 +90,7 @@
          view-log/keep-me)
 
 (p/import-vars
- [action Action HTTPAction ModelAction QueryAction]
+ [action Action HTTPAction ImplicitAction QueryAction]
  [activity Activity]
  [app App]
  [app-perm-revision AppPermissionGraphRevision]

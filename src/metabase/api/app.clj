@@ -10,7 +10,7 @@
     [metabase.api.collection :as api.collection]
     [metabase.api.common :as api]
     [metabase.mbql.schema :as mbql.s]
-    [metabase.models :refer [App Card Dashboard ModelAction Table]]
+    [metabase.models :refer [App Card Dashboard Table]]
     [metabase.models.action :as action]
     [metabase.models.app.graph :as app.graph]
     [metabase.models.collection :as collection]
@@ -139,14 +139,24 @@
                                 (let [card (api.card/create-card! (-> card
                                                                       (replace-scaffold-targets accum)
                                                                       (assoc :collection_id collection-id)
-                                                                      (dissoc :scaffold-target)))]
-                                  (when (:dataset card)
-                                    (db/insert-many! ModelAction [{:card_id (:id card) :slug "insert" :requires_pk false}
-                                                                  {:card_id (:id card) :slug "update" :requires_pk true}
-                                                                  {:card_id (:id card) :slug "delete" :requires_pk true}]))
-                                  (cond-> (assoc accum (into ["scaffold-target-id"] scaffold-target) (:id card))
+                                                                      (dissoc :scaffold-target)))
+                                      target+action-ids (when (:dataset card)
+                                                          (for [kind ["row/create" "row/update" "row/delete"]]
+                                                            [kind (action/insert! {:model_id (:id card)
+                                                                                   :kind kind
+                                                                                   :type :implicit
+                                                                                   :name (get {"row/create" "insert" "row/update" "update" "row/delete" "delete"} kind)})]))
+                                      scaffold-path (into ["scaffold-target-id"] scaffold-target)]
+                                  (cond-> (assoc accum scaffold-path (:id card))
                                     (:dataset card)
-                                    (assoc (conj (into ["scaffold-target-id"] scaffold-target) "card") (str "card__" (:id card))))))
+                                    (assoc (conj scaffold-path "card") (str "card__" (:id card)))
+
+                                    (seq target+action-ids)
+                                    (merge (->> target+action-ids
+                                                (map (juxt (comp #(conj scaffold-path %)
+                                                                 first)
+                                                           second))
+                                                (into {}))))))
                               {}
                               cards)]
     ;; We create the dashboards (without dashcards) so we can replace scaffold-target-id elsewhere
@@ -246,9 +256,9 @@
           :page-ident table-id
           :ident-type ident-type
           :actions (if (= page-type "list")
-                     [["insert" (i18n/tru "New")]]
-                     [["update" (i18n/tru "Edit")]
-                      ["delete" (i18n/tru "Delete")]])
+                     [[["scaffold-target-id" "card" ident-type table-id "model" "row/create"] (i18n/tru "New")]]
+                     [[["scaffold-target-id" "card" ident-type table-id "model" "row/update"] (i18n/tru "Edit")]
+                      [["scaffold-target-id" "card" ident-type table-id "model" "row/delete"] (i18n/tru "Delete") true]])
           :model-ref ["scaffold-target-id" "card" ident-type table-id "model"]
           :card-ref ["scaffold-target-id" "card" ident-type table-id "model" "card"]
           :page-name (format "%s %s"
@@ -262,16 +272,20 @@
     (let [models (db/select Card :id [:in model-ids])
           model-id->model (m/index-by :id models)
           model-id->params (action/implicit-action-parameters models)
-          model-actions (action/merged-model-action models :card_id [:in model-ids])
-          model-id->model-actions (group-by :model_id model-actions)
-          sorter (fn [slug]
-                   (get {"update" 1 "delete" 2 "insert" 0} slug 3))
-          action-mapper (fn [{:keys [slug name]}]
-                          [slug (or name
-                                    (get {"insert" (i18n/tru "New")
-                                          "update" (i18n/tru "Edit")
-                                          "delete" (i18n/tru "Delete")}
-                                         slug))])]
+          actions (action/actions-with-implicit-params models :model_id [:in model-ids])
+          model-id->actions (group-by :model_id actions)
+          sorter (fn [kind]
+                   (get {"row/update" 1 "row/delete" 2 "row/create" 0} kind 3))
+          action-mapper (fn [{:keys [id kind name]}]
+                          [id
+                           (or name
+                               (get {"row/create" (i18n/tru "New")
+                                     "row/update" (i18n/tru "Edit")
+                                     "row/delete" (i18n/tru "Delete")}
+                                    kind))
+                           (= "row/delete" kind)
+                           kind])
+          requires-pk (comp #{"row/update" "row/delete"} :kind)]
       (for [model-id model-ids
             :let [model (get model-id->model model-id)
                   params (get model-id->params model-id)
@@ -281,14 +295,16 @@
                                       {:status-code 400})))
                   pk-param (first pks)
                   pk-field-slug (:id pk-param)
-                  model-action (get model-id->model-actions model-id)
+                  actions (get model-id->actions model-id)
                   ident-type "model"]
             page-type ["list" "detail"]
-            :let [selector (if (= page-type "detail") :requires_pk (complement :requires_pk))
-                  actions (->> model-action
+            :let [selector (if (= page-type "detail")
+                             requires-pk
+                             (complement requires-pk))
+                  actions (->> actions
                                (filter selector)
                                (map action-mapper)
-                               (sort-by (comp sorter first)))]]
+                               (sort-by (comp sorter last)))]]
         {:page-type page-type
          :pk-field-slug pk-field-slug
          :pk-field-id (::action/field-id pk-param)
@@ -357,12 +373,12 @@
                                                                       "targetId" ["scaffold-target-id" "page" ident-type page-ident "detail"]}}}]
                                     (seq actions)
                                     (concat
-                                      (mapv (fn [[slug action-name] col]
+                                      (mapv (fn [[action-ref action-name] col]
                                               {:size_y 1 :size_x 2 :row 0 :col col
                                                :card_id model-ref
+                                               :action_id action-ref
                                                :visualization_settings {"virtual_card" {"display" "action"}
-                                                                        "button.label" action-name
-                                                                        "action_slug" slug}})
+                                                                        "button.label" action-name}})
                                             actions
                                             (range (- 18 (* 2 (count actions))) Long/MAX_VALUE 2))))
                                   (cond-> [{:size_y 12 :size_x 18 :row 1 :col 0
@@ -379,15 +395,15 @@
 
                                     (seq actions)
                                     (concat
-                                      (mapv (fn [[slug action-name] col]
+                                      (mapv (fn [[action-ref action-name danger?] col]
                                               {:size_y 1 :size_x 2 :row 0 :col col
                                                :card_id model-ref
+                                               :action_id action-ref
                                                :parameter_mappings [{"parameter_id" (str "scaffold_" page-ident)
                                                                      "target" ["variable", ["template-tag", pk-field-slug]]}]
                                                :visualization_settings (cond-> {"virtual_card" {"display" "action"}
-                                                                                "button.label" action-name
-                                                                                "action_slug" slug}
-                                                                         (= "delete" slug)
+                                                                                "button.label" action-name}
+                                                                         danger?
                                                                          (assoc "button.variant" "danger"))})
                                             actions
                                             (range (- 18 (* 2 (count actions))) Long/MAX_VALUE 2)))))}

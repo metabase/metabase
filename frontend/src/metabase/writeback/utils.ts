@@ -89,8 +89,8 @@ export function isMappedExplicitActionButton(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionDashboardCard {
   const isAction = isActionDashCard(dashCard);
-  return (
-    isAction && typeof dashCard.visualization_settings.action_slug === "string"
+  return Boolean(
+    isAction && dashCard.action && dashCard.action.type !== "implicit",
   );
 }
 
@@ -108,7 +108,7 @@ export const isImplicitAction = (action: WritebackAction): boolean =>
 export const shouldPrefetchValues = (action: WritebackAction) => {
   // in the future there should be a setting to configure this
   // for custom actions
-  return action.slug === "update";
+  return action.type === "implicit" && action.kind === "row/update";
 };
 
 const VIZ_TYPES_TO_HIDE_HEADER = ["object"];

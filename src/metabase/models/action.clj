@@ -1,20 +1,27 @@
 (ns metabase.models.action
   (:require [cheshire.core :as json]
-            [clojure.set :as set]
             [medley.core :as m]
+            [metabase.models.card :refer [Card]]
             [metabase.models.interface :as mi]
             [metabase.models.query :as query]
-            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
-            [metabase.util.encryption :as encryption]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
 
 (models/defmodel QueryAction :query_action)
 (models/defmodel HTTPAction :http_action)
+(models/defmodel ImplicitAction :implicit_action)
 (models/defmodel Action :action)
-(models/defmodel ModelAction :model_action)
+
+;;; You can read/write an Action if you can read/write its model (Card)
+(doto Action
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
+(defmethod mi/perms-objects-set Action
+  [instance read-or-write]
+  (mi/perms-objects-set (db/select-one Card :id (:model_id instance)) read-or-write))
 
 (models/add-type! ::json-with-nested-parameters
   :in  (comp mi/json-in
@@ -27,13 +34,18 @@
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Action)
   models/IModel
   (merge models/IModelDefaults
-         {:types      (constantly {:type :keyword})
+         {:types      (constantly {:type :keyword
+                                   :parameter_mappings :parameters-list
+                                   :parameters :parameters-list
+                                   :visualization_settings :visualization-settings})
           :properties (constantly {:timestamped? true})}))
 
 (defn- pre-update
   [action]
   ;; All possible sub-type columns
-  (when-let [sub-type-action (not-empty (select-keys action [:card_id :name :description :template :response_handle :error_handle]))]
+  (when-let [sub-type-action (not-empty (select-keys action [:kind
+                                                             :database_id :dataset_query
+                                                             :template :response_handle :error_handle]))]
     (assoc sub-type-action :action_id (or (:id action) (:action_id action)))))
 
 (defn- pre-delete
@@ -50,6 +62,12 @@
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class QueryAction)
   models/IModel
+  (merge
+    Action-subtype-IModel-impl
+    {:types (constantly {:dataset_query :json})}))
+
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ImplicitAction)
+  models/IModel
   Action-subtype-IModel-impl)
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class HTTPAction)
@@ -57,73 +75,29 @@
   (merge Action-subtype-IModel-impl
          {:types (constantly {:template ::json-with-nested-parameters})}))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ModelAction)
-  models/IModel
-  (merge models/IModelDefaults
-         {:properties (constantly {:entity_id    true})
-          :types      (constantly {:parameter_mappings     :parameters-list
-                                   :visualization_settings :visualization-settings})}))
-
-;;; TODO -- this doesn't seem right. [[serdes.hash/identity-hash-fields]] is used to calculate `entity_id`, so we
-;;; shouldn't use it in the calculation. We can fix this later
-(defmethod serdes.hash/identity-hash-fields ModelAction
-  [_model-action]
-  [:entity_id])
-
 (defn insert!
-  "Inserts an Action and related HTTPAction or QueryAction. Returns the action id."
+  "Inserts an Action and related type table. Returns the action id."
   [action-data]
   (db/transaction
-    (let [action (db/insert! Action {:type (:type action-data)})
+    (let [action-columns [:type :name :description :model_id :parameters :parameter_mappings :visualization_settings]
+          action (db/insert! Action (select-keys action-data action-columns))
           model (case (keyword (:type action))
                   :http HTTPAction
-                  :query QueryAction)]
+                  :query QueryAction
+                  :implicit ImplicitAction)]
       (db/execute! {:insert-into model
-                    :values [(-> action-data
-                                 (dissoc :type)
+                    :values [(-> (apply dissoc action-data action-columns)
                                  (u/update-if-exists :template json/encode)
+                                 (u/update-if-exists :dataset_query json/encode)
                                  (assoc :action_id (:id action)))]})
       (:id action))))
 
-(def ^:private encrypted-json-out (comp mi/json-out-with-keywordization encryption/maybe-decrypt))
-
 (defn- normalize-query-actions [actions]
   (when (seq actions)
-    (let [cards (->> (db/query {:select [:card.*
-                                         [:db.settings :db_settings]
-                                         :query_action.action_id]
-                                :from [[:report_card :card]]
-                                :join [:query_action [:= :query_action.card_id :card.id]
-                                       [:metabase_database :db] [:= :card.database_id :db.id]]
-                                :where [:= :card.is_write true]})
-                     (map (fn [card]
-                            (let [disabled (or (:archived card)
-                                               (-> card
-                                                   (:db_settings)
-                                                   encrypted-json-out
-                                                   :database-enable-actions
-                                                   boolean
-                                                   not))]
-                              (-> card
-                                  (assoc ::disabled disabled)
-                                  (dissoc :db_settings)))))
-                     (db/do-post-select 'Card))
-          cards-by-action-id (m/index-by :action_id cards)]
-      (keep (fn [action]
-              (let [{card-name :name :keys [description dataset_query] :as card} (get cards-by-action-id (:id action))
-                    tags (get-in dataset_query [:native :template-tags])
-                    params (for [param (:parameters card)
-                                 :let [tag (get tags (:slug param))]]
-                             (assoc param :required (:required tag)))]
-                (-> action
-                    (merge
-                      {:name card-name
-                       :description description
-                       :disabled (::disabled card)
-                       :card (dissoc card ::disabled)
-                       :parameters params}
-                      (select-keys card [:parameter_mappings :visualization_settings])))))
-            actions))))
+    (let [query-actions (db/select QueryAction :action_id [:in (map :id actions)])
+          action-id->query-actions (m/index-by :action_id query-actions)]
+      (for [action actions]
+        (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
 
 (defn- normalize-http-actions [actions]
   (when (seq actions)
@@ -133,35 +107,30 @@
              (let [http-action (get http-actions-by-action-id (:id action))]
                (-> action
                    (merge
-                     {:disabled false
-                      :parameters []
-                      :parameter_mappings {}
-                      :visualization_settings {}}
-                     (select-keys http-action [:name :description :template :response_handle :error_handle])
+                     {:disabled false}
+                     (select-keys http-action [:template :response_handle :error_handle])
                      (select-keys (:template http-action) [:parameters :parameter_mappings])))))
+           actions))))
+
+(defn- normalize-implicit-actions [actions]
+  (when (seq actions)
+    (let [implicit-actions (db/select ImplicitAction :action_id [:in (map :id actions)])
+          implicit-actions-by-action-id (m/index-by :action_id implicit-actions)]
+      (map (fn [action]
+             (let [implicit-action (get implicit-actions-by-action-id (:id action))]
+               (merge action
+                     (select-keys implicit-action [:kind]))))
            actions))))
 
 (defn select-actions
   "Select Actions and fill in sub type information.
    `options` is passed to `db/select` `& options` arg"
   [& options]
-  (let [{:keys [query http]} (group-by :type (apply db/select Action options))
+  (let [{:keys [query http implicit]} (group-by :type (apply db/select Action options))
         query-actions (normalize-query-actions query)
-        http-actions (normalize-http-actions http)]
-    (sort-by :updated_at (concat query-actions http-actions))))
-
-(defn cards-by-action-id
-  "Hydrates action_id from Card for is_write cards"
-  {:batched-hydrate :card/action-id}
-  [cards]
-  (if-let [card-id->action-id (not-empty (db/select-field->field
-                                           :card_id :action_id
-                                           'QueryAction
-                                           :card_id [:in (map :id cards)]))]
-
-    (for [card cards]
-      (m/assoc-some card :action_id (get card-id->action-id (:id card))))
-    cards))
+        http-actions (normalize-http-actions http)
+        implicit-actions (normalize-implicit-actions implicit)]
+    (sort-by :updated_at (concat query-actions http-actions implicit-actions))))
 
 (defn unique-field-slugs?
   "Makes sure that if `coll` is indexed by `index-by`, no keys will be in conflict."
@@ -196,57 +165,48 @@
                                               ::pk? (isa? (:semantic_type field) :type/PK)})))]]
             [(:id card) parameters]))))
 
-(defn merged-model-action
-  "Find model-actions given options and merge in the referenced action or generate implicit parameters for execution.
-   The goal is to generally hide the existence of model-action and be able to treat this merged information as an action.
+(defn actions-with-implicit-params
+  "Find actions with given options and generate implicit parameters for execution.
 
    Pass in known-models to save a second Card lookup."
   [known-models & options]
-  (let [model-actions (apply db/select ModelAction {:order-by [:id]} options)
-        model-action-by-model-slug (m/index-by (juxt :card_id :slug)
-                                               model-actions)
-        actions-by-id (when-let [action-ids (not-empty (keep :action_id model-actions))]
-                        (m/index-by :id (select-actions :id [:in action-ids])))
-        model-ids-with-implicit-actions (set (map :card_id (remove :action_id model-actions)))
+  (let [actions (apply select-actions options)
+        implicit-action-model-ids (set (map :model_id (filter (comp #(= :implicit %) :type) actions)))
         models-with-implicit-actions (if known-models
                                        (->> known-models
-                                            (filter #(contains? model-ids-with-implicit-actions (:id %)))
+                                            (filter #(contains? implicit-action-model-ids (:id %)))
                                             distinct)
-                                       (when (seq model-ids-with-implicit-actions)
-                                         (db/select 'Card :id [:in model-ids-with-implicit-actions])))
-        parameters-by-model-id (when (seq models-with-implicit-actions)
-                                 (implicit-action-parameters models-with-implicit-actions))]
-    (for [model-action model-actions
-          :let [model-slug [(:card_id model-action) (:slug model-action)]
-                model-action (get model-action-by-model-slug model-slug)
-                action (get actions-by-id (:action_id model-action))
-                implicit-action (when-let [parameters (get parameters-by-model-id (:card_id model-action))]
-                                  {:parameters (cond->> parameters
-                                                 (= "delete" (:slug model-action)) (filter ::pk?)
-                                                 (:requires_pk model-action) (map (fn [param] (cond-> param
-                                                                                                (::pk? param) (assoc :required true))))
-                                                 :always (map #(dissoc % ::pk? ::field-id)))
-                                   :type "implicit"})]]
-      (m/deep-merge (-> model-action
-                        (select-keys [:card_id :slug :action_id :visualization_settings :parameter_mappings :requires_pk])
-                        (set/rename-keys {:card_id :model_id}))
-                    implicit-action
-                    action))))
+                                       (when (seq implicit-action-model-ids)
+                                         (db/select 'Card :id [:in implicit-action-model-ids])))
+        implicit-parameters-by-model-id (when (seq models-with-implicit-actions)
+                                          (implicit-action-parameters models-with-implicit-actions))]
+
+    (for [{:keys [parameters] :as action} actions
+          :let [implicit-params (when (= (:type action) :implicit)
+                                  (let [implicit-params (get implicit-parameters-by-model-id (:model_id action))
+                                        saved-params (m/index-by :id parameters)]
+                                    (for [param implicit-params
+                                          :let [saved-param (get saved-params (:id param))]]
+                                      (merge param saved-param))))]]
+      (cond-> action
+        implicit-params
+        (m/assoc-some :parameters (cond->> implicit-params
+                                    (= "row/delete" (:kind action))
+                                    (filter ::pk?)
+
+                                    (contains? #{"row/update" "row/delete"} (:kind action))
+                                    (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
+
+                                    :always
+                                    (map #(dissoc % ::pk? ::field-id))
+
+                                    :always seq))))))
 
 (defn dashcard-action
   "Hydrates action from DashboardCard"
   {:batched-hydrate :dashcard/action}
   [dashcards]
-  (let [model-slug-by-dashcard-id (->> dashcards
-                                       (keep (fn [dashcard]
-                                               (when-let [slug (get-in dashcard [:visualization_settings :action_slug])]
-                                                 [(:id dashcard) [(:card_id dashcard) slug]])))
-                                       (into {})
-                                       not-empty)
-        actions (when model-slug-by-dashcard-id
-                  (merged-model-action (map :card dashcards) [:card_id :slug] [:in (vals model-slug-by-dashcard-id)]))
-        action-by-model-slug (m/index-by (juxt :model_id :slug) actions)]
+  (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
+                        (m/index-by :id (actions-with-implicit-params (map :card dashcards) :id [:in action-ids])))]
     (for [dashcard dashcards]
-      (if-let [model-slug (get model-slug-by-dashcard-id (:id dashcard))]
-        (m/assoc-some dashcard :action (get action-by-model-slug model-slug))
-        dashcard))))
+      (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))

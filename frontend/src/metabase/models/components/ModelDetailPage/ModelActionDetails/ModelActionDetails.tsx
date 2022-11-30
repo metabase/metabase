@@ -102,9 +102,7 @@ function ModelActionDetails({
               onClick={() => handleItemClick(action)}
             >
               <Icon name="insight" />
-              <ActionTitle>
-                {action.name ?? humanize(action.slug ?? "")}
-              </ActionTitle>
+              <ActionTitle>{action.name}</ActionTitle>
             </ActionListItem>
           </li>
         ))}
