@@ -10,6 +10,14 @@ import { SegmentedControl } from "metabase/components/SegmentedControl";
 import { capitalize } from "metabase/lib/formatting";
 import Settings from "metabase/lib/settings";
 
+import {
+  PickerText,
+  PickerRoot,
+  PickerRow,
+  PickerSpacedRow,
+  ScheduleDescriptionContainer,
+} from "./SchedulePicker.styled";
+
 export const HOUR_OPTIONS = _.times(12, n => ({
   name: (n === 0 ? 12 : n) + ":00",
   value: n,
@@ -140,11 +148,8 @@ class SchedulePicker extends Component {
     DAY_OPTIONS.unshift({ name: t`Calendar Day`, value: null });
 
     return (
-      <div className="flex align-center mt1">
-        <span
-          className="text-bold"
-          style={{ minWidth: "48px" }}
-        >{t`on the`}</span>
+      <PickerSpacedRow>
+        <PickerText>{t`on the`}</PickerText>
         <Select
           value={schedule.schedule_frame}
           onChange={({ target: { value } }) =>
@@ -163,7 +168,7 @@ class SchedulePicker extends Component {
             />
           </span>
         )}
-      </div>
+      </PickerSpacedRow>
     );
   }
 
@@ -171,7 +176,7 @@ class SchedulePicker extends Component {
     const { schedule } = this.props;
 
     return (
-      <span className="flex align-center">
+      <PickerRow>
         <span className="text-bold mx1">{t`on`}</span>
         <Select
           value={schedule.schedule_day}
@@ -180,7 +185,7 @@ class SchedulePicker extends Component {
           }
           options={DAY_OF_WEEK_OPTIONS}
         />
-      </span>
+      </PickerRow>
     );
   }
 
@@ -190,23 +195,18 @@ class SchedulePicker extends Component {
       ? 0
       : schedule.schedule_minute;
     return (
-      <div className="mt1">
-        <div className="flex align-center">
-          <span
-            className="text-bold"
-            style={{ minWidth: "48px" }}
-          >{t`at`}</span>
-          <Select
-            className="mr1"
-            value={minuteOfHour}
-            options={MINUTE_OPTIONS}
-            onChange={({ target: { value } }) =>
-              this.handleChangeProperty("schedule_minute", value)
-            }
-          />
-          <span className="text-bold">{t`minutes past the hour`}</span>
-        </div>
-      </div>
+      <PickerSpacedRow>
+        <PickerText>{t`at`}</PickerText>
+        <Select
+          className="mr1"
+          value={minuteOfHour}
+          options={MINUTE_OPTIONS}
+          onChange={({ target: { value } }) =>
+            this.handleChangeProperty("schedule_minute", value)
+          }
+        />
+        <span className="text-bold">{t`minutes past the hour`}</span>
+      </PickerSpacedRow>
     );
   }
 
@@ -220,12 +220,9 @@ class SchedulePicker extends Component {
     const amPm = hourOfDay >= 12 ? 1 : 0;
     const timezone = Settings.get("report-timezone-short");
     return (
-      <div className="mt1">
-        <div className="flex align-center">
-          <span
-            className="text-bold"
-            style={{ minWidth: "48px" }}
-          >{t`at`}</span>
+      <>
+        <PickerSpacedRow>
+          <PickerText>{t`at`}</PickerText>
           <Select
             className="mr1"
             value={hour}
@@ -242,14 +239,14 @@ class SchedulePicker extends Component {
             options={AM_PM_OPTIONS}
             fullWidth
           />
-        </div>
+        </PickerSpacedRow>
         {textBeforeSendTime && (
-          <div className="mt1 text-medium pt2">
+          <ScheduleDescriptionContainer>
             {textBeforeSendTime} {hour === 0 ? 12 : hour}:00{" "}
             {amPm ? "PM" : "AM"} {timezone}, {t`your Metabase timezone`}.
-          </div>
+          </ScheduleDescriptionContainer>
         )}
-      </div>
+      </>
     );
   }
 
@@ -259,11 +256,9 @@ class SchedulePicker extends Component {
     const scheduleType = schedule.schedule_type;
 
     return (
-      <div className="mt3">
-        <div className="flex align-center">
-          <span className="text-bold" style={{ minWidth: "48px" }}>
-            {textBeforeInterval}
-          </span>
+      <PickerRoot>
+        <PickerRow>
+          <PickerText>{textBeforeInterval}</PickerText>
           <Select
             value={scheduleType}
             onChange={({ target: { value } }) =>
@@ -274,7 +269,7 @@ class SchedulePicker extends Component {
             optionValueFn={o => o}
           />
           {scheduleType === "weekly" && this.renderDayPicker()}
-        </div>
+        </PickerRow>
         {scheduleType === "hourly" &&
           this.props.minutesOnHourPicker &&
           this.renderMinutePicker()}
@@ -283,7 +278,7 @@ class SchedulePicker extends Component {
           scheduleType === "weekly" ||
           scheduleType === "monthly") &&
           this.renderHourPicker()}
-      </div>
+      </PickerRoot>
     );
   }
 }
