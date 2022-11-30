@@ -31,9 +31,6 @@
 ;;; You can read/write a Card if you can read/write its parent Collection
 (derive Card ::perms/use-parent-collection-perms)
 
-(def ^:private viz-settings-version 2)
-
-
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
 (defn dashboard-count
@@ -239,49 +236,6 @@
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (create-actions-when-is-writable! card)))
 
-(defn- assoc-viz-setting
-  [card key val]
-  (assoc-in card [:visualization_settings key] val))
-
-(defmulti ^:private migrate-viz-settings*
-  "Migration visualization_settings to the appropriate version"
-  {:arglists '([card desired-version])}
-  (fn [card desired-version]
-    (let [current-version (or (get-in card [:visualization_settings :version])
-                              1)]
-      (if (= current-version desired-version)
-        ::identity
-        [current-version desired-version]))))
-
-(defmethod ^:private migrate-viz-settings* ::identity [card _]
-  card)
-
-(defmethod ^:private migrate-viz-settings* [1 2] [{:keys [visualization_settings] :as card} _]
-  (let [{percent? :pie.show_legend_perecent ;; [sic]
-         legend?  :pie.show_legend} visualization_settings]
-    (assoc-viz-setting card :pie.percent_visibility
-                       (cond
-                         legend?  "inside"
-                         percent? "legend"
-                         :else    "off"))))
-
-;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
-;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
-
-(defn- migrate-viz-settings
-  "Updates the card to the current `viz-settings-version`."
-  [card]
-  (if (:visualization_settings card)
-    (-> card
-        (migrate-viz-settings* viz-settings-version)
-        (assoc-viz-setting :version viz-settings-version))
-    card))
-
-(defn- post-select [card]
-  (-> card
-      public-settings/remove-public-uuid-if-public-sharing-is-disabled
-      migrate-viz-settings))
-
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
   This is called as part of the `pre-update` method for a Card.
@@ -366,11 +320,11 @@
                                        :entity_id    true})
           ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
           ;; functions those fns call assume normalized queries
-          :pre-update     (comp migrate-viz-settings populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
-          :pre-insert     (comp migrate-viz-settings populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
+          :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
+          :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
           :post-insert    post-insert
           :pre-delete     pre-delete
-          :post-select    post-select}))
+          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]

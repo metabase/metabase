@@ -401,6 +401,7 @@
   metabase.integrations.ldap/with-ldap-connection                                      clojure.core/fn
   metabase.mbql.schema.macros/defclause                                                clj-kondo.lint-as/def-catch-all
   metabase.models.collection-test/with-collection-in-location                          clojure.core/let
+  metabase.models.json-migration/def-json-migration                                    clj-kondo.lint-as/def-catch-all
   metabase.models.setting.multi-setting/define-multi-setting                           clojure.core/def
   metabase.models.setting/defsetting                                                   clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/defenterprise                              clj-kondo.lint-as/def-catch-all
