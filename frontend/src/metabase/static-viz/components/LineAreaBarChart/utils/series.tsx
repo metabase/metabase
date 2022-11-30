@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { merge } from "icepick";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/core/utils/array";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { ColorPalette } from "metabase/lib/colors/types";
