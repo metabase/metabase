@@ -329,6 +329,8 @@
 ;;; |                                           Convert Timezone tests                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mt/set-test-drivers! #{:sqlserver})
+
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
@@ -360,31 +362,11 @@
 
           (when (driver/supports? driver/*driver* :set-timezone)
             (mt/with-report-timezone-id "Europe/Rome"
-              (testing "from_tz should default to report_tz"
+              (testing "results should be displayed in the converted timezone, not report-tz"
                 (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
                        (mt/$ids (test-convert-tz
                                   $times.dt
-                                  [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo"])))))))
-
-          (testing "if from_tz is provided, ignore report_tz"
-            (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T18:19:09+09:00"]
-                   (mt/$ids (test-convert-tz
-                              $times.dt
-                              [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo" "UTC"]))))))
-
-        (mt/with-report-timezone-id "Europe/Rome"
-          (testing "convert from UTC to Asia/Tokyo(+09:00)"
-            (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T18:19:09+09:00"]
-                   (mt/$ids (test-convert-tz
-                              $times.dt
-                              [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo" "UTC"])))))
-          (testing "source-timezone is required"
-           (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"input column doesnt have a set timezone. Please set the source parameter in convertTimezone to convert it."
-                 (mt/$ids (test-convert-tz
-                             $times.dt
-                             [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo"]))))))
+                                  [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo" "Europe/Rome"]))))))))
 
         (testing "timestamp with time zone columns"
           (mt/with-report-timezone-id "UTC"
