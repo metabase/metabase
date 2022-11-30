@@ -15,6 +15,8 @@ function mapStateToProps(state: State): StateProps {
   };
 }
 
+export * from "metabase/components/SchedulePicker";
+
 export default connect<
   StateProps,
   unknown,
