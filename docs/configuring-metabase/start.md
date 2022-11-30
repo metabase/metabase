@@ -35,3 +35,7 @@ Cache query results for faster loading times.
 ## [Metabase logs configuration](./log-configuration.md)
 
 Tell Metabase what to log.
+
+## [Configuration file](./config-file.md)
+
+On self-hosted paid plans, you can configure Metabase via a configuration file.

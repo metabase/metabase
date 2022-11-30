@@ -34,7 +34,7 @@ config:
       details:
         host: localhost
         port: 5432
-        password: {{ env POSTGRES_TEST_DATA_PASSWORD }}
+        password: {% raw %} "{{ env POSTGRES_TEST_DATA_PASSWORD }}" {% endraw %}
         dbname: test-data
     - name: Sample Dataset (Copy)
       engine: h2
