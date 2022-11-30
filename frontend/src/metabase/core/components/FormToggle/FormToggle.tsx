@@ -33,7 +33,7 @@ const FormToggle = forwardRef(function FormToggle(
         {...props}
         id={id}
         name={name}
-        value={value}
+        value={value ?? false}
         onChange={setValue}
         onBlur={onBlur}
       />

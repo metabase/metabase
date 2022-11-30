@@ -12,6 +12,8 @@
 
 (tx/add-test-extensions! :mongo)
 
+(defmethod tx/supports-time-type? :mongo [_driver] false)
+
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
   []

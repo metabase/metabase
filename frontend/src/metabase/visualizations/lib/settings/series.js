@@ -141,6 +141,7 @@ export function seriesSetting({
     show_series_values: {
       title: t`Show values for this series`,
       widget: "toggle",
+      inline: true,
       getHidden: (single, seriesSettings, { settings, series }) =>
         series.length <= 1 || // no need to show series-level control if there's only one series
         !Object.prototype.hasOwnProperty.call(settings, "graph.show_values") || // don't show it unless this chart has a global setting
