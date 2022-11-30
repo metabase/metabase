@@ -56,7 +56,7 @@ convertTimezone([Source Time], 'EST', 'UTC')
 It's usually a good idea to label `convertTimezone` columns with the name of the target time zone (or add the target time zone to the metadata of a model). We promise this will make your life easier when someone inevitably asks why the numbers don't match.
 
 If you're not getting the results that you expect:
-- Check if you have the right [source time zone](#source-time-zones).
+- Check if you have the right [source time zone](#choosing-a-source-time-zone).
 - Ask your database admin about `timestamp with time zone` vs. `timestamp without time zone` (for more info, see [Accepted data types](#accepted-data-types)).
 
 ### Choosing a source time zone
@@ -104,7 +104,7 @@ Note that the first part of the timestamp is in UTC (same thing as GMT). The tim
 
 ## Limitations
 
-Metabase displays timestamps without time zone or offset information, which is why you have to be so careful about the [source time zone](#source-time-zones) when using `convertTimezone`.
+Metabase displays timestamps without time zone or offset information, which is why you have to be so careful about the [source time zone](#choosing-a-source-time-zone) when using `convertTimezone`.
 
 The Metabase report time zone only applies to `timestamp with time zone` or  `timestamp with offset` data types. For example:
 
