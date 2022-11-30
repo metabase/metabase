@@ -6,11 +6,11 @@ import Tooltip from "metabase/components/Tooltip";
 import NoResults from "assets/img/no_results.svg";
 import { Root, ShortMessage } from "./NoResultsView.styled";
 
-interface Props {
+interface NoResultsViewProps {
   isSmall?: boolean;
 }
 
-function NoResultsView({ isSmall }: Props) {
+function NoResultsView({ isSmall }: NoResultsViewProps) {
   return (
     <Root>
       <Tooltip tooltip={t`No results!`} isEnabled={isSmall}>

@@ -6,13 +6,17 @@ import type { VisualizationSettings } from "metabase-types/api";
 
 import { ButtonContainer } from "./ChartSettingsErrorButton.styled";
 
-interface Props {
+interface ChartSettingsErrorButtonProps {
   message: string;
   buttonLabel: string;
   onClick: (initial: VisualizationSettings) => void;
 }
 
-function ChartSettingsErrorButton({ message, buttonLabel, onClick }: Props) {
+function ChartSettingsErrorButton({
+  message,
+  buttonLabel,
+  onClick,
+}: ChartSettingsErrorButtonProps) {
   return (
     <div>
       <div>{message}</div>

@@ -11,12 +11,12 @@ import {
   StyledLoadingSpinner,
 } from "./LoadingView.styled";
 
-interface Props {
+interface LoadingViewProps {
   isSlow: "usually-slow" | boolean;
   expectedDuration: number;
 }
 
-function SlowQueryView({ expectedDuration, isSlow }: Props) {
+function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
   return (
     <SlowQueryMessageContainer>
       <ShortMessage>{t`Still Waiting…`}</ShortMessage>
@@ -37,7 +37,7 @@ function SlowQueryView({ expectedDuration, isSlow }: Props) {
   );
 }
 
-function LoadingView({ expectedDuration, isSlow }: Props) {
+function LoadingView({ expectedDuration, isSlow }: LoadingViewProps) {
   return (
     <Root>
       {isSlow ? (

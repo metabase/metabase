@@ -4,14 +4,19 @@ import Tooltip from "metabase/components/Tooltip";
 
 import { Root, ShortMessage, StyledIcon } from "./ErrorView.styled";
 
-interface Props {
+interface ErrorViewProps {
   error: string;
   icon: string;
   isDashboard: boolean;
   isSmall: boolean;
 }
 
-function ErrorView({ error, icon = "warning", isDashboard, isSmall }: Props) {
+function ErrorView({
+  error,
+  icon = "warning",
+  isDashboard,
+  isSmall,
+}: ErrorViewProps) {
   return (
     <Root isDashboard={isDashboard}>
       <Tooltip tooltip={error} isEnabled={isSmall}>
