@@ -206,10 +206,11 @@ class ChartSettings extends Component {
         },
       };
     } else if (currentWidget.props?.initialKey) {
-      const settings = this._getSettings();
-      const isBreakout = settings?.["graph.dimensions"]?.length > 1;
+      const hasBreakouts = series.some(
+        singleSeries => singleSeries.card?._breakoutColumn,
+      );
 
-      if (isBreakout) {
+      if (hasBreakouts) {
         return null;
       }
 
