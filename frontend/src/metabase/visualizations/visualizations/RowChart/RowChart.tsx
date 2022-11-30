@@ -43,6 +43,7 @@ import {
 } from "metabase/visualizations/lib/settings/validation";
 import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
 import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
+import { extractRemappedColumns } from "metabase/visualizations";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
 import {
@@ -124,7 +125,10 @@ const RowChartVisualization = ({
   const [chartSeries] = useMemo(() => {
     return isPlaceholder ? multipleSeries : rawMultipleSeries;
   }, [isPlaceholder, multipleSeries, rawMultipleSeries]);
-  const data = chartSeries.data;
+  const data = useMemo(
+    () => extractRemappedColumns(chartSeries.data),
+    [chartSeries.data],
+  );
 
   const { chartColumns, series, seriesColors } = useMemo(
     () => getTwoDimensionalChartSeries(data, settings, formatColumnValue),
