@@ -1,8 +1,10 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useFormikContext } from "formik";
 import { t } from "ttag";
+import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
+import FormFooter from "metabase/core/components/FormFooter";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { Engine } from "metabase-types/api";
@@ -12,6 +14,7 @@ import DatabaseEngineField from "../DatabaseEngineField";
 import DatabaseNameField from "../DatabaseNameField";
 import DatabaseDetailField from "../DatabaseDetailField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
+import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
 export interface DatabaseFormProps {
   engines: Record<string, Engine>;
@@ -20,6 +23,7 @@ export interface DatabaseFormProps {
   isAdvanced?: boolean;
   onSubmit: (values: DatabaseValues) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
+  onCancel?: () => void;
 }
 
 const DatabaseForm = ({
@@ -28,6 +32,7 @@ const DatabaseForm = ({
   isHosted = false,
   isAdvanced = false,
   onSubmit,
+  onCancel,
   onEngineChange,
 }: DatabaseFormProps): JSX.Element => {
   const [engineKey, setEngineKey] = useState(initialData?.engine);
@@ -65,6 +70,7 @@ const DatabaseForm = ({
         isHosted={isHosted}
         isAdvanced={isAdvanced}
         onEngineChange={handleEngineChange}
+        onCancel={onCancel}
       />
     </FormProvider>
   );
@@ -77,6 +83,7 @@ interface DatabaseFormBodyProps {
   isHosted: boolean;
   isAdvanced: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
+  onCancel?: () => void;
 }
 
 const DatabaseFormBody = ({
@@ -86,6 +93,7 @@ const DatabaseFormBody = ({
   isHosted,
   isAdvanced,
   onEngineChange,
+  onCancel,
 }: DatabaseFormBodyProps): JSX.Element => {
   const { values, dirty } = useFormikContext<DatabaseValues>();
 
@@ -94,7 +102,7 @@ const DatabaseFormBody = ({
   }, [engine, values, isAdvanced]);
 
   return (
-    <Form disabled={!dirty}>
+    <Form disabled={isAdvanced && !dirty}>
       <DatabaseEngineField
         engineKey={engineKey}
         engines={engines}
@@ -113,10 +121,45 @@ const DatabaseFormBody = ({
       {fields.map(field => (
         <DatabaseDetailField key={field.name} field={field} />
       ))}
-      <FormSubmitButton title={t`Save`} disabled={!dirty} primary />
-      <FormErrorMessage />
+      <DatabaseFormFooter isAdvanced={isAdvanced} onCancel={onCancel} />
     </Form>
   );
+};
+
+interface DatabaseFormFooterProps {
+  isAdvanced: boolean;
+  onCancel?: () => void;
+}
+
+const DatabaseFormFooter = ({
+  isAdvanced,
+  onCancel,
+}: DatabaseFormFooterProps) => {
+  const { values, dirty } = useFormikContext<DatabaseValues>();
+
+  if (isAdvanced) {
+    return (
+      <div>
+        <FormSubmitButton title={t`Save`} disabled={!dirty} primary />
+        <FormErrorMessage />
+      </div>
+    );
+  } else if (values.engine) {
+    return (
+      <FormFooter>
+        <FormErrorMessage inline />
+        <Button type="button" onClick={onCancel}>{t`Skip`}</Button>
+      </FormFooter>
+    );
+  } else {
+    return (
+      <LinkFooter>
+        <LinkButton type="button" onClick={onCancel}>
+          {t`I'll add my data later`}
+        </LinkButton>
+      </LinkFooter>
+    );
+  }
 };
 
 export default DatabaseForm;
