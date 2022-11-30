@@ -6,7 +6,6 @@ import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 
 import { capitalize } from "metabase/lib/formatting";
-import Settings from "metabase/lib/settings";
 
 import type {
   ScheduleDayType,
@@ -64,9 +63,10 @@ const optionNameTranslations = {
 type ScheduleProperty = keyof ScheduleSettings;
 type ScheduleChangeProp = { name: ScheduleProperty; value: unknown };
 
-interface SchedulePickerProps {
+export interface SchedulePickerProps {
   schedule: ScheduleSettings;
   scheduleOptions: ScheduleType[];
+  timezone: string;
   textBeforeInterval?: string;
   textBeforeSendTime?: string;
   minutesOnHourPicker?: boolean;
@@ -222,7 +222,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
   }
 
   renderHourPicker() {
-    const { schedule, textBeforeSendTime } = this.props;
+    const { schedule, timezone, textBeforeSendTime } = this.props;
 
     const hourOfDay = isNaN(schedule.schedule_hour as number)
       ? 8
@@ -230,7 +230,6 @@ class SchedulePicker extends Component<SchedulePickerProps> {
 
     const hour = hourOfDay % 12;
     const amPm = hourOfDay >= 12 ? 1 : 0;
-    const timezone = Settings.get("report-timezone-short");
 
     return (
       <>
