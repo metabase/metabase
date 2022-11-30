@@ -72,7 +72,7 @@
             [_ db-nm]  (re-matches (re-pattern (format "^db-%d-%s-(.*)$" (u/the-id db) (name driver/*driver*)))
                                    (get props "dataSourceName"))]
         (is (some? db-nm))
-        ;; ensure that, for any sql-jdbc drier anyway, we found *some* DB name to use in this String
+        ;; ensure that, for any sql-jdbc driver anyway, we found *some* DB name to use in this String
         (is (not= db-nm "null"))))))
 
 (deftest same-connection-details-result-in-equal-specs-test

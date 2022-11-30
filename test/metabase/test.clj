@@ -248,7 +248,8 @@
   has-questionable-timezone-support?
   has-test-extensions?
   metabase-instance
-  sorts-nil-first?]
+  sorts-nil-first?
+  supports-time-type?]
 
  [tx.env
   set-test-drivers!

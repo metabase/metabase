@@ -167,9 +167,6 @@ export const getPKRowIndexMap = createSelector(
   },
 );
 
-// get instance settings, used for determining whether to display certain actions
-export const getSettings = state => state.settings.values;
-
 export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
 export const getQueryStartTime = state => state.qb.queryStartTime;
