@@ -558,20 +558,30 @@
                  :found   disallowed-types
                  :type    qp.error-type/invalid-query})))
     (case unit
-      (:year :month)
-      (let [; timestamp_diff doesn't support months or years, so convert to datetime to use datetime_diff
-            x'       (hx/->datetime (trunc :day (hx/->timestamp x')))
-            y'       (hx/->datetime (trunc :day (hx/->timestamp y')))
-            raw-unit (hsql/raw (name unit))
-            positive-diff (fn [a b] ; precondition: a <= b
+      :year
+      (let [positive-diff (fn [a b] ; precondition: a <= b
                             (hx/-
-                             (hsql/call :datetime_diff b a raw-unit)
+                             (hx/- (extract :year b) (extract :year a))
+                             ;; decrement if a is later than b in the year calendar
                              (hx/cast
                               :integer
                               (hsql/call
-                               :>
-                               (hsql/call :datetime_diff a (hsql/call :date_trunc a raw-unit) (hsql/raw "day"))
-                               (hsql/call :datetime_diff b (hsql/call :date_trunc b raw-unit) (hsql/raw "day"))))))]
+                               :or
+                               (hsql/call :> (extract :month a) (extract :month b))
+                               (hsql/call
+                                :and
+                                (hsql/call := (extract :month a) (extract :month b))
+                                (hsql/call :> (extract :day   a) (extract :day   b)))))))]
+        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
+
+      :month
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             ;; timestamp_diff doesn't support months, so convert to datetime to use datetime_diff
+                             (hsql/call :datetime_diff (hx/->datetime b) (hx/->datetime a) (hsql/raw (name unit)))
+                             (hx/cast
+                              :integer
+                              (hsql/call :> (extract :day a) (extract :day b)))))]
         (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
 
       :week
