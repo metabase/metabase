@@ -73,51 +73,6 @@
      [9 "2nd sunday"     #t "2000-01-09"]
      [10 "2005 saturday" #t "2005-01-01"]]]])
 
-(mt/defdataset times-mixed-1
-  [["times" [{:field-name "index"
-              :base-type :type/Integer}
-             {:field-name "dt"
-              :base-type :type/DateTime}
-             {:field-name "dt_tz"
-              :base-type  :type/DateTimeWithTZ}
-             {:field-name "d"
-              :base-type :type/Date}
-             {:field-name "as_dt"
-              :base-type :type/Text
-              :effective-type :type/DateTime
-              :coercion-strategy :Coercion/ISO8601->DateTime}
-             {:field-name "as_d"
-              :base-type :type/Text
-              :effective-type :type/Date
-              :coercion-strategy :Coercion/ISO8601->Date}]
-    (for [[idx t]
-          (map-indexed vector [#t "2004-03-19 09:19:09+07:00[Asia/Ho_Chi_Minh]"
-                               #t "2008-06-20 10:20:10+07:00[Asia/Ho_Chi_Minh]"
-                               #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"
-                               #t "2012-11-21 11:21:11+07:00[Asia/Ho_Chi_Minh]"])]
-      [(inc idx)
-       (t/local-date-time t)                                  ;; dt
-       (t/with-zone-same-instant t "Asia/Ho_Chi_Minh")        ;; dt_tz
-       (t/local-date t)                                       ;; d
-       (t/format "yyyy-MM-dd HH:mm:ss" (t/local-date-time t)) ;; as _dt
-       (t/format "yyyy-MM-dd" (t/local-date-time t))])]       ;; as_d
-   ["weeks" [{:field-name "index"
-              :base-type :type/Integer}
-             {:field-name "description"
-              :base-type :type/Text}
-             {:field-name "d"
-              :base-type :type/Date}]
-    [[1 "1st saturday"   #t "2000-01-01"]
-     [2 "1st sunday"     #t "2000-01-02"]
-     [3 "1st monday"     #t "2000-01-03"]
-     [4 "1st wednesday"  #t "2000-01-04"]
-     [5 "1st tuesday"    #t "2000-01-05"]
-     [6 "1st thursday"   #t "2000-01-06"]
-     [7 "1st friday"     #t "2000-01-07"]
-     [8 "2nd saturday"   #t "2000-01-08"]
-     [9 "2nd sunday"     #t "2000-01-09"]
-     [10 "2005 saturday" #t "2005-01-01"]]]])
-
 (def ^:private temporal-extraction-op->unit
   {:get-second      :second-of-minute
    :get-minute      :minute-of-hour
@@ -376,7 +331,7 @@
 
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
-    (mt/dataset times-mixed-1
+    (mt/dataset times-mixed
       (letfn [(test-convert-tz
                 [field
                  expression]
@@ -447,7 +402,7 @@
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/with-report-timezone-id "UTC"
-      (mt/dataset times-mixed-1
+      (mt/dataset times-mixed
         (testing "convert-timezone nested with datetime extract"
           (is (= ["2004-03-19T09:19:09Z"      ;; original col
                   "2004-03-19T10:19:09+09:00" ;; converted
