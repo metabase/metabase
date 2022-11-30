@@ -8,12 +8,17 @@ title: DatetimeDiff
 
 | Syntax                                                                                                    | Example                                                       |
 |-----------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
-| `datetimeDiff(datetime1, datetime2, unit)`                                                                | `datetimeDiff("February 1, 2021", "March 15, 2021", "month")` |
+| `datetimeDiff(datetime1, datetime2, unit)`                                                                | `datetimeDiff("2022-02-01", "2022-03-01", "month")` |
 | Gets the difference between two datetimes (datetime2 minus datetime 1) using the specified unit of time.  | `1`                                                           |
 
 ## Parameters
 
-Possible values for `unit`:
+`datetime1` and `datetime2` can be:
+- The name of a timestamp column,
+- a custom expression that returns a [datetime](#accepted-data-types), or
+- a string in the format `"YYYY-MM-DD` or `"YYYY-MM-DDTHH:MM:SS"` (as shown in the example above).
+
+`unit` can be any of:
 - "year"
 - "quarter" 
 - "month"

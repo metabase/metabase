@@ -58,7 +58,7 @@ This table uses `timestamp` and `datetime` interchangeably. If your dates and ti
 
 `now` might not actually be _now_ (in your local time) if you don't live in the same timezone as your Metabase [report time zone](../../../configuring-metabase/settings.md#report-timezone).
 
-If you need to compare `now` to a column in a different time zone, use  [convertTimezone](./converttimezone.md) to shift both columns into the same time zone. For example, to compare `now` in UTC with **Deadline** in UTC:
+If you need to compare `now` to a column in a different time zone, use [convertTimezone](./converttimezone.md) to shift both columns into the same time zone. For example:
 
 ```
 convertTimezone(now, 'UTC', <report timezone>) >= convertTimezone([Deadline], 'UTC', <source time zone>)
@@ -86,7 +86,7 @@ If your Metabase report time zone is set to EST, you'll get `now` in EST:
 SELECT CURRENT_TIMESTAMP AT TIME ZONE 'EST'
 ```
 
-If you don't have a report time zone, you'll get `now` in UTC:
+If you don't have a report time zone, you'll get `now` in your database's time zone, UTC:
 
 ```sql
 SELECT CURRENT_TIMESTAMP AT TIME ZONE 'UTC'

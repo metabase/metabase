@@ -6,22 +6,28 @@ title: DatetimeSubtract
 
 `datetimeSubtract` takes a datetime value and subtracts some unit of time from it. You might want to use this function when working with time series data that's marked by a "start" and an "end", such as sessions or subscriptions data.
 
-| Syntax                                                                                    | Example                                                   |
-|-------------------------------------------------------------------------------------------|-----------------------------------------------------------|
-| `datetimeSubtract(column, amount, unit)`                                                  | `datetimeSubtract("March 25, 2021, 12:52:37", 1, "month")`|
-| Takes a timestamp or date value and subtracts the specified number of time units from it. | `February 25, 2021, 12:52:37`                             |
+| Syntax                                                                                    | Example                                     |
+|-------------------------------------------------------------------------------------------|---------------------------------------------|
+| `datetimeSubtract(column, amount, unit)`                                                  | `datetimeSubtract("2021-03-25", 1, "month")`|
+| Takes a timestamp or date value and subtracts the specified number of time units from it. | `2021-02-25`                                |
 
 ## Parameters
 
-- Possible values for `unit`:
-    - "year"
-    - "quarter" 
-    - "month"
-    - "day"
-    - "hour"
-    - "second"
-    - "millisecond"
-- `amount` can be negative: `datetimeSubtract("March 25, 2021, 12:52:37", -1, "month")` will return `April 25, 2021, 12:52:37`.
+`column` can be any of:
+- The name of a timestamp column,
+- a custom expression that returns a [datetime](#accepted-data-types), or
+- a string in the format `"YYYY-MM-DD` or `"YYYY-MM-DDTHH:MM:SS"` (as shown in the example above).
+
+`unit` can be any of:
+- "year"
+- "quarter"
+- "month"
+- "day"
+- "hour"
+- "second"
+- "millisecond"
+
+- `amount` can be negative: `datetimeSubtract("2021-03-25", -1, "month")` will return `2021-04-25`.
 
 ## Calculating a start date
 

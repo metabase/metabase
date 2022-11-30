@@ -6,22 +6,30 @@ title: DatetimeAdd
 
 `datetimeAdd` takes a datetime value and adds some unit of time to it. This function is useful when you're working with time series data that's marked by a "start" and an "end", such as sessions or subscriptions data.
 
-| Syntax                                                                              | Example                                              |
-|-------------------------------------------------------------------------------------|------------------------------------------------------|
-| `datetimeAdd(column, amount, unit)`                                                 | `datetimeAdd("March 25, 2021, 12:52:37", 1, "month")`|
-| Takes a timestamp or date value and adds the specified number of time units to it.  | `April 25, 2021, 12:52:37`                           |
+| Syntax                                                                              | Example                                |
+|-------------------------------------------------------------------------------------|----------------------------------------|
+| `datetimeAdd(column, amount, unit)`                                                 | `datetimeAdd("2021-03-25", 1, "month")`|
+| Takes a timestamp or date value and adds the specified number of time units to it.  | `2021-04-25`                           |
 
 ## Parameters
 
-- Possible values for `unit`:
-    - "year"
-    - "quarter" 
-    - "month"
-    - "day"
-    - "hour"
-    - "second"
-    - "millisecond"
-- `amount` can be negative: `datetimeAdd("March 25, 2021, 12:52:37", -1, "month")` will return `February 25, 2021, 12:52:37`.
+`column` can be any of:
+- The name of a timestamp column,
+- a custom expression that returns a [datetime](#accepted-data-types), or
+- a string in the format `"YYYY-MM-DD` or `"YYYY-MM-DDTHH:MM:SS"`(as shown in the example above).
+
+`unit` can be any of:
+- "year"
+- "quarter"
+- "month"
+- "day"
+- "hour"
+- "second"
+- "millisecond"
+
+`amount`:
+- A whole number.
+- May be a negative number: `datetimeAdd("2021-03-25", -1, "month")` will return `2021-04-25`.
 
 ## Calculating an end date
 
@@ -82,7 +90,7 @@ datetimeSubtract([Opened On], -14, "day")
 does the same thing as
 
 ```
-datetimeAdd([Opened On], 14, 'day')
+datetimeAdd([Opened On], 14, "day")
 ```
 
 ### SQL
@@ -99,7 +107,7 @@ FROM coffee
 is equivalent to the Metabase `datetimeAdd` expression:
 
 ```
-datetimeAdd([Opened On], 14, 'day')
+datetimeAdd([Opened On], 14, "day")
 ```
 
 ### Spreadsheets
@@ -113,7 +121,7 @@ A:A + 14
 produces the same result as
 
 ```
-datetimeAdd([Opened On], 14, 'day')
+datetimeAdd([Opened On], 14, "day")
 ```
 
 Most spreadsheet tools require use different functions for different time units (for example, you'd use a different function to add "months" to a date). `datetimeAdd` makes it easy for you to convert all of those functions to a single consistent syntax.
@@ -129,7 +137,7 @@ df['Finish By'] = df['Opened On'] + datetime.timedelta(days=14)
 is equivalent to
 
 ```
-datetimeAdd([Opened On], 14, 'day')
+datetimeAdd([Opened On], 14, "day")
 ```
 
 ## Further reading

@@ -281,7 +281,7 @@ Syntax: `convertTimezone(column, target, source)`.
 - target: the timezone you want to assign to your column.
 - source: the current time zone of your column.
 
-Example: `convertTimezone("December 28, 2022, 12:00:00", "EST, "PST")` would return `December 28, 2022, 9:00:00`.
+Example: `convertTimezone("2022-12-28T12:00:00", "PST", "EST")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
 
 ### [datetimeAdd](./expressions/datetimeadd.md)
 
@@ -293,7 +293,7 @@ Syntax: `datetimeAdd(column, amount, unit)`.
 - amount: The number of units to be added.
 - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
 
-Example: `datetimeAdd("March 25, 2021, 12:52:37", 1, "month")` would return `April 25, 2021, 12:52:37`.
+Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
 ### [datetimeDiff](./expressions/datetimediff.md)
 
@@ -304,7 +304,7 @@ Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
 - datetime1, datetime2: the columns or expressions with your datetime values.
 - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
 
-Example: ``datetimeDiff("February 1, 2021", "March 15, 2021", "month")` would return `1`.
+Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
 
 ### [datetimeSubtract](./expressions/datetimesubtract.md)
 
@@ -316,7 +316,7 @@ Syntax: `datetimeSubtract(column, amount, unit)`.
 - amount: The number of units to be subtracted.
 - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
 
-Example: `datetimeSubtract("March 25, 2021, 12:52:37", 1, "month")` would return `February 25, 2021, 12:52:37`.
+Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
 
 ### day
 
