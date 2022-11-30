@@ -47,7 +47,7 @@
 
 ;; Actual logic is wrapped in a delay rather than a normal function so we don't log the error messages more than once
 ;; in cases where we have to fall back to the system temporary directory
-(defn- plugins-dir
+(defn plugins-dir
   "Get a `Path` to the Metabase plugins directory, creating it if needed. If it cannot be created for one reason or
   another, or if we do not have write permissions for it, use a temporary directory instead."
   ^Path []
