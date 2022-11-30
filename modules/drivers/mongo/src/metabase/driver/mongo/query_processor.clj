@@ -20,7 +20,6 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [monger.conversion :as m.conversion]
             [monger.operators :refer [$add $addToSet $and $avg $cond $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
                                       $group $gt $gte $hour $limit $lt $lte $match $max $min $minute $mod $month
                                       $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
