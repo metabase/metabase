@@ -15,7 +15,7 @@ export const getValidationSchema = (
 
   return Yup.object({
     engine: Yup.string().default(engineKey).required(Errors.required),
-    name: Yup.string().nullable().default(null).required(Errors.required),
+    name: Yup.string().default("null").required(Errors.required),
     details: Yup.object(Object.fromEntries(entries)),
   });
 };
