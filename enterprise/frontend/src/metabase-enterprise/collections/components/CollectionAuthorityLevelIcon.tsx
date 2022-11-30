@@ -24,7 +24,7 @@ export function CollectionAuthorityLevelIcon({
   if (isRegularCollection(collection)) {
     return null;
   }
-  const level = AUTHORITY_LEVELS[collection.authority_level as any];
+  const level = AUTHORITY_LEVELS[String(collection.authority_level)];
   return (
     <Icon
       {...iconProps}

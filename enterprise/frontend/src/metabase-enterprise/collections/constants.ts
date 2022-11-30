@@ -26,7 +26,7 @@ export const OFFICIAL_COLLECTION: AuthorityLevelConfig = {
   },
 };
 
-export const AUTHORITY_LEVELS: Record<any, AuthorityLevelConfig> = {
-  [OFFICIAL_COLLECTION.type as any]: OFFICIAL_COLLECTION,
-  [REGULAR_COLLECTION.type as any]: REGULAR_COLLECTION,
+export const AUTHORITY_LEVELS: Record<string, AuthorityLevelConfig> = {
+  [String(OFFICIAL_COLLECTION.type)]: OFFICIAL_COLLECTION,
+  [String(REGULAR_COLLECTION.type)]: REGULAR_COLLECTION,
 };

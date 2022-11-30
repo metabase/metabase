@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
+import { IconProps } from "metabase/components/Icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 
 import type {
@@ -135,11 +136,13 @@ export const PLUGIN_COLLECTIONS = {
   ): AuthorityLevelMenuItem[] => [],
 };
 
-export const PLUGIN_COLLECTION_COMPONENTS: Record<
-  string,
-  React.ComponentType<any>
-> = {
-  CollectionAuthorityLevelIcon: PluginPlaceholder,
+type CollectionAuthorityLevelIcon = React.ComponentType<
+  Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
+>;
+
+export const PLUGIN_COLLECTION_COMPONENTS = {
+  CollectionAuthorityLevelIcon:
+    PluginPlaceholder as CollectionAuthorityLevelIcon,
 };
 
 export const PLUGIN_MODERATION = {
