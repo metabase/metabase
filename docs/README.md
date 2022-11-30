@@ -153,7 +153,7 @@ Metabase's reference documentation.
 - [Email](./configuring-metabase/email.md)
 - [Slack](./configuring-metabase/slack.md)
 - [Environment variables](./configuring-metabase/environment-variables.md)
-- [Configuration file](../configuring-metabase/config-file.md).
+- [Configuration file](./configuring-metabase/config-file.md)
 - [Metabase log configuration](./configuring-metabase/log-configuration.md)
 - [Timezones](./configuring-metabase/timezones.md)
 - [Languages and localization](./configuring-metabase/localization.md)
