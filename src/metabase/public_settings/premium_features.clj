@@ -111,11 +111,11 @@
 
 (def ^:private ^:const valid-token-recheck-interval-ms
   "Amount of time to cache the status of a valid embedding token before forcing a re-check"
-  (* 1000 60 60 24)) ; once a day
+  (u/hours->ms 24)) ; once a day
 
 (def ^:private ^{:arglists '([token])} valid-token->features
   "Check whether `token` is valid. Throws an Exception if not. Returns a set of supported features if it is."
-  ;; this is just `valid-token->features*` with some light caching
+  ;; this is just [[valid-token->features*]] with some light caching
   (memoize/ttl valid-token->features*
                :ttl/threshold valid-token-recheck-interval-ms))
 
@@ -124,7 +124,7 @@
   :visibility :admin
   :type       :json
   :setter     :none
-  :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
+  :getter     (fn [] (some-> (premium-embedding-token) fetch-token-status)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |
@@ -155,8 +155,8 @@
                        (log/error (trs "Error validating token") ":" (ex-message e))
                        (log/debug e (trs "Error validating token")))
                      ;; log every five minutes
-                     :ttl/threshold (* 1000 60 5))]
-  (schema/defn ^:private token-features :- #{su/NonBlankString}
+                     :ttl/threshold (u/minutes->ms 5))]
+  (schema/defn ^:private ^:dynamic *token-features* :- #{su/NonBlankString}
     "Get the features associated with the system's premium features token."
     []
     (try
@@ -169,7 +169,7 @@
 (defn- has-any-features?
   "True if we have a valid premium features token with ANY features."
   []
-  (boolean (seq (token-features))))
+  (boolean (seq (*token-features*))))
 
 (defn has-feature?
   "Does this instance's premium token have `feature`?
@@ -177,7 +177,7 @@
     (has-feature? :sandboxes)          ; -> true
     (has-feature? :toucan-management)  ; -> false"
   [feature]
-  (contains? (token-features) (name feature)))
+  (contains? (*token-features*) (name feature)))
 
 (defn- default-premium-feature-getter [feature]
   (fn []
@@ -245,14 +245,14 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "hosting")))
+  :getter     (fn [] (boolean ((*token-features*) "hosting")))
   :doc        false)
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
 ;; future.)
 ;;
-;; By checking whether `(token-features)` is non-empty we can see whether we have a valid EE token. If the token is
+;; By checking whether `(*token-features*)` is non-empty we can see whether we have a valid EE token. If the token is
 ;; valid, we can enable EE enhancements.
 ;;
 ;; DEPRECATED -- it should now be possible to use the new 0.41.0+ features for everything previously covered by

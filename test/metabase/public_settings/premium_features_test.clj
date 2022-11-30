@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
-   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.models.user :refer [User]]
@@ -15,11 +14,11 @@
    [schema.core :as s]
    [toucan.util.test :as tt]))
 
-(defn do-with-premium-features [features f]
+(defn do-with-premium-features [features thunk]
   (let [features (set (map name features))]
     (testing (format "\nWith premium token features = %s" (pr-str features))
-      (with-redefs [premium-features/token-features (constantly features)]
-        (f)))))
+      (binding [premium-features/*token-features* (constantly features)]
+        (thunk)))))
 
 ;; TODO -- move this to a shared `metabase-enterprise.test` namespace. Consider adding logic that will alias stuff in
 ;; `metabase-enterprise.test` in `metabase.test` as well *if* EE code is available
@@ -78,19 +77,23 @@
                   :status        "Unable to validate token"
                   :error-details "network issues"}
                  (premium-features/fetch-token-status (apply str (repeat 64 "b")))))))
-      (testing "Only attempt the token once"
+      (testing "Only attempt to check the token once"
         (let [call-count (atom 0)
               token      (random-token)]
           (binding [clj-http.client/request (fn [& _]
                                               (swap! call-count inc)
                                               (throw (Exception. "no internet")))]
-
             (mt/with-temporary-raw-setting-values [:premium-embedding-token token]
               (testing "Sanity check"
                 (is (= token
                        (premium-features/premium-embedding-token)))
-                (is (= #{}
-                       (#'premium-features/token-features))))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"Unable to validate token"
+                     (#'premium-features/valid-token->features token)))
+                (testing "return empty set of token features on error"
+                  (is (= #{}
+                         (#'premium-features/*token-features*)))))
               (doseq [has-feature? [#'premium-features/hide-embed-branding?
                                     #'premium-features/enable-whitelabeling?
                                     #'premium-features/enable-audit-app?
