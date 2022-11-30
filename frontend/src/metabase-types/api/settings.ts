@@ -70,6 +70,24 @@ export interface EngineSourceContact {
   address?: string;
 }
 
+export interface ScheduleSettings {
+  schedule_day?: ScheduleDayType;
+  schedule_frame?: ScheduleFrameType;
+  schedule_hour?: boolean;
+  schedule_minute?: number;
+}
+
+export type ScheduleDayType =
+  | "sun"
+  | "mon"
+  | "tue"
+  | "wed"
+  | "thu"
+  | "fri"
+  | "sat";
+
+export type ScheduleFrameType = "first" | "mid" | "last";
+
 export interface FontFile {
   src: string;
   fontWeight: number;

@@ -1,22 +1,13 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import { updateIn } from "icepick";
-import Button from "metabase/core/components/Button";
-import Databases from "metabase/entities/databases";
-import DatabaseEngineWarning from "metabase/databases/containers/DatabaseEngineWarning";
+import DatabaseForm from "metabase/databases/containers/DatabaseForm";
 import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import InviteUserForm from "../InviteUserForm";
 import SetupSection from "../SetupSection";
-import {
-  StepActions,
-  StepDescription,
-  StepButton,
-  FormActions,
-} from "./DatabaseStep.styled";
-import { FormProps } from "./types";
+import { StepDescription } from "./DatabaseStep.styled";
 
 export interface DatabaseStepProps {
   user?: UserInfo;
@@ -49,9 +40,20 @@ const DatabaseStep = ({
   onInviteSubmit,
   onStepCancel,
 }: DatabaseStepProps): JSX.Element => {
-  const handleCancel = () => {
+  const handleSubmit = useCallback(
+    async (database: DatabaseInfo) => {
+      try {
+        await onDatabaseSubmit(database);
+      } catch (error) {
+        throw getSubmitError(error);
+      }
+    },
+    [onDatabaseSubmit],
+  );
+
+  const handleCancel = useCallback(() => {
     onStepCancel(engine);
-  };
+  }, [engine, onStepCancel]);
 
   if (!isStepActive) {
     return (
@@ -75,11 +77,10 @@ const DatabaseStep = ({
         <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
       </StepDescription>
       <DatabaseForm
-        database={database}
-        engine={engine}
-        onSubmit={onDatabaseSubmit}
+        initialValues={database}
+        onSubmit={handleSubmit}
         onEngineChange={onEngineChange}
-        onSkip={handleCancel}
+        onCancel={handleCancel}
       />
       {isEmailConfigured && (
         <SetupSection
@@ -94,80 +95,6 @@ const DatabaseStep = ({
         </SetupSection>
       )}
     </ActiveStep>
-  );
-};
-
-interface DatabaseFormProps {
-  database?: DatabaseInfo;
-  engine?: string;
-  onSubmit: (database: DatabaseInfo) => void;
-  onEngineChange: (engine?: string) => void;
-  onSkip: () => void;
-}
-
-const DatabaseForm = ({
-  database,
-  engine,
-  onSubmit,
-  onEngineChange,
-  onSkip,
-}: DatabaseFormProps): JSX.Element => {
-  const handleSubmit = async (database: DatabaseInfo) => {
-    try {
-      await onSubmit(database);
-    } catch (error) {
-      throw getSubmitError(error);
-    }
-  };
-
-  const handleEngineChange = (value?: string) => {
-    onEngineChange(value);
-  };
-
-  return (
-    <Databases.Form
-      form={Databases.forms.setup}
-      formName="database"
-      database={database}
-      onSubmit={handleSubmit}
-      submitTitle={t`Connect database`}
-      useLegacyForm
-    >
-      {({
-        Form,
-        FormField,
-        FormSubmit,
-        FormMessage,
-        formFields,
-        values,
-        onChangeField,
-        submitTitle,
-      }: FormProps) => (
-        <Form>
-          <FormField name="engine" onChange={handleEngineChange} />
-          <DatabaseEngineWarning
-            engineKey={values.engine}
-            onChange={engine => onChangeField("engine", engine)}
-          />
-          {_.reject(formFields, { name: "engine" }).map(({ name }) => (
-            <FormField key={name} name={name} />
-          ))}
-          {engine ? (
-            <FormActions>
-              <FormMessage noPadding />
-              <Button type="button" onClick={onSkip}>{t`Skip`}</Button>
-              <FormSubmit className="ml2">{submitTitle}</FormSubmit>
-            </FormActions>
-          ) : (
-            <StepActions>
-              <StepButton onClick={onSkip}>
-                {t`I'll add my data later`}
-              </StepButton>
-            </StepActions>
-          )}
-        </Form>
-      )}
-    </Databases.Form>
   );
 };
 

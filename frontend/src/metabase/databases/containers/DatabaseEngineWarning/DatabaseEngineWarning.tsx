@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
-import type { Engine } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import { Engine } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import DatabaseEngineWarning from "../../components/DatabaseEngineWarning";
 
 export interface DatabaseEngineWarningProps {

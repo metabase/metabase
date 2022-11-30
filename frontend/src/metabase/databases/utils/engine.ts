@@ -28,5 +28,5 @@ export const getEngineOptions = (
 
 export const getEngineLogo = (engine: string): string | undefined => {
   const logo = ENGINE_LOGO[engine];
-  return logo ? `app/assets/img/drivers/${logo}.svg` : undefined;
+  return logo ? `app/assets/img/drivers/${logo}` : undefined;
 };
