@@ -6,10 +6,10 @@ import React, {
   useState,
 } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
 import Input from "metabase/core/components/Input";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { getEngineLogo } from "../../utils/engine";
 import { EngineOption } from "../../types";
 import {
@@ -99,7 +99,7 @@ const EngineSearch = ({
   isHosted,
   onChange,
 }: EngineSearchProps): JSX.Element => {
-  const rootId = useMemo(() => _.uniqueId(), []);
+  const rootId = useUniqueId();
   const [searchText, setSearchText] = useState("");
   const [activeIndex, setActiveIndex] = useState<number>();
   const [isExpanded, setIsExpanded] = useState(false);

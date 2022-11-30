@@ -1,5 +1,5 @@
 import { Engine } from "metabase-types/api";
-import { ELEVATED_ENGINES, ENGINES_WITH_LOGO } from "../constants";
+import { ELEVATED_ENGINES, ENGINE_LOGO } from "../constants";
 import { EngineOption } from "../types";
 
 export const getEngineOptions = (
@@ -27,9 +27,6 @@ export const getEngineOptions = (
 };
 
 export const getEngineLogo = (engine: string): string | undefined => {
-  if (ENGINES_WITH_LOGO.includes(engine)) {
-    return `app/assets/img/drivers/${engine}.svg`;
-  } else {
-    return undefined;
-  }
+  const logo = ENGINE_LOGO[engine];
+  return logo ? `app/assets/img/drivers/${logo}.svg` : undefined;
 };
