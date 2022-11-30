@@ -178,9 +178,6 @@
           (testing "for dashboards"
             (is (= 100 (count (dir->file-set (io/file dump-dir "Dashboard"))))))
 
-          (testing "for dimensions"
-            (is (= 40 (count (dir->file-set (io/file dump-dir "Dimension"))))))
-
           (testing "for metrics"
             (is (= 30 (count (dir->file-set (io/file dump-dir "Metric"))))))
 

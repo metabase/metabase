@@ -52,6 +52,7 @@ const PASSWORD_COMPLEXITY_CLAUSES = {
 
 // TODO: dump this from backend settings definitions
 export type SettingName =
+  | "application-name"
   | "admin-email"
   | "analytics-uuid"
   | "anon-tracking-enabled"

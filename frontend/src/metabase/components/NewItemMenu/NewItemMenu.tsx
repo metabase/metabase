@@ -3,12 +3,12 @@ import { t } from "ttag";
 
 import Modal from "metabase/components/Modal";
 import EntityMenu from "metabase/components/EntityMenu";
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import * as Urls from "metabase/lib/urls";
 
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import CreateDataAppModal from "metabase/writeback/containers/CreateDataAppModal";
+import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
 
 import type { Collection, CollectionId } from "metabase-types/api";
 

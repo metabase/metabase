@@ -14,9 +14,9 @@ import * as Urls from "metabase/lib/urls";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import {
-  ERROR_MESSAGE_GENERIC,
-  ERROR_MESSAGE_PERMISSION,
-} from "metabase/visualizations/components/Visualization";
+  getGenericErrorMessage,
+  getPermissionErrorMessage,
+} from "metabase/visualizations/lib/errors";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
@@ -72,7 +72,7 @@ function getSeriesError(series: Series) {
 
   if (isAccessRestricted) {
     return {
-      message: ERROR_MESSAGE_PERMISSION,
+      message: getPermissionErrorMessage(),
       icon: "key",
     };
   }
@@ -80,11 +80,11 @@ function getSeriesError(series: Series) {
   const errors = series.map(s => s.error).filter(Boolean);
   if (errors.length > 0) {
     if (IS_EMBED_PREVIEW) {
-      const message = errors[0]?.data || ERROR_MESSAGE_GENERIC;
+      const message = errors[0]?.data || getGenericErrorMessage();
       return { message, icon: "warning" };
     }
     return {
-      message: ERROR_MESSAGE_GENERIC,
+      message: getGenericErrorMessage(),
       icon: "warning",
     };
   }

@@ -15,7 +15,11 @@
 (defmulti format-name
   "Transform a lowercase string Table or Field name in a way appropriate for this dataset (e.g., `h2` would want to
   upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`. This method should return a string.
-  Defaults to an identity implementation."
+  Defaults to an identity implementation.
+
+  This is actually ultimately used to format any name that comes back
+  from [[metabase.test.data.sql/qualified-name-components]] -- so if you include the Database name there, it will get
+  formatted by this as well."
   {:arglists '([driver table-or-field-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

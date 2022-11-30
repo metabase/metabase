@@ -4,7 +4,7 @@ import _ from "underscore";
 import { updateIn } from "icepick";
 import Button from "metabase/core/components/Button";
 import Databases from "metabase/entities/databases";
-import DriverWarning from "metabase/containers/DriverWarning";
+import DatabaseEngineWarning from "metabase/databases/containers/DatabaseEngineWarning";
 import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
@@ -145,8 +145,8 @@ const DatabaseForm = ({
       }: FormProps) => (
         <Form>
           <FormField name="engine" onChange={handleEngineChange} />
-          <DriverWarning
-            engine={values.engine}
+          <DatabaseEngineWarning
+            engineKey={values.engine}
             onChange={engine => onChangeField("engine", engine)}
           />
           {_.reject(formFields, { name: "engine" }).map(({ name }) => (

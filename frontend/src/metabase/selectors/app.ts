@@ -195,13 +195,3 @@ export const getIsQuestionLineageVisible = createSelector(
     );
   },
 );
-
-export const getSettings = createSelector(
-  (state: State) => state.settings,
-  settings => settings.values,
-);
-
-export const getTokenStatusStatus = createSelector(
-  [getSettings],
-  settings => settings["token-status"]?.status,
-);
