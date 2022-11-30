@@ -69,15 +69,6 @@
   ;; connection zone
   (hx/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
 
-(defrecord AtTimeZone
-  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
-  [expr zone]
-  hformat/ToSql
-  (to-sql [_]
-    (format "%s AT TIME ZONE %s"
-      (hformat/to-sql expr)
-      (hformat/to-sql (hx/literal zone)))))
-
 (defn- in-report-zone
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Presto's
   `AT TIME ZONE` operator. See https://prestodb.io/docs/current/functions/datetime.html"
@@ -92,7 +83,7 @@
              ;; if one has already been set, don't do so again
              (not (::in-report-zone? (meta expr)))
              report-zone)
-      (-> (hx/with-database-type-info (->AtTimeZone expr report-zone) timestamp-with-time-zone-db-type)
+      (-> (hx/with-database-type-info (hx/->AtTimeZone expr report-zone) timestamp-with-time-zone-db-type)
         (vary-meta assoc ::in-report-zone? true))
       expr)))
 
