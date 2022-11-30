@@ -171,8 +171,7 @@
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :day
-      (-> (hsql/call :datediff (hx/literal :day) x y)
-          (hx/with-database-type-info :integer))
+      (hsql/call :datediff (hx/literal :day) x y)
 
       (:hour :minute :second)
       (let [positive-diff (fn [a b]
