@@ -329,7 +329,7 @@
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
 
-(serdes.base/register-ingestion-path
+(serdes.base/register-ingestion-path!
   "Database"
   ;; ["databases" "my-db" "my-db"]
   (fn [[a b c :as path]]

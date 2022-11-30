@@ -8,8 +8,6 @@
    [metabase.util.files :as u.files]
    [toucan.db :as db]))
 
-#_(db/delete! 'Collection :entity_id "RCntUNv3imbM7ge9B36Fq")
-
 (defn- do-serialize-data-model [f]
   (premium-features-test/with-premium-features #{:serialization}
     (mt/with-temp* [Collection    [{collection-id   :id
@@ -31,7 +29,7 @@
 
 (deftest serialize-data-model-happy-path-test
   (do-serialize-data-model
-   (fn [{:keys [collection-id dir]}]
+   (fn [{:keys [collection-id collection-filename dir]}]
      (is (= {:status "ok"}
             (mt/user-http-request :crowberto :post 200 "ee/serialization/serialize/data-model"
                                   {:collection_ids [collection-id]
@@ -41,12 +39,11 @@
                  (sort (map str (u.files/files-seq path))))
                (files [& path-components]
                  (path-files (apply u.files/get-path dir path-components)))]
-         (prn (files))
-         #_(is (= (map
+         (is (= (map
                  #(.toString (u.files/get-path (System/getProperty "java.io.tmpdir") "serdes-dir" %))
                  ["collections" "settings.yaml"])
                 (files)))
-         #_(testing "subdirs"
+         (testing "subdirs"
            (testing "cards"
              (is (= 1
                     (count (files "collections" collection-filename "cards")))))

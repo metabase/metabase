@@ -968,7 +968,7 @@
   (let [parental (get collections (:entity_id coll))]
     (concat ["collections"] parental [(last parental)])))
 
-(serdes.base/register-ingestion-path
+(serdes.base/register-ingestion-path!
   "Collection"
   ;; Collections' paths are ["collections" "grandparent" "parent" "me" "me"]
   (fn [path]

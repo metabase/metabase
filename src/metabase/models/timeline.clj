@@ -106,4 +106,4 @@
 (defmethod serdes.base/serdes-dependencies "Timeline" [{:keys [collection_id]}]
   [[{:model "Collection" :id collection_id}]])
 
-(serdes.base/register-ingestion-path "Timeline" (serdes.base/ingestion-matcher-collected "collections" "Timeline"))
+(serdes.base/register-ingestion-path! "Timeline" (serdes.base/ingestion-matcher-collected "collections" "Timeline"))

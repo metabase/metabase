@@ -266,11 +266,11 @@
   (-> (serdes.base/load-xform-basics table)
       (assoc :db_id (db/select-one-field :id 'Database :name db_id))))
 
-(defmethod serdes.base/storage-path "Table" [table _]
+(defmethod serdes.base/storage-path "Table" [table _ctx]
   (concat (serdes.util/storage-table-path-prefix (serdes.base/serdes-path table))
           [(:name table)]))
 
-(serdes.base/register-ingestion-path
+(serdes.base/register-ingestion-path!
   "Table"
   ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "customers"]
   ;; ["databases" "my-db" "tables" "customers" "customers"]

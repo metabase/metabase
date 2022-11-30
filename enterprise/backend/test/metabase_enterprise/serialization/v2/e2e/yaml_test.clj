@@ -171,10 +171,9 @@
 
           (testing "storage"
             (storage.yaml/store! (seq @extraction) dump-dir)
-            (def files (file-set (io/file dump-dir)))
 
             (testing "for Collections"
-              (is (= 110 (count (for [f files
+              (is (= 110 (count (for [f (file-set (io/file dump-dir))
                                       :when (and (= (first f) "collections")
                                                  (let [[a b] (take-last 2 f)]
                                                    (= b (str a ".yaml"))))]

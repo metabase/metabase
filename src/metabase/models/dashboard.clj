@@ -477,4 +477,4 @@
                         card_id (conj card_id))]
          ["Card" card-id])))
 
-(serdes.base/register-ingestion-path "Dashboard" (serdes.base/ingestion-matcher-collected "collections" "Dashboard"))
+(serdes.base/register-ingestion-path! "Dashboard" (serdes.base/ingestion-matcher-collected "collections" "Dashboard"))

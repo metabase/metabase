@@ -463,7 +463,7 @@
       serdes.util/storage-table-path-prefix
       (concat ["fields" (:name field)])))
 
-(serdes.base/register-ingestion-path
+(serdes.base/register-ingestion-path!
   "Field"
   ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id"]
   ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id"]

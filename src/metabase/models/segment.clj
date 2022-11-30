@@ -102,7 +102,7 @@
         serdes.util/storage-table-path-prefix
         (concat ["segments" (serdes.base/storage-leaf-file-name id label)]))))
 
-(serdes.base/register-ingestion-path "Segment" (serdes.base/ingestion-matcher-collected "databases" "Segment"))
+(serdes.base/register-ingestion-path! "Segment" (serdes.base/ingestion-matcher-collected "databases" "Segment"))
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 

@@ -417,4 +417,4 @@
         (set (for [{:keys [card-id]} template-tags]
                ["Card" card-id]))))))
 
-(serdes.base/register-ingestion-path "Card" (serdes.base/ingestion-matcher-collected "collections" "Card"))
+(serdes.base/register-ingestion-path! "Card" (serdes.base/ingestion-matcher-collected "collections" "Card"))

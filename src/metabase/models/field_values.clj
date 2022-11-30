@@ -469,7 +469,7 @@
     (concat table-prefix
             ["fields" (str (:id field) field-values-slug)])))
 
-(serdes.base/register-ingestion-path
+(serdes.base/register-ingestion-path!
   "FieldValues"
   ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id___fieldvalues"]
   ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id___fieldvalues"]

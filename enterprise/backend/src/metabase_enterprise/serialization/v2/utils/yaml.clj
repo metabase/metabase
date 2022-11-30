@@ -45,7 +45,7 @@
   file extension is stripped off the last segment.
 
   The heavy lifting is done by the matcher functions registered by each model using
-  [[serdes.base/register-ingestion-path]]."
+  [[serdes.base/register-ingestion-path!]]."
   [path-parts]
   (let [basename         (last path-parts)
         basename         (if (str/ends-with? basename ".yaml")

@@ -105,7 +105,7 @@
         colls  (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
     (concat ["snippets"] colls [file])))
 
-(serdes.base/register-ingestion-path
+(serdes.base/register-ingestion-path!
   "NativeQuerySnippet"
   (fn [path]
     (when-let [[id slug] (and (= (first path) "snippets")
