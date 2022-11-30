@@ -1,11 +1,14 @@
 import { t } from "ttag";
 import {
-  PLUGIN_FORM_WIDGETS,
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_FORM_WIDGETS,
 } from "metabase/plugins";
-import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
+
+import type { Collection } from "metabase-types/api";
+
 import { CollectionAuthorityLevelIcon } from "./components/CollectionAuthorityLevelIcon";
+import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
 import {
   AUTHORITY_LEVELS,
   REGULAR_COLLECTION,
@@ -19,7 +22,10 @@ PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
 
 PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
 
-PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (collection, onUpdate) => {
+PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
+  collection: Collection,
+  onUpdate: (collection: Collection, values: Partial<Collection>) => void,
+) => {
   if (isRegularCollection(collection)) {
     return [
       {

@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
+import { IconProps } from "metabase/components/Icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 
 import type {
@@ -88,7 +89,9 @@ export const PLUGIN_SELECTORS = {
   getLoadingMessage: (state: State) => t`Doing science...`,
 };
 
-export const PLUGIN_FORM_WIDGETS = {};
+export const PLUGIN_FORM_WIDGETS: Record<string, React.ComponentType<any>> = {
+  collectionAuthorityLevel: PluginPlaceholder,
+};
 
 // snippet sidebar
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
@@ -106,21 +109,40 @@ const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   icon: "folder",
 };
 
+type AuthorityLevelMenuItem = {
+  title: string;
+  icon: string;
+  action: () => void;
+};
+
+type AuthorityLevelFormField = {
+  name: string;
+  title: string;
+  info?: string;
+  type: string;
+  options?: any[];
+};
+
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
   isRegularCollection: (_: Collection | Bookmark) => true,
-  getAuthorityLevelFormFields: () => [],
+  getAuthorityLevelFormFields: (): AuthorityLevelFormField[] => [],
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
-  ) => [],
+  ): AuthorityLevelMenuItem[] => [],
 };
 
+type CollectionAuthorityLevelIcon = React.ComponentType<
+  Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
+>;
+
 export const PLUGIN_COLLECTION_COMPONENTS = {
-  CollectionAuthorityLevelIcon: PluginPlaceholder,
+  CollectionAuthorityLevelIcon:
+    PluginPlaceholder as CollectionAuthorityLevelIcon,
 };
 
 export const PLUGIN_MODERATION = {
