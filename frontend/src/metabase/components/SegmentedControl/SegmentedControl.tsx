@@ -21,9 +21,11 @@ export const optionShape = PropTypes.shape({
   selectedColor: PropTypes.string,
 });
 
-export type SegmentedControlOption = {
+type SegmentedControlValue = string | number;
+
+export type SegmentedControlOption<Value extends SegmentedControlValue> = {
   name?: React.ReactNode;
-  value: any;
+  value: Value;
   icon?: string;
   iconSize?: number;
 
@@ -33,10 +35,10 @@ export type SegmentedControlOption = {
   selectedColor?: string;
 };
 
-interface Props {
+interface Props<Value extends SegmentedControlValue> {
   name?: string;
-  value?: any;
-  options: SegmentedControlOption[];
+  value?: Value;
+  options: SegmentedControlOption<Value>[];
   variant?: "fill-text" | "fill-background" | "fill-all";
   inactiveColor?: string;
   onChange?: (value: any) => void;
@@ -45,7 +47,7 @@ interface Props {
 
 const DEFAULT_OPTION_ICON_SIZE = 16;
 
-export function SegmentedControl({
+export function SegmentedControl<Value extends SegmentedControlValue = number>({
   name: nameProp,
   value,
   options,
@@ -54,7 +56,7 @@ export function SegmentedControl({
   inactiveColor = "text-dark",
   variant = "fill-background",
   ...props
-}: Props) {
+}: Props<Value>) {
   const id = useMemo(() => _.uniqueId("radio-"), []);
   const name = nameProp || id;
   const selectedOptionIndex = options.findIndex(
