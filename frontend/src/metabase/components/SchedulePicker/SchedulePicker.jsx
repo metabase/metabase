@@ -61,9 +61,9 @@ const propTypes = {
   minutesOnHourPicker: PropTypes.bool,
 };
 
-class SchedulePicker extends Component {
-  DEFAULT_DAY = "mon";
+const DEFAULT_DAY = "mon";
 
+class SchedulePicker extends Component {
   handleChangeProperty(name, value) {
     let newSchedule = {
       ...this.props.schedule,
@@ -103,7 +103,7 @@ class SchedulePicker extends Component {
       if (value === "weekly") {
         newSchedule = {
           ...newSchedule,
-          schedule_day: this.DEFAULT_DAY,
+          schedule_day: DEFAULT_DAY,
           schedule_frame: null,
         };
       }
@@ -113,7 +113,7 @@ class SchedulePicker extends Component {
         newSchedule = {
           ...newSchedule,
           schedule_frame: "first",
-          schedule_day: this.DEFAULT_DAY,
+          schedule_day: DEFAULT_DAY,
         };
       }
     } else if (name === "schedule_frame") {
@@ -124,7 +124,7 @@ class SchedulePicker extends Component {
         // first or last, needs a day of the week
         newSchedule = {
           ...newSchedule,
-          schedule_day: newSchedule.schedule_day || this.DEFAULT_DAY,
+          schedule_day: newSchedule.schedule_day || DEFAULT_DAY,
         };
       }
     }
