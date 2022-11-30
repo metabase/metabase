@@ -21,15 +21,29 @@
   (u.files/with-open-path-to-resource [sample-db-path sample-database-filename]
     (u.files/copy-file! sample-db-path target-path)))
 
+(defn- process-sample-db-path
+  [base-path]
+  (-> base-path
+      (str/replace #"\.mv\.db$" "")        ; strip the .mv.db suffix from the path
+      (str/replace #"%20" " ")             ; for some reason the path can get URL-encoded and replace spaces with `%20`;
+                                           ;   this breaks things so switch them back to spaces
+      (str ";USER=GUEST;PASSWORD=guest"))) ; specify the GUEST user account created for the DB
+
 (defn- jar-db-details
   [resource]
   (-> (.getPath resource)
       (str/replace #"^file:" "zip:") ; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't do anything when running from the Clojure CLI, which has no `file:` prefix)
-      (str/replace #"\.mv\.db$" "")  ; strip the .mv.db suffix from the path
-      (str/replace #"%20" " ") ; for some reason the path can get URL-encoded and replace spaces with `%20`; this breaks things so switch them back to spaces
-      (str ";USER=GUEST;PASSWORD=guest")))
+      process-sample-db-path))
 
-(defn- db-details []
+(defn- extracted-db-details
+  []
+  (-> (str "file:" (plugins/plugins-dir) "/" sample-database-filename)
+      process-sample-db-path))
+
+(defn- db-details
+  "Tries to extract the sample database out of the JAR (for performance) and then returns a db-details map
+   containing a connection string."
+  []
   (let [resource (io/resource sample-database-filename)]
     (when-not resource
       (throw (Exception. (trs "Sample database DB file ''{0}'' cannot be found."
@@ -37,12 +51,10 @@
     {:db
      (try
        (extract-sample-database!)
-       (-> (str "file:" (u.files/append-to-path (plugins/plugins-dir) sample-database-filename))
-           (str/replace #"\.mv\.db$" "")  ; strip the .mv.db suffix from the path
-           (str/replace #"%20" " ") ; for some reason the path can get URL-encoded and replace spaces with `%20`; this breaks things so switch them back to spaces
-           (str ";USER=GUEST;PASSWORD=guest"))
-       (catch Exception _
-        (jar-db-details resource)))})) ; specify the GUEST user account created for the DB
+       (extracted-db-details)
+       (catch Throwable _e
+        (log/warn (trs (str "Error extracting the sample database; this may result in a slow startup time.")))
+        (jar-db-details resource)))}))
 
 (defn add-sample-database!
   "Add the sample database as a Metabase DB if it doesn't already exist."
