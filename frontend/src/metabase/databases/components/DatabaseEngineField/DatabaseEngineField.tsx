@@ -1,53 +1,44 @@
-import React, { useCallback, useMemo, useRef } from "react";
-import { t } from "ttag";
-import FormSelect from "metabase/core/components/FormSelect";
+import React, { useMemo, useRef } from "react";
 import { Engine } from "metabase-types/api";
-import { SelectChangeEvent } from "metabase/core/components/Select";
+import { getEngineOptions } from "../../utils/engine";
+import DatabaseEngineSelect from "./DatabaseEngineSelect";
+import DatabaseEngineWidget from "./DatabaseEngineWidget";
 
 export interface DatabaseEngineFieldProps {
   engineKey: string | undefined;
   engines: Record<string, Engine>;
-  onChange: (engine: string) => void;
+  isHosted: boolean;
+  isAdvanced: boolean;
+  onChange: (engine: string | undefined) => void;
 }
 
 const DatabaseEngineField = ({
   engineKey,
   engines,
+  isHosted,
+  isAdvanced,
   onChange,
 }: DatabaseEngineFieldProps): JSX.Element => {
-  const { current: isDisabled } = useRef(engineKey != null);
+  const { current: isNew } = useRef(engineKey == null);
 
   const options = useMemo(() => {
     return getEngineOptions(engines, engineKey);
   }, [engines, engineKey]);
 
-  const handleChange = useCallback(
-    (event: SelectChangeEvent<string>) => {
-      onChange(event.target.value);
-    },
-    [onChange],
-  );
-
-  return (
-    <FormSelect
-      name="engine"
-      title={t`Database type`}
-      placeholder={t`Select a database`}
+  return isAdvanced ? (
+    <DatabaseEngineSelect
       options={options}
-      disabled={isDisabled}
-      onChange={handleChange}
+      disabled={!isNew}
+      onChange={onChange}
+    />
+  ) : (
+    <DatabaseEngineWidget
+      engineKey={engineKey}
+      options={options}
+      isHosted={isHosted}
+      onChange={onChange}
     />
   );
-};
-
-const getEngineOptions = (
-  engines: Record<string, Engine>,
-  engineKey?: string,
-) => {
-  return Object.entries(engines)
-    .filter(([key, engine]) => key === engineKey || !engine["superseded-by"])
-    .map(([key, engine]) => ({ name: engine["driver-name"], value: key }))
-    .sort((a, b) => a.name.localeCompare(b.name));
 };
 
 export default DatabaseEngineField;

@@ -1,10 +1,46 @@
 import React from "react";
 import { t } from "ttag";
-import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
-import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
 import DatabaseSshDescription from "./components/DatabaseSshDescription";
+import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
+import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
 import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
 import { EngineFieldOverride } from "./types";
+
+export const ELEVATED_ENGINES = [
+  "mysql",
+  "postgres",
+  "sqlserver",
+  "redshift",
+  "bigquery-cloud-sdk",
+  "snowflake",
+];
+
+export const ENGINE_LOGO: Record<string, string> = {
+  bigquery: "bigquery.svg",
+  "bigquery-cloud-sdk": "bigquery.svg",
+  druid: "druid.svg",
+  googleanalytics: "googleanalytics.svg",
+  h2: "h2.svg",
+  mongo: "mongo.svg",
+  mysql: "mysql.svg",
+  oracle: "oracle.svg",
+  postgres: "postgres.svg",
+  presto: "presto.svg",
+  "presto-jdbc": "presto.svg",
+  redshift: "redshift.svg",
+  snowflake: "snowflake.svg",
+  sparksql: "sparksql.svg",
+  starburst: "starburst.svg",
+  sqlite: "sqlite.svg",
+  sqlserver: "sqlserver.svg",
+  vertica: "vertica.svg",
+};
+
+export const ADVANCED_FIELDS = [
+  "auto_run_queries",
+  "let-user-control-scheduling",
+  "cache_ttl",
+];
 
 export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   "tunnel-enabled": {
