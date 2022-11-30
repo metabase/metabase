@@ -159,6 +159,7 @@ export interface Settings {
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
   "persisted-models-enabled": boolean;
+  "report-timezone-short": string;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
   "session-cookies": boolean | null;

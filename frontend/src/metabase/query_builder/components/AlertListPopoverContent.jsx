@@ -12,7 +12,7 @@ import {
   AM_PM_OPTIONS,
   DAY_OF_WEEK_OPTIONS,
   HOUR_OPTIONS,
-} from "metabase/components/SchedulePicker";
+} from "metabase/containers/SchedulePicker";
 import Icon from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
 import {
