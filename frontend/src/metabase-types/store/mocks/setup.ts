@@ -1,5 +1,4 @@
 import {
-  DatabaseDetails,
   DatabaseInfo,
   InviteInfo,
   Locale,
@@ -33,19 +32,15 @@ export const createMockInviteInfo = (
   ...opts,
 });
 
-export const createMockDatabaseDetails = (
-  opts?: Partial<DatabaseDetails>,
-): DatabaseDetails => ({
-  ssl: false,
-  ...opts,
-});
-
 export const createMockDatabaseInfo = (
   opts?: Partial<DatabaseInfo>,
 ): DatabaseInfo => ({
   name: "Database",
   engine: "H2",
-  details: createMockDatabaseDetails(),
+  details: {},
+  schedules: {},
+  auto_run_queries: false,
+  refingerprint: false,
   ...opts,
 });
 

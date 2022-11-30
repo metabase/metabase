@@ -25,7 +25,7 @@ export interface Engine {
   "driver-name": string;
   "details-fields"?: EngineField[];
   source: EngineSource;
-  "superseded-by": string | undefined;
+  "superseded-by": string | null;
 }
 
 export interface EngineField {
@@ -61,14 +61,32 @@ export interface EngineFieldOption {
 }
 
 export interface EngineSource {
-  type?: "official" | "community" | "partner";
-  contact?: EngineSourceContact;
+  type: "official" | "community" | "partner";
+  contact: EngineSourceContact | null;
 }
 
 export interface EngineSourceContact {
   name?: string;
   address?: string;
 }
+
+export interface ScheduleSettings {
+  schedule_day?: ScheduleDayType;
+  schedule_frame?: ScheduleFrameType;
+  schedule_hour?: boolean;
+  schedule_minute?: number;
+}
+
+export type ScheduleDayType =
+  | "sun"
+  | "mon"
+  | "tue"
+  | "wed"
+  | "thu"
+  | "fri"
+  | "sat";
+
+export type ScheduleFrameType = "first" | "mid" | "last";
 
 export interface FontFile {
   src: string;

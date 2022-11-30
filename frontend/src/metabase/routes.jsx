@@ -1,9 +1,9 @@
 import React from "react";
-
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
 import { t } from "ttag";
+
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 
@@ -32,7 +32,6 @@ import TableBrowser from "metabase/browse/containers/TableBrowser";
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import MoveCollectionModal from "metabase/collections/containers/MoveCollectionModal";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
@@ -51,6 +50,7 @@ import MetricListContainer from "metabase/reference/metrics/MetricListContainer"
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
 import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
 import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
+
 // Reference Segments
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
@@ -58,6 +58,7 @@ import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuesti
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
 import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
+
 // Reference Databases
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -74,7 +75,6 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import PublicQuestion from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
-import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
@@ -215,8 +215,6 @@ export const getRoutes = store => (
         <Route path="collection/:slug" component={CollectionLanding}>
           <ModalRoute path="move" modal={MoveCollectionModal} />
           <ModalRoute path="archive" modal={ArchiveCollectionModal} />
-          <ModalRoute path="new_collection" modal={CollectionCreate} />
-          <ModalRoute path="new_dashboard" modal={CreateDashboardModal} />
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
           {getCollectionTimelineRoutes()}
         </Route>
@@ -263,10 +261,6 @@ export const getRoutes = store => (
         {/* INDIVIDUAL DASHBOARDS */}
 
         <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
-
-        <Route path="/collections">
-          <Route path="create" component={CollectionCreate} />
-        </Route>
 
         {/* REFERENCE */}
         <Route path="/reference" title={t`Data Reference`}>
