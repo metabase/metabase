@@ -33,6 +33,7 @@
   #{metabase.db.data_migrations.DataMigrationsInstance
     metabase.models.action.ActionInstance
     metabase.models.action.HTTPActionInstance
+    metabase.models.action.ImplicitActionInstance
     metabase.models.action.QueryActionInstance
     metabase.models.activity.ActivityInstance
     metabase.models.app_permission_graph_revision.AppPermissionGraphRevisionInstance

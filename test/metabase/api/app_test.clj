@@ -1,11 +1,12 @@
 (ns metabase.api.app-test
   (:require
     [cheshire.core :as json]
+    [clojure.string :as str]
     [clojure.test :refer [deftest is testing]]
     [medley.core :as m]
     [metabase.actions.test-util :as actions.test-util]
-    [metabase.models :refer [App Card Collection Dashboard DashboardCard
-                             ModelAction Permissions]]
+    [metabase.models :refer [Action App Card Collection Dashboard
+                             DashboardCard Permissions]]
     [metabase.models.collection.graph :as graph]
     [metabase.models.permissions :as perms]
     [metabase.models.permissions-group :as perms-group]
@@ -247,7 +248,7 @@
       normalized-models))
 
 (deftest scaffold-test
-  (mt/with-model-cleanup [Card Dashboard Collection Permissions]
+  (mt/with-model-cleanup [Action Card Dashboard Collection Permissions]
     (mt/with-all-users-permission (perms/app-root-collection-permission :read)
       (testing "Golden path"
         (let [app (mt/user-http-request
@@ -269,16 +270,17 @@
                         list-page))
           (testing "Implicit actions are created"
             (is (partial=
-                 [{:slug "insert"}
-                  {:slug "update"}
-                  {:slug "delete"}]
-                 (db/select ModelAction {:where [:= :model_action.card_id
-                                                 {:select [:id]
-                                                  :from [Card]
-                                                  :where [:and
-                                                          [:= :collection_id (:collection_id app)]
-                                                          [:= :dataset true]]}]
-                                         :order-by [:id]}))))
+                 [{:kind "row/create"}
+                  {:kind "row/update"}
+                  {:kind "row/delete"}]
+                 (db/select 'ImplicitAction {:where [:in :action_id
+                                                     {:select [:action.id]
+                                                      :from [Card]
+                                                      :join [Action [:= :action.model_id :report_card.id]]
+                                                      :where [:and
+                                                              [:= :collection_id (:collection_id app)]
+                                                              [:= :dataset true]]}]
+                                             :order-by [:action_id]}))))
           (is (partial= {:groups {(:id (perms-group/all-users)) {(:collection_id app) :read}}}
                         (graph/graph :apps))
               "''All Users'' should have the default permission on the app collection")
@@ -299,42 +301,39 @@
   (mt/with-model-cleanup [Card Dashboard Collection Permissions]
     (mt/with-all-users-permission (perms/app-root-collection-permission :read)
       (testing "Golden path"
-        (actions.test-util/with-action [{action1-id :action-id} {}]
-          (actions.test-util/with-action [{action2-id :action-id} {}]
-            (mt/with-temp* [Card [{card-id :id card-name :name} {:dataset true :dataset_query (mt/mbql-query categories)}]
-                            ModelAction [_ {:card_id card-id :slug "insert"}]
-                            ModelAction [_ {:card_id card-id :slug "update" :requires_pk true}]
-                            ModelAction [_ {:card_id card-id :slug "delete" :requires_pk true}]
-                            ModelAction [_ {:card_id card-id :slug "list-action" :requires_pk false :action_id action1-id}]
-                            ModelAction [_ {:card_id card-id :slug "detail-action" :requires_pk true :action_id action2-id}]]
-              (let [app (mt/user-http-request
-                          :crowberto :post 200 "app/scaffold"
-                          {:table-ids [(str "card__" card-id)]
-                           :app-name "My test app"})
-                    pages (m/index-by :name (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards))
-                    list-page (get pages (str card-name " List"))
-                    detail-page (get pages (str card-name " Detail"))]
-                (is (partial= {:nav_items [{:page_id (:id list-page)}
-                                           {:page_id (:id detail-page) :hidden true :indent 1}]
-                               :dashboard_id (:id list-page)}
-                              app))
-                (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
-                                                                         {:type "link",
-                                                                          :linkType "page",
-                                                                          :targetId (:id detail-page)}}}
-                                               {:visualization_settings {:action_slug "insert"}}
-                                               {:visualization_settings {:action_slug "list-action"}}]}
-                              list-page))
-                (is (partial= {:ordered_cards [{:parameter_mappings
-                                                [{:target [:dimension [:field (mt/id :categories :id) nil]]}]}
-                                               {}
-                                               {:visualization_settings {:action_slug "update"}}
-                                               {:visualization_settings {:action_slug "delete"}}
-                                               {:visualization_settings {:action_slug "detail-action"}}]}
-                              detail-page))))))))))
+        (actions.test-util/with-actions [{action-create :action-id} {:type :implicit :kind "row/create"}
+                                         {action-update :action-id} {:type :implicit :kind "row/update"}
+                                         {action-delete :action-id} {:type :implicit :kind "row/delete"}
+                                         {action1-id :action-id} {}
+                                         {action2-id :action-id card-id :model-id} {}]
+          (let [app (mt/user-http-request
+                      :crowberto :post 200 "app/scaffold"
+                      {:table-ids [(str "card__" card-id)]
+                       :app-name "My test app"})
+                pages (hydrate (db/select Dashboard :collection_id (:collection_id app)) :ordered_cards)
+                list-page (first (filter (comp #(str/ends-with? % "List") :name) pages))
+                detail-page (first (filter (comp #(str/ends-with? % "Detail") :name) pages))]
+            (is (partial= {:nav_items [{:page_id (:id list-page)}
+                                       {:page_id (:id detail-page) :hidden true :indent 1}]
+                           :dashboard_id (:id list-page)}
+                          app))
+            (is (partial= {:ordered_cards [{:visualization_settings {:click_behavior
+                                                                     {:type "link",
+                                                                      :linkType "page",
+                                                                      :targetId (:id detail-page)}}}
+                                           {:action_id action-create}
+                                           {:action_id action1-id}
+                                           {:action_id action2-id}]}
+                          list-page))
+            (is (partial= {:ordered_cards [{:parameter_mappings
+                                            [{:target [:dimension [:field (mt/id :categories :id) nil]]}]}
+                                           {}
+                                           {:action_id action-update}
+                                           {:action_id action-delete}]}
+                          detail-page))))))))
 
 (deftest scaffold-app-test
-  (mt/with-model-cleanup [Card Dashboard]
+  (mt/with-model-cleanup [Action Card Dashboard]
     (mt/with-temp* [Collection [{collection-id :id} {:namespace :apps}]
                     App [{app-id :id} {:collection_id collection-id}]]
       (testing "Without existing pages"

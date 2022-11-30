@@ -1,7 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.app-permissions-test
   "Tests for /api/collection endpoints."
   (:require [clojure.test :refer :all]
-            [metabase.models :refer [App Card Collection Dashboard
+            [metabase.models :refer [Action App Card Collection Dashboard
                                      Permissions PermissionsGroup PermissionsGroupMembership]]
             [metabase.models.interface :as mi]
             [metabase.models.permissions-group :as perms-group]
@@ -76,7 +76,7 @@
              (mt/user-http-request :crowberto :put 402 "app/graph" {:revision 0
                                                                     :groups {1 {1 "write"}}})))))
 
-  (mt/with-model-cleanup [Card Dashboard Collection Permissions]
+  (mt/with-model-cleanup [Action Card Dashboard Collection Permissions]
     (premium-features-test/with-premium-features #{:advanced-permissions}
       (let [max-coll-id (:id (db/select-one [Collection [:%max.id :id]]))
             max-app-id (:id (db/select-one [App [:%max.id :id]]))]

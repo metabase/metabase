@@ -30,7 +30,6 @@
                                      LoginHistory
                                      Metric
                                      MetricImportantField
-                                     ModelAction
                                      ModerationReview
                                      NativeQuerySnippet
                                      Permissions
@@ -99,7 +98,6 @@
    Card
    CardBookmark
    DashboardBookmark
-   ModelAction
    CollectionBookmark
    BookmarkOrdering
    DashboardCard
