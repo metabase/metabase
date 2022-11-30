@@ -477,36 +477,6 @@
            :rows         [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]
            :viz-settings {}})))))
 
-(deftest series-with-custom-names-test
-  (testing "Check if single x-axis combo series uses custom series names (#21503)"
-    (is (= #{"Bought" "Sold"}
-           (set (map :name
-                     (#'body/single-x-axis-combo-series
-                       :bar
-                       [[[10.0] [1 -1]] [[5.0] [10 -10]] [[1.25] [20 -20]]]
-                       [{:name "Price", :display_name "Price", :base_type :type/Number}]
-                       [{:name "NumPurchased", :display_name "NumPurchased", :base_type :type/Number}
-                        {:name "NumSold", :display_name "NumSold", :base_type :type/Number}]
-                       {:viz-settings
-                        {:series_settings {:NumPurchased {:color "#a7cf7b" :title "Bought"}
-                                           :NumSold      {:color "#a7cf7b" :title "Sold"}}}}
-                       "Card name"))))))
-  (testing "Check if double x-axis combo series uses custom series names (#21503)"
-    (is (= #{"Bobby" "Dobby" "Robby" "Mobby"}
-           (set (map :name
-                     (#'body/double-x-axis-combo-series
-                       nil
-                       [[[10.0 "Bob"] [123]] [[5.0 "Dobbs"] [12]] [[2.5 "Robbs"] [1337]] [[1.25 "Mobbs"] [-22]]]
-                       [{:base_type :type/BigInteger, :display_name "Price", :name "Price", :semantic_type nil}
-                        {:base_type :type/BigInteger, :display_name "NumPurchased", :name "NumPurchased", :semantic_type nil}]
-                       [{:base_type :type/BigInteger, :display_name "NumKazoos", :name "NumKazoos", :semantic_type nil}]
-                       {:viz-settings
-                        {:series_settings {:Bob   {:color "#c5a9cf" :title "Bobby"}
-                                           :Dobbs {:color "#a7cf7b" :title "Dobby"}
-                                           :Robbs {:color "#34517d" :title "Robby"}
-                                           :Mobbs {:color "#e0be40" :title "Mobby"}}}}
-                       "Card name")))))))
-
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
 
