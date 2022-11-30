@@ -40,8 +40,8 @@ import ErrorView from "./ErrorView";
 import LoadingView from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
-  Root,
-  Header,
+  VisualizationRoot,
+  VisualizationHeader,
   VisualizationActionButtonsContainer,
   VisualizationSlowSpinner,
 } from "./Visualization.styled";
@@ -448,9 +448,9 @@ class Visualization extends React.PureComponent {
       (replacementContent && (dashcard.size_y !== 1 || isMobile));
 
     return (
-      <Root className={className} style={style}>
+      <VisualizationRoot className={className} style={style}>
         {!!hasHeader && (
-          <Header>
+          <VisualizationHeader>
             <ChartCaption
               series={series}
               settings={settings}
@@ -462,7 +462,7 @@ class Visualization extends React.PureComponent {
                   : null
               }
             />
-          </Header>
+          </VisualizationHeader>
         )}
         {replacementContent ? (
           replacementContent
@@ -515,7 +515,7 @@ class Visualization extends React.PureComponent {
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           />
         )}
-      </Root>
+      </VisualizationRoot>
     );
   }
 }
