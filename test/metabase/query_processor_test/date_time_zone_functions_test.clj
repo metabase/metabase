@@ -121,9 +121,7 @@
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
-    ;; not really sure why vertica is failing...
-    ;; got error : [Vertica][VJDBC](3459) Function catalog.date_part(unknown, unknown) is not unique
-    (mt/test-drivers #{:vertica}
+    (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
       (testing "works with literal value"
         (let [ops [:get-year :get-quarter :get-month :get-day
                    :get-day-of-week :get-hour :get-minute :get-second]]
