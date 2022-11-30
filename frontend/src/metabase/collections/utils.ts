@@ -98,3 +98,10 @@ export function canonicalCollectionId(
     return parseInt(collectionId, 10);
   }
 }
+
+export function isValidCollectionId(
+  collectionId: string | number | null | undefined,
+): boolean {
+  const id = canonicalCollectionId(collectionId);
+  return id === null || typeof id === "number";
+}

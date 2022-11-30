@@ -23,8 +23,41 @@ export interface CurrencyFormattingSettings {
 
 export interface Engine {
   "driver-name": string;
-  "superseded-by": string | undefined;
+  "details-fields"?: EngineField[];
   source: EngineSource;
+  "superseded-by": string | undefined;
+}
+
+export interface EngineField {
+  name: string;
+  type?: EngineFieldType;
+  "display-name"?: string;
+  description?: string;
+  "helper-text"?: string;
+  placeholder?: unknown;
+  required?: boolean;
+  default?: unknown;
+  options?: EngineFieldOption[];
+  "visible-if"?: Record<string, unknown>;
+  "treat-before-posting"?: EngineFieldTreatType;
+}
+
+export type EngineFieldType =
+  | "string"
+  | "password"
+  | "text"
+  | "integer"
+  | "boolean"
+  | "select"
+  | "textFile"
+  | "info"
+  | "section";
+
+export type EngineFieldTreatType = "base64";
+
+export interface EngineFieldOption {
+  name: string;
+  value: string;
 }
 
 export interface EngineSource {

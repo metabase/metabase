@@ -1,0 +1,33 @@
+import React, { useCallback } from "react";
+import { useField } from "formik";
+import { t } from "ttag";
+import FormField from "metabase/core/components/FormField";
+import { SectionButton } from "./DatabaseSectionField.styled";
+
+export interface DatabaseSectionFieldProps {
+  name: string;
+}
+
+const DatabaseSectionField = ({
+  name,
+}: DatabaseSectionFieldProps): JSX.Element => {
+  const [{ value }, , { setValue }] = useField(name);
+
+  const handleClick = useCallback(() => {
+    setValue(!value);
+  }, [value, setValue]);
+
+  return (
+    <FormField>
+      <SectionButton
+        type="button"
+        iconRight={value ? "chevronup" : "chevrondown"}
+        onClick={handleClick}
+      >
+        {value ? t`Hide advanced options` : t`Show advanced options`}
+      </SectionButton>
+    </FormField>
+  );
+};
+
+export default DatabaseSectionField;
