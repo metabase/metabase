@@ -1,8 +1,8 @@
 ---
-title: "Metabase configuration file"
+title: "Configuration file"
 ---
 
-# Metabase configuration file
+# Configuration file
 
 {% include plans-blockquote.html feature="Loading from a configuration file" self-hosted-only="true" %}
 
