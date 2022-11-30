@@ -13,7 +13,6 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import type { Collection } from "metabase-types/api";
 import type { GetState, ReduxAction } from "metabase-types/store";
 
-import { getFormSelector } from "./forms";
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
 import getInitialCollectionId from "./getInitialCollectionId";
 import { getCollectionIcon, getCollectionType } from "./utils";
@@ -80,7 +79,6 @@ const Collections = createEntity({
   },
 
   selectors: {
-    getForm: getFormSelector,
     getExpandedCollectionsById: createSelector(
       [state => state.entities.collections || {}, getUserPersonalCollectionId],
       (collections, currentUserPersonalCollectionId) =>
