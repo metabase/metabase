@@ -176,8 +176,8 @@
                             (hx/cast
                              :integer
                              (hx/floor
-                              (cond-> (= unit :second)
-                                (hsql/call :- (extract :epoch b) (extract :epoch a))
+                              (cond-> (hsql/call :- (extract :epoch b) (extract :epoch a))
+                               (not= unit :second)
                                 (hx// (case unit :hour 3600 :minute 60))))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x)))))))
 
