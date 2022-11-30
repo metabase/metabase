@@ -15,13 +15,21 @@ driver:
       display-name: Paste your connection string
       placeholder: 'mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[dbname][?options]]'
       required: true
+      visible-if:
+        use-conn-uri: true
+    - merge:
+        - host
+        - visible-if:
+            use-conn-uri: false
+    - merge:
+        - dbname
+        - visible-if:
+            use-conn-uri: false
     - merge:
         - port
         - default: 27017
           visible-if:
             use-conn-uri: false
-    - host
-    - dbname
     - merge:
         - user
         - required: false

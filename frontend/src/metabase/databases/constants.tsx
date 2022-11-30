@@ -89,7 +89,7 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   "ssl-key-options": {
     description: <DatabaseSslKeyDescription />,
   },
-  "use-connection-string": {
+  "use-conn-uri": {
     type: DatabaseConnectionSectionField,
   },
   auto_run_queries: {
