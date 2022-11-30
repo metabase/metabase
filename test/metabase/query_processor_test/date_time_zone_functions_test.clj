@@ -703,19 +703,7 @@
                       first))))))))
 
 (deftest datetime-diff-type-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
-    (testing "Cannot datetime-diff against integer column"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Only datetime, timestamp, or date types allowed. Found .*"
-           (mt/rows
-            (mt/run-mbql-query checkins
-              {:limit 1
-               :fields      [[:expression "diff-day"]]
-               :expressions {"diff-day" [:datetime-diff $user_id $date :day]}}))))))
-  ;; TIMEZONE FIXME — The excluded drivers below don't have TIME types, so the `attempted-murders` dataset doesn't
-  ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
-  ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
+  ;; FIXME — The excluded drivers below don't have TIME types. These shouldn't be hard-coded with #26807
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :datetime-diff)
                          :oracle :presto :redshift :sparksql :snowflake)
     (testing "Cannot datetime-diff against time column"
