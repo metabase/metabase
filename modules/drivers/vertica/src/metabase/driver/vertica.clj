@@ -85,6 +85,7 @@
 
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (cast-timestamp expr)))
 (defn- extract    [unit expr] (hsql/call :extract    unit              (cast-timestamp expr)))
+(defn- datediff   [unit a b]  (hsql/call :datediff   (hx/literal unit) (cast-timestamp a) (cast-timestamp b)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
@@ -138,28 +139,25 @@
       :year
       (let [positive-diff (fn [a b] ; precondition: a <= b
                             (hx/-
-                             (hsql/call :datediff (hx/literal unit) a b)
+                             (datediff :year a b)
                              (hx/cast
                               :integer
                               (hsql/call
                                :or
-                               (hsql/call :> (hsql/call :extract :month a) (hsql/call :extract :month b))
+                               (hsql/call :> (extract :month a) (extract :month b))
                                (hsql/call
                                 :and
-                                (hsql/call := (hsql/call :extract :month a) (hsql/call :extract :month b))
-                                (hsql/call :> (hsql/call :extract :day a) (hsql/call :extract :day b)))))))]
+                                (hsql/call := (extract :month a) (extract :month b))
+                                (hsql/call :> (extract :day a) (extract :day b)))))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :month
-      (let [positive-diff (fn [a b] ; precondition: a <= b
+      (let [positive-diff (fn [a b]
                             (hx/-
-                             (hsql/call :datediff (hx/literal :month) a b)
+                             (datediff :month a b)
                              (hx/cast
                               :integer
-                              (hsql/call
-                               :>
-                               (hsql/call :datediff (hx/literal :day) (date-trunc :month a) a)
-                               (hsql/call :datediff (hx/literal :day) (date-trunc :month b) b)))))]
+                              (hsql/call :> (extract :day a) (extract :day b)))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :week
@@ -167,19 +165,20 @@
                             (hx/cast
                              :integer
                              (hx/floor
-                              (hx// (hsql/call :datediff (hx/literal :day) a b) 7))))]
+                              (hx// (datediff :day a b) 7))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :day
-      (hsql/call :datediff (hx/literal :day) x y)
+      (datediff (hx/literal :day) x y)
 
       (:hour :minute :second)
       (let [positive-diff (fn [a b]
                             (hx/cast
                              :integer
                              (hx/floor
-                              (hx// (hsql/call :- (extract :epoch b) (extract :epoch a))
-                                    (case unit :hour 3600 :minute 60 :second 1)))))]
+                              (cond-> (= unit :second)
+                                (hsql/call :- (extract :epoch b) (extract :epoch a))
+                                (hx// (case unit :hour 3600 :minute 60))))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x)))))))
 
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
