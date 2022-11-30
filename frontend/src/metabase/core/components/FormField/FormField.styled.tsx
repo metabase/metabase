@@ -14,6 +14,8 @@ export interface FieldRootProps {
 
 export const FieldRoot = styled.div<FieldRootProps>`
   display: ${props => props.orientation === "horizontal" && "flex"};
+  justify-content: ${props =>
+    props.orientation === "horizontal" && "space-between"};
   color: ${props => (props.hasError ? color("error") : color("text-medium"))};
   margin-bottom: 1.25rem;
 

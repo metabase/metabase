@@ -589,16 +589,17 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              driver: ["bigquery-cloud-sdk", "googleanalytics"]
+              driver: ["bigquery-cloud-sdk", "googleanalytics", "redshift", "athena"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           driver: << matrix.driver >>
+          timeout: 30m
 
       - test-driver:
           name: be-google-related-drivers-classpath-test
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           driver: googleanalytics,bigquery-cloud-sdk
           test-args: >-
             :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
@@ -611,7 +612,7 @@ workflows:
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           e: << matrix.version >>
           driver: mongo
 
@@ -619,7 +620,7 @@ workflows:
           name: be-tests-mysql-latest-ee
           description: "(MySQL latest)"
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           e:
             name: mysql-latest
           driver: mysql
@@ -640,7 +641,7 @@ workflows:
       - test-driver:
           name: be-tests-oracle-ee
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           before-steps:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
@@ -660,7 +661,7 @@ workflows:
       - test-driver:
           name: be-tests-presto-jdbc-ee
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
           before-steps:
             - wait-for-port:
@@ -694,23 +695,16 @@ workflows:
           driver: presto-jdbc
 
       - test-driver:
-          name: be-tests-redshift-ee
-          requires:
-            - be-tests-java-11-ee
-          driver: redshift
-          timeout: 15m
-
-      - test-driver:
           name: be-tests-snowflake-ee
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           driver: snowflake
-          timeout: 115m
+          timeout: 115m # whut
 
       - test-driver:
           name: be-tests-vertica-ee
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           e: vertica
           before-steps:
             - fetch-jdbc-driver:

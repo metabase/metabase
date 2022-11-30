@@ -1,9 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { createMockEngine } from "metabase-types/api/mocks";
-import DriverWarning from "./DriverWarning";
+import DatabaseEngineWarning from "./DatabaseEngineWarning";
 
-describe("DriverWarning", () => {
+describe("DatabaseEngineWarning", () => {
   const engines = {
     postgres: createMockEngine({
       "driver-name": "PostgreSQL",
@@ -66,39 +66,46 @@ describe("DriverWarning", () => {
   };
 
   it("should render a warning when the driver is deprecated", () => {
-    render(<DriverWarning engine="presto" engines={engines} />);
+    render(<DatabaseEngineWarning engineKey="presto" engines={engines} />);
     expect(screen.getByText(/This driver will be removed/)).toBeInTheDocument();
   });
 
   it("should render a warning when the driver is new", () => {
-    render(<DriverWarning engine="presto-jdbc" engines={engines} />);
+    render(<DatabaseEngineWarning engineKey="presto-jdbc" engines={engines} />);
     expect(screen.getByText(/This is our new Presto/)).toBeInTheDocument();
   });
 
   it("should render nothing when the driver does not exist", () => {
-    render(<DriverWarning engine="invalid" engines={engines} />);
+    render(<DatabaseEngineWarning engineKey="invalid" engines={engines} />);
     expect(screen.queryByText(/driver/)).not.toBeInTheDocument();
   });
 
   it("should render a warning when the driver is new", () => {
-    render(<DriverWarning engine="presto-jdbc" engines={engines} />);
+    render(<DatabaseEngineWarning engineKey="presto-jdbc" engines={engines} />);
     expect(screen.getByText(/This is our new Presto/)).toBeInTheDocument();
   });
 
   it("should render nothing when there is no new driver, and the driver is official", () => {
-    render(<DriverWarning engine="postgres" engines={engines} />);
+    render(<DatabaseEngineWarning engineKey="postgres" engines={engines} />);
     expect(screen.queryByText(/driver/)).not.toBeInTheDocument();
   });
 
   it("should render a community driver warning for drivers from community sources", () => {
-    render(<DriverWarning engine="communityEngine" engines={engines} />);
+    render(
+      <DatabaseEngineWarning engineKey="communityEngine" engines={engines} />,
+    );
     expect(
       screen.queryByText(/community-developed driver/),
     ).toBeInTheDocument();
   });
 
   it("should render both community and deprecated warnings together", () => {
-    render(<DriverWarning engine="deprecatedCommunity" engines={engines} />);
+    render(
+      <DatabaseEngineWarning
+        engineKey="deprecatedCommunity"
+        engines={engines}
+      />,
+    );
     expect(
       screen.queryByText(/community-developed driver/),
     ).toBeInTheDocument();
@@ -106,13 +113,15 @@ describe("DriverWarning", () => {
   });
 
   it("should render a partner driver warning for drivers from partner sources", () => {
-    render(<DriverWarning engine="partnerEngine" engines={engines} />);
+    render(
+      <DatabaseEngineWarning engineKey="partnerEngine" engines={engines} />,
+    );
     expect(screen.queryByText(/partner-developed driver/)).toBeInTheDocument();
   });
 
   it("should render a partner contact information web link", () => {
     const { container } = render(
-      <DriverWarning engine="partnerEngine" engines={engines} />,
+      <DatabaseEngineWarning engineKey="partnerEngine" engines={engines} />,
     );
     expect(container.querySelector("a")).toHaveAttribute(
       "href",
@@ -122,7 +131,10 @@ describe("DriverWarning", () => {
 
   it("should render a partner contact information email link", () => {
     const { container } = render(
-      <DriverWarning engine="partnerEngineWithEmail" engines={engines} />,
+      <DatabaseEngineWarning
+        engineKey="partnerEngineWithEmail"
+        engines={engines}
+      />,
     );
     expect(container.querySelector("a")).toHaveAttribute(
       "href",
@@ -132,15 +144,18 @@ describe("DriverWarning", () => {
 
   it("should render a partner warning when missing contact name", () => {
     const { container } = render(
-      <DriverWarning engine="anonymousPartnerEngine" engines={engines} />,
+      <DatabaseEngineWarning
+        engineKey="anonymousPartnerEngine"
+        engines={engines}
+      />,
     );
     expect(container.querySelector("a")).toBeNull();
   });
 
   it("should render a partner warning when missing contact information", () => {
     const { container } = render(
-      <DriverWarning
-        engine="partnerWithoutContactInfoEngine"
+      <DatabaseEngineWarning
+        engineKey="partnerWithoutContactInfoEngine"
         engines={engines}
       />,
     );

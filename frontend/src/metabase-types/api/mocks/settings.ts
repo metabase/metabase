@@ -1,5 +1,7 @@
 import {
   Engine,
+  EngineField,
+  EngineSource,
   FontFile,
   SettingDefinition,
   Settings,
@@ -9,10 +11,24 @@ import {
 
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   "driver-name": "PostgreSQL",
+  "details-fields": [],
+  source: createMockEngineSource(),
   "superseded-by": undefined,
-  source: {
-    type: "official",
-  },
+  ...opts,
+});
+
+export const createMockEngineField = (
+  opts?: Partial<EngineField>,
+): EngineField => ({
+  name: "field",
+  "display-name": "Field",
+  ...opts,
+});
+
+export const createMockEngineSource = (
+  opts?: Partial<EngineSource>,
+): EngineSource => ({
+  type: "official",
   ...opts,
 });
 
