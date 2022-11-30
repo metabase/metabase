@@ -10,7 +10,7 @@ import type { State } from "metabase-types/store";
 import Collections from "metabase/entities/collections";
 import { canManageCollectionAuthorityLevel } from "metabase/collections/utils";
 
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
 type CollectionsMap = Record<Collection["id"], Collection>;
 
@@ -53,7 +53,7 @@ function FormAuthorityLevelFieldContainer({
   }
 
   return (
-    <PLUGIN_COLLECTIONS.FormCollectionAuthorityLevelPicker name="authority_level" />
+    <PLUGIN_COLLECTION_COMPONENTS.FormCollectionAuthorityLevelPicker name="authority_level" />
   );
 }
 

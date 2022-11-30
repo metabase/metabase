@@ -50,7 +50,7 @@ PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
   }
 };
 
-PLUGIN_COLLECTIONS.FormCollectionAuthorityLevelPicker =
+PLUGIN_COLLECTION_COMPONENTS.FormCollectionAuthorityLevelPicker =
   FormCollectionAuthorityLevel;
 
 PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon =

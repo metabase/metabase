@@ -1,4 +1,4 @@
-import React from "react";
+import React, { HTMLAttributes } from "react";
 import { t } from "ttag";
 
 import { IconProps } from "metabase/components/Icon";
@@ -118,8 +118,6 @@ export const PLUGIN_COLLECTIONS = {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
   },
   REGULAR_COLLECTION: AUTHORITY_LEVEL_REGULAR,
-  FormCollectionAuthorityLevelPicker:
-    PluginPlaceholder as React.ComponentType<any>,
   isRegularCollection: (_: Collection | Bookmark) => true,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
@@ -131,9 +129,15 @@ type CollectionAuthorityLevelIcon = React.ComponentType<
   Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
 >;
 
+type FormCollectionAuthorityLevelPicker = React.ComponentType<
+  HTMLAttributes<HTMLDivElement> & { name: string; title?: string }
+>;
+
 export const PLUGIN_COLLECTION_COMPONENTS = {
   CollectionAuthorityLevelIcon:
     PluginPlaceholder as CollectionAuthorityLevelIcon,
+  FormCollectionAuthorityLevelPicker:
+    PluginPlaceholder as FormCollectionAuthorityLevelPicker,
 };
 
 export const PLUGIN_MODERATION = {
