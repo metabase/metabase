@@ -293,7 +293,7 @@
   (let [x-col-settings (settings-from-column x-col column-settings)
         y-col-settings (settings-from-column y-col column-settings)]
     (cond-> {:colors (public-settings/application-colors)
-             :visualization_settings viz-settings}
+             :visualization_settings (or viz-settings {})}
       x-col-settings
       (assoc :x x-col-settings)
       y-col-settings
@@ -333,7 +333,7 @@
       :y                      {:type   (or (:graph.y_axis.scale viz-settings) "linear")
                                :format y-format}
       :labels                 labels
-      :visualization_settings viz-settings}
+      :visualization_settings (or viz-settings {})}
      (when (:graph.show_goal viz-settings)
        {:goal {:value (:graph.goal_value viz-settings)
                :label (or (:graph.goal_label viz-settings) (tru "Goal"))}}))))
