@@ -2,6 +2,7 @@ import { ComponentType, ReactNode } from "react";
 import { EngineFieldOption, EngineFieldType } from "metabase-types/api";
 
 export interface DatabaseValues {
+  name: string;
   engine: string | undefined;
   details: Record<string, unknown>;
 }

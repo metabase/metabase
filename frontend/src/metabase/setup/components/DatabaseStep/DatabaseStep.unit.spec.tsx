@@ -1,14 +1,11 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { DatabaseDetails, DatabaseInfo } from "metabase-types/store";
+import { DatabaseInfo } from "metabase-types/store";
 import DatabaseStep, { DatabaseStepProps } from "./DatabaseStep";
 
 const ComponentMock = () => <div />;
 
-jest.mock("metabase/entities/databases", () => ({
-  forms: { setup: jest.fn() },
-  Form: ComponentMock,
-}));
+jest.mock("metabase/databases/containers/DatabaseForm", () => ComponentMock);
 
 jest.mock(
   "metabase/databases/containers/DatabaseEngineWarning",
@@ -67,13 +64,6 @@ const getProps = (opts?: Partial<DatabaseStepProps>): DatabaseStepProps => ({
 const getDatabaseInfo = (opts?: Partial<DatabaseInfo>): DatabaseInfo => ({
   name: "Database",
   engine: "postgres",
-  details: getDatabaseDetails(),
-  ...opts,
-});
-
-const getDatabaseDetails = (
-  opts?: Partial<DatabaseDetails>,
-): DatabaseDetails => ({
-  ssl: false,
+  details: {},
   ...opts,
 });

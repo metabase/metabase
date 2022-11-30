@@ -20,12 +20,8 @@ export interface InviteInfo {
 
 export interface DatabaseInfo {
   name: string;
-  engine: string;
-  details: DatabaseDetails;
-}
-
-export interface DatabaseDetails {
-  ssl: boolean;
+  engine: string | undefined;
+  details: Record<string, unknown>;
 }
 
 export interface SubscribeInfo {
