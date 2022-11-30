@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
+   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.models.user :refer [User]]
@@ -78,6 +79,9 @@
                   :error-details "network issues"}
                  (premium-features/fetch-token-status (apply str (repeat 64 "b")))))))
       (testing "Only attempt the token once"
+        ;; flush any cached results for `fetch-token-status` to make sure a new call
+        ;; to [[premium-features/fetch-token-status*]] is triggered
+        (memoize/memo-clear! premium-features/fetch-token-status)
         (let [call-count (atom 0)]
           (binding [clj-http.client/request (fn [& _]
                                               (swap! call-count inc)
@@ -90,9 +94,10 @@
                                        premium-features/enable-sso?
                                        premium-features/enable-advanced-config?
                                        premium-features/enable-content-management?]]
-                (is (false? (premium-setting))
-                    (str (:name (meta premium-setting)) "is not false")))
-              (is (= @call-count 1))))))
+                (testing (str (:name (meta premium-setting)) "is not false")
+                  (is (false? (premium-setting)))))
+              (is (= 1
+                     @call-count))))))
 
       (testing "With a valid token"
         (let [result (token-status-response random-fake-token {:status 200
