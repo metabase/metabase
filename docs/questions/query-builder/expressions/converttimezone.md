@@ -8,7 +8,7 @@ title: ConvertTimezone
 
 | Syntax                                                                | Example                                               |
 |-----------------------------------------------------------------------|-------------------------------------------------------|
-| `convertTimezone(column, target, source)`                             | `convertTimezone("2022-12-28T12:00:00", "EST, "PST")` |
+| `convertTimezone(column, target, source)`                             | `convertTimezone("2022-12-28T12:00:00", "PST", "EST")` |
 | Shifts a timestamp from the source time zone to the target time zone. | `2022-12-28T09:00:00`                                 |
 
 Timestamps and time zones are rather nasty to work with (it's easy to make mistakes, and difficult to catch them), so you should only try to use `convertTimezone` if the interpretation of your data is very sensitive to time-based cutoffs.
@@ -114,19 +114,19 @@ The Metabase report time zone only applies to `timestamp with time zone` or  `ti
 | `2022-12-28T12:00:00-06:00`              | 'America/Toronto' | Dec 28, 2022, 7:00AM  |
 | `2022-12-28T12:00:00`                    | 'America/Toronto' | Dec 28, 2022, 12:00AM |
 
-If you use `convertTimezone` on a `timestamp with time zone` (or `timestamp with offset`):
+The Metabase report time zone will not apply to the output of a `convertTimezone` expression. For example:
 
 ```
 convertTimezone("2022-12-28T12:00:00 AT TIME ZONE 'CST'", 'PST', 'CST')
 ```
 
-you'll get a raw timestamp like this:
+will produce a raw `timestamp without time zone`
 
 ```
 2022-12-28T04:00:00
 ```
 
-which will be displayed in Metabase as:
+and displayed in Metabase as
 
 ```
 Dec 28, 2022, 4:00AM
@@ -134,13 +134,13 @@ Dec 28, 2022, 4:00AM
 
 If you use `convertTimezone` on a `timestamp without time zone`, make sure to use 'UTC' as the `source` time zone, otherwise the expression will shift your timestamp by the wrong amount. For example, if our `timestamp without time zone` is only "implied" to be in CST, we should use 'UTC' as the `source` parameter to get the same result as above.
 
-If we choose 'CST' as the `source` time zone for a `timestamp without time zone`:
+For example, if we choose 'CST' as the `source` time zone for a `timestamp without time zone`:
 
 ```
 convertTimezone("2022-12-28T12:00:00", 'PST', 'CST')
 ```
 
-we'll get the raw timestamp
+we'll get the raw `timestamp without time zone`
 
 ```
 2022-12-28T10:00:00
@@ -164,25 +164,25 @@ This section covers functions and formulas that work the same way as the Metabas
 
 When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-If our [timestamp sample data](#creating-custom-report-dates) is stored in a PostgreSQL database (Postgres databases have [no time zone metadata](#limitations)):
+If our [timestamp sample data](#creating-custom-report-dates) is a `timestamp without time zone` stored in a PostgreSQL database, the source time zone will always be the Postgres database time zone, so we can convert it directly using:
 
 ```sql
-SELECT (source_time::TIMESTAMP AT TIME ZONE 'UTC') AT TIME ZONE 'EST' AS team_report_time_est
+SELECT source_time::TIMESTAMP AT TIME ZONE 'EST' AS team_report_time_est
 ```
 
-is equivalent to the Metabase `convertTimezone` expression:
+which is the same as the `convertTimezone` expression _with_ a `source` parameter:
 
 ```
-convertTimezone(convertTimezone([Source Time], 'UTC'), 'EST', 'UTC')
+convertTimezone([Source Time], 'EST', 'UTC')
 ```
 
-If `source_time` is stored _with_ time zone metadata, for example in a Snowflake database with time zone UTC:
+If `source_time` is a `timestamp with time zone` or `timestamp with offset` (for example, in a Snowflake database), then we don't need to specify a source time zone in SQL or in Metabase.
 
 ```sql
 SELECT convert_timezone('America/Toronto', source_time) AS team_report_time_est
 ```
 
-is equivalent to the Metabase `convertTimezone` expression:
+is the same as
 
 ```
 convertTimezone([Source Time], 'EST')
@@ -206,14 +206,14 @@ convertTimezone([Client Time], 'EST')
 
 ### Python
 
-If the [timestamp sample data](#creating-custom-report-dates) is stored in a `pandas` dataframe, you could convert the **Source Time** column to a `timestamp` object with time zone UTC first, then use `tz_convert` to change the time zone to EST:
+If the [timestamp sample data](#creating-custom-report-dates) is stored in a `pandas` dataframe, you could convert the **Source Time** column to a `timestamp` object with time zone first(basically making a `timestamp without time zone` into a `timestamp with time zone`), then use `tz_convert` to change the time zone to EST:
 
 ```
 df['Source Time (UTC)'] = pd.to_timestamp(df['Source Time'], utc=True)
 df['Team Report Time (EST)'] = df['Source Time (UTC)'].dt.tz_convert(tz='Canada/Eastern')
 ```
 
-to do the same thing as
+to do the same thing as a nested `convertTimezone` expression
 
 ```
 convertTimezone(convertTimezone([Source Time], 'UTC'), 'EST', 'UTC')
