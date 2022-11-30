@@ -27,8 +27,8 @@ export default class FunnelNormal extends Component {
     const dimensionIndex = 0;
     const metricIndex = 1;
     const cols = series[0].data.cols;
-    const rows = settings["funnel.rows"]
-      ? settings["funnel.rows"]
+    const rows = settings["funnel.series_order"]
+      ? settings["funnel.series_order"]
           .filter(fr => fr.enabled)
           .map(fr => findSeriesByKey(series, fr.key).data.rows[0])
       : series.map(s => s.data.rows[0]);
