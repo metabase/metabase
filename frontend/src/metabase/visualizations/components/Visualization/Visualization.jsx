@@ -1,78 +1,75 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
-
 import { t, jt } from "ttag";
 import { assoc } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
+
 import ExplicitSize from "metabase/components/ExplicitSize";
-import ChartCaption from "metabase/visualizations/components/ChartCaption";
-import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
-import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { duration, formatNumber } from "metabase/lib/formatting";
+
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { duration, formatNumber } from "metabase/lib/formatting";
+import Utils from "metabase/lib/utils";
 
 import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { isSameSeries } from "metabase/visualizations/lib/utils";
+import ChartCaption from "metabase/visualizations/components/ChartCaption";
+import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
+import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
+
 import { performDefaultAction } from "metabase/visualizations/lib/action";
-import { getFont } from "metabase/styled-components/selectors";
-
-import { getMode } from "metabase/modes/lib/modes";
-import Utils from "metabase/lib/utils";
-
 import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
+
+import { getMode } from "metabase/modes/lib/modes";
+import { getFont } from "metabase/styled-components/selectors";
 
 import NoResults from "assets/img/no_results.svg";
-import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
-
-export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart.`;
-export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
 
 import Question from "metabase-lib/Question";
 import Mode from "metabase-lib/Mode";
+import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
+
 import { VisualizationSlowSpinner } from "./Visualization.styled";
 
-// NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
+const defaultProps = {
+  showTitle: false,
+  isDashboard: false,
+  isEditing: false,
+  isSettings: false,
+  isQueryBuilder: false,
+  onUpdateVisualizationSettings: () => {},
+  // prefer passing in a function that doesn't cause the application to reload
+  onChangeLocation: location => {
+    window.location = location;
+  },
+};
+
+const mapStateToProps = state => ({
+  fontFamily: getFont(state),
+});
 
 class Visualization extends React.PureComponent {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      hovered: null,
-      clicked: null,
-      error: null,
-      warnings: [],
-      yAxisSplit: null,
-      series: null,
-      visualization: null,
-      computedSettings: {},
-    };
-  }
-
-  static defaultProps = {
-    showTitle: false,
-    isDashboard: false,
-    isEditing: false,
-    isSettings: false,
-    isQueryBuilder: false,
-    onUpdateVisualizationSettings: () => {},
-    // prefer passing in a function that doesn't cause the application to reload
-    onChangeLocation: location => {
-      window.location = location;
-    },
+  state = {
+    hovered: null,
+    clicked: null,
+    error: null,
+    warnings: [],
+    yAxisSplit: null,
+    series: null,
+    visualization: null,
+    computedSettings: {},
   };
 
   UNSAFE_componentWillMount() {
@@ -112,13 +109,8 @@ class Visualization extends React.PureComponent {
     });
   }
 
-  // NOTE: this is a PureComponent
-  // shouldComponentUpdate(nextProps, nextState) {
-  // }
-
   getWarnings(props = this.props, state = this.state) {
     let warnings = state.warnings || [];
-    // don't warn about truncated data for table since we show a warning in the row count
     if (state.series && state.series[0].card.display !== "table") {
       warnings = warnings.concat(
         props.rawSeries
@@ -149,7 +141,6 @@ class Visualization extends React.PureComponent {
       : null;
     this.setState({
       hovered: null,
-      //clicked: null,
       error: null,
       warnings: [],
       yAxisSplit: null,
@@ -188,7 +179,7 @@ class Visualization extends React.PureComponent {
         this._resetHoverTimer = null;
       }
     } else {
-      // When reseting the hover wait in case we're simply transitioning from one
+      // When resetting the hover wait in case we're simply transitioning from one
       // element to another. This allows visualizations to use mouseleave events etc.
       this._resetHoverTimer = setTimeout(() => {
         this.setState({ hovered: null });
@@ -233,7 +224,7 @@ class Visualization extends React.PureComponent {
       return [];
     }
     const { metadata, getExtraDataForClick = () => ({}) } = this.props;
-    // TODO: push this logic into Question?
+
     const seriesIndex = clicked.seriesIndex || 0;
     const card = this.state.series[seriesIndex].card;
     const question = this._getQuestionForCardCached(metadata, card);
@@ -481,8 +472,7 @@ class Visualization extends React.PureComponent {
         )}
         {replacementContent ? (
           replacementContent
-        ) : // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
-        isDashboard && noResults ? (
+        ) : isDashboard && noResults ? (
           <div
             className={
               "flex-full px1 pb1 text-centered flex flex-column layout-centered " +
@@ -574,9 +564,7 @@ class Visualization extends React.PureComponent {
   }
 }
 
-const mapStateToProps = state => ({
-  fontFamily: getFont(state),
-});
+Visualization.defaultProps = defaultProps;
 
 export default _.compose(
   ExplicitSize({
