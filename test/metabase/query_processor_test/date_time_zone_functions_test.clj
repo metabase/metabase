@@ -1,5 +1,6 @@
 (ns metabase.query-processor-test.date-time-zone-functions-test
-  (:require [clojure.string :as str]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
@@ -99,6 +100,7 @@
     :query-fn    (fn [op field-id] {:expressions {"expr" [op [:field field-id nil]]}
                                     :aggregation [[:count]]
                                     :breakout    [[:expression "expr"]]})}])
+
 (deftest extraction-function-tests
   (mt/dataset times-mixed
     (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
@@ -111,7 +113,7 @@
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
-      ;; mongo doesn't supports cast string to date
+    ;; mongo doesn't supports cast string to date
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with date columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
@@ -139,7 +141,39 @@
                                           :fields      (into [] (for [op ops] [:expression (name op)]))})
                       (mt/formatted-rows (repeat int))
                       first
-                      (zipmap ops)))))))))
+                      (zipmap ops)))))))
+
+    (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
+      (letfn [(run [t]
+                (let [ops [:get-year :get-quarter :get-month :get-day
+                           :get-day-of-week :get-hour :get-minute :get-second]]
+                  (->> (mt/mbql-query times {:expressions (into {} (for [op ops]
+                                                                     [(name op) [op t]]))
+                                             :fields      (into [] (for [op ops] [:expression (name op)]))})
+                       mt/process-query
+                       (mt/formatted-rows (repeat int))
+                       first
+                       (zipmap ops))))]
+        (mt/test-drivers (mt/normal-drivers-with-feature :set-timezone)
+          (is (= (if (driver/supports? driver/*driver* :set-timezone)
+                   {:get-year        2000,
+                    :get-quarter     1,
+                    :get-month       1,
+                    :get-day         1,
+                    :get-day-of-week 7,
+                    :get-hour        2,
+                    :get-minute      34,
+                    :get-second      56}
+                   {:get-year        1999,
+                    :get-quarter     4,
+                    :get-month       12,
+                    :get-day         31,
+                    :get-day-of-week 6,
+                    :get-hour        19,
+                    :get-minute      34,
+                    :get-second      56})
+                 ;; it'll be 1999-12-31T19:00:00+00:00 in UTC
+                 (run "2000-01-01T02:34:56+07:00"))))))))
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
