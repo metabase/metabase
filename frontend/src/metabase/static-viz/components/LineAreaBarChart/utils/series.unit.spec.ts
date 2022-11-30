@@ -1,11 +1,15 @@
-import { merge, setIn } from "icepick";
+import { merge } from "icepick";
 import { colors } from "metabase/lib/colors";
 import type {
   ChartSettings,
   SeriesWithOneOrLessDimensions,
   SeriesWithTwoDimensions,
 } from "../../XYChart/types";
-import { getSeriesWithColors, getSeriesWithLegends } from "./series";
+import {
+  getSeriesWithColors,
+  getSeriesWithLegends,
+  reorderSeries,
+} from "./series";
 
 const settings: ChartSettings = {
   x: {
@@ -29,7 +33,7 @@ describe("getSeriesWithColors", () => {
   });
 
   describe("Series without one or less dimensions", () => {
-    const multipleSeries: SeriesWithOneOrLessDimensions[][] = [
+    const singleCardSeries: SeriesWithOneOrLessDimensions[][] = [
       [
         {
           cardName: "Bar chart",
@@ -50,7 +54,7 @@ describe("getSeriesWithColors", () => {
       ],
     ];
 
-    const multipleSeriesDashcard: SeriesWithOneOrLessDimensions[][] = [
+    const multipleCardSeries: SeriesWithOneOrLessDimensions[][] = [
       [
         {
           cardName: "Bar chart",
@@ -93,7 +97,7 @@ describe("getSeriesWithColors", () => {
       const seriesWithColors = getSeriesWithColors(
         settings,
         getPalette({}),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -116,7 +120,7 @@ describe("getSeriesWithColors", () => {
       const seriesWithColors = getSeriesWithColors(
         settings,
         getPalette({ brand: "#123456", summarize: "#ffffff" }),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -147,7 +151,7 @@ describe("getSeriesWithColors", () => {
           },
         }),
         getPalette({ brand: "#123456", summarize: "#ffffff" }),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -170,7 +174,7 @@ describe("getSeriesWithColors", () => {
       const seriesWithColors = getSeriesWithColors(
         settings,
         getPalette({}),
-        multipleSeriesDashcard,
+        multipleCardSeries,
       );
 
       const expectedSeries = [
@@ -201,7 +205,7 @@ describe("getSeriesWithColors", () => {
   });
 
   describe("Series with preferred colors", () => {
-    const multipleSeries: SeriesWithOneOrLessDimensions[][] = [
+    const singleCardSeries: SeriesWithOneOrLessDimensions[][] = [
       [
         {
           cardName: "Bar chart",
@@ -221,7 +225,7 @@ describe("getSeriesWithColors", () => {
       const seriesWithColors = getSeriesWithColors(
         merge(settings, { x: { type: "timeseries" } }),
         getPalette({ brand: "#123456", summarize: "#ffffff" }),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -246,7 +250,7 @@ describe("getSeriesWithColors", () => {
           x: { type: "timeseries" },
         }),
         getPalette({ accent1: "#123456", summarize: "#ffffff" }),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -278,7 +282,7 @@ describe("getSeriesWithColors", () => {
           },
         }),
         getPalette({ brand: "#123456", summarize: "#ffffff" }),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -299,7 +303,7 @@ describe("getSeriesWithColors", () => {
   });
 
   describe("Series with 2 dimension", () => {
-    const multipleSeries: SeriesWithTwoDimensions[][] = [
+    const singleCardSeries: SeriesWithTwoDimensions[][] = [
       [
         {
           cardName: "Area chart",
@@ -342,7 +346,7 @@ describe("getSeriesWithColors", () => {
       ],
     ];
 
-    const multipleSeriesDashcard: SeriesWithTwoDimensions[][] = [
+    const multipleCardSeries: SeriesWithTwoDimensions[][] = [
       [
         {
           cardName: "Area chart",
@@ -432,7 +436,7 @@ describe("getSeriesWithColors", () => {
           x: { type: "timeseries" },
         }),
         getPalette({}),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -467,7 +471,7 @@ describe("getSeriesWithColors", () => {
           x: { type: "timeseries" },
         }),
         getPalette({ accent3: "#123456" }),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -509,7 +513,7 @@ describe("getSeriesWithColors", () => {
           },
         }),
         getPalette({ accent3: "#123456" }),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -542,7 +546,7 @@ describe("getSeriesWithColors", () => {
       const seriesWithColors = getSeriesWithColors(
         settings,
         getPalette({}),
-        multipleSeriesDashcard,
+        multipleCardSeries,
       );
 
       const expectedSeries = [
@@ -608,7 +612,7 @@ describe("getSeriesWithLegends", () => {
   });
 
   describe("Series without ones or less dimensions", () => {
-    const multipleSeries: SeriesWithOneOrLessDimensions[][] = [
+    const singleCardSeries: SeriesWithOneOrLessDimensions[][] = [
       [
         {
           cardName: "Bar chart",
@@ -629,7 +633,7 @@ describe("getSeriesWithLegends", () => {
       ],
     ];
 
-    const multipleSeriesDashcard: SeriesWithOneOrLessDimensions[][] = [
+    const multipleCardSeries: SeriesWithOneOrLessDimensions[][] = [
       [
         {
           cardName: "Bar chart",
@@ -669,7 +673,10 @@ describe("getSeriesWithLegends", () => {
     ];
 
     it("should assign legends given series", () => {
-      const seriesWithLegends = getSeriesWithLegends(settings, multipleSeries);
+      const seriesWithLegends = getSeriesWithLegends(
+        settings,
+        singleCardSeries,
+      );
 
       const expectedSeries = [
         [
@@ -699,7 +706,7 @@ describe("getSeriesWithLegends", () => {
             },
           },
         }),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -721,7 +728,7 @@ describe("getSeriesWithLegends", () => {
     it("should assign legends on multiple series dashcard", () => {
       const seriesWithLegends = getSeriesWithLegends(
         settings,
-        multipleSeriesDashcard,
+        multipleCardSeries,
       );
 
       const expectedSeries = [
@@ -752,7 +759,7 @@ describe("getSeriesWithLegends", () => {
   });
 
   describe("Series with 2 dimension", () => {
-    const multipleSeries: SeriesWithTwoDimensions[][] = [
+    const singleCardSeries: SeriesWithTwoDimensions[][] = [
       [
         {
           cardName: "Area chart",
@@ -795,7 +802,7 @@ describe("getSeriesWithLegends", () => {
       ],
     ];
 
-    const multipleSeriesDashcard: SeriesWithTwoDimensions[][] = [
+    const multipleCardSeries: SeriesWithTwoDimensions[][] = [
       [
         {
           cardName: "Area chart",
@@ -884,7 +891,7 @@ describe("getSeriesWithLegends", () => {
         merge(settings, {
           x: { type: "timeseries" },
         }),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -925,7 +932,7 @@ describe("getSeriesWithLegends", () => {
             },
           },
         }),
-        multipleSeries,
+        singleCardSeries,
       );
 
       const expectedSeries = [
@@ -957,7 +964,7 @@ describe("getSeriesWithLegends", () => {
     it("should assign legends on multiple series dashcard", () => {
       const seriesWithLegends = getSeriesWithLegends(
         settings,
-        multipleSeriesDashcard,
+        multipleCardSeries,
       );
 
       const expectedSeries = [
@@ -1004,6 +1011,231 @@ describe("getSeriesWithLegends", () => {
       ];
 
       expect(seriesWithLegends).toEqual(expectedSeries);
+    });
+  });
+});
+
+describe("reorderSeries", () => {
+  it("should return an empty series given an empty series", () => {
+    const reorderedSeries = reorderSeries(settings, []);
+
+    expect(reorderedSeries).toEqual([]);
+  });
+
+  describe("Series with 2 dimension", () => {
+    const singleCardSeries: SeriesWithTwoDimensions[][] = [
+      [
+        {
+          cardName: "Area chart",
+          type: "area",
+          data: [
+            ["Doohickey", 177],
+            ["Gadget", 199],
+            ["Gizmo", 158],
+            ["Widget", 210],
+          ],
+          yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2016-01-01T00:00:00Z",
+        },
+        {
+          cardName: "Area chart",
+          type: "area",
+          data: [
+            ["Doohickey", 1206],
+            ["Gadget", 1505],
+            ["Gizmo", 1592],
+            ["Widget", 1531],
+          ],
+          yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2017-01-01T00:00:00Z",
+        },
+      ],
+    ];
+
+    const multipleCardSeries: SeriesWithTwoDimensions[][] = [
+      [
+        {
+          cardName: "Area chart",
+          type: "area",
+          data: [
+            ["Doohickey", 177],
+            ["Gadget", 199],
+            ["Gizmo", 158],
+            ["Widget", 210],
+          ],
+          yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2016-01-01T00:00:00Z",
+        },
+        {
+          cardName: "Area chart",
+          type: "area",
+          data: [
+            ["Doohickey", 1206],
+            ["Gadget", 1505],
+            ["Gizmo", 1592],
+            ["Widget", 1531],
+          ],
+          yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2017-01-01T00:00:00Z",
+        },
+      ],
+      [
+        {
+          cardName: "Bar chart",
+          type: "bar",
+          data: [
+            ["Doohickey", 177],
+            ["Gadget", 199],
+            ["Gizmo", 158],
+            ["Widget", 210],
+          ],
+          yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2016-01-01T00:00:00Z",
+        },
+        {
+          cardName: "Bar chart",
+          type: "bar",
+          data: [
+            ["Doohickey", 1206],
+            ["Gadget", 1505],
+            ["Gizmo", 1592],
+            ["Widget", 1531],
+          ],
+          yAxisPosition: "left",
+          column: {
+            semantic_type: "type/CreationTimestamp",
+            unit: "year",
+            name: "CREATED_AT",
+            source: "breakout",
+            display_name: "Created At",
+          },
+          breakoutValue: "2017-01-01T00:00:00Z",
+        },
+      ],
+    ];
+
+    it("should return the same series given no `graph.series_order` set", () => {
+      const reorderedSeries = reorderSeries(settings, singleCardSeries);
+
+      expect(reorderedSeries).toEqual(singleCardSeries);
+    });
+
+    it("should sort the series following `graph.series_order`", () => {
+      const reorderedSeries = reorderSeries(
+        merge(settings, {
+          visualization_settings: {
+            "graph.series_order": [
+              {
+                enabled: true,
+                key: "2017",
+                name: "2017",
+              },
+              {
+                enabled: true,
+                key: "2016",
+                name: "2016",
+              },
+            ],
+          },
+        }),
+        singleCardSeries,
+      );
+
+      const expectedSeries = [
+        [
+          expect.objectContaining({ breakoutValue: "2017-01-01T00:00:00Z" }),
+          expect.objectContaining({ breakoutValue: "2016-01-01T00:00:00Z" }),
+        ],
+      ];
+
+      expect(reorderedSeries).toEqual(expectedSeries);
+    });
+
+    it("should sort the series following `graph.series_order` on only enabled series", () => {
+      const reorderedSeries = reorderSeries(
+        merge(settings, {
+          visualization_settings: {
+            "graph.series_order": [
+              {
+                enabled: true,
+                key: "2017",
+                name: "2017",
+              },
+              {
+                enabled: false,
+                key: "2016",
+                name: "2016",
+              },
+            ],
+          },
+        }),
+        singleCardSeries,
+      );
+
+      const expectedSeries = [
+        [expect.objectContaining({ breakoutValue: "2017-01-01T00:00:00Z" })],
+      ];
+
+      expect(reorderedSeries).toEqual(expectedSeries);
+    });
+
+    it("should not reorder when there are multiple cards", () => {
+      const reorderedSeries = reorderSeries(
+        merge(settings, {
+          visualization_settings: {
+            "graph.series_order": [
+              {
+                enabled: true,
+                key: "2017",
+                name: "2017",
+              },
+              {
+                enabled: false,
+                key: "2016",
+                name: "2016",
+              },
+            ],
+          },
+        }),
+        multipleCardSeries,
+      );
+
+      expect(reorderedSeries).toEqual(multipleCardSeries);
     });
   });
 });

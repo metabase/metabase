@@ -13,6 +13,7 @@ import {
   getSeriesWithColors,
   getSeriesWithLegends,
   removeNoneSeriesFields,
+  reorderSeries,
 } from "./utils/series";
 
 interface LineAreaBarChartProps {
@@ -60,6 +61,7 @@ const LineAreaBarChart = ({
   const series = pipe(
     _.partial(getSeriesWithColors, settings, instanceColors),
     _.partial(getSeriesWithLegends, settings),
+    _.partial(reorderSeries, settings),
     _.flatten,
     removeNoneSeriesFields,
   )(multipleSeries);

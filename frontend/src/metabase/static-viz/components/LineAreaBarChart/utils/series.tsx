@@ -15,10 +15,10 @@ import {
 export function getSeriesWithColors(
   settings: ChartSettings,
   palette: ColorPalette,
-  multipleSeries: CardSeries[],
+  multipleCardSeries: CardSeries[],
 ): (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][] {
-  const isMultipleSeries = multipleSeries.length > 1;
-  const keys = getSeriesKeys(multipleSeries, isMultipleSeries);
+  const isMultipleSeries = multipleCardSeries.length > 1;
+  const keys = getSeriesKeys(multipleCardSeries, isMultipleSeries);
 
   const seriesSettings = settings.visualization_settings.series_settings;
   const seriesColors = seriesSettings
@@ -33,7 +33,7 @@ export function getSeriesWithColors(
   );
 
   let index = -1;
-  return multipleSeries.map(questionSeries =>
+  return multipleCardSeries.map(questionSeries =>
     questionSeries.map(series => {
       index++;
 
@@ -46,10 +46,10 @@ export function getSeriesWithColors(
 
 export function getSeriesWithLegends(
   settings: ChartSettings,
-  multipleSeries: CardSeries[],
+  multipleCardSeries: CardSeries[],
 ): (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][] {
-  const keys = getSeriesKeys(multipleSeries, multipleSeries.length > 1);
-  const isMultipleSeries = multipleSeries.length > 1;
+  const keys = getSeriesKeys(multipleCardSeries, multipleCardSeries.length > 1);
+  const isMultipleSeries = multipleCardSeries.length > 1;
 
   const seriesSettings = settings.visualization_settings.series_settings;
   const seriesTitles = seriesSettings
@@ -59,7 +59,7 @@ export function getSeriesWithLegends(
     : undefined;
 
   let index = -1;
-  const legends = multipleSeries
+  const legends = multipleCardSeries
     .flatMap(questionSeries => {
       return questionSeries.map(series => {
         index++;
@@ -107,7 +107,7 @@ export function getSeriesWithLegends(
     .filter(isNotNull);
 
   index = -1;
-  return multipleSeries.map(questionSeries =>
+  return multipleCardSeries.map(questionSeries =>
     questionSeries.map(series => {
       index++;
 
@@ -116,6 +116,35 @@ export function getSeriesWithLegends(
       });
     }),
   );
+}
+
+export function reorderSeries(
+  settings: ChartSettings,
+  multipleCardSeries: (
+    | SeriesWithOneOrLessDimensions
+    | SeriesWithTwoDimensions
+  )[][],
+) {
+  const seriesOrder = settings.visualization_settings["graph.series_order"];
+  // We don't sort series when there's is multiple questions on a dashcard
+  if (multipleCardSeries.length > 1 || seriesOrder == null) {
+    return multipleCardSeries;
+  }
+
+  const keys = getSeriesKeys(multipleCardSeries, multipleCardSeries.length > 1);
+
+  // visualization settings only applies to a dashcard's first question's series.
+  const firstCardSeries = multipleCardSeries[0];
+  return [
+    seriesOrder
+      ?.map(orderedItem => {
+        if (orderedItem.enabled) {
+          const seriesIndex = keys.findIndex(key => key === orderedItem.key);
+          return firstCardSeries[seriesIndex];
+        }
+      })
+      .filter(isNotNull),
+  ];
 }
 
 function getSeriesKeys(
