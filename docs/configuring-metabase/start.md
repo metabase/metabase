@@ -20,7 +20,7 @@ Set up email for [Alerts](../questions/sharing/alerts.md) and [Dashboard subscri
 
 Set up Slack for Alerts and Dashboard subscriptions.
 
-## [Environment variables](./configuring-metabase/environment-variables.md)
+## [Environment variables](./environment-variables.md)
 
 Configure Metabase on launch via environment variables.
 
