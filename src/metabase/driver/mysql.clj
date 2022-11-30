@@ -364,7 +364,7 @@
         timestamp? (hx/is-of-type? expr "timestamp")]
     (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
     (hx/with-database-type-info
-      (hsql/call :convert_tz expr source-timezone target-timezone)
+      (hsql/call :convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
       "datetime")))
 
 (defmethod sql.qp/->honeysql [:mysql :datetime-diff]
