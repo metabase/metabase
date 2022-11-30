@@ -77,8 +77,16 @@ export interface ScheduleSettings {
   schedule_minute?: number;
 }
 
-type ScheduleDayType = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
-type ScheduleFrameType = "first" | "mid" | "last";
+export type ScheduleDayType =
+  | "sun"
+  | "mon"
+  | "tue"
+  | "wed"
+  | "thu"
+  | "fri"
+  | "sat";
+
+export type ScheduleFrameType = "first" | "mid" | "last";
 
 export interface FontFile {
   src: string;
