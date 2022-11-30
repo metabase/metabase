@@ -23,6 +23,8 @@ export interface DatabaseInfo {
   engine: string | undefined;
   details: Record<string, unknown>;
   schedules: Record<string, unknown>;
+  auto_run_queries: boolean;
+  refingerprint: boolean;
 }
 
 export interface SubscribeInfo {

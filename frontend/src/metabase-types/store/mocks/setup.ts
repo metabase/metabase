@@ -39,6 +39,8 @@ export const createMockDatabaseInfo = (
   engine: "H2",
   details: {},
   schedules: {},
+  auto_run_queries: false,
+  refingerprint: false,
   ...opts,
 });
 
