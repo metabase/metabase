@@ -2,7 +2,7 @@ import * as Yup from "yup";
 import type { TestContext } from "yup";
 import * as Errors from "metabase/core/utils/errors";
 import { Engine, EngineField } from "metabase-types/api";
-import { ADVANCED_FIELDS } from "../constants";
+import { ADVANCED_FIELDS, FIELD_OVERRIDES } from "../constants";
 import { DatabaseValues } from "../types";
 
 export const getValidationSchema = (
@@ -11,12 +11,16 @@ export const getValidationSchema = (
   isAdvanced: boolean,
 ) => {
   const fields = getFields(engine, isAdvanced);
-  const entries = fields.map(field => [field.name, getFieldSchema(field)]);
+  const rootSchema = getObjectSchema(fields.filter(isRootField));
+  const detailsSchema = getObjectSchema(fields.filter(isDetailField));
+  const schedulesSchema = getObjectSchema(fields.filter(isScheduleField));
 
   return Yup.object({
     engine: Yup.string().default(engineKey).required(Errors.required),
     name: Yup.string().default("").required(Errors.required),
-    details: Yup.object(Object.fromEntries(entries)),
+    details: Yup.object(detailsSchema),
+    schedules: Yup.object(schedulesSchema),
+    ...rootSchema,
   });
 };
 
@@ -35,6 +39,11 @@ const getFields = (engine: Engine | undefined, isAdvanced: boolean) => {
   return isAdvanced
     ? fields
     : fields.filter(field => !ADVANCED_FIELDS.includes(field.name));
+};
+
+const getObjectSchema = (fields: EngineField[]) => {
+  const entries = fields.map(field => [field.name, getFieldSchema(field)]);
+  return Object.fromEntries(entries);
 };
 
 const getFieldSchema = (field: EngineField) => {
@@ -56,6 +65,21 @@ const getFieldSchema = (field: EngineField) => {
         .default(field.default != null ? String(field.default) : null)
         .test((value, context) => isFieldValid(field, value, context));
   }
+};
+
+const isRootField = (field: EngineField) => {
+  const override = FIELD_OVERRIDES[field.name];
+  return override?.name != null && !override.name.includes(".");
+};
+
+const isScheduleField = (field: EngineField) => {
+  const override = FIELD_OVERRIDES[field.name];
+  return override?.name != null && override.name.startsWith("schedules.");
+};
+
+const isDetailField = (field: EngineField) => {
+  const override = FIELD_OVERRIDES[field.name];
+  return override?.name == null;
 };
 
 const isFieldValid = (

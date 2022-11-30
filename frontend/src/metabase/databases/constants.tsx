@@ -88,6 +88,12 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   "ssl-key-options": {
     description: <DatabaseSslKeyDescription />,
   },
+  "schedules.metadata_sync": {
+    name: "schedules.metadata_sync",
+  },
+  "schedules.cache_field_values": {
+    name: "schedules.cache_field_values",
+  },
   auto_run_queries: {
     name: "auto_run_queries",
   },
