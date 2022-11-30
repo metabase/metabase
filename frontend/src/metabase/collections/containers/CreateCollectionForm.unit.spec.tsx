@@ -3,19 +3,26 @@ import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { setupEnterpriseTest } from "__support__/enterprise";
 
-import { createMockCollection } from "metabase-types/api/mocks";
+import { User } from "metabase-types/api";
+import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 
 import CreateCollectionForm from "./CreateCollectionForm";
 
-function setup({
-  onCancel = jest.fn(),
-}: { onCancel?: (() => void) | null } = {}) {
+type SetupOpts = {
+  user?: User;
+  onCancel?: (() => void) | null;
+};
+
+function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
   xhrMock.post("/api/collection", (req, res) =>
     res.status(200).body(createMockCollection(req.body())),
   );
 
-  renderWithProviders(<CreateCollectionForm onCancel={onCancel} />);
+  renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
+    currentUser: user,
+  });
 
   return { onCancel };
 }
@@ -73,12 +80,30 @@ describe("CreateCollectionForm", () => {
   });
 
   describe("Collection authority level", () => {
-    describe("OSS", () => {
+    describe("Free plan", () => {
       it("is not shown", () => {
         setup();
         expect(
           screen.queryByLabelText(/Collection type/i),
         ).not.toBeInTheDocument();
+      });
+    });
+
+    describe("Paid plan", () => {
+      beforeEach(() => {
+        setupEnterpriseTest();
+      });
+
+      it("is shown", async () => {
+        setup();
+        expect(await screen.findByText(/Collection type/i)).toBeInTheDocument();
+        expect(screen.getByText(/Regular/i)).toBeInTheDocument();
+        expect(screen.getByText(/Official/i)).toBeInTheDocument();
+      });
+
+      it("isn't shown if user is not admin", async () => {
+        setup({ user: createMockUser({ is_superuser: false }) });
+        expect(screen.queryByText(/Collection type/i)).not.toBeInTheDocument();
       });
     });
   });

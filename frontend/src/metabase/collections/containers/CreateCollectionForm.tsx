@@ -27,6 +27,8 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import FormAuthorityLevelFieldContainer from "./FormAuthorityLevelFieldContainer";
+
 const COLLECTION_SCHEMA = Yup.object({
   name: Yup.string()
     .required(Errors.required)
@@ -36,6 +38,7 @@ const COLLECTION_SCHEMA = Yup.object({
   color: Yup.string()
     .nullable()
     .default(() => color(DEFAULT_COLLECTION_COLOR_ALIAS)),
+  authority_level: Yup.mixed().oneOf(["official", null]).default(null),
   parent_id: Yup.number().nullable(),
 });
 
@@ -111,7 +114,7 @@ function CreateCollectionForm({
       validationSchema={COLLECTION_SCHEMA}
       onSubmit={handleCreate}
     >
-      {({ dirty }) => (
+      {({ dirty, values }) => (
         <Form>
           <FormInput
             name="name"
@@ -128,6 +131,9 @@ function CreateCollectionForm({
           <FormCollectionPicker
             name="parent_id"
             title={t`Collection it's saved in`}
+          />
+          <FormAuthorityLevelFieldContainer
+            collectionParentId={values.parent_id}
           />
           <FormFooter>
             <FormErrorMessage inline />
