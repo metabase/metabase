@@ -4,6 +4,7 @@ import {
   sidebar,
   getDraggableElements,
   moveColumnDown,
+  popover,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -175,6 +176,52 @@ describe("scenarios > visualizations > bar chart", () => {
           cy.findAllByTestId("legend-item").should("have.length", 4);
           cy.get(".enable-dots").should("have.length", 4);
         });
+    });
+
+    it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
+      moveColumnDown(getDraggableElements().first(), 2);
+
+      getDraggableElements()
+        .eq(1)
+        .within(() => {
+          cy.icon("eye_filled").click();
+        });
+
+      cy.findByText("Filter").click();
+      cy.findByText("Product").click();
+
+      cy.findByTestId("filter-field-Category").within(() => {
+        cy.findByTestId("operator-select").click();
+      });
+
+      popover().within(() => {
+        cy.findByText("Is not").click();
+      });
+
+      cy.findByTestId("filter-field-Category").within(() => {
+        cy.findByText("Gadget").click();
+      });
+
+      cy.findByText("Apply Filters").click();
+
+      getDraggableElements().should("have.length", 3);
+
+      //Ensures that "Gizmo" is still hidden, so it's state hasn't changed.
+      getDraggableElements()
+        .eq(0)
+        .within(() => {
+          cy.icon("eye_crossed_out").click();
+        });
+
+      cy.findByTestId("qb-filters-panel").within(() => {
+        cy.icon("close").click();
+      });
+
+      getDraggableElements().should("have.length", 4);
+
+      //Re-added items should appear at the end of the list.
+      getDraggableElements().eq(0).should("have.text", "Gizmo");
+      getDraggableElements().eq(3).should("have.text", "Gadget");
     });
   });
 });
