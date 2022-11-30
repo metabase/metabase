@@ -284,10 +284,7 @@
                                               (qp.store/fetch-and-store-database! (u/the-id database))
                                               (sql.qp/->honeysql driver table))]}))
 
-(defn describe-database* [database]
-  ;; using the JDBC `.getTables` method seems to be pretty buggy -- it works sometimes but other times randomly
-  ;; returns nothing. Probably why it was removed some time ago.
-  (log/info "defmethod driver/describe-database :snowflake called.")
+(defmethod driver/describe-database :snowflake [driver database]
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas :snowflake))]
     (qp.store/with-store
@@ -314,12 +311,6 @@
                       (jdbc/reducible-query {:connection conn} sql)
                       (catch Throwable e
                         (throw (ex-info (trs "Error executing query: {0}" (ex-message e)) {:sql sql} e)))))})))))
-
-(def ^{:arglists '([database])} describe-database-ttl
-  (let [five-minutes (* 1000 60 5)]
-    (memoize/ttl describe-database* {} :ttl/threshold five-minutes)))
-
-(defmethod driver/describe-database :snowflake [driver database] (describe-database-ttl database))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]

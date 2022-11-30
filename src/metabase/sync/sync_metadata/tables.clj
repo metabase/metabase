@@ -171,10 +171,10 @@
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
   implementation of `describe-database`.
   Also syncs the database metadata taken from describe-database if there is any"
-  [database :- i/DatabaseInstance]
+  [database :- i/DatabaseInstance
+   db-metadata]
   ;; determine what's changed between what info we have and what's in the DB
-  (let [db-metadata             (fetch-metadata/db-metadata database)
-        db-tables               (table-set db-metadata)
+  (let [db-tables               (table-set db-metadata)
         our-metadata            (our-metadata database)
         strip-desc              (fn [metadata]
                                   (set (map #(dissoc % :description) metadata)))
