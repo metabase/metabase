@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
-   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.models.user :refer [User]]

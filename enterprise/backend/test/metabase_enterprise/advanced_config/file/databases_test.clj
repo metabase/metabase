@@ -46,7 +46,7 @@
         (finally
           (db/delete! Database :name test-db-name))))))
 
-(deftest ^:parallel init-from-config-file-connection-validation-test
+(deftest init-from-config-file-connection-validation-test
   (testing "Validate connection details when creating a Database from a config file, and error if they are invalid"
     (binding [advanced-config.file/*config* {:version 1
                                              :config  {:databases [{:name    (str test-db-name "-in-memory")

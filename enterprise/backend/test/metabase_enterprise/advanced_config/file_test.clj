@@ -22,7 +22,7 @@
   {:version 1
    :config  {:settings {:my-setting "abc123"}}})
 
-(deftest ^:parallel config-test
+(deftest config-test
   (testing "Specify a custom path and read from YAML"
     (mt/with-temp-file [filename "temp-config-file.yml"]
       (spit filename (yaml/generate-string mock-yaml))
@@ -36,7 +36,7 @@
               :config  {:settings {:my-setting "abc123"}}}
              (#'advanced-config.file/config))))))
 
-(deftest ^:parallel validate-config-test
+(deftest validate-config-test
   (testing "Config should throw an error"
     (testing "if it is not a map"
       (binding [advanced-config.file/*config* [1 2 3 4]]
@@ -70,7 +70,7 @@
 (defn- mock-config-with-setting [s]
   {:version 1.0, :config {:settings {:my-setting s}}})
 
-(deftest ^:parallel expand-template-forms-test
+(deftest expand-template-forms-test
   (testing "Ignore single curly brackets, or brackets with spaces between them"
     (are [s] (= (mock-config-with-setting s)
                 (binding [advanced-config.file/*config* (mock-config-with-setting s)]
@@ -94,14 +94,14 @@
       ;; unknown template type
       "{{bird \"Parrot Hilton\"}}" (re-quote "bird - failed: valid-template-type?"))))
 
-(deftest ^:parallel recursive-template-form-expansion-test
+(deftest recursive-template-form-expansion-test
   (testing "Recursive expansion is unsupported, for now."
     (binding [advanced-config.file/*env*    (assoc @#'advanced-config.file/*env* :x "{{env Y}}", :y "Y")
               advanced-config.file/*config* (mock-config-with-setting "{{env X}}")]
       (is (= (mock-config-with-setting "{{env Y}}")
              (#'advanced-config.file/config))))))
 
-(deftest ^:parallel expand-template-env-var-values-test
+(deftest expand-template-env-var-values-test
   (testing "env var values"
     (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :config-file-bird-name "Parrot Hilton")]
       (testing "Nothing weird"
@@ -127,7 +127,7 @@
           (is (= (mock-config-with-setting "Parrot Hilton")
                  (#'advanced-config.file/config))))))))
 
-(deftest ^:parallel expand-template-env-var-values-validation-test
+(deftest expand-template-env-var-values-validation-test
   (testing "(config) should walk the config map and expand {{template}} forms"
     (testing "env var values"
       (testing "validation"
@@ -143,7 +143,7 @@
           ;; wrong env var type
           "{{env :SOME_ENV_VAR}}"             (re-quote "SOME_ENV_VAR - failed: symbol?"))))))
 
-(deftest ^:parallel optional-template-test
+(deftest optional-template-test
   (testing "[[optional {{template}}]] values"
     (binding [advanced-config.file/*env* (assoc @#'advanced-config.file/*env* :my-sensitive-password "~~~SeCrEt123~~~")]
       (testing "env var exists"
@@ -187,7 +187,7 @@
              #"Metabase config files require a Premium token with the :advanced-config feature"
              (advanced-config.file/initialize!)))))))
 
-(deftest ^:parallel error-validation-do-not-leak-env-vars-test
+(deftest error-validation-do-not-leak-env-vars-test
   (testing "spec errors should not include contents of env vars -- expand templates after spec validation."
     (binding [advanced-config.file/*env*    (assoc @#'advanced-config.file/*env* :my-sensitive-password "~~~SeCrEt123~~~")
               advanced-config.file/*config* {:version 1
