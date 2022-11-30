@@ -2,7 +2,16 @@ import React from "react";
 import { t, jt } from "ttag";
 import { connect } from "react-redux";
 import moment from "moment-timezone";
+
+import ExternalLink from "metabase/core/components/ExternalLink";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+
+import MetabaseSettings from "metabase/lib/settings";
+
+import { getSettings } from "metabase/selectors/settings";
+
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
+
 import {
   TokenStatus,
   useLicense,
@@ -14,9 +23,6 @@ import {
   SectionHeader,
   SettingsLicenseContainer,
 } from "metabase/admin/settings/components/SettingsLicense";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import MetabaseSettings from "metabase/lib/settings";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 
@@ -172,7 +178,7 @@ const LicenseAndBillingSettings = ({
 export default connect(
   (state: any) => ({
     settingValues: state.admin.settings.settings,
-    settings: state.settings.values,
+    settings: getSettings(state),
   }),
   {
     showLicenseAcceptedToast,

@@ -21,20 +21,34 @@ export const optionShape = PropTypes.shape({
   selectedColor: PropTypes.string,
 });
 
-const propTypes = {
-  name: PropTypes.string,
-  value: PropTypes.any,
-  options: PropTypes.arrayOf(optionShape).isRequired,
-  variant: PropTypes.oneOf(["fill-text", "fill-background", "fill-all"]),
-  inactiveColor: PropTypes.string,
-  onChange: PropTypes.func,
-  fullWidth: PropTypes.bool,
+type SegmentedControlValue = string | number;
+
+export type SegmentedControlOption<Value extends SegmentedControlValue> = {
+  name?: React.ReactNode;
+  value: Value;
+  icon?: string;
+  iconSize?: number;
+
+  // Expects a color alias, not a color code
+  // Example: brand, accent1, success
+  // Won't work: red, #000, rgb(0, 0, 0)
+  selectedColor?: string;
 };
+
+interface Props<Value extends SegmentedControlValue> {
+  name?: string;
+  value?: Value;
+  options: SegmentedControlOption<Value>[];
+  variant?: "fill-text" | "fill-background" | "fill-all";
+  inactiveColor?: string;
+  onChange?: (value: any) => void;
+  fullWidth?: boolean;
+}
 
 const DEFAULT_OPTION_ICON_SIZE = 16;
 
-export function SegmentedControl({
-  name: nameFromProps,
+export function SegmentedControl<Value extends SegmentedControlValue = number>({
+  name: nameProp,
   value,
   options,
   onChange,
@@ -42,14 +56,14 @@ export function SegmentedControl({
   inactiveColor = "text-dark",
   variant = "fill-background",
   ...props
-}) {
+}: Props<Value>) {
   const id = useMemo(() => _.uniqueId("radio-"), []);
-  const name = nameFromProps || id;
+  const name = nameProp || id;
   const selectedOptionIndex = options.findIndex(
     option => option.value === value,
   );
   return (
-    <SegmentedList {...props} fullWidth={fullWidth}>
+    <SegmentedList {...props}>
       {options.map((option, index) => {
         const isSelected = index === selectedOptionIndex;
         const id = `${name}-${option.value}`;
@@ -66,6 +80,7 @@ export function SegmentedControl({
             fullWidth={fullWidth}
             variant={variant}
             selectedColor={selectedColor}
+            inactiveColor={inactiveColor}
           >
             <SegmentedItemLabel
               id={labelId}
@@ -87,7 +102,7 @@ export function SegmentedControl({
                 name={name}
                 value={option.value}
                 checked={isSelected}
-                onChange={() => onChange(option.value)}
+                onChange={() => onChange?.(option.value)}
                 // Workaround for https://github.com/testing-library/dom-testing-library/issues/877
                 aria-labelledby={labelId}
               />
@@ -99,5 +114,3 @@ export function SegmentedControl({
     </SegmentedList>
   );
 }
-
-SegmentedControl.propTypes = propTypes;
