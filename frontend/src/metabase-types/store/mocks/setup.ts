@@ -38,6 +38,7 @@ export const createMockDatabaseInfo = (
   name: "Database",
   engine: "H2",
   details: {},
+  schedules: {},
   ...opts,
 });
 

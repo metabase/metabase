@@ -22,6 +22,7 @@ export interface DatabaseInfo {
   name: string;
   engine: string | undefined;
   details: Record<string, unknown>;
+  schedules: Record<string, unknown>;
 }
 
 export interface SubscribeInfo {

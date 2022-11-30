@@ -1,5 +1,5 @@
 import * as Yup from "yup";
-import type { TestContext } from "yup";
+import type { AnySchema, TestContext } from "yup";
 import * as Errors from "metabase/core/utils/errors";
 import { Engine, EngineField } from "metabase-types/api";
 import { ADVANCED_FIELDS, FIELD_OVERRIDES } from "../constants";
@@ -9,7 +9,7 @@ export const getValidationSchema = (
   engine: Engine | undefined,
   engineKey: string | undefined,
   isAdvanced: boolean,
-) => {
+): AnySchema => {
   const fields = getFields(engine, isAdvanced);
   const rootSchema = getObjectSchema(fields.filter(isRootField));
   const detailsSchema = getObjectSchema(fields.filter(isDetailField));
