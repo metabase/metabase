@@ -1,6 +1,7 @@
 (ns metabase.driver.vertica
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
@@ -18,7 +19,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
-  (:import [java.sql ResultSet Types]))
+  (:import [java.sql ResultSet ResultSetMetaData Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
@@ -194,5 +195,15 @@
   [_ _ ^ResultSet rs _ ^Integer i]
   (when-let [s (.getString rs i)]
     (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+      t)))
+
+;; for some reason vertica `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
+;; bug with the JDBC driver?
+(defmethod sql-jdbc.execute/read-column [:vertica Types/TIMESTAMP]
+  [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (when-let [s (.getString rs i)]
+    (let [has-timezone? (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+          t             (u.date/parse s (when has-timezone? "UTC"))]
       (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
       t)))
