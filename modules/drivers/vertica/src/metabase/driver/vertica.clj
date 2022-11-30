@@ -15,10 +15,11 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [trs tru]])
   (:import [java.sql ResultSet ResultSetMetaData Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
@@ -134,7 +135,21 @@
 (defmethod sql.qp/->honeysql [:vertica :datetime-diff]
   [driver [_ x y unit]]
   (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)]
+        y (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [v]
+                            (some-> v
+                                    hx/type-info
+                                    hx/type-info->db-type
+                                    name
+                                    str/lower-case
+                                    #{"time" "timetz"}))
+                          [x y])]
+    (when (seq disallowed-types)
+      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                           (pr-str disallowed-types))
+                      {:found disallowed-types
+                       :type  qp.error-type/invalid-query})))
     (case unit
       :year
       (let [positive-diff (fn [a b] ; precondition: a <= b
@@ -149,7 +164,11 @@
                                 :and
                                 (hsql/call := (extract :month a) (extract :month b))
                                 (hsql/call :> (extract :day a) (extract :day b)))))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+        (hsql/call :case
+                   (hsql/call :<= (cast-timestamp x) (cast-timestamp y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
 
       :month
       (let [positive-diff (fn [a b]
@@ -158,7 +177,11 @@
                              (hx/cast
                               :integer
                               (hsql/call :> (extract :day a) (extract :day b)))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+        (hsql/call :case
+                   (hsql/call :<= (cast-timestamp x) (cast-timestamp y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
 
       :week
       (let [positive-diff (fn [a b]
@@ -166,10 +189,14 @@
                              :integer
                              (hx/floor
                               (hx// (datediff :day a b) 7))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+        (hsql/call :case
+                   (hsql/call :<= (cast-timestamp x) (cast-timestamp y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
 
       :day
-      (datediff (hx/literal :day) x y)
+      (datediff :day x y)
 
       (:hour :minute :second)
       (let [positive-diff (fn [a b]
@@ -177,9 +204,13 @@
                              :integer
                              (hx/floor
                               (cond-> (hsql/call :- (extract :epoch b) (extract :epoch a))
-                               (not= unit :second)
+                                (not= unit :second)
                                 (hx// (case unit :hour 3600 :minute 60))))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x)))))))
+        (hsql/call :case
+                   (hsql/call :<= (cast-timestamp x) (cast-timestamp y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x)))))))
 
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
   [driver [_ arg pattern]]
