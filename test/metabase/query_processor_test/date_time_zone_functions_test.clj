@@ -353,7 +353,7 @@
                      u.date/parse
                      (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
                      (close? (t/instant) (t/seconds 30)))))))))
-  (mt/test-drivers (mt/normal-drivers-with-feature :now)
+  (mt/test-drivers (mt/normal-drivers-with-feature :now :temporal-extract)
     (testing "should be able to extract time in the report timezone"
       (let [timezone "Asia/Kathmandu"] ; UTC+5:45 all year
         (mt/with-temporary-setting-values [report-timezone timezone]
