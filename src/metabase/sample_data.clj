@@ -44,7 +44,7 @@
   (-> (str "file:" (plugins/plugins-dir) "/" sample-database-filename)
       process-sample-db-path))
 
-(defn- db-details
+(defn- try-to-extract-sample-database!
   "Tries to extract the sample database out of the JAR (for performance) and then returns a db-details map
    containing a path to the copied database."
   []
@@ -71,11 +71,12 @@
   (when-not (db/exists? Database :is_sample true)
     (try
       (log/info (trs "Loading sample database"))
-      (sync/sync-database! (db/insert! Database
-                             :name      sample-database-name
-                             :details   (db-details)
-                             :engine    :h2
-                             :is_sample true))
+      (let [details (try-to-extract-sample-database!)]
+        (sync/sync-database! (db/insert! Database
+                               :name      sample-database-name
+                               :details   details
+                               :engine    :h2
+                               :is_sample true)))
       (catch Throwable e
         (log/error e (trs "Failed to load sample database"))))))
 
@@ -86,6 +87,6 @@
 
   ([sample-db]
    (when sample-db
-     (let [intended (db-details)]
+     (let [intended (try-to-extract-sample-database!)]
        (when (not= (:details sample-db) intended)
          (db/update! Database (:id sample-db) :details intended))))))
