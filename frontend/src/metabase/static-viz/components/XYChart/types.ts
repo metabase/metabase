@@ -1,4 +1,5 @@
 import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
+import { DatasetColumn } from "metabase-types/api";
 import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
@@ -15,13 +16,34 @@ export type YAxisPosition = "left" | "right";
 
 export type VisualizationType = "line" | "area" | "bar" | "waterfall";
 
-export type Series = {
-  name: string;
-  color: string;
+interface BaseSeries {
+  name: string | null;
   data: SeriesData;
   type: VisualizationType;
   yAxisPosition: YAxisPosition;
-};
+}
+
+export interface SeriesWithOneOrLessDimensions extends BaseSeries {
+  cardName: string;
+  // this could be null when rendering multiple scalars
+  column: DatasetColumn | null;
+}
+
+export interface SeriesWithTwoDimensions extends BaseSeries {
+  cardName: string;
+  column: DatasetColumn;
+  breakoutValue: string;
+}
+
+export type CardSeries = (
+  | SeriesWithOneOrLessDimensions
+  | SeriesWithTwoDimensions
+)[];
+
+export interface Series extends BaseSeries {
+  name: string;
+  color: string;
+}
 
 export type StackedDatum = [XValue, YValue, YValue];
 
@@ -53,6 +75,7 @@ export type ChartSettings = {
     bottom?: string;
     right?: string;
   };
+  series_settings?: Record<string, { color?: string; title?: string }>;
 };
 
 export interface Dimensions {

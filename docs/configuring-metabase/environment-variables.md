@@ -188,6 +188,13 @@ Default: `true`
 
 Color log lines. When set to `false` it will disable log line colors. This is disabled on Windows. Related to [MB_EMOJI_IN_LOGS](#mb_emoji_in_logs).
 
+### `MB_CONFIG_FILE_PATH`
+
+Type: string<br>
+Default: `config.yml`
+
+This feature requires the `advanced-config` feature flag on your token.
+
 ### `MB_CUSTOM_FORMATTING`
 
 Type: string<br>
