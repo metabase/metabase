@@ -266,7 +266,7 @@
 ;; Datatype grammar adapted from BNF at https://h2database.com/html/datatypes.html
 
 (defn- expand-grammar
-  "Expands BNF-like grammar to all possible keywords"
+  "Expands BNF-like grammar to all possible data types"
   [grammar]
   (cond
     (set? grammar)  (mapcat expand-grammar grammar)
@@ -281,21 +281,32 @@
     :type/BigInteger          #{BIGINT}
     :type/Decimal             #{NUMERIC DECIMAL DEC}
     :type/Float               #{REAL FLOAT "DOUBLE PRECISION" DECFLOAT}
-    :type/Text                #{CHARACTER CHAR
-                                (NATIONAL #{CHARACTER CHAR}) NCHAR
-                                (#{CHARACTER CHAR} VARYING) VARCHAR
+    :type/Text                #{CHARACTER
+                                CHAR
+                                (NATIONAL #{CHARACTER CHAR})
+                                NCHAR
+                                (#{CHARACTER CHAR} VARYING)
+                                VARCHAR
                                 (#{(NATIONAL #{CHARACTER CHAR}) NCHAR} VARYING)
                                 VARCHAR_CASESENSITIVE
-                                (#{CHARACTER CHAR} LARGE OBJECT) CLOB
-                                (#{NATIONAL CHARACTER NCHAR} LARGE OBJECT) NCLOB
+                                (#{CHARACTER CHAR} LARGE OBJECT)
+                                CLOB
+                                (#{NATIONAL CHARACTER NCHAR} LARGE OBJECT)
+                                NCLOB
                                 UUID}
-    :type/*                   #{ARRAY BINARY "BINARY VARYING" VARBINARY
-                                "BINARY LARGE OBJECT" BLOB GEOMETRY IMAGE}
+    :type/*                   #{ARRAY
+                                BINARY
+                                "BINARY VARYING"
+                                VARBINARY
+                                "BINARY LARGE OBJECT"
+                                BLOB
+                                GEOMETRY
+                                IMAGE}
     :type/Date                #{DATE}
     :type/DateTime            #{TIMESTAMP}
     :type/Time                #{TIME "TIME WITHOUT TIME ZONE"}
     :type/TimeWithLocalTZ     #{"TIME WITH TIME ZONE"}
-    :type/DateTimeWithLocalTZ #{"TIMEZONE WITH TIME ZONE"}})
+    :type/DateTimeWithLocalTZ #{"TIMESTAMP WITH TIME ZONE"}})
 
 (def ^:private db-type->base-type
   (into {}
