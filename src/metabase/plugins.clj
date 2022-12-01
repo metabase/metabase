@@ -19,6 +19,7 @@
       (.getAbsolutePath (io/file "plugins"))))
 
 (def ^:private plugins-dir*
+  ;; Memoized so we don't log the error messages multiple times if the plugins directory doesn't change
   (memoize/memo
    (fn [filename]
      (try
@@ -45,8 +46,6 @@
              (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
            {:path path, :temp true}))))))
 
-;; Actual logic is wrapped in a delay rather than a normal function so we don't log the error messages more than once
-;; in cases where we have to fall back to the system temporary directory
 (defn plugins-dir-info
   "Map with a :path key containing the `Path` to the Metabase plugins directory, and a :temp key indicating whether a
   temporary directory was used."
