@@ -1,5 +1,6 @@
 (ns metabase.plugins
-  (:require [clojure.java.classpath :as classpath]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.java.classpath :as classpath]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -17,41 +18,48 @@
   (or (env/env :mb-plugins-dir)
       (.getAbsolutePath (io/file "plugins"))))
 
-;; logic for determining plugins dir -- see below
-(defonce ^:private plugins-dir*
-  (delay
-    (let [filename (plugins-dir-filename)]
-      (try
-        ;; attempt to create <current-dir>/plugins if it doesn't already exist. Check that the directory is readable.
-        (let [path (u.files/get-path filename)]
-          (u.files/create-dir-if-not-exists! path)
-          (assert (Files/isWritable path)
-            (trs "Metabase does not have permissions to write to plugins directory {0}" filename))
-          path)
-        ;; If we couldn't create the directory, or the directory is not writable, fall back to a temporary directory
-        ;; rather than failing to launch entirely. Log instructions for what should be done to fix the problem.
-        (catch Throwable e
-          (log/warn
-           e
-           (trs "Metabase cannot use the plugins directory {0}" filename)
-           "\n"
-           (trs "Please make sure the directory exists and that Metabase has permission to write to it.")
-           (trs "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR.")
-           (trs "Falling back to a temporary directory for now."))
-          ;; Check whether the fallback temporary directory is writable. If it's not, there's no way for us to
-          ;; gracefully proceed here. Throw an Exception detailing the critical issues.
-          (let [path (u.files/get-path (System/getProperty "java.io.tmpdir"))]
-            (assert (Files/isWritable path)
-              (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
-            path))))))
+(def ^:private plugins-dir*
+  ;; Memoized so we don't log the error messages multiple times if the plugins directory doesn't change
+  (memoize/memo
+   (fn [filename]
+     (try
+       ;; attempt to create <current-dir>/plugins if it doesn't already exist. Check that the directory is readable.
+       (let [path (u.files/get-path filename)]
+         (u.files/create-dir-if-not-exists! path)
+         (assert (Files/isWritable path)
+           (trs "Metabase does not have permissions to write to plugins directory {0}" filename))
+         {:path  path, :temp false})
+       ;; If we couldn't create the directory, or the directory is not writable, fall back to a temporary directory
+       ;; rather than failing to launch entirely. Log instructions for what should be done to fix the problem.
+       (catch Throwable e
+         (log/warn
+          e
+          (trs "Metabase cannot use the plugins directory {0}" filename)
+          "\n"
+          (trs "Please make sure the directory exists and that Metabase has permission to write to it.")
+          (trs "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR.")
+          (trs "Falling back to a temporary directory for now."))
+         ;; Check whether the fallback temporary directory is writable. If it's not, there's no way for us to
+         ;; gracefully proceed here. Throw an Exception detailing the critical issues.
+         (let [path (u.files/get-path (System/getProperty "java.io.tmpdir"))]
+           (assert (Files/isWritable path)
+             (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
+           {:path path, :temp true}))))))
 
-;; Actual logic is wrapped in a delay rather than a normal function so we don't log the error messages more than once
-;; in cases where we have to fall back to the system temporary directory
-(defn- plugins-dir
-  "Get a `Path` to the Metabase plugins directory, creating it if needed. If it cannot be created for one reason or
-  another, or if we do not have write permissions for it, use a temporary directory instead."
+(defn plugins-dir-info
+  "Map with a :path key containing the `Path` to the Metabase plugins directory, and a :temp key indicating whether a
+  temporary directory was used."
   ^Path []
-  @plugins-dir*)
+  (plugins-dir* (plugins-dir-filename)))
+
+(defn plugins-dir
+  "Get a `Path` to the Metabase plugins directory, creating it if needed. If it cannot be created for one reason or
+  another, or if we do not have write permissions for it, use a temporary directory instead.
+
+  This is a wrapper around `plugins-dir-info` which also contains a :temp key indicating whether a temporary directory
+  was used."
+  []
+  (:path (plugins-dir-info)))
 
 (defn- extract-system-modules! []
   (when (io/resource "modules")

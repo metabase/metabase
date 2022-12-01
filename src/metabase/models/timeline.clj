@@ -65,17 +65,15 @@
   [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 ;;;; serialization
-(defmethod serdes.base/extract-query "Timeline" [_model-name {:keys [collection-set]}]
+(defmethod serdes.base/extract-query "Timeline" [_model-name opts]
   (eduction (map #(timeline-event/include-events-singular % {:all? true}))
-            (if (seq collection-set)
-              (db/select-reducible Timeline :collection_id [:in collection-set])
-              (db/select-reducible Timeline))))
+            (serdes.base/extract-query-collections Timeline opts)))
 
 (defn- extract-events [events]
   (sort-by :timestamp
            (for [event events]
              (-> (into (sorted-map) event)
-                 (dissoc :creator :id :timeline_id)
+                 (dissoc :creator :id :timeline_id :updated_at)
                  (update :creator_id  serdes.util/export-user)
                  (update :timestamp   #(u.date/format (t/offset-date-time %)))))))
 
@@ -107,3 +105,5 @@
 
 (defmethod serdes.base/serdes-dependencies "Timeline" [{:keys [collection_id]}]
   [[{:model "Collection" :id collection_id}]])
+
+(serdes.base/register-ingestion-path! "Timeline" (serdes.base/ingestion-matcher-collected "collections" "Timeline"))
