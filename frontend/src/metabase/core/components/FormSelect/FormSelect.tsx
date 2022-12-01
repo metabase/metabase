@@ -24,21 +24,21 @@ const FormSelect = forwardRef(function FormSelect<
     className,
     title,
     description,
-    onChange: onChangeProp,
+    onChange,
     ...props
   }: FormSelectProps<TValue, TOption>,
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
-  const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
+  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
   const buttonProps = useMemo(() => ({ id, onBlur }), [id, onBlur]);
 
   const handleChange = useCallback(
     (event: SelectChangeEvent<TValue>) => {
-      onChange(event);
-      onChangeProp?.(event);
+      setValue(event.target.value);
+      onChange?.(event);
     },
-    [onChange, onChangeProp],
+    [setValue, onChange],
   );
 
   return (
