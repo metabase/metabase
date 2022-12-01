@@ -6,7 +6,7 @@ import SchedulePicker, {
 } from "metabase/components/SchedulePicker";
 
 type StateProps = {
-  timezone?: string;
+  timezone: string;
 };
 
 function mapStateToProps(state: State): StateProps {
