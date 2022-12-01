@@ -295,6 +295,8 @@ Syntax: `datetimeAdd(column, amount, unit)`.
 
 Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
+Related: [between](#between), [datetimeSubtract](#datetimesubtractexpressionsdatetimesubtractmd), [now](#nowexpressionsnowmd).
+
 ### [datetimeDiff](./expressions/datetimediff.md)
 
 Returns the difference between two datetimes in some unit of time: day, week, month, etc (for example, `datetimeDiff(d1, d2, "day") ` will return the number of days between `d1` and `d2`).
@@ -305,6 +307,8 @@ Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
 - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
 
 Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
+
+Related: [now](#nowexpressionsnowmd).
 
 ### [datetimeSubtract](./expressions/datetimesubtract.md)
 
@@ -317,6 +321,8 @@ Syntax: `datetimeSubtract(column, amount, unit)`.
 - units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
 
 Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
+
+Related: [between](#between), [datetimeAdd](#datetimeaddexpressionsdatetimeaddmd), [now](#nowexpressionsnowmd).
 
 ### day
 
@@ -447,6 +453,8 @@ Example: `month("March 25, 2021, 12:52:37")` would return the month as an intege
 Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/settings.md#report-timezone).
 
 Syntax: `now`.
+
+Databases that don't support `now`: Mongo versions 4.0 or lower.
 
 ### power
 

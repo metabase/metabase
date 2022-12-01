@@ -64,6 +64,8 @@ If you need to compare `now` to a column in a different time zone, use [convertT
 convertTimezone(now, 'UTC', <report timezone>) >= convertTimezone([Deadline], 'UTC', <source time zone>)
 ```
 
+`now` is only available on Mongo versions 4.2 or greater.
+
 ## Related functions
 
 This section covers functions and formulas that work the same way as the Metabase `now` expression, with notes on how to choose the best option for your use case.

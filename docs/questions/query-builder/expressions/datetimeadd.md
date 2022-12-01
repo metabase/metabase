@@ -28,7 +28,7 @@ title: DatetimeAdd
 - "millisecond"
 
 `amount`:
-- A whole number.
+- A whole number or a decimal number.
 - May be a negative number: `datetimeAdd("2021-03-25", -1, "month")` will return `2021-04-25`.
 
 ## Calculating an end date

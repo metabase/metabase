@@ -24,12 +24,14 @@ For example, if you're tracking user logins over time, you probably won't run yo
 
 `target`:
 - The name of the time zone you want to assign to your column.
-- Time zone names are database-dependent (such as "Canada/Eastern" vs. "EST").
 
 `source`:
+- The name of your column's current time zone.
+- Required for columns or expressions with the data type `timestamp without time zone`.
 - Optional for columns or expressions with the data type `timestamp with time zone`. 
-- Required for columns or expressions with the data type `timestamp without time zone`. 
 - For more info, see [Accepted data types](#accepted-data-types).
+
+We support [tz database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) time zone names (such as "Canada/Eastern" instead of "EST").
 
 ## Creating custom report dates
 
@@ -47,7 +49,7 @@ If **Source Time** is stored as a `timestamp with time zone` or a `timestamp wit
 convertTimezone([Source Time], 'EST')
 ```
 
-If **Source Time** is stored as a `timestamp without time zone`, you _must_ provide the `source` time zone as 'UTC':
+If **Source Time** is stored as a `timestamp without time zone`, you _must_ provide the `source` time zone (which will depend on your database time zone):
 
 ```
 convertTimezone([Source Time], 'EST', 'UTC')
