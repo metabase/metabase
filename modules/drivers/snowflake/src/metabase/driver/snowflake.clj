@@ -1,7 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
