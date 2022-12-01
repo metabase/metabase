@@ -5,6 +5,7 @@ import DatabaseClientIdDescription from "./components/DatabaseClientIdDescriptio
 import DatabaseConnectionSectionField from "./components/DatabaseConnectionSectionField";
 import DatabaseSshDescription from "./components/DatabaseSshDescription";
 import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
+import DatabaseSyncScheduleField from "./components/DatabaseSyncScheduleField";
 import { EngineFieldOverride } from "./types";
 
 export const ELEVATED_ENGINES = [
@@ -94,6 +95,7 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   },
   "schedules.metadata_sync": {
     name: "schedules.metadata_sync",
+    type: DatabaseSyncScheduleField,
   },
   "schedules.cache_field_values": {
     name: "schedules.cache_field_values",

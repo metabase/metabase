@@ -13,10 +13,12 @@ import { EngineFieldOverride } from "../../types";
 
 export interface DatabaseDetailFieldProps {
   field: EngineField;
+  timezone: string;
 }
 
 const DatabaseDetailField = ({
   field,
+  timezone,
 }: DatabaseDetailFieldProps): JSX.Element => {
   const override = FIELD_OVERRIDES[field.name];
   const type = getFieldType(field, override);
@@ -24,7 +26,7 @@ const DatabaseDetailField = ({
 
   if (typeof type === "function") {
     const Component = type;
-    return <Component {...props} />;
+    return <Component {...props} timezone={timezone} />;
   }
 
   switch (type) {

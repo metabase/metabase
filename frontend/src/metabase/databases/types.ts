@@ -21,8 +21,8 @@ export interface EngineOption {
 }
 
 export interface EngineFieldOverride {
-  type?: EngineFieldType | ComponentType<EngineFieldProps>;
   name?: string;
+  type?: EngineFieldType | ComponentType<EngineFieldProps>;
   title?: string;
   description?: ReactNode;
   placeholder?: unknown;
@@ -34,4 +34,5 @@ export interface EngineFieldProps {
   title?: string;
   description?: ReactNode;
   placeholder?: string;
+  timezone: string;
 }

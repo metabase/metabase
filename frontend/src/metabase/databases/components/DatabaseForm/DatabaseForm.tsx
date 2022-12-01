@@ -18,6 +18,7 @@ import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
 export interface DatabaseFormProps {
   engines: Record<string, Engine>;
+  timezone: string;
   initialValues?: DatabaseValues;
   isHosted?: boolean;
   isAdvanced?: boolean;
@@ -28,6 +29,7 @@ export interface DatabaseFormProps {
 
 const DatabaseForm = ({
   engines,
+  timezone,
   initialValues: initialData,
   isHosted = false,
   isAdvanced = false,
@@ -67,6 +69,7 @@ const DatabaseForm = ({
         engine={engine}
         engineKey={engineKey}
         engines={engines}
+        timezone={timezone}
         isHosted={isHosted}
         isAdvanced={isAdvanced}
         onEngineChange={handleEngineChange}
@@ -80,6 +83,7 @@ interface DatabaseFormBodyProps {
   engine: Engine | undefined;
   engineKey: string | undefined;
   engines: Record<string, Engine>;
+  timezone: string;
   isHosted: boolean;
   isAdvanced: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
@@ -90,6 +94,7 @@ const DatabaseFormBody = ({
   engine,
   engineKey,
   engines,
+  timezone,
   isHosted,
   isAdvanced,
   onEngineChange,
@@ -119,7 +124,11 @@ const DatabaseFormBody = ({
       )}
       {engine && <DatabaseNameField engine={engine} />}
       {fields.map(field => (
-        <DatabaseDetailField key={field.name} field={field} />
+        <DatabaseDetailField
+          key={field.name}
+          field={field}
+          timezone={timezone}
+        />
       ))}
       <DatabaseFormFooter isAdvanced={isAdvanced} onCancel={onCancel} />
     </Form>

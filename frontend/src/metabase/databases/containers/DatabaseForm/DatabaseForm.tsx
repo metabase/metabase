@@ -3,11 +3,13 @@ import { getSetting } from "metabase/selectors/settings";
 import { State } from "metabase-types/store";
 import DatabaseForm, { DatabaseFormProps } from "../../components/DatabaseForm";
 
-type DatabaseFormOwnProps = Omit<DatabaseFormProps, "engines" | "isHosted">;
-type DatabaseFormStateProps = Pick<DatabaseFormProps, "engines" | "isHosted">;
+type DatabaseFormStateKeys = "engines" | "timezone" | "isHosted";
+type DatabaseFormOwnProps = Omit<DatabaseFormProps, DatabaseFormStateKeys>;
+type DatabaseFormStateProps = Pick<DatabaseFormProps, DatabaseFormStateKeys>;
 
 const mapStateToProps = (state: State) => ({
   engines: getSetting(state, "engines"),
+  timezone: getSetting(state, "report-timezone-short"),
   isHosted: getSetting(state, "is-hosted?"),
 });
 
