@@ -113,7 +113,7 @@
 
 (defmethod sql.qp/->honeysql [:vertica :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
-  (let [expr         (sql.qp/->honeysql driver arg)
+  (let [expr         (cast-timestamp (sql.qp/->honeysql driver arg))
         timestamptz? (hx/is-of-type? expr "timestamptz")]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
