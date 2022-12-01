@@ -315,6 +315,24 @@ class Visualization extends React.PureComponent {
     }
   };
 
+  getGridSize = () => {
+    const { gridSize, gridUnit, width, height } = this.props;
+    if (
+      !gridSize &&
+      gridUnit &&
+      // Check that width/height are set. If they're not, we want to pass
+      // undefined rather than {width: 0, height: 0}. Passing 0 will hide axes.
+      width != null &&
+      height != null
+    ) {
+      return {
+        width: Math.round(width / (gridUnit * 4)),
+        height: Math.round(height / (gridUnit * 3)),
+      };
+    }
+    return gridSize;
+  };
+
   render() {
     const {
       actionButtons,
@@ -323,7 +341,6 @@ class Visualization extends React.PureComponent {
       showTitle,
       isDashboard,
       width,
-      height,
       headerIcon,
       errorIcon,
       isSlow,
@@ -410,21 +427,6 @@ class Visualization extends React.PureComponent {
       </VisualizationActionButtonsContainer>
     );
 
-    let { gridSize, gridUnit } = this.props;
-    if (
-      !gridSize &&
-      gridUnit &&
-      // Check that width/height are set. If they're not, we want to pass
-      // undefined rather than {width: 0, height: 0}. Passing 0 will hide axes.
-      width != null &&
-      height != null
-    ) {
-      gridSize = {
-        width: Math.round(width / (gridUnit * 4)),
-        height: Math.round(height / (gridUnit * 3)),
-      };
-    }
-
     if (isPlaceholder) {
       hovered = null;
       style = {
@@ -496,7 +498,7 @@ class Visualization extends React.PureComponent {
             onRenderError={this.onRenderError}
             onRender={this.onRender}
             onActionDismissal={this.hideActions}
-            gridSize={gridSize}
+            gridSize={this.getGridSize()}
             onChangeCardAndRun={
               this.props.onChangeCardAndRun
                 ? this.handleOnChangeCardAndRun
