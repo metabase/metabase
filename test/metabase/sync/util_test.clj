@@ -285,9 +285,10 @@
    (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
             db (db/select-one Database :id (:id (mt/db)))]
-        (with-redefs [sync-metadata/sync-steps [(sync-util/create-sync-step
-                                                 "fake-step"
-                                                 (fn [_] (throw (java.net.ConnectException.))))]]
+        (with-redefs [sync-metadata/make-sync-steps (fn [_]
+                                                      [(sync-util/create-sync-step
+                                                        "fake-step"
+                                                        (fn [_] (throw (java.net.ConnectException.))))])]
           (sync/sync-database! db)
           (is (= "aborted" (db/select-one-field :initial_sync_status Database :id (:id db)))))))
 

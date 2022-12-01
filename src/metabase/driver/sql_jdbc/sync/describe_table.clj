@@ -15,8 +15,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.table :as table]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db])
+            [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
 
 (defmethod sql-jdbc.sync.interface/column->semantic-type :sql-jdbc [_ _ _] nil)
