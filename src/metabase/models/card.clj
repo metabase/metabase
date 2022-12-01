@@ -201,9 +201,10 @@
                      :native {:query s/Str}}
         Query       {:type  (s/enum :query)
                      :query su/Map}]
-    (s/conditional
-     #(#{:native} (:type %)) NativeQuery
-     #(#{:query} (:type %)) Query)))
+    (su/open-schema
+     (s/conditional
+      #(#{:native} (:type %)) NativeQuery
+      #(#{:query} (:type %)) Query))))
 
 (defn valid-dataset-query?
   "Check if the dataset-query is valid."
