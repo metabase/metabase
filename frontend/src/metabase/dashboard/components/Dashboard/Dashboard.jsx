@@ -130,6 +130,7 @@ class Dashboard extends Component {
   componentDidUpdate(prevProps) {
     if (prevProps.dashboardId !== this.props.dashboardId) {
       this.loadDashboard(this.props.dashboardId);
+      this.throttleParameterWidgetStickiness();
     } else if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       (!prevProps.dashboard && this.props.dashboard)
