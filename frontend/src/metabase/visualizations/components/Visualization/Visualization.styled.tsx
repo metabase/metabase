@@ -1,11 +1,20 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { color } from "metabase/lib/colors";
 
-export const VisualizationRoot = styled.div`
+const placeholderVizStyle = css`
+  opacity: 0.2;
+  filter: grayscale();
+  pointer-events: none;
+`;
+
+export const VisualizationRoot = styled.div<{ isPlaceholder?: boolean }>`
   display: flex;
   flex-direction: column;
   height: 100%;
+
+  ${({ isPlaceholder }) => isPlaceholder && placeholderVizStyle}
 `;
 
 export const VisualizationHeader = styled.div`

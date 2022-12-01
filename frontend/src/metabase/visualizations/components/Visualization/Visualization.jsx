@@ -362,13 +362,13 @@ class Visualization extends React.PureComponent {
       replacementContent,
       onOpenChartSettings,
       onUpdateVisualizationSettings,
+      style,
     } = this.props;
     const { visualization } = this.state;
     const isSmall = width < 330;
 
     // these may be overridden below
     let { series, hovered, clicked } = this.state;
-    let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
     // disable hover when click action is active
@@ -442,12 +442,6 @@ class Visualization extends React.PureComponent {
 
     if (isPlaceholder) {
       hovered = null;
-      style = {
-        ...style,
-        opacity: 0.2,
-        filter: "grayscale()",
-        pointerEvents: "none",
-      };
     }
 
     const CardVisualization = visualization;
@@ -461,7 +455,11 @@ class Visualization extends React.PureComponent {
     });
 
     return (
-      <VisualizationRoot className={className} style={style}>
+      <VisualizationRoot
+        className={className}
+        style={style}
+        isPlaceholder={isPlaceholder}
+      >
         {!!hasHeader && (
           <VisualizationHeader>
             <ChartCaption
