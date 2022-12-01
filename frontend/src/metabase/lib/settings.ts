@@ -107,7 +107,8 @@ export type SettingName =
   | "application-font"
   | "available-fonts"
   | "enable-query-caching"
-  | "start-of-week";
+  | "start-of-week"
+  | "report-timezone-short";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 

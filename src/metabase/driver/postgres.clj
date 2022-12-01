@@ -678,7 +678,7 @@
 ;; bug with the JDBC driver?
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [^Class klass (if (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+  (let [^Class klass (if (= (u/lower-case-en (.getColumnTypeName rsmeta i)) "timestamptz")
                        OffsetDateTime
                        LocalDateTime)]
     (fn []

@@ -15,11 +15,12 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
-            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.driver.sql.util :as sql.u]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]])
-  (:import [java.sql ResultSet Types]))
+            [metabase.util.i18n :refer [trs]])
+  (:import [java.sql ResultSet ResultSetMetaData Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
@@ -28,6 +29,10 @@
 (defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
 
 (defmethod driver/database-supports? [:vertica :datetime-diff] [_ _ _] true)
+
+(defmethod driver/database-supports? [:vertica :convert-timezone]
+  [_driver _feature _database]
+  true)
 
 (defmethod driver/db-start-of-week :vertica
   [_]
@@ -98,6 +103,7 @@
 (defmethod sql.qp/date [:vertica :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:vertica :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
 (defmethod sql.qp/date [:vertica :year]            [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:vertica :year-of-era]     [_ _ expr] (extract-integer :year expr))
 
 (defmethod sql.qp/date [:vertica :week]
   [_ _ expr]
@@ -108,6 +114,17 @@
 (defmethod sql.qp/date [:vertica :day-of-week]
   [_ _ expr]
   (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
+
+(defmethod sql.qp/->honeysql [:vertica :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr         (cast-timestamp (sql.qp/->honeysql driver arg))
+        timestamptz? (hx/is-of-type? expr "timestamptz")]
+    (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+    (-> (if timestamptz?
+          expr
+          (hx/->AtTimeZone expr (or source-timezone (qp.timezone/results-timezone-id))))
+        (hx/->AtTimeZone target-timezone)
+        (hx/with-database-type-info "timestamp"))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]
@@ -262,6 +279,16 @@
   [_ _ ^ResultSet rs _ ^Integer i]
   (when-let [s (.getString rs i)]
     (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+      t)))
+
+;; for some reason vertica `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
+;; bug with the JDBC driver?
+(defmethod sql-jdbc.execute/read-column [:vertica Types/TIMESTAMP]
+  [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (when-let [s (.getString rs i)]
+    (let [has-timezone? (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+          t             (u.date/parse s (when has-timezone? "UTC"))]
       (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
       t)))
 

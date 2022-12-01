@@ -25,7 +25,7 @@ export interface Engine {
   "driver-name": string;
   "details-fields"?: EngineField[];
   source: EngineSource;
-  "superseded-by": string | undefined;
+  "superseded-by": string | null;
 }
 
 export interface EngineField {
@@ -61,14 +61,35 @@ export interface EngineFieldOption {
 }
 
 export interface EngineSource {
-  type?: "official" | "community" | "partner";
-  contact?: EngineSourceContact;
+  type: "official" | "community" | "partner";
+  contact: EngineSourceContact | null;
 }
 
 export interface EngineSourceContact {
   name?: string;
   address?: string;
 }
+
+export interface ScheduleSettings {
+  schedule_type?: ScheduleType | null;
+  schedule_day?: ScheduleDayType | null;
+  schedule_frame?: ScheduleFrameType | null;
+  schedule_hour?: number | null;
+  schedule_minute?: number | null;
+}
+
+export type ScheduleType = "hourly" | "daily" | "weekly" | "monthly";
+
+export type ScheduleDayType =
+  | "sun"
+  | "mon"
+  | "tue"
+  | "wed"
+  | "thu"
+  | "fri"
+  | "sat";
+
+export type ScheduleFrameType = "first" | "mid" | "last";
 
 export interface FontFile {
   src: string;
@@ -138,6 +159,7 @@ export interface Settings {
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
   "persisted-models-enabled": boolean;
+  "report-timezone-short": string;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
   "session-cookies": boolean | null;

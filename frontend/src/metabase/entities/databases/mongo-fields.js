@@ -18,7 +18,7 @@ function MongoConnectionStringToggle({ field: { value, onChange } }) {
 
 export default function getFieldsForMongo(details, defaults, id) {
   const useConnectionString =
-    details["use-connection-uri"] == null || details["use-connection-uri"];
+    details["use-conn-uri"] == null || details["use-conn-uri"];
 
   const manualFields = [
     "host",
@@ -36,6 +36,7 @@ export default function getFieldsForMongo(details, defaults, id) {
     .filter(
       field =>
         !(
+          field["name"] === "use-conn-uri" ||
           (useConnectionString && manualFields.includes(field["name"])) ||
           (!useConnectionString && field["name"] === "conn-uri")
         ),
@@ -50,7 +51,7 @@ export default function getFieldsForMongo(details, defaults, id) {
   return {
     "details-fields": [
       {
-        name: "use-connection-uri",
+        name: "use-conn-uri",
         type: MongoConnectionStringToggle,
         hidden: true,
         default: false,

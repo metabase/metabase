@@ -22,6 +22,8 @@
 ;; during unit tests don't treat Spark SQL as having FK support
 (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
 
+(defmethod tx/supports-time-type? :sparksql [_driver] false)
+
 (doseq [[base-type database-type] {:type/BigInteger "BIGINT"
                                    :type/Boolean    "BOOLEAN"
                                    :type/Date       "DATE"
