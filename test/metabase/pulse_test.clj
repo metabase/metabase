@@ -315,7 +315,7 @@
   (testing "card with CSV and XLS attachments, but no data. Should not include an attachment"
     (do-test
      {:card       (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                        :breakout [!day.date]})
+                                                        :breakout [!day.date]})
       :pulse      {:skip_if_empty false}
       :pulse-card {:include_csv true
                    :include_xls true}
@@ -410,7 +410,7 @@
 (deftest empty-results-test
   (testing "Pulse where the card has no results"
     (tests {:card (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                                        :breakout [!day.date]})}
+                                                        :breakout [!day.date]})}
       "skip if empty = false"
       {:pulse    {:skip_if_empty false}
        :assert {:email (fn [_ _]
@@ -456,7 +456,7 @@
       "with no data"
       {:card
        (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                             :breakout [!day.date]})
+                                             :breakout [!day.date]})
        :assert
        {:email
         (fn [_ _]
@@ -519,7 +519,7 @@
     "first run alert with no data"
     {:card
      (pulse.test-util/checkins-query-card {:filter   [:> $date "2017-10-24"]
-                           :breakout [!day.date]})
+                                           :breakout [!day.date]})
 
      :assert
      {:email
@@ -538,7 +538,7 @@
       "with data"
       {:card
        (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-04-01" "2014-06-01"]
-                                    :breakout [!day.date]})
+                                                    :breakout [!day.date]})
               {:display                :line
                :visualization_settings {:graph.show_goal true :graph.goal_value 5.9}})
 
@@ -552,7 +552,7 @@
       "no data"
       {:card
        (merge (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-01" "2014-04-01"]
-                                    :breakout [!day.date]})
+                                                    :breakout [!day.date]})
               {:display                :area
                :visualization_settings {:graph.show_goal true :graph.goal_value 5.9}})
 
@@ -584,7 +584,7 @@
       "with data"
       {:card
        (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-12" "2014-02-17"]
-                             :breakout [!day.date]})
+                                             :breakout [!day.date]})
        :display :line
 
        :assert
@@ -597,7 +597,7 @@
       "with no satisfying data"
       {:card
        (pulse.test-util/checkins-query-card {:filter   [:between $date "2014-02-10" "2014-02-12"]
-                             :breakout [!day.date]})
+                                             :breakout [!day.date]})
        :display :bar
 
        :assert
@@ -679,7 +679,7 @@
 (deftest basic-slack-test-2
   (testing "Basic slack test, 2 cards, 1 recipient channel"
     (mt/with-temp* [Card         [{card-id-1 :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
-                    Card         [{card-id-2 :id} (-> {:breakout [[:datetime-field (mt/id :checkins :date) "minute"]]}
+                    Card         [{card-id-2 :id} (-> {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :month}]]}
                                                       pulse.test-util/checkins-query-card
                                                       (assoc :name "Test card 2"))]
                     Pulse        [{pulse-id :id}  {:name          "Pulse Name"

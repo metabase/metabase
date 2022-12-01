@@ -15,11 +15,11 @@ import {
   state as entitiesState,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Join from "metabase-lib/lib/queries/structured/Join";
-import Field from "metabase-lib/lib/metadata/Field";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Join from "metabase-lib/queries/structured/Join";
+import Field from "metabase-lib/metadata/Field";
 import {
   getAdHocQuestion,
   getSavedStructuredQuestion,
@@ -536,22 +536,29 @@ describe("QB Actions > updateQuestion", () => {
   });
 
   describe("template tags editor visibility", () => {
-    const TEMPLATE_TAG_1: TemplateTag = {
+    const VARIABLE_TAG_1: TemplateTag = {
       id: "id_1",
       name: "tag",
-      type: "card",
-      "display-name": "Tag",
+      type: "text",
+      "display-name": "Variable Tag 1",
     };
 
-    const TEMPLATE_TAG_2: TemplateTag = {
+    const VARIABLE_TAG_2: TemplateTag = {
       id: "id_2",
-      name: "tag_2",
-      type: "card",
-      "display-name": "Tag 2",
+      name: "tag",
+      type: "number",
+      "display-name": "Variable Tag 2",
     };
 
-    const SNIPPET: TemplateTag = {
-      id: "id",
+    const CARD_TAG: TemplateTag = {
+      id: "id_3",
+      name: "tag_3",
+      type: "card",
+      "display-name": "Card Tag 3",
+    };
+
+    const SNIPPET_TAG: TemplateTag = {
+      id: "id_4",
       "snippet-id": 1,
       "display-name": "foo",
       name: "foo",
@@ -603,17 +610,29 @@ describe("QB Actions > updateQuestion", () => {
       };
     }
 
-    [...NATIVE_TEST_CASES, TEST_CASE.NATIVE_MODEL].forEach(testCase => {
+    describe("native models", () => {
+      const { question } = TEST_CASE.NATIVE_MODEL;
+      it("doesn't open tags editor bar after adding a variable tag", async () => {
+        const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
+          question,
+          tagsBefore: {},
+          tagsAfter: { foo: VARIABLE_TAG_1 },
+          isShowingTemplateTagsEditor: false,
+        });
+
+        expect(setTemplateTagEditorVisibleSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    [...NATIVE_TEST_CASES].forEach(testCase => {
       const { question, questionType } = testCase;
 
       describe(questionType, () => {
-        it("opens tags editor bar after adding first template tag", async () => {
+        it("opens tags editor bar after adding first variable tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             question,
             tagsBefore: {},
-            tagsAfter: {
-              foo: TEMPLATE_TAG_1,
-            },
+            tagsAfter: { foo: VARIABLE_TAG_1 },
             isShowingTemplateTagsEditor: false,
           });
 
@@ -623,13 +642,8 @@ describe("QB Actions > updateQuestion", () => {
         it("opens tags editor bar after adding a new template tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             question,
-            tagsBefore: {
-              foo: TEMPLATE_TAG_1,
-            },
-            tagsAfter: {
-              foo: TEMPLATE_TAG_1,
-              bar: TEMPLATE_TAG_2,
-            },
+            tagsBefore: { foo: VARIABLE_TAG_1 },
+            tagsAfter: { foo: VARIABLE_TAG_1, bar: VARIABLE_TAG_2 },
             isShowingTemplateTagsEditor: false,
           });
 
@@ -640,9 +654,18 @@ describe("QB Actions > updateQuestion", () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             question,
             tagsBefore: {},
-            tagsAfter: {
-              snippet: SNIPPET,
-            },
+            tagsAfter: { snippet: SNIPPET_TAG },
+            isShowingTemplateTagsEditor: false,
+          });
+
+          expect(setTemplateTagEditorVisibleSpy).not.toHaveBeenCalled();
+        });
+
+        it("doesn't open tags editor bar after adding a card tag", async () => {
+          const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
+            question,
+            tagsBefore: {},
+            tagsAfter: { foo: CARD_TAG },
             isShowingTemplateTagsEditor: false,
           });
 
@@ -652,13 +675,8 @@ describe("QB Actions > updateQuestion", () => {
         it("doesn't open tags editor bar after removing a template tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             question,
-            tagsBefore: {
-              foo: TEMPLATE_TAG_1,
-              bar: TEMPLATE_TAG_2,
-            },
-            tagsAfter: {
-              foo: TEMPLATE_TAG_1,
-            },
+            tagsBefore: { foo: VARIABLE_TAG_1, bar: VARIABLE_TAG_2 },
+            tagsAfter: { foo: VARIABLE_TAG_1 },
             isShowingTemplateTagsEditor: false,
           });
 
@@ -668,9 +686,7 @@ describe("QB Actions > updateQuestion", () => {
         it("doesn't open tags editor bar after removing the last template tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             question,
-            tagsBefore: {
-              foo: TEMPLATE_TAG_1,
-            },
+            tagsBefore: { foo: VARIABLE_TAG_1 },
             tagsAfter: {},
             isShowingTemplateTagsEditor: false,
           });
@@ -682,37 +698,28 @@ describe("QB Actions > updateQuestion", () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             question,
             tagsBefore: {},
-            tagsAfter: {
-              snippet: SNIPPET,
-            },
+            tagsAfter: { snippet: SNIPPET_TAG },
             isShowingTemplateTagsEditor: false,
           });
 
           expect(setTemplateTagEditorVisibleSpy).not.toHaveBeenCalled();
         });
 
-        it("doesn't close tags editor bar after removing a template tag", async () => {
+        it("doesn't close tags editor bar after removing a variable tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             question,
-            tagsBefore: {
-              foo: TEMPLATE_TAG_1,
-              bar: TEMPLATE_TAG_2,
-            },
-            tagsAfter: {
-              foo: TEMPLATE_TAG_1,
-            },
+            tagsBefore: { foo: VARIABLE_TAG_1, bar: VARIABLE_TAG_2 },
+            tagsAfter: { foo: VARIABLE_TAG_1 },
             isShowingTemplateTagsEditor: true,
           });
 
           expect(setTemplateTagEditorVisibleSpy).not.toHaveBeenCalled();
         });
 
-        it("closes tags editor bar after removing the last template tag", async () => {
+        it("closes tags editor bar after removing the last variable tag", async () => {
           const { setTemplateTagEditorVisibleSpy } = await setupTemplateTags({
             question,
-            tagsBefore: {
-              foo: TEMPLATE_TAG_1,
-            },
+            tagsBefore: { foo: VARIABLE_TAG_1 },
             tagsAfter: {},
             isShowingTemplateTagsEditor: true,
           });

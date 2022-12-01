@@ -1,9 +1,11 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-
 import { SelectAll } from "metabase/components/Calendar";
-import { setTimeComponent } from "metabase-lib/lib/queries/utils/query-time";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
+import {
+  clearDateFilterTime,
+  getDateFilterValue,
+  setDateFilterValue,
+} from "metabase-lib/queries/utils/date-filters";
 import SpecificDatePicker from "./SpecificDatePicker";
 
 export type SingleDatePickerProps = {
@@ -17,7 +19,7 @@ export type SingleDatePickerProps = {
 
 const SingleDatePicker = ({
   className,
-  filter: [op, field, value],
+  filter,
   onFilterChange,
   hideTimeSelectors,
   selectAll,
@@ -25,11 +27,11 @@ const SingleDatePicker = ({
 }: SingleDatePickerProps) => (
   <SpecificDatePicker
     className={className}
-    value={value}
+    value={getDateFilterValue(filter)}
     primaryColor={primaryColor}
     selectAll={selectAll}
-    onChange={value => onFilterChange([op, field, value])}
-    onClear={() => onFilterChange([op, field, setTimeComponent(value)])}
+    onChange={value => onFilterChange(setDateFilterValue(filter, value))}
+    onClear={() => onFilterChange(clearDateFilterTime(filter))}
     autoFocus
     hasCalendar
     hideTimeSelectors={hideTimeSelectors}

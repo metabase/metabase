@@ -52,4 +52,4 @@
     (db/delete! Action :id action_id)
     api/generic-204-no-content))
 
-(api/define-routes actions/+check-actions-enabled)
+(api/define-routes actions/+check-actions-enabled actions/+check-data-apps-enabled)

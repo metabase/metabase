@@ -15,10 +15,10 @@ import type {
 import type { State } from "metabase-types/store";
 import Modal from "metabase/components/Modal";
 import { SavedCard } from "metabase-types/types/Card";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
-import type NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
 import { ActionCreatorHeader } from "./ActionCreatorHeader";
 import { QueryActionEditor } from "./QueryActionEditor";

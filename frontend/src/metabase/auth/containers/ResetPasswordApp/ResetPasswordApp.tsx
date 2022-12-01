@@ -10,11 +10,11 @@ import {
 
 const mapStateToProps = (state: any, props: any) => ({
   token: props.params.token,
+  onValidatePassword: validatePassword,
 });
 
 const mapDispatchToProps = {
   onResetPassword: resetPassword,
-  onValidatePassword: validatePassword,
   onValidatePasswordToken: validatePasswordToken,
   onShowToast: addUndo,
   onRedirect: replace,

@@ -38,7 +38,8 @@
                               :regex                   false
                               :percentile-aggregations false
                               :actions                 true
-                              :actions/custom          true}]
+                              :actions/custom          true
+                              :now                     true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -204,6 +205,10 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod sql.qp/current-datetime-honeysql-form :h2
+  [_]
+  (hx/with-database-type-info :%now :TIMESTAMP))
+
 (defn- add-to-1970 [expr unit-str]
   (hsql/call :timestampadd
     (hx/literal unit-str)
@@ -256,6 +261,8 @@
   (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
                                      (hx/- 1 (sql.qp/date :h2 :day-of-week expr))
                                      :day))
+
+(defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (hsql/call :iso_week expr))
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;

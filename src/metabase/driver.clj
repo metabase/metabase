@@ -54,7 +54,8 @@
   "Current report timezone abbreviation"
   :visibility :public
   :setter     :none
-  :getter     (fn [] (short-timezone-name (report-timezone))))
+  :getter     (fn [] (short-timezone-name (report-timezone)))
+  :doc        false)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -444,6 +445,16 @@
     ;; DEFAULTS TO TRUE
     :date-arithmetics
 
+    ;; Does the driver support the :now function
+    :now
+
+    ;; Does the driver support converting timezone?
+    ;; DEFAULTS TO FALSE
+    :convert-timezone
+
+    ;; Does the driver support :datetime-diff functions
+    :datetime-diff
+
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
@@ -472,6 +483,7 @@
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
 (defmethod supports? [::driver :date-arithmetics] [_ _] true)
 (defmethod supports? [::driver :temporal-extract] [_ _] true)
+(defmethod supports? [::driver :convert-timezone] [_ _] false)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -680,7 +692,7 @@
   Much of the implementation for this method is shared across drivers and lives in the
   `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
   this method.`Driver-agnostic end-to-end native parameter tests live in
-  `metabase.query-processor-test.parameters-test` and other namespaces."
+  [[metabase.query-processor-test.parameters-test]] and other namespaces."
   {:arglists '([driver inner-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

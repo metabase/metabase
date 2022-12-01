@@ -1,8 +1,12 @@
 import React, { useCallback, useState } from "react";
 import moment, { Moment } from "moment-timezone";
 import Calendar from "metabase/components/Calendar";
-import { setTimeComponent } from "metabase-lib/lib/queries/utils/query-time";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
+import {
+  clearDateRangeFilterTime,
+  getDateRangeFilterValue,
+  setDateRangeFilterValue,
+} from "metabase-lib/queries/utils/date-filters";
 import SingleDatePicker, { SingleDatePickerProps } from "./SingleDatePicker";
 import SpecificDatePicker from "./SpecificDatePicker";
 import { DateContainer, DateDivider } from "./RangeDatePicker.styled";
@@ -17,11 +21,12 @@ export interface BetweenPickerProps {
 
 export const BetweenPicker = ({
   className,
-  filter: [op, field, startValue, endValue],
+  filter,
   primaryColor,
   hideTimeSelectors,
   onFilterChange,
 }: BetweenPickerProps) => {
+  const [startValue, endValue] = getDateRangeFilterValue(filter);
   const [isStartDateActive, setIsStartDateActive] = useState(true);
 
   const handleStartDateFocus = useCallback(() => {
@@ -35,41 +40,36 @@ export const BetweenPicker = ({
   const handleDateClick = useCallback(
     (newValue: string, newDate: Moment) => {
       if (isStartDateActive) {
-        onFilterChange([op, field, newValue, null]);
+        onFilterChange(setDateRangeFilterValue(filter, [newValue, null]));
       } else if (newDate.isBefore(startValue)) {
-        onFilterChange([op, field, newValue, startValue]);
+        onFilterChange(setDateRangeFilterValue(filter, [newValue, startValue]));
       } else {
-        onFilterChange([op, field, startValue, newValue]);
+        onFilterChange(setDateRangeFilterValue(filter, [startValue, newValue]));
       }
       setIsStartDateActive(isActive => !isActive);
     },
-    [op, field, startValue, isStartDateActive, onFilterChange],
+    [filter, startValue, isStartDateActive, onFilterChange],
   );
 
   const handleStartDateChange = useCallback(
     (newValue: string | null) => {
-      onFilterChange([op, field, newValue, endValue]);
+      onFilterChange(setDateRangeFilterValue(filter, [newValue, endValue]));
       setIsStartDateActive(isActive => !isActive);
     },
-    [op, field, endValue, onFilterChange],
+    [filter, endValue, onFilterChange],
   );
 
   const handleEndDateChange = useCallback(
     (newValue: string | null) => {
-      onFilterChange([op, field, startValue, newValue]);
+      onFilterChange(setDateRangeFilterValue(filter, [startValue, newValue]));
       setIsStartDateActive(isActive => !isActive);
     },
-    [op, field, startValue, onFilterChange],
+    [filter, startValue, onFilterChange],
   );
 
   const handleEndDateClear = useCallback(() => {
-    onFilterChange([
-      op,
-      field,
-      setTimeComponent(startValue),
-      setTimeComponent(endValue),
-    ]);
-  }, [op, field, startValue, endValue, onFilterChange]);
+    onFilterChange(clearDateRangeFilterTime(filter));
+  }, [filter, onFilterChange]);
 
   return (
     <div className={className} data-testid="between-date-picker">

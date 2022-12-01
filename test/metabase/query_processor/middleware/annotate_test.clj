@@ -279,17 +279,39 @@
                 {:expressions {"double-price" [:* $price 2]}}
                 [:expression "double-price"])))))
 
-    (testing "if there is no matching expression it should give a meaningful error message"
-      (is (= {:data    {:expression-name "double-price"
-                        :tried           ["double-price" :double-price]
-                        :found           #{"one-hundred"}
-                        :type            :invalid-query}
-              :message "No expression named 'double-price'"}
-             (try
-               (mt/$ids venues
-                 (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
-               (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
+    (testing "col-info for convert-timezone should have a `converted_timezone` property"
+      (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
+              :base_type          :type/DateTime,
+              :name               "last-login-converted",
+              :display_name       "last-login-converted",
+              :expression_name    "last-login-converted",
+              :field_ref          [:expression "last-login-converted"]}
+             (mt/$ids users
+               (#'annotate/col-info-for-field-clause
+                 {:expressions {"last-login-converted" [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"]}}
+                 [:expression "last-login-converted"]))))
+      (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
+              :base_type          :type/DateTime,
+              :name               "last-login-converted",
+              :display_name       "last-login-converted",
+              :expression_name    "last-login-converted",
+              :field_ref          [:expression "last-login-converted"]}
+             (mt/$ids users
+               (#'annotate/col-info-for-field-clause
+                 {:expressions {"last-login-converted" [:datetime-add
+                                                        [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"] 2 :hour]}}
+                 [:expression "last-login-converted"])))))
 
+   (testing "if there is no matching expression it should give a meaningful error message"
+     (is (= {:data    {:expression-name "double-price"
+                       :tried           ["double-price" :double-price]
+                       :found           #{"one-hundred"}
+                       :type            :invalid-query}
+             :message "No expression named 'double-price'"}
+            (try
+              (mt/$ids venues
+                (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
+              (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    (MBQL) Col info for Aggregation clauses                                     |
@@ -507,6 +529,22 @@
                                          [[:> [:field (mt/id :venues :price) nil] 2] 10]]]))))
       (is (= {:base_type :type/Float}
              (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]]]))))))
+
+(deftest ^:parallel datetime-arithmetics?-test
+  (is (#'annotate/datetime-arithmetics? [:+ [:field (mt/id :checkins :date) nil] [:interval -1 :month]]))
+  (is (#'annotate/datetime-arithmetics? [:field (mt/id :checkins :date) {:temporal-unit :month}]))
+  (is (not (#'annotate/datetime-arithmetics? [:+ 1 [:temporal-extract
+                                                    [:+ [:field (mt/id :checkins :date) nil] [:interval -1 :month]]
+                                                    :year]])))
+  (is (not (#'annotate/datetime-arithmetics? [:+ [:field (mt/id :checkins :date) nil] 3]))))
+
+(deftest temporal-extract-test
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :month])))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :hour])))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :users :last_login) nil] 2 :month]))))
 
 (deftest test-string-extracts
   (is (= {:base_type :type/Text}

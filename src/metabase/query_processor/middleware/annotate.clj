@@ -8,6 +8,7 @@
             [metabase.mbql.predicates :as mbql.preds]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
+            [metabase.mbql.util.match :as mbql.match]
             [metabase.models.humanization :as humanization]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.reducible :as qp.reducible]
@@ -121,6 +122,21 @@
                     join-alias)]
     (format "%s → %s" qualifier field-display-name)))
 
+(defn- datetime-arithmetics?
+  "Helper for [[infer-expression-type]]. Returns true if a given clause returns a :type/DateTime type."
+  [clause]
+  (mbql.match/match-one clause
+    #{:datetime-add :datetime-subtract :relative-datetime}
+    true
+
+    [:field _ (_ :guard :temporal-unit)]
+    true
+
+    :+
+    (some (partial mbql.u/is-clause? :interval) (rest clause))
+
+    _ false))
+
 (declare col-info-for-field-clause)
 
 (def type-info-columns
@@ -159,13 +175,27 @@
            (select-keys (infer-expression-type expression) type-info-columns)))
        clauses))
 
-    (mbql.u/datetime-arithmetics? expression)
-    {:base_type :type/DateTime}
+    (mbql.u/is-clause? :convert-timezone expression)
+    {:converted_timezone (nth expression 2)
+     :base_type          :type/DateTime}
 
-    (mbql.u/is-clause? mbql.s/string-expressions expression)
+    (datetime-arithmetics? expression)
+    ;; make sure converted_timezone survived if we do nested datetime operations
+    ;; FIXME: this does not preverse converted_timezone for cases nested expressions
+    ;; i.e:
+    ;; {"expression" {"converted-exp" [:convert-timezone "created-at" "Asia/Ho_Chi_Minh"]
+    ;;                "date-add-exp"  [:datetime-add [:expression "converted-exp"] 2 :month]}}
+    ;; The converted_timezone metadata added for "converted-exp" will not be brought over
+    ;; to ["date-add-exp"].
+    ;; maybe this `infer-expression-type` should takes an `inner-query` and look up the
+    ;; source expresison as well?
+    (merge (select-keys (infer-expression-type (second expression)) [:converted_timezone])
+     {:base_type :type/DateTime})
+
+    (mbql.u/is-clause? mbql.s/string-functions expression)
     {:base_type :type/Text}
 
-    (mbql.u/is-clause? mbql.s/arithmetic-expressions expression)
+    (mbql.u/is-clause? mbql.s/numeric-functions expression)
     {:base_type :type/Float}
 
     :else

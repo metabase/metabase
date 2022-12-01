@@ -155,7 +155,7 @@
              (mt/formatted-rows [int int]
                (mt/run-mbql-query users
                  {:aggregation [[:* [:count] 2]]
-                  :breakout    [[:datetime-field $last_login :month-of-year]]
+                  :breakout    [!month-of-year.last_login]
                   :order-by    [[:asc [:aggregation 0]]]})))))))
 
 (deftest math-inside-the-aggregation-test
@@ -202,20 +202,20 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "check that we can handle Metrics inside expression aggregation clauses"
       (mt/with-temp Metric [metric {:table_id   (mt/id :venues)
-                                    :definition {:aggregation [:sum [:field-id (mt/id :venues :price)]]
-                                                 :filter      [:> [:field-id (mt/id :venues :price)] 1]}}]
+                                    :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
+                                                 :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
         (is (= [[2 119]
                 [3  40]
                 [4  25]]
                (mt/formatted-rows [int int]
                  (mt/run-mbql-query venues
                    {:aggregation [:+ [:metric (u/the-id metric)] 1]
-                    :breakout    [[:field-id $price]]}))))))
+                    :breakout    [$price]}))))))
 
     (testing "check that we can handle Metrics inside an `:aggregation-options` clause"
       (mt/with-temp Metric [metric {:table_id   (mt/id :venues)
-                                    :definition {:aggregation [:sum [:field-id (mt/id :venues :price)]]
-                                                 :filter      [:> [:field-id (mt/id :venues :price)] 1]}}]
+                                    :definition {:aggregation [:sum [:field (mt/id :venues :price) nil]]
+                                                 :filter      [:> [:field (mt/id :venues :price) nil] 1]}}]
         (is (= {:rows    [[2 118]
                           [3  39]
                           [4  24]]
@@ -225,7 +225,7 @@
                  (mt/rows+column-names
                    (mt/run-mbql-query venues
                      {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
-                      :breakout    [[:field-id $price]]})))))))
+                      :breakout    [$price]})))))))
 
     (testing "check that Metrics with a nested aggregation still work inside an `:aggregation-options` clause"
       (mt/with-temp Metric [metric (mt/$ids venues
@@ -241,7 +241,7 @@
                  (mt/rows+column-names
                    (mt/run-mbql-query venues
                      {:aggregation [[:aggregation-options [:metric (u/the-id metric)] {:name "auto_generated_name"}]]
-                      :breakout    [[:field-id $price]]})))))))))
+                      :breakout    [$price]})))))))))
 
 (deftest named-aggregations-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)

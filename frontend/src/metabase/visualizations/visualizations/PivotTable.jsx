@@ -29,7 +29,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 
 import { PLUGIN_SELECTORS } from "metabase/plugins";
-import { isDimension } from "metabase-lib/lib/types/utils/isa";
+import { isDimension } from "metabase-lib/types/utils/isa";
 import {
   PivotTableRoot,
   PivotTableCell,
@@ -237,9 +237,10 @@ class PivotTable extends Component {
 
   static columnSettings = {
     [COLUMN_SORT_ORDER]: {
-      title: t`Sort Order`,
+      title: t`Sort order`,
       widget: ChartSettingIconRadio,
       inline: true,
+      borderBottom: true,
       props: {
         options: [
           {
@@ -275,7 +276,6 @@ class PivotTable extends Component {
       title: t`Column title`,
       widget: "input",
       getDefault: column => formatColumn(column),
-      variant: "form-field",
     },
   };
 

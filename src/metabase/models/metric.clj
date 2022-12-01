@@ -48,7 +48,7 @@
 
 (defmethod serdes.hash/identity-hash-fields Metric
   [_metric]
-  [:name (serdes.hash/hydrated-hash :table)])
+  [:name (serdes.hash/hydrated-hash :table "<none>") :created_at])
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
@@ -76,32 +76,33 @@
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
-
-(defmethod serdes.base/serdes-generate-path "Metric"
-  [_ metric]
-  (let [base (serdes.base/infer-self-path "Metric" metric)]
-    [(assoc base :label (:name metric))]))
-
-(defmethod serdes.base/extract-query "Metric" [_model-name _opts]
-  (serdes.base/raw-reducible-query "Metric" {:where [:= :archived false]}))
-
 (defmethod serdes.base/extract-one "Metric"
   [_model-name _opts metric]
   (-> (serdes.base/extract-one-basics "Metric" metric)
       (update :table_id   serdes.util/export-table-fk)
       (update :creator_id serdes.util/export-user)
-      (update :definition serdes.util/export-json-mbql)))
+      (update :definition serdes.util/export-mbql)))
 
 (defmethod serdes.base/load-xform "Metric" [metric]
   (-> metric
       serdes.base/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
       (update :creator_id serdes.util/import-user)
-      (update :definition serdes.util/import-json-mbql)))
+      (update :definition serdes.util/import-mbql)))
 
 (defmethod serdes.base/serdes-dependencies "Metric" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes.util/table->path table_id)}
                       (serdes.util/mbql-deps definition))))
+
+(defmethod serdes.base/storage-path "Metric" [metric _ctx]
+  (let [{:keys [id label]} (-> metric serdes.base/serdes-path last)]
+    (-> metric
+        :table_id
+        serdes.util/table->path
+        serdes.util/storage-table-path-prefix
+        (concat ["metrics" (serdes.base/storage-leaf-file-name id label)]))))
+
+(serdes.base/register-ingestion-path! "Metric" (serdes.base/ingestion-matcher-collected "databases" "Metric"))
 
 ;;; ----------------------------------------------------- OTHER ------------------------------------------------------
 

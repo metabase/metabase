@@ -3,7 +3,6 @@ import { getIn } from "icepick";
 
 import { isMappedExplicitActionButton } from "metabase/writeback/utils";
 
-import type { UiParameter } from "metabase/parameters/types";
 import type {
   Dashboard,
   DashboardOrderedCard,
@@ -15,6 +14,7 @@ import type {
 } from "metabase-types/api";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { UiParameter } from "metabase-lib/parameters/types";
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarMainView from "./ClickBehaviorSidebarMainView";
 import TableClickBehaviorView from "./TableClickBehaviorView";

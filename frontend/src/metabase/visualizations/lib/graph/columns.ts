@@ -1,18 +1,18 @@
+import { DatasetData, VisualizationSettings } from "metabase-types/api";
+import { isNotNull } from "metabase/core/utils/types";
 import {
-  DatasetColumn,
-  DatasetData,
-  VisualizationSettings,
-} from "metabase-types/api";
-import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
+  RemappingHydratedChartData,
+  RemappingHydratedDatasetColumn,
+} from "metabase/visualizations/shared/types/data";
 
 export type ColumnDescriptor = {
   index: number;
-  column: DatasetColumn;
+  column: RemappingHydratedDatasetColumn;
 };
 
 export const getColumnDescriptors = (
   columnNames: string[],
-  columns: DatasetColumn[],
+  columns: RemappingHydratedDatasetColumn[],
 ): ColumnDescriptor[] => {
   return columnNames.map(columnName => {
     const index = columns.findIndex(column => column.name === columnName);
@@ -32,13 +32,13 @@ export const hasValidColumnsSelected = (
     .map(metricColumnName =>
       data.cols.find(column => column.name === metricColumnName),
     )
-    .filter(Boolean);
+    .filter(isNotNull);
 
   const dimensionColumns = (visualizationSettings["graph.dimensions"] ?? [])
     .map(dimensionColumnName =>
       data.cols.find(column => column.name === dimensionColumnName),
     )
-    .filter(Boolean);
+    .filter(isNotNull);
 
   return metricColumns.length > 0 && dimensionColumns.length > 0;
 };
@@ -57,16 +57,16 @@ export type MultipleMetricsChartColumns = {
 export type ChartColumns = BreakoutChartColumns | MultipleMetricsChartColumns;
 
 export const getChartColumns = (
-  data: TwoDimensionalChartData,
+  data: RemappingHydratedChartData,
   visualizationSettings: VisualizationSettings,
 ): ChartColumns => {
   const [dimension, breakout] = getColumnDescriptors(
-    visualizationSettings["graph.dimensions"] ?? [],
+    (visualizationSettings["graph.dimensions"] ?? []).filter(isNotNull),
     data.cols,
   );
 
   const metrics = getColumnDescriptors(
-    visualizationSettings["graph.metrics"] ?? [],
+    (visualizationSettings["graph.metrics"] ?? []).filter(isNotNull),
     data.cols,
   );
 

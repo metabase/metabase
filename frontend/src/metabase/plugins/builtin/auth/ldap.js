@@ -7,7 +7,7 @@ import {
 } from "metabase/plugins";
 
 import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
-import AuthenticationWidget from "metabase/admin/settings/components/widgets/AuthenticationWidget";
+import LdapAuthCard from "metabase/admin/settings/auth/containers/LdapAuthCard";
 import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(
@@ -17,13 +17,8 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
       {
         key: "ldap-enabled",
         description: null,
-        widget: AuthenticationWidget,
-        getProps: (setting, settings) => ({
-          authType: "ldap",
-          authName: t`LDAP`,
-          authDescription: t`Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups.`,
-          authConfigured: settings["ldap-configured?"],
-        }),
+        noHeader: true,
+        widget: LdapAuthCard,
       },
     ]),
   sections => ({

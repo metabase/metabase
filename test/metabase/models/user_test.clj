@@ -1,33 +1,38 @@
 (ns metabase.models.user-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.http-client :as client]
-            [metabase.models
-             :refer
-             [Collection
-              Database
-              PermissionsGroup
-              PermissionsGroupMembership
-              Pulse
-              PulseChannel
-              PulseChannelRecipient
-              Session
-              Table
-              User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.collection-test :as collection-test]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.user :as user]
-            [metabase.test :as mt]
-            [metabase.test.data.users :as test.users]
-            [metabase.test.integrations.ldap :as ldap.test]
-            [metabase.util :as u]
-            [metabase.util.password :as u.password]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.http-client :as client]
+   [metabase.integrations.google]
+   [metabase.models
+    :refer [Collection
+            Database
+            PermissionsGroup
+            PermissionsGroupMembership
+            Pulse
+            PulseChannel
+            PulseChannelRecipient
+            Session
+            Table
+            User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.collection-test :as collection-test]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.user :as user]
+   [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.integrations.ldap :as ldap.test]
+   [metabase.util :as u]
+   [metabase.util.password :as u.password]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
+
+(comment
+  ;; this has to be loaded for the Google Auth tests to work
+  metabase.integrations.google/keep-me)
 
 ;;; Tests for permissions-set
 
@@ -476,3 +481,28 @@
       (is (= "e8d63472"
              (serdes.hash/raw-hash ["fred@flintston.es"])
              (serdes.hash/identity-hash user))))))
+
+(deftest hash-password-on-update-test
+  (testing "Setting `:password` with [[db/update!]] should hash the password, just like [[db/insert!]]"
+    (let [plaintext-password "password-1234"]
+      (mt/with-temp User [{user-id :id} {:password plaintext-password}]
+        (let [salt                     (fn [] (db/select-one-field :password_salt User :id user-id))
+              hashed-password          (fn [] (db/select-one-field :password User :id user-id))
+              original-hashed-password (hashed-password)]
+          (testing "sanity check: check that password can be verified"
+            (is (u.password/verify-password plaintext-password
+                                            (salt)
+                                            original-hashed-password)))
+          (is (= true
+                 (db/update! User user-id :password plaintext-password)))
+          (let [new-hashed-password (hashed-password)]
+            (testing "password should have been hashed"
+              (is (not= plaintext-password
+                        new-hashed-password)))
+            (testing "even tho the plaintext password is the same, hashed password should be different (different salts)"
+              (is (not= original-hashed-password
+                        new-hashed-password)))
+            (testing "salt should have been set; verify password was hashed correctly"
+              (is (u.password/verify-password plaintext-password
+                                              (salt)
+                                              new-hashed-password)))))))))

@@ -4,8 +4,8 @@ import React, { Component } from "react";
 import Popover from "metabase/components/Popover";
 import FilterComponent from "metabase/query_builder/components/Filter";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import FilterPopover from "./FilterPopover";
 import {
   FilterField,

@@ -15,8 +15,8 @@ import { GTAPApi } from "metabase/services";
 import { loadMetadataForQuery } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
-import { getTargetsWithSourceFilters } from "metabase-lib/lib/parameters/utils/click-behavior";
-import Question from "metabase-lib/lib/Question";
+import { getTargetsWithSourceFilters } from "metabase-lib/parameters/utils/click-behavior";
+import Question from "metabase-lib/Question";
 
 class ClickMappingsInner extends React.Component {
   render() {

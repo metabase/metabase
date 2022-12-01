@@ -1,14 +1,13 @@
 import type {
   ActionDashboardCard,
   BaseDashboardOrderedCard,
-  ClickBehavior,
+  Card,
   Database as IDatabase,
   WritebackAction,
 } from "metabase-types/api";
-import type { SavedCard } from "metabase-types/types/Card";
-import { TYPE } from "metabase-lib/lib/types/constants";
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Field from "metabase-lib/lib/metadata/Field";
+import { TYPE } from "metabase-lib/types/constants";
+import type Database from "metabase-lib/metadata/Database";
+import type Field from "metabase-lib/metadata/Field";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -61,13 +60,13 @@ export const isEditableField = (field: Field) => {
   return true;
 };
 
-export const isActionCard = (card: SavedCard) => card?.display === "action";
+export const isActionCard = (card: Card) => card?.display === "action";
 
 export function isActionDashCard(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionDashboardCard {
   const virtualCard = dashCard?.visualization_settings?.virtual_card;
-  return isActionCard(virtualCard as SavedCard);
+  return isActionCard(virtualCard as Card);
 }
 
 /**

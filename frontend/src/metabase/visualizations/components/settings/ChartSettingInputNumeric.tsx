@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import _ from "underscore";
 import { ChartSettingNumericInput } from "./ChartSettingInputNumeric.styled";
 
 interface ChartSettingInputProps {
   value: number;
   onChange: (value: number | undefined) => void;
+  onChangeSettings: () => void;
 }
 
 const ChartSettingInputNumeric = ({
@@ -16,14 +18,11 @@ const ChartSettingInputNumeric = ({
   return (
     <ChartSettingNumericInput
       type="number"
-      {...props}
+      {..._.omit(props, "onChangeSettings")}
       error={!!internalValue && isNaN(internalValue)}
       value={internalValue}
       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
         const num = parseFloat(e.target.value);
-        if (!isNaN(num) && num !== value) {
-          onChange(num);
-        }
         setInternalValue(num);
       }}
       onBlur={(e: React.ChangeEvent<HTMLInputElement>) => {

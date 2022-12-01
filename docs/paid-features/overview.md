@@ -6,7 +6,7 @@ redirect_from:
 
 # Overview of premium features
 
-Metabase's [Enterprise and Pro][pricing] plans provide additional features that help organizations scale Metabase and deliver self-service, embedded analytics.
+Metabase's [Enterprise and Pro](https://www.metabase.com/pricing) plans provide additional features that help organizations scale Metabase and deliver self-service, embedded analytics.
 
 ## Setting up
 
@@ -54,9 +54,9 @@ You can mark certain collections as [official](../exploration-and-organization/c
 
 ## Question moderation
 
-People can ask administrators to verify their questions.
+People can ask administrators to verify their questions and models.
 
-- [Question moderation](../questions/sharing/answers.md#question-moderation)
+- [Verified items](../exploration-and-organization/exploration.md#verified-items)
 
 ## Advanced caching controls
 
@@ -82,4 +82,6 @@ You can export Metabase application data and use that to spin up new instances p
 
 - [Serialization](../installation-and-operation/serialization.md)
 
-[pricing]: https://www.metabase.com/pricing
+## Configuration file
+
+For self-hosted installations, you can load Metabase from a [configuration file](../configuring-metabase/config-file.md).

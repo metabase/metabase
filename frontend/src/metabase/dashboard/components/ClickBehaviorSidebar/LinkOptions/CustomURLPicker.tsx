@@ -5,14 +5,14 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
-import type { UiParameter } from "metabase/parameters/types";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
   DashboardOrderedCard,
 } from "metabase-types/api";
 import { isTableDisplay } from "metabase/lib/click-behavior";
-import { clickBehaviorIsValid } from "metabase-lib/lib/parameters/utils/click-behavior";
+import type { UiParameter } from "metabase-lib/parameters/types";
+import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
 import { SidebarItem } from "../SidebarItem";
 import CustomLinkText from "./CustomLinkText";

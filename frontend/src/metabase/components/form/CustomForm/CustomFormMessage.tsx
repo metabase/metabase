@@ -20,6 +20,9 @@ function CustomFormMessage({
   return null;
 }
 
+/**
+ * @deprecated
+ */
 const CustomFormMessageLegacyContext = (
   props: CustomFormMessageProps,
   context: CustomFormLegacyContext,

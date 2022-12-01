@@ -424,14 +424,11 @@ describe("scenarios > models", () => {
     assertIsQuestion();
     closeQuestionActions();
 
+    // Check card tags are supported by models
     cy.findByText(/Open editor/i).click();
     cy.get(".ace_content").type(
-      "{leftarrow}{leftarrow}{backspace}{backspace}#",
+      "{leftarrow}{leftarrow}{backspace}{backspace}#1",
     );
-    cy.findByTestId("tag-editor-sidebar").within(() => {
-      cy.findByTestId("select-button").click();
-    });
-    selectFromDropdown("Orders");
     cy.findByText("Save").click();
     modal().findByText("Save").click();
 
@@ -453,11 +450,6 @@ describe("scenarios > models", () => {
             parseSpecialCharSequences: false,
           });
         cy.findByTestId("tag-editor-sidebar").should("not.exist");
-        cy.realPress("Escape"); // close the autocomplete popup
-        cy.get(".ace_editor:not(.ace_autocomplete)").type(
-          "{leftarrow}{leftarrow}{backspace}#",
-        );
-        cy.findByTestId("tag-editor-sidebar").should("be.visible");
       });
     });
   });
@@ -523,12 +515,9 @@ describe("scenarios > models", () => {
 
     it("should allow using models in native queries", () => {
       cy.intercept("POST", "/api/dataset").as("query");
-      openNativeEditor().type("select * from {{#}}", {
+      openNativeEditor().type("select * from {{#1}}", {
         parseSpecialCharSequences: false,
       });
-      sidebar().contains("Pick a question or a model").click();
-      selectFromDropdown("Orders Model");
-      cy.get("@editor").contains("select * from {{#1-orders-model}}");
       cy.get(".NativeQueryEditor .Icon-play").click();
       cy.wait("@query");
       cy.get(".TableInteractive").within(() => {

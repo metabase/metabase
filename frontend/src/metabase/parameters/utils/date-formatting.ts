@@ -4,15 +4,15 @@ import moment from "moment-timezone";
 
 import { DATE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
 import { EXCLUDE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker";
-import { dateParameterValueToMBQL } from "metabase-lib/lib/parameters/utils/mbql";
-import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/lib/parameters/constants";
+import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
+import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/parameters/constants";
 import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeInterval,
   getStartingFrom,
-} from "metabase-lib/lib/queries/utils/query-time";
+} from "metabase-lib/queries/utils/query-time";
 
-import { UiParameter } from "../types";
+import { UiParameter } from "metabase-lib/parameters/types";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;

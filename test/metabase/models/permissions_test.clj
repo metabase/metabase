@@ -49,8 +49,6 @@
    "/data-model/db/1/schema/PUBLIC/table/1/"
    ;; db details permissions
    "/details/db/1/"
-   ;; execution permissions
-   "/execute/"
    ;; full admin (everything) root permissions
    "/"])
 
@@ -682,7 +680,7 @@
                        :details    :yes}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
-                   (select-keys [db-id :execute]))))))))
+                   (select-keys [db-id]))))))))
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
@@ -717,7 +715,6 @@
             (is (= nil
                    (perms)))))))))
 
-
 (deftest get-graph-should-unescape-slashes-test
   (testing "If a schema name contains slash, getting graph should unescape it"
     (testing "slash"
@@ -735,6 +732,22 @@
                (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas])
                    keys
                    first)))))))
+
+(deftest no-op-partial-graph-updates
+  (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
+    (mt/with-temp PermissionsGroup [group]
+      ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
+      (mt/with-current-user 1
+        (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
+                                                   :revision (:revision (perms/data-perms-graph))})))
+        (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
+                                                   :revision (:revision (perms/data-perms-graph))})))
+
+        (perms/grant-permissions! group (perms/data-perms-path (mt/id)))
+        (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :write :schemas :all}}}}
+                                                   :revision (:revision (perms/data-perms-graph))})))
+        (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :write :schemas :all}}}}
+                                                   :revision (:revision (perms/data-perms-graph))})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |

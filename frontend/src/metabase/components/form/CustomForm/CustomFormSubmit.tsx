@@ -50,6 +50,9 @@ function CustomFormSubmit({
   );
 }
 
+/**
+ * @deprecated
+ */
 const CustomFormSubmitLegacyContext = (
   props: CustomFormSubmitProps,
   context: CustomFormLegacyContext,

@@ -8,7 +8,7 @@ import type {
   ClickBehaviorParameterMapping,
   WritebackAction,
 } from "metabase-types/api";
-import type { UiParameter } from "metabase/parameters/types";
+import type { UiParameter } from "metabase-lib/parameters/types";
 
 import {
   turnClickBehaviorParameterMappingsIntoDashCardMappings,

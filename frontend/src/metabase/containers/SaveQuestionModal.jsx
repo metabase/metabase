@@ -9,10 +9,20 @@ import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import * as Q_DEPRECATED from "metabase-lib/lib/queries/utils";
-import { generateQueryDescription } from "metabase-lib/lib/queries/utils/description";
+import * as Q_DEPRECATED from "metabase-lib/queries/utils";
+import { generateQueryDescription } from "metabase-lib/queries/utils/description";
 
 import "./SaveQuestionModal.css";
+
+const getSingleStepTitle = (questionType, showSaveType) => {
+  if (questionType === "model") {
+    return t`Save model`;
+  } else if (showSaveType) {
+    return t`Save question`;
+  } else {
+    return t`Save new question`;
+  }
+};
 
 export default class SaveQuestionModal extends Component {
   static propTypes = {
@@ -104,16 +114,15 @@ export default class SaveQuestionModal extends Component {
         ? t`First, save your question`
         : t`First, save your model`;
 
-    const singleStepTitle =
-      questionType === "question" ? t`Save question` : t`Save model`;
-
-    const title = this.props.multiStep ? multiStepTitle : singleStepTitle;
-
     const showSaveType =
       !card.id &&
       !!originalCard &&
       !originalCard.dataset &&
       originalCard.can_write;
+
+    const singleStepTitle = getSingleStepTitle(questionType, showSaveType);
+
+    const title = this.props.multiStep ? multiStepTitle : singleStepTitle;
 
     const nameInputPlaceholder =
       questionType === "question"

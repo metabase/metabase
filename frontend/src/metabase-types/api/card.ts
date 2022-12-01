@@ -2,11 +2,13 @@ import { DatasetQuery } from "./query";
 
 export interface Card extends UnsavedCard {
   id: CardId;
+  collection_id: number | null;
   name: string;
   description: string | null;
   dataset: boolean;
   can_write: boolean;
   cache_ttl: number | null;
+  query_average_duration?: number | null;
   last_query_start: string | null;
   archived: boolean;
 
@@ -30,12 +32,14 @@ export interface UnsavedCard {
 export type SeriesSettings = {
   title: string;
   color?: string;
+  show_series_values?: boolean;
 };
 
 export type SeriesOrderSetting = {
   name: string;
-  originalIndex: number;
+  key: string;
   enabled: boolean;
+  color?: string;
 };
 
 export type VisualizationSettings = {
@@ -65,6 +69,9 @@ export type VisualizationSettings = {
   series_settings?: Record<string, SeriesSettings>;
 
   "graph.series_order"?: SeriesOrderSetting[];
+
+  // Funnel settings
+  "funnel.rows"?: SeriesOrderSetting[];
 
   [key: string]: any;
 };

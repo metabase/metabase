@@ -1,9 +1,9 @@
 import React from "react";
 
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import type Query from "metabase-lib/lib/queries/Query";
+import type Query from "metabase-lib/queries/Query";
 
-import type Question from "metabase-lib/lib/Question";
+import type Question from "metabase-lib/Question";
 import { EditorContainer } from "./ActionCreator.styled";
 
 export function QueryActionEditor({

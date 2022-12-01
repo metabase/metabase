@@ -3,6 +3,7 @@
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.action :as action]
             [metabase.models.collection :as collection]
@@ -328,18 +329,34 @@
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]
-  [:name (serdes.hash/hydrated-hash :collection)])
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
-(defmethod serdes.base/extract-query "Card" [_ {:keys [user]}]
-  (serdes.base/raw-reducible-query
-   "Card"
-   {:select     [:card.*]
-    :from       [[:report_card :card]]
-    :left-join  [[:collection :coll] [:= :coll.id :card.collection_id]]
-    :where      (if user
-                  [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                  [:is :coll.personal_owner_id nil])}))
+(defmethod serdes.base/extract-query "Card" [_ opts]
+  (serdes.base/extract-query-collections Card opts))
+
+(defn- export-result-metadata [metadata]
+  (when metadata
+    (for [m metadata]
+      (-> m
+          (m/update-existing :table_id  serdes.util/export-table-fk)
+          (m/update-existing :id        serdes.util/export-field-fk)
+          (m/update-existing :field_ref serdes.util/export-mbql)))))
+
+(defn- import-result-metadata [metadata]
+  (when metadata
+    (for [m metadata]
+      (-> m
+          (m/update-existing :table_id  serdes.util/import-table-fk)
+          (m/update-existing :id        serdes.util/import-field-fk)
+          (m/update-existing :field_ref serdes.util/import-mbql)))))
+
+(defn- result-metadata-deps [metadata]
+  (when (seq metadata)
+    (reduce set/union (for [m (seq metadata)]
+                        (reduce set/union (serdes.util/mbql-deps (:field_ref m))
+                                [(when (:table_id m) #{(serdes.util/table->path (:table_id m))})
+                                 (when (:id m)       #{(serdes.util/field->path (:id m))})])))))
 
 (defmethod serdes.base/extract-one "Card"
   [_model-name _opts card]
@@ -347,16 +364,19 @@
   ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
   ;; :collection_id is extracted as its entity_id or identity-hash.
   ;; :creator_id as the user's email.
-  (-> (serdes.base/extract-one-basics "Card" card)
-      (update :database_id            serdes.util/export-fk-keyed 'Database :name)
-      (update :table_id               serdes.util/export-table-fk)
-      (update :collection_id          serdes.util/export-fk 'Collection)
-      (update :creator_id             serdes.util/export-user)
-      (update :made_public_by_id      serdes.util/export-user)
-      (update :dataset_query          serdes.util/export-json-mbql)
-      (update :parameter_mappings     serdes.util/export-parameter-mappings)
-      (update :visualization_settings serdes.util/export-visualization-settings)
-      (dissoc :result_metadata))) ; Not portable, and can be rebuilt on the other side.
+  (try
+    (-> (serdes.base/extract-one-basics "Card" card)
+        (update :database_id            serdes.util/export-fk-keyed 'Database :name)
+        (update :table_id               serdes.util/export-table-fk)
+        (update :collection_id          serdes.util/export-fk 'Collection)
+        (update :creator_id             serdes.util/export-user)
+        (update :made_public_by_id      serdes.util/export-user)
+        (update :dataset_query          serdes.util/export-mbql)
+        (update :parameter_mappings     serdes.util/export-parameter-mappings)
+        (update :visualization_settings serdes.util/export-visualization-settings)
+        (update :result_metadata        export-result-metadata))
+    (catch Exception e
+      (throw (ex-info "Failed to export Card" {:card card} e)))))
 
 (defmethod serdes.base/load-xform "Card"
   [card]
@@ -367,18 +387,20 @@
       (update :creator_id             serdes.util/import-user)
       (update :made_public_by_id      serdes.util/import-user)
       (update :collection_id          serdes.util/import-fk 'Collection)
-      (update :dataset_query          serdes.util/import-json-mbql)
+      (update :dataset_query          serdes.util/import-mbql)
       (update :parameter_mappings     serdes.util/import-parameter-mappings)
-      (update :visualization_settings serdes.util/import-visualization-settings)))
+      (update :visualization_settings serdes.util/import-visualization-settings)
+      (update :result_metadata        import-result-metadata)))
 
 (defmethod serdes.base/serdes-dependencies "Card"
-  [{:keys [collection_id database_id dataset_query parameter_mappings table_id visualization_settings]}]
+  [{:keys [collection_id database_id dataset_query parameter_mappings result_metadata table_id visualization_settings]}]
   (->> (map serdes.util/mbql-deps parameter_mappings)
        (reduce set/union)
        (set/union #{[{:model "Database" :id database_id}]})
        ; table_id and collection_id are nullable.
        (set/union (when table_id #{(serdes.util/table->path table_id)}))
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
+       (set/union (result-metadata-deps result_metadata))
        (set/union (serdes.util/mbql-deps dataset_query))
        (set/union (serdes.util/visualization-settings-deps visualization_settings))
        vec))
@@ -394,3 +416,5 @@
       (when (seq template-tags)
         (set (for [{:keys [card-id]} template-tags]
                ["Card" card-id]))))))
+
+(serdes.base/register-ingestion-path! "Card" (serdes.base/ingestion-matcher-collected "collections" "Card"))

@@ -21,7 +21,7 @@ export const VerticalGoalLine = ({
   const textAnchor = position === "right" ? "start" : "end";
 
   return (
-    <>
+    <g role="graphics-symbol" aria-roledescription="goal line">
       <Text
         y={0}
         textAnchor={textAnchor}
@@ -43,6 +43,6 @@ export const VerticalGoalLine = ({
         x1={x}
         x2={x}
       />
-    </>
+    </g>
   );
 };

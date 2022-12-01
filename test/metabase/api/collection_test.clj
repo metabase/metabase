@@ -204,21 +204,21 @@
                       {:name "Rasta Toucan's Personal Collection", :children []}]
                      (collection-tree-view ids [:name :app_id] response))))
             (testing "Make sure each Collection comes back with the expected keys"
-              (is (= {:description       nil
-                      :archived          false
-                      :entity_id         (:entity_id personal-collection)
-                      :slug              "rasta_toucan_s_personal_collection"
-                      :color             "#31698A"
-                      :name              "Rasta Toucan's Personal Collection"
-                      :personal_owner_id (mt/user->id :rasta)
-                      :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
-                      :location          "/"
-                      :namespace         nil
-                      :children          []
-                      :authority_level   nil}
-                     (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
-                              %)
-                           response)))))))
+              (is (partial= {:description       nil
+                             :archived          false
+                             :entity_id         (:entity_id personal-collection)
+                             :slug              "rasta_toucan_s_personal_collection"
+                             :color             "#31698A"
+                             :name              "Rasta Toucan's Personal Collection"
+                             :personal_owner_id (mt/user->id :rasta)
+                             :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
+                             :location          "/"
+                             :namespace         nil
+                             :children          []
+                             :authority_level   nil}
+                            (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
+                                     %)
+                                  response)))))))
       (testing "Excludes archived collections (#19603)"
         (mt/with-temp* [Collection [a {:name "A"}]
                         Collection [b {:name     "B archived"
@@ -234,20 +234,20 @@
 
     (testing "for personal collections, it should return name and slug in user's locale"
       (with-french-user-and-personal-collection user collection
-        (is (= {:description       nil
-                :archived          false
-                :entity_id         (:entity_id collection)
-                :slug              "collection_personnelle_de_taco_bell"
-                :color             "#ABCDEF"
-                :name              "Collection personnelle de Taco Bell"
-                :personal_owner_id (:id user)
-                :id                (:id collection)
-                :location          "/"
-                :namespace         nil
-                :children          []
-                :authority_level   nil}
-               (some #(when (= (:id %) (:id collection)) %)
-                     (mt/user-http-request user :get 200 "collection/tree"))))))))
+        (is (partial= {:description       nil
+                       :archived          false
+                       :entity_id         (:entity_id collection)
+                       :slug              "collection_personnelle_de_taco_bell"
+                       :color             "#ABCDEF"
+                       :name              "Collection personnelle de Taco Bell"
+                       :personal_owner_id (:id user)
+                       :id                (:id collection)
+                       :location          "/"
+                       :namespace         nil
+                       :children          []
+                       :authority_level   nil}
+                      (some #(when (= (:id %) (:id collection)) %)
+                            (mt/user-http-request user :get 200 "collection/tree"))))))))
 
 (deftest collection-tree-child-permissions-test
   (testing "GET /api/collection/tree"
@@ -264,7 +264,7 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) child-collection)
           (is (= [{:name "Child", :children []}]
                  (collection-tree-view (map :id [parent-collection child-collection])
-                                             (mt/user-http-request :rasta :get 200 "collection/tree")))))))
+                                       (mt/user-http-request :rasta :get 200 "collection/tree")))))))
 
     (testing "Namespace parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
@@ -813,9 +813,9 @@
                            :can_write                                true}]
     :effective_location  "/"
     :parent_id           nil
-    :entity_id           (:entity_id (collection/user->personal-collection (mt/user->id :lucky)))
-    :id                  (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))
-    :location            "/"}))
+    :location            "/"}
+   (select-keys (collection/user->personal-collection (mt/user->id :lucky))
+                [:id :entity_id :created_at])))
 
 (defn- lucky-personal-collection-id
   []
@@ -1167,6 +1167,15 @@
                           :fully_parametrized  false}]
                         (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))
 
+      (testing "is true if invalid parameter syntax causes a parsing exception to be thrown"
+        (mt/with-temp Card [card {:name          "Business Card"
+                                  :dataset_query {:native {:query "select [[]]"}}}]
+          (is (partial= [{:name                "Business Card"
+                          :entity_id           (:entity_id card)
+                          :model               "card"
+                          :fully_parametrized  true}]
+                        (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))))))
+
       (testing "is true if all obligatory parameters have defaults"
         (mt/with-temp Card [card {:name          "Business Card"
                                   :dataset_query {:native {:template-tags {:param0 {:required false, :default 0}
@@ -1313,17 +1322,17 @@
   (testing "POST /api/collection"
     (testing "\ntest that we can create a new collection"
       (mt/with-model-cleanup [Collection]
-        (is (= (merge
-                (mt/object-defaults Collection)
-                {:name              "Stamp Collection"
-                 :slug              "stamp_collection"
-                 :color             "#123456"
-                 :archived          false
-                 :location          "/"
-                 :personal_owner_id nil})
-               (-> (mt/user-http-request :crowberto :post 200 "collection"
-                                         {:name "Stamp Collection", :color "#123456"})
-                   (dissoc :id :entity_id))))))
+        (is (partial= (merge
+                       (mt/object-defaults Collection)
+                       {:name              "Stamp Collection"
+                        :slug              "stamp_collection"
+                        :color             "#123456"
+                        :archived          false
+                        :location          "/"
+                        :personal_owner_id nil})
+                      (-> (mt/user-http-request :crowberto :post 200 "collection"
+                                                {:name "Stamp Collection", :color "#123456"})
+                          (dissoc :id :entity_id))))))
 
     (testing "\ntest that non-admins aren't allowed to create a collection in the root collection"
       (mt/with-non-admin-groups-no-root-collection-perms
@@ -1337,36 +1346,36 @@
           (mt/with-temp* [PermissionsGroup           [group]
                           PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
             (perms/grant-collection-readwrite-permissions! group collection/root-collection)
-            (is (= (merge
-                    (mt/object-defaults Collection)
-                    {:name     "Stamp Collection"
-                     :color    "#123456"
-                     :location "/"
-                     :slug     "stamp_collection"})
-                   (dissoc (mt/user-http-request :rasta :post 200 "collection"
-                                                 {:name "Stamp Collection", :color "#123456"})
-                           :id :entity_id)))))))
+            (is (partial= (merge
+                           (mt/object-defaults Collection)
+                           {:name     "Stamp Collection"
+                            :color    "#123456"
+                            :location "/"
+                            :slug     "stamp_collection"})
+                          (dissoc (mt/user-http-request :rasta :post 200 "collection"
+                                                        {:name "Stamp Collection", :color "#123456"})
+                                  :id :entity_id)))))))
 
     (testing "\nCan I create a Collection as a child of an existing collection?"
       (mt/with-model-cleanup [Collection]
         (with-collection-hierarchy [a c d]
-          (is (= (merge
-                  (mt/object-defaults Collection)
-                  {:id          true
-                   :entity_id   true
-                   :name        "Trading Card Collection"
-                   :slug        "trading_card_collection"
-                   :description "Collection of basketball cards including limited-edition holographic Draymond Green"
-                   :color       "#ABCDEF"
-                   :location    "/A/C/D/"})
-                 (-> (mt/user-http-request :crowberto :post 200 "collection"
-                                           {:name        "Trading Card Collection"
-                                            :color       "#ABCDEF"
-                                            :description "Collection of basketball cards including limited-edition holographic Draymond Green"
-                                            :parent_id   (u/the-id d)})
-                     (update :location collection-test/location-path-ids->names)
-                     (update :id integer?)
-                     (update :entity_id string?)))))))
+          (is (partial= (merge
+                         (mt/object-defaults Collection)
+                         {:id          true
+                          :entity_id   true
+                          :name        "Trading Card Collection"
+                          :slug        "trading_card_collection"
+                          :description "Collection of basketball cards including limited-edition holographic Draymond Green"
+                          :color       "#ABCDEF"
+                          :location    "/A/C/D/"})
+                        (-> (mt/user-http-request :crowberto :post 200 "collection"
+                                                  {:name        "Trading Card Collection"
+                                                   :color       "#ABCDEF"
+                                                   :description "Collection of basketball cards including limited-edition holographic Draymond Green"
+                                                   :parent_id   (u/the-id d)})
+                            (update :location collection-test/location-path-ids->names)
+                            (update :id integer?)
+                            (update :entity_id string?)))))))
 
     (testing "\nShould be able to create a Collection in a different namespace"
       (let [collection-name (mt/random-name)]
@@ -1384,17 +1393,18 @@
     (testing "collection types"
       (mt/with-model-cleanup [Collection]
         (testing "Admins should be able to create with a type"
-          (is (schema= {:description (s/eq nil)
-                        :archived (s/eq false)
-                        :slug (s/eq "foo")
-                        :color (s/eq "#f38630")
-                        :name (s/eq "foo")
+          (is (schema= {:description       (s/eq nil)
+                        :archived          (s/eq false)
+                        :slug              (s/eq "foo")
+                        :color             (s/eq "#f38630")
+                        :name              (s/eq "foo")
                         :personal_owner_id (s/eq nil)
-                        :authority_level (s/eq "official")
-                        :id s/Int
-                        :location  (s/eq "/")
-                        :entity_id (s/maybe su/NanoIdString)
-                        :namespace (s/eq nil)}
+                        :authority_level   (s/eq "official")
+                        :id                s/Int
+                        :location          (s/eq "/")
+                        :entity_id         (s/maybe su/NanoIdString)
+                        :namespace         (s/eq nil)
+                        :created_at        java.time.temporal.Temporal}
                        (mt/user-http-request :crowberto :post 200 "collection"
                                              {:name "foo", :color "#f38630", :authority_level "official"})))
           (testing "But they have to be valid types"
@@ -1412,18 +1422,18 @@
   (testing "PUT /api/collection/:id"
     (testing "test that we can update a collection"
       (mt/with-temp Collection [collection]
-        (is (= (merge
-                (mt/object-defaults Collection)
-                {:id        (u/the-id collection)
-                 :name      "My Beautiful Collection"
-                 :slug      "my_beautiful_collection"
-                 :entity_id (:entity_id collection)
-                 :color     "#ABCDEF"
-                 :location  "/"
-                 :authority_level "official"
-                 :parent_id nil})
-               (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                     {:name "My Beautiful Collection", :color "#ABCDEF", :authority_level "official"})))))
+        (is (partial= (merge
+                       (mt/object-defaults Collection)
+                       {:id              (u/the-id collection)
+                        :name            "My Beautiful Collection"
+                        :slug            "my_beautiful_collection"
+                        :entity_id       (:entity_id collection)
+                        :color           "#ABCDEF"
+                        :location        "/"
+                        :authority_level "official"
+                        :parent_id       nil})
+                      (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
+                                            {:name "My Beautiful Collection", :color "#ABCDEF", :authority_level "official"})))))
     (testing "Admins can edit the type"
       (mt/with-temp Collection [collection]
         (is (= "official"
@@ -1514,20 +1524,20 @@
   (testing "PUT /api/collection/:id"
     (testing "Can I *change* the `location` of a Collection? (i.e. move it into a different parent Collection)"
       (with-collection-hierarchy [a b e]
-        (is (= (merge
-                (mt/object-defaults Collection)
-                {:id        true
-                 :entity_id true
-                 :name      "E"
-                 :slug      "e"
-                 :color     "#ABCDEF"
-                 :location  "/A/B/"
-                 :parent_id (u/the-id b)})
-               (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id e))
-                                         {:parent_id (u/the-id b)})
-                   (update :location collection-test/location-path-ids->names)
-                   (update :id integer?)
-                   (update :entity_id string?))))))
+        (is (partial= (merge
+                       (mt/object-defaults Collection)
+                       {:id        true
+                        :entity_id true
+                        :name      "E"
+                        :slug      "e"
+                        :color     "#ABCDEF"
+                        :location  "/A/B/"
+                        :parent_id (u/the-id b)})
+                      (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id e))
+                                                {:parent_id (u/the-id b)})
+                          (update :location collection-test/location-path-ids->names)
+                          (update :id integer?)
+                          (update :entity_id string?))))))
 
     (testing "I shouldn't be allowed to move an App away from root."
       (mt/with-temp* [Collection [collection-a]

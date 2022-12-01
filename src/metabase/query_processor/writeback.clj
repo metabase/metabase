@@ -2,22 +2,14 @@
   "Code for executing writeback queries."
   (:require
    [clojure.tools.logging :as log]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.parameters :as parameters]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]))
-
-(def ^:private execution-middleware
-  "Middleware that happens after compilation, AROUND query execution itself. Has the form
-
-    (f (f query rff context)) -> (f query rff context)"
-  [#'qp.perms/check-query-action-permissions])
 
 (defn- map-parameters
   "Take the `parameters` map passed in to an endpoint like `POST /api/emitter/:id/execute` and map it to the parameters
@@ -70,7 +62,7 @@
               ;; ok, now execute the query.
               (log/debugf "Executing query\n\n%s" (u/pprint-to-str query))
               (driver/execute-write-query! driver/*driver* query)))]
-    (apply-middleware qp* (concat execution-middleware qp/around-middleware))))
+    (apply-middleware qp* qp/around-middleware)))
 
 (defn execute-write-query!
   "Execute an writeback query from an `is_write` SavedQuestion."
@@ -112,12 +104,9 @@
     (let [parameters (map-parameters parameters (:parameter_mappings emitter))
           query      (assoc (:dataset_query card) :parameters parameters)]
       (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
-      (binding [qp.perms/*card-id* (:id card)]
-        (execute-write-query! query)))
+      (execute-write-query! query))
     (catch Throwable e
-      (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-        (api/throw-403 e)
-        (throw (ex-info (tru "Error executing QueryEmitter: {0}" (ex-message e))
-                        {:emitter    emitter
-                         :parameters parameters}
-                        e))))))
+      (throw (ex-info (tru "Error executing QueryEmitter: {0}" (ex-message e))
+                      {:emitter    emitter
+                       :parameters parameters}
+                      e)))))

@@ -1,7 +1,7 @@
 import React from "react";
 import { t, ngettext, msgid } from "ttag";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import Field from "metabase-lib/lib/metadata/Field";
+import Field from "metabase-lib/metadata/Field";
 import {
   NodeListItemLink,
   NodeListItemName,
@@ -14,7 +14,7 @@ import {
 
 interface FieldListProps {
   fields: Field[];
-  onFieldClick: (field: Field) => any;
+  onFieldClick: (field: Field) => void;
 }
 
 const FieldList = ({ fields, onFieldClick }: FieldListProps) => (

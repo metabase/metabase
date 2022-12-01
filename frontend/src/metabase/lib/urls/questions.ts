@@ -4,7 +4,7 @@ import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { Card as BaseCard } from "metabase-types/types/Card";
-import Question, { QuestionCreatorOpts } from "metabase-lib/lib/Question";
+import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
 
 import { appendSlug, extractQueryParams } from "./utils";
 
@@ -79,9 +79,7 @@ export function question(
     path = appendSlug(path, slugg(name));
   }
 
-  if (isModel && isModelDetail) {
-    path = `${path}/detail`;
-  } else if (objectId) {
+  if (objectId) {
     path = `${path}/${objectId}`;
   }
 

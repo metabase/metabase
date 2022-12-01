@@ -16,7 +16,8 @@
     sandboxed permission try to get values of a Field.
     Normally these FieldValues will be deleted after [[advanced-field-values-max-age]] days by the scanning process.
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
@@ -440,9 +441,50 @@
                     ;; It's too short, so no schema. Shift them over and add a nil schema.
                     [db nil schema table])]
     (-> (serdes.base/load-xform-basics fv)
-        (assoc :field_id (serdes.util/import-field-fk field-ref)))))
+        (assoc :field_id (serdes.util/import-field-fk field-ref))
+        (update :type keyword))))
 
 (defmethod serdes.base/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
-  (let [field-id (serdes.base/load-find-local (pop path))]
-    (db/select-one-id FieldValues :field_id field-id)))
+  (let [field (serdes.base/load-find-local (pop path))]
+    (db/select-one FieldValues :field_id (:id field))))
+
+(defmethod serdes.base/load-update! "FieldValues" [_ ingested local]
+  ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
+  ;; This drops those keys from the incoming FieldValues iff they match the local one. If they are actually different,
+  ;; this preserves the new value so the normal error is produced.
+  (let [ingested (cond-> ingested
+                   (= (:type ingested)     (:type local))     (dissoc :type)
+                   (= (:hash_key ingested) (:hash_key local)) (dissoc :hash_key))]
+    ((get-method serdes.base/load-update! "") "FieldValues" ingested local)))
+
+(def ^:private field-values-slug "___fieldvalues")
+
+(defmethod serdes.base/storage-path "FieldValues" [fv _]
+  ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
+  ;; don't have their own directories.
+  (let [hierarchy    (serdes.base/serdes-path fv)
+        field        (last (drop-last hierarchy))
+        table-prefix (serdes.util/storage-table-path-prefix (drop-last 2 hierarchy))]
+    (concat table-prefix
+            ["fields" (str (:id field) field-values-slug)])))
+
+(serdes.base/register-ingestion-path!
+  "FieldValues"
+  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id___fieldvalues"]
+  ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id___fieldvalues"]
+  (fn [path]
+    (when-let [{db     "databases"
+                schema "schemas"
+                table  "tables"
+                field  "fields"}   (and (#{6 8} (count path))
+                                        (str/ends-with? (last path) field-values-slug)
+                                        (serdes.base/ingestion-matcher-pairs
+                                          path [["databases" "schemas" "tables" "fields"]
+                                                ["databases" "tables" "fields"]]))]
+      (filterv identity [{:model "Database" :id db}
+                         (when schema {:model "Schema" :id schema})
+                         {:model "Table" :id table}
+                         {:model "Field" :id (subs field 0 (- (count field) (count field-values-slug)))}
+                         ;; FieldValues is always just ID 0, since there's at most one as part of the field.
+                         {:model "FieldValues" :id "0"}]))))

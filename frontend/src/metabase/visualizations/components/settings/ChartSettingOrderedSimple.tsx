@@ -1,35 +1,42 @@
 import { updateIn } from "icepick";
 import React from "react";
 import { t } from "ttag";
+import { Series } from "metabase-types/types/Visualization";
 
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";
-
 import {
   ChartSettingMessage,
   ChartSettingOrderedSimpleRoot,
 } from "./ChartSettingOrderedSimple.styled";
 
 interface SortableItem {
+  key: string;
   enabled: boolean;
-  originalIndex: number;
   name: string;
+  color?: string;
 }
 
 interface ChartSettingOrderedSimpleProps {
   onChange: (rows: SortableItem[]) => void;
-  items: SortableItem[];
   value: SortableItem[];
+  onShowWidget: (
+    widget: { props: { seriesKey: string } },
+    ref: HTMLElement | undefined,
+  ) => void;
+  series: Series;
+  hasEditSettings: boolean;
+  onChangeSeriesColor: (seriesKey: string, color: string) => void;
 }
 
 export const ChartSettingOrderedSimple = ({
   onChange,
-  items,
   value: orderedItems,
+  onShowWidget,
+  hasEditSettings = true,
+  onChangeSeriesColor,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = (selectedItem: SortableItem) => {
-    const index = orderedItems.findIndex(
-      item => item.originalIndex === selectedItem.originalIndex,
-    );
+    const index = orderedItems.findIndex(item => item.key === selectedItem.key);
     onChange(updateIn(orderedItems, [index, "enabled"], enabled => !enabled));
   };
 
@@ -46,7 +53,22 @@ export const ChartSettingOrderedSimple = ({
   };
 
   const getItemTitle = (item: SortableItem) => {
-    return items[item.originalIndex]?.name || "Unknown";
+    return item.name || "Unknown";
+  };
+
+  const handleOnEdit = (item: SortableItem, ref: HTMLElement | undefined) => {
+    onShowWidget(
+      {
+        props: {
+          seriesKey: item.key,
+        },
+      },
+      ref,
+    );
+  };
+
+  const handleColorChange = (item: SortableItem, color: string) => {
+    onChangeSeriesColor(item.key, color);
   };
 
   return (
@@ -58,6 +80,8 @@ export const ChartSettingOrderedSimple = ({
           onRemove={toggleDisplay}
           onEnable={toggleDisplay}
           onSortEnd={handleSortEnd}
+          onEdit={hasEditSettings ? handleOnEdit : undefined}
+          onColorChange={handleColorChange}
           distance={5}
         />
       ) : (

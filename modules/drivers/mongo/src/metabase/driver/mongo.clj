@@ -221,12 +221,16 @@
                  :native-parameters]]
   (defmethod driver/supports? [:mongo feature] [_ _] true))
 
-(defn- db-major-version
-  [db]
-  (some-> (get-in db [:details :version])
-          (str/split #"\.")
-          first
-          Integer/parseInt))
+(defn- db-version [db]
+  (get-in db [:details :version]))
+
+(defn- parse-version [version]
+  (->> (str/split version #"\.")
+       (take 2)
+       (map #(Integer/parseInt %))))
+
+(defn- db-major-version [db]
+  (some-> (db-version db) parse-version first))
 
 (defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
   (let [version (db-major-version db)]
@@ -235,6 +239,12 @@
 (defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
   (let [version (db-major-version db)]
     (and (some? version) (>= version 5))))
+
+(defmethod driver/database-supports? [:mongo :now]
+  ;; The $$NOW aggregation expression was introduced in version 4.2.
+  [_ _ db]
+  (let [version (some-> (db-version db) parse-version)]
+    (and (some? version) (>= (first version) 4) (>= (second version) 2))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]

@@ -8,9 +8,8 @@ import _ from "underscore";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
 import TagEditorParam from "./TagEditorParam";
-import CardTagEditor from "./CardTagEditor";
 import TagEditorHelp from "./TagEditorHelp";
 
 export default class TagEditorSidebar extends React.Component {
@@ -48,9 +47,7 @@ export default class TagEditorSidebar extends React.Component {
       setParameterValue,
       onClose,
     } = this.props;
-
-    // The tag editor sidebar excludes snippets since they have a separate sidebar.
-    const tags = query.templateTagsWithoutSnippets();
+    const tags = query.variableTemplateTags();
     const database = query.database();
     const parameters = query.question().parameters();
     const parametersById = _.indexBy(parameters, "id");
@@ -87,8 +84,6 @@ export default class TagEditorSidebar extends React.Component {
               databaseFields={databaseFields}
               database={database}
               databases={databases}
-              query={query}
-              setDatasetQuery={setDatasetQuery}
               setTemplateTag={setTemplateTag}
               setParameterValue={setParameterValue}
             />
@@ -112,31 +107,22 @@ const SettingsPane = ({
   databaseFields,
   database,
   databases,
-  query,
-  setDatasetQuery,
   setTemplateTag,
   setParameterValue,
 }) => (
   <div>
     {tags.map(tag => (
       <div key={tags.name}>
-        {tag.type === "card" ? (
-          <CardTagEditor
-            query={query}
-            setDatasetQuery={setDatasetQuery}
-            tag={tag}
-          />
-        ) : (
-          <TagEditorParam
-            tag={tag}
-            parameter={parametersById[tag.id]}
-            databaseFields={databaseFields}
-            database={database}
-            databases={databases}
-            setTemplateTag={setTemplateTag}
-            setParameterValue={setParameterValue}
-          />
-        )}
+        <TagEditorParam
+          tag={tag}
+          key={tags.name}
+          parameter={parametersById[tag.id]}
+          databaseFields={databaseFields}
+          database={database}
+          databases={databases}
+          setTemplateTag={setTemplateTag}
+          setParameterValue={setParameterValue}
+        />
       </div>
     ))}
   </div>

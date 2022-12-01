@@ -18,14 +18,16 @@ import {
   GetState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
-import { Card, SavedCard } from "metabase-types/types/Card";
-import { cardIsEquivalent } from "metabase-lib/lib/queries/utils/card";
-import { normalize } from "metabase-lib/lib/queries/utils/normalize";
-import Question from "metabase-lib/lib/Question";
+import type { Card } from "metabase-types/types/Card";
+import { isSavedCard } from "metabase-types/guards";
+import { isNotNull } from "metabase/core/utils/types";
+import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
+import { normalize } from "metabase-lib/queries/utils/normalize";
+import Question from "metabase-lib/Question";
 import NativeQuery, {
   updateCardTemplateTagNames,
-} from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+} from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";
@@ -196,10 +198,6 @@ function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
-function isSavedCard(card: Card): card is SavedCard {
-  return !!(card as SavedCard).id;
-}
-
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 
 /**
@@ -225,7 +223,7 @@ export async function updateTemplateTagNames(
         }
       }),
     )
-  ).filter(Boolean);
+  ).filter(isNotNull);
   query = updateCardTemplateTagNames(query, referencedCards);
   if (query.hasSnippets()) {
     await dispatch(Snippets.actions.fetchList());
@@ -310,7 +308,7 @@ async function handleQBInit(
     question = question.lockDisplay();
 
     const currentUser = getUser(getState());
-    if (currentUser.is_qbnewb) {
+    if (currentUser?.is_qbnewb) {
       uiControls.isShowingNewbModal = true;
       MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
     }

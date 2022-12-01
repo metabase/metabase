@@ -11,7 +11,7 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type { UiParameter } from "metabase/parameters/types";
+import type { UiParameter } from "metabase-lib/parameters/types";
 
 import { SidebarContent } from "../ClickBehaviorSidebar.styled";
 

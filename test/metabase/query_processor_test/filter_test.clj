@@ -110,7 +110,7 @@
                (mt/format-rows-by [int]
                  (mt/run-mbql-query checkins
                    {:aggregation [[:count]]
-                    :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]}))))))))
+                    :filter      [:between !day.date "2015-04-01" "2015-05-01"]}))))))))
 
 (defn- mongo-major-version [db]
   (when (= driver/*driver* :mongo)
@@ -490,12 +490,12 @@
       (testing "make sure that filtering with timestamps truncating to minutes works (#4632)"
         (is (= 4
                (count-with-filter-clause checkins [:between
-                                                   [:datetime-field $timestamp :minute]
+                                                   !minute.timestamp
                                                    "2019-01-01T12:30:00"
                                                    "2019-01-14"])))))
     (testing "make sure that filtering with dates bucketing by weeks works (#4956)"
       (is (= 7
-             (count-with-filter-clause checkins [:= [:datetime-field $date :week] "2015-06-21T07:00:00.000000000-00:00"]))))))
+             (count-with-filter-clause checkins [:= !week.date "2015-06-21T07:00:00.000000000-00:00"]))))))
 
 (deftest string-escape-test
   ;; test `:sql` drivers that support native parameters

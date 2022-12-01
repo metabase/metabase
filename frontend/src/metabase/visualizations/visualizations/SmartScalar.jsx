@@ -15,8 +15,8 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
-import { isDate } from "metabase-lib/lib/types/utils/isa";
-import { formatBucketing } from "metabase-lib/lib/queries/utils/query-time";
+import { isDate } from "metabase-lib/types/utils/isa";
+import { formatBucketing } from "metabase-lib/queries/utils/query-time";
 
 import {
   PreviousValueContainer,
@@ -55,6 +55,7 @@ export default class Smart extends React.Component {
     "scalar.switch_positive_negative": {
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
+      inline: true,
     },
     click_behavior: {},
   };

@@ -1,57 +1,68 @@
 (ns metabase.models.user
-  (:require [clojure.data :as data]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [metabase.models.collection :as collection]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.models.permissions-group-membership :as perms-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.session :refer [Session]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
-            [metabase.util.password :as u.password]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.models :as models])
-  (:import java.util.UUID))
+  (:require
+   [clojure.data :as data]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.models.collection :as collection]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.permissions-group-membership
+    :as perms-group-membership
+    :refer [PermissionsGroupMembership]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.session :refer [Session]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [metabase.util.password :as u.password]
+   [metabase.util.schema :as su]
+   [schema.core :as schema]
+   [toucan.db :as db]
+   [toucan.models :as models])
+  (:import
+   (java.util UUID)))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel User :core_user)
 
+(def ^:private insert-default-values
+  {:date_joined  :%now
+   :last_login   nil
+   :is_active    true
+   :is_superuser false})
+
+(defn- hashed-password-values
+  "When User `:password` is specified for an `INSERT` or `UPDATE`, add a new `:password_salt`, and hash the password."
+  [{:keys [password], :as user}]
+  (when password
+    (assert (not (:password_salt user))
+            ;; this is dev-facing so it doesn't need to be i18n'ed
+            "Don't try to pass an encrypted password to insert! or update!. Password encryption is handled by pre- methods.")
+    (let [salt (str (random-uuid))]
+      {:password_salt salt
+       :password      (u.password/hash-bcrypt (str salt password))})))
+
 (defn- pre-insert [{:keys [email password reset_token locale], :as user}]
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
-  (assert (not (:password_salt user))
-          "Don't try to pass an encrypted password to (insert! User). Password encryption is handled by pre-insert.")
   (when locale
     (assert (i18n/available-locale? locale)))
-  (let [salt     (str (UUID/randomUUID))
-        defaults {:date_joined  :%now
-                  :last_login   nil
-                  :is_active    true
-                  :is_superuser false}]
-    ;; always salt + encrypt the password before putting new User in the DB
-    ;; TODO - we should do password encryption in pre-update too instead of in the session code
-    (merge
-     defaults
-     user
-     {:password_salt salt
-      :password      (u.password/hash-bcrypt (str salt password))}
-     ;; lower-case the email before saving
-     {:email (u/lower-case-en email)}
-     ;; if there's a reset token encrypt that as well
-     (when reset_token
-       {:reset_token (u.password/hash-bcrypt reset_token)})
-     ;; normalize the locale
-     (when locale
-       {:locale (i18n/normalized-locale-string locale)}))))
+  (merge
+   insert-default-values
+   user
+   (hashed-password-values user)
+   ;; lower-case the email before saving
+   {:email (u/lower-case-en email)}
+   ;; if there's a reset token encrypt that as well
+   (when reset_token
+     {:reset_token (u.password/hash-bcrypt reset_token)})
+   ;; normalize the locale
+   (when locale
+     {:locale (i18n/normalized-locale-string locale)})))
 
 (defn- post-insert [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
@@ -80,9 +91,8 @@
         (db/insert! PermissionsGroupMembership
           :group_id (u/the-id (perms-group/admin))
           :user_id  id)
-        ;; don't use `delete!` here because that does the opposite and tries to update this user
-        ;; which leads to a stack overflow of calls between the two
-        ;; TODO - could we fix this issue by using `post-delete!`?
+        ;; don't use [[db/delete!]] here because that does the opposite and tries to update this user which leads to a
+        ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              membership-exists?)
         (db/simple-delete! PermissionsGroupMembership
@@ -98,6 +108,7 @@
     (db/delete! 'PulseChannelRecipient :user_id id))
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
+    true        (merge (hashed-password-values user))
     reset-token (update :reset_token u.password/hash-bcrypt)
     locale      (update :locale i18n/normalized-locale-string)
     email       (update :email u/lower-case-en)))
@@ -161,9 +172,9 @@
   In which :is_group_manager is only included if `advanced-permissions` is enabled."
   {:id                                su/IntGreaterThanZero
    ;; is_group_manager only included if `advanced-permissions` is enabled
-   (s/optional-key :is_group_manager) s/Bool})
+   (schema/optional-key :is_group_manager) schema/Bool})
 
-(s/defn user-group-memberships :- (s/maybe [UserGroupMembership])
+(schema/defn user-group-memberships :- (schema/maybe [UserGroupMembership])
   "Return a list of group memberships a User belongs to.
   Group membership is a map  with 2 keys [:id :is_group_manager], in which `is_group_manager` will only returned if
   advanced-permissions is available."
@@ -258,26 +269,26 @@
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
   (su/with-api-error-message
-      {su/KeywordOrString s/Any}
+    {su/KeywordOrString schema/Any}
     (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  {(s/optional-key :first_name)       (s/maybe su/NonBlankString)
-   (s/optional-key :last_name)        (s/maybe su/NonBlankString)
-   :email                             su/Email
-   (s/optional-key :password)         (s/maybe su/NonBlankString)
-   (s/optional-key :login_attributes) (s/maybe LoginAttributes)
-   (s/optional-key :google_auth)      s/Bool
-   (s/optional-key :ldap_auth)        s/Bool})
+  {(schema/optional-key :first_name)       (schema/maybe su/NonBlankString)
+   (schema/optional-key :last_name)        (schema/maybe su/NonBlankString)
+   :email                                  su/Email
+   (schema/optional-key :password)         (schema/maybe su/NonBlankString)
+   (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
+   (schema/optional-key :google_auth)      schema/Bool
+   (schema/optional-key :ldap_auth)        schema/Bool})
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
   {:email      su/Email
-   :first_name (s/maybe su/NonBlankString)
-   s/Any       s/Any})
+   :first_name (schema/maybe su/NonBlankString)
+   schema/Any  schema/Any})
 
-(s/defn ^:private insert-new-user!
+(schema/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (db/insert! User (update new-user :password #(or % (str (UUID/randomUUID))))))
@@ -288,14 +299,14 @@
   [new-user]
   (insert-new-user! new-user))
 
-(s/defn create-and-invite-user!
+(schema/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
-  [new-user :- NewUser, invitor :- Invitor, setup? :- s/Bool]
+  [new-user :- NewUser, invitor :- Invitor, setup? :- schema/Bool]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
     (send-welcome-email! <> invitor setup?)))
 
-(s/defn create-new-google-auth-user!
+(schema/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
@@ -304,7 +315,7 @@
     (classloader/require 'metabase.email.messages)
     ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)))
 
-(s/defn create-new-ldap-auth-user!
+(schema/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will receive an email right away."
   [new-user :- NewUser]
@@ -314,19 +325,21 @@
        (dissoc :password)
        (assoc :ldap_auth true))))
 
+;;; TODO -- it seems like maybe this should just be part of the [[pre-update]] logic whenever `:password` changes; then
+;;; we can remove this function altogether.
 (defn set-password!
-  "Updates the stored password for a specified `User` by hashing the password with a random salt."
+  "Update the stored password for a specified `User`; kill any existing Sessions and wipe any password reset tokens.
+
+  The password is automatically hashed with a random salt; this happens in [[hashed-password-values]] which is called
+  by [[pre-insert]] or [[pre-update]])"
   [user-id password]
-  (let [salt     (str (UUID/randomUUID))
-        password (u.password/hash-bcrypt (str salt password))]
-    ;; when changing/resetting the password, kill any existing sessions
-    (db/simple-delete! Session :user_id user-id)
-    ;; NOTE: any password change expires the password reset token
-    (db/update! User user-id
-      :password_salt   salt
-      :password        password
-      :reset_token     nil
-      :reset_triggered nil)))
+  ;; when changing/resetting the password, kill any existing sessions
+  (db/simple-delete! Session :user_id user-id)
+  ;; NOTE: any password change expires the password reset token
+  (db/update! User user-id
+    :password        password
+    :reset_token     nil
+    :reset_triggered nil))
 
 (defn set-password-reset-token!
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."

@@ -1,4 +1,8 @@
-import { restore, openNativeEditor } from "__support__/e2e/helpers";
+import {
+  restore,
+  openNativeEditor,
+  openQuestionActions,
+} from "__support__/e2e/helpers";
 
 describe("scenarios > native question > data reference sidebar", () => {
   beforeEach(() => {
@@ -9,6 +13,9 @@ describe("scenarios > native question > data reference sidebar", () => {
   it("should show tables", () => {
     openNativeEditor();
     cy.icon("reference").click();
+    cy.get("[data-testid='sidebar-header-title']").findByText(
+      "Sample Database",
+    );
     cy.findByText("ORDERS").click();
     cy.findByText(
       "Confirmed Sample Company orders for a product, from a user.",
@@ -16,6 +23,13 @@ describe("scenarios > native question > data reference sidebar", () => {
     cy.findByText("9 columns");
     cy.findByText("QUANTITY").click();
     cy.findByText("Number of products bought.");
+    // clicking the title should navigate back
+    cy.findByText("QUANTITY").click();
+    cy.findByText("ORDERS").click();
+    cy.get("[data-testid='sidebar-header-title']")
+      .findByText("Sample Database")
+      .click();
+    cy.findByText("Data Reference");
   });
 
   it("should show models", () => {
@@ -28,11 +42,18 @@ describe("scenarios > native question > data reference sidebar", () => {
       },
       { visitQuestion: true },
     );
+    // Move question to personal collection
+    openQuestionActions();
+    cy.findByTestId("move-button").click();
+    cy.findByText("My personal collection").click();
+    cy.findByText("Move").click();
+
     openNativeEditor();
     cy.icon("reference").click();
     cy.findByText("1 model");
     cy.findByText("Native Products Model").click();
-    cy.findByText("A model of the Products table");
+    cy.findByText("A model of the Products table"); // description
+    cy.findByText("Bobby Tables's Personal Collection"); // collection
     cy.findByText("1 column");
     cy.findByText("RENAMED_ID").click();
     cy.findByText("No description");

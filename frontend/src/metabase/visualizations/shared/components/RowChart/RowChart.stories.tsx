@@ -1,5 +1,5 @@
 import React from "react";
-import { ComponentStory } from "@storybook/react";
+import type { ComponentStory } from "@storybook/react";
 import { measureText } from "metabase/lib/measure-text";
 import { getStaticChartTheme } from "metabase/static-viz/components/RowChart/theme";
 import { color } from "metabase/lib/colors";
@@ -67,8 +67,6 @@ Default.args = {
     label: "Very very very long goal label",
     value: 100,
   },
-
-  shouldShowDataLabels: true,
 
   xLabel: "X Label",
   yLabel: "Y Label",

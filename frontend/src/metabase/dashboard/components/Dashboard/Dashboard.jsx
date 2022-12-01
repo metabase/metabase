@@ -8,7 +8,7 @@ import { getMainElement } from "metabase/lib/dom";
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import { getValuePopulatedParameters } from "metabase-lib/lib/parameters/utils/parameter-values";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
@@ -130,6 +130,7 @@ class Dashboard extends Component {
   componentDidUpdate(prevProps) {
     if (prevProps.dashboardId !== this.props.dashboardId) {
       this.loadDashboard(this.props.dashboardId);
+      this.throttleParameterWidgetStickiness();
     } else if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
       (!prevProps.dashboard && this.props.dashboard)
@@ -263,7 +264,7 @@ class Dashboard extends Component {
               <HeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
-                isDataApp={dashboard.is_app_page}
+                isDataApp={false}
               >
                 <DashboardHeader
                   {...this.props}
@@ -313,7 +314,7 @@ class Dashboard extends Component {
                     />
                   ) : (
                     <DashboardEmptyState
-                      isDataApp={dashboard.is_app_page}
+                      isDataApp={false}
                       isNightMode={shouldRenderAsNightMode}
                     />
                   )}

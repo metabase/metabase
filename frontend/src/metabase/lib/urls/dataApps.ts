@@ -7,6 +7,8 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 
+import { isNavItem } from "metabase-types/guards";
+
 import { appendSlug } from "./utils";
 
 const DATA_APP_PAGE_URL_PATTERN = /\/a\/(\d+)\/page\/(\d+)/;
@@ -38,12 +40,6 @@ export function dataApp(
   }
 
   return appendSlug(`/a/${appId}`, slugg(appName));
-}
-
-function isNavItem(
-  object: Dashboard | DataAppNavItem,
-): object is DataAppNavItem {
-  return "page_id" in object;
 }
 
 export function dataAppPage(app: DataApp, object: Dashboard | DataAppNavItem) {

@@ -6,7 +6,7 @@ import cx from "classnames";
 
 import QuestionSelect from "metabase/containers/QuestionSelect";
 
-// import Query from "metabase-lib/lib/queries/utils";
+// import Query from "metabase-lib/queries/utils";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { color } from "metabase/lib/colors";

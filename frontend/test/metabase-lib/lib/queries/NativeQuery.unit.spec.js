@@ -7,11 +7,10 @@ import {
 } from "__support__/sample_database_fixture";
 
 import NativeQuery, {
-  replaceCardTagNameById,
   recognizeTemplateTags,
   cardIdFromTagName,
   updateCardTemplateTagNames,
-} from "metabase-lib/lib/queries/NativeQuery";
+} from "metabase-lib/queries/NativeQuery";
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
   return {
@@ -266,43 +265,6 @@ describe("NativeQuery", () => {
           "{{#1}} {{ #2 }} {{ #1-a-card-name }} {{ #1-a-card-name }}",
         );
         expect(q.templateTags().map(v => v["card-id"])).toEqual([1, 2, 1]);
-      });
-    });
-    describe("replaceCardTagNameById", () => {
-      it("should update the query text", () => {
-        const query = makeQuery().setQueryText("SELECT * from {{ #123 }}");
-        const newQuery = replaceCardTagNameById(
-          query,
-          "123",
-          "#456-a-card-name",
-        );
-        expect(newQuery.queryText()).toBe("SELECT * from {{#456-a-card-name}}");
-        const tags = newQuery.templateTags();
-        expect(tags.length).toBe(1);
-        const [{ "card-id": cardId, type, name }] = tags;
-        expect(cardId).toEqual(456);
-        expect(type).toEqual("card");
-        expect(name).toEqual("#456-a-card-name");
-      });
-
-      it("should perform multiple updates", () => {
-        const query = makeQuery().setQueryText(
-          "{{#123}} {{foo}} {{#1234}} {{ #123-original-card-name }}",
-        );
-        const newQuery = replaceCardTagNameById(
-          query,
-          "123",
-          "#456-a-card-name",
-        );
-        expect(newQuery.queryText()).toBe(
-          "{{#456-a-card-name}} {{foo}} {{#1234}} {{#456-a-card-name}}",
-        );
-      });
-
-      it("should replace a blank id", () => {
-        const query = makeQuery().setQueryText("{{#}} {{#123}}");
-        const newQuery = replaceCardTagNameById(query, "", "#456-a-card-name");
-        expect(newQuery.queryText()).toBe("{{#456-a-card-name}} {{#123}}");
       });
     });
   });

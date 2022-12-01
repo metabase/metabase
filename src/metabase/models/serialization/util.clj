@@ -20,18 +20,27 @@
 (defn export-fk
   "Given a numeric foreign key and its model (symbol, name or IModel), looks up the entity by ID and gets its entity ID
   or identity hash.
-  Unusual parameter order means this can be used as `(update x :some_id export-fk 'SomeModel)`."
+  Unusual parameter order means this can be used as `(update x :some_id export-fk 'SomeModel)`.
+
+  NOTE: This works for both top-level and nested entities. Top-level entities like `Card` are returned as just a
+  portable ID string.. Nested entities are returned as a vector of such ID strings."
   [id model]
   (when id
     (let [model-name (name model)
           model      (db/resolve-model (symbol model-name))
           entity     (db/select-one model (models/primary-key model) id)
-          {eid :id}  (serdes.base/infer-self-path model-name entity)]
-      eid)))
+          path       (mapv :id (serdes.base/serdes-generate-path model-name entity))]
+      (if (= (count path) 1)
+        (first path)
+        path))))
 
 (defn import-fk
-  "Given an entity ID or identity hash, and the model it represents (symbol, name or IModel), looks up the corresponding
+  "Given an identifier, and the model it represents (symbol, name or IModel), looks up the corresponding
   entity and gets its primary key.
+
+  The identifier can be a single entity ID string, a single identity-hash string, or a vector of entity ID and hash
+  strings. If the ID is compound, then the last ID is the one that corresponds to the model. This allows for the
+  compound IDs needed for nested entities like `DashboardCard`s to get their [[serdes.base/serdes-dependencies]].
 
   Throws if the corresponding entity cannot be found.
 
@@ -40,6 +49,9 @@
   (when eid
     (let [model-name (name model)
           model      (db/resolve-model (symbol model-name))
+          eid        (if (vector? eid)
+                       (last eid)
+                       eid)
           entity     (serdes.base/lookup-by-id model eid)]
       (if entity
         (get entity (models/primary-key model))
@@ -112,21 +124,40 @@
                   (when schema {:model "Schema" :id schema})
                   {:model "Table" :id table-name}]))
 
+(defn storage-table-path-prefix
+  "The [[serdes.base/storage-path]] for Table is a bit tricky, and shared with Fields and FieldValues, so it's
+  factored out here.
+  Takes the :serdes/meta value for a `Table`!
+  The return value includes the directory for the Table, but not the file for the Table itself.
+
+  With a schema: `[\"databases\" \"db_name\" \"schemas\" \"public\" \"tables\" \"customers\"]`
+  No schema:     `[\"databases\" \"db_name\" \"tables\" \"customers\"]`"
+  [path]
+  (let [db-name    (-> path first :id)
+        schema     (when (= (count path) 3)
+                     (-> path second :id))
+        table-name (-> path last :id)]
+    (concat ["databases" db-name]
+            (when schema ["schemas" schema])
+            ["tables" table-name])))
+
 ;; -------------------------------------------------- Fields ---------------------------------------------------------
 (defn export-field-fk
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
   [[import-field-fk]] is the inverse."
   [field-id]
-  (let [{:keys [name table_id]}     (db/select-one 'Field :id field-id)
-        [db-name schema field-name] (export-table-fk table_id)]
-    [db-name schema field-name name]))
+  (when field-id
+    (let [{:keys [name table_id]}     (db/select-one 'Field :id field-id)
+          [db-name schema field-name] (export-table-fk table_id)]
+      [db-name schema field-name name])))
 
 (defn import-field-fk
   "Given a `field_id` as exported by [[export-field-fk]], resolve it back into a numeric `field_id`."
-  [[db-name schema table-name field-name]]
-  (let [table_id (import-table-fk [db-name schema table-name])]
-    (db/select-one-id 'Field :table_id table_id :name field-name)))
+  [[db-name schema table-name field-name :as field-id]]
+  (when field-id
+    (let [table_id (import-table-fk [db-name schema table-name])]
+      (db/select-one-id 'Field :table_id table_id :name field-name))))
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
@@ -137,7 +168,7 @@
                   {:model "Table" :id table-name}
                   {:model "Field" :id field-name}]))
 
-;; ---------------------------------------------- JSON-encoded MBQL --------------------------------------------------
+;; ---------------------------------------------- MBQL Fields --------------------------------------------------------
 (defn- mbql-entity-reference?
   "Is given form an MBQL entity reference?"
   [form]
@@ -221,14 +252,11 @@
 
 ;(ids->fully-qualified-names {:aggregation [[:sum [:field 277405 nil]]]})
 
-(defn export-json-mbql
-  "Given a JSON string with an MBQL expression inside it, convert it to an EDN structure and turn the non-portable
-  Database, Table and Field IDs inside it into portable references. Returns it as an EDN structure, which is more
-  human-fiendly in YAML."
+(defn export-mbql
+  "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
+  inside it into portable references."
   [encoded]
-  (-> encoded
-      (json/parse-string true)
-      ids->fully-qualified-names))
+  (ids->fully-qualified-names encoded))
 
 (defn- portable-id?
   "True if the provided string is either an Entity ID or identity-hash string."
@@ -259,7 +287,9 @@
 
     {:database (fully-qualified-name :guard string?)}
     (-> &match
-        (assoc :database (db/select-one-id 'Database :name fully-qualified-name))
+        (assoc :database (if (= fully-qualified-name "database/__virtual")
+                           mbql.s/saved-questions-virtual-database-id
+                           (db/select-one-id 'Database :name fully-qualified-name)))
         mbql-fully-qualified-names->ids*) ; Process other keys
 
     {:card-id (entity-id :guard portable-id?)}
@@ -297,13 +327,10 @@
   [entity]
   (mbql-fully-qualified-names->ids* entity))
 
-(defn import-json-mbql
-  "Given an MBQL expression as an EDN structure with portable IDs embedded, convert the IDs back to raw numeric IDs
-  and then convert the result back into a JSON string."
+(defn import-mbql
+  "Given an MBQL expression as an EDN structure with portable IDs embedded, convert the IDs back to raw numeric IDs."
   [exported]
-  (-> exported
-      mbql-fully-qualified-names->ids
-      json/generate-string))
+  (mbql-fully-qualified-names->ids exported))
 
 
 (declare ^:private mbql-deps-map)
@@ -318,6 +345,10 @@
          ["field"    (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
          [:field-id  (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
          ["field-id" (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
+         [:metric    (field :guard portable-id?)] #{[{:model "Metric" :id field}]}
+         ["metric"   (field :guard portable-id?)] #{[{:model "Metric" :id field}]}
+         [:segment   (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
+         ["segment"  (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
          :else (reduce #(cond
                           (map? %2)    (into %1 (mbql-deps-map %2))
                           (vector? %2) (into %1 (mbql-deps-vector %2))
@@ -328,7 +359,9 @@
 (defn- mbql-deps-map [entity]
   (->> (for [[k v] entity]
          (cond
-           (and (= k :database)     (string? v))      #{[{:model "Database" :id v}]}
+           (and (= k :database)
+                (string? v)
+                (not= v "database/__virtual"))        #{[{:model "Database" :id v}]}
            (and (= k :source-table) (vector? v))      #{(table->path v)}
            (and (= k :source-table) (portable-id? v)) #{[{:model "Card" :id v}]}
            (and (= k :source-field) (vector? v))      #{(field->path v)}
@@ -349,35 +382,41 @@
     :else             (mbql-deps-vector [entity])))
 
 (defn export-parameter-mappings
-  "Given the :parameter_mappings field of a `Card` or `DashboardCard`, as a JSON-encoded list of objects, converts
+  "Given the :parameter_mappings field of a `Card` or `DashboardCard`, as a vector of maps, converts
   it to a portable form with the field IDs replaced with `[db schema table field]` references."
   [mappings]
-  (->> (json/parse-string mappings true)
-       (map ids->fully-qualified-names)))
+  (map ids->fully-qualified-names mappings))
 
 (defn import-parameter-mappings
   "Given the :parameter_mappings field as exported by serialization convert its field references
-  (`[db schema table field]`) back into raw IDs, and encode it back into JSON."
+  (`[db schema table field]`) back into raw IDs."
   [mappings]
   (->> mappings
        (map mbql-fully-qualified-names->ids)
-       (map #(m/update-existing % :card_id import-fk 'Card))
-       json/generate-string))
+       (map #(m/update-existing % :card_id import-fk 'Card))))
 
 (defn- export-visualizations [entity]
   (mbql.u/replace
     entity
     ["field-id" (id :guard number?)]
     ["field-id" (export-field-fk id)]
+    [:field-id (id :guard number?)]
+    [:field-id (export-field-fk id)]
 
     ["field-id" (id :guard number?) tail]
     ["field-id" (export-field-fk id) (export-visualizations tail)]
+    [:field-id (id :guard number?) tail]
+    [:field-id (export-field-fk id) (export-visualizations tail)]
 
     ["field" (id :guard number?)]
     ["field" (export-field-fk id)]
+    [:field (id :guard number?)]
+    [:field (export-field-fk id)]
 
     ["field" (id :guard number?) tail]
     ["field" (export-field-fk id) (export-visualizations tail)]
+    [:field (id :guard number?) tail]
+    [:field (export-field-fk id) (export-visualizations tail)]
 
     (_ :guard map?)
     (m/map-vals export-visualizations &match)
@@ -393,14 +432,10 @@
     (update-keys settings #(-> % json/parse-string export-visualizations json/generate-string))))
 
 (defn export-visualization-settings
-  "Given a JSON string encoding the visualization settings for a `Card` or `DashboardCard`, transform it to EDN and
-  convert all field-ids to portable `[db schema table field]` form."
+  "Given the `:visualization_settings` map, convert all its field-ids to portable `[db schema table field]` form."
   [settings]
   (when settings
     (-> settings
-        (json/parse-string (fn [k] (if (re-matches #"^[a-zA-Z0-9_\.\-]+$" k)
-                                     (keyword k)
-                                     k)))
         export-visualizations
         (update :column_settings export-column-settings))))
 
@@ -429,13 +464,12 @@
 
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
-  references into Field IDs and serialize back to JSON."
+  references into Field IDs."
   [settings]
   (when settings
     (-> settings
         import-visualizations
-        (update :column_settings import-column-settings)
-        json/generate-string)))
+        (update :column_settings import-column-settings))))
 
 (defn visualization-settings-deps
   "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.

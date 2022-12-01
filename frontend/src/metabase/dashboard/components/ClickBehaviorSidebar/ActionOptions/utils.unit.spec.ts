@@ -3,12 +3,12 @@ import type {
   ClickBehaviorParameterMapping,
   WritebackParameter,
 } from "metabase-types/api";
-import type { UiParameter } from "metabase/parameters/types";
-
 import {
   createMockDashboardActionButton,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
+import type { UiParameter } from "metabase-lib/parameters/types";
+
 import {
   turnClickBehaviorParameterMappingsIntoDashCardMappings,
   turnDashCardParameterMappingsIntoClickBehaviorMappings,

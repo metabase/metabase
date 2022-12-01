@@ -7,7 +7,7 @@ import cx from "classnames";
 
 import { color } from "metabase/lib/colors";
 
-import SchedulePicker from "metabase/components/SchedulePicker";
+import SchedulePicker from "metabase/containers/SchedulePicker";
 
 export default function CacheFieldValuesScheduleWidget({
   field,

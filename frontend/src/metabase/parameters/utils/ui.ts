@@ -1,9 +1,9 @@
 import _ from "underscore";
-import { UiParameter } from "metabase/parameters/types";
-import { isEqualsOperator } from "metabase-lib/lib/operators/utils";
+import { UiParameter } from "metabase-lib/parameters/types";
+import { isEqualsOperator } from "metabase-lib/operators/utils";
 
-import { getParameterType } from "metabase-lib/lib/parameters/utils/parameter-type";
-import { deriveFieldOperatorFromParameter } from "metabase-lib/lib/parameters/utils/operators";
+import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 
 export function getParameterIconName(parameter: UiParameter) {
   const type = getParameterType(parameter);

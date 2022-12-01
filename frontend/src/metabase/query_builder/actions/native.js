@@ -6,11 +6,14 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
 
+import Questions from "metabase/entities/questions";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   getTemplateTagsForParameters,
   getTemplateTagParameters,
-} from "metabase-lib/lib/parameters/utils/template-tags";
+} from "metabase-lib/parameters/utils/template-tags";
 import {
+  getDataReferenceStack,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getQuestion,
@@ -24,6 +27,50 @@ export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
   MetabaseAnalytics.trackStructEvent("QueryBuilder", "Toggle Data Reference");
 });
+
+export const SET_DATA_REFERENCE_STACK = "metabase/qb/SET_DATA_REFERENCE_STACK";
+export const setDataReferenceStack = createAction(SET_DATA_REFERENCE_STACK);
+
+export const POP_DATA_REFERENCE_STACK = "metabase/qb/POP_DATA_REFERENCE_STACK";
+export const popDataReferenceStack = createThunkAction(
+  POP_DATA_REFERENCE_STACK,
+  () => (dispatch, getState) => {
+    const stack = getDataReferenceStack(getState());
+    dispatch(setDataReferenceStack(stack.slice(0, -1)));
+  },
+);
+
+export const PUSH_DATA_REFERENCE_STACK =
+  "metabase/qb/PUSH_DATA_REFERENCE_STACK";
+export const pushDataReferenceStack = createThunkAction(
+  PUSH_DATA_REFERENCE_STACK,
+  item => (dispatch, getState) => {
+    const stack = getDataReferenceStack(getState());
+    dispatch(setDataReferenceStack(stack.concat([item])));
+  },
+);
+
+export const OPEN_DATA_REFERENCE_AT_QUESTION =
+  "metabase/qb/OPEN_DATA_REFERENCE_AT_QUESTION";
+export const openDataReferenceAtQuestion = createThunkAction(
+  OPEN_DATA_REFERENCE_AT_QUESTION,
+  id => async (dispatch, getState) => {
+    const action = await dispatch(
+      Questions.actions.fetch(
+        { id },
+        { noEvent: true, useCachedForbiddenError: true },
+      ),
+    );
+    const question = Questions.HACK_getObjectFromAction(action);
+    if (question) {
+      const database = getMetadata(getState()).database(question.database_id);
+      return [
+        { type: "database", item: database },
+        { type: "question", item: question },
+      ];
+    }
+  },
+);
 
 export const TOGGLE_TEMPLATE_TAGS_EDITOR =
   "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";

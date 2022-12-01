@@ -6,18 +6,18 @@ import type { NumberValue } from "d3-scale";
 import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
 import { HoveredData } from "metabase/visualizations/shared/types/events";
-import { RowChartView, RowChartViewProps } from "../RowChartView/RowChartView";
+import RowChartView, { RowChartViewProps } from "../RowChartView/RowChartView";
 import { ChartGoal } from "../../types/settings";
+import { ContinuousScaleType, Range } from "../../types/scale";
 import {
   getMaxYValuesCount,
   getChartMargin,
-  StackOffset,
-  calculateStackedBars,
-  calculateNonStackedBars,
   getRowChartGoal,
 } from "./utils/layout";
 import { getXTicks } from "./utils/ticks";
-import { RowChartTheme, Series } from "./types";
+import { RowChartTheme, Series, StackOffset } from "./types";
+import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
+import { addSideSpacingForTicksAndLabels, getChartScales } from "./utils/scale";
 
 const MIN_BAR_HEIGHT = 24;
 
@@ -33,25 +33,30 @@ export interface RowChartProps<TDatum> {
 
   trimData?: (data: TDatum[], maxLength: number) => TDatum[];
 
-  goal: ChartGoal | null;
+  goal?: ChartGoal | null;
   theme: RowChartTheme;
   stackOffset: StackOffset;
-  shouldShowDataLabels?: boolean;
+  labelledSeries?: string[] | null;
+
+  xValueRange?: Range;
 
   yLabel?: string;
   xLabel?: string;
+
+  hasXAxis?: boolean;
+  hasYAxis?: boolean;
 
   tickFormatters?: ChartTicksFormatters;
   labelsFormatter?: (value: NumberValue) => string;
   measureText: TextMeasurer;
 
-  xScaleType?: "linear" | "pow" | "log";
+  xScaleType?: ContinuousScaleType;
 
   style?: React.CSSProperties;
 
   hoveredData?: HoveredData | null;
-  onClick?: RowChartViewProps["onClick"];
-  onHover?: RowChartViewProps["onHover"];
+  onClick?: RowChartViewProps<TDatum>["onClick"];
+  onHover?: RowChartViewProps<TDatum>["onHover"];
 }
 
 export const RowChart = <TDatum,>({
@@ -66,10 +71,15 @@ export const RowChart = <TDatum,>({
   goal,
   theme,
   stackOffset,
-  shouldShowDataLabels,
+  labelledSeries,
 
   xLabel,
   yLabel,
+
+  hasXAxis = true,
+  hasYAxis = true,
+
+  xValueRange,
 
   tickFormatters = {
     xTickFormatter: defaultFormatter,
@@ -98,15 +108,36 @@ export const RowChart = <TDatum,>({
     [height, multipleSeries.length, stackOffset],
   );
 
-  const trimmedData = trimData?.(data, maxYValues) ?? data;
+  const trimmedData = useMemo(
+    () => trimData?.(data, maxYValues) ?? data,
+    [data, maxYValues, trimData],
+  );
+
+  const seriesData = useMemo(
+    () =>
+      stackOffset != null
+        ? calculateStackedBars<TDatum>(
+            trimmedData,
+            multipleSeries,
+            stackOffset,
+            seriesColors,
+            xScaleType,
+          )
+        : calculateNonStackedBars<TDatum>(
+            trimmedData,
+            multipleSeries,
+            seriesColors,
+            xScaleType,
+          ),
+    [stackOffset, trimmedData, multipleSeries, seriesColors, xScaleType],
+  );
 
   const { xTickFormatter, yTickFormatter } = tickFormatters;
 
   const margin = useMemo(
     () =>
       getChartMargin(
-        trimmedData,
-        multipleSeries,
+        seriesData,
         yTickFormatter,
         theme.axis.ticks,
         theme.axis.label,
@@ -114,10 +145,11 @@ export const RowChart = <TDatum,>({
         measureText,
         xLabel,
         yLabel,
+        hasXAxis,
+        hasYAxis,
       ),
     [
-      trimmedData,
-      multipleSeries,
+      seriesData,
       yTickFormatter,
       theme.axis.ticks,
       theme.axis.label,
@@ -125,6 +157,8 @@ export const RowChart = <TDatum,>({
       measureText,
       xLabel,
       yLabel,
+      hasXAxis,
+      hasYAxis,
     ],
   );
 
@@ -136,37 +170,50 @@ export const RowChart = <TDatum,>({
     [goal],
   );
 
-  const { xScale, yScale, bars } = useMemo(
+  const { xScale, yScale } = useMemo(
     () =>
-      stackOffset != null
-        ? calculateStackedBars<TDatum>({
-            data: trimmedData,
-            multipleSeries,
-            additionalXValues,
-            stackOffset,
-            innerWidth,
-            innerHeight,
-            seriesColors,
-            xScaleType,
-          })
-        : calculateNonStackedBars<TDatum>({
-            data: trimmedData,
-            multipleSeries,
-            additionalXValues,
-            innerWidth,
-            innerHeight,
-            seriesColors,
-            xScaleType,
-          }),
+      getChartScales(
+        seriesData,
+        innerHeight,
+        innerWidth,
+        additionalXValues,
+        xScaleType,
+        stackOffset,
+        xValueRange,
+      ),
     [
       additionalXValues,
       innerHeight,
       innerWidth,
-      multipleSeries,
-      seriesColors,
+      seriesData,
       stackOffset,
-      trimmedData,
       xScaleType,
+      xValueRange,
+    ],
+  );
+
+  const paddedXScale = useMemo(
+    () =>
+      xValueRange
+        ? xScale
+        : addSideSpacingForTicksAndLabels(
+            xScale,
+            measureText,
+            theme.axis.ticks,
+            xTickFormatter,
+            theme.dataLabels,
+            labelsFormatter,
+            (labelledSeries ?? []).length > 0,
+          ),
+    [
+      labelsFormatter,
+      measureText,
+      labelledSeries,
+      theme.axis.ticks,
+      theme.dataLabels,
+      xScale,
+      xTickFormatter,
+      xValueRange,
     ],
   );
 
@@ -175,41 +222,52 @@ export const RowChart = <TDatum,>({
       getXTicks(
         theme.axis.ticks,
         innerWidth,
-        xScale,
+        paddedXScale,
         xTickFormatter,
         measureText,
+        xScaleType,
       ),
-    [innerWidth, measureText, theme.axis.ticks, xScale, xTickFormatter],
+    [
+      innerWidth,
+      measureText,
+      theme.axis.ticks,
+      paddedXScale,
+      xScaleType,
+      xTickFormatter,
+    ],
   );
 
   const rowChartGoal = useMemo(
-    () => getRowChartGoal(goal, theme.goal, measureText, xScale),
-    [goal, measureText, theme.goal, xScale],
+    () => getRowChartGoal(goal, theme.goal, measureText, paddedXScale),
+    [goal, measureText, theme.goal, paddedXScale],
   );
 
   return (
     <RowChartView
       style={style}
-      barsSeries={bars}
+      isStacked={stackOffset != null}
+      seriesData={seriesData}
       innerHeight={innerHeight}
       innerWidth={innerWidth}
       margin={margin}
       theme={theme}
       width={width}
       height={height}
-      xScale={xScale}
+      xScale={paddedXScale}
       yScale={yScale}
       goal={rowChartGoal}
       hoveredData={hoveredData}
       yTickFormatter={yTickFormatter}
       xTickFormatter={xTickFormatter}
       labelsFormatter={labelsFormatter}
-      onClick={onClick}
-      onHover={onHover}
       xTicks={xTicks}
-      shouldShowDataLabels={shouldShowDataLabels}
+      labelledSeries={labelledSeries}
       yLabel={yLabel}
       xLabel={xLabel}
+      hasXAxis={hasXAxis}
+      hasYAxis={hasYAxis}
+      onClick={onClick}
+      onHover={onHover}
     />
   );
 };

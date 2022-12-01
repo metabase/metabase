@@ -25,7 +25,6 @@ Our official hosted version, [Metabase Cloud](https://www.metabase.com/pricing).
 ### Other installation options
 
 - [Running on Azure Web Apps](running-metabase-on-azure.md)
-- [Running on Heroku](running-metabase-on-heroku.md)
 - [Running on Debian as a service](running-metabase-on-debian.md)
 - [Running on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md)
   - [Advanced topics for running on AWS Elastic Beanstalk](./advanced-topics-for-running-Metabase-in-AWS-ElasticBeanstalk.md)
@@ -53,6 +52,10 @@ How to use an RDS instance as your application database.
 ## [Monitoring your metabase](./monitoring-metabase.md)
 
 Monitor your Metabase with JMX.
+
+## [Observability with Prometheus](./observability-with-prometheus.md)
+
+Export Metabase metrics for viewing with Prometheus.
 
 ## [Java versions](./java-versions.md)
 

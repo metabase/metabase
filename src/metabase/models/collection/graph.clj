@@ -9,7 +9,6 @@
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :as i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -20,8 +19,7 @@
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
-(def CollectionPermissions
-  "The valid collection permissions."
+(def ^:private CollectionPermissions
   (s/enum :write :read :none))
 
 (def ^:private GroupPermissionsGraph
@@ -69,17 +67,6 @@
                                                  [:not [:like :location (hx/literal (format "/%d/%%" collection-id))]]))}]
     (set (map :id (db/query honeysql-form)))))
 
-(defn collection-permission-graph
-  "Return the permission graph for the collections with id in `collection-ids` and the root collection."
-  ([collection-ids] (collection-permission-graph collection-ids nil))
-  ([collection-ids collection-namespace]
-   (let [group-id->perms (group-id->permissions-set)]
-     {:revision (c-perm-revision/latest-id)
-      :groups   (into {} (for [group-id (db/select-ids PermissionsGroup)]
-                           {group-id (group-permissions-graph collection-namespace
-                                                              (group-id->perms group-id)
-                                                              collection-ids)}))})))
-
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
   works just like the function of the same name in `metabase.models.permissions`; see also the documentation for that
@@ -97,44 +84,29 @@
    (graph nil))
 
   ([collection-namespace :- (s/maybe su/KeywordOrString)]
-   (db/transaction
-     (-> collection-namespace
-         non-personal-collection-ids
-         (collection-permission-graph collection-namespace)))))
+   (let [group-id->perms (group-id->permissions-set)
+         collection-ids  (non-personal-collection-ids collection-namespace)]
+     {:revision (c-perm-revision/latest-id)
+      :groups   (into {} (for [group-id (db/select-ids PermissionsGroup)]
+                           {group-id (group-permissions-graph collection-namespace (group-id->perms group-id) collection-ids)}))})))
 
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
-(defn- check-no-app-collections [changes]
-  (let [coll-ids (into #{}
-                       (comp (mapcat second)
-                             (map first)
-                             (filter int?))
-                       changes)]
-    (when-let [app-ids (and (seq coll-ids)
-                            (db/select-ids 'App :collection_id [:in coll-ids]))]
-      (throw (ex-info (tru "Cannot set app permissions using this endpoint")
-                      {:status-code 400
-                       :app-ids app-ids})))))
-
-(s/defn update-collection-permissions!
-  "Update the permissions for group ID with `group-id` on collection with ID
-  `collection-id` in the optional `collection-namespace` to `new-collection-perms`."
-  ([group-id collection-id new-collection-perms]
-   (update-collection-permissions! nil group-id collection-id new-collection-perms))
-  ([collection-namespace :- (s/maybe su/KeywordOrString)
-    group-id             :- su/IntGreaterThanZero
-    collection-id        :- (s/cond-pre (s/eq :root) su/IntGreaterThanZero)
-    new-collection-perms :- CollectionPermissions]
-   (let [collection-id (if (= collection-id :root)
-                         (assoc collection/root-collection :namespace collection-namespace)
-                         collection-id)]
-     ;; remove whatever entry is already there (if any) and add a new entry if applicable
-     (perms/revoke-collection-permissions! group-id collection-id)
-     (case new-collection-perms
-       :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
-       :read  (perms/grant-collection-read-permissions! group-id collection-id)
-       :none  nil))))
+(s/defn ^:private update-collection-permissions!
+  [collection-namespace :- (s/maybe su/KeywordOrString)
+   group-id             :- su/IntGreaterThanZero
+   collection-id        :- (s/cond-pre (s/eq :root) su/IntGreaterThanZero)
+   new-collection-perms :- CollectionPermissions]
+  (let [collection-id (if (= collection-id :root)
+                        (assoc collection/root-collection :namespace collection-namespace)
+                        collection-id)]
+    ;; remove whatever entry is already there (if any) and add a new entry if applicable
+    (perms/revoke-collection-permissions! group-id collection-id)
+    (case new-collection-perms
+      :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
+      :read  (perms/grant-collection-read-permissions! group-id collection-id)
+      :none  nil)))
 
 (s/defn ^:private update-group-permissions!
   [collection-namespace :- (s/maybe su/KeywordOrString)
@@ -163,7 +135,6 @@
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
      (when (seq changes)
-       (check-no-app-collections changes)
        (db/transaction
          (doseq [[group-id changes] changes]
            (update-group-permissions! collection-namespace group-id changes))

@@ -5,6 +5,7 @@
             [java-time :as t]
             [metabase.analytics.prometheus :as prometheus]
             [metabase.config :as config]
+            [metabase.core.config-from-file :as config-from-file]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
             metabase.driver.h2
@@ -89,37 +90,33 @@
   (log/info (trs "Starting Metabase version {0} ..." config/mb-version-string))
   (log/info (trs "System info:\n {0}" (u/pprint-to-str (troubleshooting/system-info))))
   (init-status/set-progress! 0.1)
-
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
   (init-status/set-progress! 0.2)
-
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
-
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
   (mdb/setup-db!)
   (init-status/set-progress! 0.5)
-
+  ;; Set up Prometheus
   (when (prometheus/prometheus-server-port)
     (log/info (trs "Setting up prometheus metrics"))
     (prometheus/setup!)
     (init-status/set-progress! 0.6))
-
+  ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
+  (config-from-file/init-from-file-if-code-available!)
+  (init-status/set-progress! 0.65)
+  ;; Bootstrap the event system
+  (events/initialize-events!)
+  (init-status/set-progress! 0.7)
+  ;; Now initialize the task runner
+  (task/init-scheduler!)
+  (init-status/set-progress! 0.8)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (db/exists? User))]
-
-    ;; Bootstrap the event system
-    (events/initialize-events!)
-    (init-status/set-progress! 0.7)
-
-    ;; Now initialize the task runner
-    (task/init-scheduler!)
-    (init-status/set-progress! 0.8)
-
     (when new-install?
       (log/info (trs "Looks like this is a new installation ... preparing setup wizard"))
       ;; create setup token
@@ -127,14 +124,13 @@
       ;; publish install event
       (events/publish-event! :install {}))
     (init-status/set-progress! 0.9)
-
     ;; deal with our sample database as needed
     (if new-install?
       ;; add the sample database DB for fresh installs
       (sample-data/add-sample-database!)
       ;; otherwise update if appropriate
-      (sample-data/update-sample-database-if-needed!)))
-
+      (sample-data/update-sample-database-if-needed!))
+    (init-status/set-progress! 0.95))
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)
