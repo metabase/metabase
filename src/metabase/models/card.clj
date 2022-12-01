@@ -23,6 +23,8 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -193,6 +195,31 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
+(def DatasetQuery
+  "Shape of a valid dataset_query."
+  (let [NativeQuery {:type   (s/enum :native)
+                     :native {:query s/Str}}
+        Query       {:type  (s/enum :query)
+                     :query su/Map}]
+    (s/conditional
+     #(#{:native} (:type %)) NativeQuery
+     #(#{:query} (:type %)) Query)))
+
+(defn valid-dataset-query?
+  "Check if the dataset-query is valid."
+  [dataset-query]
+  (not (boolean (s/check DatasetQuery dataset-query))))
+
+(defn- check-for-invalid-dataset-query
+  "A dataset_query map is required, but since it is a json column in the app-db, it is possible to pass invalid json strings.
+  This prevents that."
+  [{dataset-query :dataset_query}]
+  ;; for updates if `dataset_query` isn't being updated we don't need to validate anything.
+  (when dataset-query
+    (when (not (valid-dataset-query? dataset-query))
+      (throw (ex-info (tru "Invalid Dataset Query: {0}" dataset-query)
+                      {:status-code           400})))))
+
 (defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
   (when is-write?
     (when-not (db/select-one action/QueryAction :card_id card-id)
@@ -221,6 +248,8 @@
      ;; make sure this Card doesn't have circular source query references
      (check-for-circular-source-query-references card)
      (check-field-filter-fields-are-from-correct-database card)
+     ;; prevent invalid dataset_query entries
+     (check-for-invalid-dataset-query card)
      ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
      (assert-valid-model card)
      (params/assert-valid-parameters card)
@@ -274,6 +303,8 @@
       ;; make sure this Card doesn't have circular source query references if we're updating the query
       (when (:dataset_query changes)
         (check-for-circular-source-query-references changes))
+      ;; prevent invalid dataset_query entries
+      (check-for-invalid-dataset-query changes)
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
@@ -304,13 +335,6 @@
   :in mi/json-in
   :out result-metadata-out)
 
-(defn- nil-dataset-query-to-dummy-query
-  [{dataset-query :dataset_query :as card}]
-  (cond-> card
-    (empty? dataset-query) (assoc :dataset_query {:database (:database_id card)
-                                                  :type     :native
-                                                  :native   {:query ""}})))
-
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
   models/IModel
   (merge models/IModelDefaults
@@ -331,7 +355,7 @@
           :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
           :post-insert    post-insert
           :pre-delete     pre-delete
-          :post-select    (comp nil-dataset-query-to-dummy-query public-settings/remove-public-uuid-if-public-sharing-is-disabled)}))
+          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]

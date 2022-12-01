@@ -2,6 +2,7 @@
   (:require [buddy.core.codecs :as codecs]
             [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [metabase.db.connection :as mdb.connection]
@@ -53,7 +54,7 @@
   "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
   [obj]
   (if (string? obj)
-    obj
+    (when-not (str/blank? obj) obj)
     (json/generate-string obj)))
 
 (defn- json-out [s keywordize-keys?]

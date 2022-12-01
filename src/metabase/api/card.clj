@@ -18,6 +18,7 @@
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table ViewLog]]
+            [metabase.models.card :as card]
             [metabase.models.collection :as collection]
             [metabase.models.interface :as mi]
             [metabase.models.moderation-review :as moderation-review]
@@ -148,23 +149,32 @@
                      card)))
             cards))))
 
+(defn- nil-dataset-query-to-dummy-query
+  [{dataset-query :dataset_query :as card}]
+  (cond-> card
+    (not (card/valid-dataset-query? dataset-query))
+    (assoc :dataset_query {:database (:database_id card)
+                           :type     :query
+                           :query    {}})))
+
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
   (let [raw-card (db/select-one Card :id id)
-        card (-> raw-card
-                 (hydrate :creator
-                          :bookmarked
-                          :dashboard_count
-                          :can_write
-                          :average_query_time
-                          :last_query_start
-                          :collection [:moderation_reviews :moderator_details])
-                 (cond-> ;; card
-                   (:dataset raw-card) (hydrate :persisted)
-                   (:is_write raw-card) (hydrate :card/action-id))
-                 api/read-check
-                 (last-edit/with-last-edit-info :card))]
+        card     (-> raw-card
+                     nil-dataset-query-to-dummy-query
+                     (hydrate :creator
+                              :bookmarked
+                              :dashboard_count
+                              :can_write
+                              :average_query_time
+                              :last_query_start
+                              :collection [:moderation_reviews :moderator_details])
+                     (cond-> ;; card
+                         (:dataset raw-card)  (hydrate :persisted)
+                         (:is_write raw-card) (hydrate :card/action-id))
+                     api/read-check
+                     (last-edit/with-last-edit-info :card))]
     (u/prog1 card
       (when-not (Boolean/parseBoolean ignore_view)
         (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
