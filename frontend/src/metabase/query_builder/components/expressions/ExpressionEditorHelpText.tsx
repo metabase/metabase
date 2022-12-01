@@ -41,10 +41,7 @@ const ExpressionEditorHelpText = ({
               {helpText.structure}
             </p>
             <div className="p2 border-top">
-              <p
-                className="mt0 text-bold"
-                dangerouslySetInnerHTML={{ __html: helpText.description }}
-              />
+              <p className="mt0 text-bold">{helpText.description}</p>
               <p className="text-code m0 text-body">{helpText.example}</p>
             </div>
             <div className="p2 border-top">
