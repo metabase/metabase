@@ -5,7 +5,7 @@ import _ from "underscore";
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 
-import { capitalize } from "metabase/lib/formatting";
+import { capitalize } from "metabase/lib/formatting/strings";
 
 import type {
   ScheduleDayType,

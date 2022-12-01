@@ -11,12 +11,21 @@ export default {
 };
 
 const Template: ComponentStory<typeof SchedulePicker> = args => {
-  const [{ schedule }, updateArgs] = useArgs();
+  const [
+    {
+      schedule,
+      scheduleOptions = ["daily", "weekly", "monthly"],
+      timezone = "UTC",
+    },
+    updateArgs,
+  ] = useArgs();
   const handleChange = (schedule: unknown) => updateArgs({ schedule });
   return (
     <SchedulePicker
       {...args}
       schedule={schedule}
+      scheduleOptions={scheduleOptions}
+      timezone={timezone}
       onScheduleChange={handleChange}
     />
   );
@@ -30,6 +39,5 @@ Default.args = {
     schedule_hour: 0,
     schedule_type: "daily",
   },
-  scheduleOptions: ["daily", "weekly", "monthly"],
-  timezone: "UTC",
+  textBeforeInterval: "Deliver",
 };
