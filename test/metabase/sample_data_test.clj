@@ -44,7 +44,7 @@
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
 
-(def ^:private extracted-db-path-regex #"^file:[a-zA-z/]*plugins/sample-database.db;USER=GUEST;PASSWORD=guest$")
+(def ^:private extracted-db-path-regex #"^file:.*plugins/sample-database.db;USER=GUEST;PASSWORD=guest$")
 
 (deftest extract-sample-database-test
   (testing "The Sample Database is copied out of the JAR into the plugins directory before the DB details are saved."
