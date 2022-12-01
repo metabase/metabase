@@ -2,7 +2,7 @@ import * as Yup from "yup";
 import type { TestContext } from "yup";
 import * as Errors from "metabase/core/utils/errors";
 import { Engine, EngineField } from "metabase-types/api";
-import { ADVANCED_FIELDS } from "../constants";
+import { ADVANCED_FIELDS, FIELD_OVERRIDES } from "../constants";
 import { DatabaseValues } from "../types";
 
 export const getValidationSchema = (
@@ -10,13 +10,19 @@ export const getValidationSchema = (
   engineKey: string | undefined,
   isAdvanced: boolean,
 ) => {
-  const fields = getFields(engine, isAdvanced);
+  const fields = getFields(engine, isAdvanced).filter(isDetailField);
   const entries = fields.map(field => [field.name, getFieldSchema(field)]);
 
   return Yup.object({
     engine: Yup.string().default(engineKey).required(Errors.required),
-    name: Yup.string().nullable().default(null).required(Errors.required),
+    name: Yup.string().default("").required(Errors.required),
     details: Yup.object(Object.fromEntries(entries)),
+    schedules: Yup.object({
+      metadata_sync: Yup.object(),
+      cache_field_values: Yup.object(),
+    }),
+    auto_run_queries: Yup.boolean().default(true),
+    refingerprint: Yup.boolean().default(false),
   });
 };
 
@@ -56,6 +62,11 @@ const getFieldSchema = (field: EngineField) => {
         .default(field.default != null ? String(field.default) : null)
         .test((value, context) => isFieldValid(field, value, context));
   }
+};
+
+const isDetailField = (field: EngineField) => {
+  const override = FIELD_OVERRIDES[field.name];
+  return override?.name == null;
 };
 
 const isFieldValid = (
