@@ -3,6 +3,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [metabase.driver :as driver]
@@ -263,3 +264,17 @@
     (let [t (u.date/parse s)]
       (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
       t)))
+
+;; Same as snowflake, vertica seems to ignore the calendar parameter of `.setTime` and `.setTimestamp` and instead uses the session
+;; timezone; normalize temporal values to UTC so we end up with the right values
+(defmethod sql-jdbc.execute/set-parameter [:vertica java.time.OffsetTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+(defmethod sql-jdbc.execute/set-parameter [:vertica java.time.OffsetDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+(defmethod sql-jdbc.execute/set-parameter [:vertica java.time.ZonedDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
