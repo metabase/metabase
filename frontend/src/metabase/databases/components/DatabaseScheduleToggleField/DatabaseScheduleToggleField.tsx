@@ -22,7 +22,7 @@ const DatabaseScheduleToggleField = ({
         setValues(values => ({
           ...values,
           schedules: {},
-          is_full_sync: false,
+          is_full_sync: true,
           is_on_demand: false,
         }));
       }
