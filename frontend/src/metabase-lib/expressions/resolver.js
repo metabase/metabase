@@ -45,7 +45,6 @@ const isCompatible = (a, b) => {
   if (a === b) {
     return true;
   }
-
   // if b is a string, then it can be an arg to a function that expects a datetime argument.
   // This allows datetime string literals to work as args for functions that expect datetime types.
   // FIXME: By doing this we are allowing string columns to be arguments to functions, which isn’t valid MBQL.

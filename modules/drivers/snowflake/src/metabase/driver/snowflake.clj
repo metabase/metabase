@@ -37,6 +37,8 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+(defmethod driver/database-supports? [:snowflake :now] [_driver _feat _db] true)
+
 (defmethod driver/supports? [:snowflake :convert-timezone]
   [_driver _feature]
   true)
@@ -173,7 +175,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake
   [_]
-  :%current_timestamp)
+  (hx/with-database-type-info :%current_timestamp :TIMESTAMPTZ))
 
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
   [_ hsql-form amount unit]
