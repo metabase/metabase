@@ -115,14 +115,11 @@
              (migrate {:pie.show_legend          false
                        :pie.show_legend_perecent true
                        :pie.show_data_labels     true}))))
-    (testing "anything else -> off"
+    (testing "anything else -> nothing"
       (doseq [legend  [false nil]
               percent [false nil]
-              labels  [true false nil]
-              version [nil 1]]
-        (is (= {:version 2
-                :pie.percent_visibility "off"}
+              labels  [true false nil]]
+        (is (= {}
                (migrate {:pie.show_legend          legend
                          :pie.show_legend_perecent percent
-                         :pie.show_data_labels     labels
-                         :version                  version})))))))
+                         :pie.show_data_labels     labels})))))))

@@ -165,17 +165,17 @@
 (defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
   (let [{percent? :pie.show_legend_perecent ;; [sic]
          legend?  :pie.show_legend} viz-settings]
-    (assoc viz-settings :pie.percent_visibility
-           (cond
-             legend?  "inside"
-             percent? "legend"
-             :else    "off"))))
+    (if-let [new-value (cond
+                         legend?  "inside"
+                         percent? "legend")]
+      (assoc viz-settings :pie.percent_visibility new-value)
+      viz-settings))) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
 
 (defn- migrate-viz-settings
   [viz-settings]
-  (-> viz-settings
-      (migrate-viz-settings* viz-settings-current-version)
-      (jm/update-version viz-settings-current-version)))
+  (let [new-viz-settings (migrate-viz-settings* viz-settings viz-settings-current-version)]
+    (cond-> new-viz-settings
+      (not= new-viz-settings viz-settings) (jm/update-version viz-settings-current-version))))
 
 ;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
 ;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8

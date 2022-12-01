@@ -1,9 +1,12 @@
 (ns metabase.models.json-migration)
 
 (defn update-version
-  "Set the updated version"
+  "Set the updated version if the column-value has data. Doesn't do anything if it's empty since empty values are
+  assumed to result in version-appropriate default behavior and don't need an explicit version key."
   [column-value desired-version]
-  (assoc column-value :version desired-version))
+  (if (seq column-value)
+    (assoc column-value :version desired-version)
+    column-value))
 
 (defmacro def-json-migration
   "Create a multi-method with the given name that will perform JSON migrations. Individual cases (with appropriate
