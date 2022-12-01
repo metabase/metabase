@@ -517,15 +517,9 @@
     ;; SUGAR drivers do not need to implement
     :get-year :get-quarter :get-month :get-week :get-day :get-day-of-week :get-hour :get-minute :get-second})
 
-<<<<<<< HEAD
 (def boolean-functions
   "Functions that return boolean values. Should match [[BooleanExpression]]."
   #{:and :or :not :< :<= :> :>= := :!=})
-=======
-(def date-arithmetic-functions
-  "Functions to do math with date, datetime."
-  #{:+ :datetime-add :datetime-subtract :now})
->>>>>>> fa7f28f7c1 (Implement now for sql drivers)
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
@@ -748,14 +742,7 @@
   unit     ArithmeticDateTimeUnit)
 
 (def ^:private DatetimeExpression*
-<<<<<<< HEAD
   (one-of + datetime-add datetime-subtract convert-timezone now))
-=======
-  (one-of + temporal-extract datetime-add datetime-subtract now
-          ;; SUGAR drivers do not need to implement
-          get-year get-quarter get-month get-week get-day get-day-of-week
-          get-hour get-minute get-second))
->>>>>>> fa7f28f7c1 (Implement now for sql drivers)
 
 (def DatetimeExpression
   "Schema for the definition of a date function expression."

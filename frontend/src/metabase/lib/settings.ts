@@ -108,10 +108,11 @@ export type SettingName =
   | "metabase-store-managed"
   | "application-colors"
   | "application-font"
-  | "report-timezone-long"
   | "available-fonts"
   | "enable-query-caching"
-  | "start-of-week";
+  | "start-of-week"
+  | "report-timezone-short"
+  | "report-timezone-long";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 

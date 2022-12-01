@@ -178,14 +178,6 @@
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake
   [_]
   (hx/with-database-type-info :%current_timestamp :TIMESTAMPTZ))
-<<<<<<< HEAD
-
-(defmethod sql.qp/->honeysql [:snowflake :now]
-  [_driver _clause]
-  (-> (hsql/call :to_timestamp_tz (hsql/call :current_timestamp 0))
-      (hx/with-database-type-info :TIMESTAMPTZ)))
-=======
->>>>>>> 4fe2633511 (Change from second to millisecond precision)
 
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
   [_ hsql-form amount unit]

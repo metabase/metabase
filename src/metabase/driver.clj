@@ -42,10 +42,10 @@
      java.time.format.TextStyle/SHORT
      (java.util.Locale/getDefault))))
 
-(defn- long-timezone-name ^java.time.ZoneId [timezone-id]
+(defn- long-timezone-name [timezone-id]
   (if (seq timezone-id)
-    (t/zone-id timezone-id)
-    (t/zone-id)))
+    timezone-id
+    (str (t/zone-id))))
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
@@ -513,7 +513,7 @@
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
 (defmethod supports? [::driver :date-arithmetics] [_ _] true)
 (defmethod supports? [::driver :temporal-extract] [_ _] true)
-(defmethod supports? [::driver :now] [_ _] true)
+(defmethod supports? [::driver :convert-timezone] [_ _] false)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
