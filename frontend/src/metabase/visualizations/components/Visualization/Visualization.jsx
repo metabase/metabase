@@ -351,7 +351,7 @@ class Visualization extends React.PureComponent {
       onUpdateVisualizationSettings,
     } = this.props;
     const { visualization } = this.state;
-    const small = width < 330;
+    const isSmall = width < 330;
 
     // these may be overridden below
     let { series, hovered, clicked } = this.state;
@@ -469,12 +469,12 @@ class Visualization extends React.PureComponent {
         {replacementContent ? (
           replacementContent
         ) : isDashboard && noResults ? (
-          <NoResultsView isSmall={small} />
+          <NoResultsView isSmall={isSmall} />
         ) : error ? (
           <ErrorView
             error={error}
             icon={errorIcon}
-            isSmall={small}
+            isSmall={isSmall}
             isDashboard={isDashboard}
           />
         ) : loading ? (
