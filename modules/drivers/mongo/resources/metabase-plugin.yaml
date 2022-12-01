@@ -7,27 +7,49 @@ driver:
   display-name: MongoDB
   lazy-load: true
   connection-properties:
-    - host
-    - dbname
+    - name: use-conn-uri
+      type: section
+      default: false
     - name: conn-uri
       type: string
       display-name: Paste your connection string
       placeholder: 'mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[dbname][?options]]'
       required: true
+      visible-if:
+        use-conn-uri: true
+    - merge:
+        - host
+        - visible-if:
+            use-conn-uri: false
+    - merge:
+        - dbname
+        - visible-if:
+            use-conn-uri: false
     - merge:
         - port
         - default: 27017
+          visible-if:
+            use-conn-uri: false
     - merge:
         - user
         - required: false
+          visible-if:
+            use-conn-uri: false
     - merge:
         - password
         - name: pass
+          visible-if:
+            use-conn-uri: false
     - name: authdb
       display-name: Authentication database (optional)
       placeholder: admin
+      visible-if:
+        use-conn-uri: false
     - cloud-ip-address-info
-    - ssl
+    - merge:
+        - ssl
+        - visible-if:
+            use-conn-uri: false
     - name: ssl-cert
       type: string
       display-name: Server SSL certificate chain (PEM)
@@ -56,10 +78,13 @@ driver:
         - additional-options
         - display-name: Additional connection string options (optional)
           placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
+          visible-if:
+            use-conn-uri: false
     - name: use-srv
       type: boolean
       default: false
       visible-if:
+        use-conn-uri: false
         advanced-options: true
     - default-advanced-options
 init:

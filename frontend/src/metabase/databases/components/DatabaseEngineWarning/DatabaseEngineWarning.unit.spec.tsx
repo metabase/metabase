@@ -1,6 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { createMockEngine } from "metabase-types/api/mocks";
+import {
+  createMockEngine,
+  createMockEngineSource,
+} from "metabase-types/api/mocks";
 import DatabaseEngineWarning from "./DatabaseEngineWarning";
 
 describe("DatabaseEngineWarning", () => {
@@ -18,50 +21,50 @@ describe("DatabaseEngineWarning", () => {
     deprecatedCommunity: createMockEngine({
       "driver-name": "Community (Deprecated Driver)",
       "superseded-by": "communityEngine",
-      source: {
+      source: createMockEngineSource({
         type: "community",
-      },
+      }),
     }),
     communityEngine: createMockEngine({
       "driver-name": "CommunityEngine",
-      source: {
+      source: createMockEngineSource({
         type: "community",
-      },
+      }),
     }),
     partnerEngine: createMockEngine({
       "driver-name": "PartnerEngine",
-      source: {
+      source: createMockEngineSource({
         type: "partner",
         contact: {
           name: "Partners Incorporated",
           address: "https://example.com/contact",
         },
-      },
+      }),
     }),
     anonymousPartnerEngine: createMockEngine({
       "driver-name": "AnonymousPartnerEngine",
-      source: {
+      source: createMockEngineSource({
         type: "partner",
-      },
+      }),
     }),
     partnerWithoutContactInfoEngine: createMockEngine({
       "driver-name": "PartnerWithoutContactInfoEngine",
-      source: {
+      source: createMockEngineSource({
         type: "partner",
         contact: {
           name: "Partners Incorporated Two",
         },
-      },
+      }),
     }),
     partnerEngineWithEmail: createMockEngine({
       "driver-name": "PartnerEngineWithEmail",
-      source: {
+      source: createMockEngineSource({
         type: "partner",
         contact: {
           name: "Partners Incorporated Three",
           address: "contactus@example.com",
         },
-      },
+      }),
     }),
   };
 

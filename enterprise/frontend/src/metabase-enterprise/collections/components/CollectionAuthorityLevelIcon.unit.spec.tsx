@@ -1,6 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+import { createMockCollection } from "metabase-types/api/mocks";
+
 import { CollectionAuthorityLevelIcon } from "./CollectionAuthorityLevelIcon";
 
 describe("CollectionAuthorityLevelIcon", () => {
@@ -8,13 +11,13 @@ describe("CollectionAuthorityLevelIcon", () => {
     [
       {
         name: "collection without authority level",
-        collection: {},
+        collection: createMockCollection({ authority_level: undefined }),
       },
       {
         name: "regular collection",
-        collection: {
+        collection: createMockCollection({
           authority_level: null,
-        },
+        }),
       },
     ].forEach(({ collection, name }) => {
       it(`doesn't render for ${name}`, () => {
@@ -25,21 +28,21 @@ describe("CollectionAuthorityLevelIcon", () => {
   });
 
   describe("official collections", () => {
-    const OFFICIAL_COLLECTION = {
+    const OFFICIAL_COLLECTION = createMockCollection({
       authority_level: "official",
-    };
+    });
 
     function renderOfficialCollection({
       collection = OFFICIAL_COLLECTION,
       ...props
-    } = {}) {
+    }: any = {}) {
       render(
         <CollectionAuthorityLevelIcon collection={collection} {...props} />,
       );
     }
 
     function queryOfficialIcon() {
-      return screen.queryByLabelText("badge icon");
+      return screen.getByLabelText("badge icon");
     }
 
     it(`renders correctly`, () => {
