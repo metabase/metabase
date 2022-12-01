@@ -1,5 +1,5 @@
 import type { ScaleBand, ScaleLinear, ScaleTime } from "d3-scale";
-import { DatasetColumn } from "metabase-types/api";
+import { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { ContinuousScaleType } from "metabase/visualizations/shared/types/scale";
@@ -17,7 +17,6 @@ export type YAxisPosition = "left" | "right";
 export type VisualizationType = "line" | "area" | "bar" | "waterfall";
 
 interface BaseSeries {
-  name: string | null;
   data: SeriesData;
   type: VisualizationType;
   yAxisPosition: YAxisPosition;
@@ -69,13 +68,12 @@ export type ChartSettings = {
     value: number;
     label: string;
   };
-  show_values?: boolean;
   labels: {
     left?: string;
     bottom?: string;
     right?: string;
   };
-  series_settings?: Record<string, { color?: string; title?: string }>;
+  visualization_settings: VisualizationSettings;
 };
 
 export interface Dimensions {
