@@ -13,17 +13,38 @@
             [toucan.db :as db]
             [yaml.core :as yaml]))
 
-(defn- dir->file-set [dir]
+(defn- dir->contents-set [p dir]
   (->> dir
        .listFiles
-       (filter #(.isFile %))
+       (filter p)
        (map #(.getName %))
        set))
+
+(defn- dir->file-set [dir]
+  (dir->contents-set #(.isFile %) dir))
+
+(defn- dir->dir-set [dir]
+  (dir->contents-set #(.isDirectory %) dir))
 
 (defn- subdirs [dir]
   (->> dir
        .listFiles
        (remove #(.isFile %))))
+
+(defn- collections [dir]
+  (for [coll-dir (subdirs dir)
+        :when (->> ["cards" "dashboards" "timelines"]
+                   (map #(io/file coll-dir %))
+                   (filter #(= % coll-dir))
+                   empty?)]
+    coll-dir))
+
+(defn- file-set [dir]
+  (let [base (.toPath dir)]
+    (set (for [file (file-seq dir)
+               :when (.isFile file)
+               :let [rel (.relativize base (.toPath file))]]
+           (mapv str rel)))))
 
 (defn- random-keyword
   ([prefix n] (random-keyword prefix n 0))
@@ -63,11 +84,12 @@
     (let [extraction (atom nil)
           entities   (atom nil)]
       (ts/with-source-and-dest-dbs
-        ;; TODO Generating some nested collections would make these tests more robust.
+        ;; TODO Generating some nested collections would make these tests more robust, but that's difficult.
+        ;; There are handwritten tests for storage and ingestion that check out the nesting, at least.
         (ts/with-source-db
           (testing "insert"
             (test-gen/insert!
-              {:collection              [[100 {:refs {:personal_owner_id ::rs/omit}}]
+              {:collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
                                          [10  {:refs     {:personal_owner_id ::rs/omit}
                                                :spec-gen {:namespace :snippets}}]]
                :database                [[10]]
@@ -145,76 +167,88 @@
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
                                        {} @extraction))
-            (is (= 110 (-> @entities (get "Collection") count)))))
+            (is (= 110 (-> @entities (get "Collection") count))))
 
-        (testing "storage"
-          (storage.yaml/store! (seq @extraction) dump-dir)
+          (testing "storage"
+            (storage.yaml/store! (seq @extraction) dump-dir)
 
-          (testing "for Collections"
-            (is (= 110 (count (dir->file-set (io/file dump-dir "Collection"))))))
+            (testing "for Collections"
+              (is (= 110 (count (for [f (file-set (io/file dump-dir))
+                                      :when (and (= (first f) "collections")
+                                                 (let [[a b] (take-last 2 f)]
+                                                   (= b (str a ".yaml"))))]
+                                  f)))
+                  "which all go in collections/, even the snippets ones"))
 
-          (testing "for Databases"
-            (is (= 10 (count (dir->file-set (io/file dump-dir "Database"))))))
+            (testing "for Databases"
+              (is (= 10 (count (dir->dir-set (io/file dump-dir "databases"))))))
 
-          (testing "for Tables"
-            (is (= 100
-                   (reduce + (for [db    (get @entities "Database")
-                                   :let [tables (dir->file-set (io/file dump-dir "Database" (:name db) "Table"))]]
-                               (count tables))))
-                "Tables are scattered, so the directories are harder to count"))
+            (testing "for Tables"
+              (is (= 100
+                     (reduce + (for [db    (get @entities "Database")
+                                     :let [tables (dir->dir-set (io/file dump-dir "databases" (:name db) "tables"))]]
+                                 (count tables))))
+                  "Tables are scattered, so the directories are harder to count"))
 
-          (testing "for Fields"
-            (is (= 1000
-                   (reduce + (for [db    (get @entities "Database")
-                                   table (subdirs (io/file dump-dir "Database" (:name db) "Table"))]
-                               (->> (io/file table "Field")
-                                    dir->file-set
-                                    count))))
-                "Fields are scattered, so the directories are harder to count"))
+            (testing "for Fields"
+              (is (= 1000
+                     (reduce + (for [db    (get @entities "Database")
+                                     table (subdirs (io/file dump-dir "databases" (:name db) "tables"))]
+                                 (->> (io/file table "fields")
+                                      dir->file-set
+                                      count))))
+                  "Fields are scattered, so the directories are harder to count"))
 
-          (testing "for cards"
-            (is (= 100 (count (dir->file-set (io/file dump-dir "Card"))))))
+            (testing "for cards"
+              (is (= 100 (->> (io/file dump-dir "collections")
+                              collections
+                              (map (comp count dir->file-set #(io/file % "cards")))
+                              (reduce +)))))
 
-          (testing "for dashboards"
-            (is (= 100 (count (dir->file-set (io/file dump-dir "Dashboard"))))))
+            (testing "for dashboards"
+              (is (= 100 (->> (io/file dump-dir "collections")
+                              collections
+                              (map (comp count dir->file-set #(io/file % "dashboards")))
+                              (reduce +)))))
 
-          (testing "for dimensions"
-            (is (= 40 (count (dir->file-set (io/file dump-dir "Dimension"))))))
+            (testing "for timelines"
+              (is (= 10 (->> (io/file dump-dir "collections")
+                             collections
+                             (map (comp count dir->file-set #(io/file % "timelines")))
+                             (reduce +)))))
 
-          (testing "for metrics"
-            (is (= 30 (count (dir->file-set (io/file dump-dir "Metric"))))))
+            (testing "for metrics"
+              (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
+                                        table (dir->dir-set (io/file dump-dir "databases" db "tables"))
+                                        :let [metrics-dir (io/file dump-dir "databases" db "tables" table "metrics")]
+                                        :when (.exists metrics-dir)]
+                                    (count (dir->file-set metrics-dir)))))))
 
-          (testing "for segments"
-            (is (= 30 (count (dir->file-set (io/file dump-dir "Segment"))))))
+            (testing "for segments"
+              (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
+                                        table (dir->dir-set (io/file dump-dir "databases" db "tables"))
+                                        :let [segments-dir (io/file dump-dir "databases" db "tables" table "segments")]
+                                        :when (.exists segments-dir)]
+                                    (count (dir->file-set segments-dir)))))))
 
-          (testing "for pulses"
-            (is (= 30 (count (dir->file-set (io/file dump-dir "Pulse"))))))
+            (testing "for native query snippets"
+              (is (= 10 (->> (io/file dump-dir "snippets")
+                             collections
+                             (map (comp count dir->file-set))
+                             (reduce +)))))
 
-          (testing "for pulse cards"
-            (is (= 120 (reduce + (for [pulse (get @entities "Pulse")]
-                                   (->> (io/file dump-dir "Pulse" (:entity_id pulse) "PulseCard")
-                                        dir->file-set
-                                        count))))))
-
-          (testing "for pulse channels"
-            (is (= 30 (reduce + (for [pulse (get @entities "Pulse")]
-                                  (->> (io/file dump-dir "Pulse" (:entity_id pulse) "PulseChannel")
-                                       dir->file-set
-                                       count)))))
-            (is (= 40 (reduce + (for [{:keys [recipients]} (get @entities "PulseChannel")]
-                                  (count recipients))))))
-
-          (testing "for native query snippets"
-            (is (= 10 (count (dir->file-set (io/file dump-dir "NativeQuerySnippet"))))))
-
-          (testing "for timelines and events"
-            (is (= 10 (count (dir->file-set (io/file dump-dir "Timeline"))))))
-
-          (testing "for settings"
-            (is (.exists (io/file dump-dir "settings.yaml")))))
+            (testing "for settings"
+              (is (.exists (io/file dump-dir "settings.yaml"))))))
 
           (testing "ingest and load"
             (ts/with-dest-db
+              (testing "ingested set matches extracted set"
+                (let [extracted-set (set (map (comp #'ingest.yaml/strip-labels serdes.base/serdes-path) @extraction))]
+                  (is (= (count extracted-set)
+                         (count @extraction)))
+                  (is (= extracted-set
+                       (set (keys (#'ingest.yaml/ingest-all (io/file dump-dir))))))))
+
               (testing "doing ingestion"
                 (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
                     "successful"))
@@ -292,32 +326,6 @@
                          (->> (db/select-one 'Segment :entity_id entity_id)
                               (serdes.base/extract-one "Segment" {})
                               clean-entity)))))
-
-              (testing "for pulses"
-                (doseq [{:keys [entity_id] :as pulse} (get @entities "Pulse")]
-                  (is (= (clean-entity pulse)
-                         (->> (db/select-one 'Pulse :entity_id entity_id)
-                              (serdes.base/extract-one "Pulse" {})
-                              clean-entity)))))
-
-              (testing "for pulse cards"
-                (doseq [{:keys [entity_id] :as card} (get @entities "PulseCard")]
-                  (is (= (clean-entity card)
-                         (->> (db/select-one 'PulseCard :entity_id entity_id)
-                              (serdes.base/extract-one "PulseCard" {})
-                              clean-entity)))))
-
-              (testing "for pulse channels"
-                (doseq [{:keys [entity_id] :as channel} (get @entities "PulseChannel")]
-                  ;; The :recipients list is in arbitrary order - turn them into sets for comparison.
-                  (is (= (-> channel
-                             (update :recipients set)
-                             clean-entity)
-                         (let [loaded-channel (->> (db/select-one 'PulseChannel :entity_id entity_id)
-                                                   (serdes.base/extract-one "PulseChannel" {}))]
-                           (-> loaded-channel
-                               (update :recipients set)
-                               clean-entity))))))
 
               (testing "for native query snippets"
                 (doseq [{:keys [entity_id] :as snippet} (get @entities "NativeQuerySnippet")]

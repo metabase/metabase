@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import DatabaseHelpCard from "metabase/components/DatabaseHelpCard";
-import { State } from "metabase-types/store";
+import { getSetting } from "metabase/selectors/settings";
+import type { State } from "metabase-types/store";
 
 export interface DatabaseHelpCardProps {
   className?: string;
@@ -11,7 +12,7 @@ interface DatabaseHelpCardStateProps {
 }
 
 const mapStateToProps = (state: State): DatabaseHelpCardStateProps => ({
-  isHosted: state.settings.values["is-hosted?"],
+  isHosted: getSetting(state, "is-hosted?"),
 });
 
 export default connect<

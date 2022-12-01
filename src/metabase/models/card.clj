@@ -331,10 +331,8 @@
   [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
-(defmethod serdes.base/extract-query "Card" [_ {:keys [collection-set]}]
-  (if (seq collection-set)
-    (db/select-reducible Card :collection_id [:in collection-set])
-    (db/select-reducible Card)))
+(defmethod serdes.base/extract-query "Card" [_ opts]
+  (serdes.base/extract-query-collections Card opts))
 
 (defn- export-result-metadata [metadata]
   (when metadata
@@ -365,16 +363,19 @@
   ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
   ;; :collection_id is extracted as its entity_id or identity-hash.
   ;; :creator_id as the user's email.
-  (-> (serdes.base/extract-one-basics "Card" card)
-      (update :database_id            serdes.util/export-fk-keyed 'Database :name)
-      (update :table_id               serdes.util/export-table-fk)
-      (update :collection_id          serdes.util/export-fk 'Collection)
-      (update :creator_id             serdes.util/export-user)
-      (update :made_public_by_id      serdes.util/export-user)
-      (update :dataset_query          serdes.util/export-mbql)
-      (update :parameter_mappings     serdes.util/export-parameter-mappings)
-      (update :visualization_settings serdes.util/export-visualization-settings)
-      (update :result_metadata        export-result-metadata)))
+  (try
+    (-> (serdes.base/extract-one-basics "Card" card)
+        (update :database_id            serdes.util/export-fk-keyed 'Database :name)
+        (update :table_id               serdes.util/export-table-fk)
+        (update :collection_id          serdes.util/export-fk 'Collection)
+        (update :creator_id             serdes.util/export-user)
+        (update :made_public_by_id      serdes.util/export-user)
+        (update :dataset_query          serdes.util/export-mbql)
+        (update :parameter_mappings     serdes.util/export-parameter-mappings)
+        (update :visualization_settings serdes.util/export-visualization-settings)
+        (update :result_metadata        export-result-metadata))
+    (catch Exception e
+      (throw (ex-info "Failed to export Card" {:card card} e)))))
 
 (defmethod serdes.base/load-xform "Card"
   [card]
@@ -414,3 +415,5 @@
       (when (seq template-tags)
         (set (for [{:keys [card-id]} template-tags]
                ["Card" card-id]))))))
+
+(serdes.base/register-ingestion-path! "Card" (serdes.base/ingestion-matcher-collected "collections" "Card"))

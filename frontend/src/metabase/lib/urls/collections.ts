@@ -2,15 +2,11 @@ import slugg from "slugg";
 
 import {
   Collection as BaseCollection,
-  CollectionId,
   RegularCollectionId,
 } from "metabase-types/api";
 
 import { dataApp } from "./dataApps";
 import { appendSlug, extractEntityId } from "./utils";
-
-export const newCollection = (collectionId: CollectionId) =>
-  `/collection/${collectionId}/new_collection`;
 
 export const otherUsersPersonalCollections = () => "/collection/users";
 

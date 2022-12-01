@@ -14,7 +14,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time :as t]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.db.setup :as db.setup]
    [metabase.driver :as driver]
    [metabase.models
     :refer [Card
@@ -40,6 +42,27 @@
    (java.util UUID)))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(deftest rollback-test
+  (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
+    ;; using test-migrations to excercise all drivers
+    (impl/test-migrations [1] [_]
+      (let [{:keys [db-type data-source]} mdb.connection/*application-db*
+            migrate!    (partial db.setup/migrate! db-type data-source)
+            get-last-id (fn []
+                          (-> {:connection (.getConnection data-source)}
+                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
+                              first
+                              :id))]
+        (migrate! :up)
+        (let [latest-id (get-last-id)]
+          ;; This is an unusual usage of db.setup/migrate! with an explicit version, which is not currently
+          ;; available via the CLI, but is used here to rollback to the lowest version we support.
+          (migrate! :down 44)
+            ;; will always be the last v44 migration
+          (is (= "v44.00-044" (get-last-id)))
+          (migrate! :up)
+          (is (= latest-id (get-last-id))))))))
 
 (deftest database-position-test
   (testing "Migration 165: add `database_position` to Field"
