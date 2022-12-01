@@ -333,6 +333,10 @@
   (and (t/before? (t/instant t1) (t/plus (t/instant t2) period))
        (t/after? (t/instant t1) (t/minus (t/instant t2) period))))
 
+(defn- close-minute? [a b]
+  (or (<= (mod (- b a) 60) 1)
+      (<= (mod (- a b) 60) 1)))
+
 (deftest now-test
   (mt/test-drivers (mt/normal-drivers-with-feature :now)
     (testing "should return the current time"
@@ -349,6 +353,18 @@
                      u.date/parse
                      (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
                      (close? (t/instant) (t/seconds 30)))))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :now)
+    (testing "should be able to extract time in the report timezone"
+      (let [timezone "Asia/Kathmandu"] ; UTC+5:45 all year
+        (mt/with-temporary-setting-values [report-timezone timezone]
+          (is (= true
+                 (->> (mt/run-mbql-query venues
+                        {:expressions {"1" [:get-minute [:now]]}
+                         :fields [[:expression "1"]]
+                         :limit  1})
+                      (mt/formatted-rows [int])
+                      ffirst
+                      (close-minute? (.getMinute (t/local-date-time (t/zone-id timezone)))))))))))
   (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics)
     (testing "should work as an argument to datetime-add and datetime-subtract"
       (is (= true
