@@ -68,7 +68,7 @@ const DatabaseCacheScheduleField = ({
       ...values,
       schedules: {},
       is_full_sync: false,
-      is_on_demand: true,
+      is_on_demand: false,
     }));
   }, [setValues]);
 
