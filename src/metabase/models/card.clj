@@ -304,6 +304,13 @@
   :in mi/json-in
   :out result-metadata-out)
 
+(defn- nil-dataset-query-to-dummy-query
+  [{dataset-query :dataset_query :as card}]
+  (cond-> card
+    (nil? dataset-query) (assoc :dataset_query {:database (:database_id card)
+                                                :type     :native
+                                                :native   {:query "select 'this query broke, sorry' x"}})))
+
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
   models/IModel
   (merge models/IModelDefaults
@@ -324,7 +331,7 @@
           :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
           :post-insert    post-insert
           :pre-delete     pre-delete
-          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
+          :post-select    (comp nil-dataset-query-to-dummy-query public-settings/remove-public-uuid-if-public-sharing-is-disabled)}))
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]

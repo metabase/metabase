@@ -46,6 +46,9 @@
 
 ;;; types
 
+;; TODO: json-in should reject "" ?? (clojure.string/blank? obj) -> disallow writing to the db.
+;; this is effectively a way to bypass 'not-null', because upon retreival, we parse json, and parsing "" gives nil
+
 (defn json-in
   "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
   [obj]
@@ -180,9 +183,21 @@
 ;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
 ;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
 
+;; TODO: probably not a perfect solution, but this lets corrupted card viz settings 'out', allowing cards to be recoverable
+(defn- maybe-normalize-visualization-settings
+  "Wraps viz-settings normalization and returns an empty map if normalization fails.
+  This may occur if the json string in the app-db is *technically* valid JSON, but doesn't normalize into a valid viz-settings map."
+  [viz-settings]
+  (try
+    (normalize-visualization-settings viz-settings)
+    (catch Throwable e
+      (log/error e (tru "Unable to normalize:") "\n"
+                 (u/pprint-to-str 'red viz-settings))
+      {})))
+
 (models/add-type! :visualization-settings
   :in  (comp json-in migrate-viz-settings)
-  :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization))
+  :out (comp migrate-viz-settings maybe-normalize-visualization-settings json-out-without-keywordization))
 
 ;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
 ;; permissions set
