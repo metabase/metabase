@@ -122,15 +122,11 @@
     [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
     [clause field (add-type-info x (type-info field))]
 
-    [:datetime-diff x y unit]
-    [:datetime-diff
-     (if (string? x)
-       (add-type-info (u.date/parse x) nil)
-       x)
-     (if (string? y)
-       (add-type-info (u.date/parse y) nil)
-       y)
-     unit]
+    [:datetime-diff (x :guard string?) (y :guard string?) unit]
+    [:datetime-diff (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]
+
+    [(clause :guard #{:datetime-add :datetime-subtract :convert-timezone :temporal-extract}) (field :guard string?) & args]
+    (into [clause (add-type-info (u.date/parse field) nil)] args)
 
     [:between field (min-val :guard raw-value?) (max-val :guard raw-value?)]
     [:between
