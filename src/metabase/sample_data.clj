@@ -35,7 +35,8 @@
 (defn- jar-db-details
   [resource]
   (-> (.getPath ^URL resource)
-      (str/replace #"^file:" "zip:") ; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't do anything when running from the Clojure CLI, which has no `file:` prefix)
+      (str/replace #"^file:" "zip:") ; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't
+                                     ;   do anything when running from the Clojure CLI, which has no `file:` prefix
       process-sample-db-path))
 
 (defn- extracted-db-details
@@ -57,7 +58,11 @@
         (extract-sample-database!)
         (extracted-db-details))
        (do
-        (log/warn (trs (str "Sample database could not be extracted to the plugins directory; this may result in slow startup times.")))
+         ;; If the plugins directory is a temp directory, fall back to reading the DB directly from the JAR until a
+         ;; working plugins directory is available. (We want to ensure the sample DB is in a stable location.)
+         (log/warn (trs (str "Sample database could not be extracted to the plugins directory,"
+                             "which may result in slow startup times. "
+                             "Please set MB_PLUGINS_DIR to a writable directory and restart Metabase.")))
         (jar-db-details resource)))}))
 
 (defn add-sample-database!
