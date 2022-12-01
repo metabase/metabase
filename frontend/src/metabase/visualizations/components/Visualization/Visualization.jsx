@@ -1,18 +1,14 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import { assoc } from "icepick";
 import _ from "underscore";
-import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { duration, formatNumber } from "metabase/lib/formatting";
+import { formatNumber } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
 
 import {
@@ -34,14 +30,21 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { getMode } from "metabase/modes/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
 
-import NoResults from "assets/img/no_results.svg";
-
 import Question from "metabase-lib/Question";
 import Mode from "metabase-lib/Mode";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/utils";
 
-import { VisualizationSlowSpinner } from "./Visualization.styled";
+import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
+import ErrorView from "./ErrorView";
+import LoadingView from "./LoadingView";
+import NoResultsView from "./NoResultsView";
+import {
+  VisualizationRoot,
+  VisualizationHeader,
+  VisualizationActionButtonsContainer,
+  VisualizationSlowSpinner,
+} from "./Visualization.styled";
 
 const defaultProps = {
   showTitle: false,
@@ -374,17 +377,11 @@ class Visualization extends React.PureComponent {
             isPlaceholder = true;
           } else if (e instanceof ChartSettingsError && onOpenChartSettings) {
             error = (
-              <div>
-                <div>{error}</div>
-                <div className="mt2">
-                  <button
-                    className="Button Button--primary Button--medium"
-                    onClick={() => this.props.onOpenChartSettings(e.initial)}
-                  >
-                    {e.buttonText}
-                  </button>
-                </div>
-              </div>
+              <ChartSettingsErrorButton
+                message={error}
+                buttonLabel={e.buttonText}
+                onClick={() => onOpenChartSettings(e.initial)}
+              />
             );
           } else if (e instanceof MinRowsError) {
             noResults = true;
@@ -401,7 +398,7 @@ class Visualization extends React.PureComponent {
     }
 
     const extra = (
-      <span className="flex align-center">
+      <VisualizationActionButtonsContainer>
         {isSlow && !loading && (
           <VisualizationSlowSpinner
             className="Visualization-slow-spinner"
@@ -410,7 +407,7 @@ class Visualization extends React.PureComponent {
           />
         )}
         {actionButtons}
-      </span>
+      </VisualizationActionButtonsContainer>
     );
 
     let { gridSize, gridUnit } = this.props;
@@ -451,12 +448,9 @@ class Visualization extends React.PureComponent {
       (replacementContent && (dashcard.size_y !== 1 || isMobile));
 
     return (
-      <div
-        className={cx(className, "flex flex-column full-height")}
-        style={style}
-      >
+      <VisualizationRoot className={className} style={style}>
         {!!hasHeader && (
-          <div className="p1 flex-no-shrink">
+          <VisualizationHeader>
             <ChartCaption
               series={series}
               settings={settings}
@@ -468,59 +462,21 @@ class Visualization extends React.PureComponent {
                   : null
               }
             />
-          </div>
+          </VisualizationHeader>
         )}
         {replacementContent ? (
           replacementContent
         ) : isDashboard && noResults ? (
-          <div
-            className={
-              "flex-full px1 pb1 text-centered flex flex-column layout-centered " +
-              (isDashboard ? "text-slate-light" : "text-slate")
-            }
-          >
-            <Tooltip tooltip={t`No results!`} isEnabled={small}>
-              <img data-testid="no-results-image" src={NoResults} />
-            </Tooltip>
-            {!small && <span className="h4 text-bold">{t`No results!`}</span>}
-          </div>
+          <NoResultsView isSmall={small} />
         ) : error ? (
-          <div
-            className={
-              "flex-full px1 pb1 text-centered flex flex-column layout-centered " +
-              (isDashboard ? "text-slate-light" : "text-slate")
-            }
-          >
-            <Tooltip tooltip={error} isEnabled={small}>
-              <Icon className="mb2" name={errorIcon || "warning"} size={50} />
-            </Tooltip>
-            {!small && <span className="h4 text-bold">{error}</span>}
-          </div>
+          <ErrorView
+            error={error}
+            icon={errorIcon}
+            isSmall={small}
+            isDashboard={isDashboard}
+          />
         ) : loading ? (
-          <div className="flex-full p1 text-centered text-brand flex flex-column layout-centered">
-            {isSlow ? (
-              <div className="text-slate">
-                <div className="h4 text-bold mb1">{t`Still Waiting...`}</div>
-                {isSlow === "usually-slow" ? (
-                  <div>
-                    {jt`This usually takes an average of ${(
-                      <span style={{ whiteSpace: "nowrap" }}>
-                        {duration(expectedDuration)}
-                      </span>
-                    )}.`}
-                    <br />
-                    {t`(This is a bit long for a dashboard)`}
-                  </div>
-                ) : (
-                  <div>
-                    {t`This is usually pretty fast but seems to be taking a while right now.`}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <LoadingSpinner className="text-slate" />
-            )}
-          </div>
+          <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
         ) : (
           <CardVisualization
             {...this.props}
@@ -559,7 +515,7 @@ class Visualization extends React.PureComponent {
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           />
         )}
-      </div>
+      </VisualizationRoot>
     );
   }
 }

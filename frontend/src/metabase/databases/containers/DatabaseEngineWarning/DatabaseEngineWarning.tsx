@@ -1,4 +1,5 @@
 import { connect } from "react-redux";
+import { getSetting } from "metabase/selectors/settings";
 import { Engine } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import DatabaseEngineWarning from "../../components/DatabaseEngineWarning";
@@ -14,7 +15,7 @@ interface DatabaseEngineWarningStateProps {
 }
 
 const mapStateToProps = (state: State) => ({
-  engines: state.settings.values.engines,
+  engines: getSetting(state, "engines"),
 });
 
 export default connect<

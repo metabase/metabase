@@ -17,7 +17,6 @@ const DatabaseNameField = ({ engine }: DatabaseNameFieldProps): JSX.Element => {
       placeholder={t`Our ${name}`}
       rightIcon="info"
       rightIconTooltip={t`Choose what this data will be called in Metabase.`}
-      nullable
     />
   );
 };

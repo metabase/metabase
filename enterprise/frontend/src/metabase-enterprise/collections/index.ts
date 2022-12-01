@@ -1,11 +1,13 @@
 import { t } from "ttag";
 import {
-  PLUGIN_FORM_WIDGETS,
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
-import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
+
+import type { Collection } from "metabase-types/api";
+
 import { CollectionAuthorityLevelIcon } from "./components/CollectionAuthorityLevelIcon";
+import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
 import {
   AUTHORITY_LEVELS,
   REGULAR_COLLECTION,
@@ -19,7 +21,10 @@ PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
 
 PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
 
-PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (collection, onUpdate) => {
+PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
+  collection: Collection,
+  onUpdate: (collection: Collection, values: Partial<Collection>) => void,
+) => {
   if (isRegularCollection(collection)) {
     return [
       {
@@ -45,29 +50,8 @@ PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (collection, onUpdate) => {
   }
 };
 
-PLUGIN_COLLECTIONS.getAuthorityLevelFormFields = () => [
-  {
-    name: "authority_level",
-    title: t`Collection type`,
-    info: t`The contents of Official collections will get a badge by their name and will be more likely to show up in search results.`,
-    type: "collectionAuthorityLevel",
-    options: [
-      {
-        name: REGULAR_COLLECTION.name,
-        value: REGULAR_COLLECTION.type,
-        icon: REGULAR_COLLECTION.icon,
-      },
-      {
-        name: OFFICIAL_COLLECTION.name,
-        value: OFFICIAL_COLLECTION.type,
-        icon: OFFICIAL_COLLECTION.icon,
-        selectedColor: OFFICIAL_COLLECTION.color,
-      },
-    ],
-  },
-];
-
-PLUGIN_FORM_WIDGETS.collectionAuthorityLevel = FormCollectionAuthorityLevel;
+PLUGIN_COLLECTION_COMPONENTS.FormCollectionAuthorityLevelPicker =
+  FormCollectionAuthorityLevel;
 
 PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon =
   CollectionAuthorityLevelIcon;

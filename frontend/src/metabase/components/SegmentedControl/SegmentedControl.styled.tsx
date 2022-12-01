@@ -2,8 +2,21 @@ import React from "react";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import _ from "underscore";
-import Icon from "metabase/components/Icon";
+
+import Icon, { IconProps } from "metabase/components/Icon";
+
 import { color, darken, alpha } from "metabase/lib/colors";
+
+export type SegmentedControlVariant =
+  | "fill-text"
+  | "fill-background"
+  | "fill-all";
+
+type ColorProps = {
+  isSelected: boolean;
+  selectedColor: string;
+  inactiveColor: string;
+};
 
 function getDefaultBorderColor() {
   return darken(color("border"), 0.1);
@@ -13,24 +26,31 @@ const COLORS = {
   "fill-text": {
     background: () => "transparent",
     border: () => getDefaultBorderColor(),
-    text: ({ isSelected, selectedColor, inactiveColor }) =>
+    text: ({ isSelected, selectedColor, inactiveColor }: ColorProps) =>
       color(isSelected ? selectedColor : inactiveColor),
   },
   "fill-background": {
-    background: ({ isSelected, selectedColor }) =>
+    background: ({ isSelected, selectedColor }: ColorProps) =>
       isSelected ? color(selectedColor) : "transparent",
-    border: ({ selectedColor }) => color(selectedColor),
-    text: ({ isSelected, inactiveColor }) =>
+    border: ({ selectedColor }: ColorProps) => color(selectedColor),
+    text: ({ isSelected, inactiveColor }: ColorProps) =>
       color(isSelected ? "text-white" : inactiveColor),
   },
   "fill-all": {
-    background: ({ isSelected, selectedColor }) =>
+    background: ({ isSelected, selectedColor }: ColorProps) =>
       isSelected ? alpha(color(selectedColor), 0.2) : "transparent",
-    border: ({ isSelected, selectedColor }) =>
+    border: ({ isSelected, selectedColor }: ColorProps) =>
       isSelected ? color(selectedColor) : getDefaultBorderColor(),
-    text: ({ isSelected, selectedColor, inactiveColor }) =>
+    text: ({ isSelected, selectedColor, inactiveColor }: ColorProps) =>
       color(isSelected ? selectedColor : inactiveColor),
   },
+};
+
+type BorderStyleProps = {
+  index: number;
+  isSelected: boolean;
+  total: number;
+  selectedOptionIndex: number;
 };
 
 function getSpecialBorderStyles({
@@ -38,7 +58,7 @@ function getSpecialBorderStyles({
   isSelected,
   total,
   selectedOptionIndex,
-}) {
+}: BorderStyleProps) {
   if (isSelected) {
     return css`
       border-right-width: 1px;
@@ -76,7 +96,13 @@ function getSpecialBorderStyles({
   }
 }
 
-export const SegmentedItem = styled.li`
+type SegmentedItemProps = BorderStyleProps &
+  ColorProps & {
+    fullWidth?: boolean;
+    variant: SegmentedControlVariant;
+  };
+
+export const SegmentedItem = styled.li<SegmentedItemProps>`
   display: flex;
   flex-grow: ${props => (props.fullWidth ? 1 : 0)};
 
@@ -86,7 +112,12 @@ export const SegmentedItem = styled.li`
   ${props => getSpecialBorderStyles(props)};
 `;
 
-export const SegmentedItemLabel = styled.label`
+type SegmentedItemLabelProps = ColorProps & {
+  compact?: boolean;
+  variant: SegmentedControlVariant;
+};
+
+export const SegmentedItemLabel = styled.label<SegmentedItemLabelProps>`
   display: flex;
   width: 100%;
   align-items: center;
@@ -117,7 +148,7 @@ export const SegmentedControlRadio = styled.input`
 
 SegmentedControlRadio.defaultProps = { type: "radio" };
 
-function IconWrapper(props) {
+function IconWrapper(props: IconProps & { iconOnly?: boolean }) {
   return <Icon {..._.omit(props, "iconOnly")} />;
 }
 
