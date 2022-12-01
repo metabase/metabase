@@ -39,7 +39,7 @@
     ((get-method data.impl/get-or-create-database! :default) driver dbdef)))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
-                                   :type/Boolean        "BOOL"
+                                   :type/Boolean        "BOOLEAN"
                                    :type/Date           "DATE"
                                    :type/DateTime       "DATETIME"
                                    :type/DateTimeWithTZ "TIMESTAMP WITH TIME ZONE"
@@ -80,8 +80,6 @@
    ";\n"
    ;; Grant the GUEST account r/w permissions for this table
    (format "GRANT ALL ON %s TO GUEST;" (sql.u/quote-name driver :table (ddl.i/format-name driver table-name)))))
-
-(defmethod tx/has-questionable-timezone-support? :h2 [_] true)
 
 (defmethod ddl.i/format-name :h2
   [_ s]
