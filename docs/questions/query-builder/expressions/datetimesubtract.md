@@ -59,7 +59,7 @@ To check if a given date falls between your start and end datetimes, use [`betwe
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
 
 ## Limitations
 

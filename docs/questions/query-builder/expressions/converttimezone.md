@@ -11,7 +11,7 @@ title: ConvertTimezone
 | `convertTimezone(column, target, source)`                             | `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")`      |
 | Shifts a timestamp from the source time zone to the target time zone. | Returns the value `2022-12-28T09:00:00`, displayed as `December 28, 2022 9:00 AM` |
 
-Timestamps and time zones are rather nasty to work with (it's easy to make mistakes, and difficult to catch them), so you should only try to use `convertTimezone` if the interpretation of your data is very sensitive to time-based cutoffs.
+Timestamps and time zones are rather nasty to work with (it's easy to make mistakes, and difficult to catch them), so you should only try to use `convertTimezone` if the interpretation of your data is sensitive to time-based cutoffs.
 
 For example, if you're tracking user logins over time, you probably won't run your business differently if some logins get counted on Mondays instead of Tuesdays. However, if you're using Metabase to do something precise, like your taxes, you (and the government) will probably care a lot more about the difference between transactions that occurred on Dec 31 vs. Jan 1.
 
@@ -90,7 +90,7 @@ For more gory details, see [Limitations](#limitations).
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-If your timestamps are stored as strings or numbers in your database, you can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
 
 To use `convertTimezone` without running into errors or pesky undetectable mistakes, you should know that there are a few varieties of `timestamp` data types:
 
