@@ -283,7 +283,7 @@
                                               (qp.store/fetch-and-store-database! (u/the-id database))
                                               (sql.qp/->honeysql driver table))]}))
 
-(defmethod driver/describe-database :snowflake [driver database]
+(defmethod driver/describe-database :snowflake [_driver database]
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas :snowflake))]
     (qp.store/with-store
