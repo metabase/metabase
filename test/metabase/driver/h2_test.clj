@@ -111,10 +111,10 @@
   (mt/test-driver :h2
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
       (is (= [{:display_name "D"
-               :base_type    :type/DateTime
-               :effective_type :type/DateTime
+               :base_type    :type/Date
+               :effective_type :type/Date
                :source       :native
-               :field_ref    [:field "D" {:base-type :type/DateTime}]
+               :field_ref    [:field "D" {:base-type :type/Date}]
                :name         "D"}]
              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
 

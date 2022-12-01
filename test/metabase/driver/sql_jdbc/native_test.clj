@@ -64,7 +64,7 @@
 (deftest malformed-sql-response-test
   (testing "Check that we get proper error responses for malformed SQL"
     (is (schema= {:status     (s/eq :failed)
-                  :class      (s/eq org.h2.jdbc.JdbcSQLException)
+                  :class      (s/eq org.h2.jdbc.JdbcSQLSyntaxErrorException)
                   :error      #"^Column \"ZID\" not found"
                   :stacktrace [su/NonBlankString]
                   :json_query {:native   {:query (s/eq "SELECT ZID FROM CHECKINS LIMIT 2")}
