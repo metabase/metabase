@@ -75,7 +75,7 @@
                 "has_field_values = search instead of `list`.")
     (with-temp-sample-database-db [db]
       (is (= {:description      "The name of the user who owns an account"
-              :database_type    "VARCHAR"
+              :database_type    "CHARACTER VARYING"
               :semantic_type    :type/Name
               :name             "NAME"
               :has_field_values :search
