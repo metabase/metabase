@@ -111,18 +111,18 @@ export default class Funnel extends Component {
       showColumnSetting: true,
       marginBottom: "0.625rem",
     }),
-    "funnel.series_order_dimension": {
+    "funnel.rows_order_dimension": {
       getValue: (_series, settings) => settings["funnel.dimension"],
-      readDependencies: ["funnel.series_order"],
+      readDependencies: ["funnel.rows_order"],
     },
-    "funnel.series_order": {
+    "funnel.rows_order": {
       section: t`Data`,
       widget: ChartSettingOrderedSimple,
 
       getValue: (series, settings) => {
-        const seriesOrder = settings["funnel.series_order"];
+        const seriesOrder = settings["funnel.rows_order"];
         const seriesKeys = series.map(s => keyForSingleSeries(s));
-        const orderDimension = settings["funnel.series_order_dimension"];
+        const orderDimension = settings["funnel.rows_order_dimension"];
         const dimension = settings["funnel.dimension"];
 
         const getDefault = keys =>
@@ -156,7 +156,7 @@ export default class Funnel extends Component {
       getHidden: (series, settings) =>
         settings["funnel.dimension"] === null ||
         settings["funnel.metric"] === null,
-      writeDependencies: ["funnel.series_order_dimension"],
+      writeDependencies: ["funnel.rows_order_dimension"],
       dataTestId: "funnel-row-sort",
     },
     ...metricSetting("funnel.metric", {
