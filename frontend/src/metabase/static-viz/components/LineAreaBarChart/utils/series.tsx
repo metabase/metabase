@@ -16,9 +16,8 @@ export function getSeriesWithColors(
   settings: ChartSettings,
   palette: ColorPalette,
   multipleCardSeries: CardSeries[],
-): (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][] {
-  const isMultipleSeries = multipleCardSeries.length > 1;
-  const keys = getSeriesKeys(multipleCardSeries, isMultipleSeries);
+): CardSeries[] {
+  const keys = getSeriesKeys(multipleCardSeries);
 
   const seriesSettings = settings.visualization_settings.series_settings;
   const seriesColors = seriesSettings
@@ -47,8 +46,8 @@ export function getSeriesWithColors(
 export function getSeriesWithLegends(
   settings: ChartSettings,
   multipleCardSeries: CardSeries[],
-): (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][] {
-  const keys = getSeriesKeys(multipleCardSeries, multipleCardSeries.length > 1);
+): CardSeries[] {
+  const keys = getSeriesKeys(multipleCardSeries);
   const isMultipleSeries = multipleCardSeries.length > 1;
 
   const seriesSettings = settings.visualization_settings.series_settings;
@@ -120,10 +119,7 @@ export function getSeriesWithLegends(
 
 export function reorderSeries(
   settings: ChartSettings,
-  multipleCardSeries: (
-    | SeriesWithOneOrLessDimensions
-    | SeriesWithTwoDimensions
-  )[][],
+  multipleCardSeries: CardSeries[],
 ) {
   const seriesOrder = settings.visualization_settings["graph.series_order"];
   // We don't sort series when there's is multiple questions on a dashcard
@@ -131,7 +127,7 @@ export function reorderSeries(
     return multipleCardSeries;
   }
 
-  const keys = getSeriesKeys(multipleCardSeries, multipleCardSeries.length > 1);
+  const keys = getSeriesKeys(multipleCardSeries);
 
   // visualization settings only applies to a dashcard's first question's series.
   const firstCardSeries = multipleCardSeries[0];
@@ -147,10 +143,9 @@ export function reorderSeries(
   ];
 }
 
-function getSeriesKeys(
-  multipleSeries: CardSeries[],
-  isMultipleSeries: boolean,
-) {
+function getSeriesKeys(multipleSeries: CardSeries[]) {
+  const hasMultipleCards = multipleSeries.length > 1;
+
   return multipleSeries
     .flatMap((questionSeries, seriesIndex) => {
       return questionSeries.map(series => {
@@ -166,7 +161,7 @@ function getSeriesKeys(
           }
 
           const hasOneMetric = questionSeries.length === 1;
-          if (!isMultipleSeries || hasOneMetric) {
+          if (!hasMultipleCards || hasOneMetric) {
             return series.cardName;
           }
 
@@ -178,7 +173,7 @@ function getSeriesKeys(
             column: series.column,
           });
 
-          if (!isMultipleSeries) {
+          if (!hasMultipleCards) {
             return columnKey;
           }
 
