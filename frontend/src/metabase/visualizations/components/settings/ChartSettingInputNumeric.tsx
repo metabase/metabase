@@ -23,9 +23,6 @@ const ChartSettingInputNumeric = ({
       value={internalValue}
       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
         const num = parseFloat(e.target.value);
-        if (!isNaN(num) && num !== value) {
-          onChange(num);
-        }
         setInternalValue(num);
       }}
       onBlur={(e: React.ChangeEvent<HTMLInputElement>) => {

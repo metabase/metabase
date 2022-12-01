@@ -34,7 +34,7 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   value: TValue;
   name?: string;
   defaultValue?: TValue;
-  onChange: (event: SelectChangeEvent<TValue>) => void;
+  onChange?: (event: SelectChangeEvent<TValue>) => void;
   multiple?: boolean;
   placeholder?: string;
   disabled?: boolean;
@@ -191,7 +191,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
     } else {
       value = optionValue;
     }
-    onChange({ target: { name, value } });
+    onChange?.({ target: { name, value } });
     if (!multiple) {
       this._popover?.close();
       this.handleClose();

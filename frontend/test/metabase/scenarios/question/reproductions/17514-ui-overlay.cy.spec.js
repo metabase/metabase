@@ -154,7 +154,7 @@ function openVisualizationOptions() {
 
 function hideColumn(columnName) {
   cy.findByTestId("chartsettings-sidebar").within(() => {
-    cy.findByText(columnName).siblings(".Icon-eye_filled").click();
+    cy.findByText(columnName).siblings(".Icon-eye_outline").click();
   });
 }
 

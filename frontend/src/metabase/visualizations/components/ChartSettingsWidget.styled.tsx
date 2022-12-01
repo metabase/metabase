@@ -12,6 +12,7 @@ export const Root = styled.div<{
   noPadding?: boolean;
   inline?: boolean;
   marginBottom?: string;
+  borderBottom?: boolean;
 }>`
   ${props =>
     !props.noPadding &&
@@ -51,6 +52,13 @@ export const Root = styled.div<{
         display: inline-flex;
         margin-bottom: 0;
       }
+    `}
+
+    ${props =>
+    props.borderBottom &&
+    css`
+      padding-bottom: 1rem;
+      border-bottom: 1px solid ${color("border")};
     `}
 
   input, .AdminSelect {
