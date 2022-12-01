@@ -69,6 +69,9 @@ export type VisualizationSettings = {
 
   "graph.series_order"?: SeriesOrderSetting[];
 
+  // Funnel settings
+  "funnel.rows"?: SeriesOrderSetting[];
+
   [key: string]: any;
 };
 
