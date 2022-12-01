@@ -113,7 +113,7 @@
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
-    ;; mongo doesn't supports cast string to date
+     ;; mongo doesn't supports cast string to date
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with date columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
