@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { ChartSettings, Series } from "../../XYChart/types";
+import { ChartSettings } from "../../XYChart/types";
 import { adjustSettings } from "./settings";
 
 const settings: ChartSettings = {
@@ -13,6 +13,7 @@ const settings: ChartSettings = {
     left: "Count",
     bottom: "Date",
   },
+  visualization_settings: {},
 };
 
 const chartSize = {
@@ -21,16 +22,6 @@ const chartSize = {
 };
 
 const minTickSize = 12;
-
-const getSeries = (length: number): Series[] => [
-  {
-    name: "series",
-    color: "black",
-    yAxisPosition: "left",
-    type: "line",
-    data: _.range(length).map(index => [`X:${index}`, index]),
-  },
-];
 
 describe("adjustSettings", () => {
   describe("ordinal x-axis", () => {
