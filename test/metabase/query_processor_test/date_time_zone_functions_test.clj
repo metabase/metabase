@@ -420,12 +420,13 @@
                                   [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Tokyo"]))))))))
 
         (testing "with literal datetime"
-          (is (= "2022-10-03T14:10:20+07:00"
-                 (->> (mt/run-mbql-query times
-                                         {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Saigon" "UTC"]}
-                                          :fields      [[:expression "expr"]]})
-                      mt/rows
-                      ffirst))))))))
+          (mt/with-report-timezone-id "UTC"
+            (is (= "2022-10-03T14:10:20+07:00"
+                   (->> (mt/run-mbql-query times
+                                           {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Saigon" "UTC"]}
+                                            :fields      [[:expression "expr"]]})
+                        mt/rows
+                        ffirst)))))))))
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
