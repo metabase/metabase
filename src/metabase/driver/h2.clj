@@ -207,7 +207,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :h2
   [_]
-  (hx/cast (keyword "TIMESTAMP WITH TIME ZONE") :%now))
+  (hx/with-database-type-info :%now :TIMESTAMP))
 
 (defn- add-to-1970 [expr unit-str]
   (hsql/call :timestampadd
