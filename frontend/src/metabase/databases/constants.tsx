@@ -1,8 +1,9 @@
 import React from "react";
 import { t } from "ttag";
-import DatabaseSshDescription from "./components/DatabaseSshDescription";
-import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
+import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
+import DatabaseConnectionSectionField from "./components/DatabaseConnectionSectionField";
+import DatabaseSshDescription from "./components/DatabaseSshDescription";
 import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
 import { EngineFieldOverride } from "./types";
 
@@ -87,6 +88,15 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   },
   "ssl-key-options": {
     description: <DatabaseSslKeyDescription />,
+  },
+  "use-conn-uri": {
+    type: DatabaseConnectionSectionField,
+  },
+  "schedules.metadata_sync": {
+    name: "schedules.metadata_sync",
+  },
+  "schedules.cache_field_values": {
+    name: "schedules.cache_field_values",
   },
   auto_run_queries: {
     name: "auto_run_queries",
