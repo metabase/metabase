@@ -6,7 +6,6 @@
    "Collection"
    "Dashboard"
    "Database"
-   "Dimension"
    "Field"
    "FieldValues"
    "Metric"

@@ -13,12 +13,7 @@ import {
 } from "metabase/public/lib/embed";
 import { color } from "metabase/lib/colors";
 
-import {
-  getSiteUrl,
-  getEmbeddingSecretKey,
-  getIsPublicSharingEnabled,
-  getIsApplicationEmbeddingEnabled,
-} from "metabase/selectors/settings";
+import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -27,10 +22,10 @@ import SharingPane from "./SharingPane";
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
-  siteUrl: getSiteUrl(state, props),
-  secretKey: getEmbeddingSecretKey(state, props),
-  isPublicSharingEnabled: getIsPublicSharingEnabled(state, props),
-  isApplicationEmbeddingEnabled: getIsApplicationEmbeddingEnabled(state, props),
+  siteUrl: getSetting(state, "site-url"),
+  secretKey: getSetting(state, "embedding-secret-key"),
+  isPublicSharingEnabled: getSetting(state, "enable-public-sharing"),
+  isApplicationEmbeddingEnabled: getSetting(state, "enable-embedding"),
 });
 
 class EmbedModalContent extends Component {

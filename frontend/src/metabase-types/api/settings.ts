@@ -23,19 +23,70 @@ export interface CurrencyFormattingSettings {
 
 export interface Engine {
   "driver-name": string;
-  "superseded-by": string | undefined;
+  "details-fields"?: EngineField[];
   source: EngineSource;
+  "superseded-by": string | null;
+}
+
+export interface EngineField {
+  name: string;
+  type?: EngineFieldType;
+  "display-name"?: string;
+  description?: string;
+  "helper-text"?: string;
+  placeholder?: unknown;
+  required?: boolean;
+  default?: unknown;
+  options?: EngineFieldOption[];
+  "visible-if"?: Record<string, unknown>;
+  "treat-before-posting"?: EngineFieldTreatType;
+}
+
+export type EngineFieldType =
+  | "string"
+  | "password"
+  | "text"
+  | "integer"
+  | "boolean"
+  | "select"
+  | "textFile"
+  | "info"
+  | "section";
+
+export type EngineFieldTreatType = "base64";
+
+export interface EngineFieldOption {
+  name: string;
+  value: string;
 }
 
 export interface EngineSource {
-  type?: "official" | "community" | "partner";
-  contact?: EngineSourceContact;
+  type: "official" | "community" | "partner";
+  contact: EngineSourceContact | null;
 }
 
 export interface EngineSourceContact {
   name?: string;
   address?: string;
 }
+
+export interface ScheduleSettings {
+  schedule_day?: ScheduleDayType;
+  schedule_frame?: ScheduleFrameType;
+  schedule_hour?: boolean;
+  schedule_minute?: number;
+}
+
+export type ScheduleDayType =
+  | "sun"
+  | "mon"
+  | "tue"
+  | "wed"
+  | "thu"
+  | "fri"
+  | "sat";
+
+export type ScheduleFrameType = "first" | "mid" | "last";
 
 export interface FontFile {
   src: string;

@@ -93,8 +93,7 @@ class ChartSettings extends Component {
 
   // allows a widget to temporarily replace itself with a different widget
   handleShowWidget = (widget, ref) => {
-    this.setState({ popoverRef: ref });
-    this.setState({ currentWidget: widget });
+    this.setState({ popoverRef: ref, currentWidget: widget });
   };
 
   // go back to previously selected section
@@ -208,14 +207,20 @@ class ChartSettings extends Component {
       };
     } else if (currentWidget.props?.initialKey) {
       const settings = this._getSettings();
-      const singleSeriesForColumn = series.find(single => {
-        const metricColumn = single.data.cols[1];
-        return getColumnKey(metricColumn) === currentWidget.props.initialKey;
-      });
-
       const isBreakout = settings?.["graph.dimensions"]?.length > 1;
 
-      if (singleSeriesForColumn && !isBreakout) {
+      if (isBreakout) {
+        return null;
+      }
+
+      const singleSeriesForColumn = series.find(single => {
+        const metricColumn = single.data.cols[1];
+        if (metricColumn) {
+          return getColumnKey(metricColumn) === currentWidget.props.initialKey;
+        }
+      });
+
+      if (singleSeriesForColumn) {
         return {
           ...seriesSettingsWidget,
           props: {

@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
 import { closeNavbar } from "metabase/redux/app";
 import NewItemMenu from "metabase/components/NewItemMenu";
 import {
@@ -25,7 +24,6 @@ interface MenuStateProps {
 }
 
 interface MenuDispatchProps {
-  onChangeLocation: (location: string) => void;
   onCloseNavbar: () => void;
 }
 
@@ -36,7 +34,6 @@ const mapStateToProps = (state: State): MenuStateProps => ({
 });
 
 const mapDispatchToProps = {
-  onChangeLocation: push,
   onCloseNavbar: closeNavbar,
 };
 

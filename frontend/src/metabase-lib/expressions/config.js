@@ -388,6 +388,13 @@ export const MBQL_CLAUSES = {
     type: "datetime",
     args: [],
   },
+  "convert-timezone": {
+    displayName: `convertTimezone`,
+    type: "expression",
+    args: ["expression", "string"],
+    hasOptions: true,
+    requiresFeature: "convert-timezone",
+  },
 };
 
 for (const [name, clause] of Object.entries(MBQL_CLAUSES)) {
@@ -473,6 +480,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "datetime-add",
   "datetime-subtract",
   "now",
+  "convert-timezone",
   // boolean
   "contains",
   "ends-with",
