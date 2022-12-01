@@ -40,7 +40,10 @@ export function suggest({
     // no keystroke to match? show help text for the enclosing function
     const functionDisplayName = enclosingFunction(partialSource);
     if (functionDisplayName) {
-      const helpText = getHelpText(getMBQLName(functionDisplayName));
+      const helpText = getHelpText(
+        getMBQLName(functionDisplayName),
+        query.database().engine,
+      );
       if (helpText) {
         return { suggestions, helpText };
       }
@@ -188,7 +191,10 @@ export function suggest({
   if (suggestions.length === 1 && matchPrefix) {
     const { icon } = suggestions[0];
     if (icon === "function") {
-      const helpText = getHelpText(getMBQLName(matchPrefix));
+      const helpText = getHelpText(
+        getMBQLName(matchPrefix),
+        query.database().engine,
+      );
       if (helpText) {
         return { helpText };
       }

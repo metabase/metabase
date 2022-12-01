@@ -3,7 +3,7 @@ import moment from "moment-timezone";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { formatTime } from "metabase/lib/formatting";
-import { HelpText } from "metabase-lib/expressions/types";
+import { HelpText, TreatedHelpText } from "metabase-lib/expressions/types";
 
 const applicationName = MetabaseSettings.get("application-name");
 const serverTimezone = MetabaseSettings.get("report-timezone-long");
@@ -15,6 +15,27 @@ const nowAtServerTimezone = serverTimezone
   ? moment().tz(serverTimezone).format("LT")
   : moment().format("LT");
 
+const defaultDescriptionForNow = t`Returns the current timestamp in the ${applicationName} timezone.<br/>Your local time is ${now} in ${userTimezone}.<br/>The ${applicationName} instance time is ${nowAtServerTimezone} in ${serverTimezone}.`;
+
+const descriptionForNowIfDBEngineDoesNotConsiderTimezone = t`Returns the current timestamp in the ${applicationName} timezone.<br/>Your local time is ${now} in ${userTimezone}.<br/>The ${applicationName} instance time is ${nowAtServerTimezone} in ${serverTimezone}.`;
+
+/* To add a new entry, in almost all cases you can add an object with
+  name: string,
+  structure: string,
+  description: translatable string,
+  example: string,
+  args: array of objects with name and description, both strings
+
+  If you want to show database-specific messages, you can write a value with an object like below
+
+description: {
+  postgres: t`A translatable message for Postgres`,
+  sqlite: t`Maybe a different translatable message for SQLite`,
+  default: t`Be sure to add a message for key default.`
+}
+
+Note: as currently implement, this will not work for `args`.
+*/
 const helperTextStrings: HelpText[] = [
   {
     name: "count",
@@ -780,7 +801,11 @@ const helperTextStrings: HelpText[] = [
   {
     name: "now",
     structure: "now",
-    description: t`Returns the current timestamp in the ${applicationName} timezone.<br/>Your local time is ${now} in ${userTimezone}.<br/>The ${applicationName} instance time is ${nowAtServerTimezone} in ${serverTimezone}.`,
+    description: {
+      default: defaultDescriptionForNow,
+      sqlite: descriptionForNowIfDBEngineDoesNotConsiderTimezone,
+      mongo: descriptionForNowIfDBEngineDoesNotConsiderTimezone,
+    },
     example: "now",
     args: [],
   },
@@ -824,8 +849,40 @@ See the full list here: https://w.wiki/4Jx`,
   },
 ];
 
-export const getHelpText = (name: string): HelpText | undefined => {
-  return helperTextStrings.find(h => h.name === name);
+export const getHelpText = (
+  name: string,
+  database: string,
+): HelpText | undefined => {
+  const helpText = helperTextStrings.find(h => h.name === name);
+
+  if (!helpText) {
+    return;
+  }
+
+  return filterHelpTextKeysUsingDatabaseMessages(helpText, database);
+};
+
+// This function iterates over the found helpText for a custom expression command.
+// If a key/value is an object, we will check if this value has its own key/value
+// where the key is the database string passed. If not, we will use value of key "default".
+// See comment above declaration of "helperTextStrings".
+const filterHelpTextKeysUsingDatabaseMessages = (
+  helpText: HelpText,
+  database: string,
+): TreatedHelpText => {
+  const treatedStrings = {};
+
+  for (const key in helpText) {
+    if (typeof helpText[key] === "object" && !Array.isArray(helpText[key])) {
+      treatedStrings[key] = helpText[key][database]
+        ? helpText[key][database]
+        : helpText[key].default;
+    } else {
+      treatedStrings[key] = helpText[key];
+    }
+  }
+
+  return treatedStrings;
 };
 
 export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
