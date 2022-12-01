@@ -37,8 +37,8 @@
 
 (deftest concurrent-sync-test
   (testing "only one sync process be going on at a time"
-    ;; describe-database gets called twice during a single sync process, once for syncing tables and a second time for
-    ;; syncing the _metabase_metadata table
+    ;; describe-database gets called once during a single sync process, and the results are used for syncing tables
+    ;; and syncing the _metabase_metadata table.
     (tt/with-temp* [Database [db {:engine ::concurrent-sync-test}]]
       (reset! calls-to-describe-database 0)
       ;; start a sync processes in the background. It should take 1000 ms to finish

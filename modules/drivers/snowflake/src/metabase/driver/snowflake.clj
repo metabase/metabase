@@ -303,9 +303,9 @@
                                               (qp.store/fetch-and-store-database! (u/the-id database))
                                               (sql.qp/->honeysql driver table))]}))
 
-(defmethod driver/describe-database :snowflake [_driver database]
+(defmethod driver/describe-database :snowflake [driver database]
   (let [db-name          (db-name database)
-        excluded-schemas (set (sql-jdbc.sync/excluded-schemas :snowflake))]
+        excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-store
       (qp.store/fetch-and-store-database! (u/the-id database))
       (let [spec            (sql-jdbc.conn/db->pooled-connection-spec database)
@@ -321,7 +321,7 @@
                                          (driver.s/include-schema? inclusion-patterns
                                                                    exclusion-patterns
                                                                    schema)
-                                         (sql-jdbc.sync/have-select-privilege? :snowflake conn schema table-name))))
+                                         (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
                           (map (fn [{schema :schema_name, table-name :name, remark :comment}]
                                  {:name        table-name
                                   :schema      schema
