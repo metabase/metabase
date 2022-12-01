@@ -37,5 +37,4 @@ export interface EngineFieldProps {
   title?: string;
   description?: ReactNode;
   placeholder?: string;
-  timezone: string;
 }

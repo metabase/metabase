@@ -33,6 +33,7 @@ export const ScheduleOptionIndicator = styled.div<ScheduleOptionIndicatorProps>`
   height: 1.125rem;
   border: 0.125rem solid
     ${props => (props.isSelected ? color("brand") : color("text-light"))};
+  border-radius: 50%;
 `;
 
 interface ScheduleOptionIndicatorBackgroundProps {
@@ -42,6 +43,7 @@ interface ScheduleOptionIndicatorBackgroundProps {
 export const ScheduleOptionIndicatorBackground = styled.div<ScheduleOptionIndicatorBackgroundProps>`
   width: 0.5rem;
   height: 0.5rem;
+  border-radius: 50%;
   background-color: ${props => props.isSelected && color("brand")};
 `;
 

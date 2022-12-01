@@ -18,14 +18,12 @@ export interface DatabaseSyncScheduleFieldProps {
   name: string;
   title?: string;
   description?: ReactNode;
-  timezone: string;
 }
 
 const DatabaseSyncScheduleField = ({
   name,
   title,
   description,
-  timezone,
 }: DatabaseSyncScheduleFieldProps): JSX.Element => {
   const [{ value }, , { setValue }] = useField(name);
 
@@ -41,7 +39,6 @@ const DatabaseSyncScheduleField = ({
       <SchedulePicker
         schedule={value ?? DEFAULT_SCHEDULE}
         scheduleOptions={SCHEDULE_OPTIONS}
-        timezone={timezone}
         textBeforeInterval={t`Scan`}
         minutesOnHourPicker
         onScheduleChange={handleScheduleChange}

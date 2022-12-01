@@ -29,14 +29,12 @@ export interface DatabaseCacheScheduleFieldProps {
   name: string;
   title?: string;
   description?: ReactNode;
-  timezone: string;
 }
 
 const DatabaseCacheScheduleField = ({
   name,
   title,
   description,
-  timezone,
 }: DatabaseCacheScheduleFieldProps): JSX.Element => {
   const { values, setFieldValue } = useFormikContext<DatabaseValues>();
   const [{ value }, , { setValue }] = useField(name);
@@ -74,7 +72,6 @@ const DatabaseCacheScheduleField = ({
           <SchedulePicker
             schedule={value ?? DEFAULT_SCHEDULE}
             scheduleOptions={SCHEDULE_OPTIONS}
-            timezone={timezone}
             onScheduleChange={handleScheduleChange}
           />
         </ScheduleOption>
@@ -119,7 +116,9 @@ const ScheduleOption = ({
         <ScheduleOptionTitle isSelected={isSelected}>
           {title}
         </ScheduleOptionTitle>
-        {children && <ScheduleOptionContent>{children}</ScheduleOptionContent>}
+        {children && isSelected && (
+          <ScheduleOptionContent>{children}</ScheduleOptionContent>
+        )}
       </ScheduleOptionBody>
     </ScheduleOptionRoot>
   );
