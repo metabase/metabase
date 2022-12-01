@@ -501,6 +501,12 @@
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
+(defmethod ->rvalue :now [[_]]
+  (if (driver/database-supports? :mongo :now (qp.store/database))
+    "$$NOW"
+    (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
+                    {:database-version (get-mongo-version)}))))
+
 (defmethod ->rvalue :datetime-add        [[_ inp amount unit]] (do
                                                                  (check-date-operations-supported)
                                                                  {"$dateAdd" {:startDate (->rvalue inp)
