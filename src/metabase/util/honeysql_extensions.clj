@@ -224,7 +224,7 @@
   [honeysql-form database-type]
   (let [form-type (some-> honeysql-form type-info type-info->db-type str/lower-case)]
     (if (instance? java.util.regex.Pattern database-type)
-      (some? (re-find database-type form-type))
+      (and (some? form-type) (some? (re-find database-type form-type)))
       (= form-type
          (some-> database-type name str/lower-case)))))
 

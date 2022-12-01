@@ -82,7 +82,7 @@
     expr))
 
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (cast-timestamp expr)))
-(defn- extract    [unit expr] (hsql/call :extract    unit              expr))
+(defn- extract    [unit expr] (hsql/call :extract    unit              (cast-timestamp expr)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
@@ -113,7 +113,7 @@
 
 (defmethod sql.qp/->honeysql [:vertica :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
-  (let [expr         (sql.qp/->honeysql driver arg)
+  (let [expr         (cast-timestamp (sql.qp/->honeysql driver arg))
         timestamptz? (hx/is-of-type? expr "timestamptz")]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?

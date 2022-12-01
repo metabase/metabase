@@ -99,7 +99,6 @@
     :query-fn    (fn [op field-id] {:expressions {"expr" [op [:field field-id nil]]}
                                     :aggregation [[:count]]
                                     :breakout    [[:expression "expr"]]})}])
-
 (deftest extraction-function-tests
   (mt/dataset times-mixed
     (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
@@ -120,7 +119,27 @@
                 {:keys [expected-fn query-fn]}
                 extraction-test-cases]
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
-            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))))
+            (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
+
+    (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
+      (testing "works with literal value"
+        (let [ops [:get-year :get-quarter :get-month :get-day
+                   :get-day-of-week :get-hour :get-minute :get-second]]
+          (is (= {:get-day         3
+                  :get-day-of-week 2
+                  :get-hour        7
+                  :get-minute      10
+                  :get-month       10
+                  :get-quarter     4
+                  :get-second      20
+                  :get-year        2022}
+                 (->> (mt/run-mbql-query times
+                                         {:expressions (into {} (for [op ops]
+                                                                  [(name op) [op "2022-10-03T07:10:20"]]))
+                                          :fields      (into [] (for [op ops] [:expression (name op)]))})
+                      (mt/formatted-rows (repeat int))
+                      first
+                      (zipmap ops)))))))))
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
@@ -300,8 +319,16 @@
                              :aggregation [[:count]]
                              :breakout    [[:expression "expr"]]}}]]
           (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
-            (is (= (set expected) (set (test-datetime-math query))))))))))
+            (is (= (set expected) (set (test-datetime-math query)))))))
 
+      (testing "date arithmetics with literal date"
+        (is (= ["2008-08-20 00:00:00" "2008-04-20 00:00:00"]
+               (->> (mt/run-mbql-query times
+                                       {:expressions {"add" [:datetime-add "2008-06-20T00:00:00" 2 :month]
+                                                      "sub" [:datetime-subtract "2008-06-20T00:00:00" 2 :month]}
+                                        :fields      [[:expression "add"] [:expression "sub"]]})
+                    (mt/formatted-rows [normalize-timestamp-str normalize-timestamp-str])
+                    first)))))))
 
 (deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
@@ -390,7 +417,15 @@
                 (is (= ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"]
                        (mt/$ids (test-convert-tz
                                   $times.dt_tz
-                                  [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Tokyo"]))))))))))))
+                                  [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Tokyo"]))))))))
+
+        (testing "with literal datetime"
+          (is (= "2022-10-03T14:10:20+07:00"
+                 (->> (mt/run-mbql-query times
+                                         {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Saigon" "UTC"]}
+                                          :fields      [[:expression "expr"]]})
+                      mt/rows
+                      ffirst))))))))
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
