@@ -1,11 +1,15 @@
 (ns metabase.sample-database-test
   "Tests to make sure the Sample Database syncs the way we would expect."
-  (:require [clojure.test :refer :all]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.models :refer [Database Field Table]]
+            [metabase.plugins :as plugins]
             [metabase.sample-data :as sample-data]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.util :as u]
+            [metabase.util.files :as u.files]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
@@ -39,6 +43,23 @@
 
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
+
+(deftest extract-sample-database-test
+  (testing "The Sample Database is copied out of the JAR into the plugins directory before the DB details are saved."
+    (with-redefs [sync/sync-database! (constantly nil)]
+      (with-temp-sample-database-db [db]
+        (let [db-path (get-in db [:details :db])]
+          (is (re-matches #"^file:[a-zA-z/]*plugins/sample-database.db;USER=GUEST;PASSWORD=guest$"
+                          db-path))))))
+
+  (testing "If the plugins directory is not writable, we fall back to reading directly from the DB in the JAR"
+    (memoize/memo-clear! @#'plugins/plugins-dir*)
+    (with-redefs [u.files/create-dir-if-not-exists! (fn [] (throw (Exception.)))]
+      (with-temp-sample-database-db [db]
+        (let [db-path (get-in db [:details :db])]
+          (is (not (str/includes? db-path "plugins")))))))
+
+  (memoize/memo-clear! @#'plugins/plugins-dir*))
 
 (deftest sync-sample-database-test
   (testing (str "Make sure the Sample Database is getting synced correctly. For example PEOPLE.NAME should be "

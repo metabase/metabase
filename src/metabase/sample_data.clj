@@ -45,20 +45,20 @@
 
 (defn- db-details
   "Tries to extract the sample database out of the JAR (for performance) and then returns a db-details map
-   containing a connection string."
+   containing a path to the copied database."
   []
   (let [resource (io/resource sample-database-filename)]
     (when-not resource
       (throw (Exception. (trs "Sample database DB file ''{0}'' cannot be found."
                               sample-database-filename))))
     {:db
-      (if-not (:temp plugins/plugins-dir-info)
-        (do
-         (extract-sample-database!)
-         (extracted-db-details))
-        (do
-         (log/warn (trs (str "Sample database could not be extracted to the plugins directory; this may result in slow startup times.")))
-         (jar-db-details resource)))}))
+     (if-not (:temp (plugins/plugins-dir-info))
+       (do
+        (extract-sample-database!)
+        (extracted-db-details))
+       (do
+        (log/warn (trs (str "Sample database could not be extracted to the plugins directory; this may result in slow startup times.")))
+        (jar-db-details resource)))}))
 
 (defn add-sample-database!
   "Add the sample database as a Metabase DB if it doesn't already exist."
