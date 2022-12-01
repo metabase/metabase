@@ -66,7 +66,7 @@ type ScheduleChangeProp = { name: ScheduleProperty; value: unknown };
 export interface SchedulePickerProps {
   schedule: ScheduleSettings;
   scheduleOptions: ScheduleType[];
-  timezone: string;
+  timezone?: string;
   textBeforeInterval?: string;
   textBeforeSendTime?: string;
   minutesOnHourPicker?: boolean;
