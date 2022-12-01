@@ -307,10 +307,6 @@
 ;;; |                                                      Sync                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql-jdbc.sync/database-type->base-type :presto-jdbc
-  [_ field-type]
-  (presto-common/presto-type->base-type field-type))
-
 (defn- have-select-privilege?
   "Checks whether the connected user has permission to select from the given `table-name`, in the given `schema`.
   Adapted from the legacy Presto driver implementation."

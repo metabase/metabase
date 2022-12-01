@@ -50,6 +50,9 @@
      [#"(?i)row.*"                      :type/*] ; TODO - again, but this time we supposedly have a schema
      [#".*"                             :type/*]]))
 
+(defmethod sql-jdbc.sync/database-type->base-type :presto-common [_driver database-type]
+  (presto-type->base-type database-type))
+
 (defmethod sql.qp/add-interval-honeysql-form :presto-common
   [_ hsql-form amount unit]
   (hsql/call :date_add (hx/literal unit) amount hsql-form))
