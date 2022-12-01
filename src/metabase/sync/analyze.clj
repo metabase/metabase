@@ -99,7 +99,7 @@
   (trs "Total number of tables classified {0}, {1} updated"
        total-tables tables-classified))
 
-(defn ^:private make-analyze-steps [tables log-fn]
+(defn- make-analyze-steps [tables log-fn]
   [(sync-util/create-sync-step "fingerprint-fields"
                                #(fingerprint/fingerprint-fields-for-db! % tables log-fn)
                                fingerprint-fields-summary)

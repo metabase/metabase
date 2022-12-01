@@ -191,22 +191,24 @@
                                      field
                                      (assoc field :pk? true))))))))
 
-(defn- describe-table* [driver ^Connection conn db-name-or-nil table]
-  {:pre [(instance? Connection conn)]}
-  (->> (assoc (select-keys table [:name :schema])
-              :fields (describe-table-fields driver conn table nil))
-       ;; find PKs and mark them
-       (add-table-pks (.getMetaData conn) db-name-or-nil)))
+(defn- describe-table*
+  ([driver ^Connection conn table]
+   (describe-table* driver conn nil table))
+  ([driver ^Connection conn db-name-or-nil table]
+   {:pre [(instance? Connection conn)]}
+   (->> (assoc (select-keys table [:name :schema])
+               :fields (describe-table-fields driver conn table nil))
+        ;; find PKs and mark them
+        (add-table-pks (.getMetaData conn) db-name-or-nil))))
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec-or-conn table]
   (if (instance? Connection db-or-id-or-spec-or-conn)
-    (describe-table* driver db-or-id-or-spec-or-conn nil table)
-    (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)
-          db-name (db/select-one-field :db 'Database :id db-or-id-or-spec-or-conn)]
+    (describe-table* driver db-or-id-or-spec-or-conn table)
+    (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)]
       (with-open [conn (jdbc/get-connection spec)]
-        (describe-table* driver conn db-name table)))))
+        (describe-table* driver conn table)))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
