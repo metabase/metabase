@@ -144,83 +144,21 @@
                       (zipmap ops)))))))
 
     (testing "with timestamptz columns"
-      (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
-       (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
-         (letfn [(extract [t]
-                   (let [ops [:get-year :get-quarter :get-month :get-day
-                              :get-day-of-week :get-hour :get-minute :get-second]]
-                     (->> (mt/mbql-query times {:expressions (into {} (for [op ops]
-                                                                        [(name op) [op t]]))
-                                                :fields      (into [] (for [op ops] [:expression (name op)]))})
-                          mt/process-query
-                          (mt/formatted-rows (repeat int))
-                          first
-                          (zipmap ops))))]
-
-             (is (= (if (driver/supports? driver/*driver* :set-timezone)
-                      ;; drivers support set-timezone displays the result in the report-tz
-                      ;; so we expect the extracted components will be in report-tz
-                      ;; for drivers that are not, extract should returns in UTC
-                      {:get-year        2000,
-                       :get-quarter     1,
-                       :get-month       1,
-                       :get-day         1,
-                       :get-day-of-week 7,
-                       :get-hour        (case driver/*driver*
-                                          ;; redshift only fails if the input is literal
-                                          :redshift  9
-                                          ;:snowflake 16
-                                          ;:vertica   9
-                                          2),
-                       :get-minute      34,
-                       :get-second      56}
-                      {:get-year        1999,
-                       :get-quarter     4,
-                       :get-month       12,
-                       :get-day         31,
-                       :get-day-of-week 6,
-                       :get-hour        19,
-                       :get-minute      34,
-                       :get-second      56})
-                    ;; it'll be 1999-12-31T19:00:00+00:00 in UTC
-                    (extract "2000-01-01T02:34:56+07:00"))))
-
-        (is (= (if (driver/supports? driver/*driver* :set-timezone)
-                 ["2004-03-19T09:19:09+07:00" 9]
-                 ["2004-03-19T02:19:09+00:00" 2])
-               (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
-                                          :fields      [$dt_tz [:expression "hour"]]
-                                          :filter      [:= $index 1]
-                                          :limit       1})
-                   mt/process-query
-                   mt/rows
-                   first))))))))
-
-
-#_(mt/set-test-drivers! #{:postgres})
-
-#_(mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
-    (mt/with-driver :redshift
-      (mt/dataset times-mixed
-                  (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
-                                              :fields      [$dt_tz [:expression "hour"]]
-                                              :filter      [:= $index 1]
-                                              :limit       1})
-                       mt/process-query mt/rows
-                       ;mt/compile :query println
-                       #_a))))
-
-
-
-#_(mt/with-report-timezone-id "UTC"
-   (dev/query-jdbc-db
-     [:redshift 'times-mixed]
-     ["select * from \"schema_117\".\"times_mixed_times\" limit 1"]))
-
-
-#_(dev/query-jdbc-db
-    [:redshift 'times-mixed]
-    ["select cast(? as timestamp)" #t "2000-01-01T02:34:56+07:00"])
+      (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
+        (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
+          (is (= (if (driver/supports? driver/*driver* :set-timezone)
+                   ;; drivers support set-timezone displays the result in the report-tz
+                   ;; so we expect the extracted components will be in report-tz
+                   ;; for drivers that are not, extract should returns in UTC
+                   ["2004-03-19T09:19:09+07:00" 9]
+                   ["2004-03-19T02:19:09Z" 2])
+                 (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
+                                            :fields      [$dt_tz [:expression "hour"]]
+                                            :filter      [:= $index 1]
+                                            :limit       1})
+                      mt/process-query
+                      (mt/formatted-rows [str int])
+                      first))))))))
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
