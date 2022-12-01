@@ -18,7 +18,7 @@
 ;; These tools are pretty sophisticated for the amount of tests we have!
 
 (defn- sample-database-db []
-  {:details (#'sample-data/db-details)
+  {:details (#'sample-data/try-to-extract-sample-database!)
    :engine  :h2
    :name    "Sample Database"})
 
