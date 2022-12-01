@@ -76,8 +76,11 @@
 
 (defn update-sample-database-if-needed!
   "Update the path to the sample database DB if it exists in case the JAR has moved."
-  []
-  (when-let [sample-db (db/select-one Database :is_sample true)]
-    (let [intended (db-details)]
-      (when (not= (:details sample-db) intended)
-        (db/update! Database (:id sample-db) :details intended)))))
+  ([]
+   (update-sample-database-if-needed! (db/select-one Database :is_sample true)))
+
+  ([sample-db]
+   (when sample-db
+     (let [intended (db-details)]
+       (when (not= (:details sample-db) intended)
+         (db/update! Database (:id sample-db) :details intended))))))
