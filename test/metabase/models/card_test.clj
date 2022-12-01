@@ -395,7 +395,7 @@
               :pie.percent_visibility "inside"}
              (:visualization_settings (db/simple-select-one Card {:where [:= :id card-id]})))))))
 
-(deftest corrupted-cards-will-fix-itself
+(deftest corrupted-cards-will-fix-themselves
   (testing "#15222"
     (testing "if card has an empty dataset_query, fixit up with an dummy query"
       (mt/with-temp* [Card [{id1 :id} {:dataset_query ""}]
