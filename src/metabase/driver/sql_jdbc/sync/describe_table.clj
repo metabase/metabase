@@ -15,7 +15,8 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.table :as table]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
 
 (defmethod sql-jdbc.sync.interface/column->semantic-type :sql-jdbc [_ _ _] nil)
@@ -177,8 +178,11 @@
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
-  [^DatabaseMetaData metadata table]
-  (let [pks (into #{} (sql-jdbc.common/reducible-results #(.getPrimaryKeys metadata nil nil (:name table))
+  [^DatabaseMetaData metadata db-name table]
+  (let [pks (into #{} (sql-jdbc.common/reducible-results #(.getPrimaryKeys metadata
+                                                                           db-name
+                                                                           (:schema table)
+                                                                           (:name table))
                                                          (fn [^ResultSet rs]
                                                            #(.getString rs "COLUMN_NAME"))))]
     (update table :fields (fn [fields]
@@ -187,21 +191,22 @@
                                      field
                                      (assoc field :pk? true))))))))
 
-(defn- describe-table* [driver ^Connection conn table]
+(defn- describe-table* [driver ^Connection conn db-name-or-nil table]
   {:pre [(instance? Connection conn)]}
   (->> (assoc (select-keys table [:name :schema])
               :fields (describe-table-fields driver conn table nil))
        ;; find PKs and mark them
-       (add-table-pks (.getMetaData conn))))
+       (add-table-pks (.getMetaData conn) db-name-or-nil)))
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec-or-conn table]
   (if (instance? Connection db-or-id-or-spec-or-conn)
-    (describe-table* driver db-or-id-or-spec-or-conn table)
-    (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)]
+    (describe-table* driver db-or-id-or-spec-or-conn nil table)
+    (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)
+          db-name (db/select-one-field :db 'Database :id db-or-id-or-spec-or-conn)]
       (with-open [conn (jdbc/get-connection spec)]
-        (describe-table* driver conn table)))))
+        (describe-table* driver conn db-name table)))))
 
 (defn- describe-table-fks*
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
