@@ -209,7 +209,8 @@
 (defn valid-dataset-query?
   "Check if the dataset-query is valid."
   [dataset-query]
-  (not (boolean (s/check DatasetQuery dataset-query))))
+  (or (and (map? dataset-query) (empty? dataset-query))
+   (not (boolean (s/check DatasetQuery dataset-query)))))
 
 (defn- check-for-invalid-dataset-query
   "A dataset_query map is required, but since it is a json column in the app-db, it is possible to pass invalid json strings.
