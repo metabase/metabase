@@ -225,7 +225,9 @@
   (get-in db [:details :version]))
 
 (defn- parse-version [version]
-  (map #(Integer/parseInt %) (str/split version #"\.")))
+  (->> (str/split version #"\.")
+       (take 2)
+       (map #(Integer/parseInt %))))
 
 (defn- db-major-version [db]
   (some-> (db-version db) parse-version first))
