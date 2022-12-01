@@ -333,18 +333,31 @@ class Visualization extends React.PureComponent {
     return gridSize;
   };
 
+  getHasHeader = ({ settings, loading, error, noResults, extra }) => {
+    const { dashcard, showTitle, replacementContent, isMobile } = this.props;
+    const { visualization } = this.state;
+
+    const title = settings["card.title"];
+    const hasHeaderContent = title || extra;
+    const isHeaderEnabled = !(visualization && visualization.noHeader);
+
+    return (
+      (showTitle &&
+        hasHeaderContent &&
+        (loading || error || noResults || isHeaderEnabled)) ||
+      (replacementContent && (dashcard.size_y !== 1 || isMobile))
+    );
+  };
+
   render() {
     const {
       actionButtons,
       className,
-      dashcard,
-      showTitle,
       isDashboard,
       width,
       headerIcon,
       errorIcon,
       isSlow,
-      isMobile,
       expectedDuration,
       replacementContent,
       onOpenChartSettings,
@@ -439,15 +452,13 @@ class Visualization extends React.PureComponent {
 
     const CardVisualization = visualization;
 
-    const title = settings["card.title"];
-    const hasHeaderContent = title || extra;
-    const isHeaderEnabled = !(visualization && visualization.noHeader);
-
-    const hasHeader =
-      (showTitle &&
-        hasHeaderContent &&
-        (loading || error || noResults || isHeaderEnabled)) ||
-      (replacementContent && (dashcard.size_y !== 1 || isMobile));
+    const hasHeader = this.getHasHeader({
+      settings,
+      loading,
+      error,
+      noResults,
+      extra,
+    });
 
     return (
       <VisualizationRoot className={className} style={style}>
