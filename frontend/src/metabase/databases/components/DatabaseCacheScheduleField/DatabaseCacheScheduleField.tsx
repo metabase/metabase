@@ -36,7 +36,7 @@ const DatabaseCacheScheduleField = ({
   title,
   description,
 }: DatabaseCacheScheduleFieldProps): JSX.Element => {
-  const { values, setFieldValue } = useFormikContext<DatabaseValues>();
+  const { values, setValues } = useFormikContext<DatabaseValues>();
   const [{ value }, , { setValue }] = useField(name);
 
   const handleScheduleChange = useCallback(
@@ -47,19 +47,30 @@ const DatabaseCacheScheduleField = ({
   );
 
   const handleFullSyncSelect = useCallback(() => {
-    setFieldValue("is_full_sync", true);
-    setFieldValue("is_on_demand", false);
-  }, [setFieldValue]);
+    setValues(values => ({
+      ...values,
+      is_full_sync: true,
+      is_on_demand: false,
+    }));
+  }, [setValues]);
 
   const handleOnDemandSyncSelect = useCallback(() => {
-    setFieldValue("is_full_sync", false);
-    setFieldValue("is_on_demand", true);
-  }, [setFieldValue]);
+    setValues(values => ({
+      ...values,
+      schedules: {},
+      is_full_sync: false,
+      is_on_demand: true,
+    }));
+  }, [setValues]);
 
   const handleNoneSyncSelect = useCallback(() => {
-    setFieldValue("is_full_sync", false);
-    setFieldValue("is_on_demand", false);
-  }, [setFieldValue]);
+    setValues(values => ({
+      ...values,
+      schedules: {},
+      is_full_sync: false,
+      is_on_demand: true,
+    }));
+  }, [setValues]);
 
   return (
     <FormField title={title} description={description}>
