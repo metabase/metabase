@@ -67,10 +67,10 @@ If you're using MongoDB, `datetimeAdd` will only work on versions 5 and up.
 
 Unfortunately, Metabase doesn't currently support datetime functions like `today`. So if you want to check if today's date falls between **Opened On** and **Finish By** in the [Coffee example](#calculating-an-end-date):
 
-- Ask your database admin if there's table in your database that stores dates for reporting (sometimes called a date dimension table).
-- Create a new question using the date dimension table, with a filter for "Today".
-- Turn the "Today" question into a model.
-- Create a left join between **Coffee** and the "Today" model on `[Opened On] <= [Today]` and `[Finish By] >= [Today]`.
+1. Ask your database admin if there's table in your database that stores dates for reporting (sometimes called a date dimension table).
+2. Create a new question using the date dimension table, with a filter for "Today".
+3. Turn the "Today" question into a [model](../../../data-modeling/models.md).
+4. Create a left join between **Coffee** and the "Today" model on `[Opened On] <= [Today]` and `[Finish By] >= [Today]`.
 
 The result should give you a **Today** column that's non-empty if today's date falls inside the coffee freshness window:
 

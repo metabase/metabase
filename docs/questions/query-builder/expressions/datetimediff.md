@@ -61,12 +61,12 @@ If your timestamps are stored as strings or numbers in your database, an admin c
 
 Metabase doesn't currently support datetime functions like `today`, so if you want to calculate the _current_ age in our [Cheese example](#calculating-age):
 
-- Ask your database admin if there's table in your database that stores dates for reporting (sometimes called a date dimension table).
-- Create a new question using the date dimension table, with a filter for "Today".
-- Turn the "Today" question into a model.
-- Create a left join between **Cheese** and the "Today" model on `[Aging Start] <= [Today]`.
+1. Ask your database admin if there's table in your database that stores dates for reporting (sometimes called a date dimension table).
+2. Create a new question using the date dimension table, with a filter for "Today".
+3. Turn the "Today" question into a [model](../../../data-modeling/models.md).
+4. Create a left join between **Cheese** and the "Today" model on `[Aging Start] <= [Today]`.
 
-The result should give you a **Today** column that's non-empty if today's date is greater than **Aging Start**.
+The result should give you a **Today** column that's non-empty if today's date is on or after the **Aging Start** date.
 
 | Cheese            | Aging Start      | Aging End        |  Mature Age (Months)  |  Today             |  Current Age (Months) |
 |-------------------|------------------|------------------|-----------------------|--------------------|-----------------------|

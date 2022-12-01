@@ -72,10 +72,10 @@ When you're doing time zone conversions, make sure you know the source time zone
 | No time zone                  | Missing time zone metadata                                           | Databases don't _require_ you to store timestamps with time zone metadata.                                        |
 | Metabase report time zone     | Time zone that Metabase uses to _display_ timestamps.                | Metabase can display dates and times in PST, even if the dates and times are stored as UTC in your database.     |
 
-For example, say you have a table with one row for each person who visited your website. It's hard to tell, just from looking at `December 28, 2022, 12:00:00PM`, whether the "raw" timestamp is:
+For example, say you have a table with one row for each person who visited your website. It's hard to tell, just from looking at `December 28, 2022, 12:00 PM`, whether the "raw" timestamp is:
 
 - stored using your database's time zone (usually UTC),
-- stored without time zone metadata (for example, if the website visitor is in HKT, then the timestamp `December 28, 2022, 12:00:00` might "implicitly" use Hong Kong time),
+- stored without time zone metadata (for example, if the website visitor is in HKT, then the timestamp `December 28, 2022, 12:00 PM` might "implicitly" use Hong Kong time),
 - _displayed_ in your Metabase report time zone.
 
 For more gory details, see [Limitations](#limitations).

@@ -69,7 +69,7 @@ Unfortunately, Metabase doesn't currently support datetime functions like `today
 
 1. Ask your database admin if there's table in your database that stores datetimes for reporting (sometimes called a date dimension table).
 2. Create a new question using the date dimension table, with a filter for "Today".
-3. Turn the "Today" question into a model.
+3. Turn the "Today" question into a [model](../../../data-modeling/models.md).
 4. Create a left join between **Events** and the "Today" model on `[Arrive By] <= [Today]` and `[Depart At] >= [Today]`.
 
 The result should give you an **Today** column that's non-empty for events that are happening while the night is still young:
