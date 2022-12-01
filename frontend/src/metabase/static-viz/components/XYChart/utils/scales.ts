@@ -36,10 +36,14 @@ export const createXScale = (
   const shouldUseBandScale = isOrdinal || hasBars;
 
   if (shouldUseBandScale) {
-    const domain = series
-      .flatMap(series => series.data)
-      .map(datum => getX(datum).valueOf());
+    const unsortedDomain = series.map(series =>
+      series.data.map(datum => getX(datum).valueOf()),
+    );
+    const domain = unsortedDomain
+      .reduce(mergeSortedList)
+      .reduce(deduplicate, []);
 
+    console.log({ unsortedDomain, domain });
     const xScale = scaleBand({
       domain,
       range,
@@ -87,6 +91,54 @@ export const createXScale = (
       xScale(parseInt(getX(datum).toString())),
   };
 };
+
+function mergeSortedList(
+  listA: (string | number)[],
+  listB: (string | number)[],
+): (string | number)[] {
+  let listAIndex = 0;
+  let listBIndex = 0;
+  const sortedList = [];
+
+  for (let i = 0; i < listA.length + listB.length; i++) {
+    if (compare(listA[listAIndex], listB[listBIndex]) < 0) {
+      sortedList.push(listA[listAIndex]);
+      if (listAIndex < listA.length - 1) {
+        listAIndex++;
+      } else {
+        listBIndex++;
+      }
+    } else {
+      sortedList.push(listB[listBIndex]);
+      if (listBIndex < listB.length - 1) {
+        listBIndex++;
+      } else {
+        listAIndex++;
+      }
+    }
+  }
+
+  return sortedList;
+}
+
+function compare(a: string | number, b: string | number) {
+  if (typeof a === "string") {
+    return a.localeCompare(String(b));
+  }
+
+  return a - (b as number);
+}
+
+function deduplicate(
+  sortedList: (string | number)[],
+  newValue: string | number,
+) {
+  if (sortedList[sortedList.length - 1] !== newValue) {
+    return [...sortedList, newValue];
+  }
+
+  return sortedList;
+}
 
 const calculateYDomain = (
   series: HydratedSeries[],
