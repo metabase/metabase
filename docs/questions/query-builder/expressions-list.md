@@ -295,7 +295,7 @@ Syntax: `datetimeAdd(column, amount, unit)`.
 
 Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
-Related: [between](#between), [datetimeSubtract](#datetimesubtractexpressionsdatetimesubtractmd), [now](#nowexpressionsnowmd).
+Related: [between](#between), [datetimeSubtract](#datetimesubtract), [now](#now).
 
 ### [datetimeDiff](./expressions/datetimediff.md)
 
@@ -308,7 +308,7 @@ Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
 
 Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
 
-Related: [now](#nowexpressionsnowmd).
+Related: [now](#now).
 
 ### [datetimeSubtract](./expressions/datetimesubtract.md)
 
@@ -322,7 +322,7 @@ Syntax: `datetimeSubtract(column, amount, unit)`.
 
 Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
 
-Related: [between](#between), [datetimeAdd](#datetimeaddexpressionsdatetimeaddmd), [now](#nowexpressionsnowmd).
+Related: [between](#between), [datetimeAdd](#datetimeadd), [now](#now).
 
 ### day
 
