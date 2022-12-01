@@ -90,48 +90,40 @@
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
-    (when (= (keyword query-type) :native)
-      (let [{:keys [details]} (qp.store/database)
-            user              (db-details->user details)]
-        (when (or (str/blank? user)
-                  (= user "sa"))        ; "sa" is the default USER
-          (throw
-           (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
-             {:type qp.error-type/db})))))))
+           (when (= (keyword query-type) :native)
+             (let [{:keys [details]} (qp.store/database)
+                   user              (db-details->user details)]
+               (when (or (str/blank? user)
+                         (= user "sa"))        ; "sa" is the default USER
+                 (throw
+                  (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
+                           {:type qp.error-type/db})))))))
+
+(defn- get-field
+  "Returns value of private field"
+  [obj field]
+  (.get (doto (.getDeclaredField (class obj) field)
+          (.setAccessible true))
+        obj))
 
 (defn- make-h2-parser [h2-db-id]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
-    (let [inner-field (doto
-                          (.getDeclaredField (class conn) "inner")
-                        (.setAccessible true))
-          h2-jdbc-conn (.get inner-field conn)
-          session-field (doto
-                            (.getDeclaredField (class h2-jdbc-conn) "session")
-                          (.setAccessible true))
-          session (.get session-field h2-jdbc-conn)]
-      (cond
-        (instance? Session session)
-        (Parser. session)
-
-        ;; a SessionRemote cannot be used to make a parser
-        (instance? SessionRemote session)
-        ::client-side-session
-
-        :else
-        (throw (ex-info "Unknown session type" {:session session}))))))
+    (let [session (-> conn (get-field "inner") (get-field "session"))]
+      (when (instance? SessionLocal session)
+        (Parser. session)))))
 
 (defn- contains-ddl?
   [database query]
-  (let [h2-parser (make-h2-parser database)]
-    (when-not (= ::client-side-session h2-parser)
-      (try
-        (let [command      (.prepareCommand h2-parser query)
-              command-type (.getCommandType command)]
-          ;; Command types are organized with all DDL commands listed first
-          ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
-          (< command-type CommandInterface/ALTER_SEQUENCE))
-        ;; if the query is invalid, then it's OK
-        (catch Throwable _ false)))))
+  (when-let [h2-parser (make-h2-parser database)]
+    (try
+      (let [command      (.prepareCommand h2-parser query)
+            command-type (.getCommandType command)]
+        ;; TODO: do we need to handle CommandList?
+        ;; Command types are organized with all DDL commands listed first
+        ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
+        (< command-type CommandInterface/ALTER_SEQUENCE))
+        ;; if the query is invalid, then it isn't DDL
+      (catch Throwable _ false))))
 
 (defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
   (when query
