@@ -47,7 +47,7 @@ Here, **Finish By** is a custom column with the expression:
 datetimeAdd([Opened On], 14, 'day')
 ```
 
-To check if a given date falls between your start and end datetimes, you can use functions like [`between`](../expressions-list.md#between) or [`now`](../expressions/now.md).
+To check if a given date falls between your start and end datetimes, use [`between`](../expressions-list.md#between).
 
 ## Accepted data types
 
@@ -64,6 +64,21 @@ This table uses `timestamp` and `datetime` interchangeably. If your dates and ti
 ## Limitations
 
 If you're using MongoDB, `datetimeAdd` will only work on versions 5 and up.
+
+Unfortunately, Metabase doesn't currently support datetime functions like `today`. So if you want to check if today's date falls between **Opened On** and **Finish By** in the [Coffee example](#calculating-an-end-date):
+
+- Ask your database admin if there's table in your database that stores dates for reporting (sometimes called a date dimension table).
+- Create a new question using the date dimension table, with a filter for "Today".
+- Turn the "Today" question into a model.
+- Create a left join between **Coffee** and the "Today" model on `[Opened On] <= [Today]` and `[Finish By] >= [Today]`.
+
+The result should give you a **Today** column that's non-empty if today's date falls inside the coffee freshness window:
+
+| Coffee                 | Opened On  | Finish By  | Today      | 
+|------------------------|------------|------------|------------|
+| DAK Honey Dude         | 2022-10-31 | 2022-11-14 | 2022-11-10 |
+| NO6 Full City Espresso | 2022-11-07 | 2022-11-21 | 2022-11-10 |
+| Ghost Roaster Giakanja | 2022-11-27 | 2022-12-11 |            |
 
 ## Related functions
 

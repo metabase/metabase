@@ -8,7 +8,7 @@ title: ConvertTimezone
 
 | Syntax                                                                | Example                                                                           |
 |-----------------------------------------------------------------------|-----------------------------------------------------------------------------------|
-| `convertTimezone(column, target, source)`                             | `convertTimezone("2022-12-28T12:00:00", "PST", "EST")`                            |
+| `convertTimezone(column, target, source)`                             | `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")`      |
 | Shifts a timestamp from the source time zone to the target time zone. | Returns the value `2022-12-28T09:00:00`, displayed as `December 28, 2022 9:00 AM` |
 
 Timestamps and time zones are rather nasty to work with (it's easy to make mistakes, and difficult to catch them), so you should only try to use `convertTimezone` if the interpretation of your data is very sensitive to time-based cutoffs.
@@ -112,14 +112,14 @@ The Metabase report time zone only applies to `timestamp with time zone` or  `ti
 
 | Raw timestamp                            | Report time zone  | Displayed As           |
 |------------------------------------------|-------------------|------------------------|
-| `2022-12-28T12:00:00 AT TIME ZONE 'CST'` | 'America/Toronto' | Dec 28, 2022, 7:00 AM  |
-| `2022-12-28T12:00:00-06:00`              | 'America/Toronto' | Dec 28, 2022, 7:00 AM  |
-| `2022-12-28T12:00:00`                    | 'America/Toronto' | Dec 28, 2022, 12:00 AM |
+| `2022-12-28T12:00:00 AT TIME ZONE 'CST'` | 'Canada/Eastern'  | Dec 28, 2022, 7:00 AM  |
+| `2022-12-28T12:00:00-06:00`              | 'Canada/Eastern'  | Dec 28, 2022, 7:00 AM  |
+| `2022-12-28T12:00:00`                    | 'Canada/Eastern'  | Dec 28, 2022, 12:00 AM |
 
 The Metabase report time zone will not apply to the output of a `convertTimezone` expression. For example:
 
 ```
-convertTimezone("2022-12-28T12:00:00 AT TIME ZONE 'CST'", "PST", "CST")
+convertTimezone("2022-12-28T12:00:00 AT TIME ZONE 'Canada/Central'", "Canada/Pacific", "Canada/Central")
 ```
 
 will produce a raw `timestamp without time zone`
@@ -139,7 +139,7 @@ If you use `convertTimezone` on a `timestamp without time zone`, make sure to us
 For example, if we choose 'CST' as the `source` time zone for a `timestamp without time zone`:
 
 ```
-convertTimezone("2022-12-28T12:00:00", "PST", "CST")
+convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Central")
 ```
 
 we'll get the raw `timestamp without time zone`
@@ -175,7 +175,7 @@ SELECT source_time::TIMESTAMP AT TIME ZONE 'EST' AS team_report_time_est
 which is the same as the `convertTimezone` expression _with_ a `source` parameter:
 
 ```
-convertTimezone([Source Time], "EST", "UTC")
+convertTimezone([Source Time], "Canada/Eastern", "UTC")
 ```
 
 If `source_time` is a `timestamp with time zone` or `timestamp with offset` (for example, in a Snowflake database), then we don't need to specify a source time zone in SQL or in Metabase.
@@ -187,7 +187,7 @@ SELECT convert_timezone('America/Toronto', source_time) AS team_report_time_est
 is the same as
 
 ```
-convertTimezone([Source Time], "EST")
+convertTimezone([Source Time], "Canada/Eastern")
 ```
 
 Remember that the time zone names depend on your database. For example, Snowflake doesn't accept most time zone abbreviations (like EST).
@@ -203,7 +203,7 @@ A1 - TIME(5, 0, 0)
 to get the same result as
 
 ```
-convertTimezone([Client Time], "EST")
+convertTimezone([Client Time], "Canada/Eastern")
 ```
 
 ### Python
@@ -218,7 +218,7 @@ df['Team Report Time (EST)'] = df['Source Time (UTC)'].dt.tz_convert(tz='Canada/
 to do the same thing as a nested `convertTimezone` expression
 
 ```
-convertTimezone(convertTimezone([Source Time], "UTC"), "EST", "UTC")
+convertTimezone(convertTimezone([Source Time], "UTC"), "Canada/Eastern", "UTC")
 ```
 
 ## Further reading

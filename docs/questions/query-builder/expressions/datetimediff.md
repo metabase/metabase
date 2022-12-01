@@ -31,29 +31,19 @@ title: DatetimeDiff
 
 Let's say you're a cheesemaker, and you want to keep track of your ripening process:
 
-| Cheese            | Aging Start      | Aging End        |  Age in Months   |
-|-------------------|------------------|------------------|------------------|
-| Provolone         | January 19, 2022 | March 17, 2022   | 1                |
-| Feta              | January 25, 2022 | May 3, 2022      | 3                |
-| Monterey Jack     | January 27, 2022 | October 11, 2022 | 8                |
+| Cheese            | Aging Start      | Aging End        |  Mature Age (Months)  |
+|-------------------|------------------|------------------|-----------------------|
+| Provolone         | January 19, 2022 | March 17, 2022   | 1                     |
+| Feta              | January 25, 2022 | May 3, 2022      | 3                     |
+| Monterey Jack     | January 27, 2022 | October 11, 2022 | 8                     |
 
-**Age in Months** is a custom column with the expression:
+**Mature Age (Months)** is a custom column with the expression:
 
 ```
 datetimeDiff([Aging Start], [Aging End], "month")
 ```
 
-To calculate the _current_ age of a cheese in months, you use [`now`](../expressions/now.md) as the second datetime parameter, like this:
-
-```
-datetimeDiff([Aging Start], now, "month")
-```
-
-To calculate the current age of a cheese in days, you'd use:
-
-```
-datetimeDiff([Aging Start], now, "day")
-```
+Unfortunately, you can't easily get the _current_ age of a cheese. For a workaround, see [Limitations].
 
 ## Accepted data types
 
@@ -66,6 +56,29 @@ datetimeDiff([Aging Start], now, "day")
 | JSON                    | ❌                   |
 
 This table uses `timestamp` and `datetime` interchangeably. If your dates and times are stored as strings or numbers in your database, you can [cast them to datetimes](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
+
+## Limitations
+
+Metabase doesn't currently support datetime functions like `today`, so if you want to calculate the _current_ age in our [Cheese example](#calculating-age):
+
+- Ask your database admin if there's table in your database that stores dates for reporting (sometimes called a date dimension table).
+- Create a new question using the date dimension table, with a filter for "Today".
+- Turn the "Today" question into a model.
+- Create a left join between **Cheese** and the "Today" model on `[Aging Start] <= [Today]`.
+
+The result should give you a **Today** column that's non-empty if today's date is greater than **Aging Start**.
+
+| Cheese            | Aging Start      | Aging End        |  Mature Age (Months)  |  Today             |  Current Age (Months) |
+|-------------------|------------------|------------------|-----------------------|--------------------|-----------------------|
+| Provolone         | January 19, 2022 | March 17, 2022   | 1                     | September 19, 2022 |  8                    |
+| Feta              | January 25, 2022 | May 3, 2022      | 3                     | September 19, 2022 |  7                    |
+| Monterey Jack     | January 27, 2022 | October 11, 2022 | 8                     | September 19, 2022 |  7                    |
+
+Then, you can calculate **Current Age (Months)** like this:
+
+```
+datetimeDiff([Aging Start], [Today], "month")
+```
 
 ## Related functions
 
@@ -82,7 +95,7 @@ When you run a question using the [query builder](https://www.metabase.com/gloss
 If our [cheese sample data](#calculating-age) is stored in a PostgreSQL database:
 
 ```sql
-SELECT DATE_PART('month', AGE(aging_end, aging_start)) AS age_in_months
+SELECT DATE_PART('month', AGE(aging_end, aging_start)) AS mature_age_months
 FROM cheese
 ```
 
@@ -115,7 +128,7 @@ Yes, `DATEDIF` looks a bit wrong, but the spreadsheet function really is `DATEDI
 Assuming the [cheese sample data](#calculating-age) is in a `pandas` dataframe column called `df`, you can subtract the dates directly and use `numpy`'s `timedelta64` to convert the difference to months:
 
 ```
-df['Age in Months'] = (df['Aging End'] - df['Aging Start']) / np.timedelta64(1, 'M')
+df['Mature Age (Months)'] = (df['Aging End'] - df['Aging Start']) / np.timedelta64(1, 'M')
 ```
 
 is equivalent to
