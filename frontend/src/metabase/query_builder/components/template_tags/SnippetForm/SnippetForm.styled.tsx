@@ -1,0 +1,36 @@
+import styled from "@emotion/styled";
+import Button from "metabase/core/components/Button";
+import FormTextArea from "metabase/core/components/FormTextArea";
+import { color } from "metabase/lib/colors";
+
+export const FormSnippetTextArea = styled(FormTextArea)`
+  textarea {
+    width: 100%;
+    background-color: ${color("bg-light")};
+
+    font-family: Monaco, monospace;
+    font-size: 0.875em;
+    font-weight: 400;
+    line-height: 1.5em;
+  }
+`;
+
+export const SnippetFormFooter = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+export const SnippetFormFooterContent = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+`;
+
+export const ArchiveButton = styled(Button)``;
+
+ArchiveButton.defaultProps = {
+  icon: "archive",
+  borderless: true,
+};
