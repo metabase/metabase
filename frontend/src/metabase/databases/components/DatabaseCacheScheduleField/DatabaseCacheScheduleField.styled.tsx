@@ -63,3 +63,10 @@ export const ScheduleOptionTitle = styled.div<ScheduleOptionTitleProps>`
 export const ScheduleOptionContent = styled.div`
   margin-top: 1rem;
 `;
+
+export const ScheduleOptionText = styled.div`
+  color: ${color("text-medium")};
+  font-size: 1rem;
+  line-height: 1.5rem;
+  max-width: 38.75rem;
+`;

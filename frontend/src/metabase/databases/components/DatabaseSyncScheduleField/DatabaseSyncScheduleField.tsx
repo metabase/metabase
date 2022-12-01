@@ -29,7 +29,7 @@ const DatabaseSyncScheduleField = ({
 }: DatabaseSyncScheduleFieldProps): JSX.Element => {
   const [{ value }, , { setValue }] = useField(name);
 
-  const handleChange = useCallback(
+  const handleScheduleChange = useCallback(
     (value: ScheduleSettings) => {
       setValue(value);
     },
@@ -44,7 +44,7 @@ const DatabaseSyncScheduleField = ({
         timezone={timezone}
         textBeforeInterval={t`Scan`}
         minutesOnHourPicker
-        onScheduleChange={handleChange}
+        onScheduleChange={handleScheduleChange}
       />
     </FormField>
   );

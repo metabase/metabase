@@ -12,6 +12,7 @@ export interface DatabaseValues {
   schedules: DatabaseSchedules;
   auto_run_queries: boolean;
   refingerprint: boolean;
+  is_sample: boolean;
   is_full_sync: boolean;
   is_on_demand: boolean;
 }

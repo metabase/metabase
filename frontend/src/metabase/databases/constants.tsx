@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
+import DatabaseCacheScheduleField from "./components/DatabaseCacheScheduleField";
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
 import DatabaseConnectionSectionField from "./components/DatabaseConnectionSectionField";
 import DatabaseSshDescription from "./components/DatabaseSshDescription";
@@ -99,6 +100,7 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   },
   "schedules.cache_field_values": {
     name: "schedules.cache_field_values",
+    type: DatabaseCacheScheduleField,
   },
   auto_run_queries: {
     name: "auto_run_queries",
