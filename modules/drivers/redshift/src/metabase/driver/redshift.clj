@@ -4,6 +4,7 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -20,7 +21,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
   (:import [java.sql Connection PreparedStatement ResultSet Types]
-           java.time.OffsetTime))
+           [java.time OffsetTime OffsetDateTime ZonedDateTime]))
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
@@ -303,3 +304,7 @@
             #{}
             (sql-jdbc.describe-table/describe-table-fields-xf driver table)
             (sql-jdbc.describe-table/fallback-fields-metadata-from-select-query driver conn schema table-name))))))
+
+(defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))

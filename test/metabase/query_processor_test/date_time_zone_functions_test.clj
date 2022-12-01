@@ -143,7 +143,7 @@
                       first
                       (zipmap ops)))))))
 
-    (testing-only "with timestamptz columns"
+    (testing "with timestamptz columns"
       (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
        (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
          (letfn [(extract [t]
@@ -158,7 +158,7 @@
                           (zipmap ops))))]
 
              (is (= (if (driver/supports? driver/*driver* :set-timezone)
-                      ;; drivers with set-timezone displays the result in the report-tz
+                      ;; drivers support set-timezone displays the result in the report-tz
                       ;; so we expect the extracted components will be in report-tz
                       ;; for drivers that are not, extract should returns in UTC
                       {:get-year        2000,
@@ -167,8 +167,8 @@
                        :get-day         1,
                        :get-day-of-week 7,
                        :get-hour        (case driver/*driver*
-                                          ;; redshift and snowflake should be fixed once #26633 is merged
-                                          ;:redshift  9
+                                          ;; redshift only fails if the input is literal
+                                          :redshift  9
                                           ;:snowflake 16
                                           ;:vertica   9
                                           2),
@@ -197,18 +197,25 @@
                    first))))))))
 
 
-
 #_(mt/set-test-drivers! #{:postgres})
 
 #_(mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
-    (mt/with-driver :postgres
+    (mt/with-driver :redshift
       (mt/dataset times-mixed
                   (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
                                               :fields      [$dt_tz [:expression "hour"]]
                                               :filter      [:= $index 1]
                                               :limit       1})
-                       mt/process-query
-                       mt/rows))))
+                       mt/process-query mt/rows
+                       ;mt/compile :query println
+                       #_a))))
+
+
+
+#_(mt/with-report-timezone-id "UTC"
+   (dev/query-jdbc-db
+     [:redshift 'times-mixed]
+     ["select * from \"schema_117\".\"times_mixed_times\" limit 1"]))
 
 
 #_(dev/query-jdbc-db
