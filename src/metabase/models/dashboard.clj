@@ -409,11 +409,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-(defmethod serdes.base/extract-query "Dashboard" [_ {:keys [collection-set]}]
+(defmethod serdes.base/extract-query "Dashboard" [_ opts]
   (eduction (map #(hydrate % :ordered_cards))
-            (if (seq collection-set)
-              (db/select-reducible Dashboard :collection_id [:in collection-set])
-              (db/select-reducible Dashboard))))
+            (serdes.base/extract-query-collections Dashboard opts)))
 
 (defn- extract-dashcard
   [dashcard]
@@ -478,3 +476,5 @@
              card-id  (cond-> (set (keep :card_id parameter_mappings))
                         card_id (conj card_id))]
          ["Card" card-id])))
+
+(serdes.base/register-ingestion-path! "Dashboard" (serdes.base/ingestion-matcher-collected "collections" "Dashboard"))
