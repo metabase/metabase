@@ -30,3 +30,7 @@ export const getEngineLogo = (engine: string): string | undefined => {
   const logo = ENGINE_LOGO[engine];
   return logo ? `app/assets/img/drivers/${logo}` : undefined;
 };
+
+export const getDefaultEngineKey = (engines: Record<string, Engine>) => {
+  return engines["postgres"] ? "postgres" : Object.keys(engines)[0];
+};

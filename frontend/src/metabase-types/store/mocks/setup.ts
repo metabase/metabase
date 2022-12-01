@@ -41,6 +41,9 @@ export const createMockDatabaseInfo = (
   schedules: {},
   auto_run_queries: false,
   refingerprint: false,
+  is_sample: false,
+  is_full_sync: false,
+  is_on_demand: false,
   ...opts,
 });
 
