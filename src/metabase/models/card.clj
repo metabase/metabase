@@ -31,7 +31,6 @@
 ;;; You can read/write a Card if you can read/write its parent Collection
 (derive Card ::perms/use-parent-collection-perms)
 
-
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
 (defn dashboard-count
