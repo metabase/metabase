@@ -14,7 +14,10 @@ import {
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { VisualizationSettings } from "metabase-types/api";
 import { ColorGetter } from "metabase/static-viz/lib/colors";
-import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
+import {
+  RemappingHydratedChartData,
+  TwoDimensionalChartData,
+} from "metabase/visualizations/shared/types/data";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import {
   getAxesVisibility,
@@ -57,7 +60,9 @@ const staticTextMeasurer: TextMeasurer = (text: string, style: FontStyle) =>
   );
 
 const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
-  const remappedColumnsData = extractRemappedColumns(data);
+  const remappedColumnsData = extractRemappedColumns(
+    data,
+  ) as RemappingHydratedChartData;
   const columnValueFormatter = getColumnValueStaticFormatter();
 
   const { chartColumns, series, seriesColors } = getTwoDimensionalChartSeries(

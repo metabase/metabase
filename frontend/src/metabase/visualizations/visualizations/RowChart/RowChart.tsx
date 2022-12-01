@@ -33,6 +33,7 @@ import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/uti
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import {
   GroupedDatum,
+  RemappingHydratedChartData,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
 import { IconProps } from "metabase/components/Icon";
@@ -125,8 +126,10 @@ const RowChartVisualization = ({
   const [chartSeries] = useMemo(() => {
     return isPlaceholder ? multipleSeries : rawMultipleSeries;
   }, [isPlaceholder, multipleSeries, rawMultipleSeries]);
+
   const data = useMemo(
-    () => extractRemappedColumns(chartSeries.data),
+    () =>
+      extractRemappedColumns(chartSeries.data) as RemappingHydratedChartData,
     [chartSeries.data],
   );
 
