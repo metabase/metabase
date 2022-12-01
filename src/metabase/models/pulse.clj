@@ -166,6 +166,7 @@
   (su/with-api-error-message {:id                                 su/IntGreaterThanZero
                               :include_csv                        s/Bool
                               :include_xls                        s/Bool
+                              (s/optional-key :dataset_query)     su/Map
                               (s/optional-key :dashboard_card_id) (s/maybe su/IntGreaterThanZero)}
     (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
 

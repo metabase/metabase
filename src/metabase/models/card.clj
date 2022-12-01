@@ -307,9 +307,9 @@
 (defn- nil-dataset-query-to-dummy-query
   [{dataset-query :dataset_query :as card}]
   (cond-> card
-    (nil? dataset-query) (assoc :dataset_query {:database (:database_id card)
-                                                :type     :native
-                                                :native   {:query "select 'this query broke, sorry' x"}})))
+    (empty? dataset-query) (assoc :dataset_query {:database (:database_id card)
+                                                  :type     :native
+                                                  :native   {:query ""}})))
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
   models/IModel
