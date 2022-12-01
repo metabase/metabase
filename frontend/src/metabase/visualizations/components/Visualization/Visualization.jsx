@@ -349,6 +349,87 @@ class Visualization extends React.PureComponent {
     );
   };
 
+  cleanVisualization = () => {
+    const error = this.props.error || this.state.error;
+    const { isDashboard, onOpenChartSettings } = this.props;
+    // don't try to load settings unless data is loaded
+    const settings = this.props.settings || {};
+    const { series, visualization } = this.state;
+    const loading = this.isLoading(series);
+
+    const result = {
+      loading,
+      error,
+      settings,
+      series,
+      isPlaceholder: false,
+      noResults: false,
+    };
+
+    if (loading || error) {
+      return result;
+    }
+
+    result.settings = this.props.settings || this.state.computedSettings;
+
+    if (!visualization) {
+      return {
+        loading,
+        error: t`Could not find visualization`,
+        settings,
+        series,
+        isPlaceholder: false,
+        noResults: false,
+      };
+    }
+
+    try {
+      if (visualization.checkRenderable) {
+        visualization.checkRenderable(
+          series,
+          result.settings,
+          this.props.query,
+        );
+      }
+    } catch (e) {
+      result.error =
+        e.message || t`Could not display this chart with this data.`;
+      if (
+        e instanceof ChartSettingsError &&
+        visualization.placeholderSeries &&
+        !isDashboard
+      ) {
+        // hide the error and replace series with the placeholder series
+        return {
+          ...result,
+          error: null,
+          series: visualization.placeholderSeries,
+          settings: getComputedSettingsForSeries(series),
+          isPlaceholder: true,
+        };
+      }
+      if (e instanceof ChartSettingsError && onOpenChartSettings) {
+        return {
+          ...result,
+          error: (
+            <ChartSettingsErrorButton
+              message={error}
+              buttonLabel={e.buttonText}
+              onClick={() => onOpenChartSettings(e.initial)}
+            />
+          ),
+        };
+      }
+      if (e instanceof MinRowsError) {
+        return {
+          ...result,
+          noResults: true,
+        };
+      }
+    }
+    return result;
+  };
+
   render() {
     const {
       actionButtons,
@@ -360,7 +441,6 @@ class Visualization extends React.PureComponent {
       isSlow,
       expectedDuration,
       replacementContent,
-      onOpenChartSettings,
       onUpdateVisualizationSettings,
       style,
     } = this.props;
@@ -368,7 +448,7 @@ class Visualization extends React.PureComponent {
     const isSmall = width < 330;
 
     // these may be overridden below
-    let { series, hovered, clicked } = this.state;
+    let { hovered, clicked } = this.state;
 
     const clickActions = this.getClickActions(clicked);
     // disable hover when click action is active
@@ -376,49 +456,8 @@ class Visualization extends React.PureComponent {
       hovered = null;
     }
 
-    let error = this.props.error || this.state.error;
-    let noResults = false;
-    let isPlaceholder = false;
-    const loading = this.isLoading(series);
-
-    // don't try to load settings unless data is loaded
-    let settings = this.props.settings || {};
-
-    if (!loading && !error) {
-      settings = this.props.settings || this.state.computedSettings;
-      if (!visualization) {
-        error = t`Could not find visualization`;
-      } else {
-        try {
-          if (visualization.checkRenderable) {
-            visualization.checkRenderable(series, settings, this.props.query);
-          }
-        } catch (e) {
-          error = e.message || t`Could not display this chart with this data.`;
-          if (
-            e instanceof ChartSettingsError &&
-            visualization.placeholderSeries &&
-            !isDashboard
-          ) {
-            // hide the error and replace series with the placeholder series
-            error = null;
-            series = visualization.placeholderSeries;
-            settings = getComputedSettingsForSeries(series);
-            isPlaceholder = true;
-          } else if (e instanceof ChartSettingsError && onOpenChartSettings) {
-            error = (
-              <ChartSettingsErrorButton
-                message={error}
-                buttonLabel={e.buttonText}
-                onClick={() => onOpenChartSettings(e.initial)}
-              />
-            );
-          } else if (e instanceof MinRowsError) {
-            noResults = true;
-          }
-        }
-      }
-    }
+    let { loading, error, settings, series, isPlaceholder, noResults } =
+      this.cleanVisualization();
 
     if (!error) {
       noResults = _.every(
