@@ -455,11 +455,6 @@
       (throw (ex-info "Date arithmetic not supported in versions before 5"
                       {:database-version mongo-version})))))
 
-(defn- check-now-aggregation-expression-supported
-  "$$NOW is introduced in version 4.2"
-  []
-  (not (neg? (compare "4.2" (get-mongo-version)))))
-
 (defn- interval? [expr]
   (and (vector? expr) (= (first expr) :interval)))
 
@@ -506,14 +501,11 @@
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
-(defmethod ->rvalue :now
-  ;; $$NOW is introduced in version 4.2. If the version is less than 4.2, we return a hard-coded
-  ;; string with the current datetime based on the time when the query was processed.
-  ;; In this case, the compiled native query will not be accurate if the query is run at a different time.
-  [[_]]
-  (if (check-now-aggregation-expression-supported)
+(defmethod ->rvalue :now [[_]]
+  (if (driver/database-supports? :mongo :now (qp.store/database))
     "$$NOW"
-    ($date-from-string (t/offset-date-time (t/zone-id (qp.timezone/results-timezone-id))))))
+    (throw (ex-info "now is not supported for MongoDB versions before 4.2"
+                    {:database-version (get-mongo-version)}))))
 
 (defmethod ->rvalue :datetime-add        [[_ inp amount unit]] (do
                                                                  (check-date-operations-supported)
