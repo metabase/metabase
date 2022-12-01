@@ -143,37 +143,76 @@
                       first
                       (zipmap ops)))))))
 
-    (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
-      (letfn [(run [t]
-                (let [ops [:get-year :get-quarter :get-month :get-day
-                           :get-day-of-week :get-hour :get-minute :get-second]]
-                  (->> (mt/mbql-query times {:expressions (into {} (for [op ops]
-                                                                     [(name op) [op t]]))
-                                             :fields      (into [] (for [op ops] [:expression (name op)]))})
+    (testing "with timestamptz columns"
+      (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
+        (letfn [(extract [t]
+                  (let [ops [:get-year :get-quarter :get-month :get-day
+                             :get-day-of-week :get-hour :get-minute :get-second]]
+                    (->> (mt/mbql-query times {:expressions (into {} (for [op ops]
+                                                                       [(name op) [op t]]))
+                                               :fields      (into [] (for [op ops] [:expression (name op)]))})
+                         mt/process-query
+                         (mt/formatted-rows (repeat int))
+                         first
+                         (zipmap ops))))]
+          (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
+            (is (= (if (driver/supports? driver/*driver* :set-timezone)
+                     ;; drivers with set-timezone displays the result in the report-tz
+                     ;; so we expect the extracted components will be in report-tz
+                     ;; for drivers that are not, extract should returns in UTC
+                     {:get-year        2000,
+                      :get-quarter     1,
+                      :get-month       1,
+                      :get-day         1,
+                      :get-day-of-week 7,
+                      :get-hour        (case driver/*driver*
+                                         ;; redshift and snowflake should be fixed once #26633 is merged
+                                         :redshift  9
+                                         :snowflake 16
+                                         :vertica   9
+                                         2),
+                      :get-minute      34,
+                      :get-second      56}
+                     {:get-year        1999,
+                      :get-quarter     4,
+                      :get-month       12,
+                      :get-day         31,
+                      :get-day-of-week 6,
+                      :get-hour        19,
+                      :get-minute      34,
+                      :get-second      56})
+                   ;; it'll be 1999-12-31T19:00:00+00:00 in UTC
+                   (extract "2000-01-01T02:34:56+07:00")))))
+
+        (is (= (if (driver/supports? driver/*driver* :set-timezone)
+                 ["2004-03-19T09:19:09+07:00" 9]
+                 ["2004-03-19T02:19:09+00:00" 2])
+               (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
+                                          :fields      [$dt_tz [:expression "hour"]]
+                                          :filter      [:= $index 1]
+                                          :limit       1})
+                   mt/process-query
+                   mt/rows
+                   first)))))))
+
+
+
+#_(mt/set-test-drivers! #{:postgres})
+
+#_(mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
+    (mt/with-driver :postgres
+      (mt/dataset times-mixed
+                  (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
+                                              :fields      [$dt_tz [:expression "hour"]]
+                                              :filter      [:= $index 1]
+                                              :limit       1})
                        mt/process-query
-                       (mt/formatted-rows (repeat int))
-                       first
-                       (zipmap ops))))]
-        (mt/test-drivers (mt/normal-drivers-with-feature :set-timezone)
-          (is (= (if (driver/supports? driver/*driver* :set-timezone)
-                   {:get-year        2000,
-                    :get-quarter     1,
-                    :get-month       1,
-                    :get-day         1,
-                    :get-day-of-week 7,
-                    :get-hour        2,
-                    :get-minute      34,
-                    :get-second      56}
-                   {:get-year        1999,
-                    :get-quarter     4,
-                    :get-month       12,
-                    :get-day         31,
-                    :get-day-of-week 6,
-                    :get-hour        19,
-                    :get-minute      34,
-                    :get-second      56})
-                 ;; it'll be 1999-12-31T19:00:00+00:00 in UTC
-                 (run "2000-01-01T02:34:56+07:00"))))))))
+                       mt/rows))))
+
+
+#_(dev/query-jdbc-db
+    [:redshift 'times-mixed]
+    ["select cast(? as timestamp)" #t "2000-01-01T02:34:56+07:00"])
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
