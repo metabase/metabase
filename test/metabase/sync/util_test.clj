@@ -54,9 +54,8 @@
         ;; make sure both of the futures have finished
         (deref f1)
         (deref f2)
-        ;; Check the number of syncs that took place. Should be 2 (just the first)
-        (is (= 2
-               @calls-to-describe-database))))))
+        ;; Check the number of syncs that took place. Should be 1 (just the first)
+        (is (= 1 @calls-to-describe-database))))))
 
 (defn- call-with-operation-info
   "Call `f` with `log-sync-summary` and `store-sync-summary!` redef'd. For `log-sync-summary`, it intercepts the step
