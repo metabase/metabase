@@ -1,4 +1,5 @@
 import { NativePermissions } from "./permissions";
+import { ScheduleSettings } from "./settings";
 
 export type DatabaseId = number;
 
@@ -25,4 +26,9 @@ export interface Database {
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
+}
+
+export interface DatabaseSchedules {
+  metadata_sync?: ScheduleSettings;
+  cache_field_values?: ScheduleSettings;
 }

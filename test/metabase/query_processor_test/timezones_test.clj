@@ -17,7 +17,10 @@
   "The following drivers are broken to some extent -- details listed in the Google Doc, or can be see here:
   https://circleci.com/workflow-run/856f6dd0-3d95-4732-a56e-1af59e3ae4ba. The goal is to gradually remove these
   one-by-one as they are fixed."
-  #{:bigquery-cloud-sdk
+  ;; I think some of these are only in here because they don't support the TIME type -- in that case we
+  ;; should be checking [[mt/supports-time-type?]] instead.
+  #{:athena
+    :bigquery-cloud-sdk
     :oracle
     :presto
     :redshift
