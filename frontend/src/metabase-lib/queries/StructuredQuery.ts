@@ -99,7 +99,7 @@ export interface SegmentOption {
 
 class StructuredQueryInner extends AtomicQuery {
   static isDatasetQueryType(datasetQuery: DatasetQuery) {
-    return datasetQuery && datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
+    return datasetQuery?.type === STRUCTURED_QUERY_TEMPLATE.type;
   }
 
   // For Flow type completion

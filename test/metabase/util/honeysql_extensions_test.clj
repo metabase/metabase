@@ -192,6 +192,7 @@
     typed-form     "date"   false
     typed-form     nil      false
     typed-form     #"tex.*" true
+    nil            #"tex.*" false
     typed-form     #"int*"  false
     nil            "date"   false
     :%current_date "date"   false
