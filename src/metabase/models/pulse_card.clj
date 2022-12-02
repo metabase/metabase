@@ -1,5 +1,6 @@
 (ns metabase.models.pulse-card
-  (:require [metabase.models.serialization.base :as serdes.base]
+  (:require [metabase.mbql.schema :as mbql.s]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
@@ -31,12 +32,13 @@
       (or 0)))
 
 (def ^:private NewPulseCard
-  {:card_id                      su/IntGreaterThanZero
-   :pulse_id                     su/IntGreaterThanZero
-   :dashboard_card_id            su/IntGreaterThanZero
-   (s/optional-key :position)    (s/maybe su/NonNegativeInt)
-   (s/optional-key :include_csv) (s/maybe s/Bool)
-   (s/optional-key :include_xls) (s/maybe s/Bool)})
+  {:card_id                        su/IntGreaterThanZero
+   :pulse_id                       su/IntGreaterThanZero
+   :dashboard_card_id              su/IntGreaterThanZero
+   (s/optional-key :dataset_query) mbql.s/Query
+   (s/optional-key :position)      (s/maybe su/NonNegativeInt)
+   (s/optional-key :include_csv)   (s/maybe s/Bool)
+   (s/optional-key :include_xls)   (s/maybe s/Bool)})
 
 (s/defn bulk-create!
   "Creates new PulseCards, joining the given card, pulse, and dashboard card and setting appropriate defaults for other

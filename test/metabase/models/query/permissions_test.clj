@@ -18,7 +18,7 @@
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
 (defn- card []
-  {:dataset_query {:database (mt/id), :type "native"}})
+  {:dataset_query {:database (mt/id), :type :native :native {:query ""}}})
 
 (defn- card-in-collection [collection-or-id]
   (assoc (card) :collection_id (u/the-id collection-or-id)))

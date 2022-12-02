@@ -27,7 +27,7 @@
       (update :entity_id boolean)
       (update :cards (fn [cards]
                        (for [card cards]
-                         (dissoc card :id))))
+                         (dissoc card :id :dataset_query))))
       (update :channels (fn [channels]
                           (for [channel channels]
                             (-> (dissoc channel :id :pulse_id :created_at :updated_at)
@@ -91,7 +91,7 @@
                  (update :creator  dissoc :date_joined :last_login)
                  (update :entity_id boolean)
                  (update :cards    (fn [cards] (for [card cards]
-                                                 (dissoc card :id))))
+                                                 (dissoc card :id :dataset_query))))
                  (update :channels (fn [channels] (for [channel channels]
                                                     (-> (dissoc channel :id :pulse_id :created_at :updated_at)
                                                         (update :entity_id boolean)

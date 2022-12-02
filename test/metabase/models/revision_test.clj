@@ -41,7 +41,8 @@
   (testing (str "make sure we call the appropriate post-select methods on `:object` when a revision comes out of the "
                 "DB. This is especially important for things like Cards where we need to make sure query is "
                 "normalized")
-    (is (= {:model "Card", :object {:dataset_query {:type :query}}}
+    (is (= {:model "Card"
+            :object {:dataset_query {:database nil, :type :query, :query {:source-table nil}}}}
            (mt/derecordize
             (#'revision/do-post-select-for-object {:model "Card", :object {:dataset_query {:type "query"}}}))))))
 

@@ -35,4 +35,4 @@
                          :query    {:source-query {:source-table 6}}}}}]
       (testing message
         (is (= expected
-               (into {} (query/query->database-and-table-ids query))))))))
+               (select-keys (query/query->database-and-table-ids query) [:database-id :table-id])))))))
