@@ -17,6 +17,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util :as qp.util]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
@@ -341,4 +342,17 @@
 
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]
+  ;; maybe this should be (qp.timezone/results-timezone-id), not "UTC"?
   (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
+
+(defn- offset-for-offsetdatetime
+  "Returns an offset for an OffsetDateTime in the report-tz."
+  [^java.time.OffsetDateTime t timezone]
+  (-> (t/zone-id timezone)
+      .getRules
+      (.getOffset (t/instant t))
+      t/zone-offset))
+
+(defmethod sql-jdbc.execute/set-parameter [:redshift java.time.OffsetDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-offset-same-instant t (offset-for-offsetdatetime t (qp.timezone/results-timezone-id))))))

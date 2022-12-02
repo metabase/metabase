@@ -616,6 +616,36 @@
                     (mt/formatted-rows [int int int])
                     first)))))))
 
+#_(mt/with-report-timezone-id "UTC"
+   (mt/with-everything-store
+    (dev/query-jdbc-db
+      [:postgres 'times-mixed]
+      ["select cast(? as timestamp)" #t "2022-10-02T01:00:00+01:00"])))
+;; => {:cols [{:name "timestamp", :base_type :type/DateTime}], :rows [[#t "2022-10-02T00:00"]]}
+
+#_(mt/with-report-timezone-id "UTC"
+   (mt/with-everything-store
+    (dev/query-jdbc-db
+      [:redshift 'times-mixed]
+      ["select cast(? as timestamp)" #t "2022-10-02T01:00:00+01:00"])))
+;; => {:cols [{:name "timestamp", :base_type :type/DateTime}], :rows [[#t "2022-10-02T00:00"]]}
+
+
+#_(mt/with-report-timezone-id "Atlantic/Cape_Verde"
+   (mt/with-everything-store
+    (dev/query-jdbc-db
+      [:postgres 'times-mixed]
+      ["select cast(? as timestamp)" #t "2022-10-02T01:00:00+01:00"])))
+;; => {:cols [{:name "timestamp", :base_type :type/DateTime}], :rows [[#t "2022-10-01T23:00"]]}
+
+
+#_(mt/with-report-timezone-id "Atlantic/Cape_Verde"
+   (mt/with-everything-store
+    (dev/query-jdbc-db
+      [:redshift 'times-mixed]
+      ["select cast(? as timestamp)" #t "2022-10-02T01:00:00+01:00"])))
+;; => {:cols [{:name "timestamp", :base_type :type/DateTime}], :rows [[#t "2022-10-01T23:00"]]}
+
 (deftest datetime-diff-time-zones-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset sample-dataset
