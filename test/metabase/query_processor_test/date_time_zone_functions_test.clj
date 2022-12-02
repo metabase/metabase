@@ -4,6 +4,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models :refer [Card]]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
@@ -354,7 +355,7 @@
                      (t/zoned-date-time (t/zone-id "UTC")) ; needed for sqlite, which returns a local date time
                      (close? (t/instant) (t/seconds 30)))))))))
   (mt/test-drivers (mt/normal-drivers-with-feature :now :temporal-extract)
-    (testing "should be able to extract time in the report timezone"
+    (testing "should be able to extract time in the report timezone, if the driver supports it"
       (let [timezone "Asia/Kathmandu"] ; UTC+5:45 all year
         (mt/with-temporary-setting-values [report-timezone timezone]
           (is (= true
@@ -364,7 +365,7 @@
                          :limit  1})
                       (mt/formatted-rows [int])
                       ffirst
-                      (close-minute? (.getMinute (t/local-date-time (t/zone-id timezone)))))))))))
+                      (close-minute? (.getMinute (t/local-date-time (t/zone-id (qp.timezone/results-timezone-id))))))))))))
   (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics)
     (testing "should work as an argument to datetime-add and datetime-subtract"
       (is (= true
