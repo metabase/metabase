@@ -22,7 +22,7 @@
       (is (contains? #{0 1} (call-count)))))
   (testing "Return falsey for an empty instance. Values should be cached for current app DB to support swapping in tests/REPL"
     ;; create a new completely empty database.
-    (schema-migrations-test.impl/with-temp-empty-app-db [conn :h2]
+    (schema-migrations-test.impl/with-temp-empty-app-db [_conn :h2]
       ;; make sure the DB is setup (e.g., run all the Liquibase migrations)
       (mdb/setup-db!)
       (db/with-call-counting [call-count]
