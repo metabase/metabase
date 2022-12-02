@@ -128,7 +128,7 @@ const DatabaseFormBody = ({
       {fields.map(field => (
         <DatabaseDetailField key={field.name} field={field} />
       ))}
-      {isQueryCachingEnabled && <PLUGIN_CACHING.DatabaseCacheField />}
+      {isQueryCachingEnabled && <PLUGIN_CACHING.DatabaseCacheTimeField />}
       <DatabaseFormFooter isAdvanced={isAdvanced} onCancel={onCancel} />
     </Form>
   );

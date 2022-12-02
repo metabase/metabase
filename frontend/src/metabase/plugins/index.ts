@@ -163,7 +163,7 @@ export const PLUGIN_CACHING = {
   getQuestionsImplicitCacheTTL: (question?: any) => null,
   QuestionCacheSection: PluginPlaceholder,
   DashboardCacheSection: PluginPlaceholder,
-  DatabaseCacheField: PluginPlaceholder,
+  DatabaseCacheTimeField: PluginPlaceholder,
   isEnabled: () => false,
 };
 

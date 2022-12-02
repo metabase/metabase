@@ -58,3 +58,5 @@ if (hasPremiumFeature("advanced_config")) {
   PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
   PLUGIN_CACHING.isEnabled = () => true;
 }
+
+PLUGIN_CACHING.DatabaseCacheTimeField = DatabaseCacheTimeField;

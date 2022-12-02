@@ -1,4 +1,4 @@
-import React, { FocusEvent } from "react";
+import React, { FocusEvent, useCallback } from "react";
 import { t } from "ttag";
 import {
   TimeInputMessage,
@@ -23,6 +23,14 @@ const CacheTimeInput = ({
   onChange,
   onBlur,
 }: CacheTimeInputProps): JSX.Element => {
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      onChange?.(value !== 0 ? value : undefined);
+      onBlur?.(event);
+    },
+    [value, onChange, onBlur],
+  );
+
   return (
     <TimeInputRoot>
       {message && <TimeInputMessage error={error}>{message}</TimeInputMessage>}
@@ -32,7 +40,7 @@ const CacheTimeInput = ({
         error={error}
         placeholder="24"
         onChange={onChange}
-        onBlur={onBlur}
+        onBlur={handleBlur}
       />
       <TimeInputMessage error={error}>{t`hours`}</TimeInputMessage>
     </TimeInputRoot>
