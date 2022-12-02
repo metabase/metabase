@@ -1,11 +1,15 @@
-(ns metabase.sample-database-test
+(ns metabase.sample-data-test
   "Tests to make sure the Sample Database syncs the way we would expect."
-  (:require [clojure.test :refer :all]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.models :refer [Database Field Table]]
+            [metabase.plugins :as plugins]
             [metabase.sample-data :as sample-data]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.util :as u]
+            [metabase.util.files :as u.files]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
@@ -14,7 +18,7 @@
 ;; These tools are pretty sophisticated for the amount of tests we have!
 
 (defn- sample-database-db []
-  {:details (#'sample-data/db-details)
+  {:details (#'sample-data/try-to-extract-sample-database!)
    :engine  :h2
    :name    "Sample Database"})
 
@@ -39,6 +43,32 @@
 
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
+
+(def ^:private extracted-db-path-regex #"^file:.*plugins/sample-database.db;USER=GUEST;PASSWORD=guest$")
+
+(deftest extract-sample-database-test
+  (testing "The Sample Database is copied out of the JAR into the plugins directory before the DB details are saved."
+    (with-redefs [sync/sync-database! (constantly nil)]
+      (with-temp-sample-database-db [db]
+        (let [db-path (get-in db [:details :db])]
+          (is (re-matches extracted-db-path-regex db-path))))))
+
+  (testing "If the plugins directory is not creatable or writable, we fall back to reading from the DB in the JAR"
+    (memoize/memo-clear! @#'plugins/plugins-dir*)
+    (let [original-var u.files/create-dir-if-not-exists!]
+      (with-redefs [u.files/create-dir-if-not-exists! (fn [_] (throw (Exception.)))]
+        (with-temp-sample-database-db [db]
+          (let [db-path (get-in db [:details :db])]
+            (is (not (str/includes? db-path "plugins"))))
+
+          (testing "If the plugins directory is writable on a subsequent startup, the sample DB is copied"
+            (with-redefs [u.files/create-dir-if-not-exists! original-var]
+              (memoize/memo-clear! @#'plugins/plugins-dir*)
+              (sample-data/update-sample-database-if-needed! db)
+              (let [db-path (get-in (db/select-one Database :id (:id db)) [:details :db])]
+                (is (re-matches extracted-db-path-regex db-path)))))))))
+
+  (memoize/memo-clear! @#'plugins/plugins-dir*))
 
 (deftest sync-sample-database-test
   (testing (str "Make sure the Sample Database is getting synced correctly. For example PEOPLE.NAME should be "

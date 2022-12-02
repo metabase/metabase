@@ -455,3 +455,27 @@
                          :field_id    (:id field)
                          :serdes/meta [{:model "Dimension" :id (:entity_id dim)}])]
         (serdes.base/load-one! dim local)))))
+
+(defmethod serdes.base/storage-path "Field" [field _]
+  (-> field
+      serdes.base/serdes-path
+      drop-last
+      serdes.util/storage-table-path-prefix
+      (concat ["fields" (:name field)])))
+
+(serdes.base/register-ingestion-path!
+  "Field"
+  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id"]
+  ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id"]
+  (fn [path]
+    (when-let [{db     "databases"
+                schema "schemas"
+                table  "tables"
+                field  "fields"}   (and (#{6 8} (count path))
+                                        (serdes.base/ingestion-matcher-pairs
+                                          path [["databases" "schemas" "tables" "fields"]
+                                                ["databases" "tables" "fields"]]))]
+      (filterv identity [{:model "Database" :id db}
+                         (when schema {:model "Schema" :id schema})
+                         {:model "Table" :id table}
+                         {:model "Field" :id field}]))))

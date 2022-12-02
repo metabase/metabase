@@ -30,6 +30,8 @@
            [oracle.jdbc OracleConnection OracleTypes]
            oracle.sql.TIMESTAMPTZ))
 
+(defmethod driver/database-supports? [:oracle :now] [_driver _feat _db] true)
+
 (driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (defmethod driver/database-supports? [:oracle :convert-timezone]
@@ -211,6 +213,11 @@
    (driver.common/start-of-week-offset driver)
    (partial hsql/call (u/qualified-name ::mod))))
 
+(defmethod sql.qp/current-datetime-honeysql-form :oracle
+  [_]
+  (-> (hsql/raw "CURRENT_TIMESTAMP")
+      (hx/with-database-type-info "timestamp with time zone")))
+
 (defmethod sql.qp/->honeysql [:oracle :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr          (sql.qp/->honeysql driver arg)
@@ -221,10 +228,6 @@
          (hsql/call :from_tz expr (or source-timezone (qp.timezone/results-timezone-id))))
        (hx/->AtTimeZone target-timezone)
        hx/->timestamp)))
-
-(def ^:private now (hsql/raw "SYSDATE"))
-
-(defmethod sql.qp/current-datetime-honeysql-form :oracle [_] now)
 
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))

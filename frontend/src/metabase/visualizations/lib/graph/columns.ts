@@ -1,19 +1,18 @@
-import {
-  DatasetColumn,
-  DatasetData,
-  VisualizationSettings,
-} from "metabase-types/api";
+import { DatasetData, VisualizationSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/core/utils/types";
-import { TwoDimensionalChartData } from "metabase/visualizations/shared/types/data";
+import {
+  RemappingHydratedChartData,
+  RemappingHydratedDatasetColumn,
+} from "metabase/visualizations/shared/types/data";
 
 export type ColumnDescriptor = {
   index: number;
-  column: DatasetColumn;
+  column: RemappingHydratedDatasetColumn;
 };
 
 export const getColumnDescriptors = (
   columnNames: string[],
-  columns: DatasetColumn[],
+  columns: RemappingHydratedDatasetColumn[],
 ): ColumnDescriptor[] => {
   return columnNames.map(columnName => {
     const index = columns.findIndex(column => column.name === columnName);
@@ -58,7 +57,7 @@ export type MultipleMetricsChartColumns = {
 export type ChartColumns = BreakoutChartColumns | MultipleMetricsChartColumns;
 
 export const getChartColumns = (
-  data: TwoDimensionalChartData,
+  data: RemappingHydratedChartData,
   visualizationSettings: VisualizationSettings,
 ): ChartColumns => {
   const [dimension, breakout] = getColumnDescriptors(
