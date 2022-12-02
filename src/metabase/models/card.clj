@@ -289,9 +289,8 @@
               (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
       ;; make sure this Card doesn't have circular source query references if we're updating the query
       (when (:dataset_query changes)
-        (check-for-circular-source-query-references changes))
-      ;; prevent invalid dataset_query entries
-      (check-for-invalid-dataset-query changes)
+        (check-for-circular-source-query-references changes)
+        (check-for-invalid-dataset-query changes))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)

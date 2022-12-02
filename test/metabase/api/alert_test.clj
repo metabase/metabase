@@ -1,6 +1,7 @@
 (ns metabase.api.alert-test
   "Tests for `/api/alert` endpoints."
   (:require [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.email-test :as et]
             [metabase.http-client :as client]
@@ -31,7 +32,10 @@
       (update :display name)
       (update :collection_id boolean)
       (assoc :id true, :include_csv false, :include_xls false, :dashboard_card_id false,
-             :dashboard_id false, :parameter_mappings nil)))
+             :dashboard_id false, :parameter_mappings nil,
+             :dataset_query {:database (mt/id)
+                             :type     :query
+                             :query    {:source-table (mt/id)}})))
 
 (defn- recipient-details [user-kwd]
   (-> user-kwd
@@ -41,6 +45,15 @@
 (defn- alert-client
   [username]
   (comp mt/boolean-ids-and-timestamps (partial mt/user-http-request username)))
+
+(defn- strings->keywords
+  [dataset-query]
+  (walk/postwalk #(if (string? %) (keyword %) %) dataset-query))
+
+(defn- normalize-query
+  [alert]
+  (let [query-keys [:card :dataset_query]]
+    (assoc-in alert query-keys (strings->keywords (get-in alert query-keys)))))
 
 (defn- default-email-channel
   ([pulse-card]
@@ -57,7 +70,8 @@
     :details       {}}))
 
 (defn- alert-response [response]
-  (m/dissoc-in response [:creator :last_login]))
+  (normalize-query
+   (m/dissoc-in response [:creator :last_login])))
 
 (defmacro ^:private with-test-email [& body]
   `(mt/with-temporary-setting-values [~'site-url "https://metabase.com/testmb"]
@@ -207,7 +221,7 @@
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition "rows"})))
 
-  (is (= {:errors {:card "value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`."}}
+  (is (= {:errors {:card "value must be a map with the keys `id`, `include_csv`, and `include_xls`, and may also include `dataset_query` or `dashboard_card_id`."}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition  "rows"
                                     :alert_first_only false})))
@@ -424,7 +438,7 @@
           :rasta :put 400 "alert/1" {:alert_first_only 1000})))
 
   (is (= {:errors {:card (str "value may be nil, or if non-nil, value must be a map with the keys `id`, `include_csv`, "
-                              "`include_xls`, and `dashboard_card_id`.")}}
+                              "and `include_xls`, and may also include `dataset_query` or `dashboard_card_id`.")}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:alert_condition  "rows"
                                      :alert_first_only false
@@ -560,7 +574,7 @@
                   (default-alert-req card pc {} [(mt/fetch-user :crowberto)])))))))))
 
 (deftest admin-users-remove-recipient-test
-  (testing "admin users can remove a recipieint, that recipient should be notified"
+  (testing "admin users can remove a recipient, that recipient should be notified"
     (mt/with-temp* [Pulse                 [alert (basic-alert)]
                     Card                  [card]
                     PulseCard             [_     (pulse-card alert card)]
@@ -630,7 +644,7 @@
    :dataset_query {:database (mt/id)
                    :type     :query
                    :query    {:source-table (mt/id :checkins)
-                              :aggregation  [["count"]]
+                              :aggregation  [[:count]]
                               :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :hour}]]}}})
 
 (defn- alert-question-url [card-or-id & [archived]]
@@ -652,6 +666,7 @@
                   PulseChannel          [pc   (pulse-channel alert)]
                   PulseChannelRecipient [_    (recipient pc :rasta)]]
     (is (= [(-> (default-alert card)
+                (assoc-in [:card :dataset_query] (:dataset_query (basic-alert-query)))
                 (assoc :can_write false)
                 (update-in [:channels 0] merge {:schedule_hour 15, :schedule_type "daily"})
                 (assoc-in [:card :collection_id] true))]

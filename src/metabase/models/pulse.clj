@@ -168,7 +168,7 @@
                               :include_xls                        s/Bool
                               (s/optional-key :dataset_query)     su/Map
                               (s/optional-key :dashboard_card_id) (s/maybe su/IntGreaterThanZero)}
-    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and may also include `{3}` or `{4}."
+    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`, and may also include `{3}` or `{4}`."
       "id" "include_csv" "include_xls" "dataset_query" "dashboard_card_id")))
 
 (def HybridPulseCard
@@ -210,7 +210,7 @@
   [notification-or-id]
   (map (partial models/do-post-select Card)
        (db/query
-        {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls
+        {:select    [:c.id :c.name :c.description :c.collection_id :c.display :c.dataset_query :pc.include_csv :pc.include_xls
                      :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings]] ;; :dc.parameter_mappings - how do you select this?
          :from      [[Pulse :p]]
          :join      [[PulseCard :pc] [:= :p.id :pc.pulse_id]
