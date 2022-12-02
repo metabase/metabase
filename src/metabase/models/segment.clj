@@ -94,6 +94,16 @@
   (into [] (set/union #{(serdes.util/table->path table_id)}
                       (serdes.util/mbql-deps definition))))
 
+(defmethod serdes.base/storage-path "Segment" [segment _ctx]
+  (let [{:keys [id label]} (-> segment serdes.base/serdes-path last)]
+    (-> segment
+        :table_id
+        serdes.util/table->path
+        serdes.util/storage-table-path-prefix
+        (concat ["segments" (serdes.base/storage-leaf-file-name id label)]))))
+
+(serdes.base/register-ingestion-path! "Segment" (serdes.base/ingestion-matcher-collected "databases" "Segment"))
+
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 
 (s/defn retrieve-segments :- [(mi/InstanceOf Segment)]

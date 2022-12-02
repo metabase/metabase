@@ -33,6 +33,7 @@
 ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
+(defmethod driver/supports? [:sqlserver :now] [_ _] true)
 
 (defmethod driver/database-supports? [:sqlserver :convert-timezone]
   [_driver _feature _database]
@@ -442,7 +443,9 @@
   [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod sql.qp/current-datetime-honeysql-form :sqlserver [_] :%getdate)
+(defmethod sql.qp/current-datetime-honeysql-form :sqlserver
+  [_]
+  (hx/with-database-type-info :%getdate "datetime"))
 
 (defmethod sql-jdbc.sync/excluded-schemas :sqlserver
   [_]
