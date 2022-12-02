@@ -722,7 +722,7 @@
                       (->> (mt/run-mbql-query times
                              {:filter [:and [:= x $a_dt_tz_text] [:= y $b_dt_tz_text]]
                               :expressions (into {} (for [unit units]
-                                                      [(name unit) [:datetime-diff x y unit]]))
+                                                      [(name unit) [:datetime-diff $a_dt_tz $a_dt_tz unit]]))
                               :fields (into [] (for [unit units]
                                                  [:expression (name unit)]))})
                            (mt/formatted-rows (repeat (count units) int))
@@ -749,7 +749,7 @@
         (testing "hour under a week"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:hour 167 :day 7 :week 1}
-                          (diffs "2022-10-02T00:00:00Z"     ; 2022-10-01T23:00:00-01:00
+                          (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                                  "2022-10-09T00:00:00+01:00")))) ; 2022-10-08T22:00:00-01:00
           (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
             (is (partial= {:hour 167 :day 6 :week 0}
