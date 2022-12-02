@@ -338,7 +338,7 @@
       (->> (assoc (select-keys table [:name :schema])
                   :fields (sql-jdbc.sync/describe-table-fields driver conn table (db-name database)))
            ;; find PKs and mark them
-           (sql-jdbc.sync/add-table-pks (.getMetaData conn) (db-name database))))))
+           (sql-jdbc.sync/add-table-pks driver (.getMetaData conn) (db-name database))))))
 
 (defmethod driver/describe-table-fks :snowflake
   [driver database table]

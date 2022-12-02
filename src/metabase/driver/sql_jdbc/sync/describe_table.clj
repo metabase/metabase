@@ -177,12 +177,12 @@
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
-  [^DatabaseMetaData metadata db-name-or-nil table]
+  [driver ^DatabaseMetaData metadata db-name-or-nil table]
   (let [pks (into #{} (sql-jdbc.common/reducible-results
                        #(.getPrimaryKeys metadata
-                                         (driver/escape-entity-name-for-metadata db-name-or-nil)
-                                         (driver/escape-entity-name-for-metadata (:schema table))
-                                         (driver/escape-entity-name-for-metadata (:name table)))
+                                         (driver/escape-entity-name-for-metadata driver db-name-or-nil)
+                                         (driver/escape-entity-name-for-metadata driver (:schema table))
+                                         (driver/escape-entity-name-for-metadata driver (:name table)))
                        (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))]
     (update table :fields (fn [fields]
                             (set (for [field fields]
@@ -198,7 +198,7 @@
    (->> (assoc (select-keys table [:name :schema])
                :fields (describe-table-fields driver conn table nil))
         ;; find PKs and mark them
-        (add-table-pks (.getMetaData conn) db-name-or-nil))))
+        (add-table-pks driver (.getMetaData conn) db-name-or-nil))))
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
