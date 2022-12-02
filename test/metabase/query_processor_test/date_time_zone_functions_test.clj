@@ -143,30 +143,30 @@
                       (zipmap ops)))))))
 
     (testing "with timestamptz columns"
-      (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :temporal-extract)
-                                         (mt/supports-timestamptz-type? driver/*driver*))
-        (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
-          (is (= (if (driver/supports? driver/*driver* :set-timezone)
-                   ;; drivers support set-timezone displays the result in the report-tz
-                   ;; we expect the extracted components will be in report-tz
-                   ;; for drivers that are not, extract should returns in UTC
-                   ["2004-03-19T09:19:09+07:00" 9]
-                   ;; TIMEZONE FIXME sqlserver behaves a bit strange from the rest
-                   ;; when querying datetimeoffset, the JDBC does returns the time
-                   ;; in the inserted timezone(Asia/Ho_Chi_Minh), but when we read it we
-                   ;; converted it back to UTC.
-                   ;; So technically we could make sqlserver display datetimeoffset in `report-tz`
-                   ;; then the extract hour will make more sense
-                   ["2004-03-19T02:19:09Z" (case driver/*driver*
-                                            :sqlserver 9
-                                            2)])
-                 (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
-                                             :fields      [$dt_tz [:expression "hour"]]
-                                             :filter      [:= $index 1]
-                                             :limit       1})
-                      mt/process-query
-                      (mt/formatted-rows [str int])
-                      first))))))))
+      (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
+       (when (mt/supports-timestamptz-type? driver/*driver*)
+         (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
+           (is (= (if (driver/supports? driver/*driver* :set-timezone)
+                    ;; drivers support set-timezone displays the result in the report-tz
+                    ;; we expect the extracted components will be in report-tz
+                    ;; for drivers that are not, extract should returns in UTC
+                    ["2004-03-19T09:19:09+07:00" 9]
+                    ;; TIMEZONE FIXME sqlserver behaves a bit strange from the rest
+                    ;; when querying datetimeoffset, the JDBC does returns the time
+                    ;; in the inserted timezone(Asia/Ho_Chi_Minh), but when we read it we
+                    ;; converted it back to UTC.
+                    ;; So technically we could make sqlserver display datetimeoffset in `report-tz`
+                    ;; then the extract hour will make more sense
+                    ["2004-03-19T02:19:09Z" (case driver/*driver*
+                                             :sqlserver 9
+                                             2)])
+                  (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
+                                              :fields      [$dt_tz [:expression "hour"]]
+                                              :filter      [:= $index 1]
+                                              :limit       1})
+                       mt/process-query
+                       (mt/formatted-rows [str int])
+                       first)))))))))
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
