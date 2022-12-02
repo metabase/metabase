@@ -161,6 +161,14 @@
 (alter-meta! #'->TypedHoneySQLForm assoc :private true)
 (alter-meta! #'map->TypedHoneySQLForm assoc :private true)
 
+(p.types/defrecord+ AtTimeZone
+  [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (clojure.core/format "(%s AT TIME ZONE %s)"
+            (hformat/to-sql expr)
+            (hformat/to-sql (literal zone)))))
+
 (def ^:private NormalizedTypeInfo
   {(s/optional-key ::database-type) (s/constrained
                                      su/NonBlankString
@@ -208,11 +216,17 @@
 
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `database-type`?
+  Where `database-type` could be a string or a regex.
 
-    (is-of-type? expr \"datetime\") ; -> true"
+    (is-of-type? expr \"datetime\") ; -> true
+    (is-of-type? expr #\"int*\") ; -> true"
+
   [honeysql-form database-type]
-  (= (some-> honeysql-form type-info type-info->db-type str/lower-case)
-     (some-> database-type name str/lower-case)))
+  (let [form-type (some-> honeysql-form type-info type-info->db-type str/lower-case)]
+    (if (instance? java.util.regex.Pattern database-type)
+      (and (some? form-type) (some? (re-find database-type form-type)))
+      (= form-type
+         (some-> database-type name str/lower-case)))))
 
 (s/defn with-database-type-info
   "Convenience for adding only database type information to a `honeysql-form`. Wraps `honeysql-form` and returns a

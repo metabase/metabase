@@ -6,6 +6,7 @@ export const MONOTYPE = {
   Number: "number",
   String: "string",
   Boolean: "boolean",
+  DateTime: "datetime",
 };
 
 export function infer(mbql, env) {
@@ -37,8 +38,6 @@ export function infer(mbql, env) {
     case "case":
       return infer(mbql[1][0][1], env);
     case "coalesce":
-    case "datetime-add":
-    case "datetime-subtract":
       return infer(mbql[1], env);
   }
 
@@ -46,6 +45,8 @@ export function infer(mbql, env) {
   if (func) {
     const returnType = func.type;
     switch (returnType) {
+      case "datetime":
+        return MONOTYPE.DateTime;
       case "object":
         return MONOTYPE.Undefined;
       case "aggregation":

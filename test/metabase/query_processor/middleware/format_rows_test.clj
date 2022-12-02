@@ -1,10 +1,11 @@
 (ns metabase.query-processor.middleware.format-rows-test
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.format-rows :as format-rows]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.middleware.format-rows :as format-rows]
+   [metabase.test :as mt]))
 
 (driver/register! ::timezone-driver, :abstract? true)
 
@@ -13,11 +14,13 @@
 ;; TIMEZONE FIXME
 (def ^:private dbs-exempt-from-format-rows-tests
   "DBs to skip the tests below for. TIMEZONE FIXME — why are so many databases not running these tests? Most of these
-  should be able to pass with a few tweaks."
+  should be able to pass with a few tweaks. Some of them are excluded because they do not have a TIME data type and
+  can't load the `test-data-with-time` dataset; but that's not true of ALL of these. Please make sure you add a note
+  as to why a certain database is explicitly skipped if you skip it -- Cam"
   #{:bigquery-cloud-sdk :oracle :mongo :redshift :presto :sparksql :snowflake})
 
 (deftest format-rows-test
-  (mt/test-drivers (mt/normal-drivers-except dbs-exempt-from-format-rows-tests)
+  (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-except dbs-exempt-from-format-rows-tests))
     (mt/dataset test-data-with-time
       (testing "without report timezone"
         (is (= (if (= driver/*driver* :sqlite)
@@ -163,14 +166,15 @@
     (is (format-rows/format-value java.time.OffsetDateTime/MAX (t/zone-id "UTC")))
     (is (format-rows/format-value java.time.OffsetDateTime/MIN (t/zone-id "UTC")))))
 
-(defn- format-rows [rows]
+(defn- format-rows
+  [rows metadata]
   (let [rff (format-rows/format-rows {} (constantly conj))
-        rf  (rff nil)]
+        rf  (rff metadata)]
     (transduce identity rf rows)))
 
 (deftest results-timezone-test
-  (testing "Make sure ISO-8601 timestamps are written correctly based on the report-timezone"
-    (driver/with-driver ::timezone-driver
+  (driver/with-driver ::timezone-driver
+    (testing "Make sure ISO-8601 timestamps are written correctly based on the report-timezone"
       (doseq [[timezone-id expected-rows] {"UTC"        [["2011-04-18T10:12:47.232Z"
                                                           "2011-04-18T00:00:00Z"
                                                           "2011-04-18T10:12:47.232Z"]]
@@ -183,4 +187,18 @@
                          (t/local-date 2011 4 18)
                          (t/offset-date-time "2011-04-18T10:12:47.232Z")]]]
               (is (= expected-rows
-                     (format-rows rows))))))))))
+                     (format-rows rows {:cols [{}{}{}]}))))))))
+
+    (testing "Make sure ISO-8601 timestamps respects the converted_timezone metadata"
+      (doseq [timezone-id ["UTC" "Asia/Tokyo"]]
+        (mt/with-results-timezone-id timezone-id
+          (testing (format "timezone ID '%s'" timezone-id)
+            (let [rows [[(t/instant "2011-04-18T10:12:47.232Z")
+                         (t/local-date 2011 4 18)
+                         (t/offset-date-time "2011-04-18T10:12:47.232Z")]]]
+              (is (= [["2011-04-18T12:12:47.232+02:00"
+                       "2011-04-18T00:00:00+07:00"
+                       "2011-04-18T10:12:47.232Z"]]
+                     (format-rows rows {:cols [{:converted_timezone "Europe/Rome"}
+                                               {:converted_timezone "Asia/Ho_Chi_Minh"}
+                                               {:converted_timezone "UTC"}]}))))))))))

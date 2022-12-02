@@ -5,9 +5,7 @@ import type {
   Parameter,
 } from "metabase-types/types/Parameter";
 
-import type { CardId, SavedCard } from "metabase-types/types/Card";
-import type { WritebackAction } from "./writeback";
-
+import type { Card, CardId } from "./card";
 import type { Dataset } from "./dataset";
 
 export type DashboardId = number;
@@ -33,16 +31,20 @@ export type DashCardId = EntityId;
 
 export type BaseDashboardOrderedCard = {
   id: DashCardId;
+  dashboard_id: DashboardId;
+  size_x: number;
+  size_y: number;
   visualization_settings?: {
     [key: string]: unknown;
+    virtual_card?: Card;
   };
 };
 
 export type DashboardOrderedCard = BaseDashboardOrderedCard & {
   card_id: CardId;
-  card: SavedCard;
+  card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;
-  series?: SavedCard[];
+  series?: Card[];
 };
 
 export type DashboardParameterMapping = {

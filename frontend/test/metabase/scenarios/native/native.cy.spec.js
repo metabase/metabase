@@ -164,7 +164,7 @@ describe("scenarios > question > native", () => {
     cy.findByTestId("sidebar-left")
       .as("sidebar")
       .contains(/hidden/i)
-      .siblings(".Icon-eye_filled")
+      .siblings(".Icon-eye_outline")
       .click();
     cy.get("@editor").type("{movetoend}, 3 as added");
     cy.get("@runQuery").click();

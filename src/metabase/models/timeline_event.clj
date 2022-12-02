@@ -110,4 +110,5 @@
       serdes.base/load-xform-basics
       (update :timeline_id serdes.util/import-fk 'Timeline)
       (update :creator_id  serdes.util/import-user)
-      (update :timestamp   u.date/parse)))
+      (update :timestamp   u.date/parse)
+      (update :created_at  #(if (string? %) (u.date/parse %) %))))

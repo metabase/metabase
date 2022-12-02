@@ -19,6 +19,7 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
             [metabase.query-processor.error-type :as qp.error-type]
@@ -53,10 +54,15 @@
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
+(defmethod driver/database-supports? [:mysql :convert-timezone]
+  [_driver _feature _db]
+  true)
+
 (defmethod driver/database-supports? [:mysql :datetime-diff]
   [_driver _feature _db]
   true)
 
+(defmethod driver/database-supports? [:mysql :now] [_ _ _] true)
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 
@@ -138,7 +144,7 @@
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
   [_]
-  (hsql/call :now 6))
+  (hx/with-database-type-info (hsql/call :now 6) "timestamp"))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
@@ -352,6 +358,15 @@
                                       3)
                                 2)
                           (hx/literal "-01"))))
+
+(defmethod sql.qp/->honeysql [:mysql :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr       (sql.qp/->honeysql driver arg)
+        timestamp? (hx/is-of-type? expr "timestamp")]
+    (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
+    (hx/with-database-type-info
+      (hsql/call :convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
+      "datetime")))
 
 (defmethod sql.qp/->honeysql [:mysql :datetime-diff]
   [driver [_ x y unit]]

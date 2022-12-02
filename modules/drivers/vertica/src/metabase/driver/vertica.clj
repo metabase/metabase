@@ -1,6 +1,7 @@
 (ns metabase.driver.vertica
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
@@ -13,16 +14,24 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
+            [metabase.driver.sql.util :as sql.u]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
-  (:import [java.sql ResultSet Types]))
+  (:import [java.sql ResultSet ResultSetMetaData Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
 (defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
+
+(defmethod driver/supports? [:vertica :now] [_ _] true)
+
+(defmethod driver/database-supports? [:vertica :convert-timezone]
+  [_driver _feature _database]
+  true)
 
 (defmethod driver/db-start-of-week :vertica
   [_]
@@ -60,6 +69,10 @@
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
 
+(defmethod sql.qp/current-datetime-honeysql-form :vertica
+  [_]
+  (hx/with-database-type-info (hsql/call :current_timestamp 6) :TimestampTz))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]
   (hsql/call :to_timestamp expr))
@@ -75,7 +88,7 @@
     expr))
 
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (cast-timestamp expr)))
-(defn- extract    [unit expr] (hsql/call :extract    unit              expr))
+(defn- extract    [unit expr] (hsql/call :extract    unit              (cast-timestamp expr)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
@@ -92,6 +105,7 @@
 (defmethod sql.qp/date [:vertica :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:vertica :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
 (defmethod sql.qp/date [:vertica :year]            [_ _ expr] (date-trunc :year expr))
+(defmethod sql.qp/date [:vertica :year-of-era]     [_ _ expr] (extract-integer :year expr))
 
 (defmethod sql.qp/date [:vertica :week]
   [_ _ expr]
@@ -102,6 +116,17 @@
 (defmethod sql.qp/date [:vertica :day-of-week]
   [_ _ expr]
   (sql.qp/adjust-day-of-week :vertica (hsql/call :dayofweek_iso expr)))
+
+(defmethod sql.qp/->honeysql [:vertica :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr         (cast-timestamp (sql.qp/->honeysql driver arg))
+        timestamptz? (hx/is-of-type? expr "timestamptz")]
+    (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+    (-> (if timestamptz?
+          expr
+          (hx/->AtTimeZone expr (or source-timezone (qp.timezone/results-timezone-id))))
+        (hx/->AtTimeZone target-timezone)
+        (hx/with-database-type-info "timestamp"))))
 
 (defmethod sql.qp/->honeysql [:vertica :concat]
   [driver [_ & args]]
@@ -176,5 +201,15 @@
   [_ _ ^ResultSet rs _ ^Integer i]
   (when-let [s (.getString rs i)]
     (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+      t)))
+
+;; for some reason vertica `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
+;; bug with the JDBC driver?
+(defmethod sql-jdbc.execute/read-column [:vertica Types/TIMESTAMP]
+  [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (when-let [s (.getString rs i)]
+    (let [has-timezone? (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+          t             (u.date/parse s (when has-timezone? "UTC"))]
       (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
       t)))

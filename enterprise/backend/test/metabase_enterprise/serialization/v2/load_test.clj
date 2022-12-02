@@ -5,8 +5,8 @@
             [metabase-enterprise.serialization.v2.extract :as serdes.extract]
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
             [metabase-enterprise.serialization.v2.load :as serdes.load]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric Pulse
-                                     PulseChannel PulseChannelRecipient Segment Table Timeline TimelineEvent User]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric
+                                     Segment Table Timeline TimelineEvent User]]
             [metabase.models.serialization.base :as serdes.base]
             [schema.core :as s]
             [toucan.db :as db])
@@ -162,76 +162,6 @@
                    (db/select-field :db_id Table :name "posts")))
             (is (db/exists? Table :name "posts" :db_id (:id @db1d)))
             (is (db/exists? Table :name "posts" :db_id (:id @db2d)))))))))
-
-(deftest pulse-channel-recipient-merging-test
-  (testing "pulse channel recipients are listed as emails on a channel, then merged with the existing ones"
-    (let [serialized (atom nil)
-          u1s        (atom nil)
-          u2s        (atom nil)
-          u3s        (atom nil)
-          pulse-s    (atom nil)
-          pc1s       (atom nil)
-          pc2s       (atom nil)
-          pcr1s      (atom nil)
-          pcr2s      (atom nil)
-
-          u1d        (atom nil)
-          u2d        (atom nil)
-          u3d        (atom nil)
-          pulse-d    (atom nil)
-          pc1d       (atom nil)]
-      (ts/with-source-and-dest-dbs
-        (testing "serializing the pulse, channel and recipients"
-          (ts/with-source-db
-            (reset! u1s (ts/create! User :first_name "Alex"  :last_name "Lifeson" :email "alifeson@rush.yyz"))
-            (reset! u2s (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz"))
-            (reset! u3s (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! pulse-s (ts/create! Pulse :name "Heartbeat" :creator_id (:id @u1s)))
-            (reset! pc1s    (ts/create! PulseChannel
-                                        :pulse_id      (:id @pulse-s)
-                                        :channel_type  :email
-                                        :schedule_type :daily
-                                        :schedule_hour 16))
-            (reset! pc2s    (ts/create! PulseChannel
-                                        :pulse_id      (:id @pulse-s)
-                                        :channel_type  :slack
-                                        :schedule_type :hourly))
-            ;; Only Lifeson and Lee are recipients in the source.
-            (reset! pcr1s  (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1s) :user_id (:id @u1s)))
-            (reset! pcr2s  (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1s) :user_id (:id @u2s)))
-            (reset! serialized (into [] (serdes.extract/extract-metabase {})))))
-
-        (testing "recipients are serialized as :recipients [email] on the PulseChannel"
-          (is (= #{["alifeson@rush.yyz" "glee@rush.yyz"]
-                   []}
-                 (set (map :recipients (by-model @serialized "PulseChannel"))))))
-
-        (testing "deserialization merges the existing recipients with the new ones"
-          (ts/with-dest-db
-            ;; Users in a different order, so different IDs.
-            (reset! u2d (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz"))
-            (reset! u1d (ts/create! User :first_name "Alex"  :last_name "Lifeson" :email "alifeson@rush.yyz"))
-            (reset! u3d (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! pulse-d (ts/create! Pulse :name "Heartbeat" :creator_id (:id @u1d) :entity_id (:entity_id @pulse-s)))
-            (reset! pc1d    (ts/create! PulseChannel
-                                        :entity_id     (:entity_id @pc1s)
-                                        :pulse_id      (:id @pulse-d)
-                                        :channel_type  :email
-                                        :schedule_type :daily
-                                        :schedule_hour 16))
-            ;; Only Lee and Peart are recipients in the source.
-            (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1d) :user_id (:id @u2d))
-            (ts/create! PulseChannelRecipient :pulse_channel_id (:id @pc1d) :user_id (:id @u3d))
-
-            (is (= 2 (db/count PulseChannelRecipient)))
-            (is (= #{(:id @u2d) (:id @u3d)}
-                   (db/select-field :user_id PulseChannelRecipient)))
-
-            (serdes.load/load-metabase (ingestion-in-memory @serialized))
-
-            (is (= 3 (db/count PulseChannelRecipient)))
-            (is (= #{(:id @u1d) (:id @u2d) (:id @u3d)}
-                   (db/select-field :user_id PulseChannelRecipient)))))))))
 
 (deftest card-dataset-query-test
   ;; Card.dataset_query is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be

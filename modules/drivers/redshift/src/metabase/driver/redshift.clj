@@ -4,6 +4,7 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -84,8 +85,6 @@
   [_]
   :sunday)
 
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -113,7 +112,9 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
-  (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp hsql-form)))
+  (let [hsql-form (hx/->timestamp hsql-form)]
+    (-> (hsql/call :dateadd (hx/literal unit) amount hsql-form)
+        (hx/with-type-info (hx/type-info hsql-form)))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
@@ -300,3 +301,7 @@
             #{}
             (sql-jdbc.describe-table/describe-table-fields-xf driver table)
             (sql-jdbc.describe-table/fallback-fields-metadata-from-select-query driver conn schema table-name))))))
+
+(defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))

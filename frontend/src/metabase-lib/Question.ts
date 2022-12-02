@@ -194,7 +194,7 @@ class QuestionInner {
       }
     }
 
-    throw new Error("Unknown query type: " + datasetQuery.type);
+    console.warn("Unknown query type: " + datasetQuery?.type);
   }
 
   isNative(): boolean {
@@ -272,7 +272,7 @@ class QuestionInner {
   }
 
   isAction() {
-    return this._card && this._card.is_write;
+    return false;
   }
 
   setPersisted(isPersisted) {
@@ -290,7 +290,7 @@ class QuestionInner {
   }
 
   setIsAction(isAction) {
-    return this.setCard(assoc(this.card(), "is_write", isAction));
+    return this.card();
   }
 
   // locking the display prevents auto-selection

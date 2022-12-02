@@ -19,6 +19,7 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.secret :as secret]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
@@ -29,7 +30,13 @@
            [oracle.jdbc OracleConnection OracleTypes]
            oracle.sql.TIMESTAMPTZ))
 
+(defmethod driver/database-supports? [:oracle :now] [_driver _feat _db] true)
+
 (driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
+
+(defmethod driver/database-supports? [:oracle :convert-timezone]
+  [_driver _feat _db]
+  true)
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
@@ -60,6 +67,7 @@
     ;; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
     [#"^SDO_"       :type/*]
     [#"STRUCT"      :type/*]
+    [#"TIMESTAMP(\(\d\))? WITH TIME ZONE" :type/DateTimeWithTZ]
     [#"TIMESTAMP"   :type/DateTime]
     [#"URI"         :type/Text]
     [#"XML"         :type/*]]))
@@ -205,9 +213,21 @@
    (driver.common/start-of-week-offset driver)
    (partial hsql/call (u/qualified-name ::mod))))
 
-(def ^:private now (hsql/raw "SYSDATE"))
+(defmethod sql.qp/current-datetime-honeysql-form :oracle
+  [_]
+  (-> (hsql/raw "CURRENT_TIMESTAMP")
+      (hx/with-database-type-info "timestamp with time zone")))
 
-(defmethod sql.qp/current-datetime-honeysql-form :oracle [_] now)
+(defmethod sql.qp/->honeysql [:oracle :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr          (sql.qp/->honeysql driver arg)
+        has-timezone? (hx/is-of-type? expr #"timestamp(\(\d\))? with time zone")]
+   (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
+   (-> (if has-timezone?
+         expr
+         (hsql/call :from_tz expr (or source-timezone (qp.timezone/results-timezone-id))))
+       (hx/->AtTimeZone target-timezone)
+       hx/->timestamp)))
 
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))

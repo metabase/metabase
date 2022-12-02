@@ -97,7 +97,7 @@
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.sshd/sshd-core                 {:mvn/version "2.9.1"}              ; ssh tunneling and test server
-  org.apache.xmlgraphics/batik-all          {:mvn/version "1.14"}               ; SVG -> image
+  org.apache.xmlgraphics/batik-all          {:mvn/version "1.16"}               ; SVG -> image
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.70"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk15on           {:mvn/version "1.70"}
@@ -159,6 +159,20 @@
 
  :paths
  ["src" "shared/src" "resources"]
+
+ ;; These are needed for the Athena and Redshift drivers if you are developing against them locally. If those drivers'
+ ;; dependencies are not included (i.e., if we don't have the `:drivers` profile), these repos are effectively
+ ;; ignored.
+ ;;
+ ;; 1. Maven repos from subprojects do not get copied over -- see
+ ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
+ ;;
+ ;; 2. You cannot include `:mvn/repos` inside of an alias -- see
+ ;; https://ask.clojure.org/index.php/12367/support-mvn-repos-inside-an-alias -- if we could, this could go in the
+ ;; `:drivers` alias instead.
+ :mvn/repos
+ {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
+  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
 
  :aliases
  {
@@ -273,7 +287,7 @@
   ;;    clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test (for EE)
   :drivers-dev
   {:extra-paths
-   ["modules/drivers/bigquery/test"
+   ["modules/drivers/athena/test"
     "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/druid/test"
     "modules/drivers/googleanalytics/test"
@@ -305,7 +319,7 @@
                :source-paths    ["src"
                                  "shared/src"
                                  "enterprise/backend/src"
-                                 "modules/drivers/bigquery/src"
+                                 "modules/drivers/athena/src"
                                  "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/druid/src"
                                  "modules/drivers/googleanalytics/src"

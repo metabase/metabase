@@ -324,64 +324,76 @@ export const MBQL_CLAUSES = {
   "get-year": {
     displayName: `year`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-quarter": {
     displayName: `quarter`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-month": {
     displayName: `month`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-week": {
     displayName: `week`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
     hasOptions: true, // optional mode parameter
   },
   "get-day": {
     displayName: `day`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-day-of-week": {
     displayName: `weekday`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-hour": {
     displayName: `hour`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-minute": {
     displayName: `minute`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "get-second": {
     displayName: `second`,
     type: "number",
-    args: ["expression"],
+    args: ["datetime"],
   },
   "datetime-diff": {
     displayName: `datetimeDiff`,
     type: "number",
-    args: ["expression", "expression", "string"],
+    args: ["datetime", "datetime", "string"],
     requiresFeature: "datetime-diff",
   },
   "datetime-add": {
     displayName: `datetimeAdd`,
-    type: "expression",
-    args: ["expression", "number", "string"],
+    type: "datetime",
+    args: ["datetime", "number", "string"],
   },
   "datetime-subtract": {
     displayName: `datetimeSubtract`,
-    type: "expression",
-    args: ["expression", "number", "string"],
+    type: "datetime",
+    args: ["datetime", "number", "string"],
+  },
+  now: {
+    displayName: `now`,
+    type: "datetime",
+    args: [],
+  },
+  "convert-timezone": {
+    displayName: `convertTimezone`,
+    type: "datetime",
+    args: ["datetime", "string"],
+    hasOptions: true,
+    requiresFeature: "convert-timezone",
   },
 };
 
@@ -467,6 +479,8 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "get-second",
   "datetime-add",
   "datetime-subtract",
+  "now",
+  "convert-timezone",
   // boolean
   "contains",
   "ends-with",
