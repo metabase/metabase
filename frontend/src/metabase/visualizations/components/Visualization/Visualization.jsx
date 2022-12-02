@@ -333,18 +333,14 @@ class Visualization extends React.PureComponent {
     return gridSize;
   };
 
-  getHasHeader = ({ settings, loading, error, noResults, extra }) => {
+  getHasHeader = ({ loading, error, noResults }) => {
     const { dashcard, showTitle, replacementContent, isMobile } = this.props;
     const { visualization } = this.state;
 
-    const title = settings["card.title"];
-    const hasHeaderContent = title || extra;
     const isHeaderEnabled = !(visualization && visualization.noHeader);
 
     return (
-      (showTitle &&
-        hasHeaderContent &&
-        (loading || error || noResults || isHeaderEnabled)) ||
+      (showTitle && (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard.size_y !== 1 || isMobile))
     );
   };
@@ -437,10 +433,30 @@ class Visualization extends React.PureComponent {
     return result;
   };
 
-  render() {
+  renderExtraHeaderContent = ({ actionButtons, isSlow, loading }) => (
+    <VisualizationActionButtonsContainer>
+      {isSlow && !loading && (
+        <VisualizationSlowSpinner
+          className="Visualization-slow-spinner"
+          size={18}
+          isUsuallySlow={isSlow === "usually-slow"}
+        />
+      )}
+      {actionButtons}
+    </VisualizationActionButtonsContainer>
+  );
+
+  renderContent = ({
+    hasHeader,
+    hovered,
+    loading,
+    error,
+    settings,
+    series,
+    isPlaceholder,
+    noResults,
+  }) => {
     const {
-      actionButtons,
-      className,
       isDashboard,
       width,
       headerIcon,
@@ -448,10 +464,74 @@ class Visualization extends React.PureComponent {
       isSlow,
       expectedDuration,
       replacementContent,
+    } = this.props;
+    const { clicked, visualization: CardVisualization } = this.state;
+
+    const isSmall = width < 330;
+
+    if (replacementContent) {
+      return replacementContent;
+    }
+
+    if (isDashboard && noResults) {
+      return <NoResultsView isSmall={isSmall} />;
+    }
+
+    if (error) {
+      return (
+        <ErrorView
+          error={error}
+          icon={errorIcon}
+          isSmall={isSmall}
+          isDashboard={isDashboard}
+        />
+      );
+    }
+
+    if (loading) {
+      return (
+        <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
+      );
+    }
+
+    return (
+      <CardVisualization
+        {...this.props}
+        // NOTE: CardVisualization class used to target ExplicitSize HOC
+        className="CardVisualization flex-full flex-basis-none"
+        isPlaceholder={isPlaceholder}
+        series={series}
+        settings={settings}
+        card={series[0].card} // convenience for single-series visualizations
+        data={series[0].data} // convenience for single-series visualizations
+        hovered={hovered}
+        clicked={clicked}
+        headerIcon={hasHeader ? null : headerIcon}
+        onHoverChange={this.handleHoverChange}
+        onVisualizationClick={this.handleVisualizationClick}
+        visualizationIsClickable={this.visualizationIsClickable}
+        onRenderError={this.onRenderError}
+        onRender={this.onRender}
+        onActionDismissal={this.hideActions}
+        gridSize={this.getGridSize()}
+        onChangeCardAndRun={
+          this.props.onChangeCardAndRun ? this.handleOnChangeCardAndRun : null
+        }
+      />
+    );
+  };
+
+  render() {
+    const {
+      actionButtons,
+      className,
+      headerIcon,
+      isSlow,
+      replacementContent,
       onUpdateVisualizationSettings,
       style,
     } = this.props;
-    const { clicked, visualization } = this.state;
+    const { clicked } = this.state;
 
     const clickActions = this.getClickActions(clicked);
     const hasClickActions = clickActions.length > 0;
@@ -459,39 +539,16 @@ class Visualization extends React.PureComponent {
     const { loading, error, settings, series, isPlaceholder, noResults } =
       this.cleanVisualization();
 
-    const CardVisualization = visualization;
-
     const hovered =
       hasClickActions || isPlaceholder ? null : this.state.hovered;
 
-    const extra = (
-      <VisualizationActionButtonsContainer>
-        {isSlow && !loading && (
-          <VisualizationSlowSpinner
-            className="Visualization-slow-spinner"
-            size={18}
-            isUsuallySlow={isSlow === "usually-slow"}
-          />
-        )}
-        {actionButtons}
-      </VisualizationActionButtonsContainer>
-    );
-
-    const isSmall = width < 330;
-
-    const hasHeader = this.getHasHeader({
-      settings,
-      loading,
-      error,
-      noResults,
-      extra,
-    });
+    const hasHeader = this.getHasHeader({ loading, error, noResults });
 
     return (
       <VisualizationRoot
         className={className}
-        style={style}
         isPlaceholder={isPlaceholder}
+        style={style}
       >
         {!!hasHeader && (
           <VisualizationHeader>
@@ -499,7 +556,11 @@ class Visualization extends React.PureComponent {
               series={series}
               settings={settings}
               icon={headerIcon}
-              actionButtons={extra}
+              actionButtons={this.renderExtraHeaderContent({
+                actionButtons,
+                isSlow,
+                loading,
+              })}
               onChangeCardAndRun={
                 this.props.onChangeCardAndRun && !replacementContent
                   ? this.handleOnChangeCardAndRun
@@ -508,46 +569,16 @@ class Visualization extends React.PureComponent {
             />
           </VisualizationHeader>
         )}
-        {replacementContent ? (
-          replacementContent
-        ) : isDashboard && noResults ? (
-          <NoResultsView isSmall={isSmall} />
-        ) : error ? (
-          <ErrorView
-            error={error}
-            icon={errorIcon}
-            isSmall={isSmall}
-            isDashboard={isDashboard}
-          />
-        ) : loading ? (
-          <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
-        ) : (
-          <CardVisualization
-            {...this.props}
-            // NOTE: CardVisualization class used to target ExplicitSize HOC
-            className="CardVisualization flex-full flex-basis-none"
-            isPlaceholder={isPlaceholder}
-            series={series}
-            settings={settings}
-            card={series[0].card} // convenience for single-series visualizations
-            data={series[0].data} // convenience for single-series visualizations
-            hovered={hovered}
-            clicked={clicked}
-            headerIcon={hasHeader ? null : headerIcon}
-            onHoverChange={this.handleHoverChange}
-            onVisualizationClick={this.handleVisualizationClick}
-            visualizationIsClickable={this.visualizationIsClickable}
-            onRenderError={this.onRenderError}
-            onRender={this.onRender}
-            onActionDismissal={this.hideActions}
-            gridSize={this.getGridSize()}
-            onChangeCardAndRun={
-              this.props.onChangeCardAndRun
-                ? this.handleOnChangeCardAndRun
-                : null
-            }
-          />
-        )}
+        {this.renderContent({
+          hasHeader,
+          hovered,
+          loading,
+          error,
+          settings,
+          series,
+          isPlaceholder,
+          noResults,
+        })}
         <ChartTooltip series={series} hovered={hovered} settings={settings} />
         {this.props.onChangeCardAndRun && (
           <ChartClickActions
