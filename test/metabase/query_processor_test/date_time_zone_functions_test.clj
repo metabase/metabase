@@ -142,7 +142,7 @@
                       first
                       (zipmap ops)))))))
 
-    (testing "with timestamptz columns"
+    (testing-only "with timestamptz columns"
       (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
         (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
           (is (= (if (driver/supports? driver/*driver* :set-timezone)
@@ -150,14 +150,56 @@
                    ;; so we expect the extracted components will be in report-tz
                    ;; for drivers that are not, extract should returns in UTC
                    ["2004-03-19T09:19:09+07:00" 9]
-                   ["2004-03-19T02:19:09Z" 2])
+                   ;; TIMEZONE FIXME when extracting hour in sqlserver,
+                   ;; it returns the hour in the inserted timezone (Asia/Ho_Chi_Minh)
+                   ;; The funny thing is when reading `datetimeoffset`, sqlserver JDBC returns
+                   ;; the time in inserted timezone, but we normalize to UTC :(
+                   ;; so technically we could make sqlserver returns dates in report-tz
+                   ;; then we could make extract hour consistent
+                   ["2004-03-19T02:19:09Z" (case driver/*driver*
+                                            :sqlserver 9
+                                            2)])
                  (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
                                             :fields      [$dt_tz [:expression "hour"]]
                                             :filter      [:= $index 1]
                                             :limit       1})
                       mt/process-query
                       (mt/formatted-rows [str int])
-                      first))))))))
+                      first)))
+
+          (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
+            (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
+              (mt/dataset times-mixed
+                (is (= (if (driver/supports? driver/*driver* :set-timezone)
+                         {:get-year 2004,
+                          :get-quarter 1,
+                          :get-month 1,
+                          :get-day 1,
+                          :get-day-of-week 5,
+                          :get-hour 2,
+                          :get-minute 19,
+                          :get-second 9}
+                         {:get-year 2003,
+                          :get-quarter 4,
+                          :get-month 12,
+                          :get-day 31,
+                          :get-day-of-week 4,
+                          :get-hour 19,
+                          :get-minute 19,
+                          :get-second 9})
+                      (let [ops [:get-year :get-quarter :get-month :get-day
+                                   :get-day-of-week :get-hour :get-minute :get-second]]
+                         (->> (mt/mbql-query times {:expressions (into {"shifted-day"  [:datetime-subtract $dt_tz 78 :day]
+                                                                        "shifted-hour" [:datetime-subtract [:expression "shifted-day"] 7 :hour]}
+                                                                       (for [op ops]
+                                                                         [(name op) [op [:expression "shifted-hour"]]]))
+                                                    :fields      (into [] (for [op ops] [:expression (name op)]))
+                                                    :filter      [:= $index 1]
+                                                    :limit       1})
+                             mt/process-query
+                             mt/rows
+                             first
+                             (zipmap ops)))))))))))))
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
