@@ -4,6 +4,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models :refer [Card]]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
@@ -388,6 +389,40 @@
                              [:expression "3"]]
                     :limit  1})
                  mt/rows first))))))
+
+(defn- close-minute?
+  "Tests whether two minute integers are within 1 minute of each other on the clock.
+   0 and 59 are considered close."
+  [a b]
+  (or (<= (mod (- b a) 60) 1)
+      (<= (mod (- a b) 60) 1)))
+
+(defn- close-hour?
+  "Tests whether two hour integers are within 1 hour of each other on the clock.
+   0 and 23 are considered close."
+  [a b]
+  (or (<= (mod (- b a) 24) 1)
+      (<= (mod (- a b) 24) 1)))
+
+(deftest now-with-extract-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :now :temporal-extract)
+    (testing "now should work with temporal extract functions according to the results timezone"
+      (let [timezone "Asia/Kathmandu"] ; UTC+5:45 all year
+        (mt/with-temporary-setting-values [report-timezone timezone]
+          (is (= true
+                 (let [[minute hour] (->> (mt/run-mbql-query venues
+                                            {:expressions {"minute" [:get-minute [:now]]
+                                                           "hour" [:get-hour [:now]]}
+                                             :fields [[:expression "minute"]
+                                                      [:expression "hour"]]
+                                             :limit  1})
+                                          (mt/formatted-rows [int int])
+                                          first)
+                       results-timezone (mt/with-everything-store (qp.timezone/results-timezone-id))
+                       now              (t/local-date-time (t/zone-id results-timezone))]
+                   (and (close-minute? minute (.getMinute now))
+                        (close-hour? hour (.getHour now)))))))))))
+
 
 (deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
