@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { FocusEvent, useCallback, useState } from "react";
 import { t } from "ttag";
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import CacheTimeInput from "../CacheTimeInput";
@@ -14,13 +14,17 @@ const DEFAULT_CACHE_TIME = 24;
 export interface DatabaseCacheTimeInputProps {
   value?: number;
   error?: boolean;
+  inputId?: string;
   onChange?: (value?: number) => void;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 const DatabaseCacheTimeInput = ({
   value,
   error,
+  inputId,
   onChange,
+  onBlur,
 }: DatabaseCacheTimeInputProps): JSX.Element => {
   const [isCustom, setIsCustom] = useState(value != null);
 
@@ -40,7 +44,13 @@ const DatabaseCacheTimeInput = ({
         onChange={handleChange}
       />
       {isCustom && (
-        <CacheTimeInput value={value} error={error} onChange={onChange} />
+        <CacheTimeInput
+          value={value}
+          error={error}
+          inputId={inputId}
+          onChange={onChange}
+          onBlur={onBlur}
+        />
       )}
     </TimeInputRoot>
   );
