@@ -5,6 +5,7 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models.action :as action]
             [metabase.models.collection :as collection]
             [metabase.models.field-values :as field-values]
@@ -195,22 +196,10 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
-(def DatasetQuery
-  "Shape of a valid dataset_query."
-  (let [NativeQuery {:type   (s/enum :native)
-                     :native {:query s/Str}}
-        Query       {:type  (s/enum :query)
-                     :query su/Map}]
-    (su/open-schema
-     (s/conditional
-      #(#{:native} (:type %)) NativeQuery
-      #(#{:query} (:type %)) Query))))
-
 (defn valid-dataset-query?
   "Check if the dataset-query is valid."
   [dataset-query]
-  (or (and (map? dataset-query) (empty? dataset-query))
-   (not (boolean (s/check DatasetQuery dataset-query)))))
+  (not (boolean (s/check mbql.s/Query dataset-query))))
 
 (defn- check-for-invalid-dataset-query
   "A dataset_query map is required, but since it is a json column in the app-db, it is possible to pass invalid json strings.
@@ -241,7 +230,6 @@
         (throw (ex-info (tru "A model made from a native SQL question cannot have a variable or field filter.")
                         {:status-code 400}))))))
 
-;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
   (let [defaults {:parameters         []
                   :parameter_mappings []}
@@ -337,6 +325,16 @@
   :in mi/json-in
   :out result-metadata-out)
 
+(defn- nil-dataset-query-to-dummy-query
+  "Replace invalid dataset_query with a dummy query to allow corrupted card to load on the frontend.
+  This is a fix for #15222"
+  [{dataset-query :dataset_query :as card}]
+  (cond-> card
+    (not (valid-dataset-query? dataset-query))
+    (assoc :dataset_query {:database (:database_id card)
+                           :type     :query
+                           :query    {}})))
+
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
   models/IModel
   (merge models/IModelDefaults
@@ -357,7 +355,7 @@
           :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
           :post-insert    post-insert
           :pre-delete     pre-delete
-          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
+          :post-select    (comp nil-dataset-query-to-dummy-query public-settings/remove-public-uuid-if-public-sharing-is-disabled)}))
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]

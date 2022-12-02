@@ -149,20 +149,11 @@
                      card)))
             cards))))
 
-(defn- nil-dataset-query-to-dummy-query
-  [{dataset-query :dataset_query :as card}]
-  (cond-> card
-    (not (card/valid-dataset-query? dataset-query))
-    (assoc :dataset_query {:database (:database_id card)
-                           :type     :query
-                           :query    {}})))
-
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
   (let [raw-card (db/select-one Card :id id)
         card     (-> raw-card
-                     nil-dataset-query-to-dummy-query
                      (hydrate :creator
                               :bookmarked
                               :dashboard_count
