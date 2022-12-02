@@ -52,7 +52,6 @@ type UpdateSnippetFormValues = Partial<SnippetFormValues> &
 
 export interface SnippetFormOwnProps {
   snippet: Partial<NativeQuerySnippet>;
-  snippetCollections: Collection[];
   onCreate?: (snippet: NativeQuerySnippet) => void;
   onUpdate?: (
     nextSnippet: NativeQuerySnippet,
@@ -60,6 +59,10 @@ export interface SnippetFormOwnProps {
   ) => void;
   onArchive?: () => void;
   onCancel?: () => void;
+}
+
+interface SnippetLoaderProps {
+  snippetCollections: Collection[];
 }
 
 interface SnippetFormDispatchProps {
@@ -71,7 +74,9 @@ interface SnippetFormDispatchProps {
   ) => Promise<NativeQuerySnippet>;
 }
 
-type SnippetFormProps = SnippetFormOwnProps & SnippetFormDispatchProps;
+type SnippetFormProps = SnippetFormOwnProps &
+  SnippetLoaderProps &
+  SnippetFormDispatchProps;
 
 const mapDispatchToProps = {
   handleCreateSnippet: Snippets.actions.create,
