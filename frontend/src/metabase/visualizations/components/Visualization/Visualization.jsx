@@ -451,20 +451,18 @@ class Visualization extends React.PureComponent {
       onUpdateVisualizationSettings,
       style,
     } = this.props;
-    const { visualization } = this.state;
-    const isSmall = width < 330;
-
-    // these may be overridden below
-    let { hovered, clicked } = this.state;
+    const { clicked, visualization } = this.state;
 
     const clickActions = this.getClickActions(clicked);
-    // disable hover when click action is active
-    if (clickActions.length > 0) {
-      hovered = null;
-    }
+    const hasClickActions = clickActions.length > 0;
 
     const { loading, error, settings, series, isPlaceholder, noResults } =
       this.cleanVisualization();
+
+    const CardVisualization = visualization;
+
+    const hovered =
+      hasClickActions || isPlaceholder ? null : this.state.hovered;
 
     const extra = (
       <VisualizationActionButtonsContainer>
@@ -479,11 +477,7 @@ class Visualization extends React.PureComponent {
       </VisualizationActionButtonsContainer>
     );
 
-    if (isPlaceholder) {
-      hovered = null;
-    }
-
-    const CardVisualization = visualization;
+    const isSmall = width < 330;
 
     const hasHeader = this.getHasHeader({
       settings,
