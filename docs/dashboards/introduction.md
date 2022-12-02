@@ -24,7 +24,17 @@ In the top right of the screen, click the **+** icon to open the **Create** menu
 
 ![Create Dashboard](images/create.png)
 
-If you don't want to build a dashboard from scratch, or want to experiment by making changes to an existing dashboard without affecting the original, you can **duplicate** an existing dashboard. From an existing dashboard, click on the **...** menu in the upper right, and select **Duplicate**.
+## Duplicating a dashboard
+
+If you don't want to build a dashboard from scratch, or want to experiment by making changes to an existing dashboard without affecting the original, you can **duplicate** an existing dashboard. 
+
+To duplicate a dashboard, click on the **...** menu in the upper right of the dashboard, and select **Duplicate**.
+
+By default, Metabase will create a new dashboard, with copies of the questions in the original dashboard, and save everything to the collection you specify. 
+
+If you don't wish to copy the dashboard's underlying questions, check the box that says **Only duplicate the dashboard**. Metabase will copy the dashboard and refer to the original questions.
+
+In both cases, duplication only includes the dashboard, its card layout, filters, and (optionally) the questions. What's not copied: dashboard subscriptions, or any sharing or embedding data settings. For example, if you copy a dashboard that has been made public, that copied dashboard will not be public by default.
 
 ## Adding saved questions to a dashboard
 
