@@ -22,7 +22,6 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
 import {
-  ArchiveButton,
   FormSnippetTextArea,
   SnippetFormFooterContent,
   SnippetFormFooter,
@@ -178,10 +177,12 @@ function SnippetForm({
           <SnippetFormFooter>
             <SnippetFormFooterContent>
               {isEditing && (
-                <ArchiveButton
+                <Button
                   type="button"
+                  icon="archive"
+                  borderless
                   onClick={handleArchive}
-                >{t`Archive`}</ArchiveButton>
+                >{t`Archive`}</Button>
               )}
               <FormErrorMessage inline />
             </SnippetFormFooterContent>

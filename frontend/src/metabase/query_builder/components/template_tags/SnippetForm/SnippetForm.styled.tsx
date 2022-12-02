@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import Button from "metabase/core/components/Button";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import { color } from "metabase/lib/colors";
 
@@ -27,10 +26,3 @@ export const SnippetFormFooterContent = styled.div`
   justify-content: flex-end;
   gap: 0.5rem;
 `;
-
-export const ArchiveButton = styled(Button)``;
-
-ArchiveButton.defaultProps = {
-  icon: "archive",
-  borderless: true,
-};
