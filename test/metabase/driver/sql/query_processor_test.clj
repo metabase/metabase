@@ -13,6 +13,7 @@
    [metabase.test :as mt]
    [metabase.util.honeysql-extensions :as hx]
    [schema.core :as s]))
+
 (deftest sql-source-query-validation-test
   (testing "[[sql.qp/sql-source-query]] should throw Exceptions if you pass in invalid nonsense"
     (doseq [params [nil [1000]]]

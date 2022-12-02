@@ -3,8 +3,8 @@ import moment from "moment-timezone";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { formatTime } from "metabase/lib/formatting";
+import type { Database } from "metabase-types/types/Database";
 import { HelpText } from "metabase-lib/expressions/types";
-import type Database from "metabase-lib/metadata/Database";
 
 const reportTimezone = MetabaseSettings.get("report-timezone-long");
 
@@ -773,7 +773,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "now",
     structure: "now",
-    description: "",
+    description: t`Returns the current timestamp.`,
     example: "now",
     args: [],
   },
@@ -808,13 +808,6 @@ See the full list here: https://w.wiki/4Jx`,
     ],
     docsPage: "converttimezone",
   },
-  {
-    name: "now",
-    structure: "now()",
-    description: t`Returns the current timestamp.`,
-    example: "now",
-    args: [],
-  },
 ];
 
 export const getHelpText = (
@@ -823,14 +816,14 @@ export const getHelpText = (
 ): HelpText | undefined => {
   const helperText = helperTextStrings.find(h => h.name === name);
 
-  if (name === "now") {
+  if (helperText && name === "now") {
     helperText.description = getDescriptionForNow(database);
   }
 
   return helperText;
 };
 
-const getNowAtTimezone = timezone =>
+const getNowAtTimezone = (timezone: string) =>
   timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");
 
 const getDescriptionForNow = (database: Database) => {

@@ -19,13 +19,6 @@ import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
 import { suggest } from "./suggest";
 
-<<<<<<< HEAD
-=======
-import HelpText from "../ExpressionEditorHelpText";
-import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
-import ExpressionMode from "../ExpressionMode";
-import { suggest } from "./suggest";
->>>>>>> 223e85f1bd (Move files to component namespace)
 import {
   EditorContainer,
   EditorEqualsSign,
