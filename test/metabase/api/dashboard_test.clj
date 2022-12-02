@@ -72,6 +72,7 @@
       (assoc :created_at (boolean created_at)
              :updated_at (boolean updated_at)
              :card       (-> (into {} card)
+                             (assoc :dataset_query (walk/postwalk #(if (string? %) (keyword %) %) (:dataset_query card)))
                              (dissoc :id :database_id :table_id :created_at :updated_at :query_average_duration)
                              (update :collection_id boolean)))))
 
@@ -309,7 +310,7 @@
                                                                                              :collection_id          true
                                                                                              :entity_id              (:entity_id card)
                                                                                              :display                "table"
-                                                                                             :query_type             nil
+                                                                                             :query_type             "query"
                                                                                              :visualization_settings {}
                                                                                              :is_write               false
                                                                                              :result_metadata        nil})
@@ -1342,7 +1343,7 @@
                 :series                 [{:name                   "Series Card"
                                           :description            nil
                                           :display                :table
-                                          :dataset_query          {}
+                                          :dataset_query          (:dataset_query api.card-test/card-defaults)
                                           :visualization_settings {}}]
                 :created_at             true
                 :updated_at             true}

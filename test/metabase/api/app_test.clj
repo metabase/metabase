@@ -267,13 +267,17 @@
                         {:dataset_query
                          {:query
                           {:source-table (str "card__" (:id model1))
-                           :joins [{:source-table (str "card__" (:id model2))}
-                                   {:source-table (str "card__" card-id)}]}}}]
+                           :joins [{:source-table (str "card__" (:id model2))
+                                    :condition    [:= 1 1]}
+                                   {:source-table (str "card__" card-id)
+                                    :condition    [:= 1 1]}]}
+                          :database      (mt/id)
+                          :type          :query}}]
                   Card [native-card
-                        (let [mid (:id model3)
+                        (let [mid  (:id model3)
                               mref (str "#" mid)]
                           {:dataset_query
-                           {:type :native
+                           {:type     :native
                             :native
                             {:query (format "select * from {{%s}}" mref)
                              :template-tags
