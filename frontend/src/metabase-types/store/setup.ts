@@ -25,11 +25,11 @@ export interface DatabaseInfo {
   engine: string | undefined;
   details: Record<string, unknown>;
   schedules: DatabaseSchedules;
-  auto_run_queries: boolean;
-  refingerprint: boolean;
-  is_sample: boolean;
-  is_full_sync: boolean;
-  is_on_demand: boolean;
+  auto_run_queries: boolean | null;
+  refingerprint: boolean | null;
+  is_sample: boolean | null;
+  is_full_sync: boolean | null;
+  is_on_demand: boolean | null;
 }
 
 export interface SubscribeInfo {

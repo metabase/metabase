@@ -46,9 +46,7 @@ const DatabaseForm = ({
   }, [engine, engineKey, isAdvanced]);
 
   const initialValues = useMemo(() => {
-    return initialData
-      ? validationSchema.cast(initialData, { stripUnknown: true })
-      : validationSchema.getDefault();
+    return initialData ?? validationSchema.getDefault();
   }, [initialData, validationSchema]);
 
   const handleEngineChange = useCallback(
@@ -98,14 +96,14 @@ const DatabaseFormBody = ({
   onEngineChange,
   onCancel,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, dirty } = useFormikContext<DatabaseValues>();
+  const { values } = useFormikContext<DatabaseValues>();
 
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];
   }, [engine, values, isAdvanced]);
 
   return (
-    <Form disabled={isAdvanced && !dirty}>
+    <Form>
       <DatabaseEngineField
         engineKey={engineKey}
         engines={engines}
@@ -136,17 +134,13 @@ const DatabaseFormFooter = ({
   isAdvanced,
   onCancel,
 }: DatabaseFormFooterProps) => {
-  const { values, dirty } = useFormikContext<DatabaseValues>();
+  const { values } = useFormikContext<DatabaseValues>();
   const isNew = values.id == null;
 
   if (isAdvanced) {
     return (
       <div>
-        <FormSubmitButton
-          title={isNew ? t`Save` : t`Save changes`}
-          disabled={!dirty}
-          primary
-        />
+        <FormSubmitButton title={isNew ? t`Save` : t`Save changes`} primary />
         <FormErrorMessage />
       </div>
     );

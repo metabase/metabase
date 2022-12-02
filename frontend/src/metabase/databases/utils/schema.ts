@@ -21,11 +21,11 @@ export const getValidationSchema = (
       metadata_sync: Yup.object(),
       cache_field_values: Yup.object(),
     }),
-    auto_run_queries: Yup.boolean().default(true),
-    refingerprint: Yup.boolean().default(false),
-    is_sample: Yup.boolean().default(false),
-    is_full_sync: Yup.boolean().default(true),
-    is_on_demand: Yup.boolean().default(false),
+    auto_run_queries: Yup.boolean().nullable().default(true),
+    refingerprint: Yup.boolean().nullable().default(false),
+    is_sample: Yup.boolean().nullable().default(false),
+    is_full_sync: Yup.boolean().nullable().default(true),
+    is_on_demand: Yup.boolean().nullable().default(false),
   });
 };
 
