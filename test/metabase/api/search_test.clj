@@ -143,6 +143,8 @@
     (-> result
         mt/boolean-ids-and-timestamps
         (update-in [:collection :name] #(some-> % string?))
+        ;; we don't care what the dataset_query looks like for these tests
+        (assoc :dataset_query nil)
         ;; `:scores` is just used for debugging and would be a pain to match against.
         (dissoc :scores))))
 

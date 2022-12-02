@@ -2193,7 +2193,8 @@
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {}]
         (testing "Creating dashcard with action"
-          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+          (mt/with-temp* [Card [{card-id :id} {:dataset_query (mt/mbql-query categories)
+                                               :dataset true}]
                           ModelAction [_ {:card_id card-id :action_id action-id :slug "insert" :visualization_settings {:hello true}}]
                           Dashboard [{dashboard-id :id}]]
             (is (partial= {:visualization_settings {:action_slug "insert"}}
@@ -2210,7 +2211,8 @@
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+          (mt/with-temp* [Card [{card-id :id} {:dataset_query (mt/mbql-query categories)
+                                               :dataset true}]
                           ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
                           Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
@@ -2257,7 +2259,8 @@
     (actions.test-util/with-actions-test-data-and-actions-enabled
       (actions.test-util/with-action [{:keys [action-id]} {:type :http}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+          (mt/with-temp* [Card [{card-id :id} {:dataset_query (mt/mbql-query categories)
+                                               :dataset true}]
                           ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
                           Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
@@ -2363,7 +2366,8 @@
     (actions.test-util/with-actions-test-data
       (actions.test-util/with-action [{:keys [action-id]} {}]
         (testing "Executing dashcard with action"
-          (mt/with-temp* [Card [{card-id :id} {:dataset true}]
+          (mt/with-temp* [Card [{card-id :id} {:dataset_query (mt/mbql-query categories)
+                                               :dataset true}]
                           ModelAction [_ {:slug "custom" :card_id card-id :action_id action-id}]
                           Dashboard [{dashboard-id :id}]
                           DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
