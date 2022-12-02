@@ -349,12 +349,16 @@ class Visualization extends React.PureComponent {
     );
   };
 
+  checkHasNoResults = series =>
+    series.every(singleSeries => datasetContainsNoResults(singleSeries.data));
+
   cleanVisualization = () => {
+    const { query, isDashboard, onOpenChartSettings } = this.props;
+    const { series, visualization } = this.state;
+
     const error = this.props.error || this.state.error;
-    const { isDashboard, onOpenChartSettings } = this.props;
     // don't try to load settings unless data is loaded
     const settings = this.props.settings || {};
-    const { series, visualization } = this.state;
     const loading = this.isLoading(series);
 
     const result = {
@@ -385,11 +389,7 @@ class Visualization extends React.PureComponent {
 
     try {
       if (visualization.checkRenderable) {
-        visualization.checkRenderable(
-          series,
-          result.settings,
-          this.props.query,
-        );
+        visualization.checkRenderable(series, result.settings, query);
       }
     } catch (e) {
       result.error =
@@ -400,17 +400,19 @@ class Visualization extends React.PureComponent {
         !isDashboard
       ) {
         // hide the error and replace series with the placeholder series
+        result.series = visualization.placeholderSeries;
         return {
           ...result,
           error: null,
-          series: visualization.placeholderSeries,
           settings: getComputedSettingsForSeries(series),
+          noResults: this.checkHasNoResults(result.series),
           isPlaceholder: true,
         };
       }
       if (e instanceof ChartSettingsError && onOpenChartSettings) {
         return {
           ...result,
+          noResults: this.checkHasNoResults(result.series),
           error: (
             <ChartSettingsErrorButton
               message={error}
@@ -427,6 +429,11 @@ class Visualization extends React.PureComponent {
         };
       }
     }
+
+    if (!result.error) {
+      result.noResults = this.checkHasNoResults(result.series);
+    }
+
     return result;
   };
 
@@ -456,15 +463,8 @@ class Visualization extends React.PureComponent {
       hovered = null;
     }
 
-    let { loading, error, settings, series, isPlaceholder, noResults } =
+    const { loading, error, settings, series, isPlaceholder, noResults } =
       this.cleanVisualization();
-
-    if (!error) {
-      noResults = _.every(
-        series,
-        s => s && s.data && datasetContainsNoResults(s.data),
-      );
-    }
 
     const extra = (
       <VisualizationActionButtonsContainer>

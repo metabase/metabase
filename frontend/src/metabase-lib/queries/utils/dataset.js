@@ -4,7 +4,7 @@ import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Dimension, { FieldDimension } from "metabase-lib/Dimension";
 
 export const datasetContainsNoResults = data =>
-  data.rows == null || data.rows.length === 0;
+  data?.rows == null || data?.rows.length === 0;
 
 /**
  * Returns a MBQL field reference (FieldReference) for a given result dataset column
