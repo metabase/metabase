@@ -346,7 +346,10 @@ class Visualization extends React.PureComponent {
   };
 
   checkHasNoResults = series =>
-    series.every(singleSeries => datasetContainsNoResults(singleSeries.data));
+    series.every(
+      singleSeries =>
+        singleSeries?.data && datasetContainsNoResults(singleSeries.data),
+    );
 
   cleanVisualization = () => {
     const { query, isDashboard, onOpenChartSettings } = this.props;
