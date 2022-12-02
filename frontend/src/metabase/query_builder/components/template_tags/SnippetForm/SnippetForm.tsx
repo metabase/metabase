@@ -153,7 +153,6 @@ function SnippetForm({
             name="content"
             title={t`Enter some SQL here so you can reuse it later`}
             placeholder="AND canceled_at IS null\nAND account_type = 'PAID'"
-            // className="Form-input"
             autoFocus
             rows={4}
           />
