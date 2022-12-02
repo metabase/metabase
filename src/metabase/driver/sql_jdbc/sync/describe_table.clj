@@ -179,7 +179,10 @@
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
   [^DatabaseMetaData metadata db-name-or-nil table]
   (let [pks (into #{} (sql-jdbc.common/reducible-results
-                       #(.getPrimaryKeys metadata db-name-or-nil (:schema table) (:name table))
+                       #(.getPrimaryKeys metadata
+                                         (driver/escape-entity-name-for-metadata db-name-or-nil)
+                                         (driver/escape-entity-name-for-metadata (:schema table))
+                                         (driver/escape-entity-name-for-metadata (:name table)))
                        (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))]
     (update table :fields (fn [fields]
                             (set (for [field fields]
