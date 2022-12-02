@@ -1,29 +1,35 @@
 import React from "react";
 import { t } from "ttag";
-import { NumericInputProps } from "metabase/core/components/NumericInput";
 import {
-  CacheInputMessage,
-  CacheInputRoot,
-  CacheInput,
+  TimeInputMessage,
+  TimeInputRoot,
+  TimeInput,
 } from "./CacheTimeInput.styled";
 
-export interface CacheTimeInputProps extends NumericInputProps {
+export interface CacheTimeInputProps {
+  value?: number;
   message?: string;
+  error?: boolean;
+  onChange?: (value?: number) => void;
 }
 
 const CacheTimeInput = ({
+  value,
   message,
   error,
-  ...props
+  onChange,
 }: CacheTimeInputProps): JSX.Element => {
   return (
-    <CacheInputRoot>
-      {message && (
-        <CacheInputMessage error={error}>{message}</CacheInputMessage>
-      )}
-      <CacheInput {...props} error={error} placeholder="24" />
-      <CacheInputMessage error={error}>{t`hours`}</CacheInputMessage>
-    </CacheInputRoot>
+    <TimeInputRoot>
+      {message && <TimeInputMessage error={error}>{message}</TimeInputMessage>}
+      <TimeInput
+        value={value}
+        error={error}
+        placeholder="24"
+        onChange={onChange}
+      />
+      <TimeInputMessage error={error}>{t`hours`}</TimeInputMessage>
+    </TimeInputRoot>
   );
 };
 
