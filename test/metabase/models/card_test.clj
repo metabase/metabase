@@ -396,21 +396,21 @@
              (:visualization_settings (db/simple-select-one Card {:where [:= :id card-id]})))))))
 
 (deftest corrupted-cards-will-fix-themselves
-  (testing "#15222"
-    (testing "if card has an empty dataset_query, fixit up with an dummy query"
-      (mt/with-temp* [Card [{id1 :id} {:dataset_query ""}]
-                      Card [{id2 :id} {:dataset_query "{}"}]]
-        (is (= {:database (mt/id),
-                :native   {:query ""},
-                :type     :native}
-               (:dataset_query (db/select-one Card :id id1))))
+  (testing "#15222: Corrupted `dataset_query`s cause FE breakage"
+    (let [post-select #'card/post-select]
+      (testing "if the card has an empty dataset_query, fix it up with a dummy query"
+        (mt/with-temp* [Card [{card-id :id}]]
+          (doseq [invalid-query [{} [] "" nil]]
+            (is (= {:database (mt/id),
+                    :query    {:source-table (mt/id)},
+                    :type     :query}
+                   (->
+                    (db/select-one Card :id card-id)
+                    (assoc :dataset_query invalid-query)
+                    (post-select)
+                    :dataset_query))))))
 
-        (is (= {:database (mt/id),
-                :native   {:query ""},
-                :type     :native}
-               (:dataset_query (db/select-one Card :id id2))))))
-
-    (testing "if card has invalid visualization_settings, fix it up with empty map"
-      (mt/with-temp Card [{id :id} {:visualization_settings "invalid viz-settings"}]
-        (is (= {}
-               (:visualization_settings (db/select-one Card :id id))))))))
+      (testing "if the card has invalid visualization_settings, fix them up with an empty map"
+        (mt/with-temp Card [{id :id} {:visualization_settings "invalid viz-settings"}]
+          (is (= {}
+                 (db/select-one-field :visualization_settings Card :id id))))))))

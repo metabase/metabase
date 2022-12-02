@@ -54,7 +54,8 @@
   "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
   [obj]
   (if (string? obj)
-    (when-not (str/blank? obj) obj)
+    (when-not (str/blank? obj)
+      obj)
     (json/generate-string obj)))
 
 (defn- json-out [s keywordize-keys?]

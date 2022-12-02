@@ -168,7 +168,8 @@
                               :include_xls                        s/Bool
                               (s/optional-key :dataset_query)     su/Map
                               (s/optional-key :dashboard_card_id) (s/maybe su/IntGreaterThanZero)}
-    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
+    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and may also include `{3}` or `{4}."
+      "id" "include_csv" "include_xls" "dataset_query" "dashboard_card_id")))
 
 (def HybridPulseCard
   "This schema represents the cards that are included in a pulse. This is the data from the `PulseCard` and some

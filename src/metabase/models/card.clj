@@ -24,7 +24,6 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -196,20 +195,18 @@
                            :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
-(defn valid-dataset-query?
-  "Check if the dataset-query is valid."
+(defn invalid-dataset-query?
+  "Check if the dataset-query is invalid."
   [dataset-query]
-  (not (boolean (s/check mbql.s/Query dataset-query))))
+  (boolean (s/check mbql.s/Query dataset-query)))
 
 (defn- check-for-invalid-dataset-query
   "A dataset_query map is required, but since it is a json column in the app-db, it is possible to pass invalid json strings.
   This prevents that."
   [{dataset-query :dataset_query}]
-  ;; for updates if `dataset_query` isn't being updated we don't need to validate anything.
-  (when dataset-query
-    (when (not (valid-dataset-query? dataset-query))
-      (throw (ex-info (tru "Invalid Dataset Query: {0}" dataset-query)
-                      {:status-code           400})))))
+  (when (invalid-dataset-query? dataset-query)
+    (throw (ex-info (tru "Invalid Dataset Query: {0}" dataset-query)
+                    {:status-code 400}))))
 
 (defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
   (when is-write?
@@ -315,6 +312,22 @@
   (db/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (db/delete! 'Revision :model "Card", :model_id id))
 
+(defn- nil-dataset-query->dummy-query
+  "Replace invalid dataset_query with a dummy query to allow corrupted card to load on the frontend.
+  This is a fix for #15222"
+  [{dataset-query :dataset_query, database-id :database_id :as card}]
+  (cond-> card
+    (invalid-dataset-query? dataset-query)
+    (assoc :dataset_query {:database database-id
+                           :type     :query
+                           :query    {:source-table database-id}})))
+
+(defn- post-select
+  [card]
+  (-> card
+      public-settings/remove-public-uuid-if-public-sharing-is-disabled
+      nil-dataset-query->dummy-query))
+
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
@@ -324,16 +337,6 @@
 (models/add-type! ::result-metadata
   :in mi/json-in
   :out result-metadata-out)
-
-(defn- nil-dataset-query-to-dummy-query
-  "Replace invalid dataset_query with a dummy query to allow corrupted card to load on the frontend.
-  This is a fix for #15222"
-  [{dataset-query :dataset_query :as card}]
-  (cond-> card
-    (not (valid-dataset-query? dataset-query))
-    (assoc :dataset_query {:database (:database_id card)
-                           :type     :query
-                           :query    {}})))
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Card)
   models/IModel
@@ -355,7 +358,7 @@
           :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
           :post-insert    post-insert
           :pre-delete     pre-delete
-          :post-select    (comp nil-dataset-query-to-dummy-query public-settings/remove-public-uuid-if-public-sharing-is-disabled)}))
+          :post-select    post-select}))
 
 (defmethod serdes.hash/identity-hash-fields Card
   [_card]
