@@ -177,13 +177,10 @@
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
-  [^DatabaseMetaData metadata db-name table]
-  (let [pks (into #{} (sql-jdbc.common/reducible-results #(.getPrimaryKeys metadata
-                                                                           db-name
-                                                                           (:schema table)
-                                                                           (:name table))
-                                                         (fn [^ResultSet rs]
-                                                           #(.getString rs "COLUMN_NAME"))))]
+  [^DatabaseMetaData metadata db-name-or-nil table]
+  (let [pks (into #{} (sql-jdbc.common/reducible-results
+                       #(.getPrimaryKeys metadata db-name-or-nil (:schema table) (:name table))
+                       (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))]
     (update table :fields (fn [fields]
                             (set (for [field fields]
                                    (if-not (contains? pks (:name field))
