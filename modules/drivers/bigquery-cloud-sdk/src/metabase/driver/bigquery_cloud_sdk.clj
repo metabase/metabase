@@ -320,6 +320,8 @@
   [_driver _feat _db]
   true)
 
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :now] [_driver _feat _db] true)
+
 (defmethod driver/database-supports? [:bigquery-cloud-sdk :convert-timezone]
   [_driver _feat _db]
   true)

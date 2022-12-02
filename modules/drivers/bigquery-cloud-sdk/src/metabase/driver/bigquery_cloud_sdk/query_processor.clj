@@ -797,6 +797,11 @@
   [_]
   (CurrentMomentForm. nil))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :now]
+  [driver _clause]
+  (->> (sql.qp/current-datetime-honeysql-form driver)
+       (->temporal-type :timestamp)))
+
 (defmethod sql.qp/quote-style :bigquery-cloud-sdk
   [_]
   :mysql)

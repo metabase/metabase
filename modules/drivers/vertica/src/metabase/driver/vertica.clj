@@ -27,6 +27,8 @@
 
 (defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
 
+(defmethod driver/supports? [:vertica :now] [_ _] true)
+
 (defmethod driver/database-supports? [:vertica :convert-timezone]
   [_driver _feature _database]
   true)
@@ -66,6 +68,10 @@
               :subname     (str "//" host ":" port "/" (or dbname db))}
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
+
+(defmethod sql.qp/current-datetime-honeysql-form :vertica
+  [_]
+  (hx/with-database-type-info (hsql/call :current_timestamp 6) :TimestampTz))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]

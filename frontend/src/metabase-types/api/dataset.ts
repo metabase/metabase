@@ -13,12 +13,15 @@ export interface DatasetColumn {
   display_name: string;
   source: string;
   name: string;
+  // FIXME: this prop does not come from API
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
   field_ref?: DimensionReference;
   expression_name?: any;
   base_type?: string;
   semantic_type?: string;
+  remapped_from?: string;
+  remapped_to?: string;
   binning_info?: {
     bin_width?: number;
   };

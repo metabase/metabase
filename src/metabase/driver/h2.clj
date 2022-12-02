@@ -38,7 +38,8 @@
                               :regex                   false
                               :percentile-aggregations false
                               :actions                 true
-                              :actions/custom          true}]
+                              :actions/custom          true
+                              :now                     true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -203,6 +204,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod sql.qp/current-datetime-honeysql-form :h2
+  [_]
+  (hx/with-database-type-info :%now :TIMESTAMP))
 
 (defn- add-to-1970 [expr unit-str]
   (hsql/call :timestampadd

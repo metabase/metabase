@@ -761,6 +761,13 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
+    name: "now",
+    structure: "now",
+    description: t`Returns the current timestamp.`,
+    example: "now",
+    args: [],
+  },
+  {
     name: "convert-timezone",
     structure:
       "convertTimezone(" +
