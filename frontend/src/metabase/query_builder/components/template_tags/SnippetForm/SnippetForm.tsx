@@ -17,6 +17,7 @@ import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
@@ -37,7 +38,7 @@ const SNIPPET_SCHEMA = Yup.object({
     .required(Errors.required)
     .max(10000, Errors.maxLength)
     .default(""),
-  collection_id: Yup.number().nullable(),
+  collection_id: Yup.number().nullable().default(null),
 });
 
 type SnippetFormValues = Pick<
@@ -92,7 +93,15 @@ function SnippetForm({
   const hasManyCollections = snippetCollections.length > 1;
 
   const initialValues = useMemo(
-    () => SNIPPET_SCHEMA.cast(snippet, { stripUnknown: true }),
+    () =>
+      SNIPPET_SCHEMA.cast(
+        {
+          ...snippet,
+          content: snippet.content || "",
+          parent_id: canonicalCollectionId(snippet.id),
+        },
+        { stripUnknown: true },
+      ),
     [snippet],
   );
 
