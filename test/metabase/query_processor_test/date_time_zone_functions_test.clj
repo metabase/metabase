@@ -142,7 +142,7 @@
                       first
                       (zipmap ops)))))))
 
-    (testing-only "with timestamptz columns"
+    (testing "with timestamptz columns"
       (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
         (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
           (is (= (if (driver/supports? driver/*driver* :set-timezone)
