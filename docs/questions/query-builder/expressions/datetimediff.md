@@ -43,23 +43,9 @@ Let's say you're a cheesemaker, and you want to keep track of your ripening proc
 datetimeDiff([Aging Start], [Aging End], "month")
 ```
 
-Unfortunately, you can't easily get the _current_ age of a cheese. For a workaround, see [Limitations].
+## Calculating current age
 
-## Accepted data types
-
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeDiff`  |
-| ----------------------- | -------------------- |
-| String                  | ❌                   |
-| Number                  | ❌                   |
-| Timestamp               | ✅                   |
-| Boolean                 | ❌                   |
-| JSON                    | ❌                   |
-
-If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
-
-## Limitations
-
-Metabase doesn't currently support datetime functions like `today`, so if you want to calculate the _current_ age in our [Cheese example](#calculating-age):
+Metabase doesn't currently support datetime functions like `today`. To calculate the _current_ age of a cheese:
 
 1. Ask your database admin if there's table in your database that stores dates for reporting (sometimes called a date dimension table).
 2. Create a new question using the date dimension table, with a filter for "Today".
@@ -79,6 +65,18 @@ Then, you can calculate **Current Age (Months)** like this:
 ```
 datetimeDiff([Aging Start], [Today], "month")
 ```
+
+## Accepted data types
+
+| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeDiff`  |
+| ----------------------- | -------------------- |
+| String                  | ❌                   |
+| Number                  | ❌                   |
+| Timestamp               | ✅                   |
+| Boolean                 | ❌                   |
+| JSON                    | ❌                   |
+
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
 
 ## Related functions
 
