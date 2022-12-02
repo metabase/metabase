@@ -124,6 +124,23 @@
                   (when schema {:model "Schema" :id schema})
                   {:model "Table" :id table-name}]))
 
+(defn storage-table-path-prefix
+  "The [[serdes.base/storage-path]] for Table is a bit tricky, and shared with Fields and FieldValues, so it's
+  factored out here.
+  Takes the :serdes/meta value for a `Table`!
+  The return value includes the directory for the Table, but not the file for the Table itself.
+
+  With a schema: `[\"databases\" \"db_name\" \"schemas\" \"public\" \"tables\" \"customers\"]`
+  No schema:     `[\"databases\" \"db_name\" \"tables\" \"customers\"]`"
+  [path]
+  (let [db-name    (-> path first :id)
+        schema     (when (= (count path) 3)
+                     (-> path second :id))
+        table-name (-> path last :id)]
+    (concat ["databases" db-name]
+            (when schema ["schemas" schema])
+            ["tables" table-name])))
+
 ;; -------------------------------------------------- Fields ---------------------------------------------------------
 (defn export-field-fk
   "Given a numeric `field_id`, return a portable field reference.
@@ -328,6 +345,10 @@
          ["field"    (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
          [:field-id  (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
          ["field-id" (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
+         [:metric    (field :guard portable-id?)] #{[{:model "Metric" :id field}]}
+         ["metric"   (field :guard portable-id?)] #{[{:model "Metric" :id field}]}
+         [:segment   (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
+         ["segment"  (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
          :else (reduce #(cond
                           (map? %2)    (into %1 (mbql-deps-map %2))
                           (vector? %2) (into %1 (mbql-deps-vector %2))

@@ -16,11 +16,13 @@
             [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.driver.sync :as driver.s]
             [metabase.models.secret :as secret]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -34,6 +36,12 @@
            java.nio.charset.StandardCharsets))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/database-supports? [:snowflake :now] [_driver _feat _db] true)
+
+(defmethod driver/supports? [:snowflake :convert-timezone]
+  [_driver _feature]
+  true)
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ message]
@@ -167,7 +175,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :snowflake
   [_]
-  :%current_timestamp)
+  (hx/with-database-type-info :%current_timestamp :TIMESTAMPTZ))
 
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
   [_ hsql-form amount unit]
@@ -276,6 +284,18 @@
   [driver [_ value _unit]]
   (hx/->time (sql.qp/->honeysql driver value)))
 
+(defmethod sql.qp/->honeysql [:snowflake :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [hsql-form    (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? hsql-form "timestamptz")]
+    (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+    (-> (if timestamptz?
+          (hsql/call :convert_timezone target-timezone hsql-form)
+          (->> hsql-form
+               (hsql/call :convert_timezone (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
+               (hsql/call :to_timestamp_ntz)))
+        (hx/with-database-type-info "timestampntz"))))
+
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
   (sql-jdbc/query driver database {:select [:*]
@@ -365,7 +385,7 @@
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
   [_ t]
-  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
+  (format "'%s %s %s'::timestamp_tz" (t/local-date t) (t/local-time t) (t/zone-offset t)))
 
 (defmethod unprepare/unprepare-value [:snowflake ZonedDateTime]
   [driver t]

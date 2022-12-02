@@ -194,7 +194,7 @@ class QuestionInner {
       }
     }
 
-    throw new Error("Unknown query type: " + datasetQuery.type);
+    console.warn("Unknown query type: " + datasetQuery?.type);
   }
 
   isNative(): boolean {

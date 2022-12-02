@@ -130,6 +130,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "ldap-enabled": false,
   "loading-message": "doing-science",
   "persisted-models-enabled": false,
+  "report-timezone-short": "UTC",
   "saml-configured": false,
   "saml-enabled": false,
   "session-cookies": null,

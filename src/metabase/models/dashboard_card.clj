@@ -10,6 +10,7 @@
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -227,5 +228,6 @@
       (dissoc :serdes/meta)
       (update :card_id                serdes.util/import-fk 'Card)
       (update :dashboard_id           serdes.util/import-fk 'Dashboard)
+      (update :created_at             #(if (string? %) (u.date/parse %) %))
       (update :parameter_mappings     serdes.util/import-parameter-mappings)
       (update :visualization_settings serdes.util/import-visualization-settings)))

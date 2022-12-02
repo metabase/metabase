@@ -445,6 +445,9 @@
     ;; DEFAULTS TO TRUE
     :date-arithmetics
 
+    ;; Does the driver support the :now function
+    :now
+
     ;; Does the driver support converting timezone?
     ;; DEFAULTS TO FALSE
     :convert-timezone

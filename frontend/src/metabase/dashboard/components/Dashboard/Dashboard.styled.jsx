@@ -132,7 +132,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   ${({ isSticky, isNavbarOpen }) =>
     isSticky &&
     isNavbarOpen &&
-    !IFRAMED &&
     css`
       left: ${parseInt(NAV_SIDEBAR_WIDTH) + 1 + "px"};
       width: calc(100% - ${NAV_SIDEBAR_WIDTH});

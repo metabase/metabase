@@ -65,6 +65,7 @@
   [_driver _feature _db]
   true)
 
+(defmethod driver/database-supports? [:mysql :now] [_ _ _] true)
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 
@@ -151,7 +152,7 @@
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
   [_]
-  (hsql/call :now 6))
+  (hx/with-database-type-info (hsql/call :now 6) "timestamp"))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
