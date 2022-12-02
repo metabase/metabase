@@ -4,12 +4,9 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { formatTime } from "metabase/lib/formatting";
 import { HelpText } from "metabase-lib/expressions/types";
+import type Database from "metabase-lib/metadata/Database";
 
-const serverTimezone = MetabaseSettings.get("report-timezone-long");
-
-const nowAtServerTimezone = serverTimezone
-  ? moment().tz(serverTimezone).format("LT")
-  : moment().format("LT");
+const reportTimezone = MetabaseSettings.get("report-timezone-long");
 
 const helperTextStrings: HelpText[] = [
   {
@@ -776,7 +773,7 @@ const helperTextStrings: HelpText[] = [
   {
     name: "now",
     structure: "now",
-    description: t`Returns the current timestamp (in milliseconds). Currently ${nowAtServerTimezone} in ${serverTimezone}.`,
+    description: "",
     example: "now",
     args: [],
   },
@@ -820,8 +817,28 @@ See the full list here: https://w.wiki/4Jx`,
   },
 ];
 
-export const getHelpText = (name: string): HelpText | undefined => {
-  return helperTextStrings.find(h => h.name === name);
+export const getHelpText = (
+  name: string,
+  database: Database,
+): HelpText | undefined => {
+  const helperText = helperTextStrings.find(h => h.name === name);
+
+  if (name === "now") {
+    helperText.description = getDescriptionForNow(database);
+  }
+
+  return helperText;
+};
+
+const getNowAtTimezone = timezone =>
+  timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");
+
+const getDescriptionForNow = (database: Database) => {
+  const hasTimezoneFeatureFlag = database.features.includes("set-timezone");
+  const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
+  const nowAtTimezone = getNowAtTimezone(timezone);
+
+  return t`Returns the current timestamp (in milliseconds). Currently ${nowAtTimezone} in ${timezone}.`;
 };
 
 export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
