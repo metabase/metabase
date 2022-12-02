@@ -67,9 +67,6 @@
    :collection_id       nil
    :collection_position nil
    :collection_preview  true
-   :dataset_query       {:database (mt/id)
-                         :type     :query
-                         :query    {:source-table (mt/id)}}
    :dataset             false
    :description         nil
    :display             "scalar"

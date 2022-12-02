@@ -288,7 +288,7 @@
 (deftest card-id-native-source-queries-test
   (let [run-native-query
         (fn [sql]
-          (mt/with-temp Card [card {:dataset_query {:database (mt/id), :type :native. :native {:query sql}}}]
+          (mt/with-temp Card [card {:dataset_query {:database (mt/id), :type :native :native {:query sql}}}]
             (qp.test/rows-and-cols
               (mt/format-rows-by [int int]
                 (qp/process-query

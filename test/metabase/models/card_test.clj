@@ -66,12 +66,12 @@
                                     :database_id   (mt/id)}]
     (testing "before update"
       (is (= {:name "some name", :database_id (mt/id)}
-             (into {} (db/select-one [Card :name :database_id] :id id)))))
+             (select-keys (db/select-one [Card :name :database_id] :id id) [:name :database_id]))))
     (db/update! Card id {:name          "another name"
                          :dataset_query (dummy-dataset-query (mt/id))})
     (testing "after update"
       (is (= {:name "another name" :database_id (mt/id)}
-             (into {} (db/select-one [Card :name :database_id] :id id)))))))
+             (select-keys (db/select-one [Card :name :database_id] :id id) [:name :database_id]))))))
 
 
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
@@ -162,7 +162,7 @@
                (is (= (mt/derecordize metadata)
                       (mt/derecordize new-metadata)))))))
       (testing "Shouldn't barf if query can't be run (e.g. if query is a SQL query); set metadata to nil"
-        (f {:dataset_query (mt/native-query {:native "SELECT * FROM VENUES"})}
+        (f {:dataset_query (mt/native-query {:query "SELECT * FROM VENUES"})}
            (fn [metadata]
              (is (= nil
                     metadata))))))))
@@ -373,7 +373,10 @@
   (testing "cards which have another card as the source depend on that card"
     (mt/with-temp* [Card [card1 {:name "base card"}]
                     Card [card2 {:name "derived card"
-                                 :dataset_query {:query {:source-table (str "card__" (:id card1))}}}]]
+                                 :dataset_query {:database (:database_id card1)
+                                                 :type :query
+                                                 :query {:source-table (str "card__" (:id card1))}}}]]
+      (println (keys card1))
       (is (empty? (serdes.base/serdes-descendants "Card" (:id card1))))
       (is (= #{["Card" (:id card1)]}
              (serdes.base/serdes-descendants "Card" (:id card2)))))))
