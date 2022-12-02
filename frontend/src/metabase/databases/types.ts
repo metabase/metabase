@@ -14,9 +14,9 @@ export interface DatabaseValues {
   schedules: DatabaseSchedules;
   auto_run_queries: boolean | null;
   refingerprint: boolean | null;
-  is_sample: boolean | null;
-  is_full_sync: boolean | null;
-  is_on_demand: boolean | null;
+  is_sample: boolean;
+  is_full_sync: boolean;
+  is_on_demand: boolean;
 }
 
 export interface EngineOption {
