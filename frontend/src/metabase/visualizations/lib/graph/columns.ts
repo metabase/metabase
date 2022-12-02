@@ -10,18 +10,25 @@ export type ColumnDescriptor = {
   column: RemappingHydratedDatasetColumn;
 };
 
+export const getColumnDescriptor = (
+  columnName: string,
+  columns: RemappingHydratedDatasetColumn[],
+): ColumnDescriptor => {
+  const index = columns.findIndex(column => column.name === columnName);
+
+  return {
+    index,
+    column: columns[index],
+  };
+};
+
 export const getColumnDescriptors = (
   columnNames: string[],
   columns: RemappingHydratedDatasetColumn[],
 ): ColumnDescriptor[] => {
-  return columnNames.map(columnName => {
-    const index = columns.findIndex(column => column.name === columnName);
-
-    return {
-      index,
-      column: columns[index],
-    };
-  });
+  return columnNames.map(columnName =>
+    getColumnDescriptor(columnName, columns),
+  );
 };
 
 export const hasValidColumnsSelected = (

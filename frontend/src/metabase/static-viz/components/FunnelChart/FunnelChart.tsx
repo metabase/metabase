@@ -1,172 +1,40 @@
-import React, { Fragment } from "react";
-import { Line, Polygon } from "@visx/shape";
-import { Group } from "@visx/group";
-import { Text } from "metabase/static-viz/components/Text";
-import { measureTextHeight } from "metabase/static-viz/lib/text";
+import { VisualizationSettings } from "metabase-types/api";
+import { ColorGetter } from "metabase/static-viz/lib/colors";
+import { extractRemappedColumns } from "metabase/visualizations";
 import {
-  FunnelDatum,
-  FunnelSettings,
-} from "metabase/static-viz/components/FunnelChart/types";
-import {
-  calculateFunnelPolygonPoints,
-  calculateFunnelSteps,
-  calculateStepOpacity,
-  getFormattedStep,
-  reorderData,
-} from "metabase/static-viz/components/FunnelChart/utils/funnel";
-import { calculateMargin } from "./utils/margin";
+  RemappingHydratedChartData,
+  TwoDimensionalChartData,
+} from "metabase/visualizations/shared/types/data";
+import { FunnelChartView } from "./FunnelChartView";
+import { getFunnelColumns, getFunnelData, sortFunnelData } from "./utils/data";
+import { getStaticFormatters } from "./utils/format";
 
-const layout = {
-  width: 540,
-  height: 300,
-  stepFontSize: 12,
-  measureFontSize: 11,
-  percentFontSize: 16,
-  initialMeasureFontSize: 24,
-  nameFontSize: 16,
-  stepTextOffset: 8,
-  colors: {
-    textMedium: "#949aab",
-    brand: "#509ee3",
-    border: "#f0f0f0",
-  },
-  paddingLeft: 10,
-  stepTopOffset: 10,
-  measureBottomOffset: 8,
-  percentBottomOffset: 24,
-};
+interface StaticFunnelChartProps {
+  data: TwoDimensionalChartData;
+  settings: VisualizationSettings;
+  getColor: ColorGetter;
+}
 
-type FunnelProps = {
-  data: FunnelDatum[];
-  settings: FunnelSettings;
-};
+const FunnelChart = ({ data, settings, getColor }: StaticFunnelChartProps) => {
+  const remappedColumnsData = extractRemappedColumns(
+    data,
+  ) as RemappingHydratedChartData;
 
-const Funnel = ({ data, settings }: FunnelProps) => {
-  const palette = { ...layout.colors, ...settings.colors };
-
-  const reorderedData = reorderData(data, settings);
-
-  const margin = calculateMargin(
-    reorderedData[0],
-    layout.stepFontSize,
-    layout.percentFontSize,
-    layout.measureFontSize,
-    layout.initialMeasureFontSize,
-    layout.nameFontSize,
-    layout.measureBottomOffset,
-    layout.paddingLeft,
-    settings,
+  const funnelColumns = getFunnelColumns(remappedColumnsData, settings);
+  const funnelData = getFunnelData(data, funnelColumns);
+  const sortedFunnelData = sortFunnelData(funnelData, settings, value =>
+    String(value),
   );
 
-  const funnelHeight = layout.height - margin.top - margin.bottom;
-  const stepWidth = (layout.width - margin.left) / (data.length - 1);
-  const maxStepTextWidth = stepWidth - layout.stepTextOffset * 2;
-
-  const steps = calculateFunnelSteps(reorderedData, stepWidth, funnelHeight);
-
-  const firstMeasureTop = margin.top + steps[0].top + steps[0].height / 2;
-  const stepLabelTop = firstMeasureTop + measureTextHeight(layout.nameFontSize);
+  const formatters = getStaticFormatters(funnelColumns, settings);
 
   return (
-    <svg width={layout.width} height={layout.height}>
-      <Group left={margin.left}>
-        {steps.map((step, index) => {
-          const isFirst = index === 0;
-          const isLast = index === steps.length - 1;
-          const nextStep = steps[index + 1];
-
-          const points = isLast
-            ? null
-            : calculateFunnelPolygonPoints(step, nextStep, margin.top);
-
-          const { stepName, measure, percent } = getFormattedStep(
-            step,
-            maxStepTextWidth,
-            layout.stepFontSize,
-            layout.measureFontSize,
-            layout.percentFontSize,
-            settings,
-            isFirst,
-          );
-
-          return (
-            <Fragment key={index}>
-              {points && (
-                <Polygon
-                  fill={palette.brand}
-                  points={points}
-                  opacity={calculateStepOpacity(index, steps.length)}
-                />
-              )}
-              <Line
-                x1={step.left}
-                y1={0}
-                x2={step.left}
-                y2={layout.height}
-                stroke={palette.border}
-              />
-
-              <Group left={step.left - layout.stepTextOffset}>
-                <Text
-                  textAnchor="end"
-                  y={layout.stepTopOffset}
-                  fontSize={layout.stepFontSize}
-                  fill={palette.textMedium}
-                >
-                  {stepName}
-                </Text>
-
-                {isFirst && (
-                  <>
-                    <Text
-                      textAnchor="end"
-                      y={firstMeasureTop}
-                      fontSize={layout.initialMeasureFontSize}
-                      fill="black"
-                      style={{ fontWeight: 700 }}
-                    >
-                      {measure}
-                    </Text>
-
-                    <Text
-                      textAnchor="end"
-                      fill={palette.textMedium}
-                      y={stepLabelTop}
-                      fontSize={layout.nameFontSize}
-                    >
-                      {settings.step.name}
-                    </Text>
-                  </>
-                )}
-
-                {!isFirst && (
-                  <>
-                    <Text
-                      textAnchor="end"
-                      fill={palette.textMedium}
-                      y={layout.height - layout.percentBottomOffset}
-                      fontSize={layout.percentFontSize}
-                    >
-                      {percent}
-                    </Text>
-
-                    <Text
-                      textAnchor="end"
-                      fill={palette.textMedium}
-                      y={layout.height - layout.measureBottomOffset}
-                      fontSize={layout.measureFontSize}
-                    >
-                      {measure}
-                    </Text>
-                  </>
-                )}
-              </Group>
-            </Fragment>
-          );
-        })}
-      </Group>
-    </svg>
+    <FunnelChartView
+      data={funnelData}
+      getColor={getColor}
+      formatters={formatters}
+    />
   );
 };
 
-export default Funnel;
+export default FunnelChart;

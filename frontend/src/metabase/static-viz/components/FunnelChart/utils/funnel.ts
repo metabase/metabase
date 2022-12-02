@@ -1,25 +1,26 @@
 import { PolygonProps } from "@visx/shape/lib/shapes/Polygon";
-import { isNotNull } from "metabase/core/utils/types";
 import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
 import { truncateText } from "metabase/static-viz/lib/text";
-import { FunnelDatum, FunnelSettings, FunnelStep } from "../types";
+import { FunnelSettings, FunnelStep } from "../types";
+import { FunnelDatum } from "./data";
 
 export const calculateFunnelSteps = (
   data: FunnelDatum[],
   stepWidth: number,
   funnelHeight: number,
 ): FunnelStep[] => {
+  const firstStepMetric = data[0].metric ?? 0;
+
   return data.map((datum, index) => {
-    const [_, firstMeasure] = data[0];
-    const [step, measure] = datum;
+    const datumMetric = datum.metric ?? 0;
     const left = index * stepWidth;
-    const height = (measure * funnelHeight) / firstMeasure;
+    const height = (datumMetric * funnelHeight) / firstStepMetric;
     const top = (funnelHeight - height) / 2;
-    const percent = firstMeasure > 0 ? measure / firstMeasure : 0;
+    const percent = firstStepMetric > 0 ? datumMetric / firstStepMetric : 0;
 
     return {
-      step: step.toString(),
-      measure,
+      step: String(datum.dimension),
+      measure: datum.metric ?? 0,
       percent,
       top,
       left,
@@ -86,25 +87,4 @@ export const getFormattedStep = (
     measure,
     stepName,
   };
-};
-
-export const reorderData = (
-  data: FunnelDatum[],
-  settings: FunnelSettings,
-): FunnelDatum[] => {
-  const funnelOrder = settings.visualization_settings["funnel.rows"];
-  if (funnelOrder == null) {
-    return data;
-  }
-
-  const keys = data.map(datum => String(datum[0]));
-
-  return funnelOrder
-    .map(orderedItem => {
-      if (orderedItem.enabled) {
-        const dataIndex = keys.findIndex(key => key === orderedItem.key);
-        return data[dataIndex];
-      }
-    })
-    .filter(isNotNull);
 };

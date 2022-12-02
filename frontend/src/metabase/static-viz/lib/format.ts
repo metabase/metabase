@@ -31,7 +31,7 @@ import {
 import { rangeForValue } from "metabase-lib/queries/utils/range-for-value";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
-const getRemappedValue = (
+export const getRemappedValue = (
   value: unknown,
   column: RemappingHydratedDatasetColumn,
 ) => {

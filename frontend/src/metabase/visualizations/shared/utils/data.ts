@@ -18,7 +18,7 @@ import { Series } from "metabase/visualizations/shared/components/RowChart/types
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { getChartMetrics } from "./series";
 
-const getMetricValue = (value: RowValue): MetricValue => {
+export const getMetricValue = (value: RowValue): MetricValue => {
   if (typeof value === "number") {
     return value;
   }
