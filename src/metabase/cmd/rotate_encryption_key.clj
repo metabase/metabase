@@ -48,5 +48,7 @@
           (throw (ex-info (trs "Can't decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
         (jdbc/update! t-conn
           :secret
-          {:value (encrypt-bytes-fn value)}
+          (if (= :h2 mdb.env/db-type)
+            {"\"VALUE\"" (encrypt-bytes-fn value)}
+            {:value (encrypt-bytes-fn value)})
           ["secret.id = ?" id])))))
