@@ -184,18 +184,18 @@
         (test.de/with-test-domain-entity-specs
           (mt/with-model-cleanup [Card Collection]
             (tf/apply-transform! (mt/id) "PUBLIC" (first @tf.specs/transform-specs))
-            (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 1.5 4 3 2 1]
-                    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0 11 2 1 1]
-                    [3 "The Apple Pan" 11 34.0406 -118.428 2 2.0 11 2 1 1]]
-                   (api-call "transform/%s" ["Test transform"]
-                             #(revoke-collection-permissions!
-                               (tf.materialize/get-collection "Test transform"))
-                             (fn [dashboard]
-                               (->> dashboard
-                                    :ordered_cards
-                                    (sort-by (juxt :row :col))
-                                    last
-                                    :card
-                                    :dataset_query
-                                    qp/process-query
-                                    mt/rows)))))))))))
+            (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
+                    [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
+                    [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
+                   (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
+                     (api-call "transform/%s" ["Test transform"]
+                               #(revoke-collection-permissions!
+                                 (tf.materialize/get-collection "Test transform"))
+                               (fn [dashboard]
+                                 (->> dashboard
+                                      :ordered_cards
+                                      (sort-by (juxt :row :col))
+                                      last
+                                      :card
+                                      :dataset_query
+                                      qp/process-query))))))))))))
