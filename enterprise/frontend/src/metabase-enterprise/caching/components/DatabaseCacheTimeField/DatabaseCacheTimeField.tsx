@@ -32,9 +32,10 @@ const DatabaseCacheTimeField = () => {
       error={touched ? error : undefined}
     >
       <DatabaseCacheTimeInput
+        id={id}
+        name={FIELD}
         value={value ?? undefined}
         error={touched && error != null}
-        inputId={id}
         onChange={handleChange}
         onBlur={onBlur}
       />
@@ -44,13 +45,13 @@ const DatabaseCacheTimeField = () => {
 
 const DatabaseCacheTimeDescription = (): JSX.Element => {
   return (
-    <span>
+    <div>
       {jt`How long to keep question results. By default, Metabase will use the value you supply on the ${(
         <Link key="link" to="/admin/settings/caching">
           {t`cache settings page`}
         </Link>
       )}, but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.`}
-    </span>
+    </div>
   );
 };
 

@@ -12,17 +12,19 @@ const CACHE_OPTIONS = [
 const DEFAULT_CACHE_TIME = 24;
 
 export interface DatabaseCacheTimeInputProps {
+  id?: string;
+  name?: string;
   value?: number;
   error?: boolean;
-  inputId?: string;
   onChange?: (value?: number) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 const DatabaseCacheTimeInput = ({
+  id,
+  name,
   value,
   error,
-  inputId,
   onChange,
   onBlur,
 }: DatabaseCacheTimeInputProps): JSX.Element => {
@@ -45,9 +47,10 @@ const DatabaseCacheTimeInput = ({
       />
       {isCustom && (
         <CacheTimeInput
+          id={id}
+          name={name}
           value={value}
           error={error}
-          inputId={inputId}
           onChange={onChange}
           onBlur={onBlur}
         />

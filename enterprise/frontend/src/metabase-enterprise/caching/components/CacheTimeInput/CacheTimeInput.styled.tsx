@@ -13,10 +13,6 @@ export const TimeInput = styled(NumericInput)`
   text-align: center;
 `;
 
-interface TimeInputMessageProps {
-  error?: boolean;
-}
-
-export const TimeInputMessage = styled.div<TimeInputMessageProps>`
-  color: ${props => color(props.error ? "error" : "text-dark")};
+export const TimeInputMessage = styled.div`
+  color: ${color("text-dark")};
 `;
