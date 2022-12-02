@@ -276,11 +276,7 @@ Shifts a date or timestamp value into a specified time zone.
 
 Syntax: `convertTimezone(column, target, source)`.
 
-- column: the column with your date or timestamp values.
-- target: the timezone you want to assign to your column.
-- source: the current time zone of your column.
-
-Example: `convertTimezone("2022-12-28T12:00:00", "PST", "EST")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
+Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
 
 ### [datetimeAdd](./expressions/datetimeadd.md)
 
@@ -288,22 +284,15 @@ Adds some unit of time to a date or timestamp value.
 
 Syntax: `datetimeAdd(column, amount, unit)`.
 
-- column: the column with your date or timestamp values.
-- amount: The number of units to be added.
-- units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
-
 Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
 Related: [between](#between), [datetimeSubtract](#datetimesubtract).
 
 ### [datetimeDiff](./expressions/datetimediff.md)
 
-Returns the difference between two datetimes in some unit of time: day, week, month, etc (for example, `datetimeDiff(d1, d2, "day") ` will return the number of days between `d1` and `d2`).
+Returns the difference between two datetimes in some unit of time. For example, `datetimeDiff(d1, d2, "day") ` will return the number of days between `d1` and `d2`.
 
 Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
-
-- datetime1, datetime2: the columns or expressions with your datetime values.
-- units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
 
 Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
 
@@ -313,10 +302,6 @@ Subtracts some unit of time from a date or timestamp value.
 
 Syntax: `datetimeSubtract(column, amount, unit)`.
 
-- column: the column with your date or timestamp values.
-- amount: The number of units to be subtracted.
-- units: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
-
 Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
 
 Related: [between](#between), [datetimeAdd](#datetimeadd).
@@ -325,7 +310,7 @@ Related: [between](#between), [datetimeAdd](#datetimeadd).
 
 Takes a datetime and returns the day of the month as an integer.
 
-Syntax: `day([datetime column)`.
+Syntax: `day([datetime column])`.
 
 Example: `day("March 25, 2021, 12:52:37")` would return the day as an integer, `25`.
 
@@ -433,7 +418,7 @@ Related: [upper](#upper).
 
 Takes a datetime and returns the minute as an integer (0-59).
 
-Syntax: `minute(datetime column)`.
+Syntax: `minute([datetime column])`.
 
 Example: `minute("March 25, 2021, 12:52:37")` would return `52`.
 
@@ -441,7 +426,7 @@ Example: `minute("March 25, 2021, 12:52:37")` would return `52`.
 
 Takes a datetime and returns the month number (1-12) as an integer.
 
-Syntax: `month(datetime)`.
+Syntax: `month([datetime column])`.
 
 Example: `month("March 25, 2021, 12:52:37")` would return the month as an integer, `3`.
 
@@ -461,7 +446,7 @@ Related: [exp](#exp).
 
 Takes a datetime and returns the number of the quarter in a year (1-4) as an integer.
 
-Syntax: `quarter([datetime column)`.
+Syntax: `quarter([datetime column])`.
 
 Example: `quarter("March 25, 2021, 12:52:37")` would return `1` for the first quarter.
 
