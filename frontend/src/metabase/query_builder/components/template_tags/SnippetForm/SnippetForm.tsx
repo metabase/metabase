@@ -124,11 +124,11 @@ function SnippetForm({
   );
 
   const handleSubmit = useCallback(
-    values => {
+    async values => {
       if (isEditing) {
-        handleUpdate({ ...values, id: snippet.id });
+        await handleUpdate({ ...values, id: snippet.id });
       } else {
-        handleCreate(values);
+        await handleCreate(values);
       }
     },
     [snippet.id, isEditing, handleCreate, handleUpdate],
