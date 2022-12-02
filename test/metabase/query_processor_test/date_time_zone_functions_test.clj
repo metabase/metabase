@@ -142,25 +142,10 @@
                       (zipmap ops)))))))
 
     (testing "with timestamptz columns"
-      (mt/test-drivers (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :temporal-extract)))
-        (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
-          (is (= (if (driver/supports? driver/*driver* :set-timezone)
-                   ;; drivers support set-timezone displays the result in the report-tz
-                   ;; we expect the extracted components will be in report-tz
-                   ;; for drivers that are not, extract should returns in UTC
-                   ["2004-03-19T09:19:09+07:00" 9]
-
-                   ["2004-03-19T02:19:09Z" (case driver/*driver*
-                                            :sqlserver 9
-                                            2)])
-                 (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
-                                             :fields      [$dt_tz [:expression "hour"]]
-                                             :filter      [:= $index 1]
-                                             :limit       1})
-                      mt/process-query
-                      (mt/formatted-rows [str int])
-                      first)))
-          (is (= (if (driver/supports? driver/*driver* :set-timezone)
+      (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :temporal-extract))
+        (mt/with-report-timezone-id "Asia/Kabul"
+          (is (= (if (or (= driver/*driver* :sqlserver)
+                         (driver/supports? driver/*driver* :set-timezone))
                      {:get-year        2004,
                       :get-quarter     1,
                       :get-month       1,
@@ -173,27 +158,29 @@
                       ;; So technically we could make sqlserver display datetimeoffset in `report-tz`
                       ;; then the extract hour will make more sense
                       :get-hour        (case driver/*driver*
-                                         :sqlserver 9
+                                         :sqlserver 5
                                          2),
-                      :get-minute      19,
+                      :get-minute      (case driver/*driver*
+                                         :sqlserver 19
+                                         49),
                       :get-second      9}
                      {:get-year        2003,
                       :get-quarter     4,
                       :get-month       12,
                       :get-day         31,
                       :get-day-of-week 4,
-                      :get-hour        19,
+                      :get-hour        22,
                       :get-minute      19,
                       :get-second      9})
                  (let [ops [:get-year :get-quarter :get-month :get-day
                             :get-day-of-week :get-hour :get-minute :get-second]]
                     (->> (mt/mbql-query times {:expressions (into {"shifted-day"  [:datetime-subtract $dt_tz 78 :day]
-                                                                   ;; the idea is to extract a column with value = 2004-01-01 02:19:09 +07:00
-                                                                   ;; this way the UTC value is 2003-12-31 19:19:09 +00:00 which will make sure
+                                                                   ;; the idea is to extract a column with value = 2004-01-01 02:49:09 + 04:30
+                                                                   ;; this way the UTC value is 2003-12-31 22:19:09 +00:00 which will make sure
                                                                    ;; the year, quarter, month, day, week is extracted correctly
                                                                    ;; TODO: it's better to use a literal for this, but the function is not working properly
                                                                    ;; with OffsetDatetime for all drivers, so we'll go wit this for now
-                                                                   "shifted-hour" [:datetime-subtract [:expression "shifted-day"] 7 :hour]}
+                                                                   "shifted-hour" [:datetime-subtract [:expression "shifted-day"] 4 :hour]}
                                                                   (for [op ops]
                                                                     [(name op) [op [:expression "shifted-hour"]]]))
                                                :fields      (into [] (for [op ops] [:expression (name op)]))
