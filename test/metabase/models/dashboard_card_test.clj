@@ -45,8 +45,8 @@
   (testing "retrieve-dashboard-card dashcard w/ additional series"
     (mt/with-temp* [Dashboard           [{dashboard-id :id}]
                     Card                [{card-id :id}]
-                    Card                [{series-id-1 :id} {:name "Additional Series Card 1"}]
-                    Card                [{series-id-2 :id} {:name "Additional Series Card 2"}]
+                    Card                [{series-id-1 :id query-1 :dataset_query} {:name "Additional Series Card 1"}]
+                    Card                [{series-id-2 :id query-2 :dataset_query} {:name "Additional Series Card 2"}]
                     DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                     DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
                     DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
@@ -59,12 +59,12 @@
               :series                 [{:name                   "Additional Series Card 1"
                                         :description            nil
                                         :display                :table
-                                        :dataset_query          {}
+                                        :dataset_query          query-1
                                         :visualization_settings {}}
                                        {:name                   "Additional Series Card 2"
                                         :description            nil
                                         :display                :table
-                                        :dataset_query          {}
+                                        :dataset_query          query-2
                                         :visualization_settings {}}]}
              (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))))
 
@@ -105,7 +105,7 @@
 (deftest create-dashboard-card!-test
   (testing "create-dashboard-card! simple example with a single card"
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                    Card      [{card-id :id} {:name "Test Card"}]]
+                    Card      [{card-id :id query-1 :dataset_query} {:name "Test Card"}]]
       (let [dashboard-card (dashboard-card/create-dashboard-card!
                             {:creator_id             (mt/user->id :rasta)
                              :dashboard_id           dashboard-id
@@ -127,7 +127,7 @@
                   :series                 [{:name                   "Test Card"
                                             :description            nil
                                             :display                :table
-                                            :dataset_query          {}
+                                            :dataset_query          query-1
                                             :visualization_settings {}}]}
                  (remove-ids-and-timestamps dashboard-card))))
         (testing "validate db captured everything"
@@ -140,7 +140,7 @@
                   :series                 [{:name                   "Test Card"
                                             :description            nil
                                             :display                :table
-                                            :dataset_query          {}
+                                            :dataset_query          query-1
                                             :visualization_settings {}}]}
                  (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card (:id dashboard-card))))))))))
 
@@ -153,8 +153,8 @@
                     DashboardCard [{dashcard-id :id} {:dashboard_id       dashboard-id
                                                       :card_id            card-id
                                                       :parameter_mappings [{:foo "bar"}]}]
-                    Card          [{card-id-1 :id}   {:name "Test Card 1"}]
-                    Card          [{card-id-2 :id}   {:name "Test Card 2"}]]
+                    Card          [{card-id-1 :id query-1 :dataset_query}   {:name "Test Card 1"}]
+                    Card          [{card-id-2 :id query-2 :dataset_query}   {:name "Test Card 2"}]]
       (testing "unmodified dashcard"
         (is (= {:size_x                 2
                 :size_y                 2
@@ -174,12 +174,12 @@
                 :series                 [{:name                   "Test Card 2"
                                           :description            nil
                                           :display                :table
-                                          :dataset_query          {}
+                                          :dataset_query          query-1
                                           :visualization_settings {}}
                                          {:name                   "Test Card 1"
                                           :description            nil
                                           :display                :table
-                                          :dataset_query          {}
+                                          :dataset_query          query-2
                                           :visualization_settings {}}]}
                (remove-ids-and-timestamps
                 (dashboard-card/update-dashboard-card!
@@ -204,12 +204,12 @@
                 :series                 [{:name                   "Test Card 2"
                                           :description            nil
                                           :display                :table
-                                          :dataset_query          {}
+                                          :dataset_query          query-1
                                           :visualization_settings {}}
                                          {:name                   "Test Card 1"
                                           :description            nil
                                           :display                :table
-                                          :dataset_query          {}
+                                          :dataset_query          query-2
                                           :visualization_settings {}}]}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id))))))))
 

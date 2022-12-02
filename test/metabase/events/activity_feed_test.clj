@@ -18,6 +18,10 @@
       :model_id model-id
       {:order-by [[:id :desc]]}))))
 
+(defn- remove-dataset-queries
+  [activity]
+  (update-in activity [:details :dashcards] #(map (fn [card] (dissoc card :dataset_query)) %)))
+
 (deftest card-create-test
   (testing :card-create
     (mt/with-temp Card [card {:name "My Cool Card"}]
@@ -136,7 +140,8 @@
                                              :name        (:name card)
                                              :id          (:id dashcard)
                                              :card_id     (:id card)}]}}
-               (activity "dashboard-add-cards" (:id dashboard))))))))
+               (-> (activity "dashboard-add-cards" (:id dashboard))
+                   remove-dataset-queries)))))))
 
 (deftest dashboard-remove-cards-event-test
   (testing :dashboard-remove-cards
@@ -160,7 +165,8 @@
                                              :name        (:name card)
                                              :id          (:id dashcard)
                                              :card_id     (:id card)}]}}
-               (activity "dashboard-remove-cards" (:id dashboard))))))))
+               (-> (activity "dashboard-remove-cards" (:id dashboard))
+                   remove-dataset-queries)))))))
 
 (deftest install-event-test
   (testing :install
