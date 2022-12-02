@@ -62,6 +62,10 @@
     :else
     x))
 
+(defn- remove-dataset-queries
+  [dashboard]
+  (update dashboard :series (partial map (fn [card] (dissoc card :dataset_query)))))
+
 (defn- user-details [user]
   (select-keys user [:common_name :date_joined :email :first_name :id :is_qbnewb :is_superuser :last_login :last_name]))
 
@@ -73,7 +77,7 @@
              :updated_at (boolean updated_at)
              :card       (-> (into {} card)
                              (assoc :dataset_query (walk/postwalk #(if (string? %) (keyword %) %) (:dataset_query card)))
-                             (dissoc :id :database_id :table_id :created_at :updated_at :query_average_duration)
+                             (dissoc :id :database_id :table_id :created_at :updated_at :query_average_duration :dataset_query)
                              (update :collection_id boolean)))))
 
 (defn- dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
@@ -257,6 +261,7 @@
                                                                                        :creator_id             (mt/user->id :rasta)
                                                                                        :collection_id          true
                                                                                        :display                "table"
+                                                                                       :query_type             "query"
                                                                                        :entity_id              (:entity_id card)
                                                                                        :visualization_settings {}
                                                                                        :is_write               false
@@ -1130,12 +1135,11 @@
                   :visualization_settings {}
                   :series                 [{:name                   "Series Card"
                                             :description            nil
-                                            :dataset_query          (:dataset_query api.card-test/card-defaults)
                                             :display                "table"
                                             :visualization_settings {}}]
                   :created_at             true
                   :updated_at             true}
-                 (remove-ids-and-booleanize-timestamps dashboard-card)))
+                 (remove-dataset-queries (remove-ids-and-booleanize-timestamps dashboard-card))))
           (is (= [{:size_x 2
                    :size_y 2
                    :col    4
@@ -1299,7 +1303,7 @@
                     Card          [{card-id :id}]
                     DashboardCard [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
                     DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                    Card          [{series-id-1 :id}   {:name "Series Card"}]]
+                    Card          [{series-id-1 :id dataset-query :dataset_query}   {:name "Series Card"}]]
       (with-dashboards-in-writeable-collection [dashboard-id]
         (is (= {:size_x                 2
                 :size_y                 2
@@ -1343,7 +1347,7 @@
                 :series                 [{:name                   "Series Card"
                                           :description            nil
                                           :display                :table
-                                          :dataset_query          (:dataset_query api.card-test/card-defaults)
+                                          :dataset_query          dataset-query
                                           :visualization_settings {}}]
                 :created_at             true
                 :updated_at             true}
