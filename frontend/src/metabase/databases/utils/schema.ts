@@ -23,6 +23,7 @@ export const getValidationSchema = (
     }),
     auto_run_queries: Yup.boolean().default(true),
     refingerprint: Yup.boolean().default(false),
+    cache_ttl: Yup.number().nullable().default(null).positive(Errors.positive),
     is_sample: Yup.boolean().default(false),
     is_full_sync: Yup.boolean().default(true),
     is_on_demand: Yup.boolean().default(false),
