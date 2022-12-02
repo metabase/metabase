@@ -5,7 +5,7 @@ import ModalContent from "metabase/components/ModalContent";
 
 import type { NativeQuerySnippet } from "metabase-types/api";
 
-import SnippetForm, { SnippetFormOwnProps } from "./SnippetForm";
+import SnippetForm, { SnippetFormOwnProps } from "../SnippetForm";
 
 interface SnippetFormModalOwnProps
   extends Omit<SnippetFormOwnProps, "onCancel"> {
