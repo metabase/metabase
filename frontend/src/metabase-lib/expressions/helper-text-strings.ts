@@ -760,6 +760,43 @@ const helperTextStrings: HelpText[] = [
       },
     ],
   },
+  {
+    name: "now",
+    structure: "now",
+    description: t`Returns the current timestamp.`,
+    example: "now",
+    args: [],
+  },
+  {
+    name: "convert-timezone",
+    structure:
+      "convertTimezone(" +
+      t`column` +
+      ", " +
+      t`target` +
+      ", [" +
+      t`source` +
+      "])",
+    description: t`Convert timezone of a date or timestamp column.
+We support tz database time zone names.
+See the full list here: https://w.wiki/4Jx`,
+    example:
+      "convertTimezone([" + t`Created At` + '], "Asia/Ho_Chi_Minh", "UTC")',
+    args: [
+      {
+        name: t`column`,
+        description: t`The column with your date or timestamp values.`,
+      },
+      {
+        name: t`target`,
+        description: t`The timezone you want to assign to your column.`,
+      },
+      {
+        name: t`source`,
+        description: t`The current time zone. Only required for timestamps with no time zone.`,
+      },
+    ],
+  },
 ];
 
 export const getHelpText = (name: string): HelpText | undefined => {

@@ -964,6 +964,21 @@
                            ["Card" card-id]))]
     (set/union child-colls dashboards cards)))
 
+(defmethod serdes.base/storage-path "Collection" [coll {:keys [collections]}]
+  (let [parental (get collections (:entity_id coll))]
+    (concat ["collections"] parental [(last parental)])))
+
+(serdes.base/register-ingestion-path!
+  "Collection"
+  ;; Collections' paths are ["collections" "grandparent" "parent" "me" "me"]
+  (fn [path]
+    (when-let [[id slug] (and (= (first path) "collections")
+                              (apply = (take-last 2 path))
+                              (serdes.base/split-leaf-file-name (last path)))]
+      (cond-> {:model "Collection" :id id}
+        slug (assoc :label slug)
+        true vector))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+

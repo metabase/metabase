@@ -93,7 +93,7 @@
     (when (seq col-indices)
       (fn [row]
         (let [res (vec (for [idx col-indices]
-                         (get row idx)))]
+                         (nth row idx)))]
           (if (every? some? res)
             res
             nil))))))
@@ -108,7 +108,7 @@
     (when (seq col-indices)
       (fn [row]
         (let [res (vec (for [idx col-indices]
-                         (get row idx)))]
+                         (nth row idx)))]
           (if (every? some? res)
             res
             nil))))))

@@ -7,11 +7,11 @@ import type {
   ParameterMappingOptions,
 } from "metabase-types/types/Parameter";
 import type {
+  Card,
   Dashboard,
   DashboardParameterMapping,
   DashboardOrderedCard,
 } from "metabase-types/api";
-import type { SavedCard } from "metabase-types/types/Card";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
   UiParameter,
@@ -27,7 +27,7 @@ import type Field from "metabase-lib/metadata/Field";
 
 type ExtendedMapping = DashboardParameterMapping & {
   dashcard_id: number;
-  card: SavedCard;
+  card: Card;
 };
 
 export function createParameter(

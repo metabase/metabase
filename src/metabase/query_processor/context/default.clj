@@ -56,7 +56,7 @@
     (when-let [reduced-rows (try
                               (transduce identity rf reducible-rows)
                               (catch Throwable e
-                                (qp.context/raisef (ex-info (tru "Error reducing result rows")
+                                (qp.context/raisef (ex-info (tru "Error reducing result rows: {0}" (ex-message e))
                                                             {:type qp.error-type/qp}
                                                             e)
                                                    context)))]
