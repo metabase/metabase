@@ -249,7 +249,8 @@
   has-test-extensions?
   metabase-instance
   sorts-nil-first?
-  supports-time-type?]
+  supports-time-type?
+  supports-timestamptz-type?]
 
  [tx.env
   set-test-drivers!

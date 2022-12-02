@@ -143,9 +143,9 @@
                       (zipmap ops)))))))
 
     (testing "with timestamptz columns"
-      (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
+      (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :temporal-extract)
+                                         (mt/supports-timestamptz-type? driver/*driver*))
         (mt/with-report-timezone-id "Asia/Ho_Chi_Minh"
-          ;; TODO: maybe this shold be drivers support display in report-tz? not set-timezone?
           (is (= (if (driver/supports? driver/*driver* :set-timezone)
                    ;; drivers support set-timezone displays the result in the report-tz
                    ;; we expect the extracted components will be in report-tz
@@ -161,13 +161,12 @@
                                             :sqlserver 9
                                             2)])
                  (->> (mt/mbql-query times {:expressions {"hour" [:get-hour $dt_tz]}
-                                            :fields      [$dt_tz [:expression "hour"]]
-                                            :filter      [:= $index 1]
-                                            :limit       1})
+                                             :fields      [$dt_tz [:expression "hour"]]
+                                             :filter      [:= $index 1]
+                                             :limit       1})
                       mt/process-query
                       (mt/formatted-rows [str int])
                       first))))))))
-
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
