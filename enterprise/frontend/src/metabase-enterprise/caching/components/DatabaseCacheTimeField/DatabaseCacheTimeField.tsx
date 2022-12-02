@@ -1,25 +1,28 @@
 import React, { useCallback } from "react";
-import { useField } from "formik";
+import { useField, useFormikContext } from "formik";
 import { jt, t } from "ttag";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Link from "metabase/core/components/Link/Link";
 import FormField from "metabase/core/components/FormField";
+import { DatabaseValues } from "metabase/databases/types";
 import DatabaseCacheTimeInput from "../DatabaseCacheTimeInput";
 
-export interface DatabaseCacheTimeFieldProps {
-  name: string;
-}
+const FIELD = "cache_ttl";
+const SECTION = "advanced-options";
 
-const DatabaseCacheTimeField = ({ name }: DatabaseCacheTimeFieldProps) => {
+const DatabaseCacheTimeField = () => {
   const id = useUniqueId();
-  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
+  const [{ value, onBlur }, { error, touched }, { setValue }] = useField(FIELD);
+  const { values } = useFormikContext<DatabaseValues>();
 
   const handleChange = useCallback(
-    (value?: number) => {
-      setValue(value != null ? value : null);
-    },
+    (value?: number) => setValue(value != null ? value : null),
     [setValue],
   );
+
+  if (!values.details[SECTION]) {
+    return null;
+  }
 
   return (
     <FormField
