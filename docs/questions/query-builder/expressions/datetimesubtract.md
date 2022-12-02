@@ -35,11 +35,11 @@ title: DatetimeSubtract
 
 Let's say you're planning a fun night out. You know it takes 30 minutes to get from place to place, and you need to figure out what time you have to leave to get to each of your reservations:
 
-| Event   | Arrive By           | Depart At           |
-|---------|---------------------|---------------------|
-| Drinks  | 2022-11-12 18:30:00 | 2022-11-12 18:00:00 |
-| Dinner  | 2022-11-12 20:00:00 | 2022-11-12 19:30:00 |
-| Dancing | 2022-11-13 00:00:00 | 2022-11-12 23:30:00 |
+| Event   | Arrive By                  | Depart At                   |
+|---------|----------------------------|-----------------------------|
+| Drinks  | November 12, 2022 6:30 PM  | November 12, 2022 6:00 PM   |
+| Dinner  | November 12, 2022 8:00 PM  | November 12, 2022 7:30 PM   |
+| Dancing | November 13, 2022 12:00 AM | November 12, 2022 11:30 PM  |
 
 Here, **Depart At** is a custom column with the expression:
 
@@ -60,11 +60,11 @@ Unfortunately, Metabase doesn't currently support datetime functions like `today
 
 The result should give you an **Today** column that's non-empty for events that are happening while the night is still young:
 
-| Event   | Arrive By           | Depart At           | Today               |
-|---------|---------------------|---------------------|---------------------|
-| Drinks  | 2022-11-12 18:30:00 | 2022-11-12 18:00:00 | 2022-11-12 00:00:00 |
-| Dinner  | 2022-11-12 20:00:00 | 2022-11-12 19:30:00 | 2022-11-12 00:00:00 |
-| Dancing | 2022-11-13 00:00:00 | 2022-11-12 23:30:00 |                     |
+| Event   | Arrive By                  | Depart At                   | Today                       |
+|---------|----------------------------|-----------------------------|-----------------------------|
+| Drinks  | November 12, 2022 6:30 PM  | November 12, 2022 6:00 PM   | November 12, 2022  12:00 AM |
+| Dinner  | November 12, 2022 8:00 PM  | November 12, 2022 7:30 PM   | November 12, 2022  12:00 AM |
+| Dancing | November 13, 2022 12:00 AM | November 12, 2022 11:30 PM  |                             |
 
 ## Accepted data types
 

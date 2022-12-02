@@ -35,11 +35,11 @@ title: DatetimeAdd
 
 Let's say you're a coffee connoisseur, and you want to keep track of the freshness of your beans:
 
-| Coffee                 | Opened On  | Finish By  |
-|------------------------|------------|------------|
-| DAK Honey Dude         | 2022-10-31 | 2022-11-14 |
-| NO6 Full City Espresso | 2022-11-07 | 2022-11-21 |
-| Ghost Roaster Giakanja | 2022-11-27 | 2022-12-11 |
+| Coffee                 | Opened On         | Finish By         |
+|------------------------|-------------------|-------------------|
+| DAK Honey Dude         | October 31, 2022  | November 14, 2022 |
+| NO6 Full City Espresso | November 7, 2022  | November 21, 2022 |
+| Ghost Roaster Giakanja | November 27, 2022 | December 11, 2022 |
 
 Here, **Finish By** is a custom column with the expression:
 
@@ -60,11 +60,11 @@ Unfortunately, Metabase doesn't currently support functions like `today`. If you
 
 The result should give you a **Today** column that's non-empty if today's date falls inside the coffee freshness window:
 
-| Coffee                 | Opened On  | Finish By  | Today      | 
-|------------------------|------------|------------|------------|
-| DAK Honey Dude         | 2022-10-31 | 2022-11-14 | 2022-11-10 |
-| NO6 Full City Espresso | 2022-11-07 | 2022-11-21 | 2022-11-10 |
-| Ghost Roaster Giakanja | 2022-11-27 | 2022-12-11 |            |
+| Coffee                 | Opened On         | Finish By         | Today             | 
+|------------------------|-------------------|-------------------|-------------------|
+| DAK Honey Dude         | October 31, 2022  | November 14, 2022 | November 11, 2022 |
+| NO6 Full City Espresso | November 7, 2022  | November 21, 2022 | November 11, 2022 |
+| Ghost Roaster Giakanja | November 27, 2022 | December 11, 2022 |                   |
 
 ## Accepted data types
 
