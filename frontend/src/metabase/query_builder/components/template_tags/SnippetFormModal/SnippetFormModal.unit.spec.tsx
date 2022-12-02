@@ -124,13 +124,13 @@ describe("SnippetFormModal", () => {
       expect(screen.getByText(TOP_SNIPPETS_FOLDER.name)).toBeInTheDocument();
     });
 
-    it("can't submit if name is empty", async () => {
+    it("can't submit if content is empty", async () => {
       await setup();
       userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
-    it("can't submit if content is empty", async () => {
+    it("can't submit if name is empty", async () => {
       await setup();
       userEvent.type(
         screen.getByLabelText(LABEL.CONTENT),
@@ -222,7 +222,7 @@ describe("SnippetFormModal", () => {
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
-    it("can't submit if name is empty", async () => {
+    it("can't submit if content is empty", async () => {
       await setupEditing();
       await act(async () => {
         await userEvent.clear(screen.getByLabelText(LABEL.NAME));
@@ -230,7 +230,7 @@ describe("SnippetFormModal", () => {
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
-    it("can't submit if content is empty", async () => {
+    it("can't submit if name is empty", async () => {
       await setupEditing();
       await act(async () => {
         await userEvent.clear(screen.getByLabelText(LABEL.CONTENT));
