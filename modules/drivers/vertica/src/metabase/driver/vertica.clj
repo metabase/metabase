@@ -5,7 +5,6 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
-            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -16,10 +15,11 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [trs tru]])
   (:import [java.sql ResultSet ResultSetMetaData Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc
