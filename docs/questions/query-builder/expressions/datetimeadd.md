@@ -16,7 +16,7 @@ title: DatetimeAdd
 `column` can be any of:
 - The name of a timestamp column,
 - a custom expression that returns a [datetime](#accepted-data-types), or
-- a string in the format `"YYYY-MM-DD` or `"YYYY-MM-DDTHH:MM:SS"`(as shown in the example above).
+- a string in the format `"YYYY-MM-DD"` or `"YYYY-MM-DDTHH:MM:SS"`(as shown in the example above).
 
 `unit` can be any of:
 - "year"
@@ -56,7 +56,7 @@ Unfortunately, Metabase doesn't currently support functions like `today`. If you
 1. Ask your database admin if there's table in your database that stores dates for reporting (sometimes called a date dimension table).
 2. Create a new question using the date dimension table, with a filter for "Today".
 3. Turn the "Today" question into a [model](../../../data-modeling/models.md).
-4. Create a left join between **Coffee** and the "Today" model on `[Opened On] <= [Today]` and `[Finish By] >= [Today]`.
+4. Create a [left join](../../query-builder/join.md) between **Coffee** and the "Today" model on `[Opened On] <= [Today]` and `[Finish By] >= [Today]`.
 
 The result should give you a **Today** column that's non-empty if today's date falls inside the coffee freshness window:
 
@@ -75,6 +75,8 @@ The result should give you a **Today** column that's non-empty if today's date f
 | Timestamp               | ✅                   |
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
+
+We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase.
 
 If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
 

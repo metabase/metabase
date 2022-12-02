@@ -16,7 +16,7 @@ title: DatetimeSubtract
 `column` can be any of:
 - The name of a timestamp column,
 - a custom expression that returns a [datetime](#accepted-data-types), or
-- a string in the format `"YYYY-MM-DD` or `"YYYY-MM-DDTHH:MM:SS"` (as shown in the example above).
+- a string in the format `"YYYY-MM-DD"` or `"YYYY-MM-DDTHH:MM:SS"` (as shown in the example above).
 
 `unit` can be any of:
 - "year"
@@ -56,7 +56,7 @@ Unfortunately, Metabase doesn't currently support datetime functions like `today
 1. Ask your database admin if there's table in your database that stores datetimes for reporting (sometimes called a date dimension table).
 2. Create a new question using the date dimension table, with a filter for "Today".
 3. Turn the "Today" question into a [model](../../../data-modeling/models.md).
-4. Create a left join between **Events** and the "Today" model on `[Arrive By] <= [Today]` and `[Depart At] >= [Today]`.
+4. Create a [left join](../../query-builder/join.md) between **Events** and the "Today" model on `[Arrive By] <= [Today]` and `[Depart At] >= [Today]`.
 
 The result should give you an **Today** column that's non-empty for events that are happening while the night is still young:
 
@@ -75,6 +75,8 @@ The result should give you an **Today** column that's non-empty for events that 
 | Timestamp               | ✅                   |
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
+
+We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase.
 
 If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
 
