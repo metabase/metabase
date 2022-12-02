@@ -23,7 +23,7 @@ export interface DatabaseFormProps {
   initialValues?: DatabaseValues;
   isHosted?: boolean;
   isAdvanced?: boolean;
-  isQueryCachingEnabled?: boolean;
+  isCachingEnabled?: boolean;
   onSubmit: (values: DatabaseValues) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
@@ -34,7 +34,7 @@ const DatabaseForm = ({
   initialValues: initialData,
   isHosted = false,
   isAdvanced = false,
-  isQueryCachingEnabled = false,
+  isCachingEnabled = false,
   onSubmit,
   onCancel,
   onEngineChange,
@@ -75,7 +75,7 @@ const DatabaseForm = ({
         engines={engines}
         isHosted={isHosted}
         isAdvanced={isAdvanced}
-        isQueryCachingEnabled={isQueryCachingEnabled}
+        isCachingEnabled={isCachingEnabled}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
       />
@@ -89,7 +89,7 @@ interface DatabaseFormBodyProps {
   engines: Record<string, Engine>;
   isHosted: boolean;
   isAdvanced: boolean;
-  isQueryCachingEnabled: boolean;
+  isCachingEnabled: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
 }
@@ -100,7 +100,7 @@ const DatabaseFormBody = ({
   engines,
   isHosted,
   isAdvanced,
-  isQueryCachingEnabled,
+  isCachingEnabled,
   onEngineChange,
   onCancel,
 }: DatabaseFormBodyProps): JSX.Element => {
@@ -128,7 +128,7 @@ const DatabaseFormBody = ({
       {fields.map(field => (
         <DatabaseDetailField key={field.name} field={field} />
       ))}
-      {isQueryCachingEnabled && <PLUGIN_CACHING.DatabaseCacheTimeField />}
+      {isCachingEnabled && <PLUGIN_CACHING.DatabaseCacheTimeField />}
       <DatabaseFormFooter isAdvanced={isAdvanced} onCancel={onCancel} />
     </Form>
   );
