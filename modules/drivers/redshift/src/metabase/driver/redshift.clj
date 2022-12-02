@@ -21,7 +21,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
   (:import [java.sql Connection PreparedStatement ResultSet Types]
-           java.time OffsetTime))
+           java.time.OffsetTime))
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 

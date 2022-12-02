@@ -1,6 +1,5 @@
 (ns metabase.query-processor-test.date-time-zone-functions-test
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
@@ -192,6 +191,8 @@
                                                                    ;; the idea is to extract a column with value = 2004-01-01 02:19:09 +07:00
                                                                    ;; this way the UTC value is 2003-12-31 19:19:09 +00:00 which will make sure
                                                                    ;; the year, quarter, month, day, week is extracted correctly
+                                                                   ;; TODO: it's better to use a literal for this, but the function is not working properly
+                                                                   ;; with OffsetDatetime for all drivers, so we'll go wit this for now
                                                                    "shifted-hour" [:datetime-subtract [:expression "shifted-day"] 7 :hour]}
                                                                   (for [op ops]
                                                                     [(name op) [op [:expression "shifted-hour"]]]))
