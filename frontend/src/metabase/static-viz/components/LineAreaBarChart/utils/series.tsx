@@ -5,6 +5,7 @@ import { getColorsForValues } from "metabase/lib/colors/charts";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { ColorPalette } from "metabase/lib/colors/types";
 import {
+  CardSeries,
   ChartSettings,
   Series,
   SeriesWithOneOrLessDimensions,
@@ -12,15 +13,15 @@ import {
 } from "../../XYChart/types";
 
 export function getSeriesWithColors(
-  multipleSeries: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][],
   settings: ChartSettings,
   palette: ColorPalette,
-): (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][] {
-  const isMultipleSeries = multipleSeries.length > 1;
-  const keys = getSeriesKeys(multipleSeries, isMultipleSeries);
+  multipleCardSeries: CardSeries[],
+): CardSeries[] {
+  const keys = getSeriesKeys(multipleCardSeries);
 
-  const seriesColors = settings.series_settings
-    ? _.mapObject(settings.series_settings, value => {
+  const seriesSettings = settings.visualization_settings.series_settings;
+  const seriesColors = seriesSettings
+    ? _.mapObject(seriesSettings, value => {
         return value.color;
       })
     : undefined;
@@ -31,7 +32,7 @@ export function getSeriesWithColors(
   );
 
   let index = -1;
-  return multipleSeries.map(questionSeries =>
+  return multipleCardSeries.map(questionSeries =>
     questionSeries.map(series => {
       index++;
 
@@ -43,21 +44,22 @@ export function getSeriesWithColors(
 }
 
 export function getSeriesWithLegends(
-  multipleSeries: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][],
   settings: ChartSettings,
-): (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][] {
-  const keys = getSeriesKeys(multipleSeries, multipleSeries.length > 1);
-  const isMultipleSeries = multipleSeries.length > 1;
+  multipleCardSeries: CardSeries[],
+): CardSeries[] {
+  const keys = getSeriesKeys(multipleCardSeries);
+  const isMultipleSeries = multipleCardSeries.length > 1;
 
-  const seriesTitles = settings.series_settings
-    ? _.mapObject(settings.series_settings, value => {
+  const seriesSettings = settings.visualization_settings.series_settings;
+  const seriesTitles = seriesSettings
+    ? _.mapObject(seriesSettings, value => {
         return value.title;
       })
     : undefined;
 
   let index = -1;
-  const legends = multipleSeries
-    .flatMap((questionSeries, seriesIndex) => {
+  const legends = multipleCardSeries
+    .flatMap(questionSeries => {
       return questionSeries.map(series => {
         index++;
 
@@ -73,10 +75,6 @@ export function getSeriesWithLegends(
 
         if (!hasTwoDimensions(series)) {
           // One or zero dimensions
-
-          if (seriesIndex === 0 && series.name) {
-            return series.name;
-          }
 
           const hasOneMetric = questionSeries.length === 1;
           if (hasOneMetric) {
@@ -108,7 +106,7 @@ export function getSeriesWithLegends(
     .filter(isNotNull);
 
   index = -1;
-  return multipleSeries.map(questionSeries =>
+  return multipleCardSeries.map(questionSeries =>
     questionSeries.map(series => {
       index++;
 
@@ -119,10 +117,35 @@ export function getSeriesWithLegends(
   );
 }
 
-function getSeriesKeys(
-  multipleSeries: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][],
-  isMultipleSeries: boolean,
+export function reorderSeries(
+  settings: ChartSettings,
+  multipleCardSeries: CardSeries[],
 ) {
+  const seriesOrder = settings.visualization_settings["graph.series_order"];
+  // We don't sort series when there's is multiple questions on a dashcard
+  if (multipleCardSeries.length > 1 || seriesOrder == null) {
+    return multipleCardSeries;
+  }
+
+  const keys = getSeriesKeys(multipleCardSeries);
+
+  // visualization settings only applies to a dashcard's first question's series.
+  const firstCardSeries = multipleCardSeries[0];
+  return [
+    seriesOrder
+      ?.map(orderedItem => {
+        if (orderedItem.enabled) {
+          const seriesIndex = keys.findIndex(key => key === orderedItem.key);
+          return firstCardSeries[seriesIndex];
+        }
+      })
+      .filter(isNotNull),
+  ];
+}
+
+function getSeriesKeys(multipleSeries: CardSeries[]) {
+  const hasMultipleCards = multipleSeries.length > 1;
+
   return multipleSeries
     .flatMap((questionSeries, seriesIndex) => {
       return questionSeries.map(series => {
@@ -138,7 +161,7 @@ function getSeriesKeys(
           }
 
           const hasOneMetric = questionSeries.length === 1;
-          if (!isMultipleSeries || hasOneMetric) {
+          if (!hasMultipleCards || hasOneMetric) {
             return series.cardName;
           }
 
@@ -150,7 +173,7 @@ function getSeriesKeys(
             column: series.column,
           });
 
-          if (!isMultipleSeries) {
+          if (!hasMultipleCards) {
             return columnKey;
           }
 
@@ -168,14 +191,10 @@ function hasTwoDimensions(
   return "breakoutValue" in series;
 }
 
-export function removeNoneSeriesFields(
-  series: (SeriesWithOneOrLessDimensions | SeriesWithTwoDimensions)[][],
-): Series[] {
-  return series
-    .flat()
-    .map(
-      series => _.omit(series, "cardName", "column", "breakoutValue") as Series,
-    );
+export function removeNoneSeriesFields(series: CardSeries): Series[] {
+  return series.map(
+    series => _.omit(series, "cardName", "column", "breakoutValue") as Series,
+  );
 }
 
 function removeEmptyValues(

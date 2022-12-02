@@ -149,6 +149,10 @@ describe("metabase-lib/expressions/resolve", () => {
       expect(() => expr(["concat", "1", "2", "3"])).not.toThrow();
     });
 
+    it("should allow nested datetime expressions", () => {
+      expect(() => expr(["get-year", ["now"]])).not.toThrow();
+    });
+
     it("should accept COALESCE for number", () => {
       expect(() => expr(["round", ["coalesce", 0]])).not.toThrow();
     });

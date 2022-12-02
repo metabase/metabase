@@ -383,6 +383,11 @@ export const MBQL_CLAUSES = {
     type: "datetime",
     args: ["datetime", "number", "string"],
   },
+  now: {
+    displayName: `now`,
+    type: "datetime",
+    args: [],
+  },
   "convert-timezone": {
     displayName: `convertTimezone`,
     type: "datetime",
@@ -474,6 +479,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "get-second",
   "datetime-add",
   "datetime-subtract",
+  "now",
   "convert-timezone",
   // boolean
   "contains",
