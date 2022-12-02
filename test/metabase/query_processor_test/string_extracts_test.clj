@@ -54,6 +54,7 @@
 
 (deftest test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    ;; note: we use field values here because H2 doesn't support parameters in coalesce without casts
     (is (= "Red Medicine" (test-string-extract [:coalesce [:field (data/id :venues :name)] [:field (data/id :venues :name)]])))))
 
 (deftest test-concat
