@@ -265,6 +265,8 @@ Copy a Dashboard.
 
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
+*  **`is_deep_copy`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`_dashboard`**
 
 ## `POST /api/dashboard/:id/cards`

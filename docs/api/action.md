@@ -53,28 +53,6 @@ Create a new HTTP action.
 
 *  **`action`**
 
-## `POST /api/action/:action-namespace/:action-name`
-
-Generic API endpoint for executing any sort of Action.
-
-### PARAMS:
-
-*  **`action-namespace`** 
-
-*  **`action-name`**
-
-## `POST /api/action/:action-namespace/:action-name/:table-id`
-
-Generic API endpoint for executing any sort of Action with source Table ID specified as part of the route.
-
-### PARAMS:
-
-*  **`action-namespace`** 
-
-*  **`action-name`** 
-
-*  **`table-id`**
-
 ## `PUT /api/action/:id`
 
 ### PARAMS:
