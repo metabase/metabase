@@ -170,11 +170,6 @@ const RowChartVisualization = ({
     }
 
     const clickData = getClickData(bar, settings, chartColumns, data.cols);
-
-    if (!visualizationIsClickable(clickData)) {
-      return;
-    }
-
     onVisualizationClick({ ...clickData, element: event.target });
   };
 
