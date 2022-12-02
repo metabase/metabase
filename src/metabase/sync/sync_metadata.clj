@@ -33,7 +33,7 @@
   (trs "Total number of foreign keys sync''d {0}, {1} updated and {2} tables failed to update"
        total-fks updated-fks total-failed))
 
-(defn ^:private make-sync-steps [db-metadata]
+(defn- make-sync-steps [db-metadata]
   [(sync-util/create-sync-step "sync-timezone" sync-tz/sync-timezone! sync-timezone-summary)
    ;; Make sure the relevant table models are up-to-date
    (sync-util/create-sync-step "sync-tables" #(sync-tables/sync-tables-and-database! % db-metadata) sync-tables-summary)

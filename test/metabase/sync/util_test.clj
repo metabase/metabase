@@ -54,7 +54,6 @@
         ;; make sure both of the futures have finished
         (deref f1)
         (deref f2)
-        ;; Check the number of syncs that took place. Should be 1 (just the first)
         (is (= 1 @calls-to-describe-database))))))
 
 (defn- call-with-operation-info
