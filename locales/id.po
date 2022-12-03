@@ -161,7 +161,7 @@ msgstr "di kotak ini:"
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:101
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:121
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:161
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:167
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:165
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:403
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:174
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:230
@@ -193,7 +193,7 @@ msgstr "di kotak ini:"
 #: frontend/src/metabase/timelines/common/components/MoveEventModal/MoveEventModal.tsx:58
 #: frontend/src/metabase/timelines/common/components/MoveTimelineModal/MoveTimelineModal.tsx:48
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:64
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:428
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:433
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:481
 #: frontend/src/metabase/writeback/containers/CreateDataAppModal/CreateDataAppModal.tsx:71
 #: frontend/src/metabase/writeback/containers/ScaffoldDataAppPagesModal/ScaffoldDataAppPagesModal.tsx:71
@@ -245,8 +245,8 @@ msgstr "Penjadwalan"
 #: frontend/src/metabase/admin/datamodel/components/MetricForm/MetricForm.tsx:131
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:130
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.jsx:35
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:97
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:32
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:84
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:38
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:212
 #: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:64
@@ -337,7 +337,7 @@ msgstr "Tambah database"
 #: frontend/src/metabase/entities/dashboards/forms.jsx:11
 #: frontend/src/metabase/entities/questions/forms.js:9
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:50
-#: frontend/src/metabase/visualizations/lib/settings/column.js:341
+#: frontend/src/metabase/visualizations/lib/settings/column.js:334
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:80
 msgid "Name"
 msgstr "Nama"
@@ -371,8 +371,8 @@ msgid "Successfully saved!"
 msgstr "Berhasil dibuat!"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectActionSelect.jsx:47
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:114
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:102
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:113
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:495
 #: frontend/src/metabase/query_builder/components/AlertListPopoverContent.jsx:182
 #: frontend/src/metabase/query_builder/components/template_tags/snippet-sidebar/SnippetRow.jsx:83
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:87
@@ -430,7 +430,7 @@ msgid "Success"
 msgstr "Berhasil"
 
 #: frontend/src/metabase/admin/datamodel/components/PartialQueryBuilder.jsx:103
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:102
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:495
 #: frontend/src/metabase/public/components/widgets/AdvancedEmbedPane.jsx:72
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:192
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStepPreview.jsx:66
@@ -455,8 +455,8 @@ msgstr "Tidak ada tipe khusus"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:66
 #: frontend/src/metabase/reference/components/Field.jsx:54
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:35
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:342
-#: metabase/pulse/render/body.clj:414
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:344
+#: metabase/pulse/render/body.clj:415
 msgid "Other"
 msgstr "Lain"
 
@@ -1082,7 +1082,7 @@ msgstr "Hapus Grup"
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:87
 #: frontend/src/metabase/query_builder/components/SidebarContent/SidebarContent.tsx:31
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:126
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:434
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:439
 msgid "Done"
 msgstr "Selesai"
 
@@ -1125,7 +1125,7 @@ msgid "Reset Password"
 msgstr "Atur Ulang Password"
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:34
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:169
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:167
 msgid "Deactivate"
 msgstr "Deaktivasi"
 
@@ -1183,7 +1183,7 @@ msgid "Any previous email invites they have will no longer work."
 msgstr "Setiap undangan email sebelumnya yang mereka miliki tidak akan berfungsi lagi."
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:25
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:165
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:163
 msgid "Deactivate {0}?"
 msgstr "Non-aktifkan {0}?"
 
@@ -1230,7 +1230,7 @@ msgid "We've sent them an email with instructions for creating a new password."
 msgstr "Kami telah mengirim email berisi petunjuk cara membuat password baru kepada mereka."
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:45
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:107
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:106
 msgid "Active"
 msgstr "Aktif"
 
@@ -1469,14 +1469,14 @@ msgstr "Melihat skema"
 msgid "Data Model"
 msgstr "Model Data"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:63
 #: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:15
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:58
 #: frontend/src/metabase/auth/components/GoogleButton/GoogleButton.tsx:61
 msgid "Sign in with Google"
 msgstr "Masuk dengan Google"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:65
 #: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:16
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:60
 msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
 msgstr "Perbolehkan pengguna dengan akun Metabase eksisting untuk masuk dengan akun Google yang sesuai dengan alamat email mereka selain menggunakan username dan password Metabase."
 
@@ -1534,7 +1534,7 @@ msgstr "Bersihkan"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.jsx:67
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:67
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:24
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:54
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:90
 #: frontend/src/metabase/admin/settings/selectors.js:228
 msgid "Authentication"
@@ -1574,7 +1574,7 @@ msgstr "Beberapa hal yang dapat Anda lakukan untuk mendapatkan hasil maksimal da
 msgid "Recommended next step"
 msgstr "Langkah selanjutnya yang direkomendasi"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:25
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:55
 msgid "Google Sign-In"
 msgstr "Google Masuk"
 
@@ -1646,7 +1646,7 @@ msgstr "Hapus peta khusus"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:238
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:278
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:195
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:415
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:118
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:137
@@ -1655,7 +1655,7 @@ msgid "Remove"
 msgstr "Hapus"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:270
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:157
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:153
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:144
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:165
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:223
@@ -2004,32 +2004,32 @@ msgstr "Basis Pencarian Pengguna"
 msgid "User filter"
 msgstr "Filter pengguna"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:254
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:255
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
 msgid "Check your parentheses"
 msgstr "Periksa tanda kurung Anda"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:125
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:126
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:188
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:89
 msgid "Email attribute"
 msgstr "Atribut email"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:130
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:192
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:131
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:193
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:94
 msgid "First name attribute"
 msgstr "Nama awal atribut"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:136
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:198
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:99
 msgid "Last name attribute"
 msgstr "Nama akhir atribut"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:163
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:140
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:202
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:141
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:203
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:104
 msgid "Synchronize group memberships"
 msgstr "Sinkronisasi keanggotaan kelompok"
@@ -2095,7 +2095,7 @@ msgid "Embedded Questions"
 msgstr "Pertanyaan tertanam"
 
 #: frontend/src/metabase/admin/settings/selectors.js:488
-#: frontend/src/metabase/entities/questions/forms.js:44
+#: frontend/src/metabase/entities/questions/forms.js:38
 msgid "Caching"
 msgstr "Caching"
 
@@ -2282,9 +2282,9 @@ msgstr "Dasbor, koleksi, dan pulsa dalam koleksi ini juga akan diarsipkan."
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:228
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:233
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:234
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:209
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:197
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:58
-#: frontend/src/metabase/routes.jsx:210
+#: frontend/src/metabase/routes.jsx:211
 msgid "Archive"
 msgstr "Arsip"
 
@@ -2411,7 +2411,7 @@ msgstr "Seret sesuatu ke sini untuk menjepit ke atas"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.jsx:20
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.js:78
-#: frontend/src/metabase/entities/collections/getExpandedCollectionsById.js:35
+#: frontend/src/metabase/entities/collections/collections.js:162
 #: frontend/src/metabase/home/containers/SearchApp.jsx:42
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:212
 msgid "Collections"
@@ -2441,7 +2441,7 @@ msgstr "Pindahkan \"{0}\"?"
 #: frontend/src/metabase/components/EntityMenu.info.js:87
 #: frontend/src/metabase/containers/CollectionMoveModal.jsx:69
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:323
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:167
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:164
 #: frontend/src/metabase/timelines/common/components/MoveEventModal/MoveEventModal.tsx:60
 #: frontend/src/metabase/timelines/common/components/MoveTimelineModal/MoveTimelineModal.tsx:50
 msgid "Move"
@@ -2572,7 +2572,7 @@ msgstr "Aksi arsip"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:47
 #: frontend/src/metabase/components/EntityMenu.info.js:99
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:158
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:155
 msgid "Add to dashboard"
 msgstr "Tambahkan ke Dasbor"
 
@@ -2760,7 +2760,7 @@ msgid "Questions"
 msgstr "Pertanyaan"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:72
-#: frontend/src/metabase/routes.jsx:338
+#: frontend/src/metabase/routes.jsx:349
 msgid "Pulses"
 msgstr "Pulsa"
 
@@ -2808,16 +2808,16 @@ msgstr "Kata Sandi Sementara"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:223
 #: frontend/src/metabase/components/PasswordReveal.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:556
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:573
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:559
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:576
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:55
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:69
 msgid "Hide"
 msgstr "Bersembunyi"
 
 #: frontend/src/metabase/components/PasswordReveal.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:557
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:574
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:560
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:577
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:56
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:70
 msgid "Show"
@@ -3103,7 +3103,7 @@ msgstr "Kami tidak yakin apakah pertanyaan ini kompatibel"
 msgid "Archive Dashboard"
 msgstr "Arsipkan Dasbor"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper.jsx:20
+#: frontend/src/metabase/dashboard/components/DashCardParameterMapper.jsx:19
 msgid "Make sure to make a selection for each series, or the filter won't work on this card."
 msgstr "Pastikan untuk membuat pilihan untuk setiap seri, atau filter tidak akan berfungsi pada kartu ini."
 
@@ -3199,6 +3199,7 @@ msgstr "Filter apa?"
 #: frontend/src/metabase/dashboard/components/RefreshWidget.jsx:19
 #: frontend/src/metabase/visualizations/lib/settings/column.js:156
 #: frontend/src/metabase/visualizations/lib/settings/series.js:98
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:134
 msgid "Off"
 msgstr "Mati"
 
@@ -3256,7 +3257,7 @@ msgstr "Simpan ini"
 msgid "Show more about this"
 msgstr "Tampilkan lebih banyak tentang ini"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:135
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:131
 msgid "This card doesn't have any fields or parameters that can be mapped to this parameter type."
 msgstr "Kartu ini tidak memiliki bidang atau parameter apa pun yang dapat dipetakan ke jenis parameter ini."
 
@@ -3264,7 +3265,7 @@ msgstr "Kartu ini tidak memiliki bidang atau parameter apa pun yang dapat dipeta
 msgid "The values in this field don't overlap with the values of any other fields you've chosen."
 msgstr "Nilai-nilai di bidang ini tidak tumpang tindih dengan nilai-nilai bidang lain yang Anda pilih."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:136
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:132
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx:71
 msgid "No valid fields"
 msgstr "Tidak ada bidang yang valid"
@@ -3770,7 +3771,7 @@ msgstr "Rata-rata"
 #: frontend/src/metabase/query_builder/components/filters/modals/InlineValuePicker/InlineValuePicker.tsx:97
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:28
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:592
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:595
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:88
 msgid "Min"
 msgstr "Menit"
@@ -3780,7 +3781,7 @@ msgstr "Menit"
 #: frontend/src/metabase/query_builder/components/filters/modals/InlineValuePicker/InlineValuePicker.tsx:104
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:29
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:602
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:605
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:98
 msgid "Max"
 msgstr "Maks"
@@ -4421,6 +4422,7 @@ msgid "Use the simple question builder to see trends, lists of things, or to cre
 msgstr "Gunakan pembangun pertanyaan sederhana untuk melihat tren, daftar hal, atau untuk membuat metrik Anda sendiri."
 
 #: frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx:75
+#: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:106
 #: metabase/automagic_dashboards/core.clj:270
 #: resources/automagic_dashboards/table/example.yaml
 msgid "Native query"
@@ -4471,14 +4473,14 @@ msgstr "Lewat 7 hari"
 msgid "Past 30 days"
 msgstr "30 hari terakhir"
 
-#: frontend/src/metabase-lib/Dimension.ts:1711
+#: frontend/src/metabase-lib/Dimension.ts:1715
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:35
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:40
 #: metabase/api/table.clj:140
 msgid "Week"
 msgstr "Pekan"
 
-#: frontend/src/metabase-lib/Dimension.ts:1717
+#: frontend/src/metabase-lib/Dimension.ts:1721
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:94
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:36
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:41
@@ -4486,7 +4488,7 @@ msgstr "Pekan"
 msgid "Month"
 msgstr "Bulan"
 
-#: frontend/src/metabase-lib/Dimension.ts:1729
+#: frontend/src/metabase-lib/Dimension.ts:1733
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:37
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:42
 #: metabase/api/table.clj:143
@@ -4584,13 +4586,13 @@ msgid "Publish"
 msgstr "Menerbitkan"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedEmbedPane.jsx:73
-#: frontend/src/metabase/visualizations/lib/settings/column.js:337
+#: frontend/src/metabase/visualizations/lib/settings/column.js:330
 msgid "Code"
 msgstr "Kode"
 
 #: frontend/src/metabase/public/components/widgets/DisplayOptionsPane.jsx:44
-#: frontend/src/metabase/visualizations/lib/settings/column.js:283
-#: frontend/src/metabase/visualizations/lib/settings/series.js:163
+#: frontend/src/metabase/visualizations/lib/settings/column.js:279
+#: frontend/src/metabase/visualizations/lib/settings/series.js:164
 msgid "Style"
 msgstr "Gaya"
 
@@ -5332,9 +5334,9 @@ msgstr "Tambahkan pengelompokan"
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:76
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:36
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:104
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:164
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:227
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:287
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:167
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:230
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:290
 #: frontend/src/metabase/visualizations/lib/settings/validation.js:21
 #: frontend/src/metabase/visualizations/lib/settings/validation.js:30
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:66
@@ -5633,7 +5635,7 @@ msgstr "Jumlah {0} dikelompokkan oleh {1}"
 #: frontend/src/metabase/reference/metrics/MetricSidebar.jsx:22
 #: frontend/src/metabase/reference/segments/SegmentFieldSidebar.jsx:22
 #: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:22
-#: frontend/src/metabase/routes.jsx:273
+#: frontend/src/metabase/routes.jsx:284
 msgid "Data Reference"
 msgstr "Referensi Data"
 
@@ -5893,7 +5895,7 @@ msgstr "Tipe variabel."
 #: frontend/src/metabase/parameters/utils/dashboard-options.js:40
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:168
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:145
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:258
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:259
 msgid "Text"
 msgstr "Teks"
 
@@ -6468,22 +6470,22 @@ msgstr "Pertanyaan tentang segmen ini"
 msgid "X-ray this segment"
 msgstr "X-ray segmen ini"
 
-#: frontend/src/metabase/routes.jsx:187 frontend/src/metabase/routes.jsx:188
+#: frontend/src/metabase/routes.jsx:188 frontend/src/metabase/routes.jsx:189
 msgid "Login"
 msgstr "Gabung"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableWithSearch.jsx:17
 #: frontend/src/metabase/components/FieldValuesWidget.jsx:488
-#: frontend/src/metabase/containers/ItemPicker/ItemPickerView.tsx:102
+#: frontend/src/metabase/containers/ItemPicker.jsx:145
 #: frontend/src/metabase/nav/components/SearchBar.tsx:174
-#: frontend/src/metabase/routes.jsx:209
+#: frontend/src/metabase/routes.jsx:210
 msgid "Search"
 msgstr "Mencari"
 
 #: frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx:88
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/LinkOptions.tsx:33
 #: frontend/src/metabase/nav/utils/model-names.ts:7
-#: frontend/src/metabase/routes.jsx:229
+#: frontend/src/metabase/routes.jsx:230
 msgid "Dashboard"
 msgstr "Dasbor"
 
@@ -6806,7 +6808,7 @@ msgstr "Masuk dengan alamat email Google"
 msgid "User Details"
 msgstr "Details pengguna"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:444
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:449
 msgid "Reset to defaults"
 msgstr "Atur ulang ke default."
 
@@ -6847,7 +6849,7 @@ msgstr "Batalkan Filter"
 msgid "Pin Map"
 msgstr "PIN PET."
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:423
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:424
 msgid "Unset"
 msgstr "Tak disetel"
 
@@ -6893,7 +6895,7 @@ msgstr "Ini biasanya cukup cepat tetapi tampaknya memakan waktu sekarang."
 msgid "Select a field"
 msgstr "Pilih bidang"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx:97
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx:103
 msgid "error"
 msgstr "kesalahan"
 
@@ -6992,7 +6994,7 @@ msgid "Highlight the whole row"
 msgstr "Sorot seluruh baris"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:409
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:146
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:148
 msgid "Colors"
 msgstr "Warna"
 
@@ -7072,7 +7074,7 @@ msgstr "Jenis bagan ini tidak mendukung lebih dari serangkaian data {0}."
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:19
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:45
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:64
-#: metabase/pulse/render/body.clj:338
+#: metabase/pulse/render/body.clj:339
 msgid "Goal"
 msgstr "Sasaran"
 
@@ -7149,7 +7151,7 @@ msgstr "Doh! Data dari kueri Anda tidak sesuai dengan pilihan tampilan yang dipi
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:745
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:750
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:767
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:778
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:780
 #: frontend/src/metabase/dashboard/components/ClickMappings.jsx:90
 #: frontend/src/metabase/dashboard/components/ClickMappings.jsx:248
 #: frontend/src/metabase/visualizations/lib/errors.js:7
@@ -7182,11 +7184,11 @@ msgid "xValues missing!"
 msgstr "Xvalues ​​hilang!"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:105
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:499
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:550
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:620
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:631
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:344
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:502
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:553
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:623
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:634
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:346
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:36
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:65
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:77
@@ -7201,16 +7203,16 @@ msgstr "X-Axis."
 msgid "Add a series breakout..."
 msgstr "Tambahkan breakout seri ..."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:228
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:537
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:569
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:581
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:590
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:600
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:610
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:646
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:655
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:348
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:231
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:540
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:572
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:584
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:593
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:603
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:613
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:649
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:658
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:350
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:23
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:49
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:106
@@ -7222,7 +7224,7 @@ msgstr "Y-axis."
 msgid "Add another series..."
 msgstr "Tambahkan seri lain ..."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:288
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:291
 msgid "Bubble size"
 msgstr "Ukuran gelembung"
 
@@ -7242,22 +7244,22 @@ msgstr "Melangkah"
 msgid "Show point markers on lines"
 msgstr "Tampilkan penanda titik pada garis"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:330
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:333
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:8
 msgid "Stacking"
 msgstr "Penumpukan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:334
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:337
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:14
 msgid "Don't stack"
 msgstr "Jangan tumpukan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:335
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:338
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:15
 msgid "Stack"
 msgstr "Tumpukan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:336
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:339
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:16
 msgid "Stack - 100%"
 msgstr "Stack - 100%"
@@ -7290,33 +7292,33 @@ msgstr "Linear interpolated."
 msgid "X-axis scale"
 msgstr "Skala sumbu x"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:519
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:522
 msgid "Timeseries"
 msgstr "Timesery."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:522
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:542
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:525
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:545
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:41
 msgid "Linear"
 msgstr "Linear."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:524
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:543
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:527
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:546
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:42
 msgid "Power"
 msgstr "Kekuatan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:525
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:544
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:528
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:547
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:43
 msgid "Log"
 msgstr "Catatan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:527
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:530
 msgid "Histogram"
 msgstr "Histogram"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:529
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:532
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:29
 msgid "Ordinal"
 msgstr "Urut"
@@ -7329,17 +7331,17 @@ msgstr "Skala sumbu y"
 msgid "Show x-axis line and marks"
 msgstr "Tampilkan garis dan tanda sumbu x"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:445
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:558
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:448
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:561
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:179
 msgid "Compact"
 msgstr "Compact."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:559
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:562
 msgid "Rotate 45°"
 msgstr "Putar 45 °."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:560
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:563
 msgid "Rotate 90°"
 msgstr "Putar 90 °."
 
@@ -7347,7 +7349,7 @@ msgstr "Putar 90 °."
 msgid "Show y-axis line and marks"
 msgstr "Tunjukkan garis sumbu y dan tanda"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:583
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:586
 msgid "Auto y-axis range"
 msgstr "Rentang Auto Y-Axis"
 
@@ -7515,7 +7517,7 @@ msgstr "obyek"
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:136
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:253
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:325
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:460
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:462
 msgid "Total"
 msgstr "Total"
 
@@ -7539,21 +7541,21 @@ msgstr "Tampilkan Legend."
 msgid "Show percentages in legend"
 msgstr "Tampilkan persentase dalam legenda"
 
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:140
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:142
 msgid "Minimum slice percentage"
 msgstr "Persentase irisan minimum"
 
-#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:31
+#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:29
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:156
 msgid "Goal met"
 msgstr "Tujuan bertemu"
 
-#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:33
+#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:31
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:158
 msgid "Goal exceeded"
 msgstr "Tujuan terlampaui"
 
-#: frontend/src/metabase/static-viz/components/ProgressBar/ProgressBar.tsx:148
+#: frontend/src/metabase/static-viz/components/ProgressBar/ProgressBar.tsx:145
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:226
 msgid "Goal {0}"
 msgstr "Sasaran {0}"
@@ -7579,11 +7581,11 @@ msgstr "Warna"
 msgid "Row Chart"
 msgstr "Grafik baris."
 
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:318
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:320
 msgid "row chart"
 msgstr "grafik baris."
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:374
+#: frontend/src/metabase/visualizations/lib/settings/column.js:366
 msgid "Separator style"
 msgstr "Gaya pemisah"
 
@@ -7591,15 +7593,15 @@ msgstr "Gaya pemisah"
 msgid "Number of decimal places"
 msgstr "Jumlah tempat desimal"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:405
+#: frontend/src/metabase/visualizations/lib/settings/column.js:394
 msgid "Add a prefix"
 msgstr "Tambahkan awalan"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:413
+#: frontend/src/metabase/visualizations/lib/settings/column.js:401
 msgid "Add a suffix"
 msgstr "Tambahkan sufiks"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:397
+#: frontend/src/metabase/visualizations/lib/settings/column.js:387
 msgid "Multiply by a number"
 msgstr "Berkembang biak dengan angka"
 
@@ -7911,7 +7913,7 @@ msgstr "Memiliki banyak pertanyaan yang disimpan di {0}? Buat koleksi untuk memb
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:101
 #: frontend/src/metabase/public/components/LogoBadge.jsx:17
 #: frontend/src/metabase/routes-public.jsx:13
-#: frontend/src/metabase/routes.jsx:150 metabase/api/setup.clj:243
+#: frontend/src/metabase/routes.jsx:151 metabase/api/setup.clj:243
 #: metabase/email/messages.clj:47
 msgid "Metabase"
 msgstr "Metabase."
@@ -7936,7 +7938,7 @@ msgstr "Simpan semua orang di halaman yang sama dengan membuat set canonical fil
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "Tabel '' {0} '' sekarang terlihat. Sinkronisasi ulang."
 
-#: frontend/src/metabase-lib/Dimension.ts:1651 metabase/api/table.clj:122
+#: frontend/src/metabase-lib/Dimension.ts:1655 metabase/api/table.clj:122
 msgid "Auto bin"
 msgstr "Auto Bin."
 
@@ -7944,83 +7946,83 @@ msgstr "Auto Bin."
 msgid "Don''t bin"
 msgstr "Jangan Bin"
 
-#: frontend/src/metabase-lib/Dimension.ts:1705 metabase/api/table.clj:126
+#: frontend/src/metabase-lib/Dimension.ts:1709 metabase/api/table.clj:126
 msgid "Day"
 msgstr "Hari"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/Dimension.ts:1693 metabase/api/table.clj:124
+#: frontend/src/metabase-lib/Dimension.ts:1697 metabase/api/table.clj:124
 msgid "Minute"
 msgstr "Menit"
 
-#: frontend/src/metabase-lib/Dimension.ts:1699
+#: frontend/src/metabase-lib/Dimension.ts:1703
 #: frontend/src/metabase/admin/settings/selectors.js:546
 #: metabase/api/table.clj:125
 msgid "Hour"
 msgstr "Jam"
 
-#: frontend/src/metabase-lib/Dimension.ts:1723 metabase/api/table.clj:142
+#: frontend/src/metabase-lib/Dimension.ts:1727 metabase/api/table.clj:142
 msgid "Quarter"
 msgstr "Perempat"
 
-#: frontend/src/metabase-lib/Dimension.ts:1735 metabase/api/table.clj:144
+#: frontend/src/metabase-lib/Dimension.ts:1739 metabase/api/table.clj:144
 #: metabase/api/table.clj:158
 msgid "Minute of Hour"
 msgstr "Menit jam"
 
-#: frontend/src/metabase-lib/Dimension.ts:1741 metabase/api/table.clj:145
+#: frontend/src/metabase-lib/Dimension.ts:1745 metabase/api/table.clj:145
 msgid "Hour of Day"
 msgstr "Jam sehari."
 
-#: frontend/src/metabase-lib/Dimension.ts:1747 metabase/api/table.clj:146
+#: frontend/src/metabase-lib/Dimension.ts:1751 metabase/api/table.clj:146
 msgid "Day of Week"
 msgstr "Hari dalam seminggu"
 
-#: frontend/src/metabase-lib/Dimension.ts:1753 metabase/api/table.clj:147
+#: frontend/src/metabase-lib/Dimension.ts:1757 metabase/api/table.clj:147
 msgid "Day of Month"
 msgstr "Hari bulan."
 
-#: frontend/src/metabase-lib/Dimension.ts:1759 metabase/api/table.clj:148
+#: frontend/src/metabase-lib/Dimension.ts:1763 metabase/api/table.clj:148
 msgid "Day of Year"
 msgstr "Hari tahun"
 
-#: frontend/src/metabase-lib/Dimension.ts:1765 metabase/api/table.clj:149
+#: frontend/src/metabase-lib/Dimension.ts:1769 metabase/api/table.clj:149
 msgid "Week of Year"
 msgstr "Minggu tahun"
 
-#: frontend/src/metabase-lib/Dimension.ts:1771 metabase/api/table.clj:150
+#: frontend/src/metabase-lib/Dimension.ts:1775 metabase/api/table.clj:150
 msgid "Month of Year"
 msgstr "Bulan tahun"
 
-#: frontend/src/metabase-lib/Dimension.ts:1777 metabase/api/table.clj:151
+#: frontend/src/metabase-lib/Dimension.ts:1781 metabase/api/table.clj:151
 msgid "Quarter of Year"
 msgstr "Seperempat tahun"
 
-#: frontend/src/metabase-lib/Dimension.ts:1659 metabase/api/table.clj:167
+#: frontend/src/metabase-lib/Dimension.ts:1663 metabase/api/table.clj:167
 msgid "10 bins"
 msgstr "10 tempat sampah"
 
-#: frontend/src/metabase-lib/Dimension.ts:1668 metabase/api/table.clj:168
+#: frontend/src/metabase-lib/Dimension.ts:1672 metabase/api/table.clj:168
 msgid "50 bins"
 msgstr "50 tempat sampah"
 
-#: frontend/src/metabase-lib/Dimension.ts:1677 metabase/api/table.clj:169
+#: frontend/src/metabase-lib/Dimension.ts:1681 metabase/api/table.clj:169
 msgid "100 bins"
 msgstr "100 tempat sampah"
 
-#: frontend/src/metabase-lib/Dimension.ts:1786 metabase/api/table.clj:181
+#: frontend/src/metabase-lib/Dimension.ts:1790 metabase/api/table.clj:181
 msgid "Bin every 0.1 degrees"
 msgstr "Bin setiap 0,1 derajat"
 
-#: frontend/src/metabase-lib/Dimension.ts:1795 metabase/api/table.clj:182
+#: frontend/src/metabase-lib/Dimension.ts:1799 metabase/api/table.clj:182
 msgid "Bin every 1 degree"
 msgstr "Bin setiap 1 derajat"
 
-#: frontend/src/metabase-lib/Dimension.ts:1804 metabase/api/table.clj:183
+#: frontend/src/metabase-lib/Dimension.ts:1808 metabase/api/table.clj:183
 msgid "Bin every 10 degrees"
 msgstr "Bin setiap 10 derajat"
 
-#: frontend/src/metabase-lib/Dimension.ts:1813 metabase/api/table.clj:184
+#: frontend/src/metabase-lib/Dimension.ts:1817 metabase/api/table.clj:184
 msgid "Bin every 20 degrees"
 msgstr "Bin setiap 20 derajat"
 
@@ -8339,40 +8341,40 @@ msgstr "Mulai Metabase dalam Mode Standalone"
 msgid "Metabase Initialization FAILED"
 msgstr "Inisialisasi Metabase gagal"
 
-#: metabase/db/liquibase.clj:126
+#: metabase/db/liquibase.clj:127
 msgid "Database has migration lock; cannot run migrations."
 msgstr "Database memiliki kunci migrasi; tidak dapat menjalankan migrasi."
 
-#: metabase/db/liquibase.clj:128
+#: metabase/db/liquibase.clj:129
 msgid "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`."
 msgstr "Anda dapat memaksa-melepaskan kunci-kunci ini dengan menjalankan `java -jar metabase.jar memigrasi rilis-locks`."
 
-#: metabase/db/liquibase.clj:133
+#: metabase/db/liquibase.clj:134
 msgid "Checking if Database has unrun migrations..."
 msgstr "Memeriksa apakah basis data memiliki migrasi unrun ..."
 
-#: metabase/db/liquibase.clj:135
+#: metabase/db/liquibase.clj:136
 msgid "Database has unrun migrations. Waiting for migration lock to be cleared..."
 msgstr "Basis data memiliki migrasi Belum Belum. Menunggu kunci migrasi untuk dibersihkan ..."
 
-#: metabase/db/liquibase.clj:141
+#: metabase/db/liquibase.clj:142
 msgid "Migration lock is cleared. Running migrations..."
 msgstr "Kunci migrasi dihapus. Menjalankan migrasi ..."
 
-#: metabase/db/liquibase.clj:144
+#: metabase/db/liquibase.clj:145
 msgid "Migration lock cleared, but nothing to do here! Migrations were finished by another instance."
 msgstr "Kunci migrasi dibersihkan, tetapi tidak ada hubungannya di sini! Migrasi selesai dengan contoh lain."
 
 #. Set up liquibase and let it do its thing
-#: metabase/db/setup.clj:60
+#: metabase/db/setup.clj:61
 msgid "Setting up Liquibase..."
 msgstr "Menyiapkan Liquibase ..."
 
-#: metabase/db/setup.clj:64
+#: metabase/db/setup.clj:65
 msgid "Liquibase is ready."
 msgstr "Livisibase sudah siap."
 
-#: metabase/db/setup.clj:94
+#: metabase/db/setup.clj:95
 msgid "Verifying {0} Database Connection ..."
 msgstr "Memverifikasi {0} Koneksi database ..."
 
@@ -8380,11 +8382,11 @@ msgstr "Memverifikasi {0} Koneksi database ..."
 msgid "Verify Database Connection ... "
 msgstr "Verifikasi koneksi basis data ..."
 
-#: metabase/db/setup.clj:118
+#: metabase/db/setup.clj:119
 msgid "Running Database Migrations..."
 msgstr "Menjalankan migrasi basis data ..."
 
-#: metabase/db/setup.clj:120
+#: metabase/db/setup.clj:121
 msgid "Database Migrations Current ... "
 msgstr "Migrasi Database Saat Ini ..."
 
@@ -8646,10 +8648,6 @@ msgstr "Ok, hanya satu ..."
 msgid "Not Found"
 msgstr "Tidak ditemukan"
 
-#: target/classes/metabase/metabot/command.clj
-msgid "Loading Kanye quotes..."
-msgstr "Memuat Kanye Kutipan ..."
-
 #: target/classes/metabase/metabot/events.clj
 msgid "Evaluating Metabot command:"
 msgstr "Mengevaluasi perintah metabot:"
@@ -8705,11 +8703,11 @@ msgstr "Tentukan ini untuk mengaktifkan pinning kunci publik HTTP."
 msgid "See {0} for more information."
 msgstr "Lihat {0} untuk informasi lebih lanjut."
 
-#: metabase/models/card.clj:153
+#: metabase/models/card.clj:152
 msgid "Cannot save Question: source query has circular references."
 msgstr "Tidak dapat menyimpan pertanyaan: Permintaan sumber memiliki referensi melingkar."
 
-#: metabase/models/card.clj:158 metabase/models/query/permissions.clj:107
+#: metabase/models/card.clj:157 metabase/models/query/permissions.clj:107
 #: metabase/query_processor/middleware/fetch_source_query.clj:117
 #: metabase/query_processor/middleware/permissions.clj:59
 msgid "Card {0} does not exist."
@@ -8784,7 +8782,7 @@ msgstr "Anda tidak dapat memindahkan koleksi dan mengarsipkannya pada saat yang 
 msgid "You cannot delete a Personal Collection!"
 msgstr "Anda tidak dapat menghapus koleksi pribadi!"
 
-#: metabase/models/collection.clj:1024 metabase/models/collection.clj:1027
+#: metabase/models/collection.clj:1039 metabase/models/collection.clj:1042
 msgid "{0} {1}''s Personal Collection"
 msgstr "{0} {1} 'koleksi pribadi"
 
@@ -8792,19 +8790,19 @@ msgstr "{0} {1} 'koleksi pribadi"
 msgid "You cannot update a CollectionRevision!"
 msgstr "Anda tidak dapat memperbarui pengumpulan!"
 
-#: metabase/models/field_values.clj:335
+#: metabase/models/field_values.clj:336
 msgid "Field {0} was previously automatically set to show a list widget, but now has {1} values."
 msgstr "Field {0} sebelumnya secara otomatis diatur untuk menampilkan daftar widget, tetapi sekarang memiliki nilai {1}."
 
-#: metabase/models/field_values.clj:337
+#: metabase/models/field_values.clj:338
 msgid "Switching Field to use a search widget instead."
 msgstr "Switching field untuk menggunakan widget pencarian."
 
-#: metabase/models/field_values.clj:349
+#: metabase/models/field_values.clj:350
 msgid "Storing updated FieldValues for Field {0}..."
 msgstr "Menyimpan ViidValue yang diperbarui untuk bidang {0} ..."
 
-#: metabase/models/field_values.clj:359
+#: metabase/models/field_values.clj:360
 msgid "Storing FieldValues for Field {0}..."
 msgstr "Menyimpan VAIDVALUES untuk bidang {0} ..."
 
@@ -9510,7 +9508,7 @@ msgstr "Lebih banyak sinar-X"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableVisualization.jsx:115
 #: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:141
-#: metabase/pulse/render/body.clj:944 metabase/pulse/render/body.clj:945
+#: metabase/pulse/render/body.clj:939 metabase/pulse/render/body.clj:940
 msgid "No results"
 msgstr "Tidak ada hasil"
 
@@ -9618,7 +9616,7 @@ msgstr "ID Dataset."
 msgid "toucanSightings"
 msgstr "ToucansieSt"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:76
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:69
 #: frontend/src/metabase/entities/databases/big-query-fields.js:101
 msgid "Client ID"
 msgstr "ID Klien."
@@ -9699,7 +9697,7 @@ msgstr "my-cluster-name.abcd1234.us-ast-1.redshift.amazonaws.com"
 msgid "toucan_sightings"
 msgstr "Toucan_Sightings."
 
-#: metabase/models/collection.clj:1142
+#: metabase/models/collection.clj:1157
 msgid "default"
 msgstr "bawaan"
 
@@ -9719,7 +9717,7 @@ msgstr "BirdsOfTheWorld"
 msgid "Database instance name"
 msgstr "nama instance Database"
 
-#: metabase/pulse/render/body.clj:419
+#: metabase/pulse/render/body.clj:420
 msgid "N/A"
 msgstr "N/A"
 
@@ -9763,20 +9761,19 @@ msgstr "Sharing"
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:25
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:33
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:42
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:329
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:365
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:394
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:410
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:420
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:436
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:332
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:368
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:397
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:413
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:423
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:439
 #: frontend/src/metabase/visualizations/lib/settings/nested.js:85
-#: frontend/src/metabase/visualizations/lib/settings/series.js:163
+#: frontend/src/metabase/visualizations/lib/settings/series.js:164
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:171
 #: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:121
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:127
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:133
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:139
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:145
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:128
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:141
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:147
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:63
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:69
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:7
@@ -9788,25 +9785,25 @@ msgstr "Sharing"
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:25
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:31
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:37
-#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:43
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:44
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:27
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:38
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:43
 msgid "Display"
 msgstr "Tampilan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:498
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:534
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:549
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:566
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:580
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:589
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:599
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:609
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:619
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:628
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:643
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:652
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:501
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:537
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:552
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:569
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:583
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:592
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:602
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:612
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:622
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:631
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:646
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:655
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:22
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:33
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:48
@@ -9874,7 +9871,7 @@ msgstr "Dasbor tim Anda yang paling penting pergi ke sini"
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
 msgstr "Pin dashboard di {0} agar mereka muncul di ruang ini untuk semua orang"
 
-#: metabase/db/liquibase.clj:212
+#: metabase/db/liquibase.clj:245
 msgid "Unable to release the Liquibase lock after a migration failure"
 msgstr "Tidak dapat melepaskan kunci livisibase setelah kegagalan migrasi"
 
@@ -10032,7 +10029,7 @@ msgstr "Visualisasi ini mengharuskan Anda untuk mengelompokkan bidang."
 msgid "Date style"
 msgstr "Gaya tanggal"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:205
+#: frontend/src/metabase/visualizations/lib/settings/column.js:204
 msgid "Date separators"
 msgstr "Pemisah Tanggal"
 
@@ -10040,7 +10037,7 @@ msgstr "Pemisah Tanggal"
 msgid "Abbreviate names of days and months"
 msgstr "Singkatan nama hari dan bulan"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:235
+#: frontend/src/metabase/visualizations/lib/settings/column.js:233
 msgid "Show the time"
 msgstr "Tunjukkan waktu"
 
@@ -10056,27 +10053,27 @@ msgstr "HH: mm: ss"
 msgid "HH:MM:SS.MS"
 msgstr "HH: mm: ss.ms"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:251
+#: frontend/src/metabase/visualizations/lib/settings/column.js:248
 msgid "Time style"
 msgstr "Gaya waktu"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:302
+#: frontend/src/metabase/visualizations/lib/settings/column.js:297
 msgid "Unit of currency"
 msgstr "Satuan mata uang"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:318
+#: frontend/src/metabase/visualizations/lib/settings/column.js:312
 msgid "Currency label style"
 msgstr "Gaya label mata uang"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:357
+#: frontend/src/metabase/visualizations/lib/settings/column.js:350
 msgid "Where to display the unit of currency"
 msgstr "Di mana menampilkan unit mata uang"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:389
+#: frontend/src/metabase/visualizations/lib/settings/column.js:380
 msgid "Minimum number of decimal places"
 msgstr "Jumlah minimum tempat desimal"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:366
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:369
 msgid "Stacked chart type"
 msgstr "Tipe Bagan Stacked."
 
@@ -10097,7 +10094,7 @@ msgid "Show dots on lines"
 msgstr "Tunjukkan titik-titik pada garis"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ChartColorSettings/ChartColorSettings.tsx:160
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:444
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:447
 #: frontend/src/metabase/visualizations/lib/settings/series.js:96
 #: frontend/src/metabase/visualizations/lib/settings/series.js:134
 msgid "Auto"
@@ -10131,15 +10128,15 @@ msgstr "Rentang Gauge."
 msgid "Field to show"
 msgstr "Bidang untuk menunjukkan"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:139
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:140
 msgid "last {0}"
 msgstr "terakhir {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:211
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:212
 msgid "{0} was {1} {2}"
 msgstr "{0} adalah {1} {2}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:77
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:78
 msgid "Group by a time field to see how this has changed over time"
 msgstr "Grup berdasarkan bidang waktu untuk melihat bagaimana ini telah berubah seiring waktu"
 
@@ -10165,7 +10162,7 @@ msgid "Conditional Formatting"
 msgstr "Pemformatan bersyarat"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:129
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:275
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:276
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:242
 msgid "Column title"
 msgstr "Judul Kolom."
@@ -10177,23 +10174,23 @@ msgstr "Tampilkan grafik mini bar"
 
 #: frontend/src/metabase/dashboard/actions/cards.js:158
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:146
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:259
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:260
 msgid "Link"
 msgstr "Tautan"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:151
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:264
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:265
 msgid "Email link"
 msgstr "Tautan email"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:155
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:268
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:269
 msgid "Image"
 msgstr "Gambar"
 
 #: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:84
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:159
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:272
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:273
 msgid "Automatic"
 msgstr "Otomatis"
 
@@ -10202,7 +10199,7 @@ msgid "View as link or image"
 msgstr "Lihat sebagai tautan atau gambar"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:176
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:289
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:290
 msgid "Link text"
 msgstr "Tautan teks"
 
@@ -10396,7 +10393,7 @@ msgstr "Value Field diperbolehkan untuk bidang ini."
 msgid "FieldValues are NOT allowed for this Field."
 msgstr "Value Field tidak diizinkan untuk bidang ini."
 
-#: metabase/models/field_values.clj:416
+#: metabase/models/field_values.clj:417
 msgid "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
 msgstr "Bidang {0} '' {1} '' harus memiliki nilai Field dan termasuk dalam basis data dengan nilai lapangan yang sesuai permintaan."
 
@@ -11783,7 +11780,7 @@ msgstr "Pernyataan BigQuery tidak dapat diparameterisasi!"
 msgid "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."
 msgstr "Peringatan: Druid tidak mengizinkan limitspec dalam kueri seri waktu. Mengabaikan klausa batas."
 
-#: metabase/driver/snowflake.clj:214
+#: metabase/driver/snowflake.clj:220
 msgid "Invalid Snowflake connection details: missing DB name."
 msgstr "Detail Koneksi Snowflake Tidak Valid: Nama DB yang hilang."
 
@@ -11854,7 +11851,7 @@ msgstr "Nilai lebih besar dari {1} tidak diizinkan."
 #. we need the Database instance no matter what (in order to compare details hash with cached value)
 #. passed in
 #. look up by ID
-#: metabase/driver/sql_jdbc/connection.clj:202
+#: metabase/driver/sql_jdbc/connection.clj:217
 #: metabase/query_processor/store.clj:169
 msgid "Database {0} does not exist."
 msgstr "Basis data {0} tidak ada."
@@ -11974,7 +11971,7 @@ msgstr "Duplikat \"{0}\""
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:315
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:26
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:31
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:200
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:188
 #: metabase/api/dashboard.clj:264
 msgid "Duplicate"
 msgstr "Duplikat"
@@ -12090,7 +12087,7 @@ msgstr "Tidak sah"
 msgid "Add a time"
 msgstr "Tambahkan waktu"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:197
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:198
 msgid "Nothing to compare for the previous {0}."
 msgstr "Tidak ada yang bisa dibandingkan dengan {0} sebelumnya."
 
@@ -12138,7 +12135,7 @@ msgstr "Jika Anda memutuskan untuk terus menggunakan H2, pastikan untuk membuat 
 msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information."
 msgstr "Lihat https://metabase.com/docs/latest/operations-guide/start.html#migrasi-drom-using-the-h2-database-to-mysql-or-postgres untuk informasi lebih lanjut."
 
-#: metabase/db/setup.clj:96
+#: metabase/db/setup.clj:97
 msgid "Unable to connect to Metabase {0} DB."
 msgstr "Tidak dapat terhubung ke metabase {0} dB."
 
@@ -12238,11 +12235,11 @@ msgstr "Kesalahan dalam perintah metabot"
 msgid "Websocket associated with this Slack event is different from the websocket we're currently using."
 msgstr "Webset yang terkait dengan peristiwa slack ini berbeda dari WebSocket yang sedang kami gunakan."
 
-#: metabase/models/field_values.clj:344
+#: metabase/models/field_values.clj:345
 msgid "FieldValues for Field {0} remain unchanged. Skipping..."
 msgstr "Value FieldValue untuk bidang {0} tetap tidak berubah. Melewatkan ..."
 
-#: metabase/models/interface.clj:97
+#: metabase/models/interface.clj:98
 msgid "Unable to normalize:"
 msgstr "Tidak dapat menormalkan:"
 
@@ -12250,27 +12247,27 @@ msgstr "Tidak dapat menormalkan:"
 msgid "Could not find matching Field ID for target:"
 msgstr "Tidak dapat menemukan ID bidang yang cocok untuk target:"
 
-#: metabase/plugins.clj:29
+#: metabase/plugins.clj:30
 msgid "Metabase does not have permissions to write to plugins directory {0}"
 msgstr "Metabase tidak memiliki izin untuk menulis ke direktori plugin {0}"
 
-#: metabase/plugins.clj:36
+#: metabase/plugins.clj:37
 msgid "Metabase cannot use the plugins directory {0}"
 msgstr "Metabase tidak dapat menggunakan direktori plugin {0}"
 
-#: metabase/plugins.clj:38
+#: metabase/plugins.clj:39
 msgid "Please make sure the directory exists and that Metabase has permission to write to it."
 msgstr "Pastikan direktori ada dan metabase itu memiliki izin untuk menulis ke sana."
 
-#: metabase/plugins.clj:39
+#: metabase/plugins.clj:40
 msgid "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
 msgstr "Anda dapat mengubah penggunaan metabase direktori untuk modul dengan mengatur variabel lingkungan MB_Plugins_dir."
 
-#: metabase/plugins.clj:40
+#: metabase/plugins.clj:41
 msgid "Falling back to a temporary directory for now."
 msgstr "Jatuh kembali ke direktori sementara untuk saat ini."
 
-#: metabase/plugins.clj:45
+#: metabase/plugins.clj:46
 msgid "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
 msgstr "Metabase tidak dapat menulis ke direktori sementara. Harap atur MB_plugins_dir ke direktori yang dapat ditulis dan restart metabase."
 
@@ -12278,11 +12275,11 @@ msgstr "Metabase tidak dapat menulis ke direktori sementara. Harap atur MB_plugi
 msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
 msgstr "Spark-deps.jar tidak lagi dibutuhkan oleh Metabase 1.0+. Anda dapat menghapusnya dari direktori plugins."
 
-#: metabase/plugins.clj:155
+#: metabase/plugins.clj:163
 msgid "Failied to initialize plugin {0}"
 msgstr "Kegunaan untuk menginisialisasi plugin {0}"
 
-#: metabase/plugins.clj:158
+#: metabase/plugins.clj:166
 msgid "Loading plugins in {0}..."
 msgstr "Memuat Plugin di {0} ..."
 
@@ -12334,11 +12331,11 @@ msgstr "{0} Ketergantungan {1} Puas? {2}"
 msgid "Plugins with unsatisfied deps: {0}"
 msgstr "Plugin dengan deps yang tidak puas: {0}"
 
-#: metabase/util/files.clj:82
+#: metabase/util/files.clj:84
 msgid "Extract file {0} -> {1}"
 msgstr "Ekstrak file {0} -> {1}"
 
-#: metabase/util/files.clj:112
+#: metabase/util/files.clj:114
 msgid "Resource does not exist."
 msgstr "Sumber daya tidak ada."
 
@@ -12688,11 +12685,11 @@ msgstr "Aktifkan kembali {0}?"
 msgid "We couldn’t send them an email invitation, so make sure to tell them to log in using {0} and this password we’ve generated for them:"
 msgstr "Kami tidak dapat mengirim mereka undangan email, jadi pastikan untuk memberi tahu mereka untuk masuk menggunakan {0} dan kata sandi ini yang kami hasilkan untuk mereka:"
 
-#: frontend/src/metabase/entities/collections/collections.ts:33
+#: frontend/src/metabase/entities/collections/collections.js:30
 msgid "collection"
 msgstr "koleksi"
 
-#: frontend/src/metabase/entities/collections/collections.ts:34
+#: frontend/src/metabase/entities/collections/collections.js:31
 msgid "collections"
 msgstr "Koleksi"
 
@@ -12839,7 +12836,7 @@ msgstr "Kesalahan ketahuan berjalan {0}"
 msgid "Request canceled, canceling future"
 msgstr "Permintaan dibatalkan, membatalkan masa depan"
 
-#: metabase/driver/sql_jdbc/connection.clj:131
+#: metabase/driver/sql_jdbc/connection.clj:146
 msgid "Closing old connection pool for database {0} ..."
 msgstr "Menutup kumpulan koneksi lama untuk basis data {0} ..."
 
@@ -13265,7 +13262,7 @@ msgstr "Ini biasanya cukup cepat tetapi tampaknya memakan waktu saat ini."
 msgid "Combo"
 msgstr "Kombo"
 
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:315
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:317
 msgid "Row"
 msgstr "Baris"
 
@@ -13353,7 +13350,7 @@ msgstr "Tidak dapat menemukan driver {0}."
 msgid "Abstract drivers cannot derive from concrete parent drivers."
 msgstr "ABSTRAK Driver tidak dapat berasal dari driver induk beton."
 
-#: metabase/driver/mysql.clj:467
+#: metabase/driver/mysql.clj:481
 msgid "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."
 msgstr "Anda mungkin perlu menambahkan 'TrustServerCertificate = true' ke opsi koneksi tambahan untuk terhubung dengan SSL."
 
@@ -13399,7 +13396,7 @@ msgstr "Tabel Chaning & Nama Lapangan Strategi humanisasi dari '' {0} '' ke '' {
 msgid "Error saving task history"
 msgstr "Kesalahan menyimpan riwayat tugas"
 
-#: metabase/plugins.clj:105
+#: metabase/plugins.clj:113
 msgid "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory."
 msgstr "Spark-deps.jar tidak lagi dibutuhkan oleh Metabase 0.32.0+. Anda dapat menghapusnya dari direktori plugins."
 
@@ -13407,7 +13404,7 @@ msgstr "Spark-deps.jar tidak lagi dibutuhkan oleh Metabase 0.32.0+. Anda dapat m
 msgid "Using NEWLY CREATED classloader as shared context classloader: {0}"
 msgstr "Menggunakan classloader yang baru dibuat sebagai classloader konteks bersama: {0}"
 
-#: metabase/util/files.clj:95
+#: metabase/util/files.clj:97
 msgid "Failed to copy file"
 msgstr "Gagal menyalin file"
 
@@ -13424,15 +13421,15 @@ msgstr "Situs-URL tidak valid; mengembalikan nihil untuk saat ini. Akan diatur u
 msgid "More results have been included as a file attachment"
 msgstr "Lebih banyak hasil telah dimasukkan sebagai lampiran file"
 
-#: metabase/pulse/render/body.clj:961
+#: metabase/pulse/render/body.clj:956
 msgid "This question has been included as a file attachment"
 msgstr "Pertanyaan ini telah dimasukkan sebagai lampiran file"
 
-#: metabase/pulse/render/body.clj:973
+#: metabase/pulse/render/body.clj:968
 msgid "We were unable to display this Pulse."
 msgstr "Kami tidak dapat menampilkan pulsa ini."
 
-#: metabase/pulse/render/body.clj:975
+#: metabase/pulse/render/body.clj:970
 msgid "Please view this card in Metabase."
 msgstr "Silakan lihat kartu ini di Metabase."
 
@@ -13898,16 +13895,16 @@ msgstr "(kosong)"
 msgid "Goal line"
 msgstr "Garis gawang"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:395
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:398
 msgid "Trend line"
 msgstr "Garis tren"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:411
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:414
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:163
 msgid "Show values on data points"
 msgstr "Tampilkan nilai pada titik data"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:421
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:424
 msgid "Values to show"
 msgstr "Nilai untuk menunjukkan."
 
@@ -13915,7 +13912,7 @@ msgstr "Nilai untuk menunjukkan."
 msgid "As many as can fit nicely"
 msgstr "Sebanyak yang bisa pas dengan baik"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:429
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:432
 #: metabase/driver/util.clj:283
 msgid "All"
 msgstr "Semua"
@@ -13956,7 +13953,7 @@ msgstr "Target DB sudah diisi!"
 msgid "System info:n {0}"
 msgstr "Info Sistem: n {0}"
 
-#: metabase/db/setup.clj:142
+#: metabase/db/setup.clj:143
 msgid "Database setup"
 msgstr "Pengaturan Basis Data"
 
@@ -14005,7 +14002,7 @@ msgstr "Tidak dapat menjalankan kueri: Parameter yang diperlukan hilang: {0}"
 msgid "Don''t know how to parse {0} {1}"
 msgstr "Jangan tahu cara menguraikan {0} {1}"
 
-#: metabase/driver/sql/util.clj:77
+#: metabase/driver/sql/util.clj:78
 msgid "Don''t know how to alias {0}, expected an Identifier."
 msgstr "Jangan tahu cara alias {0}, diharapkan pengidentifikasi."
 
@@ -14015,7 +14012,7 @@ msgstr "Jangan tahu cara alias {0}, diharapkan pengidentifikasi."
 msgid "Don''t know how to unprepare values of class {0}"
 msgstr "Jangan tahu cara mengucapkan nilai-nilai kelas {0}"
 
-#: metabase/driver/sql_jdbc/connection.clj:119
+#: metabase/driver/sql_jdbc/connection.clj:134
 msgid "Creating new connection pool for {0} database {1} ..."
 msgstr "Membuat kumpulan koneksi baru untuk {0} basis data {1} ..."
 
@@ -14039,7 +14036,7 @@ msgstr "Gagal mengatur zona waktu '' {0} ''"
 msgid "Database connection error"
 msgstr "Kesalahan koneksi basis data"
 
-#: metabase/models/interface.clj:60
+#: metabase/models/interface.clj:61
 msgid "Error parsing JSON"
 msgstr "Error parsing json."
 
@@ -14172,7 +14169,7 @@ msgstr "Ada penghematan kesalahan"
 msgid "OK"
 msgstr "Oke"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:68
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:63
 msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
 msgstr "Untuk memungkinkan pengguna masuk dengan Google Anda harus memberikan Metabase sebagai ID Klien Aplikasi Pengembang Google. Hanya perlu beberapa langkah dan instruksi tentang cara membuat kunci dapat ditemukan {0}."
 
@@ -14277,7 +14274,7 @@ msgstr "{0} untuk mendapatkan kode auth."
 
 #: frontend/src/metabase/components/HeaderModal.jsx:44
 #: frontend/src/metabase/entities/databases/forms.js:227
-#: metabase/models/collection.clj:1142
+#: metabase/models/collection.clj:1157
 msgid "or"
 msgstr "atau"
 
@@ -14304,7 +14301,7 @@ msgid "Metabase can scan the values present in each field in this database to en
 msgstr "Metabase dapat memindai nilai yang ada di setiap bidang dalam database ini untuk mengaktifkan filter kotak centang di dashboard dan pertanyaan. Ini bisa menjadi proses yang agak intensif sumber daya, terutama jika Anda memiliki basis data yang sangat besar."
 
 #: frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx:94
-#: frontend/src/metabase/entities/questions/forms.js:30
+#: frontend/src/metabase/entities/questions/forms.js:24
 #: frontend/src/metabase/nav/utils/model-names.ts:10
 #: frontend/src/metabase/search/components/InfoText.jsx:73
 #: frontend/src/metabase/search/components/InfoText.jsx:76
@@ -14930,23 +14927,23 @@ msgstr "Pilih kunci asing"
 msgid "Hi, {0}. Nice to meet you!"
 msgstr "Hai, {0}. Senang berkenalan dengan Anda!"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:257
+#: frontend/src/metabase/visualizations/lib/settings/column.js:253
 msgid "12-hour clock"
 msgstr "Jam 12 jam"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:261
+#: frontend/src/metabase/visualizations/lib/settings/column.js:257
 msgid "24-hour clock"
 msgstr "Jam 24 jam"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:331
+#: frontend/src/metabase/visualizations/lib/settings/column.js:324
 msgid "Symbol"
 msgstr "Simbol"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:362
+#: frontend/src/metabase/visualizations/lib/settings/column.js:354
 msgid "In the column heading"
 msgstr "Dalam judul kolom"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:363
+#: frontend/src/metabase/visualizations/lib/settings/column.js:355
 msgid "In every table cell"
 msgstr "Di setiap sel tabel"
 
@@ -14954,12 +14951,12 @@ msgstr "Di setiap sel tabel"
 msgid "Value formatting"
 msgstr "Pemformatan nilai"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:446
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:449
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:180
 msgid "Full"
 msgstr "Penuh"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:199
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:200
 msgid "No change from last {0}"
 msgstr "Tidak ada perubahan dari {0}"
 
@@ -15058,7 +15055,7 @@ msgstr "Nonaktifkan Komit Otomatis ..."
 msgid "Set default db connection with connection pool..."
 msgstr "Setel koneksi db default dengan kacamata koneksi ..."
 
-#: metabase/db/setup.clj:102
+#: metabase/db/setup.clj:103
 msgid "Successfully verified {0} {1} application database connection."
 msgstr "Koneksi database berhasil diverifikasi {0} {1}."
 
@@ -15071,11 +15068,11 @@ msgstr "Jangan Tahu Cara Parse Tanggal Param '' {0} '' - Format Tidak Valid"
 msgid "The sub-query from referenced question #{0} failed with the following error: {1}"
 msgstr "Sub-kueri dari pertanyaan referensi # {0} Gagal dengan kesalahan berikut: {1}"
 
-#: metabase/driver/mysql.clj:87
+#: metabase/driver/mysql.clj:92
 msgid "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
 msgstr "Peringatan: Metabase hanya secara resmi mendukung MySQL {0} / mariaadb {1} dan di atas."
 
-#: metabase/driver/mysql.clj:91
+#: metabase/driver/mysql.clj:96
 msgid "All Metabase features may not work properly when using an unsupported version."
 msgstr "Semua fitur metabase mungkin tidak berfungsi dengan baik saat menggunakan versi yang tidak didukung."
 
@@ -15107,15 +15104,15 @@ msgstr "Gagal mengatur zona waktu '' {0} '' untuk {1} basis data"
 msgid "Error setting transaction isolation level for {0} database to {1}"
 msgstr "Pengaturan kesalahan tingkat isolasi transaksi untuk basis data {0} ke {1}"
 
-#: metabase/driver/presto_jdbc.clj:440 metabase/driver/sql_jdbc/execute.clj:198
+#: metabase/driver/presto_jdbc.clj:431 metabase/driver/sql_jdbc/execute.clj:198
 msgid "Error setting connection to read-only"
 msgstr "Kesalahan pengaturan koneksi ke read-only"
 
-#: metabase/driver/redshift.clj:146 metabase/driver/sql_jdbc/execute.clj:208
+#: metabase/driver/redshift.clj:144 metabase/driver/sql_jdbc/execute.clj:208
 msgid "Error setting default holdability for connection"
 msgstr "Kesalahan mengatur pemegang default untuk koneksi"
 
-#: metabase/driver/oracle.clj:446 metabase/driver/oracle.clj:463
+#: metabase/driver/oracle.clj:463 metabase/driver/oracle.clj:480
 msgid "Error setting result set fetch direction to FETCH_FORWARD"
 msgstr "Pengaturan pengaturan kesalahan mengatur ambil arah ke fetch_forward"
 
@@ -15127,11 +15124,11 @@ msgstr "Kueri dibatalkan, menelepon decorystatement.cancel ()"
 msgid "Failed to connect to database"
 msgstr "Gagal terhubung ke basis data"
 
-#: metabase/driver/util.clj:458
+#: metabase/driver/util.clj:474
 msgid "Unable to determine connection properties for driver {0}"
 msgstr "Tidak dapat menentukan properti koneksi untuk driver {0}"
 
-#: metabase/models/field_values.clj:307
+#: metabase/models/field_values.clj:308
 msgid "Error fetching field values"
 msgstr "Kesalahan Mengambil Nilai Bidang"
 
@@ -15147,7 +15144,7 @@ msgstr "Deskripsi Defsetting String harus memiliki `: visibilty``: internal`, `:
 msgid "Setting {0} is internal"
 msgstr "Pengaturan {0} internal"
 
-#: metabase/plugins.clj:139
+#: metabase/plugins.clj:147
 msgid "Loading local plugin manifest at {0}"
 msgstr "Memuat Plugin Lokal Manifes di {0}"
 
@@ -15172,7 +15169,6 @@ msgstr "Render kartu pulsa dengan jenis grafik {0} dan render-type {1}"
 msgid "FIXME: These aren''t valid temporal literals: {0} {1}. Why are we attempting to format them as such?"
 msgstr "FixMe: Ini bukan literal temporal yang valid: {0} {1}. Mengapa kita berusaha memformatnya dengan demikian?"
 
-#: metabase/query_processor/context/default.clj:59
 #: metabase/query_processor/pivot.clj:185
 msgid "Error reducing result rows"
 msgstr "Kesalahan mengurangi baris hasil"
@@ -15362,7 +15358,7 @@ msgstr "Opsi lokalisasi"
 msgid "This database doesn't have any tables."
 msgstr "Basis data ini tidak memiliki tabel."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:256
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:252
 msgid "This field only accepts a single value because it's used in a SQL query."
 msgstr "Bidang ini hanya menerima nilai tunggal karena digunakan dalam kueri SQL."
 
@@ -15412,7 +15408,7 @@ msgid "SSH Key"
 msgstr "Ssh kunci."
 
 #: frontend/src/metabase/entities/databases/forms.js:76
-#: metabase/driver/mysql.clj:107
+#: metabase/driver/mysql.clj:112
 msgid "Server SSL certificate chain"
 msgstr "Server SSL Rantai Sertifikat"
 
@@ -15637,11 +15633,11 @@ msgstr "Koleksi pribadi harus di namespace default"
 msgid "You cannot move a Collection to a different namespace once it has been created."
 msgstr "Anda tidak dapat memindahkan koleksi ke namespace yang berbeda setelah dibuat."
 
-#: metabase/models/collection.clj:1134 metabase/models/permissions.clj:925
+#: metabase/models/collection.clj:1149 metabase/models/permissions.clj:925
 msgid "Collection does not exist."
 msgstr "Koleksi tidak ada."
 
-#: metabase/models/collection.clj:1140
+#: metabase/models/collection.clj:1155
 msgid "A {0} can only go in Collections in the {1} namespace."
 msgstr "A {0} hanya bisa masuk dalam koleksi di namespace {1}."
 
@@ -15788,7 +15784,6 @@ msgid "User attribute configuration (optional)"
 msgstr "Konfigurasi atribut pengguna (opsional)"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:143
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:110
 #: frontend/src/metabase/admin/settings/containers/PremiumEmbeddingLicensePage/PremiumEmbeddingLicensePage.tsx:88
 #: frontend/src/metabase/admin/settings/utils.js:14
 msgid "Using {0}"
@@ -15861,12 +15856,12 @@ msgid "SAML Identity Provider URL"
 msgstr "URL Penyedia Identitas SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:121
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:98
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
 msgid "SAML Identity Provider Certificate"
 msgstr "Sertifikat Penyedia Identitas SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:128
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:104
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:105
 msgid "SAML Application Name"
 msgstr "Nama Aplikasi SAML"
 
@@ -15875,12 +15870,12 @@ msgid "Sign SSO requests (optional)"
 msgstr "Masuk permintaan SSO (opsional)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:140
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:109
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:110
 msgid "SAML Keystore Path"
 msgstr "Path Saml keystore."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:144
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:114
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:115
 msgid "SAML Keystore Password"
 msgstr "SAML KeyStore Password."
 
@@ -15889,7 +15884,7 @@ msgid "Shh..."
 msgstr "Shh ..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:150
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:120
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:121
 msgid "SAML Keystore Alias"
 msgstr "SAML keystore alias."
 
@@ -15905,13 +15900,13 @@ msgstr "Untuk mengaktifkan ini, Anda harus membuat pemetaan untuk memberi tahu m
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:172
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:173
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:145
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:146
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:208
 msgid "Group Name"
 msgstr "Nama grup"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:179
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:151
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:152
 msgid "Group attribute name"
 msgstr "Nama atribut grup"
 
@@ -15931,19 +15926,19 @@ msgstr "Mengizinkan pengguna masuk melalui penyedia identitas SAML."
 msgid "Allows users to login via a JWT Identity Provider."
 msgstr "Mengizinkan pengguna masuk melalui penyedia Identitas JWT."
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:43
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:44
 msgid "Enable Password Authentication"
 msgstr "Aktifkan otentikasi kata sandi"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:44
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:45
 msgid "When enabled, users can additionally log in with email and password."
 msgstr "Ketika diaktifkan, pengguna juga dapat masuk dengan email dan kata sandi."
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:54
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:55
 msgid "Notify admins of new SSO users"
 msgstr "Beri tahu admin pengguna SSO baru"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:55
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:56
 msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
 msgstr "Ketika diaktifkan, administrator akan menerima email pertama kali pengguna menggunakan Single Sign-On."
 
@@ -15959,15 +15954,15 @@ msgstr "dokumentasi"
 msgid "SAML Identity Provider URI"
 msgstr "Provider identitas SAML URI"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:164
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:165
 msgid "JWT Authentication"
 msgstr "Otentikasi JWT."
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:170
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:171
 msgid "JWT Identity Provider URI"
 msgstr "Provider Identitas JWT URI"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:179
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
 msgid "String used by the JWT signing key"
 msgstr "String yang digunakan oleh tombol penandatanganan JWT"
 
@@ -16469,28 +16464,28 @@ msgstr "Kolom yang tersedia"
 msgid "user attribute"
 msgstr "Atribut Pengguna"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCard.tsx:310
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:278
 #: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:52
 msgid "Text card"
 msgstr "Kartu teks"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:168
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:388
 msgid "Click behavior"
 msgstr "Klik Perilaku"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:30
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:431
 msgid "Visualization options"
 msgstr "Opsi visualisasi"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:74
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:471
 msgid "Edit series"
 msgstr "Edit Seri"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:74
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:471
 msgid "Add series"
 msgstr "Tambahkan Seri"
 
-#: frontend/src/metabase/dashboard/components/DashCard/ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay.tsx:49
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:547
 msgid "On click"
 msgstr "Pada Klik"
 
@@ -16511,7 +16506,7 @@ msgstr "Tambahkan pertanyaan"
 msgid "You're editing this dashboard."
 msgstr "Anda mengedit dasbor ini."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:171
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:167
 msgid "Column to filter on"
 msgstr "Kolom untuk menyaring"
 
@@ -16803,7 +16798,7 @@ msgstr "Memeriksa nilai atau nilai kolom nomor untuk melihat apakah mereka berad
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:713
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:726
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:747
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:775
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:777
 msgid "Created At"
 msgstr "Dibuat di"
 
@@ -16880,8 +16875,8 @@ msgid "Linked filters"
 msgstr "Filter terkait."
 
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:81
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:629
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:653
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:632
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:656
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:115
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:139
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:39
@@ -17167,11 +17162,11 @@ msgstr "Folder atas"
 msgid ":parameters must be a sequence of maps with String :id keys"
 msgstr ": Parameter harus berurutan peta dengan string: kunci ID"
 
-#: metabase/models/field_values.clj:76
+#: metabase/models/field_values.clj:77
 msgid "Invalid human-readable-values: values must be a sequence; each item must be nil or a string"
 msgstr "Nilai-nilai yang dapat dibaca manusia tidak valid: Nilai harus berurutan; Setiap item harus nol atau string"
 
-#: metabase/models/field_values.clj:149
+#: metabase/models/field_values.clj:150
 msgid ":values must be present to fetch :human_readable_values"
 msgstr ": Nilai harus hadir untuk mengambil: human_readable_values"
 
@@ -17188,7 +17183,7 @@ msgstr "Nama cuplikan tidak dapat memasukkan '}' atau mulai dengan spasi"
 msgid "Error executing chain filter query"
 msgstr "Kesalahan mengeksekusi kueri filter rantai"
 
-#: metabase/models/field_values.clj:183
+#: metabase/models/field_values.clj:184
 #: metabase/models/params/chain_filter.clj:597
 msgid "Field {0} does not exist."
 msgstr "Bidang {0} tidak ada."
@@ -17306,11 +17301,11 @@ msgid "Skipping update, automatic Field value updates are disabled for Database 
 msgstr "Pembaruan Skipping, pembaruan nilai bidang otomatis dinonaktifkan untuk basis data {0}."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:132
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:91
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
 msgid "SAML Identity Provider Issuer"
 msgstr "Penerbit Penyedia Identitas SAML"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:83
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:84
 msgid "SAML Identity Provider SSO URL"
 msgstr "SAML Identity Provider SSO URL"
 
@@ -17527,7 +17522,7 @@ msgstr "Baris {0} - {1} dari {2}"
 msgid "Drag fields here"
 msgstr "Seret bidang di sini"
 
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:441
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:443
 msgid "Percentage"
 msgstr "Persentase"
 
@@ -17583,7 +17578,7 @@ msgstr "Mengurangi warna"
 msgid "Show total"
 msgstr "Tampilkan total"
 
-#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:44
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:45
 msgid "Total color"
 msgstr "Total warna"
 
@@ -17879,19 +17874,19 @@ msgstr "Haruskah pemberitahuan email baru dikirim ke Admin, untuk semua pengguna
 msgid "New SSO user created: {0} ({1})"
 msgstr "Pengguna SSO baru dibuat: {0} ({1})"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:234
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:235
 msgid "Cannot convert a {0} to a {1}"
 msgstr "Tidak dapat mengkonversi {0} ke {1}"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:369
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:370
 msgid "Cannot extract {0} from a TIME field"
 msgstr "Tidak dapat mengekstraksi {0} dari bidang waktu"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:377
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:378
 msgid "Cannot extract {0} from a DATE field"
 msgstr "Tidak dapat mengekstrak {0} dari bidang tanggal"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:384
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:385
 msgid "Cannot extract {0} from a DATETIME or TIMESTAMP"
 msgstr "Tidak dapat mengekstrak {0} dari datetime atau timestamp"
 
@@ -17901,7 +17896,7 @@ msgstr "Tidak dapat mengekstrak {0} dari datetime atau timestamp"
 msgid "Invalid query: you cannot add a {0} to a {1} column."
 msgstr "Kueri tidak valid: Anda tidak dapat menambahkan {0} ke kolom {1}."
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:735
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:748
 msgid "It doesn''t make sense to convert between DATEs and TIMEs!"
 msgstr "Itu tidak masuk akal untuk mengkonversi antara tanggal dan waktu!"
 
@@ -18041,7 +18036,7 @@ msgstr "Kesalahan Membatalkan kueri dengan ID {0}"
 msgid "Error executing query"
 msgstr "Kesalahan mengeksekusi kueri"
 
-#: metabase/driver/vertica.clj:147
+#: metabase/driver/vertica.clj:166
 msgid "Failed to fetch materialized views for this database"
 msgstr "Gagal mengambil tampilan yang terwujud untuk basis data ini"
 
@@ -18070,7 +18065,7 @@ msgstr "Anda tidak dapat menentukan nilai untuk {0} jika sudah diatur di JWT."
 msgid "Error compiling HoneySQL form"
 msgstr "Kesalahan Mengompilasi Formulir HoneySQL"
 
-#: metabase/driver/sql_jdbc/connection.clj:253
+#: metabase/driver/sql_jdbc/connection.clj:268
 msgid "Not a valid Database/Database ID/JDBC spec"
 msgstr "Bukan basis data / data basis data yang valid / spesifikasi JDBC"
 
@@ -18320,12 +18315,12 @@ msgstr "Jenis basis data aplikasi yang tidak didukung: {0} saat ini tidak diduku
 msgid "Check the value of MB_DB_CONNECTION_URI."
 msgstr "Periksa nilai MB_DB_Connection_uri."
 
-#: metabase/driver/sql/query_processor.clj:290
-#: metabase/driver/sql/query_processor.clj:310
+#: metabase/driver/sql/query_processor.clj:292
+#: metabase/driver/sql/query_processor.clj:312
 msgid "Driver {0} does not support {1}"
 msgstr "Driver {0} tidak mendukung {1}"
 
-#: metabase/driver/sql/query_processor.clj:367
+#: metabase/driver/sql/query_processor.clj:369
 msgid "No magnitude known for {0}"
 msgstr "Tidak ada besarnya yang dikenal dengan {0}"
 
@@ -18354,11 +18349,11 @@ msgstr "Bermigrasi ke Metabase Cloud."
 msgid "Manage Metabase Cloud"
 msgstr "Kelola Metabase Cloud."
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:258
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:259
 msgid "Show totals"
 msgstr "Menunjukkan total."
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:240
 msgid "Sort order"
 msgstr "Urutkan urutan"
 
@@ -18390,7 +18385,7 @@ msgstr "Tidak valid {0}: breakout yang ditentukan pada indeks {1}, tetapi kami h
 msgid "Error generating pivot queries"
 msgstr "Kesalahan menghasilkan kueri pivot"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:260
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:261
 msgid "Sync Administrator group"
 msgstr "Sinkronkan Grup Administrator."
 
@@ -18460,11 +18455,11 @@ msgstr "Kolom untuk memeriksa."
 msgid "Checks if a column is empty"
 msgstr "Cek apakah kolom kosong"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:104
+#: frontend/src/metabase-lib/expressions/resolver.js:117
 msgid "CASE expects 2 arguments or more"
 msgstr "Kasus mengharapkan 2 argumen atau lebih"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:152
+#: frontend/src/metabase-lib/expressions/resolver.js:165
 msgid "Function {0} expects {1} argument"
 msgid_plural "Function {0} expects {1} arguments"
 msgstr[0] "Fungsi {0} mengharapkan argumen {1}"
@@ -18615,16 +18610,16 @@ msgstr "Tidak ada agregasi pada indeks {0}"
 msgid "Multiple date filters are not supported."
 msgstr "Beberapa filter tanggal tidak didukung."
 
-#: metabase/driver/redshift.clj:282
+#: metabase/driver/redshift.clj:280
 msgid "Error checking schema permissions"
 msgstr "Kesalahan memeriksa skema izin"
 
-#: metabase/driver/presto_jdbc.clj:401 metabase/driver/sql_jdbc/execute.clj:295
+#: metabase/driver/presto_jdbc.clj:392 metabase/driver/sql_jdbc/execute.clj:295
 msgid "Error setting prepared statement fetch direction to FETCH_FORWARD"
 msgstr "Pengaturan kesalahan disiapkan pernyataan ambil arah ke fetch_forward"
 
-#: metabase/driver/presto_jdbc.clj:418 metabase/driver/sql_jdbc/execute.clj:322
-#: metabase/driver/sqlserver.clj:501
+#: metabase/driver/presto_jdbc.clj:409 metabase/driver/sql_jdbc/execute.clj:322
+#: metabase/driver/sqlserver.clj:540
 msgid "Error setting statement fetch direction to FETCH_FORWARD"
 msgstr "Pengaturan kesalahan pernyataan ambil arah ke fetch_forward"
 
@@ -18640,7 +18635,7 @@ msgstr "Otentikasi Endpoint Error."
 msgid "SSH tunnel can only be established for H2 connections using the TCP protocol"
 msgstr "Tunnel SSH hanya dapat dibuat untuk koneksi H2 menggunakan protokol TCP"
 
-#: metabase/driver/sql_jdbc/connection.clj:181
+#: metabase/driver/sql_jdbc/connection.clj:196
 msgid "ssh tunnel for database {0} looks closed; marking pool invalid to reopen it"
 msgstr "Tunnel SSH untuk basis data {0} terlihat tertutup; menandai kolam tidak valid untuk membuka kembali itu"
 
@@ -18793,7 +18788,7 @@ msgstr "Nama Tanya."
 msgid "Collection name"
 msgstr "Nama koleksi"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:248
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:249
 msgid "Group membership filter"
 msgstr "Filter Keanggotaan Grup"
 
@@ -18815,15 +18810,15 @@ msgstr "Menemukan seseorang"
 msgid "Invite someone"
 msgstr "Mengundang seseorang"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:70
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:64
 msgid "here"
 msgstr "di sini"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:77
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:71
 msgid "{your-client-id}.apps.googleusercontent.com"
 msgstr "{your-client-id} .apps.googleusercontent.com"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:82
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:77
 msgid "Domain"
 msgstr "Domain"
 
@@ -18997,12 +18992,12 @@ msgid "Explore results"
 msgstr "Jelajahi hasil."
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:173
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:286
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:287
 msgid "You can use the value of any column here like this: {{COLUMN}}"
 msgstr "Anda dapat menggunakan nilai kolom apa pun di sini seperti ini: {{kolom}}"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:203
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:316
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:317
 msgid "Link URL"
 msgstr "Tautan URL"
 
@@ -19108,7 +19103,7 @@ msgstr "Anda tidak dapat memperbarui pengumpulanMissionSegrvevision!"
 msgid "Invalid Field {0} {1}"
 msgstr "Bidang tidak valid {0} {1}"
 
-#: metabase/models/field.clj:98
+#: metabase/models/field.clj:99
 msgid "Invalid Field {0} {1}: falling back to {2}"
 msgstr "Bidang tidak valid {0} {1}: jatuh kembali ke {2}"
 
@@ -19318,7 +19313,7 @@ msgstr "{0} mengedit ini"
 
 #: enterprise/frontend/src/metabase-enterprise/collections/constants.js:5
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontFilesWidget/utils.ts:8
-#: frontend/src/metabase/plugins/index.ts:105
+#: frontend/src/metabase/plugins/index.ts:100
 msgid "Regular"
 msgstr "Reguler"
 
@@ -19375,7 +19370,7 @@ msgstr "Edit detail"
 msgid "History"
 msgstr "Sejarah"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:461
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:462
 msgid "Every field is hidden right now"
 msgstr "Setiap bidang disembunyikan sekarang"
 
@@ -19392,15 +19387,15 @@ msgstr "Kelola akun cloud Anda, termasuk preferensi penagihan dan pengaturan tek
 msgid "Go to the Metabase Store"
 msgstr "Pergi ke toko metabase"
 
-#: metabase/driver/presto_jdbc.clj:340
+#: metabase/driver/presto_jdbc.clj:331
 msgid "Running statement in describe-schema: {0}"
 msgstr "Pernyataan Menjalankan dalam menggambarkan-skema: {0}"
 
-#: metabase/driver/presto_jdbc.clj:353
+#: metabase/driver/presto_jdbc.clj:344
 msgid "Running statement in all-schemas: {0}"
 msgstr "Pernyataan Menjalankan dalam All-Schemas: {0}"
 
-#: metabase/driver/presto_jdbc.clj:373
+#: metabase/driver/presto_jdbc.clj:364
 msgid "Running statement in describe-table: {0}"
 msgstr "Pernyataan Menjalankan dalam Jelaskan-Tabel: {0}"
 
@@ -19412,11 +19407,11 @@ msgstr "Error parsing json pengaturan {0}: {1}"
 msgid "Plugin ''{0}'' depends on environment variable ''{1}'' being set to something"
 msgstr "Plugin '' {0} '' Tergantung pada variabel lingkungan '' {1} '' sedang diatur ke sesuatu"
 
-#: metabase/pulse/render/body.clj:840
+#: metabase/pulse/render/body.clj:835
 msgid "Down"
 msgstr "Turun"
 
-#: metabase/pulse/render/body.clj:840
+#: metabase/pulse/render/body.clj:835
 msgid "Up"
 msgstr "Ke atas"
 
@@ -19789,7 +19784,7 @@ msgstr "Edit detail dasbor"
 msgid "More options"
 msgstr "Lebih banyak pilihan"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:92
+#: frontend/src/metabase-lib/expressions/resolver.js:105
 msgid "Expecting field but found {0}"
 msgstr "Bidang yang mengharapkan tetapi ditemukan {0}"
 
@@ -20113,7 +20108,7 @@ msgstr "Diblokir: Anda tidak diizinkan menjalankan kueri dengan basis data {0}."
 msgid "BigQueryException executing query"
 msgstr "BigQueryException mengeksekusi kueri"
 
-#: metabase/driver/presto_jdbc.clj:221
+#: metabase/driver/presto_jdbc.clj:212
 msgid "SSL must be enabled to use Kerberos authentication"
 msgstr "SSL harus diaktifkan untuk menggunakan otentikasi Kerberos"
 
@@ -20121,7 +20116,7 @@ msgstr "SSL harus diaktifkan untuk menggunakan otentikasi Kerberos"
 msgid "Cannot parse permissions graph because it is invalid: {0}"
 msgstr "Tidak dapat menguraikan grafik izin karena tidak valid: {0}"
 
-#: metabase/driver/sql_jdbc/connection.clj:186
+#: metabase/driver/sql_jdbc/connection.clj:201
 msgid "Hash of database {0} details changed; marking pool invalid to reopen it"
 msgstr "Hash dari basis data {0} Detail berubah; menandai kolam tidak valid untuk membuka kembali itu"
 
@@ -20338,7 +20333,7 @@ msgstr[0] "{0} Nilai yang berbeda"
 msgid "Getting distinct values..."
 msgstr "Mendapatkan nilai berbeda ..."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:128
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:124
 msgid "You don’t have permission to see this question’s columns."
 msgstr "Anda tidak memiliki izin untuk melihat kolom pertanyaan ini."
 
@@ -20410,15 +20405,15 @@ msgstr "Segmen Tidak Dikenal: {0}"
 msgid "Unknown Field: {0}"
 msgstr "Bidang Tidak Dikenal: {0}"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:133
+#: frontend/src/metabase-lib/expressions/resolver.js:146
 msgid "Unknown function {0}"
 msgstr "Fungsi tidak diketahui {0}"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:138
+#: frontend/src/metabase-lib/expressions/resolver.js:151
 msgid "Expecting {0} but found function {1} returning {2}"
 msgstr "Mengharapkan {0} tetapi menemukan fungsi {1} mengembalikan {2}"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:176
+#: frontend/src/metabase-lib/expressions/resolver.js:189
 msgid "Expecting {0} but found {1}"
 msgstr "Mengharapkan {0} tetapi ditemukan {1}"
 
@@ -20634,7 +20629,7 @@ msgid "Model in {0}"
 msgstr "Model dalam {0}"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:164
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:277
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:278
 msgid "Display as"
 msgstr "Tampilan sebagai"
 
@@ -20768,7 +20763,7 @@ msgstr "Cari tipe khusus"
 msgid "Model management"
 msgstr "Manajemen Model."
 
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:130
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:127
 #: frontend/src/metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetManagementSection.jsx:58
 msgid "Edit query definition"
 msgstr "Edit definisi kueri"
@@ -20801,7 +20796,7 @@ msgstr "Kesalahan Preprocessing Source Query Saat Menerapkan GTAP: {0}"
 msgid "Exception caught in :bigquery-cloud-sdk can-connect?"
 msgstr "Pengecualian Tertangkap di: BigQuery-Cloud-SDK Can-Connect?"
 
-#: metabase/driver/bigquery_cloud_sdk.clj:351
+#: metabase/driver/bigquery_cloud_sdk.clj:355
 msgid "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
 msgstr "DB {0} memiliki dataset-id hardcoded; Mengubah pola inklusi dan memperbarui skema tabel"
 
@@ -21014,7 +21009,7 @@ msgstr "Parameter kueri sumber asli yang diharapkan untuk berurutan, dapatkan: {
 msgid "No expression named {0} at this level of the query"
 msgstr "Tidak ada ekspresi bernama {0} pada tingkat kueri ini"
 
-#: metabase/driver/sql/query_processor.clj:477
+#: metabase/driver/sql/query_processor.clj:479
 msgid "Error compiling :field clause: {0}"
 msgstr "Kompilasi Kesalahan: klausa bidang: {0}"
 
@@ -21035,7 +21030,7 @@ msgid "Error setting statement fetch size to fetch-size"
 msgstr "Kesalahan pengaturan pernyataan ambil ukuran untuk mengambil ukuran"
 
 #: metabase/driver/bigquery_cloud_sdk.clj:173
-#: metabase/driver/druid/execute.clj:160 metabase/driver/snowflake.clj:293
+#: metabase/driver/druid/execute.clj:160 metabase/driver/snowflake.clj:311
 #: metabase/driver/sql_jdbc/execute.clj:501
 msgid "Error executing query: {0}"
 msgstr "Kesalahan mengeksekusi kueri: {0}"
@@ -21140,7 +21135,7 @@ msgstr "Saluran Slack bernama `{0}` hilang!"
 msgid "The channel is used for storing images that are included in dashboard subscriptions."
 msgstr "Saluran digunakan untuk menyimpan gambar yang termasuk dalam langganan dasbor."
 
-#: metabase/models/collection.clj:980
+#: metabase/models/collection.clj:995
 msgid "You do not have curate permissions for this Collection."
 msgstr "Anda tidak memiliki izin kurasi untuk koleksi ini."
 
@@ -21152,7 +21147,7 @@ msgstr "Dashboard {0} tidak memiliki dashboardcard dengan ID {1}"
 msgid "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
 msgstr "Menghapus ID rahasia {0} dari aplikasi DB karena database kepunyaan ({1}) sedang dihapus"
 
-#: metabase/models/field.clj:80
+#: metabase/models/field.clj:81
 msgid "Invalid value for Field column {0}: {1} is not a descendant of any of these types: {2}"
 msgstr "Nilai tidak valid untuk kolom bidang {0}: {1} bukan keturunan dari semua jenis ini: {2}"
 
@@ -21248,7 +21243,7 @@ msgstr "Default ke FALSE Jika ada basis data non-default telah selesai menyinkro
 msgid "Alert: {0} has {1}"
 msgstr "Peringatan: {0} memiliki {1}"
 
-#: metabase/pulse/render/body.clj:866 metabase/pulse/render/body.clj:868
+#: metabase/pulse/render/body.clj:861 metabase/pulse/render/body.clj:863
 msgid "Nothing to compare to."
 msgstr "Tidak ada yang bisa dibandingkan."
 
@@ -21320,15 +21315,15 @@ msgstr "Agregasi tidak ada pada indeks {0}"
 msgid "No expression named {0}"
 msgstr "Tidak ada ekspresi bernama {0}"
 
-#: metabase/sample_data.clj:16
+#: metabase/sample_data.clj:51
 msgid "Sample database DB file ''{0}'' cannot be found."
 msgstr "Contoh basis data file db '' {0} '' tidak dapat ditemukan."
 
-#: metabase/sample_data.clj:29
+#: metabase/sample_data.clj:69
 msgid "Loading sample database"
 msgstr "Memuat database sampel"
 
-#: metabase/sample_data.clj:36
+#: metabase/sample_data.clj:77
 msgid "Failed to load sample database"
 msgstr "Gagal memuat basis data sampel"
 
@@ -21916,7 +21911,7 @@ msgid "Most"
 msgstr "Paling"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator.tsx:34
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:428
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:431
 msgid "Some"
 msgstr "Beberapa"
 
@@ -21949,7 +21944,7 @@ msgid "Instead of having your end users wade through your complex raw data, you 
 msgstr "Alih-alih meminta pengguna akhir menjelajahi data mentah yang kompleks, Anda dapat membuat model khusus yang mudah ditemukan, dipahami, dan dijelajahi."
 
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:46
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:210
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:206
 msgid "Learn how"
 msgstr "Belajar bagaimana"
 
@@ -22094,16 +22089,16 @@ msgstr "Kelola basis data"
 msgid "Unbinned"
 msgstr "Unbined"
 
-#: frontend/src/metabase-lib/Dimension.ts:1556
+#: frontend/src/metabase-lib/Dimension.ts:1560
 msgid "Invalid template tag \"{0}\""
 msgstr "Tag kerangka tidak valid \"{0}\""
 
-#: frontend/src/metabase-lib/Dimension.ts:1561
+#: frontend/src/metabase-lib/Dimension.ts:1565
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "Variabel \"{0}\" perlu dipetakan ke bidang."
 
-#: frontend/src/metabase-lib/Dimension.ts:1686
-#: frontend/src/metabase-lib/Dimension.ts:1822
+#: frontend/src/metabase-lib/Dimension.ts:1690
+#: frontend/src/metabase-lib/Dimension.ts:1826
 msgid "Don't bin"
 msgstr "Jangan buang"
 
@@ -22607,13 +22602,13 @@ msgstr "Sumber daya dan dukungan"
 
 #: frontend/src/metabase/components/EntityItem.jsx:141
 #: frontend/src/metabase/core/components/BookmarkToggle/BookmarkToggle.tsx:44
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:83
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:81
 msgid "Remove from bookmarks"
 msgstr "Hapus dari bookmark"
 
 #: frontend/src/metabase/components/EntityItem.jsx:141
 #: frontend/src/metabase/core/components/BookmarkToggle/BookmarkToggle.tsx:44
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:83
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:81
 msgid "Bookmark"
 msgstr "Penanda buku"
 
@@ -22766,7 +22761,7 @@ msgstr "Domain alamat email yang diizinkan untuk Langganan dan Lansiran Dasbor b
 msgid "You do not have permissions to download the results of this query."
 msgstr "Anda tidak memiliki izin untuk mengunduh hasil kueri ini."
 
-#: metabase/driver/snowflake.clj:74
+#: metabase/driver/snowflake.clj:80
 msgid "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect results. Set the Start of Week Setting instead."
 msgstr "Anda tidak boleh menyetel WEEK_START dalam opsi koneksi Snowflake; ini dapat menyebabkan hasil yang salah. Tetapkan Pengaturan Awal Minggu sebagai gantinya."
 
@@ -22827,7 +22822,7 @@ msgstr "Galat saat menentukan nilai untuk parameter {0}: {1}"
 msgid "You cannot update a ApplicationPermissionsRevision!"
 msgstr "Anda tidak dapat memperbarui ApplicationPermissionsRevision!"
 
-#: metabase/models/card.clj:189
+#: metabase/models/card.clj:188
 msgid "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
 msgstr "Filter Bidang Tidak Valid: Bidang {0} milik Basis Data {1}, tetapi kuerinya bertentangan dengan Basis Data {2}"
 
@@ -23229,19 +23224,19 @@ msgstr "Tidak dapat menyelesaikan Bidang {0} dalam konteks analisis otomatis"
 msgid "Error decomposing question: {0}"
 msgstr "Kesalahan saat menguraikan pertanyaan: {0}"
 
-#: metabase/driver/ddl/interface.clj:50
+#: metabase/driver/ddl/interface.clj:54
 msgid "Lack permissions to create {0} schema"
 msgstr "Tidak memiliki izin untuk membuat {0} skema"
 
-#: metabase/driver/ddl/interface.clj:51
+#: metabase/driver/ddl/interface.clj:55
 msgid "Lack permission to create table in schema {0}"
 msgstr "Tidak memiliki izin untuk membuat tabel dalam skema {0}"
 
-#: metabase/driver/ddl/interface.clj:52
+#: metabase/driver/ddl/interface.clj:56
 msgid "Lack permission to read table in schema {0}"
 msgstr "Kurang izin untuk membaca tabel dalam skema {0}"
 
-#: metabase/driver/ddl/interface.clj:53
+#: metabase/driver/ddl/interface.clj:57
 msgid "Lack permission to delete table in schema {0}"
 msgstr "Tidak memiliki izin untuk menghapus tabel dalam skema {0}"
 
@@ -23380,27 +23375,26 @@ msgid "Add description"
 msgstr "Tambahkan deskripsi"
 
 #: frontend/src/metabase/models/components/ModelDetailPage/ModelSchemaDetails/ModelSchemaDetails.tsx:51
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:137
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:134
 msgid "Edit metadata"
 msgstr "Edit metadata"
 
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:174
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:171
 msgid "Turn into a model"
 msgstr "Menjadi model"
 
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:182
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:190
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:179
 msgid "Turn back to saved question"
 msgstr "Kembali ke pertanyaan tersimpan"
 
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:352
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:226
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:214
 msgid "More info"
 msgstr "Info lebih lanjut"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionMenu.tsx:78
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:368
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:241
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:229
 msgid "Move, archive, and more..."
 msgstr "Pindahkan, arsipkan, dan lainnya..."
 
@@ -23750,7 +23744,7 @@ msgid "Invalid cron expression"
 msgstr "Ekspresi cron tidak valid"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/lib/loading-message.ts:4
-#: frontend/src/metabase/plugins/index.ts:88
+#: frontend/src/metabase/plugins/index.ts:83
 msgid "Doing science..."
 msgstr "Mengerjakan ilmu..."
 
@@ -24248,23 +24242,23 @@ msgstr "Terjadi kesalahan saat menormalkan formulir: {0}"
 msgid "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
 msgstr "{0} bukan unit temporal yang valid untuk {1}; tidak menambah klausa {2}"
 
-#: metabase/models/collection.clj:1025 metabase/models/collection.clj:1028
+#: metabase/models/collection.clj:1040 metabase/models/collection.clj:1043
 msgid "{0}''s Personal Collection"
 msgstr "Koleksi Pribadi {0}"
 
-#: metabase/models/field_values.clj:90
+#: metabase/models/field_values.clj:91
 msgid "Full FieldValues shouldn't have hash_key."
 msgstr "FieldValues Penuh tidak boleh memiliki hash_key."
 
-#: metabase/models/field_values.clj:84
+#: metabase/models/field_values.clj:85
 msgid "Invalid field-values type."
 msgstr "Jenis nilai bidang tidak valid."
 
-#: metabase/models/field_values.clj:97
+#: metabase/models/field_values.clj:98
 msgid "Advanced FieldValues requires a hash_key."
 msgstr "FieldValues Tingkat Lanjut memerlukan hash_key."
 
-#: metabase/models/field_values.clj:125
+#: metabase/models/field_values.clj:126
 msgid "Can't update type or hash_key for a FieldValues."
 msgstr "Tidak dapat memperbarui jenis atau hash_key untuk FieldValues."
 
@@ -24497,11 +24491,11 @@ msgstr "️ Fitur Pro tidak akan berfungsi sekarang karena kurangnya pembayaran.
 msgid "Review your payment settings"
 msgstr "Tinjau setelan pembayaran Anda"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:65
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:66
 msgid "Session timeout"
 msgstr "Batas waktu sesi"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:66
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:67
 msgid "Time before inactive users are logged out."
 msgstr "Waktu sebelum pengguna yang tidak aktif logout."
 
@@ -24509,11 +24503,11 @@ msgstr "Waktu sebelum pengguna yang tidak aktif logout."
 msgid "Lighthouse illustration"
 msgstr "Ilustrasi mercusuar"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:173
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:169
 msgid "Variable to map to"
 msgstr "Variabel untuk dipetakan ke"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:179
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:175
 msgid "You can connect widgets to {{variables}} in text cards."
 msgstr "Anda dapat menghubungkan widget ke {{variables}} di kartu teks."
 
@@ -24521,7 +24515,7 @@ msgstr "Anda dapat menghubungkan widget ke {{variables}} di kartu teks."
 msgid "If you have a PEM SSL client key, you can convert that key to the PKCS-8/DER format using OpenSSL. {0}."
 msgstr "Jika Anda memiliki kunci klien SSL PEM, Anda dapat mengonversi kunci tersebut ke format PKCS-8/DER menggunakan OpenSSL. {0}."
 
-#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:168
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:169
 msgid "You can use Markdown here, and include variables {{like_this}}"
 msgstr "Anda dapat menggunakan Penurunan harga di sini, dan menyertakan variabel {{like_this}}"
 
@@ -24764,12 +24758,12 @@ msgid "Info"
 msgstr "Info"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:197
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:310
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:311
 msgid "Link to {{bird_id}}"
 msgstr "Tautan ke {{bird_id}}"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:224
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:336
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:337
 msgid "http://toucan.example/{{bird_id}}"
 msgstr "http://toucan.example/{{bird_id}}"
 
@@ -24833,7 +24827,7 @@ msgstr "Sematkan di aplikasi Anda"
 msgid "Add this {0} to your application server code. You’ll be able to preview the way it looks and behaves before making it securely visible for your users."
 msgstr "Tambahkan ini {0} ke kode server aplikasi Anda. Anda akan dapat mempratinjau tampilan dan perilakunya sebelum membuatnya terlihat dengan aman untuk pengguna Anda."
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:114
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:113
 #: frontend/src/metabase/public/components/widgets/SharingPane.tsx:172
 msgid "Set up"
 msgstr "Mempersiapkan"
@@ -24910,7 +24904,7 @@ msgstr "Hasil: {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.jsx:36
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:188
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:97
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:84
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:38
 msgid "Save and enable"
 msgstr "Simpan dan aktifkan"
@@ -25112,7 +25106,7 @@ msgstr "Menambahkan beberapa satuan waktu ke nilai tanggal atau stempel waktu."
 
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:730
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:751
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:779
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:781
 msgid "The column with your date or timestamp values."
 msgstr "Kolom dengan nilai tanggal atau stempel waktu Anda."
 
@@ -25256,7 +25250,7 @@ msgstr "Opsi Dua"
 msgid "Option Three"
 msgstr "Opsi Tiga"
 
-#: frontend/src/metabase/routes.jsx:247
+#: frontend/src/metabase/routes.jsx:256
 msgid "New Model"
 msgstr "Model baru"
 
@@ -25332,23 +25326,23 @@ msgstr "membuat langganan"
 msgid "deleted a subscription"
 msgstr "menghapus langganan"
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:74
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:77
 msgid "Use the notebook editor"
 msgstr "Gunakan editor buku catatan"
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:75
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:78
 msgid "This automatically inherits metadata from your source tables, and gives your models drill-through."
 msgstr "Ini secara otomatis mewarisi metadata dari tabel sumber Anda, dan memberikan model Anda perincian."
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:90
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:93
 msgid "Use a native query"
 msgstr "Gunakan kueri asli"
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:91
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:94
 msgid "You can always fall back to a SQL or native query, which is a bit more manual."
 msgstr "Anda selalu dapat kembali ke SQL atau kueri asli, yang sedikit lebih manual."
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:110
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:113
 msgid "What's a model?"
 msgstr "Apa itu model?"
 
@@ -25356,7 +25350,7 @@ msgstr "Apa itu model?"
 msgid "Your page is ready"
 msgstr "Halaman Anda sudah siap"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCard.tsx:310
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:279
 msgid "Action button"
 msgstr "Tombol tindakan"
 
@@ -25404,11 +25398,11 @@ msgstr "Membuang"
 msgid "Question in {0}"
 msgstr "Pertanyaan di {0}"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:224
+#: frontend/src/metabase/visualizations/lib/settings/column.js:222
 msgid "Abbreviate days and months"
 msgstr "Menyingkat hari dan bulan"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:417
+#: frontend/src/metabase/visualizations/lib/settings/column.js:404
 msgid "dollars"
 msgstr "dolar"
 
@@ -25488,34 +25482,34 @@ msgstr "Nilai kolom"
 msgid "Add series breakout"
 msgstr "Tambahkan pelarian seri"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:265
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:268
 msgid "Add another series"
 msgstr "Tambahkan seri lain"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:440
 msgid "Auto formatting"
 msgstr "Pemformatan otomatis"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:500
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:535
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:503
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:538
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:24
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:34
 msgid "Scale"
 msgstr "Skala"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:551
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:567
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:554
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:570
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:50
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:63
 msgid "Show lines and marks"
 msgstr "Tunjukkan garis dan tanda"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:612
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:615
 msgid "Split y-axis when necessary"
 msgstr "Pisahkan sumbu y bila perlu"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:622
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:644
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:625
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:647
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:108
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:130
 msgid "Show label"
@@ -25677,11 +25671,11 @@ msgstr "melanggar batasan unik {0}"
 msgid "{0} violates not-null constraint"
 msgstr "{0} melanggar batasan bukan nol"
 
-#: metabase/driver/redshift.clj:300
+#: metabase/driver/redshift.clj:298
 msgid "Error fetching field metadata for table {0}"
 msgstr "Kesalahan mengambil metadata bidang untuk tabel {0}"
 
-#: metabase/driver/snowflake.clj:189
+#: metabase/driver/snowflake.clj:195
 msgid "sqlite doesn't support extract us week"
 msgstr "sqlite tidak mendukung mengekstrak kami minggu"
 
@@ -25765,11 +25759,11 @@ msgstr "Apakah pengaturan LDAP wajib (host dan basis pencarian pengguna) telah d
 msgid "Data apps are not enabled."
 msgstr "Aplikasi data tidak diaktifkan."
 
-#: metabase/models/card.clj:213
+#: metabase/models/card.clj:212
 msgid "A model made from a native SQL question cannot have a variable or field filter."
 msgstr "Model yang dibuat dari pertanyaan SQL asli tidak dapat memiliki variabel atau filter bidang."
 
-#: metabase/models/dashboard_card.clj:194
+#: metabase/models/dashboard_card.clj:195
 msgid "You cannot add an is_write Card to a Dashboard."
 msgstr "Anda tidak dapat menambahkan Kartu is_write ke Dasbor."
 
@@ -25835,27 +25829,27 @@ msgstr "nilai harus berupa peta dengan skema: (\n"
 msgid "{0} (optional)"
 msgstr "{0} (opsional)"
 
-#: metabase_enterprise/advanced_config/file.clj:163
+#: metabase_enterprise/advanced_config/file.clj:164
 msgid "Found config file at path {0}; Metabase will be initialized with values from this file"
 msgstr "Ditemukan file konfigurasi di jalur {0}; Metabase akan diinisialisasi dengan nilai dari file ini"
 
-#: metabase_enterprise/advanced_config/file.clj:257
+#: metabase_enterprise/advanced_config/file.clj:265
 msgid "Done initializing from file."
 msgstr "Selesai menginisialisasi dari file."
 
-#: metabase_enterprise/advanced_config/file.clj:166
+#: metabase_enterprise/advanced_config/file.clj:167
 msgid "No config file found at path {0}"
 msgstr "Tidak ada file konfigurasi yang ditemukan di jalur {0}"
 
-#: metabase_enterprise/advanced_config/file.clj:180
+#: metabase_enterprise/advanced_config/file.clj:181
 msgid "Don''t know how to expand template form: {0}"
 msgstr "Tidak tahu cara meluaskan formulir template: {0}"
 
-#: metabase_enterprise/advanced_config/file.clj:255
+#: metabase_enterprise/advanced_config/file.clj:263
 msgid "Initializing {0} from config file..."
 msgstr "Menginisialisasi {0} dari file konfigurasi..."
 
-#: metabase_enterprise/advanced_config/file.clj:210
+#: metabase_enterprise/advanced_config/file.clj:211
 msgid "Error parsing template string {0}: {1}"
 msgstr "Galat mengurai string kerangka {0}: {1}"
 
@@ -25947,19 +25941,19 @@ msgstr "Telusuri tidak berfungsi pada pertanyaan SQL."
 msgid "Drill-through doesn’t work on native questions."
 msgstr "Telusuri tidak berfungsi pada pertanyaan asli."
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:107
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:106
 msgid "Paused"
 msgstr "Dijeda"
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:135
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:133
 msgid "Pause"
 msgstr "Berhenti sebentar"
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:135
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:133
 msgid "Resume"
 msgstr "Melanjutkan"
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:173
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:171
 msgid "This will clear all your settings."
 msgstr "Ini akan menghapus semua pengaturan Anda."
 
@@ -26008,12 +26002,12 @@ msgid "The name of the column with your date or datetime value."
 msgstr "Nama kolom dengan nilai tanggal atau waktu Anda."
 
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:769
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:782
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:784
 msgid "target"
 msgstr "target"
 
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:771
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:786
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:788
 msgid "source"
 msgstr "sumber"
 
@@ -26021,7 +26015,7 @@ msgstr "sumber"
 msgid "Convert timezone of a date or timestamp column."
 msgstr "Konversikan zona waktu dari kolom tanggal atau stempel waktu."
 
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:783
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:785
 msgid "The timezone you want to assign to your column."
 msgstr "Zona waktu yang ingin Anda tetapkan ke kolom Anda."
 
@@ -26066,8 +26060,8 @@ msgstr "Meminta metadata"
 msgid "No copied card information found"
 msgstr "Informasi kartu yang disalin tidak ditemukan"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:555
-#: metabase/driver/mysql.clj:368 metabase/driver/postgres.clj:382
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:568
+#: metabase/driver/mysql.clj:382 metabase/driver/postgres.clj:377
 msgid "Only datetime, timestamp, or date types allowed. Found {0}"
 msgstr "Hanya tipe datetime, timestamp, atau date yang diperbolehkan. Ditemukan {0}"
 
@@ -26090,4 +26084,56 @@ msgstr "Galat menjalankan langkah ''{0}'' untuk {1}"
 #: metabase_enterprise/serialization/v2/backfill_ids.clj:23
 msgid "Backfilling entity_id for {0} rows of {1}"
 msgstr "Mengisi ulang entitas_id untuk {0} baris {1}"
+
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:773
+msgid "Convert timezone of a date or timestamp column.\n"
+"We support tz database time zone names.\n"
+"See the full list here: https://w.wiki/4Jx"
+msgstr "Konversikan zona waktu dari kolom tanggal atau stempel waktu.\n"
+"Kami mendukung nama zona waktu database tz.\n"
+"Lihat daftar lengkapnya di sini: https://w.wiki/4Jx"
+
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:789
+msgid "The current time zone. Only required for timestamps with no time zone."
+msgstr "Zona waktu saat ini. Hanya diperlukan untuk stempel waktu tanpa zona waktu."
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:129
+msgid "Show percentages"
+msgstr "Tampilkan persentase"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:135
+msgid "In legend"
+msgstr "Dalam legenda"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:136
+msgid "On the chart"
+msgstr "Di grafik"
+
+#: metabase/driver/sql/query_processor.clj:1002
+msgid "Error compiling HoneySQL form: {0}"
+msgstr "Galat saat mengompilasi formulir HoneySQL: {0}"
+
+#: metabase/driver/sql/query_processor.clj:998
+msgid "Invalid HoneySQL form: {0}"
+msgstr "Formulir HoneySQL tidak valid: {0}"
+
+#: metabase/driver/sql/util.clj:134
+msgid "input column already has a set timezone. Please remove the source parameter in convertTimezone."
+msgstr "kolom input sudah memiliki zona waktu yang ditetapkan. Harap hapus parameter sumber di zona waktu konversi."
+
+#: metabase/driver/sql/util.clj:139
+msgid "input column doesn't have a set timezone. Please set the source parameter in convertTimezone to convert it."
+msgstr "kolom input tidak memiliki zona waktu yang ditetapkan. Silakan atur parameter sumber di convertTimezone untuk mengonversinya."
+
+#: metabase/query_processor/context/default.clj:59
+msgid "Error reducing result rows: {0}"
+msgstr "Kesalahan mengurangi baris hasil: {0}"
+
+#: metabase/sample_data.clj:59
+msgid "Sample database could not be extracted to the plugins directory,which may result in slow startup times. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
+msgstr "Database sampel tidak dapat diekstrak ke direktori plugins, yang dapat mengakibatkan waktu mulai yang lambat. Silakan setel MB_PLUGINS_DIR ke direktori yang dapat ditulisi dan mulai ulang Metabase."
+
+#: metabase_enterprise/advanced_config/file.clj:261
+msgid "Metabase config files require a Premium token with the :advanced-config feature."
+msgstr "File konfigurasi metabase memerlukan token Premium dengan fitur :advanced-config."
 
