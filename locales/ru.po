@@ -158,7 +158,7 @@ msgstr "в этом поле:"
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:101
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:121
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:161
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:167
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:165
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:403
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:174
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:230
@@ -190,7 +190,7 @@ msgstr "в этом поле:"
 #: frontend/src/metabase/timelines/common/components/MoveEventModal/MoveEventModal.tsx:58
 #: frontend/src/metabase/timelines/common/components/MoveTimelineModal/MoveTimelineModal.tsx:48
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:64
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:428
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:433
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:481
 #: frontend/src/metabase/writeback/containers/CreateDataAppModal/CreateDataAppModal.tsx:71
 #: frontend/src/metabase/writeback/containers/ScaffoldDataAppPagesModal/ScaffoldDataAppPagesModal.tsx:71
@@ -242,8 +242,8 @@ msgstr "Расписание"
 #: frontend/src/metabase/admin/datamodel/components/MetricForm/MetricForm.tsx:131
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:130
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.jsx:35
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:97
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:32
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:84
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:38
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:212
 #: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:64
@@ -334,7 +334,7 @@ msgstr "Добавить базу данных"
 #: frontend/src/metabase/entities/dashboards/forms.jsx:11
 #: frontend/src/metabase/entities/questions/forms.js:9
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:50
-#: frontend/src/metabase/visualizations/lib/settings/column.js:341
+#: frontend/src/metabase/visualizations/lib/settings/column.js:334
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:80
 msgid "Name"
 msgstr "Имя"
@@ -368,8 +368,8 @@ msgid "Successfully saved!"
 msgstr "Сохранено!"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectActionSelect.jsx:47
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:114
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:102
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:113
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:495
 #: frontend/src/metabase/query_builder/components/AlertListPopoverContent.jsx:182
 #: frontend/src/metabase/query_builder/components/template_tags/snippet-sidebar/SnippetRow.jsx:83
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:87
@@ -427,7 +427,7 @@ msgid "Success"
 msgstr "Успешно завершено"
 
 #: frontend/src/metabase/admin/datamodel/components/PartialQueryBuilder.jsx:103
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:102
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:495
 #: frontend/src/metabase/public/components/widgets/AdvancedEmbedPane.jsx:72
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:192
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStepPreview.jsx:66
@@ -452,8 +452,8 @@ msgstr "Без специального типа"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:66
 #: frontend/src/metabase/reference/components/Field.jsx:54
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:35
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:342
-#: metabase/pulse/render/body.clj:414
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:344
+#: metabase/pulse/render/body.clj:415
 msgid "Other"
 msgstr "Другое"
 
@@ -1091,7 +1091,7 @@ msgstr "Удалить группу"
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:87
 #: frontend/src/metabase/query_builder/components/SidebarContent/SidebarContent.tsx:31
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:126
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:434
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:439
 msgid "Done"
 msgstr "Готово"
 
@@ -1134,7 +1134,7 @@ msgid "Reset Password"
 msgstr "Сбросить пароль"
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:34
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:169
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:167
 msgid "Deactivate"
 msgstr "Деактивировать"
 
@@ -1191,7 +1191,7 @@ msgid "Any previous email invites they have will no longer work."
 msgstr "Все предыдущие email-приглашения для них более не работают."
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:25
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:165
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:163
 msgid "Deactivate {0}?"
 msgstr "Деактивировать {0}?"
 
@@ -1238,7 +1238,7 @@ msgid "We've sent them an email with instructions for creating a new password."
 msgstr "Мы отправили электронное письмо с инструкцией по установке нового пароля."
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:45
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:107
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:106
 msgid "Active"
 msgstr "Активный"
 
@@ -1481,14 +1481,14 @@ msgstr "Посмотреть схемы"
 msgid "Data Model"
 msgstr "Модель данных"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:63
 #: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:15
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:58
 #: frontend/src/metabase/auth/components/GoogleButton/GoogleButton.tsx:61
 msgid "Sign in with Google"
 msgstr "Войти с помощью Google"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:65
 #: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:16
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:60
 msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
 msgstr "Разрешить пользователям с существующими Metabase аккаунтами входить с помощью Google аккаунтов при совпадении email адресов в дополнение к их Metabase логину и паролю."
 
@@ -1546,7 +1546,7 @@ msgstr "Очистить"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.jsx:67
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:67
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:24
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:54
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:90
 #: frontend/src/metabase/admin/settings/selectors.js:228
 msgid "Authentication"
@@ -1586,7 +1586,7 @@ msgstr "Вот что вы можете сделать, чтобы выжать 
 msgid "Recommended next step"
 msgstr "Рекомендуемый следующий шаг"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:25
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:55
 msgid "Google Sign-In"
 msgstr "Войти с помощью Google"
 
@@ -1658,7 +1658,7 @@ msgstr "Удалить текущую карту"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:238
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:278
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:195
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:415
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:118
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:137
@@ -1667,7 +1667,7 @@ msgid "Remove"
 msgstr "Удалить"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:270
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:157
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:153
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:144
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:165
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:223
@@ -2014,32 +2014,32 @@ msgstr "База для поиска пользователя"
 msgid "User filter"
 msgstr "Пользовательский фильтр"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:254
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:255
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
 msgid "Check your parentheses"
 msgstr "Проверьте круглые скобки"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:125
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:126
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:188
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:89
 msgid "Email attribute"
 msgstr "Email аттрибут"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:130
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:192
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:131
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:193
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:94
 msgid "First name attribute"
 msgstr "Атрибут имени"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:136
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:198
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:99
 msgid "Last name attribute"
 msgstr "Атрибут фамилии"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:163
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:140
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:202
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:141
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:203
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:104
 msgid "Synchronize group memberships"
 msgstr "Синхронизировать членство в группе"
@@ -2105,7 +2105,7 @@ msgid "Embedded Questions"
 msgstr "Встраиваемые запросы"
 
 #: frontend/src/metabase/admin/settings/selectors.js:488
-#: frontend/src/metabase/entities/questions/forms.js:44
+#: frontend/src/metabase/entities/questions/forms.js:38
 msgid "Caching"
 msgstr "Кэширование"
 
@@ -2292,9 +2292,9 @@ msgstr "Дашборды, коллекции и пульсы в этой кол�
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:228
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:233
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:234
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:209
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:197
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:58
-#: frontend/src/metabase/routes.jsx:210
+#: frontend/src/metabase/routes.jsx:211
 msgid "Archive"
 msgstr "Архив"
 
@@ -2421,7 +2421,7 @@ msgstr "Переместите что-то для того чтобы закре
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.jsx:20
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.js:78
-#: frontend/src/metabase/entities/collections/getExpandedCollectionsById.js:35
+#: frontend/src/metabase/entities/collections/collections.js:162
 #: frontend/src/metabase/home/containers/SearchApp.jsx:42
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:212
 msgid "Collections"
@@ -2454,7 +2454,7 @@ msgstr "Переместить \"{0}\"?"
 #: frontend/src/metabase/components/EntityMenu.info.js:87
 #: frontend/src/metabase/containers/CollectionMoveModal.jsx:69
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:323
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:167
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:164
 #: frontend/src/metabase/timelines/common/components/MoveEventModal/MoveEventModal.tsx:60
 #: frontend/src/metabase/timelines/common/components/MoveTimelineModal/MoveTimelineModal.tsx:50
 msgid "Move"
@@ -2585,7 +2585,7 @@ msgstr "Заархивировать действие"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:47
 #: frontend/src/metabase/components/EntityMenu.info.js:99
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:158
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:155
 msgid "Add to dashboard"
 msgstr "Добавить к дашборду"
 
@@ -2773,7 +2773,7 @@ msgid "Questions"
 msgstr "Запросы"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:72
-#: frontend/src/metabase/routes.jsx:338
+#: frontend/src/metabase/routes.jsx:349
 msgid "Pulses"
 msgstr "Пульсы"
 
@@ -2821,16 +2821,16 @@ msgstr "Временный пароль"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:223
 #: frontend/src/metabase/components/PasswordReveal.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:556
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:573
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:559
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:576
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:55
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:69
 msgid "Hide"
 msgstr "Скрыть"
 
 #: frontend/src/metabase/components/PasswordReveal.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:557
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:574
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:560
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:577
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:56
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:70
 msgid "Show"
@@ -3116,7 +3116,7 @@ msgstr "Мы не уверены, сочетается ли данный зап�
 msgid "Archive Dashboard"
 msgstr "Архивировать Панель индикаторов"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper.jsx:20
+#: frontend/src/metabase/dashboard/components/DashCardParameterMapper.jsx:19
 msgid "Make sure to make a selection for each series, or the filter won't work on this card."
 msgstr "Убедитесь что сделан выбор для каждой из серий, иначе фильтр не будет работать на этой карточке."
 
@@ -3212,6 +3212,7 @@ msgstr "Какой тип фильтра?"
 #: frontend/src/metabase/dashboard/components/RefreshWidget.jsx:19
 #: frontend/src/metabase/visualizations/lib/settings/column.js:156
 #: frontend/src/metabase/visualizations/lib/settings/series.js:98
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:134
 msgid "Off"
 msgstr "Выключить"
 
@@ -3269,7 +3270,7 @@ msgstr "Сохранить"
 msgid "Show more about this"
 msgstr "Показать больше об этом"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:135
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:131
 msgid "This card doesn't have any fields or parameters that can be mapped to this parameter type."
 msgstr "Карточка не содержит полей или параметров которые могут быть сопоставлены с этим типом параметра."
 
@@ -3277,7 +3278,7 @@ msgstr "Карточка не содержит полей или парамет�
 msgid "The values in this field don't overlap with the values of any other fields you've chosen."
 msgstr "Значение этого поля не покрывают значения никаких полей, которые вы выбрали."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:136
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:132
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx:71
 msgid "No valid fields"
 msgstr "Нет корректных полей"
@@ -3785,7 +3786,7 @@ msgstr "Среднее"
 #: frontend/src/metabase/query_builder/components/filters/modals/InlineValuePicker/InlineValuePicker.tsx:97
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:28
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:592
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:595
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:88
 msgid "Min"
 msgstr "Минимальное"
@@ -3795,7 +3796,7 @@ msgstr "Минимальное"
 #: frontend/src/metabase/query_builder/components/filters/modals/InlineValuePicker/InlineValuePicker.tsx:104
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:29
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:602
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:605
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:98
 msgid "Max"
 msgstr "Максимальное"
@@ -4444,6 +4445,7 @@ msgid "Use the simple question builder to see trends, lists of things, or to cre
 msgstr "Используйте простой построитель запросов для просмотра трендов, списка вещей, или создания собственных метрик."
 
 #: frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx:75
+#: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:106
 #: metabase/automagic_dashboards/core.clj:270
 #: resources/automagic_dashboards/table/example.yaml
 msgid "Native query"
@@ -4494,14 +4496,14 @@ msgstr "Прошлые 7 дней"
 msgid "Past 30 days"
 msgstr "Прошлые 30 дней"
 
-#: frontend/src/metabase-lib/Dimension.ts:1711
+#: frontend/src/metabase-lib/Dimension.ts:1715
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:35
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:40
 #: metabase/api/table.clj:140
 msgid "Week"
 msgstr "Неделя"
 
-#: frontend/src/metabase-lib/Dimension.ts:1717
+#: frontend/src/metabase-lib/Dimension.ts:1721
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:94
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:36
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:41
@@ -4509,7 +4511,7 @@ msgstr "Неделя"
 msgid "Month"
 msgstr "Месяц"
 
-#: frontend/src/metabase-lib/Dimension.ts:1729
+#: frontend/src/metabase-lib/Dimension.ts:1733
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:37
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:42
 #: metabase/api/table.clj:143
@@ -4607,13 +4609,13 @@ msgid "Publish"
 msgstr "Опубликовать"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedEmbedPane.jsx:73
-#: frontend/src/metabase/visualizations/lib/settings/column.js:337
+#: frontend/src/metabase/visualizations/lib/settings/column.js:330
 msgid "Code"
 msgstr "Код"
 
 #: frontend/src/metabase/public/components/widgets/DisplayOptionsPane.jsx:44
-#: frontend/src/metabase/visualizations/lib/settings/column.js:283
-#: frontend/src/metabase/visualizations/lib/settings/series.js:163
+#: frontend/src/metabase/visualizations/lib/settings/column.js:279
+#: frontend/src/metabase/visualizations/lib/settings/series.js:164
 msgid "Style"
 msgstr "Стиль"
 
@@ -5361,9 +5363,9 @@ msgstr "Добавить группировку"
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:76
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:36
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:104
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:164
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:227
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:287
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:167
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:230
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:290
 #: frontend/src/metabase/visualizations/lib/settings/validation.js:21
 #: frontend/src/metabase/visualizations/lib/settings/validation.js:30
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:66
@@ -5666,7 +5668,7 @@ msgstr "Число {0} сгруппированных по {1}"
 #: frontend/src/metabase/reference/metrics/MetricSidebar.jsx:22
 #: frontend/src/metabase/reference/segments/SegmentFieldSidebar.jsx:22
 #: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:22
-#: frontend/src/metabase/routes.jsx:273
+#: frontend/src/metabase/routes.jsx:284
 msgid "Data Reference"
 msgstr "Ссылка на данные"
 
@@ -5926,7 +5928,7 @@ msgstr "Тип переменной"
 #: frontend/src/metabase/parameters/utils/dashboard-options.js:40
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:168
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:145
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:258
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:259
 msgid "Text"
 msgstr "Текст"
 
@@ -6503,22 +6505,22 @@ msgstr "Запросы с этим сегментом"
 msgid "X-ray this segment"
 msgstr "Просканировать этот сегмент"
 
-#: frontend/src/metabase/routes.jsx:187 frontend/src/metabase/routes.jsx:188
+#: frontend/src/metabase/routes.jsx:188 frontend/src/metabase/routes.jsx:189
 msgid "Login"
 msgstr "Логин"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableWithSearch.jsx:17
 #: frontend/src/metabase/components/FieldValuesWidget.jsx:488
-#: frontend/src/metabase/containers/ItemPicker/ItemPickerView.tsx:102
+#: frontend/src/metabase/containers/ItemPicker.jsx:145
 #: frontend/src/metabase/nav/components/SearchBar.tsx:174
-#: frontend/src/metabase/routes.jsx:209
+#: frontend/src/metabase/routes.jsx:210
 msgid "Search"
 msgstr "Поиск"
 
 #: frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx:88
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/LinkOptions.tsx:33
 #: frontend/src/metabase/nav/utils/model-names.ts:7
-#: frontend/src/metabase/routes.jsx:229
+#: frontend/src/metabase/routes.jsx:230
 msgid "Dashboard"
 msgstr "Дашборд"
 
@@ -6840,7 +6842,7 @@ msgstr "Войти с помощью аккаунта Google"
 msgid "User Details"
 msgstr "Детали пользователя"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:444
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:449
 msgid "Reset to defaults"
 msgstr "Сбросить по-умолчанию"
 
@@ -6881,7 +6883,7 @@ msgstr "Отменить фильтр"
 msgid "Pin Map"
 msgstr "Закрепить карту"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:423
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:424
 msgid "Unset"
 msgstr "Снять выбор"
 
@@ -6927,7 +6929,7 @@ msgstr "Обычно это достаточно быстрое действие
 msgid "Select a field"
 msgstr "Выберите поле"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx:97
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx:103
 msgid "error"
 msgstr "ошибка"
 
@@ -7025,7 +7027,7 @@ msgid "Highlight the whole row"
 msgstr "Подсветить всю строку"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:409
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:146
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:148
 msgid "Colors"
 msgstr "Цвета"
 
@@ -7105,7 +7107,7 @@ msgstr "Данный тип графика не поддерживает бол�
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:19
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:45
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:64
-#: metabase/pulse/render/body.clj:338
+#: metabase/pulse/render/body.clj:339
 msgid "Goal"
 msgstr "Цель"
 
@@ -7183,7 +7185,7 @@ msgstr "Ой! Данные из запроса не подходят к выбр
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:745
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:750
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:767
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:778
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:780
 #: frontend/src/metabase/dashboard/components/ClickMappings.jsx:90
 #: frontend/src/metabase/dashboard/components/ClickMappings.jsx:248
 #: frontend/src/metabase/visualizations/lib/errors.js:7
@@ -7219,11 +7221,11 @@ msgid "xValues missing!"
 msgstr "X-значения отсутствуют!"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:105
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:499
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:550
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:620
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:631
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:344
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:502
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:553
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:623
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:634
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:346
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:36
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:65
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:77
@@ -7238,16 +7240,16 @@ msgstr "Ось абсцисс"
 msgid "Add a series breakout..."
 msgstr "Добавить разрыв серии..."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:228
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:537
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:569
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:581
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:590
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:600
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:610
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:646
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:655
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:348
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:231
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:540
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:572
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:584
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:593
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:603
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:613
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:649
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:658
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:350
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:23
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:49
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:106
@@ -7259,7 +7261,7 @@ msgstr "Ось ординат"
 msgid "Add another series..."
 msgstr "Добавить другую серию..."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:288
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:291
 msgid "Bubble size"
 msgstr "Размер пузырька"
 
@@ -7279,22 +7281,22 @@ msgstr "Шаг"
 msgid "Show point markers on lines"
 msgstr "Показать отметки точек на линиях"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:330
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:333
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:8
 msgid "Stacking"
 msgstr "Объединение"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:334
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:337
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:14
 msgid "Don't stack"
 msgstr "Не объединять"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:335
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:338
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:15
 msgid "Stack"
 msgstr "Объединить"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:336
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:339
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:16
 msgid "Stack - 100%"
 msgstr "Объединить - 100%"
@@ -7327,33 +7329,33 @@ msgstr "Линейная интерполяция"
 msgid "X-axis scale"
 msgstr "Шкала оси абсцисс"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:519
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:522
 msgid "Timeseries"
 msgstr "Временная шкала"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:522
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:542
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:525
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:545
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:41
 msgid "Linear"
 msgstr "Линейный"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:524
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:543
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:527
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:546
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:42
 msgid "Power"
 msgstr "В степени"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:525
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:544
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:528
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:547
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:43
 msgid "Log"
 msgstr "Лог"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:527
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:530
 msgid "Histogram"
 msgstr "Гистограмма"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:529
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:532
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:29
 msgid "Ordinal"
 msgstr "Порядковый"
@@ -7366,17 +7368,17 @@ msgstr "Масштаб Y оси"
 msgid "Show x-axis line and marks"
 msgstr "Показать строку и метки по оси x"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:445
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:558
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:448
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:561
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:179
 msgid "Compact"
 msgstr "Компактно"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:559
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:562
 msgid "Rotate 45°"
 msgstr "Перевернуть на 45°"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:560
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:563
 msgid "Rotate 90°"
 msgstr "Перевернуть на 90°"
 
@@ -7384,7 +7386,7 @@ msgstr "Перевернуть на 90°"
 msgid "Show y-axis line and marks"
 msgstr "Показать строку и метки по оси y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:583
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:586
 msgid "Auto y-axis range"
 msgstr "Авто диапазон оси ординат"
 
@@ -7552,7 +7554,7 @@ msgstr "объект"
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:136
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:253
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:325
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:460
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:462
 msgid "Total"
 msgstr "Всего"
 
@@ -7576,21 +7578,21 @@ msgstr "Показать легенду"
 msgid "Show percentages in legend"
 msgstr "Показать процентовку в легенде"
 
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:140
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:142
 msgid "Minimum slice percentage"
 msgstr "Минимальный процентаж среза"
 
-#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:31
+#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:29
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:156
 msgid "Goal met"
 msgstr "Цель достигнута"
 
-#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:33
+#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:31
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:158
 msgid "Goal exceeded"
 msgstr "Цель достигнута"
 
-#: frontend/src/metabase/static-viz/components/ProgressBar/ProgressBar.tsx:148
+#: frontend/src/metabase/static-viz/components/ProgressBar/ProgressBar.tsx:145
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:226
 msgid "Goal {0}"
 msgstr "Цель {0}"
@@ -7616,11 +7618,11 @@ msgstr "Цвет"
 msgid "Row Chart"
 msgstr "Линейная диаграмма"
 
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:318
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:320
 msgid "row chart"
 msgstr "линейная диаграмма"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:374
+#: frontend/src/metabase/visualizations/lib/settings/column.js:366
 msgid "Separator style"
 msgstr "Стиль разделителя"
 
@@ -7628,15 +7630,15 @@ msgstr "Стиль разделителя"
 msgid "Number of decimal places"
 msgstr "Количество десятичных знаков"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:405
+#: frontend/src/metabase/visualizations/lib/settings/column.js:394
 msgid "Add a prefix"
 msgstr "Добавить префикс"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:413
+#: frontend/src/metabase/visualizations/lib/settings/column.js:401
 msgid "Add a suffix"
 msgstr "Добавить суффикс"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:397
+#: frontend/src/metabase/visualizations/lib/settings/column.js:387
 msgid "Multiply by a number"
 msgstr "Умножить на число"
 
@@ -7951,7 +7953,7 @@ msgstr "У вас множество сохраненных запросов в 
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:101
 #: frontend/src/metabase/public/components/LogoBadge.jsx:17
 #: frontend/src/metabase/routes-public.jsx:13
-#: frontend/src/metabase/routes.jsx:150 metabase/api/setup.clj:243
+#: frontend/src/metabase/routes.jsx:151 metabase/api/setup.clj:243
 #: metabase/email/messages.clj:47
 msgid "Metabase"
 msgstr "Metabase"
@@ -7976,7 +7978,7 @@ msgstr "Держите всех на одной странице, создава
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "Таблица ''{0}'' теперь видима. Ресинхронизация."
 
-#: frontend/src/metabase-lib/Dimension.ts:1651 metabase/api/table.clj:122
+#: frontend/src/metabase-lib/Dimension.ts:1655 metabase/api/table.clj:122
 msgid "Auto bin"
 msgstr "Авто компоновка"
 
@@ -7984,83 +7986,83 @@ msgstr "Авто компоновка"
 msgid "Don''t bin"
 msgstr "Не компоновать"
 
-#: frontend/src/metabase-lib/Dimension.ts:1705 metabase/api/table.clj:126
+#: frontend/src/metabase-lib/Dimension.ts:1709 metabase/api/table.clj:126
 msgid "Day"
 msgstr "День"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/Dimension.ts:1693 metabase/api/table.clj:124
+#: frontend/src/metabase-lib/Dimension.ts:1697 metabase/api/table.clj:124
 msgid "Minute"
 msgstr "Минута"
 
-#: frontend/src/metabase-lib/Dimension.ts:1699
+#: frontend/src/metabase-lib/Dimension.ts:1703
 #: frontend/src/metabase/admin/settings/selectors.js:546
 #: metabase/api/table.clj:125
 msgid "Hour"
 msgstr "Час"
 
-#: frontend/src/metabase-lib/Dimension.ts:1723 metabase/api/table.clj:142
+#: frontend/src/metabase-lib/Dimension.ts:1727 metabase/api/table.clj:142
 msgid "Quarter"
 msgstr "Квартал"
 
-#: frontend/src/metabase-lib/Dimension.ts:1735 metabase/api/table.clj:144
+#: frontend/src/metabase-lib/Dimension.ts:1739 metabase/api/table.clj:144
 #: metabase/api/table.clj:158
 msgid "Minute of Hour"
 msgstr "Минута часа"
 
-#: frontend/src/metabase-lib/Dimension.ts:1741 metabase/api/table.clj:145
+#: frontend/src/metabase-lib/Dimension.ts:1745 metabase/api/table.clj:145
 msgid "Hour of Day"
 msgstr "Час дня"
 
-#: frontend/src/metabase-lib/Dimension.ts:1747 metabase/api/table.clj:146
+#: frontend/src/metabase-lib/Dimension.ts:1751 metabase/api/table.clj:146
 msgid "Day of Week"
 msgstr "День недели"
 
-#: frontend/src/metabase-lib/Dimension.ts:1753 metabase/api/table.clj:147
+#: frontend/src/metabase-lib/Dimension.ts:1757 metabase/api/table.clj:147
 msgid "Day of Month"
 msgstr "День месяца"
 
-#: frontend/src/metabase-lib/Dimension.ts:1759 metabase/api/table.clj:148
+#: frontend/src/metabase-lib/Dimension.ts:1763 metabase/api/table.clj:148
 msgid "Day of Year"
 msgstr "День года"
 
-#: frontend/src/metabase-lib/Dimension.ts:1765 metabase/api/table.clj:149
+#: frontend/src/metabase-lib/Dimension.ts:1769 metabase/api/table.clj:149
 msgid "Week of Year"
 msgstr "Неделя года"
 
-#: frontend/src/metabase-lib/Dimension.ts:1771 metabase/api/table.clj:150
+#: frontend/src/metabase-lib/Dimension.ts:1775 metabase/api/table.clj:150
 msgid "Month of Year"
 msgstr "Месяц года"
 
-#: frontend/src/metabase-lib/Dimension.ts:1777 metabase/api/table.clj:151
+#: frontend/src/metabase-lib/Dimension.ts:1781 metabase/api/table.clj:151
 msgid "Quarter of Year"
 msgstr "Квартал года"
 
-#: frontend/src/metabase-lib/Dimension.ts:1659 metabase/api/table.clj:167
+#: frontend/src/metabase-lib/Dimension.ts:1663 metabase/api/table.clj:167
 msgid "10 bins"
 msgstr "10 контейнеров"
 
-#: frontend/src/metabase-lib/Dimension.ts:1668 metabase/api/table.clj:168
+#: frontend/src/metabase-lib/Dimension.ts:1672 metabase/api/table.clj:168
 msgid "50 bins"
 msgstr "50 контейнеров"
 
-#: frontend/src/metabase-lib/Dimension.ts:1677 metabase/api/table.clj:169
+#: frontend/src/metabase-lib/Dimension.ts:1681 metabase/api/table.clj:169
 msgid "100 bins"
 msgstr "100 контейнеров"
 
-#: frontend/src/metabase-lib/Dimension.ts:1786 metabase/api/table.clj:181
+#: frontend/src/metabase-lib/Dimension.ts:1790 metabase/api/table.clj:181
 msgid "Bin every 0.1 degrees"
 msgstr "Конт. каждый 0.1 градус"
 
-#: frontend/src/metabase-lib/Dimension.ts:1795 metabase/api/table.clj:182
+#: frontend/src/metabase-lib/Dimension.ts:1799 metabase/api/table.clj:182
 msgid "Bin every 1 degree"
 msgstr "Конт. каждый 1 градус"
 
-#: frontend/src/metabase-lib/Dimension.ts:1804 metabase/api/table.clj:183
+#: frontend/src/metabase-lib/Dimension.ts:1808 metabase/api/table.clj:183
 msgid "Bin every 10 degrees"
 msgstr "Конт. каждые 10 градусов"
 
-#: frontend/src/metabase-lib/Dimension.ts:1813 metabase/api/table.clj:184
+#: frontend/src/metabase-lib/Dimension.ts:1817 metabase/api/table.clj:184
 msgid "Bin every 20 degrees"
 msgstr "Конт. каждые 20 градусов"
 
@@ -8385,40 +8387,40 @@ msgstr "Запуск Metabase в режиме отдельного прилож�
 msgid "Metabase Initialization FAILED"
 msgstr "Инициализация Metabase ПРОВАЛЕНА"
 
-#: metabase/db/liquibase.clj:126
+#: metabase/db/liquibase.clj:127
 msgid "Database has migration lock; cannot run migrations."
 msgstr "База данных содержит блокировку на запуск миграций; невозможно запустить миграции."
 
-#: metabase/db/liquibase.clj:128
+#: metabase/db/liquibase.clj:129
 msgid "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`."
 msgstr "Вы можете сбросить эти блокировки запустив `java -jar metabase.jar migrate release-locks`."
 
-#: metabase/db/liquibase.clj:133
+#: metabase/db/liquibase.clj:134
 msgid "Checking if Database has unrun migrations..."
 msgstr "Проверка базы данных на наличие невыполненных миграций..."
 
-#: metabase/db/liquibase.clj:135
+#: metabase/db/liquibase.clj:136
 msgid "Database has unrun migrations. Waiting for migration lock to be cleared..."
 msgstr "База данных содержит невыполненные миграции. Ожидании очистки блокировки на запуск миграций..."
 
-#: metabase/db/liquibase.clj:141
+#: metabase/db/liquibase.clj:142
 msgid "Migration lock is cleared. Running migrations..."
 msgstr "Блокировка на запуск миграций очищена. Запуск миграций..."
 
-#: metabase/db/liquibase.clj:144
+#: metabase/db/liquibase.clj:145
 msgid "Migration lock cleared, but nothing to do here! Migrations were finished by another instance."
 msgstr "Блокировка миграций очищена, но ничего не выполнено. Миграции были завершены другим инстансом."
 
 #. Set up liquibase and let it do its thing
-#: metabase/db/setup.clj:60
+#: metabase/db/setup.clj:61
 msgid "Setting up Liquibase..."
 msgstr "Настройка Liquibase..."
 
-#: metabase/db/setup.clj:64
+#: metabase/db/setup.clj:65
 msgid "Liquibase is ready."
 msgstr "Liquibase готов."
 
-#: metabase/db/setup.clj:94
+#: metabase/db/setup.clj:95
 msgid "Verifying {0} Database Connection ..."
 msgstr "Проверка подключения к базе данных {0}..."
 
@@ -8426,11 +8428,11 @@ msgstr "Проверка подключения к базе данных {0}..."
 msgid "Verify Database Connection ... "
 msgstr "Проверка подключения к базе данных ... "
 
-#: metabase/db/setup.clj:118
+#: metabase/db/setup.clj:119
 msgid "Running Database Migrations..."
 msgstr "Запуск миграций базы данных..."
 
-#: metabase/db/setup.clj:120
+#: metabase/db/setup.clj:121
 msgid "Database Migrations Current ... "
 msgstr "Текущая миграция базы данных ... "
 
@@ -8692,10 +8694,6 @@ msgstr "Хорошо, секунду..."
 msgid "Not Found"
 msgstr "Не найдено"
 
-#: target/classes/metabase/metabot/command.clj
-msgid "Loading Kanye quotes..."
-msgstr "Загрузка цитат Kanye..."
-
 #: target/classes/metabase/metabot/events.clj
 msgid "Evaluating Metabot command:"
 msgstr "Выполнение команды Metabot:"
@@ -8751,11 +8749,11 @@ msgstr "Определите это для включения HTTP Public Key Pi
 msgid "See {0} for more information."
 msgstr "Смотрите {0} для получения информации."
 
-#: metabase/models/card.clj:153
+#: metabase/models/card.clj:152
 msgid "Cannot save Question: source query has circular references."
 msgstr "Невозможно сохранить запрос: найдены циклические ссылки."
 
-#: metabase/models/card.clj:158 metabase/models/query/permissions.clj:107
+#: metabase/models/card.clj:157 metabase/models/query/permissions.clj:107
 #: metabase/query_processor/middleware/fetch_source_query.clj:117
 #: metabase/query_processor/middleware/permissions.clj:59
 msgid "Card {0} does not exist."
@@ -8830,7 +8828,7 @@ msgstr "Вы не можете одновременно переместить �
 msgid "You cannot delete a Personal Collection!"
 msgstr "Вы не можете удалить личную коллекцию!"
 
-#: metabase/models/collection.clj:1024 metabase/models/collection.clj:1027
+#: metabase/models/collection.clj:1039 metabase/models/collection.clj:1042
 msgid "{0} {1}''s Personal Collection"
 msgstr "{0} личная коллекция {1}"
 
@@ -8838,19 +8836,19 @@ msgstr "{0} личная коллекция {1}"
 msgid "You cannot update a CollectionRevision!"
 msgstr "Вы не можете обновить ревизию коллекции!"
 
-#: metabase/models/field_values.clj:335
+#: metabase/models/field_values.clj:336
 msgid "Field {0} was previously automatically set to show a list widget, but now has {1} values."
 msgstr "Поле {0} ранее автоматически отображало виджет списка, но теперь имеет значения {1}."
 
-#: metabase/models/field_values.clj:337
+#: metabase/models/field_values.clj:338
 msgid "Switching Field to use a search widget instead."
 msgstr "Переключить поле для использования поискового виджета."
 
-#: metabase/models/field_values.clj:349
+#: metabase/models/field_values.clj:350
 msgid "Storing updated FieldValues for Field {0}..."
 msgstr "Сохранение обновленных значений для поля {0}..."
 
-#: metabase/models/field_values.clj:359
+#: metabase/models/field_values.clj:360
 msgid "Storing FieldValues for Field {0}..."
 msgstr "Сохранение значений для поля {0}..."
 
@@ -9561,7 +9559,7 @@ msgstr "Больше X-ray"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableVisualization.jsx:115
 #: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:141
-#: metabase/pulse/render/body.clj:944 metabase/pulse/render/body.clj:945
+#: metabase/pulse/render/body.clj:939 metabase/pulse/render/body.clj:940
 msgid "No results"
 msgstr "Нет результатов"
 
@@ -9669,7 +9667,7 @@ msgstr "ИД набора данных"
 msgid "toucanSightings"
 msgstr "toucanSightings"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:76
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:69
 #: frontend/src/metabase/entities/databases/big-query-fields.js:101
 msgid "Client ID"
 msgstr "ИД клиента"
@@ -9750,7 +9748,7 @@ msgstr "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
 msgid "toucan_sightings"
 msgstr "toucan_sightings"
 
-#: metabase/models/collection.clj:1142
+#: metabase/models/collection.clj:1157
 msgid "default"
 msgstr "по-умолчанию"
 
@@ -9770,7 +9768,7 @@ msgstr "MoyaBazaDannyh"
 msgid "Database instance name"
 msgstr "Имя инстанса БД"
 
-#: metabase/pulse/render/body.clj:419
+#: metabase/pulse/render/body.clj:420
 msgid "N/A"
 msgstr "Н/Д"
 
@@ -9814,20 +9812,19 @@ msgstr "Поделиться"
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:25
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:33
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:42
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:329
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:365
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:394
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:410
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:420
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:436
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:332
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:368
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:397
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:413
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:423
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:439
 #: frontend/src/metabase/visualizations/lib/settings/nested.js:85
-#: frontend/src/metabase/visualizations/lib/settings/series.js:163
+#: frontend/src/metabase/visualizations/lib/settings/series.js:164
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:171
 #: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:121
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:127
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:133
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:139
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:145
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:128
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:141
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:147
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:63
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:69
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:7
@@ -9839,25 +9836,25 @@ msgstr "Поделиться"
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:25
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:31
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:37
-#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:43
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:44
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:27
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:38
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:43
 msgid "Display"
 msgstr "Вид"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:498
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:534
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:549
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:566
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:580
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:589
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:599
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:609
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:619
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:628
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:643
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:652
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:501
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:537
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:552
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:569
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:583
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:592
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:602
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:612
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:622
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:631
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:646
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:655
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:22
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:33
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:48
@@ -9924,7 +9921,7 @@ msgstr "Важнейшие дашборды вашей команды будут
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
 msgstr "Закрепить дашборды в {0} чтобы они появились в этом пространстве для всех."
 
-#: metabase/db/liquibase.clj:212
+#: metabase/db/liquibase.clj:245
 msgid "Unable to release the Liquibase lock after a migration failure"
 msgstr "Невозможность снять блокировку Liquibase после сбоя миграции"
 
@@ -10082,7 +10079,7 @@ msgstr "Эта визуализация требует группировки п
 msgid "Date style"
 msgstr "Стиль даты"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:205
+#: frontend/src/metabase/visualizations/lib/settings/column.js:204
 msgid "Date separators"
 msgstr "Разделители даты"
 
@@ -10090,7 +10087,7 @@ msgstr "Разделители даты"
 msgid "Abbreviate names of days and months"
 msgstr "Сокращенные названия дней и месяцев"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:235
+#: frontend/src/metabase/visualizations/lib/settings/column.js:233
 msgid "Show the time"
 msgstr "Показать время"
 
@@ -10106,27 +10103,27 @@ msgstr "ЧЧ:ММ:СС"
 msgid "HH:MM:SS.MS"
 msgstr "ЧЧ:ММ:СС:МС"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:251
+#: frontend/src/metabase/visualizations/lib/settings/column.js:248
 msgid "Time style"
 msgstr "Формат времени"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:302
+#: frontend/src/metabase/visualizations/lib/settings/column.js:297
 msgid "Unit of currency"
 msgstr "Единица валюты"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:318
+#: frontend/src/metabase/visualizations/lib/settings/column.js:312
 msgid "Currency label style"
 msgstr "Стиль заголовка валюты"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:357
+#: frontend/src/metabase/visualizations/lib/settings/column.js:350
 msgid "Where to display the unit of currency"
 msgstr "Где отображать единицу валюты"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:389
+#: frontend/src/metabase/visualizations/lib/settings/column.js:380
 msgid "Minimum number of decimal places"
 msgstr "Минимальное количество знаков после запятой"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:366
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:369
 msgid "Stacked chart type"
 msgstr "Тип диаграммы с накоплением"
 
@@ -10147,7 +10144,7 @@ msgid "Show dots on lines"
 msgstr "Показать точки на линии"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ChartColorSettings/ChartColorSettings.tsx:160
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:444
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:447
 #: frontend/src/metabase/visualizations/lib/settings/series.js:96
 #: frontend/src/metabase/visualizations/lib/settings/series.js:134
 msgid "Auto"
@@ -10181,15 +10178,15 @@ msgstr "Диапазоны прибора"
 msgid "Field to show"
 msgstr "Поле для отображения"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:139
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:140
 msgid "last {0}"
 msgstr "Предыдущ. {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:211
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:212
 msgid "{0} was {1} {2}"
 msgstr "{0} было {1} {2}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:77
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:78
 msgid "Group by a time field to see how this has changed over time"
 msgstr "Группа по полю времени, чтобы увидеть, как это изменилось с течением времени"
 
@@ -10215,7 +10212,7 @@ msgid "Conditional Formatting"
 msgstr "Условное форматирование"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:129
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:275
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:276
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:242
 msgid "Column title"
 msgstr "Заголовок столбца"
@@ -10227,23 +10224,23 @@ msgstr "Показать мини-гистограмму"
 
 #: frontend/src/metabase/dashboard/actions/cards.js:158
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:146
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:259
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:260
 msgid "Link"
 msgstr "Ссылка"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:151
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:264
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:265
 msgid "Email link"
 msgstr "Email ссылка"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:155
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:268
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:269
 msgid "Image"
 msgstr "Изображение"
 
 #: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:84
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:159
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:272
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:273
 msgid "Automatic"
 msgstr "Автоматически"
 
@@ -10252,7 +10249,7 @@ msgid "View as link or image"
 msgstr "Показать как ссылку или как изображение"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:176
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:289
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:290
 msgid "Link text"
 msgstr "Текст ссылки"
 
@@ -10446,7 +10443,7 @@ msgstr "Для этого поля разрешены значения поле�
 msgid "FieldValues are NOT allowed for this Field."
 msgstr "Значения полей не допускаются для этого поля."
 
-#: metabase/models/field_values.clj:416
+#: metabase/models/field_values.clj:417
 msgid "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
 msgstr "Поле {0} \"{1}\" должно быть полей и принадлежит к базе данных по требованию полей обновление."
 
@@ -11833,7 +11830,7 @@ msgstr "Заявления BigQuery не могут быть параметри�
 msgid "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."
 msgstr "ВНИМАНИЕ: Druid не разрешает limitSpec в запросах временных рядов. Игнорирование предложения LIMIT."
 
-#: metabase/driver/snowflake.clj:214
+#: metabase/driver/snowflake.clj:220
 msgid "Invalid Snowflake connection details: missing DB name."
 msgstr "Недействительные сведения о подключении Snowflake: отсутствует имя базы данных."
 
@@ -11904,7 +11901,7 @@ msgstr "Значения, превышающие {1}, не допускаютс�
 #. we need the Database instance no matter what (in order to compare details hash with cached value)
 #. passed in
 #. look up by ID
-#: metabase/driver/sql_jdbc/connection.clj:202
+#: metabase/driver/sql_jdbc/connection.clj:217
 #: metabase/query_processor/store.clj:169
 msgid "Database {0} does not exist."
 msgstr "База данных {0} не существует."
@@ -12024,7 +12021,7 @@ msgstr "Дублировать \"{0}\""
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:315
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:26
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:31
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:200
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:188
 #: metabase/api/dashboard.clj:264
 msgid "Duplicate"
 msgstr "Дублировать"
@@ -12164,7 +12161,7 @@ msgstr "Некорректный"
 msgid "Add a time"
 msgstr "Добавить время"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:197
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:198
 msgid "Nothing to compare for the previous {0}."
 msgstr "Нечего сравнивать с предыдущим {0}."
 
@@ -12212,7 +12209,7 @@ msgstr "Если вы решите продолжить использовани
 msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information."
 msgstr "Для дополнительной информации смотрите: https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres."
 
-#: metabase/db/setup.clj:96
+#: metabase/db/setup.clj:97
 msgid "Unable to connect to Metabase {0} DB."
 msgstr "Невозможно подключиться к Metabase {0} БД."
 
@@ -12312,11 +12309,11 @@ msgstr "Ошибка в команда"
 msgid "Websocket associated with this Slack event is different from the websocket we're currently using."
 msgstr "Веб-сокет, связанный с этим событием Slack, отличается от веб-сокета, который мы сейчас используем."
 
-#: metabase/models/field_values.clj:344
+#: metabase/models/field_values.clj:345
 msgid "FieldValues for Field {0} remain unchanged. Skipping..."
 msgstr "Значения для поля {0} не изменились. Пропуск..."
 
-#: metabase/models/interface.clj:97
+#: metabase/models/interface.clj:98
 msgid "Unable to normalize:"
 msgstr "Невозможно нормализовать:"
 
@@ -12324,27 +12321,27 @@ msgstr "Невозможно нормализовать:"
 msgid "Could not find matching Field ID for target:"
 msgstr "Не удалось найти подходящий Field ID для цели"
 
-#: metabase/plugins.clj:29
+#: metabase/plugins.clj:30
 msgid "Metabase does not have permissions to write to plugins directory {0}"
 msgstr "У Metabase нет прав для записи в каталог плагинов {0}"
 
-#: metabase/plugins.clj:36
+#: metabase/plugins.clj:37
 msgid "Metabase cannot use the plugins directory {0}"
 msgstr "Metabase не может использовать каталог плагинов {0}"
 
-#: metabase/plugins.clj:38
+#: metabase/plugins.clj:39
 msgid "Please make sure the directory exists and that Metabase has permission to write to it."
 msgstr "Пожалуйста проверьте, что каталог существует и Metabase имеет права для записи в него."
 
-#: metabase/plugins.clj:39
+#: metabase/plugins.clj:40
 msgid "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
 msgstr "Вы можете изменить каталог, используемый Metabase для модулей, установкой переменной окружения MB_PLUGINS_DIR."
 
-#: metabase/plugins.clj:40
+#: metabase/plugins.clj:41
 msgid "Falling back to a temporary directory for now."
 msgstr "Откат к временному каталогу на данный момент."
 
-#: metabase/plugins.clj:45
+#: metabase/plugins.clj:46
 msgid "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
 msgstr "Metabase не может записать во временный каталог. Пожалуйста укажите в MB_PLUGINS_DIR каталог, доступный для записи, и перезапустите Metabase."
 
@@ -12352,11 +12349,11 @@ msgstr "Metabase не может записать во временный кат
 msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
 msgstr "spark-deps.jar больше не требуется для Metabase 1.0+. Вы можете его удалить из каталога плагинов."
 
-#: metabase/plugins.clj:155
+#: metabase/plugins.clj:163
 msgid "Failied to initialize plugin {0}"
 msgstr "Не удалось инициализировать плагин {0}"
 
-#: metabase/plugins.clj:158
+#: metabase/plugins.clj:166
 msgid "Loading plugins in {0}..."
 msgstr "Загрузка плагинов в {0}..."
 
@@ -12408,11 +12405,11 @@ msgstr "{0} зависимость {1} удовлетворена? {2}"
 msgid "Plugins with unsatisfied deps: {0}"
 msgstr "Плагины с неудовлетворенными зависимостями: {0}"
 
-#: metabase/util/files.clj:82
+#: metabase/util/files.clj:84
 msgid "Extract file {0} -> {1}"
 msgstr "Извлечь файл {0} -> {1}"
 
-#: metabase/util/files.clj:112
+#: metabase/util/files.clj:114
 msgid "Resource does not exist."
 msgstr "Ресурс не существует"
 
@@ -12763,11 +12760,11 @@ msgstr "Повторно активировать {0}?"
 msgid "We couldn’t send them an email invitation, so make sure to tell them to log in using {0} and this password we’ve generated for them:"
 msgstr "Мы не смогли отправить им приглашение по электронной почте, поэтому обязательно попросите их войти в систему, используя {0}, и этот пароль, который мы сгенерировали для них:"
 
-#: frontend/src/metabase/entities/collections/collections.ts:33
+#: frontend/src/metabase/entities/collections/collections.js:30
 msgid "collection"
 msgstr "коллекция"
 
-#: frontend/src/metabase/entities/collections/collections.ts:34
+#: frontend/src/metabase/entities/collections/collections.js:31
 msgid "collections"
 msgstr "коллекции"
 
@@ -12914,7 +12911,7 @@ msgstr "Ошибка при выполнении {0}"
 msgid "Request canceled, canceling future"
 msgstr "Запрос отменен, пройдет отмена."
 
-#: metabase/driver/sql_jdbc/connection.clj:131
+#: metabase/driver/sql_jdbc/connection.clj:146
 msgid "Closing old connection pool for database {0} ..."
 msgstr "Закрытие старого пула соединений к базе данных {0} ..."
 
@@ -13347,7 +13344,7 @@ msgstr "Это обычно довольно быстро, но, похоже, �
 msgid "Combo"
 msgstr "Комбо"
 
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:315
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:317
 msgid "Row"
 msgstr "Строка"
 
@@ -13435,7 +13432,7 @@ msgstr "Не удалось найти драйвер {0}."
 msgid "Abstract drivers cannot derive from concrete parent drivers."
 msgstr "Абстрактные драйверы не могут быть получены из конкретных родительских драйверов."
 
-#: metabase/driver/mysql.clj:467
+#: metabase/driver/mysql.clj:481
 msgid "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."
 msgstr "Вам потребуется добавить 'trustServerCertificate=true к дополнительным параметрам подключения для подключения по SSL."
 
@@ -13481,7 +13478,7 @@ msgstr "Изменение наименований Таблиц и Полей �
 msgid "Error saving task history"
 msgstr "Ошибка сохранения истории задач"
 
-#: metabase/plugins.clj:105
+#: metabase/plugins.clj:113
 msgid "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory."
 msgstr "Плагин spark-deps.jar больше не требуется для Metabase начиная с версии 0.32.0. Вы можете удалить его из директории с плагинами."
 
@@ -13489,7 +13486,7 @@ msgstr "Плагин spark-deps.jar больше не требуется для 
 msgid "Using NEWLY CREATED classloader as shared context classloader: {0}"
 msgstr "Использование НОВОГО СОЗДАННОГО загрузчика классов как общего загрузчика классов: {0}"
 
-#: metabase/util/files.clj:95
+#: metabase/util/files.clj:97
 msgid "Failed to copy file"
 msgstr "Невозможно скопировать файл"
 
@@ -13506,15 +13503,15 @@ msgstr "Некорректный site-url; возвращен пустой ре�
 msgid "More results have been included as a file attachment"
 msgstr "Больше результатов есть в приложенном файле."
 
-#: metabase/pulse/render/body.clj:961
+#: metabase/pulse/render/body.clj:956
 msgid "This question has been included as a file attachment"
 msgstr "Этот запрос был включен в качестве вложения"
 
-#: metabase/pulse/render/body.clj:973
+#: metabase/pulse/render/body.clj:968
 msgid "We were unable to display this Pulse."
 msgstr "Мы не смогли отобразить этот Пульс"
 
-#: metabase/pulse/render/body.clj:975
+#: metabase/pulse/render/body.clj:970
 msgid "Please view this card in Metabase."
 msgstr "Пожалуйста, просмотрите эту карту в Metabase."
 
@@ -13980,16 +13977,16 @@ msgstr "(пусто)"
 msgid "Goal line"
 msgstr "Линия достижения"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:395
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:398
 msgid "Trend line"
 msgstr "Линия тренда"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:411
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:414
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:163
 msgid "Show values on data points"
 msgstr "Показать значения на точках данных"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:421
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:424
 msgid "Values to show"
 msgstr "Значения, чтобы показать"
 
@@ -13997,7 +13994,7 @@ msgstr "Значения, чтобы показать"
 msgid "As many as can fit nicely"
 msgstr "Столько, сколько может поместиться"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:429
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:432
 #: metabase/driver/util.clj:283
 msgid "All"
 msgstr "Все"
@@ -14038,7 +14035,7 @@ msgstr "Целевая БД уже заполнена!"
 msgid "System info:n {0}"
 msgstr "Системная информация:n {0}"
 
-#: metabase/db/setup.clj:142
+#: metabase/db/setup.clj:143
 msgid "Database setup"
 msgstr "Настройка базы данных"
 
@@ -14087,7 +14084,7 @@ msgstr "Невозможно выполнить запрос: отсутству
 msgid "Don''t know how to parse {0} {1}"
 msgstr "Не знаю, как разобрать {0} {1}"
 
-#: metabase/driver/sql/util.clj:77
+#: metabase/driver/sql/util.clj:78
 msgid "Don''t know how to alias {0}, expected an Identifier."
 msgstr "Не могу понять псевдоним {0}, ожидаю идентификации."
 
@@ -14097,7 +14094,7 @@ msgstr "Не могу понять псевдоним {0}, ожидаю иден
 msgid "Don''t know how to unprepare values of class {0}"
 msgstr "Не знаю, как подготовить значения класса {0}"
 
-#: metabase/driver/sql_jdbc/connection.clj:119
+#: metabase/driver/sql_jdbc/connection.clj:134
 msgid "Creating new connection pool for {0} database {1} ..."
 msgstr "Создание нового пула соединений для базы данных {0} {1} ..."
 
@@ -14121,7 +14118,7 @@ msgstr "Не удалось установить часовой пояс ''{0}''
 msgid "Database connection error"
 msgstr "Ошибка соединения с базой данных"
 
-#: metabase/models/interface.clj:60
+#: metabase/models/interface.clj:61
 msgid "Error parsing JSON"
 msgstr "Ошибка разбора JSON"
 
@@ -14254,7 +14251,7 @@ msgstr "При сохранении произошла ошибка"
 msgid "OK"
 msgstr "OK"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:68
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:63
 msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
 msgstr "Чтобы пользователи могли войти в систему с помощью Google, вам нужно предоставить Metabase идентификатор клиента консоли приложения Google для разработчиков. Это займет всего несколько шагов и инструкции по созданию ключа можно найти тут:{0}."
 
@@ -14359,7 +14356,7 @@ msgstr "{0} чтобы получить код авторизации."
 
 #: frontend/src/metabase/components/HeaderModal.jsx:44
 #: frontend/src/metabase/entities/databases/forms.js:227
-#: metabase/models/collection.clj:1142
+#: metabase/models/collection.clj:1157
 msgid "or"
 msgstr "или"
 
@@ -14386,7 +14383,7 @@ msgid "Metabase can scan the values present in each field in this database to en
 msgstr "Metabase может сканировать значения, присутствующие в каждом поле в этой базе данных, чтобы включить фильтры флажков на сводных панелях и в вопросах. Это может быть несколько ресурсоемким процессом, особенно если у вас ОЧЕНЬ большая база данных."
 
 #: frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx:94
-#: frontend/src/metabase/entities/questions/forms.js:30
+#: frontend/src/metabase/entities/questions/forms.js:24
 #: frontend/src/metabase/nav/utils/model-names.ts:10
 #: frontend/src/metabase/search/components/InfoText.jsx:73
 #: frontend/src/metabase/search/components/InfoText.jsx:76
@@ -15027,23 +15024,23 @@ msgstr "Выберите внешний ключ"
 msgid "Hi, {0}. Nice to meet you!"
 msgstr "Привет, {0} рады видеть тебя!"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:257
+#: frontend/src/metabase/visualizations/lib/settings/column.js:253
 msgid "12-hour clock"
 msgstr "12-часовой формат"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:261
+#: frontend/src/metabase/visualizations/lib/settings/column.js:257
 msgid "24-hour clock"
 msgstr "24-часовой формат"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:331
+#: frontend/src/metabase/visualizations/lib/settings/column.js:324
 msgid "Symbol"
 msgstr "Символ"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:362
+#: frontend/src/metabase/visualizations/lib/settings/column.js:354
 msgid "In the column heading"
 msgstr "В заголовке столбца"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:363
+#: frontend/src/metabase/visualizations/lib/settings/column.js:355
 msgid "In every table cell"
 msgstr " In every table cell "
 
@@ -15051,12 +15048,12 @@ msgstr " In every table cell "
 msgid "Value formatting"
 msgstr "Форматирование значения"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:446
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:449
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:180
 msgid "Full"
 msgstr "Полностью"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:199
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:200
 msgid "No change from last {0}"
 msgstr "Без изменений с прошлого {0}"
 
@@ -15155,7 +15152,7 @@ msgstr "Отключить автоматический коммит ..."
 msgid "Set default db connection with connection pool..."
 msgstr "Установить по умолчанию соединение БД с пулом соединений ..."
 
-#: metabase/db/setup.clj:102
+#: metabase/db/setup.clj:103
 msgid "Successfully verified {0} {1} application database connection."
 msgstr "Успешно проверено {0} {1} соединение с базой данных приложения."
 
@@ -15168,11 +15165,11 @@ msgstr "Не знаю, как разобрать параметр даты ''{0}
 msgid "The sub-query from referenced question #{0} failed with the following error: {1}"
 msgstr "Подзапрос из ссылочного вопроса № {0} не выполнен со следующей ошибкой: {1}"
 
-#: metabase/driver/mysql.clj:87
+#: metabase/driver/mysql.clj:92
 msgid "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
 msgstr "ВНИМАНИЕ: Metabase официально поддерживает только MySQL {0} / MariaDB {1} и выше."
 
-#: metabase/driver/mysql.clj:91
+#: metabase/driver/mysql.clj:96
 msgid "All Metabase features may not work properly when using an unsupported version."
 msgstr "Все функции Metabase могут работать некорректно при использовании неподдерживаемой версии."
 
@@ -15204,15 +15201,15 @@ msgstr "Не удалось установить часовой пояс ''{0}''
 msgid "Error setting transaction isolation level for {0} database to {1}"
 msgstr "Ошибка при установке уровня изоляции транзакции для базы данных {0} в {1}"
 
-#: metabase/driver/presto_jdbc.clj:440 metabase/driver/sql_jdbc/execute.clj:198
+#: metabase/driver/presto_jdbc.clj:431 metabase/driver/sql_jdbc/execute.clj:198
 msgid "Error setting connection to read-only"
 msgstr "Ошибка установки подключения только для чтения"
 
-#: metabase/driver/redshift.clj:146 metabase/driver/sql_jdbc/execute.clj:208
+#: metabase/driver/redshift.clj:144 metabase/driver/sql_jdbc/execute.clj:208
 msgid "Error setting default holdability for connection"
 msgstr "Ошибка при настройке удержания по умолчанию для соединения"
 
-#: metabase/driver/oracle.clj:446 metabase/driver/oracle.clj:463
+#: metabase/driver/oracle.clj:463 metabase/driver/oracle.clj:480
 msgid "Error setting result set fetch direction to FETCH_FORWARD"
 msgstr "Ошибка установки результата задания направления извлечения FETCH_FORWARD"
 
@@ -15224,11 +15221,11 @@ msgstr "Запрос отменен, вызов PreparedStatement.cancel ()"
 msgid "Failed to connect to database"
 msgstr "Не удалось подключиться к базе данных"
 
-#: metabase/driver/util.clj:458
+#: metabase/driver/util.clj:474
 msgid "Unable to determine connection properties for driver {0}"
 msgstr "Невозможно определить свойства соединения для драйвера {0}"
 
-#: metabase/models/field_values.clj:307
+#: metabase/models/field_values.clj:308
 msgid "Error fetching field values"
 msgstr "Ошибка при получении значений полей"
 
@@ -15244,7 +15241,7 @@ msgstr "описания параметров def строки должны им
 msgid "Setting {0} is internal"
 msgstr "Параметр {0} является внутренним"
 
-#: metabase/plugins.clj:139
+#: metabase/plugins.clj:147
 msgid "Loading local plugin manifest at {0}"
 msgstr "Загрузка манифеста локального плагина в {0}"
 
@@ -15269,7 +15266,6 @@ msgstr "Рендеринг карты с типом диаграммы {0} и т
 msgid "FIXME: These aren''t valid temporal literals: {0} {1}. Why are we attempting to format them as such?"
 msgstr "FIXME: Это недопустимые временные литералы: {0} {1}. Почему мы пытаемся отформатировать их как таковые?"
 
-#: metabase/query_processor/context/default.clj:59
 #: metabase/query_processor/pivot.clj:185
 msgid "Error reducing result rows"
 msgstr "Ошибка сокращения строк результата"
@@ -15459,7 +15455,7 @@ msgstr "Варианты локализации"
 msgid "This database doesn't have any tables."
 msgstr "В этой базе данных нет таблиц."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:256
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:252
 msgid "This field only accepts a single value because it's used in a SQL query."
 msgstr "Это поле принимает только одно значение, поскольку оно используется в запросе SQL."
 
@@ -15509,7 +15505,7 @@ msgid "SSH Key"
 msgstr " SSH ключ"
 
 #: frontend/src/metabase/entities/databases/forms.js:76
-#: metabase/driver/mysql.clj:107
+#: metabase/driver/mysql.clj:112
 msgid "Server SSL certificate chain"
 msgstr "Цепочка сертификатов SSL сервера"
 
@@ -15734,11 +15730,11 @@ msgstr "Личные коллекции должны находиться в п�
 msgid "You cannot move a Collection to a different namespace once it has been created."
 msgstr "Вы не можете переместить коллекцию в другое пространство имен после ее создания."
 
-#: metabase/models/collection.clj:1134 metabase/models/permissions.clj:925
+#: metabase/models/collection.clj:1149 metabase/models/permissions.clj:925
 msgid "Collection does not exist."
 msgstr "Коллекция не существует."
 
-#: metabase/models/collection.clj:1140
+#: metabase/models/collection.clj:1155
 msgid "A {0} can only go in Collections in the {1} namespace."
 msgstr "{0} может входить только в коллекции в пространстве имен {1}."
 
@@ -15885,7 +15881,6 @@ msgid "User attribute configuration (optional)"
 msgstr "Конфигурация атрибута пользователя (необязательно)"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:143
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:110
 #: frontend/src/metabase/admin/settings/containers/PremiumEmbeddingLicensePage/PremiumEmbeddingLicensePage.tsx:88
 #: frontend/src/metabase/admin/settings/utils.js:14
 msgid "Using {0}"
@@ -15956,12 +15951,12 @@ msgid "SAML Identity Provider URL"
 msgstr "URL-адрес поставщика удостоверений SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:121
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:98
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
 msgid "SAML Identity Provider Certificate"
 msgstr "Сертификат поставщика удостоверений SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:128
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:104
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:105
 msgid "SAML Application Name"
 msgstr "Имя приложения SAML"
 
@@ -15970,12 +15965,12 @@ msgid "Sign SSO requests (optional)"
 msgstr "Подписывать запросы SSO (необязательно)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:140
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:109
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:110
 msgid "SAML Keystore Path"
 msgstr "Путь к хранилищу ключей SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:144
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:114
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:115
 msgid "SAML Keystore Password"
 msgstr "Пароль хранилища ключей SAML"
 
@@ -15984,7 +15979,7 @@ msgid "Shh..."
 msgstr "Тсс..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:150
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:120
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:121
 msgid "SAML Keystore Alias"
 msgstr "Псевдоним хранилища ключей SAML"
 
@@ -15999,13 +15994,13 @@ msgstr "Чтобы включить это, вам необходимо созд
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:172
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:173
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:145
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:146
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:208
 msgid "Group Name"
 msgstr "Название группы"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:179
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:151
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:152
 msgid "Group attribute name"
 msgstr "Имя атрибута группы"
 
@@ -16025,19 +16020,19 @@ msgstr "Позволяет пользователям входить в сист
 msgid "Allows users to login via a JWT Identity Provider."
 msgstr "Позволяет пользователям входить в систему через JWT Identity Provider."
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:43
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:44
 msgid "Enable Password Authentication"
 msgstr "Включить аутентификацию по паролю"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:44
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:45
 msgid "When enabled, users can additionally log in with email and password."
 msgstr "Если этот параметр включен, пользователи могут дополнительно входить в систему с помощью электронной почты и пароля."
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:54
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:55
 msgid "Notify admins of new SSO users"
 msgstr "Уведомлять администраторов о новых пользователях системы единого входа"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:55
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:56
 msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
 msgstr "Если этот параметр включен, администраторы будут получать электронное письмо при первом использовании системы единого входа."
 
@@ -16053,15 +16048,15 @@ msgstr "документация"
 msgid "SAML Identity Provider URI"
 msgstr "URI поставщика удостоверений SAML"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:164
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:165
 msgid "JWT Authentication"
 msgstr "JWT аутентификация"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:170
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:171
 msgid "JWT Identity Provider URI"
 msgstr "URI поставщика удостоверений JWT"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:179
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
 msgid "String used by the JWT signing key"
 msgstr "Строка, используемая ключом подписи JWT"
 
@@ -16566,28 +16561,28 @@ msgstr "Доступные столбцы"
 msgid "user attribute"
 msgstr "атрибут пользователя"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCard.tsx:310
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:278
 #: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:52
 msgid "Text card"
 msgstr "Текстовая карточка"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:168
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:388
 msgid "Click behavior"
 msgstr "Поведение при нажатии"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:30
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:431
 msgid "Visualization options"
 msgstr "Варианты визуализации"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:74
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:471
 msgid "Edit series"
 msgstr "Редактировать серию"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:74
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:471
 msgid "Add series"
 msgstr "или"
 
-#: frontend/src/metabase/dashboard/components/DashCard/ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay.tsx:49
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:547
 msgid "On click"
 msgstr "По клику"
 
@@ -16608,7 +16603,7 @@ msgstr "Добавить запрос"
 msgid "You're editing this dashboard."
 msgstr "Вы редактируете эту панель."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:171
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:167
 msgid "Column to filter on"
 msgstr "Столбец для фильтрации"
 
@@ -16903,7 +16898,7 @@ msgstr "Проверяет значения столбца даты или чи�
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:713
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:726
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:747
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:775
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:777
 msgid "Created At"
 msgstr "Создан"
 
@@ -16978,8 +16973,8 @@ msgid "Linked filters"
 msgstr "Связанные фильтры"
 
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:81
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:629
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:653
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:632
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:656
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:115
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:139
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:39
@@ -17265,11 +17260,11 @@ msgstr "Верхняя папка"
 msgid ":parameters must be a sequence of maps with String :id keys"
 msgstr ": параметры должны быть последовательностью карт с ключами String: id"
 
-#: metabase/models/field_values.clj:76
+#: metabase/models/field_values.clj:77
 msgid "Invalid human-readable-values: values must be a sequence; each item must be nil or a string"
 msgstr "Недопустимые удобочитаемые значения: значения должны быть последовательностью; каждый элемент должен быть нулем или строкой"
 
-#: metabase/models/field_values.clj:149
+#: metabase/models/field_values.clj:150
 msgid ":values must be present to fetch :human_readable_values"
 msgstr ": значения должны присутствовать для получения: human_readable_values"
 
@@ -17286,7 +17281,7 @@ msgstr "имена фрагментов не могут включать '}' и�
 msgid "Error executing chain filter query"
 msgstr "Ошибка при выполнении запроса фильтра цепочки"
 
-#: metabase/models/field_values.clj:183
+#: metabase/models/field_values.clj:184
 #: metabase/models/params/chain_filter.clj:597
 msgid "Field {0} does not exist."
 msgstr "Поле {0} не существует."
@@ -17403,11 +17398,11 @@ msgid "Skipping update, automatic Field value updates are disabled for Database 
 msgstr "Пропуск обновления, автоматические обновления значений полей отключены для базы данных {0}."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:132
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:91
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
 msgid "SAML Identity Provider Issuer"
 msgstr "Поставщик SAML идентификации"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:83
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:84
 msgid "SAML Identity Provider SSO URL"
 msgstr "Страница SSO поставщика SAML"
 
@@ -17627,7 +17622,7 @@ msgstr "Строки {0}-{1} из первых {2}"
 msgid "Drag fields here"
 msgstr "Перетащите поля сюда"
 
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:441
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:443
 msgid "Percentage"
 msgstr "Процентаж"
 
@@ -17683,7 +17678,7 @@ msgstr "Цвет уменьшения"
 msgid "Show total"
 msgstr "Показать всего"
 
-#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:44
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:45
 msgid "Total color"
 msgstr "Цвет \"всего\""
 
@@ -17976,19 +17971,19 @@ msgstr "Должны ли оповещаться администраторы о
 msgid "New SSO user created: {0} ({1})"
 msgstr "Создан новый пользователь SSO: {0} ({1})"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:234
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:235
 msgid "Cannot convert a {0} to a {1}"
 msgstr "Невозможно конвертировать {0} в {1}"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:369
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:370
 msgid "Cannot extract {0} from a TIME field"
 msgstr "Невозможно извлечь {0} из поля с форматом ВРЕМЯ"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:377
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:378
 msgid "Cannot extract {0} from a DATE field"
 msgstr "Невозможно извлечь {0} из поля с форматом ДАТА"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:384
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:385
 msgid "Cannot extract {0} from a DATETIME or TIMESTAMP"
 msgstr "Невозможность извлечь {0} из поля с датой и временем"
 
@@ -17998,7 +17993,7 @@ msgstr "Невозможность извлечь {0} из поля с дато�
 msgid "Invalid query: you cannot add a {0} to a {1} column."
 msgstr "Некорректный запрос: вы не можете добавить {0} к столбцу {1}."
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:735
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:748
 msgid "It doesn''t make sense to convert between DATEs and TIMEs!"
 msgstr "Нет никакого смысла конвертировать ДАТЫ во ВРЕМЯ!"
 
@@ -18138,7 +18133,7 @@ msgstr "Ошибка отмены запроса с ID {0}"
 msgid "Error executing query"
 msgstr "Ошибка выполнения запроса"
 
-#: metabase/driver/vertica.clj:147
+#: metabase/driver/vertica.clj:166
 msgid "Failed to fetch materialized views for this database"
 msgstr "Ошибка получения материализованных представлений для базы данных"
 
@@ -18167,7 +18162,7 @@ msgstr "Вы не можете определить значение {0} есл�
 msgid "Error compiling HoneySQL form"
 msgstr "Ошибка компиляции HoneySQL формы"
 
-#: metabase/driver/sql_jdbc/connection.clj:253
+#: metabase/driver/sql_jdbc/connection.clj:268
 msgid "Not a valid Database/Database ID/JDBC spec"
 msgstr "Некорректная спецификация Database/Database ID/JDBC"
 
@@ -18417,12 +18412,12 @@ msgstr "Неподдерживаемый тип базы данных прило
 msgid "Check the value of MB_DB_CONNECTION_URI."
 msgstr "Проверьте значение MB_DB_CONNECTION_URI."
 
-#: metabase/driver/sql/query_processor.clj:290
-#: metabase/driver/sql/query_processor.clj:310
+#: metabase/driver/sql/query_processor.clj:292
+#: metabase/driver/sql/query_processor.clj:312
 msgid "Driver {0} does not support {1}"
 msgstr "Водитель {0} не поддерживает {1}"
 
-#: metabase/driver/sql/query_processor.clj:367
+#: metabase/driver/sql/query_processor.clj:369
 msgid "No magnitude known for {0}"
 msgstr "Нет известной величины {0}"
 
@@ -18451,11 +18446,11 @@ msgstr "Миграция в Metabase Cloud."
 msgid "Manage Metabase Cloud"
 msgstr "Управление Metabase Cloud"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:258
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:259
 msgid "Show totals"
 msgstr "Показать общие показатели"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:240
 msgid "Sort order"
 msgstr "Порядок сортировки"
 
@@ -18487,7 +18482,7 @@ msgstr "Недействительный {0}: заданный пробой в �
 msgid "Error generating pivot queries"
 msgstr "Ошибка при генерации запросов на шарнир"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:260
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:261
 msgid "Sync Administrator group"
 msgstr "Группа администраторов синхронизации"
 
@@ -18557,11 +18552,11 @@ msgstr "Столбец для проверки."
 msgid "Checks if a column is empty"
 msgstr "Проверяет, пуст ли столбец"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:104
+#: frontend/src/metabase-lib/expressions/resolver.js:117
 msgid "CASE expects 2 arguments or more"
 msgstr "CASE ожидает 2 или более аргументов"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:152
+#: frontend/src/metabase-lib/expressions/resolver.js:165
 msgid "Function {0} expects {1} argument"
 msgid_plural "Function {0} expects {1} arguments"
 msgstr[0] "Функция {0} ожидает {1} аргумент"
@@ -18721,16 +18716,16 @@ msgstr "Нет агрегирования по индексу {0}"
 msgid "Multiple date filters are not supported."
 msgstr "Множественные фильтры даты не поддерживаются."
 
-#: metabase/driver/redshift.clj:282
+#: metabase/driver/redshift.clj:280
 msgid "Error checking schema permissions"
 msgstr "Ошибка проверки разрешений схемы"
 
-#: metabase/driver/presto_jdbc.clj:401 metabase/driver/sql_jdbc/execute.clj:295
+#: metabase/driver/presto_jdbc.clj:392 metabase/driver/sql_jdbc/execute.clj:295
 msgid "Error setting prepared statement fetch direction to FETCH_FORWARD"
 msgstr "Ошибка при установке направления получения подготовленного оператора на FETCH_FORWARD"
 
-#: metabase/driver/presto_jdbc.clj:418 metabase/driver/sql_jdbc/execute.clj:322
-#: metabase/driver/sqlserver.clj:501
+#: metabase/driver/presto_jdbc.clj:409 metabase/driver/sql_jdbc/execute.clj:322
+#: metabase/driver/sqlserver.clj:540
 msgid "Error setting statement fetch direction to FETCH_FORWARD"
 msgstr "Ошибка при установке направления выборки инструкции на FETCH_FORWARD"
 
@@ -18746,7 +18741,7 @@ msgstr "Ошибка конечной точки аутентификации"
 msgid "SSH tunnel can only be established for H2 connections using the TCP protocol"
 msgstr "SSH-туннель может быть установлен только для H2-соединений с использованием протокола TCP."
 
-#: metabase/driver/sql_jdbc/connection.clj:181
+#: metabase/driver/sql_jdbc/connection.clj:196
 msgid "ssh tunnel for database {0} looks closed; marking pool invalid to reopen it"
 msgstr "ssh-туннель для базы данных {0} выглядит закрытым; отметка пула недействительна для его повторного открытия"
 
@@ -18899,7 +18894,7 @@ msgstr "Название запроса"
 msgid "Collection name"
 msgstr "Название коллекции"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:248
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:249
 msgid "Group membership filter"
 msgstr "Фильтр участия в группах"
 
@@ -18927,15 +18922,15 @@ msgstr "Найти кого то"
 msgid "Invite someone"
 msgstr "Пригласить кого-то"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:70
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:64
 msgid "here"
 msgstr "тут"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:77
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:71
 msgid "{your-client-id}.apps.googleusercontent.com"
 msgstr "{your-client-id}.apps.googleusercontent.com"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:82
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:77
 msgid "Domain"
 msgstr "Домен"
 
@@ -19109,12 +19104,12 @@ msgid "Explore results"
 msgstr "Посмотреть результаты"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:173
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:286
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:287
 msgid "You can use the value of any column here like this: {{COLUMN}}"
 msgstr "Вы можете использовать значение любого столбца следующим образом: {{COLUMN}}"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:203
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:316
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:317
 msgid "Link URL"
 msgstr "Ссылка"
 
@@ -19220,7 +19215,7 @@ msgstr "Вы не можете обновить CollectionPermissionGraphRevisio
 msgid "Invalid Field {0} {1}"
 msgstr "Некорректное поле {0} {1}"
 
-#: metabase/models/field.clj:98
+#: metabase/models/field.clj:99
 msgid "Invalid Field {0} {1}: falling back to {2}"
 msgstr "Некорректное поле {0} {1}: возврат к {2}"
 
@@ -19430,7 +19425,7 @@ msgstr "{0} отредактировал этот"
 
 #: enterprise/frontend/src/metabase-enterprise/collections/constants.js:5
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontFilesWidget/utils.ts:8
-#: frontend/src/metabase/plugins/index.ts:105
+#: frontend/src/metabase/plugins/index.ts:100
 msgid "Regular"
 msgstr "Обычный"
 
@@ -19487,7 +19482,7 @@ msgstr "Редактировать детали"
 msgid "History"
 msgstr "История"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:461
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:462
 msgid "Every field is hidden right now"
 msgstr "Все поля сейчас скрыты"
 
@@ -19504,15 +19499,15 @@ msgstr "Управление учетной записью Cloud, включая
 msgid "Go to the Metabase Store"
 msgstr "Перейти в Metabase Store"
 
-#: metabase/driver/presto_jdbc.clj:340
+#: metabase/driver/presto_jdbc.clj:331
 msgid "Running statement in describe-schema: {0}"
 msgstr "Выполнение оператора в describe-schema: {0}"
 
-#: metabase/driver/presto_jdbc.clj:353
+#: metabase/driver/presto_jdbc.clj:344
 msgid "Running statement in all-schemas: {0}"
 msgstr "Выполнение утверждения во всех схемах: {0}"
 
-#: metabase/driver/presto_jdbc.clj:373
+#: metabase/driver/presto_jdbc.clj:364
 msgid "Running statement in describe-table: {0}"
 msgstr "Выполнение оператора в describe-table: {0}"
 
@@ -19524,11 +19519,11 @@ msgstr "Ошибка при разборе параметра JSON {0}: {1}"
 msgid "Plugin ''{0}'' depends on environment variable ''{1}'' being set to something"
 msgstr "Плагин ''{0}'' зависит от того, что переменная окружения ''{1}'' имеет значение"
 
-#: metabase/pulse/render/body.clj:840
+#: metabase/pulse/render/body.clj:835
 msgid "Down"
 msgstr "Вниз"
 
-#: metabase/pulse/render/body.clj:840
+#: metabase/pulse/render/body.clj:835
 msgid "Up"
 msgstr "Вверх"
 
@@ -19910,7 +19905,7 @@ msgstr "Изменить детали дашборда"
 msgid "More options"
 msgstr "Больше опций"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:92
+#: frontend/src/metabase-lib/expressions/resolver.js:105
 msgid "Expecting field but found {0}"
 msgstr "Ожидается поле, но найдено {0}"
 
@@ -20237,7 +20232,7 @@ msgstr "Заблокировано: вам не разрешено выполн�
 msgid "BigQueryException executing query"
 msgstr "BigQueryException выполняет запрос"
 
-#: metabase/driver/presto_jdbc.clj:221
+#: metabase/driver/presto_jdbc.clj:212
 msgid "SSL must be enabled to use Kerberos authentication"
 msgstr "Для использования проверки подлинности Kerberos необходимо включить SSL."
 
@@ -20245,7 +20240,7 @@ msgstr "Для использования проверки подлинност�
 msgid "Cannot parse permissions graph because it is invalid: {0}"
 msgstr "Невозможно проанализировать диаграмму разрешений, потому что она недействительна: {0}"
 
-#: metabase/driver/sql_jdbc/connection.clj:186
+#: metabase/driver/sql_jdbc/connection.clj:201
 msgid "Hash of database {0} details changed; marking pool invalid to reopen it"
 msgstr "Хеш данных базы данных {0} изменен; отметка пула недействительна для его повторного открытия"
 
@@ -20465,7 +20460,7 @@ msgstr[3] "{0} уникальных значений"
 msgid "Getting distinct values..."
 msgstr "Получение уникальных значений..."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:128
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:124
 msgid "You don’t have permission to see this question’s columns."
 msgstr "У вас нет полномочий для просмотра столбцов запроса."
 
@@ -20537,15 +20532,15 @@ msgstr "Неизвестный сегмент: {0}"
 msgid "Unknown Field: {0}"
 msgstr "Неизвестное поле: {0}"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:133
+#: frontend/src/metabase-lib/expressions/resolver.js:146
 msgid "Unknown function {0}"
 msgstr "Неизвестная функция: {0}"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:138
+#: frontend/src/metabase-lib/expressions/resolver.js:151
 msgid "Expecting {0} but found function {1} returning {2}"
 msgstr "Ожидается {0}, но найдена функция {1}, возвращающая {2}"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:176
+#: frontend/src/metabase-lib/expressions/resolver.js:189
 msgid "Expecting {0} but found {1}"
 msgstr "Ожидается {0}, но найдено {1}"
 
@@ -20765,7 +20760,7 @@ msgid "Model in {0}"
 msgstr "Модель в {0}"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:164
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:277
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:278
 msgid "Display as"
 msgstr "Отобразить как"
 
@@ -20899,7 +20894,7 @@ msgstr "Поиск специального типа"
 msgid "Model management"
 msgstr "Управление моделями"
 
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:130
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:127
 #: frontend/src/metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetManagementSection.jsx:58
 msgid "Edit query definition"
 msgstr "Изменить описание запроса"
@@ -20932,7 +20927,7 @@ msgstr "Ошибка обработки запроса при применени
 msgid "Exception caught in :bigquery-cloud-sdk can-connect?"
 msgstr "Исключение в :bigquery-cloud-sdk can-connect?"
 
-#: metabase/driver/bigquery_cloud_sdk.clj:351
+#: metabase/driver/bigquery_cloud_sdk.clj:355
 msgid "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
 msgstr "В БД {0} был жестко задан идентификатор набора данных; переход на шаблон включения и обновление схем таблиц"
 
@@ -21163,7 +21158,7 @@ msgstr "Ожидалось, что параметры запроса исход�
 msgid "No expression named {0} at this level of the query"
 msgstr "Выражение {0} не найдено на этом уровне запроса"
 
-#: metabase/driver/sql/query_processor.clj:477
+#: metabase/driver/sql/query_processor.clj:479
 msgid "Error compiling :field clause: {0}"
 msgstr "Ошибка компиляции :field: {0}"
 
@@ -21188,7 +21183,7 @@ msgid "Error setting statement fetch size to fetch-size"
 msgstr "Ошибка при установке размера выборки утверждений в fetch-size"
 
 #: metabase/driver/bigquery_cloud_sdk.clj:173
-#: metabase/driver/druid/execute.clj:160 metabase/driver/snowflake.clj:293
+#: metabase/driver/druid/execute.clj:160 metabase/driver/snowflake.clj:311
 #: metabase/driver/sql_jdbc/execute.clj:501
 msgid "Error executing query: {0}"
 msgstr "Ошибка исполнения запроса: {0}"
@@ -21309,7 +21304,7 @@ msgstr "Канал Slack `{0}` отсутствует!"
 msgid "The channel is used for storing images that are included in dashboard subscriptions."
 msgstr "Канал используется для хранения изображений, которые включаются в подписки на приборную панель."
 
-#: metabase/models/collection.clj:980
+#: metabase/models/collection.clj:995
 msgid "You do not have curate permissions for this Collection."
 msgstr "У вас отсутствуют полномочия организации Коллекции."
 
@@ -21323,7 +21318,7 @@ msgstr "У приборной панели {0} нет приборной кар�
 msgid "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
 msgstr "Удаление секретного идентификатора {0} из БД приложения, поскольку собственная база данных ({1}) удаляется"
 
-#: metabase/models/field.clj:80
+#: metabase/models/field.clj:81
 #, fuzzy
 msgid "Invalid value for Field column {0}: {1} is not a descendant of any of these types: {2}"
 msgstr "Недопустимое значение для столбца поля {0}: {1} не является потомком ни одного из этих типов: {2}"
@@ -21435,7 +21430,7 @@ msgstr "По умолчанию имеет значение false, если дл
 msgid "Alert: {0} has {1}"
 msgstr "Тревога: у {0} есть {1}"
 
-#: metabase/pulse/render/body.clj:866 metabase/pulse/render/body.clj:868
+#: metabase/pulse/render/body.clj:861 metabase/pulse/render/body.clj:863
 msgid "Nothing to compare to."
 msgstr "Нечего сравнивать."
 
@@ -21517,15 +21512,15 @@ msgstr "Агрегация отсутствует в позиции {0}"
 msgid "No expression named {0}"
 msgstr "Выражение {0} отсутствует"
 
-#: metabase/sample_data.clj:16
+#: metabase/sample_data.clj:51
 msgid "Sample database DB file ''{0}'' cannot be found."
 msgstr "Файл базы примеров ''{0}'' не найден."
 
-#: metabase/sample_data.clj:29
+#: metabase/sample_data.clj:69
 msgid "Loading sample database"
 msgstr "Загрузка базы с примерами"
 
-#: metabase/sample_data.clj:36
+#: metabase/sample_data.clj:77
 msgid "Failed to load sample database"
 msgstr "Ошибка загрузки базы с примерами"
 
@@ -22241,7 +22236,7 @@ msgid "Most"
 msgstr "Большую часть рабочего времени "
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator.tsx:34
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:428
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:431
 msgid "Some"
 msgstr "Часть рабочего времени"
 
@@ -22280,7 +22275,7 @@ msgid "Instead of having your end users wade through your complex raw data, you 
 msgstr "Вместо того чтобы заставлять конечных пользователей рыться в сложных необработанных данных, вы можете создать пользовательские модели, которые легко найти, понять и изучить."
 
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:46
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:210
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:206
 msgid "Learn how"
 msgstr "Узнать, как"
 
@@ -22431,18 +22426,18 @@ msgstr "Управление базой данных"
 msgid "Unbinned"
 msgstr "Разархивировано"
 
-#: frontend/src/metabase-lib/Dimension.ts:1556
+#: frontend/src/metabase-lib/Dimension.ts:1560
 #, fuzzy
 msgid "Invalid template tag \"{0}\""
 msgstr "Недопустимый тег шаблона \"{0}\""
 
-#: frontend/src/metabase-lib/Dimension.ts:1561
+#: frontend/src/metabase-lib/Dimension.ts:1565
 #, fuzzy
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "Переменная \"{0}\" должна быть сопоставлена с полем."
 
-#: frontend/src/metabase-lib/Dimension.ts:1686
-#: frontend/src/metabase-lib/Dimension.ts:1822
+#: frontend/src/metabase-lib/Dimension.ts:1690
+#: frontend/src/metabase-lib/Dimension.ts:1826
 #, fuzzy
 msgid "Don't bin"
 msgstr "Не выбрасывайте мусор"
@@ -23044,14 +23039,14 @@ msgstr "Ресурсы и поддержка"
 
 #: frontend/src/metabase/components/EntityItem.jsx:141
 #: frontend/src/metabase/core/components/BookmarkToggle/BookmarkToggle.tsx:44
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:83
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:81
 #, fuzzy
 msgid "Remove from bookmarks"
 msgstr "Удалить из закладок"
 
 #: frontend/src/metabase/components/EntityItem.jsx:141
 #: frontend/src/metabase/core/components/BookmarkToggle/BookmarkToggle.tsx:44
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:83
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:81
 msgid "Bookmark"
 msgstr "Закладка"
 
@@ -23253,7 +23248,7 @@ msgstr "Разрешенный домен(ы) адреса электронно�
 msgid "You do not have permissions to download the results of this query."
 msgstr "У вас нет прав на скачивание результатов этого запроса."
 
-#: metabase/driver/snowflake.clj:74
+#: metabase/driver/snowflake.clj:80
 #, fuzzy
 msgid "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect results. Set the Start of Week Setting instead."
 msgstr "Не следует устанавливать WEEK_START в параметрах подключения Snowflake; это может привести к неправильным результатам. Вместо этого установите параметр Начало недели."
@@ -23329,7 +23324,7 @@ msgstr "Ошибка определения значения для параме
 msgid "You cannot update a ApplicationPermissionsRevision!"
 msgstr "Вы не можете обновить ApplicationPermissionsRevision!"
 
-#: metabase/models/card.clj:189
+#: metabase/models/card.clj:188
 #, fuzzy
 msgid "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
 msgstr "Неверный фильтр полей: Поле {0} принадлежит базе данных {1}, но запрос направлен на базу данных {2}"
@@ -23790,19 +23785,19 @@ msgstr "Невозможно разрешить поле {0} в контекст
 msgid "Error decomposing question: {0}"
 msgstr "Ошибка при декомпозиции вопроса: {0}"
 
-#: metabase/driver/ddl/interface.clj:50
+#: metabase/driver/ddl/interface.clj:54
 msgid "Lack permissions to create {0} schema"
 msgstr "Отсутствие прав на создание схемы {0}"
 
-#: metabase/driver/ddl/interface.clj:51
+#: metabase/driver/ddl/interface.clj:55
 msgid "Lack permission to create table in schema {0}"
 msgstr "Отсутствие разрешения на создание таблицы в схеме {0}"
 
-#: metabase/driver/ddl/interface.clj:52
+#: metabase/driver/ddl/interface.clj:56
 msgid "Lack permission to read table in schema {0}"
 msgstr "Отсутствие разрешения на чтение таблицы в схеме {0}"
 
-#: metabase/driver/ddl/interface.clj:53
+#: metabase/driver/ddl/interface.clj:57
 msgid "Lack permission to delete table in schema {0}"
 msgstr "Отсутствие разрешения на удаление таблицы в схеме {0}"
 
@@ -23941,27 +23936,26 @@ msgid "Add description"
 msgstr "Добавить описание"
 
 #: frontend/src/metabase/models/components/ModelDetailPage/ModelSchemaDetails/ModelSchemaDetails.tsx:51
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:137
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:134
 msgid "Edit metadata"
 msgstr "Редактировать метаданные"
 
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:174
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:171
 msgid "Turn into a model"
 msgstr "Превратиться в модель"
 
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:182
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:190
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:179
 msgid "Turn back to saved question"
 msgstr "Вернуться к сохраненному вопросу"
 
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:352
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:226
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:214
 msgid "More info"
 msgstr "Подробнее"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionMenu.tsx:78
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:368
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:241
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:229
 msgid "Move, archive, and more..."
 msgstr "Перемещение, архивирование и многое другое..."
 
@@ -24309,7 +24303,7 @@ msgid "Invalid cron expression"
 msgstr "Недопустимое выражение cron."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/lib/loading-message.ts:4
-#: frontend/src/metabase/plugins/index.ts:88
+#: frontend/src/metabase/plugins/index.ts:83
 msgid "Doing science..."
 msgstr "Работаем с данными..."
 
@@ -24804,23 +24798,23 @@ msgstr "Ошибка нормализации формы: {0}"
 msgid "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
 msgstr "{0} не является допустимой временной единицей для {1}; "
 
-#: metabase/models/collection.clj:1025 metabase/models/collection.clj:1028
+#: metabase/models/collection.clj:1040 metabase/models/collection.clj:1043
 msgid "{0}''s Personal Collection"
 msgstr "Личная коллекция{0}"
 
-#: metabase/models/field_values.clj:90
+#: metabase/models/field_values.clj:91
 msgid "Full FieldValues shouldn't have hash_key."
 msgstr "Полные значения поля не должны иметь hash_key."
 
-#: metabase/models/field_values.clj:84
+#: metabase/models/field_values.clj:85
 msgid "Invalid field-values type."
 msgstr "Недопустимый тип значения поля."
 
-#: metabase/models/field_values.clj:97
+#: metabase/models/field_values.clj:98
 msgid "Advanced FieldValues requires a hash_key."
 msgstr "Advanced FieldValues ​​требует hash_key."
 
-#: metabase/models/field_values.clj:125
+#: metabase/models/field_values.clj:126
 msgid "Can't update type or hash_key for a FieldValues."
 msgstr "Невозможно обновить тип или хэш_ключ для FieldValues."
 
@@ -25056,11 +25050,11 @@ msgstr "⚠️ Функции Pro сейчас не работают из-за �
 msgid "Review your payment settings"
 msgstr "Просмотрите настройки оплаты"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:65
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:66
 msgid "Session timeout"
 msgstr "Таймаут сессии"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:66
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:67
 msgid "Time before inactive users are logged out."
 msgstr "Время до выхода из системы неактивных пользователей."
 
@@ -25068,11 +25062,11 @@ msgstr "Время до выхода из системы неактивных п
 msgid "Lighthouse illustration"
 msgstr "Иллюстрация маяка"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:173
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:169
 msgid "Variable to map to"
 msgstr "Переменная для сопоставления с"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:179
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:175
 msgid "You can connect widgets to {{variables}} in text cards."
 msgstr "Вы можете подключать виджеты к {{переменным}} в текстовых карточках."
 
@@ -25080,7 +25074,7 @@ msgstr "Вы можете подключать виджеты к {{переме�
 msgid "If you have a PEM SSL client key, you can convert that key to the PKCS-8/DER format using OpenSSL. {0}."
 msgstr "Если у вас есть клиентский ключ PEM SSL, вы можете преобразовать его в формат PKCS-8/DER с помощью OpenSSL. {0}."
 
-#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:168
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:169
 msgid "You can use Markdown here, and include variables {{like_this}}"
 msgstr "Здесь можно использовать Markdown и включить переменные {{like_this}}."
 
@@ -25324,12 +25318,12 @@ msgid "Info"
 msgstr "Информация"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:197
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:310
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:311
 msgid "Link to {{bird_id}}"
 msgstr "Ссылка на {{bird_id}}"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:224
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:336
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:337
 msgid "http://toucan.example/{{bird_id}}"
 msgstr "http://toucan.example/{{bird_id}}"
 
@@ -25396,7 +25390,7 @@ msgstr "Встроить в приложение"
 msgid "Add this {0} to your application server code. You’ll be able to preview the way it looks and behaves before making it securely visible for your users."
 msgstr "Добавьте этот {0} в код вашего сервера приложений. Вы сможете предварительно посмотреть, как он выглядит и ведет себя, прежде чем сделать его безопасным для пользователей."
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:114
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:113
 #: frontend/src/metabase/public/components/widgets/SharingPane.tsx:172
 msgid "Set up"
 msgstr "Настроить"
@@ -25473,7 +25467,7 @@ msgstr "Результат: {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.jsx:36
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:188
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:97
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:84
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:38
 msgid "Save and enable"
 msgstr "Сохранить и включить"
@@ -25675,7 +25669,7 @@ msgstr "Добавляет некоторые единицы времени к �
 
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:730
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:751
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:779
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:781
 msgid "The column with your date or timestamp values."
 msgstr "Столбец с вашими значениями даты или временной метки."
 
@@ -25819,7 +25813,7 @@ msgstr "Вариант два"
 msgid "Option Three"
 msgstr "Вариант три"
 
-#: frontend/src/metabase/routes.jsx:247
+#: frontend/src/metabase/routes.jsx:256
 msgid "New Model"
 msgstr "Новая Модель"
 
@@ -25895,23 +25889,23 @@ msgstr "подписка создана"
 msgid "deleted a subscription"
 msgstr "подписка удалена"
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:74
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:77
 msgid "Use the notebook editor"
 msgstr "Используйте редактор блокнота"
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:75
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:78
 msgid "This automatically inherits metadata from your source tables, and gives your models drill-through."
 msgstr "Это автоматически наследует метаданные из ваших исходных таблиц и дает вашим моделям сквозную обработку."
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:90
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:93
 msgid "Use a native query"
 msgstr "Используйте собственный запрос"
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:91
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:94
 msgid "You can always fall back to a SQL or native query, which is a bit more manual."
 msgstr "Вы всегда можете вернуться к SQL или нативному запросу, который является более ручным."
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:110
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:113
 msgid "What's a model?"
 msgstr "Какая модель?"
 
@@ -25919,7 +25913,7 @@ msgstr "Какая модель?"
 msgid "Your page is ready"
 msgstr "Ваша страница готова"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCard.tsx:310
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:279
 msgid "Action button"
 msgstr "Кнопка действия"
 
@@ -25967,11 +25961,11 @@ msgstr "Отказаться"
 msgid "Question in {0}"
 msgstr "Запрос в {0}"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:224
+#: frontend/src/metabase/visualizations/lib/settings/column.js:222
 msgid "Abbreviate days and months"
 msgstr "Сокращайте дни и месяцы"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:417
+#: frontend/src/metabase/visualizations/lib/settings/column.js:404
 msgid "dollars"
 msgstr "долларов"
 
@@ -26051,34 +26045,34 @@ msgstr "Значение столбца"
 msgid "Add series breakout"
 msgstr "Добавление серийного разрыва"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:265
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:268
 msgid "Add another series"
 msgstr "Добавить еще одну серию"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:440
 msgid "Auto formatting"
 msgstr "Автоформатирование"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:500
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:535
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:503
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:538
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:24
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:34
 msgid "Scale"
 msgstr "Шкала"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:551
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:567
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:554
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:570
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:50
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:63
 msgid "Show lines and marks"
 msgstr "Показать линии и метки"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:612
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:615
 msgid "Split y-axis when necessary"
 msgstr "При необходимости разделите ось y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:622
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:644
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:625
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:647
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:108
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:130
 msgid "Show label"
@@ -26240,11 +26234,11 @@ msgstr "нарушает уникальное ограничение {0}"
 msgid "{0} violates not-null constraint"
 msgstr "{0} нарушает ограничение not-null"
 
-#: metabase/driver/redshift.clj:300
+#: metabase/driver/redshift.clj:298
 msgid "Error fetching field metadata for table {0}"
 msgstr "Ошибка при получении метаданных поля для таблицы {0}"
 
-#: metabase/driver/snowflake.clj:189
+#: metabase/driver/snowflake.clj:195
 msgid "sqlite doesn't support extract us week"
 msgstr "sqlite не поддерживает extract us week"
 
@@ -26328,11 +26322,11 @@ msgstr "Были ли проверены и сохранены обязател�
 msgid "Data apps are not enabled."
 msgstr "Приложения данных не включены."
 
-#: metabase/models/card.clj:213
+#: metabase/models/card.clj:212
 msgid "A model made from a native SQL question cannot have a variable or field filter."
 msgstr "Модель, созданная из собственного вопроса SQL, не может иметь фильтр переменных или полей."
 
-#: metabase/models/dashboard_card.clj:194
+#: metabase/models/dashboard_card.clj:195
 msgid "You cannot add an is_write Card to a Dashboard."
 msgstr "Вы не можете добавить карточку is_write в приборную панель."
 
@@ -26398,27 +26392,27 @@ msgstr "значение должно быть картой со схемой: (
 msgid "{0} (optional)"
 msgstr "{0} (необязательно)"
 
-#: metabase_enterprise/advanced_config/file.clj:163
+#: metabase_enterprise/advanced_config/file.clj:164
 msgid "Found config file at path {0}; Metabase will be initialized with values from this file"
 msgstr "Найден файл конфигурации по пути {0}; Метабаза будет инициализирована значениями из этого файла"
 
-#: metabase_enterprise/advanced_config/file.clj:257
+#: metabase_enterprise/advanced_config/file.clj:265
 msgid "Done initializing from file."
 msgstr "Инициализация из файла завершена."
 
-#: metabase_enterprise/advanced_config/file.clj:166
+#: metabase_enterprise/advanced_config/file.clj:167
 msgid "No config file found at path {0}"
 msgstr "Не найден файл конфигурации по пути {0}"
 
-#: metabase_enterprise/advanced_config/file.clj:180
+#: metabase_enterprise/advanced_config/file.clj:181
 msgid "Don''t know how to expand template form: {0}"
 msgstr "Не знаю, как развернуть форму шаблона: {0}"
 
-#: metabase_enterprise/advanced_config/file.clj:255
+#: metabase_enterprise/advanced_config/file.clj:263
 msgid "Initializing {0} from config file..."
 msgstr "Инициализация {0} из файла конфигурации..."
 
-#: metabase_enterprise/advanced_config/file.clj:210
+#: metabase_enterprise/advanced_config/file.clj:211
 msgid "Error parsing template string {0}: {1}"
 msgstr "Ошибка при разборе строки шаблона {0}: {1}"
 
@@ -26510,19 +26504,19 @@ msgstr "Прокрутка не работает в вопросах SQL."
 msgid "Drill-through doesn’t work on native questions."
 msgstr "Пробуксовка не работает на родных вопросах."
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:107
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:106
 msgid "Paused"
 msgstr "Приостановлено"
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:135
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:133
 msgid "Pause"
 msgstr "Пауза"
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:135
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:133
 msgid "Resume"
 msgstr "Резюме"
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:173
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:171
 msgid "This will clear all your settings."
 msgstr "Это очистит все ваши настройки."
 
@@ -26571,12 +26565,12 @@ msgid "The name of the column with your date or datetime value."
 msgstr "Имя столбца с датой или временным значением."
 
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:769
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:782
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:784
 msgid "target"
 msgstr "цель"
 
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:771
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:786
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:788
 msgid "source"
 msgstr "источник"
 
@@ -26584,7 +26578,7 @@ msgstr "источник"
 msgid "Convert timezone of a date or timestamp column."
 msgstr "Преобразование часового пояса столбца даты или временной метки."
 
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:783
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:785
 msgid "The timezone you want to assign to your column."
 msgstr "Часовой пояс, который вы хотите присвоить своему столбцу."
 
@@ -26629,8 +26623,8 @@ msgstr "Запрос метаданных"
 msgid "No copied card information found"
 msgstr "Информация о скопированной карте не найдена"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:555
-#: metabase/driver/mysql.clj:368 metabase/driver/postgres.clj:382
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:568
+#: metabase/driver/mysql.clj:382 metabase/driver/postgres.clj:377
 msgid "Only datetime, timestamp, or date types allowed. Found {0}"
 msgstr "Допустимы только типы datetime, timestamp или date. Найдено {0}"
 
@@ -26653,4 +26647,56 @@ msgstr "Ошибка при выполнении шага ''{0}'' для {1}"
 #: metabase_enterprise/serialization/v2/backfill_ids.clj:23
 msgid "Backfilling entity_id for {0} rows of {1}"
 msgstr "Заполнение entity_id для {0} строк из {1}"
+
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:773
+msgid "Convert timezone of a date or timestamp column.\n"
+"We support tz database time zone names.\n"
+"See the full list here: https://w.wiki/4Jx"
+msgstr "Преобразование часового пояса столбца даты или временной метки.\n"
+"Мы поддерживаем имена часовых поясов базы данных tz.\n"
+"Полный список можно посмотреть здесь: https://w.wiki/4Jx"
+
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:789
+msgid "The current time zone. Only required for timestamps with no time zone."
+msgstr "Текущий часовой пояс. Требуется только для меток времени без часового пояса."
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:129
+msgid "Show percentages"
+msgstr "Показать проценты"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:135
+msgid "In legend"
+msgstr "В легенде"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:136
+msgid "On the chart"
+msgstr "На графике"
+
+#: metabase/driver/sql/query_processor.clj:1002
+msgid "Error compiling HoneySQL form: {0}"
+msgstr "Ошибка компиляции формы HoneySQL: {0}"
+
+#: metabase/driver/sql/query_processor.clj:998
+msgid "Invalid HoneySQL form: {0}"
+msgstr "Неверная форма HoneySQL: {0}"
+
+#: metabase/driver/sql/util.clj:134
+msgid "input column already has a set timezone. Please remove the source parameter in convertTimezone."
+msgstr "во входном столбце уже установлен часовой пояс. Пожалуйста, удалите параметр источника в convertTimezone."
+
+#: metabase/driver/sql/util.clj:139
+msgid "input column doesn't have a set timezone. Please set the source parameter in convertTimezone to convert it."
+msgstr "колонка ввода не имеет установленного часового пояса. Пожалуйста, установите параметр источника в convertTimezone, чтобы преобразовать его."
+
+#: metabase/query_processor/context/default.clj:59
+msgid "Error reducing result rows: {0}"
+msgstr "Ошибка уменьшения строк результата: {0}"
+
+#: metabase/sample_data.clj:59
+msgid "Sample database could not be extracted to the plugins directory,which may result in slow startup times. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
+msgstr "База данных образца не может быть извлечена в каталог plugins, что может привести к медленному запуску. Пожалуйста, установите MB_PLUGINS_DIR в каталог, доступный для записи, и перезапустите Metabase."
+
+#: metabase_enterprise/advanced_config/file.clj:261
+msgid "Metabase config files require a Premium token with the :advanced-config feature."
+msgstr "Для файлов конфигурации Metabase требуется токен Premium с функцией :advanced-config."
 
