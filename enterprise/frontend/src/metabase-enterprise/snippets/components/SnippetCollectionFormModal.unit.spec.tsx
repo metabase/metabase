@@ -100,7 +100,9 @@ describe("SnippetCollectionFormModal", () => {
       expect(
         screen.getByRole("button", { name: "Cancel" }),
       ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Create" }),
+      ).toBeInTheDocument();
     });
 
     it("shows expected title", async () => {
@@ -110,7 +112,7 @@ describe("SnippetCollectionFormModal", () => {
 
     it("can't submit if name is empty", async () => {
       await setup();
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
     });
 
     it("can submit when name is filled in", async () => {
@@ -120,7 +122,7 @@ describe("SnippetCollectionFormModal", () => {
         await userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
       });
 
-      expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
+      expect(screen.getByRole("button", { name: "Create" })).not.toBeDisabled();
     });
 
     it("doesn't show cancel button if onClose props is not set", async () => {
@@ -158,7 +160,9 @@ describe("SnippetCollectionFormModal", () => {
       expect(
         screen.getByRole("button", { name: "Cancel" }),
       ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Update" }),
+      ).toBeInTheDocument();
     });
 
     it("shows expected title", async () => {
@@ -169,7 +173,7 @@ describe("SnippetCollectionFormModal", () => {
 
     it("can't submit until changes are made", async () => {
       await setupEditing();
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
     });
 
     it("can't submit if name is empty", async () => {
@@ -177,13 +181,13 @@ describe("SnippetCollectionFormModal", () => {
       await act(async () => {
         await userEvent.clear(screen.getByLabelText(LABEL.NAME));
       });
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
     });
 
     it("can submit when have changes", async () => {
       await setupEditing();
       userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
-      expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
+      expect(screen.getByRole("button", { name: "Update" })).not.toBeDisabled();
     });
 
     it("doesn't show cancel button if onClose props is not set", async () => {

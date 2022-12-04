@@ -149,7 +149,11 @@ function SnippetCollectionForm({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton title={t`Save`} disabled={!dirty} primary />
+            <FormSubmitButton
+              title={isEditing ? t`Update` : t`Create`}
+              disabled={!dirty}
+              primary
+            />
           </FormFooter>
         </Form>
       )}
