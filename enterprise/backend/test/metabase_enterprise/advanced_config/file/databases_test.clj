@@ -1,13 +1,18 @@
 (ns metabase-enterprise.advanced-config.file.databases-test
   (:require
    [clojure.test :refer :all]
-   [flatland.ordered.map :as ordered-map]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase.db.connection :as mdb.connection]
    [metabase.models :refer [Database Table]]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan.db :as db]))
+
+(use-fixtures :each (fn [thunk]
+                      (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
+                        (premium-features-test/with-premium-features #{:advanced-config}
+                          (thunk)))))
 
 (def ^:private test-db-name (u/qualified-name ::test-db))
 
@@ -16,11 +21,10 @@
     (let [db-type     (mdb.connection/db-type)
           original-db (mt/with-driver db-type (mt/db))]
       (try
-        (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}
-                  advanced-config.file/*config*             {:version 1
-                                                             :config  {:databases [{:name    test-db-name
-                                                                                    :engine  (name db-type)
-                                                                                    :details (:details original-db)}]}}]
+        (binding [advanced-config.file/*config* {:version 1
+                                                 :config  {:databases [{:name    test-db-name
+                                                                        :engine  (name db-type)
+                                                                        :details (:details original-db)}]}}]
           (testing "Create a Database if it does not already exist"
             (is (= :ok
                    (advanced-config.file/initialize!)))
@@ -42,13 +46,12 @@
         (finally
           (db/delete! Database :name test-db-name))))))
 
-(deftest ^:parallel init-from-config-file-connection-validation-test
+(deftest init-from-config-file-connection-validation-test
   (testing "Validate connection details when creating a Database from a config file, and error if they are invalid"
-    (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}
-              advanced-config.file/*config*             {:version 1
-                                                         :config  {:databases [{:name    (str test-db-name "-in-memory")
-                                                                                :engine  "h2"
-                                                                                :details {:db "mem:some-in-memory-db"}}]}}]
+    (binding [advanced-config.file/*config* {:version 1
+                                             :config  {:databases [{:name    (str test-db-name "-in-memory")
+                                                                    :engine  "h2"
+                                                                    :details {:db "mem:some-in-memory-db"}}]}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Database cannot be found\."
@@ -59,24 +62,11 @@
     ;; make sure we're actually testing something if it was already set to false locally.
     (mt/with-temporary-setting-values [config-from-file-sync-databases true]
       (try
-        (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}
-                  advanced-config.file/*config*             {:version 1
-                                                             :config
-                                                             ;; `settings:` HAS to come before `databases:`, otherwise the
-                                                             ;; flag won't be set when database sync stuff happens.
-                                                             ;;
-                                                             ;; Using a [[flatland.ordered.map]] here really isn't necessary
-                                                             ;; since this map only has two keys and will be created as an
-                                                             ;; `ArrayMap`, preserving the originally specified order... but
-                                                             ;; using [[ordered-map]] explicitly here makes this constraint
-                                                             ;; clearer I think. Also the YAML library reads stuff in as an
-                                                             ;; ordered map so this more closely matches the behavior when
-                                                             ;; using a file
-                                                             (ordered-map/ordered-map
-                                                              :settings  {:config-from-file-sync-databases false}
-                                                              :databases [{:name    test-db-name
-                                                                           :engine  "h2"
-                                                                           :details (:details (mt/db))}])}]
+        (binding [advanced-config.file/*config* {:version 1
+                                                 :config  {:settings  {:config-from-file-sync-databases false}
+                                                           :databases [{:name    test-db-name
+                                                                        :engine  "h2"
+                                                                        :details (:details (mt/db))}]}}]
           (testing "Create a Database since it does not already exist"
             (is (= :ok
                    (advanced-config.file/initialize!)))
