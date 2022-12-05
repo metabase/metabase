@@ -97,7 +97,7 @@
 
      [[1 \"Rasta Toucan\"]
       [2 \"Lucky Pigeon\"]
-      [3 \"Kanye Nest\"]]"
+      [3 \"Parroty\"]]"
   [[s/Any]])
 
 
