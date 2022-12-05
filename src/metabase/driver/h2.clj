@@ -106,7 +106,7 @@
           (.setAccessible true))
         obj))
 
-(defn- make-h2-parser [h2-db-id]
+(defn- make-h2-parser ^Parser [h2-db-id]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
     (let [session (-> conn (get-field "inner") (get-field "session"))]
       (when (instance? SessionLocal session)
