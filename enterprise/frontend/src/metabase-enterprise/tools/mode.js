@@ -24,5 +24,5 @@ const ErrorDrill = ({ clicked }) => {
 
 export const ErrorMode = {
   name: "error",
-  drills: () => [ErrorDrill],
+  drills: [ErrorDrill],
 };
