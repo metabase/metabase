@@ -24,10 +24,11 @@
                               identity))
         encrypt-str-fn    (make-encrypt-fn encryption/maybe-encrypt)
         encrypt-bytes-fn  (make-encrypt-fn encryption/maybe-encrypt-bytes)
-        value-column      (if (= :h2 mdb.env/db-type)
+        is-h2             (= :h2 (mdb/db-type))
+        value-column      (if is-h2
                             "\"VALUE\""
                             :value)
-        setting-where     (if (= :h2 mdb.env/db-type)
+        setting-where     (if is-h2
                             "setting.\"KEY\" = ?"
                             "setting.key = ?")]
     (jdbc/with-db-transaction [t-conn {:datasource (mdb.connection/data-source)}]
