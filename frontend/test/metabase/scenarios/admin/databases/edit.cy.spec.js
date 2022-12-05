@@ -126,6 +126,11 @@ describe("scenarios > admin > databases > edit", () => {
       cy.findByText("Show advanced options").click();
       cy.findByText("Regularly, on a schedule").should("exist");
       cy.findByText("Hourly").should("exist");
+      cy.findByLabelText("Regularly, on a schedule").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
     });
 
     it("lets you change the metadata_sync period", () => {
@@ -137,6 +142,12 @@ describe("scenarios > admin > databases > edit", () => {
       popover().within(() => {
         cy.findByText("Daily").click({ force: true });
       });
+
+      cy.findByLabelText("Regularly, on a schedule").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
 
       cy.findByText("Save changes").click();
       cy.wait("@databaseUpdate").then(({ response }) =>
