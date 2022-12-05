@@ -119,7 +119,13 @@ const ScheduleOption = ({
   onSelect,
 }: ScheduleOptionProps): JSX.Element => {
   return (
-    <ScheduleOptionRoot isSelected={isSelected} onClick={onSelect}>
+    <ScheduleOptionRoot
+      isSelected={isSelected}
+      role="option"
+      aria-label={title}
+      aria-selected={isSelected}
+      onClick={onSelect}
+    >
       <ScheduleOptionIndicator isSelected={isSelected}>
         <ScheduleOptionIndicatorBackground isSelected={isSelected} />
       </ScheduleOptionIndicator>

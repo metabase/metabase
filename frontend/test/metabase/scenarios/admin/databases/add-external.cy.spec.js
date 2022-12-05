@@ -31,7 +31,11 @@ describe(
         .click()
         .should("have.attr", "aria-checked", "true");
 
-      isSyncOptionSelected("Never, I'll do this manually if I need to");
+      cy.findByLabelText("Never, I'll do this manually if I need to").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
 
       // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
       typeAndBlurUsingLabel("Display name", "QA Postgres12");
@@ -69,7 +73,11 @@ describe(
         "true",
       );
 
-      isSyncOptionSelected("Never, I'll do this manually if I need to");
+      cy.findByLabelText("Never, I'll do this manually if I need to").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
     });
 
     it("should add Mongo database and redirect to listing", () => {
@@ -137,8 +145,3 @@ describe(
     });
   },
 );
-
-function isSyncOptionSelected(option) {
-  // This is a really bad way to assert that the text element is selected/active. Can it be fixed in the FE code?
-  cy.findByText(option).parent().should("have.class", "text-brand");
-}
