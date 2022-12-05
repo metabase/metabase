@@ -4,34 +4,37 @@ import { EngineOption } from "../types";
 
 export const getEngineOptions = (
   engines: Record<string, Engine>,
-  engineKey?: string,
+  selectedKey?: string,
   isAdvanced?: boolean,
 ): EngineOption[] => {
-  return Object.entries(engines)
-    .filter(
-      ([key, engine]) =>
-        key === engineKey ||
-        !engine["superseded-by"] ||
-        engine["superseded-by"] === engineKey,
-    )
-    .map(([key, engine]) => ({
-      name: engine["driver-name"],
-      value: key,
-      index: ELEVATED_ENGINES.indexOf(key),
-    }))
-    .sort((a, b) => {
-      if (isAdvanced) {
-        return a.name.localeCompare(b.name);
-      } else if (a.index >= 0 && b.index >= 0) {
-        return a.index - b.index;
-      } else if (a.index >= 0) {
-        return -1;
-      } else if (b.index >= 0) {
-        return 1;
-      } else {
-        return a.name.localeCompare(b.name);
-      }
-    });
+  const options = Object.entries(engines)
+    .filter(([key, engine]) => isEngineVisible(engine, key, selectedKey))
+    .map(([key, engine]) => getEngineOption(engine, key))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return isAdvanced ? options : options.sort((a, b) => a.index - b.index);
+};
+
+const isEngineVisible = (
+  engine: Engine,
+  engineKey: string,
+  selectedEngineKey?: string,
+) => {
+  const isSelected = engineKey === selectedEngineKey;
+  const isSuperseded = engine["superseded-by"] != null;
+  const isSuperseding = engine["superseded-by"] === selectedEngineKey;
+
+  return isSelected || !isSuperseded || isSuperseding;
+};
+
+const getEngineOption = (engine: Engine, engineKey: string) => {
+  const index = ELEVATED_ENGINES.indexOf(engineKey);
+
+  return {
+    name: engine["driver-name"],
+    value: engineKey,
+    index: index >= 0 ? index : ELEVATED_ENGINES.length,
+  };
 };
 
 export const getEngineLogo = (engine: string): string | undefined => {
