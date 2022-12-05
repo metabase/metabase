@@ -85,10 +85,10 @@ function SnippetCollectionForm({
   const isEditing = collection.id != null;
 
   const initialValues = useMemo(
-    () => ({
-      ...SNIPPET_COLLECTION_SCHEMA.getDefault(),
-      ...SNIPPET_COLLECTION_SCHEMA.cast(collection, { stripUnknown: true }),
-    }),
+    () =>
+      collection
+        ? SNIPPET_COLLECTION_SCHEMA.cast(collection, { stripUnknown: true })
+        : SNIPPET_COLLECTION_SCHEMA.getDefault(),
     [collection],
   );
 
