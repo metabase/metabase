@@ -3,7 +3,7 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import { color } from "metabase/lib/colors";
 
 export const FormSnippetTextArea = styled(FormTextArea)`
-  textarea {
+  ${FormTextArea.Root} {
     width: 100%;
     background-color: ${color("bg-light")};
 
