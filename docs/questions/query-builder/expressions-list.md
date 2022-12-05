@@ -284,7 +284,7 @@ Adds some unit of time to a date or timestamp value.
 
 Syntax: `datetimeAdd(column, amount, unit)`.
 
-Example: `datetimeAdd("2021-03-25T12:52:37", 1, "month")` would return `April 25, 2021, 12:52:37`.
+Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04-25`, displayed as `April 25, 2021`.
 
 Related: [between](#between), [datetimeSubtract](#datetimesubtract).
 
@@ -302,7 +302,7 @@ Subtracts some unit of time from a date or timestamp value.
 
 Syntax: `datetimeSubtract(column, amount, unit)`.
 
-Example: `datetimeSubtract("2021-03-25T12:52:37", 1, "month")` would return `February 25, 2021, 12:52:37`.
+Example: `datetimeSubtract("2021-03-25", 1, "month")` would return the value `2021-02-25`, displayed as `February 25, 2021`.
 
 Related: [between](#between), [datetimeAdd](#datetimeadd).
 
