@@ -174,6 +174,7 @@ function SnippetForm({
             name="description"
             title={t`Add a description`}
             placeholder={t`It's optional but oh, so helpful`}
+            nullable
           />
           {hasManyCollections && (
             <FormCollectionPicker
