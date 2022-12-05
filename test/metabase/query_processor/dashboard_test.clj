@@ -11,6 +11,18 @@
 
 ;; there are more tests in [[metabase.api.dashboard-test]]
 
+(defn- run-query-for-dashcard [dashboard-id card-id dashcard-id & options]
+  ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
+  ;; stuff doesn't belong in the Dashboard QP namespace
+  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (apply qp.dashboard/run-query-for-dashcard-async
+     :dashboard-id dashboard-id
+     :card-id      card-id
+     :dashcard-id  dashcard-id
+     :run          (fn [query info]
+                     (qp/process-query (assoc query :async? false) info))
+     options)))
+
 (deftest resolve-parameters-validation-test
   (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
                                                    {card-id :id}      :card
@@ -32,19 +44,42 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid parameter type :number/!= for parameter \"_PRICE_\".*"
-             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}])))))))
-
-(defn- run-query-for-dashcard [dashboard-id card-id dashcard-id & options]
-  ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
-  ;; stuff doesn't belong in the Dashboard QP namespace
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (apply qp.dashboard/run-query-for-dashcard-async
-     :dashboard-id dashboard-id
-     :card-id      card-id
-     :dashcard-id  dashcard-id
-     :run          (fn [query info]
-                     (qp/process-query (assoc query :async? false) info))
-     options)))
+             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}]))))))
+  (testing "Resolves new operator type arguments without error (#25031)"
+    (mt/dataset sample-dataset
+      (let [query (mt/native-query {:query         "select COUNT(*) from \"ORDERS\" where true [[AND quantity={{qty_locked}}]]"
+                                    :template-tags {"qty_locked"
+                                                    {:id           "_query_id_"
+                                                     :name         "qty_locked"
+                                                     :display-name "quantity locked"
+                                                     :type         :number
+                                                     :default      nil}}})]
+        (mt/with-temp* [Card [{card-id :id} {:dataset_query query}]
+                        Dashboard [{dashboard-id :id} {:parameters [{:name "param"
+                                                                     :slug "param"
+                                                                     :id   "_dash_id_"
+                                                                     :type :number/=}]}]
+                        DashboardCard [{dashcard-id :id} {:parameter_mappings [{:parameter_id "_dash_id_"
+                                                                                :card_id card-id
+                                                                                :target [:variable [:template-tag "qty_locked"]]}]
+                                                          :card_id card-id
+                                                          :visualization_settings {}
+                                                          :dashboard_id dashboard-id}]]
+          (let [params [{:id "_dash_id_" :value 4}]]
+            (is (= [{:id "_dash_id_"
+                     :type :number/=
+                     :value [4]
+                     :target [:variable [:template-tag "qty_locked"]]}]
+                   (#'qp.dashboard/resolve-params-for-query dashboard-id card-id dashcard-id params)))
+            ;; test the full query with two different values to ensure it is actually used
+            (is (= [[2391]]
+                   (mt/rows
+                    (run-query-for-dashcard dashboard-id card-id dashcard-id
+                                            {:parameters params}))))
+            (is (= [[2738]]
+                   (mt/rows
+                    (run-query-for-dashcard dashboard-id card-id dashcard-id
+                                            {:parameters (assoc-in params [0 :value] 3)}))))))))))
 
 (deftest card-and-dashcard-id-validation-test
   (mt/with-temp* [Dashboard     [{dashboard-id :id} {:parameters []}]
