@@ -8,16 +8,16 @@ export const getEngineOptions = (
   isAdvanced?: boolean,
 ): EngineOption[] => {
   const options = Object.entries(engines)
-    .filter(([key, engine]) => isEngineVisible(engine, key, selectedKey))
-    .map(([key, engine]) => getEngineOption(engine, key))
+    .filter(([key, engine]) => isEngineVisible(key, engine, selectedKey))
+    .map(([key, engine]) => getEngineOption(key, engine))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return isAdvanced ? options : options.sort((a, b) => a.index - b.index);
 };
 
 const isEngineVisible = (
-  engine: Engine,
   engineKey: string,
+  engine: Engine,
   selectedEngineKey?: string,
 ) => {
   const isSelected = engineKey === selectedEngineKey;
@@ -27,7 +27,7 @@ const isEngineVisible = (
   return isSelected || !isSuperseded || isSuperseding;
 };
 
-const getEngineOption = (engine: Engine, engineKey: string) => {
+const getEngineOption = (engineKey: string, engine: Engine) => {
   const index = ELEVATED_ENGINES.indexOf(engineKey);
 
   return {
