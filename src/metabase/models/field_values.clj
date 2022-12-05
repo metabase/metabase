@@ -175,6 +175,12 @@
 ;;; |                                                  Utils fns                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn inactive?
+  "If FieldValues have not been accessed recently they are considered inactive."
+  [field-values]
+  (and field-values (t/before? (:last_used_at field-values)
+                               (t/minus (t/offset-date-time) (t/days 14)))))
+
 (defn field-should-have-field-values?
   "Should this `field` be backed by a corresponding FieldValues object?"
   [field-or-field-id]
@@ -374,14 +380,20 @@
 
 (defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
-  created FieldValues for `Field`."
+  created FieldValues for `Field`. Updates :last_used_at so sync will know this is active."
   {:arglists '([field] [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (or (db/select-one FieldValues :field_id field-id :type :full)
-        (when (#{::fv-created ::fv-updated} (create-or-update-full-field-values! field human-readable-values))
-          (db/select-one FieldValues :field_id field-id :type :full)))))
+    (let [existing (db/select-one FieldValues :field_id field-id :type :full)]
+      (if (or (not existing) (inactive? existing))
+        (when-let [result (#{::fv-created ::fv-updated} (create-or-update-full-field-values! field human-readable-values))]
+          (when (= result ::fv-updated)
+            (db/update! FieldValues (:id existing) :last_used_at :%now))
+          (db/select-one FieldValues :field_id field-id :type :full))
+        (do
+          (db/update! FieldValues (:id existing) :last_used_at :%now)
+          existing)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  On Demand                                                     |
