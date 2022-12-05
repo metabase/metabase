@@ -409,19 +409,18 @@
     (testing "now should work with temporal extract functions according to the report timezone"
       (doseq [timezone ["UTC" "Asia/Kathmandu"]] ; UTC+5:45 all year
         (mt/with-temporary-setting-values [report-timezone timezone]
-          (is (= true
-                 (let [[minute hour] (->> (mt/run-mbql-query venues
-                                            {:expressions {"minute" [:get-minute [:now]]
-                                                           "hour" [:get-hour [:now]]}
-                                             :fields [[:expression "minute"]
-                                                      [:expression "hour"]]
-                                             :limit  1})
-                                          (mt/formatted-rows [int int])
-                                          first)
-                       results-timezone (mt/with-everything-store (qp.timezone/results-timezone-id))
-                       now              (t/local-date-time (t/zone-id results-timezone))]
-                   (and (close-minute? minute (.getMinute now))
-                        (close-hour? hour (.getHour now)))))))))))
+          (let [[minute hour] (->> (mt/run-mbql-query venues
+                                     {:expressions {"minute" [:get-minute [:now]]
+                                                    "hour" [:get-hour [:now]]}
+                                      :fields [[:expression "minute"]
+                                               [:expression "hour"]]
+                                      :limit  1})
+                                   (mt/formatted-rows [int int])
+                                   first)
+                results-timezone (mt/with-everything-store (qp.timezone/results-timezone-id))
+                now              (t/local-date-time (t/zone-id results-timezone))]
+            (is (true? (close-minute? minute (.getMinute now)))
+            (is (true? (close-hour? hour (.getHour now)))))))))))
 
 (deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
