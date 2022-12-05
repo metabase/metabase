@@ -225,7 +225,7 @@
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
             (exec! spec ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
-                         "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Kanye Nest');"
+                         "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Parroty');"
                          "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
                          "GRANT ALL ON angry_birds to PUBLIC;"])
             ;; now sync the DB
