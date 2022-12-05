@@ -5,6 +5,7 @@ import { EngineOption } from "../types";
 export const getEngineOptions = (
   engines: Record<string, Engine>,
   engineKey?: string,
+  isAdvanced?: boolean,
 ): EngineOption[] => {
   return Object.entries(engines)
     .filter(
@@ -19,7 +20,9 @@ export const getEngineOptions = (
       index: ELEVATED_ENGINES.indexOf(key),
     }))
     .sort((a, b) => {
-      if (a.index >= 0 && b.index >= 0) {
+      if (isAdvanced) {
+        return a.name.localeCompare(b.name);
+      } else if (a.index >= 0 && b.index >= 0) {
         return a.index - b.index;
       } else if (a.index >= 0) {
         return -1;
