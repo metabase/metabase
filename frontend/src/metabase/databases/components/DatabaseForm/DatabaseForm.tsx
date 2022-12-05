@@ -39,14 +39,14 @@ const DatabaseForm = ({
   onCancel,
   onEngineChange,
 }: DatabaseFormProps): JSX.Element => {
-  const [engineKey, setEngineKey] = useState(() =>
-    getInitialEngineKey(engines, initialData, isAdvanced),
-  );
-  const engine = engineKey ? engines[engineKey] : undefined;
+  const [engineKey, setEngineKey] = useState(() => {
+    return getEngineKey(engines, initialData, isAdvanced);
+  });
 
   const validationSchema = useMemo(() => {
+    const engine = getEngine(engines, engineKey);
     return getValidationSchema(engine, engineKey, isAdvanced);
-  }, [engine, engineKey, isAdvanced]);
+  }, [engines, engineKey, isAdvanced]);
 
   const initialValues = useMemo(() => {
     return initialData
@@ -70,7 +70,7 @@ const DatabaseForm = ({
       onSubmit={onSubmit}
     >
       <DatabaseFormBody
-        engine={engine}
+        engine={getEngine(engines, engineKey)}
         engineKey={engineKey}
         engines={engines}
         isHosted={isHosted}
@@ -172,7 +172,11 @@ const DatabaseFormFooter = ({
   }
 };
 
-const getInitialEngineKey = (
+const getEngine = (engines: Record<string, Engine>, engineKey?: string) => {
+  return engineKey ? engines[engineKey] : undefined;
+};
+
+const getEngineKey = (
   engines: Record<string, Engine>,
   values?: DatabaseValues,
   isAdvanced?: boolean,
