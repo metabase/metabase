@@ -18,11 +18,8 @@ const DatabaseScheduleToggleField = ({
 
   const handleChange = useCallback(
     (value: boolean) => {
-      if (!value) {
-        setFieldValue("schedules", {});
-        setFieldValue("is_full_sync", false);
-        setFieldValue("is_on_demand", false);
-      }
+      setFieldValue("is_full_sync", !value);
+      setFieldValue("is_on_demand", false);
     },
     [setFieldValue],
   );
