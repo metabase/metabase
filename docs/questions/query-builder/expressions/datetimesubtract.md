@@ -6,25 +6,40 @@ title: DatetimeSubtract
 
 `datetimeSubtract` takes a datetime value and subtracts some unit of time from it. You might want to use this function when working with time series data that's marked by a "start" and an "end", such as sessions or subscriptions data.
 
-| Syntax                                                                                    | Example                                                   |
-|-------------------------------------------------------------------------------------------|-----------------------------------------------------------|
-| `datetimeSubtract(column, amount, unit)`                                                  | `datetimeSubtract("March 25, 2021, 12:52:37", 1, "month")`|
-| Takes a timestamp or date value and subtracts the specified number of time units from it. | `February 25, 2021, 12:52:37`                             |
+| Syntax                                                                                    | Example                                     |
+|-------------------------------------------------------------------------------------------|---------------------------------------------|
+| `datetimeSubtract(column, amount, unit)`                                                  | `datetimeSubtract("2021-03-25", 1, "month")`|
+| Takes a timestamp or date value and subtracts the specified number of time units from it. | `2021-02-25`                                |
 
 ## Parameters
 
-- Units can be any of: "year", "quarter", "month", "day", "hour", "second", or "millisecond".
-- Amounts can be negative: `datetimeSubtract("March 25, 2021, 12:52:37", -1, "month")` will return `April 25, 2021, 12:52:37`.
+`column` can be any of:
+- The name of a timestamp column,
+- a custom expression that returns a [datetime](#accepted-data-types), or
+- a string in the format `"YYYY-MM-DD"` or `"YYYY-MM-DDTHH:MM:SS"` (as shown in the example above).
+
+`unit` can be any of:
+- "year"
+- "quarter"
+- "month"
+- "day"
+- "hour"
+- "second"
+- "millisecond"
+
+`amount`:
+- A whole number or a decimal number.
+- May be a negative number: `datetimeSubtract("2021-03-25", -1, "month")` will return `2021-04-25`.
 
 ## Calculating a start date
 
 Let's say you're planning a fun night out. You know it takes 30 minutes to get from place to place, and you need to figure out what time you have to leave to get to each of your reservations:
 
-| Event   | Arrive By           | Depart At           |
-|---------|---------------------|---------------------|
-| Drinks  | 2022-11-12 18:30:00 | 2022-11-12 18:00:00 |
-| Dinner  | 2022-11-12 20:00:00 | 2022-11-12 19:30:00 |
-| Dancing | 2022-11-13 00:00:00 | 2022-11-12 23:30:00 |
+| Event   | Arrive By                  | Depart At                   |
+|---------|----------------------------|-----------------------------|
+| Drinks  | November 12, 2022 6:30 PM  | November 12, 2022 6:00 PM   |
+| Dinner  | November 12, 2022 8:00 PM  | November 12, 2022 7:30 PM   |
+| Dancing | November 13, 2022 12:00 AM | November 12, 2022 11:30 PM  |
 
 Here, **Depart At** is a custom column with the expression:
 
@@ -32,7 +47,24 @@ Here, **Depart At** is a custom column with the expression:
 datetimeSubtract([Arrive By], 30, "minute")
 ```
 
-You can use the [`between`](../expressions-list.md#between) or [`interval`](../expressions-list.md#interval) expressions to check if a given date falls between your start and end datetimes.
+## Comparing a date to a window of time
+
+To check if an existing datetime falls between your start and end datetimes, use [`between`](../expressions-list.md#between).
+
+Unfortunately, Metabase doesn't currently support datetime functions like `today`. What if you want to check if today's date falls between **Arrive By** and **Depart At** in our [events example](#calculating-a-start-date)?
+
+1. Ask your database admin if there's table in your database that stores datetimes for reporting (sometimes called a date dimension table).
+2. Create a new question using the date dimension table, with a filter for "Today".
+3. Turn the "Today" question into a [model](../../../data-modeling/models.md).
+4. Create a [left join](../../query-builder/join.md) between **Events** and the "Today" model on `[Arrive By] <= [Today]` and `[Depart At] >= [Today]`.
+
+The result should give you an **Today** column that's non-empty for events that are happening while the night is still young:
+
+| Event   | Arrive By                  | Depart At                   | Today                       |
+|---------|----------------------------|-----------------------------|-----------------------------|
+| Drinks  | November 12, 2022 6:30 PM  | November 12, 2022 6:00 PM   | November 12, 2022  12:00 AM |
+| Dinner  | November 12, 2022 8:00 PM  | November 12, 2022 7:30 PM   | November 12, 2022  12:00 AM |
+| Dancing | November 13, 2022 12:00 AM | November 12, 2022 11:30 PM  |                             |
 
 ## Accepted data types
 
@@ -44,26 +76,13 @@ You can use the [`between`](../expressions-list.md#between) or [`interval`](../e
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-This table uses `timestamp` and `datetime` interchangeably---just make sure that your dates and times aren't stored as string or a number data types in your database.
+We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase.
+
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
 
 ## Limitations
 
-You can use `datetimeSubtract` to calculate relative dates given a column of date values, but unfortunately Metabase doesn't currently let you _generate_ a relative date (such as today's date).
-
-What if you want to check if today's date falls between **Arrive By** and **Depart At** in our [events example](#calculating-a-start-date)?
-
-1. Ask your database admin if there's table in your database that stores datetimes for reporting (sometimes called a date dimension table).
-2. Create a new question using the date dimension table, with a filter for "Today".
-3. Turn the "Today" question into a model.
-4. Create a left join between **Events** and the "Today" model on `[Arrive By] <= [Today]` and `[Depart At] >= [Today]`.
-
-The result should give you an **Today** column that's non-empty for events that are happening while the night is still young:
-
-| Event   | Arrive By           | Depart At           | Today               |
-|---------|---------------------|---------------------|---------------------|
-| Drinks  | 2022-11-12 18:30:00 | 2022-11-12 18:00:00 | 2022-11-12 00:00:00 |
-| Dinner  | 2022-11-12 20:00:00 | 2022-11-12 19:30:00 | 2022-11-12 00:00:00 |
-| Dancing | 2022-11-13 00:00:00 | 2022-11-12 23:30:00 |                     |
+If you're using MongoDB, `datetimeSubtract` will only work on versions 5 and up.
 
 ## Related functions
 
