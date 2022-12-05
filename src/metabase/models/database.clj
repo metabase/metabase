@@ -207,7 +207,8 @@
                                        :metadata_sync_schedule      :cron-string
                                        :cache_field_values_schedule :cron-string
                                        :start_of_week               :keyword
-                                       :settings                    :encrypted-json})
+                                       :settings                    :encrypted-json
+                                       :dbms_version                :json})
           :post-insert    post-insert
           :post-select    post-select
           :pre-insert     pre-insert

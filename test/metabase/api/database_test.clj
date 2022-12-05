@@ -52,7 +52,7 @@
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults Database)
-    (select-keys db [:created_at :id :details :updated_at :timezone :name])
+    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version])
     {:engine (u/qualified-name (:engine db))
      :features (map u/qualified-name (driver.u/features driver db))
      :initial_sync_status "complete"})))
@@ -294,7 +294,7 @@
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (mt/object-defaults Database) :details :settings)
-                  (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status])
+                  (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status :dbms_version])
                   {:engine        "h2"
                    :name          "test-data"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))

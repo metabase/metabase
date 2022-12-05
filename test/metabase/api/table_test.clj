@@ -29,7 +29,7 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false

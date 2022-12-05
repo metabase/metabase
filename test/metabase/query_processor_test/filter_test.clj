@@ -114,8 +114,7 @@
 
 (defn- mongo-major-version [db]
   (when (= driver/*driver* :mongo)
-    (-> (driver/describe-database :mongo db)
-        :version (str/split #"\.") first parse-long)))
+    (-> (driver/dbms-version :mongo db) :semantic-version first)))
 
 (defn- timezone-arithmetic-drivers []
   (set/intersection

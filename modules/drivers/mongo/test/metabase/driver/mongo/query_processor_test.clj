@@ -330,7 +330,7 @@
 
 (deftest temporal-arithmetic-test
   (testing "Mixed integer and date arithmetic works with Mongo 5+"
-    (with-redefs [mongo.qp/get-mongo-version (constantly "5.2.13")]
+    (with-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
       (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
         (is (= {:$expr
                 {"$lt"
@@ -357,7 +357,7 @@
                                           [:interval -1 :week]
                                           86400000]]))))))
   (testing "Date arithmetic fails with Mongo 4-"
-    (with-redefs [mongo.qp/get-mongo-version (constantly "4")]
+    (with-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo  #"Date arithmetic not supported in versions before 5"
                             (mongo.qp/compile-filter [:<
                                                       [:+
