@@ -52,18 +52,18 @@ const getFieldSchema = (field: EngineField) => {
     case "integer":
       return Yup.number()
         .nullable()
-        .default(field.default != null ? Number(field.default) : null)
+        .default(null)
         .test((value, context) => isFieldValid(field, value, context));
     case "boolean":
     case "section":
       return Yup.boolean()
         .defined()
-        .default(field.default != null ? Boolean(field.default) : false)
+        .default(false)
         .test((value, context) => isFieldValid(field, value, context));
     default:
       return Yup.string()
         .nullable()
-        .default(field.default != null ? String(field.default) : null)
+        .default(null)
         .test((value, context) => isFieldValid(field, value, context));
   }
 };
