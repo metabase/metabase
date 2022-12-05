@@ -7,7 +7,12 @@ export const getEngineOptions = (
   engineKey?: string,
 ): EngineOption[] => {
   return Object.entries(engines)
-    .filter(([key, engine]) => key === engineKey || !engine["superseded-by"])
+    .filter(
+      ([key, engine]) =>
+        key === engineKey ||
+        !engine["superseded-by"] ||
+        engine["superseded-by"] === engineKey,
+    )
     .map(([key, engine]) => ({
       name: engine["driver-name"],
       value: key,
