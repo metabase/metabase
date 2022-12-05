@@ -165,7 +165,7 @@
       ;; trunc() returns a date -- see https://docs.oracle.com/cd/E11882_01/server.112/e10729/ch4datetime.htm#NLSPG253
       (hx/with-database-type-info "date")))
 
-(defn- extract [unit expr] (hsql/call :extract unit (hx/->timestamp expr)))
+(defn- extract [unit expr] (hsql/call :extract unit expr))
 
 (defmethod sql.qp/date [:oracle :second-of-minute] [_ _ v] (->> v
                                                                 hx/->timestamp

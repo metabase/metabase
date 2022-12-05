@@ -151,17 +151,14 @@
                       :get-month       1,
                       :get-day         1,
                       :get-day-of-week 5,
-                      ;; TIMEZONE FIXME sqlserver behaves a bit strange from the rest
-                      ;; when querying datetimeoffset, the JDBC does returns the time
-                      ;; in the inserted timezone(Asia/Ho_Chi_Minh), but when we read it we
-                      ;; converted it back to UTC.
-                      ;; So technically we could make sqlserver display datetimeoffset in `report-tz`
-                      ;; then the extract hour will make more sense
+                      ;; TIMEZONE FIXME these drivers are returning the extracted hours in
+                      ;; the timezone that they were inserted in
+                      ;; maybe they need explicit convert-timezone to the report-tz before extraction?
                       :get-hour        (case driver/*driver*
-                                         (:sqlserver :presto-jdbc :snowflake :oracle) 5
+                                         (:sqlserver :presto :presto-jdbc :snowflake :oracle) 5
                                          2),
                       :get-minute      (case driver/*driver*
-                                         (:sqlserver :presto-jdbc :snowflake :oracle) 19
+                                         (:sqlserver :presto :presto-jdbc :snowflake :oracle) 19
                                          49),
                       :get-second      9}
                      {:get-year        2003,
@@ -190,7 +187,6 @@
                         (mt/formatted-rows (repeat int))
                         first
                         (zipmap ops))))))))))
-
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
