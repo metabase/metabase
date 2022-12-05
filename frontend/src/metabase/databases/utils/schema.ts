@@ -60,6 +60,11 @@ const getFieldSchema = (field: EngineField) => {
         .nullable()
         .default(false)
         .test((value, context) => isFieldValid(field, value, context));
+    case "select":
+      return Yup.string()
+        .nullable()
+        .default(field.default != null ? String(field.default) : null)
+        .test((value, context) => isFieldValid(field, value, context));
     default:
       return Yup.string()
         .nullable()
