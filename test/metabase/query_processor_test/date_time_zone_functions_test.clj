@@ -675,7 +675,7 @@
                     (mt/formatted-rows [int int int])
                     first)))))))
 
-(mt/defdataset time-zone-edge-cases
+(mt/defdataset datetime-diff-time-zone-cases
   [["times"
     [{:field-name "a_dt",            :base-type :type/DateTime}
      {:field-name "a_dt_ltz",        :base-type :type/DateTimeWithLocalTZ}
@@ -716,7 +716,7 @@
 
 (deftest datetime-diff-time-zones-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
-    (mt/dataset time-zone-edge-cases
+    (mt/dataset datetime-diff-time-zone-cases
       (let [diffs (fn [x y]
                     (let [units [:second :minute :hour :day :week :month :year]]
                       (->> (mt/run-mbql-query times
