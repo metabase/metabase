@@ -66,6 +66,8 @@ async function setup({ cachingEnabled = false } = {}) {
 
   const settingsReducer = () => ({
     values: {
+      engines: ENGINES_MOCK,
+      "enable-query-caching": cachingEnabled,
       "persisted-models-enabled": false,
     },
   });
