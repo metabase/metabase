@@ -1,5 +1,5 @@
 (ns metabase.driver.h2
-  (:require [clojure.math.combinatorics :as combo]
+  (:require [clojure.math.combinatorics :as math.combo]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
@@ -23,7 +23,7 @@
   (:import [java.sql Clob ResultSet ResultSetMetaData]
            java.time.OffsetTime
            [org.h2.command Parser CommandInterface]
-           [org.h2.engine SessionLocal SessionRemote]))
+           [org.h2.engine SessionLocal]))
 
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
@@ -263,7 +263,7 @@
   (cond
     (set? grammar)  (mapcat expand-grammar grammar)
     (list? grammar) (map (partial str/join " ")
-                         (apply combo/cartesian-product
+                         (apply math.combo/cartesian-product
                                 (map expand-grammar grammar)))
     :else           [grammar]))
 

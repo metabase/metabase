@@ -1,7 +1,6 @@
 (ns metabase.query-processor-test.expression-aggregations-test
   "Tests for expression aggregations and for named aggregations."
   (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
             [metabase.models.metric :refer [Metric]]
             [metabase.query-processor-test :as qp.test]
             [metabase.test :as mt]
