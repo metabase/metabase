@@ -722,7 +722,7 @@
                       (->> (mt/run-mbql-query times
                              {:filter [:and [:= x $a_dt_tz_text] [:= y $b_dt_tz_text]]
                               :expressions (into {} (for [unit units]
-                                                      [(name unit) [:datetime-diff $a_dt_tz $a_dt_tz unit]]))
+                                                      [(name unit) [:datetime-diff $a_dt_tz $b_dt_tz unit]]))
                               :fields (into [] (for [unit units]
                                                  [:expression (name unit)]))})
                            (mt/formatted-rows (repeat (count units) int))
