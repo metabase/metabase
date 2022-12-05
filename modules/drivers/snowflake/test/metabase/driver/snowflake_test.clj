@@ -28,7 +28,7 @@
               #(str/replace % #"\s+" " ")
               ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
                "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
-                \"last_login\" TIMESTAMP_LTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
+                \"last_login\" TIMESTAMP_NTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
                "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
                "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
                 PRIMARY KEY (\"id\")) ;"
@@ -109,7 +109,7 @@
                          :database-type     "VARCHAR"
                          :base-type         :type/Text
                          :database-position 1
-                         :database-required false}}}
+                         :database-required true}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
@@ -201,8 +201,8 @@
                   ["2014-08-02T00:00:00Z" "2014-08-02T09:30:00Z"]]
                  (run-query))))
         (testing "with report timezone set"
-          (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T05:30:00-07:00"]
-                  ["2014-08-02T00:00:00-07:00" "2014-08-02T02:30:00-07:00"]]
+          (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T12:30:00-07:00"]
+                  ["2014-08-02T00:00:00-07:00" "2014-08-02T09:30:00-07:00"]]
                  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
                    (run-query)))))))))
 

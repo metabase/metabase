@@ -3,12 +3,14 @@ import { getSetting } from "metabase/selectors/settings";
 import { State } from "metabase-types/store";
 import DatabaseForm, { DatabaseFormProps } from "../../components/DatabaseForm";
 
-type DatabaseFormOwnProps = Omit<DatabaseFormProps, "engines" | "isHosted">;
-type DatabaseFormStateProps = Pick<DatabaseFormProps, "engines" | "isHosted">;
+type DatabaseFormStateKeys = "engines" | "isHosted" | "isCachingEnabled";
+type DatabaseFormOwnProps = Omit<DatabaseFormProps, DatabaseFormStateKeys>;
+type DatabaseFormStateProps = Pick<DatabaseFormProps, DatabaseFormStateKeys>;
 
 const mapStateToProps = (state: State) => ({
   engines: getSetting(state, "engines"),
   isHosted: getSetting(state, "is-hosted?"),
+  isCachingEnabled: getSetting(state, "enable-query-caching"),
 });
 
 export default connect<

@@ -1,3 +1,4 @@
+import { VisualizationSettings } from "metabase-types/api";
 import { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 
 export type Step = string | number;
@@ -18,6 +19,7 @@ export type FunnelSettings = {
     brand: string;
     border: string;
   };
+  visualization_settings: VisualizationSettings;
 };
 
 export type FunnelStep = {

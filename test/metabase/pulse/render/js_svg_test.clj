@@ -112,21 +112,21 @@
   (let [rows        [[#t "2020" 2]
                      [#t "2021" 3]]
         series-seqs [[{:type          :line
-                       :color         "#999AC4"
                        :data          rows
                        :yAxisPosition "left"
                        :column        {:name "count"}}]]
-        settings    {:colors {:brand     "#5E81AC"
-                              :filter    "#A3BE8C"
-                              :summarize "#B48EAD"},
-                     :x      {:type   "timeseries"
-                              :format {:date_style "YYYY/MM/DD"}}
-                     :y      {:type   "linear"
-                              :format {:prefix   "prefix"
-                                       :decimals 2}}
-                     :labels {:bottom ""
-                              :left   ""
-                              :right  ""}}
+        settings    {:colors                 {:brand     "#5E81AC"
+                                              :filter    "#A3BE8C"
+                                              :summarize "#B48EAD"},
+                     :x                      {:type   "timeseries"
+                                              :format {:date_style "YYYY/MM/DD"}}
+                     :y                      {:type   "linear"
+                                              :format {:prefix   "prefix"
+                                                       :decimals 2}}
+                     :labels                 {:bottom ""
+                                              :left   ""
+                                              :right  ""}
+                     :visualization_settings {}}
         svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
@@ -153,21 +153,21 @@
   (let [rows        [[#t "2020" 2]
                      [#t "2021" 3]]
         series-seqs [[{:type          :bar
-                       :color         "#999AC4"
                        :data          rows
                        :yAxisPosition "left"
                        :column        {:name "count"}}]]
-        settings    {:colors {:brand     "#5E81AC"
-                              :filter    "#A3BE8C"
-                              :summarize "#B48EAD"},
-                     :x      {:type   "timeseries"
-                              :format {:date_style "YYYY/MM/DD"}}
-                     :y      {:type   "linear"
-                              :format {:prefix   "prefix"
-                                       :decimals 4}}
-                     :labels {:bottom ""
-                              :left   ""
-                              :right  ""}}
+        settings    {:colors                 {:brand     "#5E81AC"
+                                              :filter    "#A3BE8C"
+                                              :summarize "#B48EAD"},
+                     :x                      {:type   "timeseries"
+                                              :format {:date_style "YYYY/MM/DD"}}
+                     :y                      {:type   "linear"
+                                              :format {:prefix   "prefix"
+                                                       :decimals 4}}
+                     :labels                 {:bottom ""
+                                              :left   ""
+                                              :right  ""}
+                     :visualization_settings {}}
         svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
@@ -194,20 +194,20 @@
   (let [rows        [["bob" 2]
                      ["dobbs" 3]]
         series-seqs [[{:type          :area
-                       :color         "#999AC4"
                        :data          rows
                        :yAxisPosition "left"
                        :column        {:name "count"}}]]
-        settings    {:colors {:brand     "#5E81AC"
-                              :filter    "#A3BE8C"
-                              :summarize "#B48EAD"},
-                     :x      {:type "ordinal"}
-                     :y      {:type   "linear"
-                              :format {:prefix   "prefix"
-                                       :decimals 4}}
-                     :labels {:bottom ""
-                              :left   ""
-                              :right  ""}}
+        settings    {:colors                 {:brand     "#5E81AC"
+                                              :filter    "#A3BE8C"
+                                              :summarize "#B48EAD"},
+                     :x                      {:type "ordinal"}
+                     :y                      {:type   "linear"
+                                              :format {:prefix   "prefix"
+                                                       :decimals 4}}
+                     :labels                 {:bottom ""
+                                              :left   ""
+                                              :right  ""}
+                     :visualization_settings {}}
         svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
@@ -234,11 +234,12 @@
                            :data          [["A" 1] ["B" 20] ["C" -4] ["D" 100]]
                            :yAxisPosition "left"
                            :column        {:name "count"}}]]
-        settings        {:x      {:type "ordinal"}
-                         :y      {:type "linear"}
-                         :labels {:bottom ""
-                                  :left   ""
-                                  :right  ""}}
+        settings        {:x                      {:type "ordinal"}
+                         :y                      {:type "linear"}
+                         :labels                 {:bottom ""
+                                                  :left   ""
+                                                  :right  ""}
+                         :visualization_settings {}}
         non-goal-hiccup (combo-chart-hiccup series-seqs settings)
         non-goal-node   (->> non-goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
     (testing "No goal line exists when there are no goal settings."
@@ -285,28 +286,27 @@
         rows2       [[#t "2000-03-01T00:00:00Z" 3]
                      [#t "2002-03-01T00:00:00Z" 4]]
         ;; this one needs more stuff because of stricter ts types
-        series-seqs [[{:name          "bob"
-                       :color         "#cccccc"
+        series-seqs [[{:cardName      "bob"
                        :type          "area"
                        :data          rows1
                        :yAxisPosition "left"
-                       :column        {:name "count"}}
-                      {:name          "bob2"
-                       :color         "#cccccc"
+                       :column        {:name "count" :display_name "Count"}}
+                      {:cardName      "bob"
                        :type          "line"
                        :data          rows2
                        :yAxisPosition "right"
-                       :column        {:name "count"}}]]
+                       :column        {:name "count2" :display_name "Count 2"}}]]
         labels      {:left   "count"
                      :bottom "year"
                      :right  "something"}
-        settings    {:x      {:type   "timeseries"
-                              :format {:date_style "YYYY"}}
-                     :y      {:type   "linear"
-                              :format {:number_style "decimal"
-                                       :decimals     4}}
-                     :colors {}
-                     :labels labels}]
+        settings    {:x                      {:type   "timeseries"
+                                              :format {:date_style "YYYY"}}
+                     :y                      {:type   "linear"
+                                              :format {:number_style "decimal"
+                                                       :decimals     4}}
+                     :colors                 {}
+                     :labels                 labels
+                     :visualization_settings {}}]
     (testing "It returns bytes"
       (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
         (is (bytes? svg-bytes))))

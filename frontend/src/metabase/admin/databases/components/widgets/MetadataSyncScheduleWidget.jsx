@@ -3,7 +3,7 @@ import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import SchedulePicker from "metabase/components/SchedulePicker";
+import SchedulePicker from "metabase/containers/SchedulePicker";
 
 export default function MetadataSyncScheduleWidget({ field }) {
   return (

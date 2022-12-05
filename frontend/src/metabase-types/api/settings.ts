@@ -71,11 +71,14 @@ export interface EngineSourceContact {
 }
 
 export interface ScheduleSettings {
-  schedule_day?: ScheduleDayType;
-  schedule_frame?: ScheduleFrameType;
-  schedule_hour?: boolean;
-  schedule_minute?: number;
+  schedule_type?: ScheduleType | null;
+  schedule_day?: ScheduleDayType | null;
+  schedule_frame?: ScheduleFrameType | null;
+  schedule_hour?: number | null;
+  schedule_minute?: number | null;
 }
+
+export type ScheduleType = "hourly" | "daily" | "weekly" | "monthly";
 
 export type ScheduleDayType =
   | "sun"
@@ -142,6 +145,7 @@ export interface Settings {
   "embedding-secret-key"?: string;
   "enable-embedding": boolean;
   "enable-nested-queries": boolean;
+  "enable-query-caching"?: boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "experimental-enable-actions": boolean;
@@ -156,6 +160,7 @@ export interface Settings {
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
   "persisted-models-enabled": boolean;
+  "report-timezone-short": string;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
   "session-cookies": boolean | null;

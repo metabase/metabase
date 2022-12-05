@@ -149,6 +149,10 @@ describe("metabase-lib/expressions/resolve", () => {
       expect(() => expr(["concat", "1", "2", "3"])).not.toThrow();
     });
 
+    it("should allow nested datetime expressions", () => {
+      expect(() => expr(["get-year", ["now"]])).not.toThrow();
+    });
+
     it("should accept COALESCE for number", () => {
       expect(() => expr(["round", ["coalesce", 0]])).not.toThrow();
     });
@@ -158,6 +162,66 @@ describe("metabase-lib/expressions/resolve", () => {
 
     it("should honor CONCAT's implicit casting", () => {
       expect(() => expr(["concat", ["coalesce", "B", 1]])).not.toThrow();
+    });
+
+    describe("datetime functions", () => {
+      it("should resolve unchained functions", () => {
+        expect(() => expr(["get-week", "2022-01-01"])).not.toThrow();
+        expect(() =>
+          expr(["datetime-add", "2022-01-01", 1, "month"]),
+        ).not.toThrow();
+
+        // TODO: Implementation should be fine-tuned so that these throw
+        // as they are not really datetime
+        expect(() => expr(["get-day", A])).not.toThrow();
+        expect(() => expr(["get-day", "a"])).not.toThrow();
+        expect(() => expr(["get-day-of-week", A])).not.toThrow();
+        expect(() => expr(["get-day-of-week", "a"])).not.toThrow();
+        expect(() => expr(["get-week", A])).not.toThrow();
+        expect(() => expr(["get-week", "a"])).not.toThrow();
+        expect(() => expr(["get-month", A])).not.toThrow();
+        expect(() => expr(["get-month", "a"])).not.toThrow();
+        expect(() => expr(["get-quarter", A])).not.toThrow();
+        expect(() => expr(["get-quarter", "a"])).not.toThrow();
+        expect(() => expr(["get-year", A])).not.toThrow();
+        expect(() => expr(["get-year", "a"])).not.toThrow();
+      });
+
+      it("should resolve chained commmands", () => {
+        expect(() =>
+          expr([
+            "datetime-subtract",
+            ["datetime-add", "2022-01-01", 1, "month"],
+            2,
+            "minute",
+          ]),
+        ).not.toThrow();
+      });
+
+      it("should chain datetime functions onto functions of compatible types", () => {
+        expect(() =>
+          expr([
+            "concat",
+            ["datetime-add", "2022-01-01", 1, "month"],
+            "a string",
+          ]),
+        ).not.toThrow();
+      });
+
+      it("should throw if chaining datetime functions onto functions of incompatible types", () => {
+        expect(() =>
+          expr(["trim", ["datetime-add", "2022-01-01", 1, "month"]]),
+        ).toThrow();
+      });
+
+      it("should throw if passing numbers as arguments expected to be datetime", () => {
+        expect(() => expr(["get-day", 15])).toThrow();
+        expect(() => expr(["get-day-of-week", 6])).toThrow();
+        expect(() => expr(["get-week", 52])).toThrow();
+        expect(() => expr(["get-month", 12])).toThrow();
+        expect(() => expr(["get-quarter", 3])).toThrow();
+        expect(() => expr(["get-year", 2025])).toThrow();
+      });
     });
   });
 

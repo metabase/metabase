@@ -7,8 +7,10 @@ import FormProvider from "metabase/core/components/FormProvider";
 import FormFooter from "metabase/core/components/FormFooter";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { Engine } from "metabase-types/api";
 import { DatabaseValues } from "../../types";
+import { getDefaultEngineKey } from "../../utils/engine";
 import { getValidationSchema, getVisibleFields } from "../../utils/schema";
 import DatabaseEngineField from "../DatabaseEngineField";
 import DatabaseNameField from "../DatabaseNameField";
@@ -21,6 +23,7 @@ export interface DatabaseFormProps {
   initialValues?: DatabaseValues;
   isHosted?: boolean;
   isAdvanced?: boolean;
+  isCachingEnabled?: boolean;
   onSubmit: (values: DatabaseValues) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
@@ -31,11 +34,14 @@ const DatabaseForm = ({
   initialValues: initialData,
   isHosted = false,
   isAdvanced = false,
+  isCachingEnabled = false,
   onSubmit,
   onCancel,
   onEngineChange,
 }: DatabaseFormProps): JSX.Element => {
-  const [engineKey, setEngineKey] = useState(initialData?.engine);
+  const [engineKey, setEngineKey] = useState(() =>
+    getInitialEngineKey(engines, initialData, isAdvanced),
+  );
   const engine = engineKey ? engines[engineKey] : undefined;
 
   const validationSchema = useMemo(() => {
@@ -69,6 +75,7 @@ const DatabaseForm = ({
         engines={engines}
         isHosted={isHosted}
         isAdvanced={isAdvanced}
+        isCachingEnabled={isCachingEnabled}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
       />
@@ -82,6 +89,7 @@ interface DatabaseFormBodyProps {
   engines: Record<string, Engine>;
   isHosted: boolean;
   isAdvanced: boolean;
+  isCachingEnabled: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
 }
@@ -92,6 +100,7 @@ const DatabaseFormBody = ({
   engines,
   isHosted,
   isAdvanced,
+  isCachingEnabled,
   onEngineChange,
   onCancel,
 }: DatabaseFormBodyProps): JSX.Element => {
@@ -110,17 +119,16 @@ const DatabaseFormBody = ({
         isAdvanced={isAdvanced}
         onChange={onEngineChange}
       />
-      {!isAdvanced && (
-        <DatabaseEngineWarning
-          engineKey={engineKey}
-          engines={engines}
-          onChange={onEngineChange}
-        />
-      )}
+      <DatabaseEngineWarning
+        engineKey={engineKey}
+        engines={engines}
+        onChange={onEngineChange}
+      />
       {engine && <DatabaseNameField engine={engine} />}
       {fields.map(field => (
         <DatabaseDetailField key={field.name} field={field} />
       ))}
+      {isCachingEnabled && <PLUGIN_CACHING.DatabaseCacheTimeField />}
       <DatabaseFormFooter isAdvanced={isAdvanced} onCancel={onCancel} />
     </Form>
   );
@@ -136,11 +144,16 @@ const DatabaseFormFooter = ({
   onCancel,
 }: DatabaseFormFooterProps) => {
   const { values, dirty } = useFormikContext<DatabaseValues>();
+  const isNew = values.id == null;
 
   if (isAdvanced) {
     return (
       <div>
-        <FormSubmitButton title={t`Save`} disabled={!dirty} primary />
+        <FormSubmitButton
+          title={isNew ? t`Save` : t`Save changes`}
+          disabled={!dirty}
+          primary
+        />
         <FormErrorMessage />
       </div>
     );
@@ -160,6 +173,18 @@ const DatabaseFormFooter = ({
         </LinkButton>
       </LinkFooter>
     );
+  }
+};
+
+const getInitialEngineKey = (
+  engines: Record<string, Engine>,
+  values?: DatabaseValues,
+  isAdvanced?: boolean,
+) => {
+  if (values?.engine) {
+    return values.engine;
+  } else if (isAdvanced) {
+    return getDefaultEngineKey(engines);
   }
 };
 

@@ -761,6 +761,13 @@ const helperTextStrings: HelpText[] = [
     ],
   },
   {
+    name: "now",
+    structure: "now",
+    description: t`Returns the current timestamp.`,
+    example: "now",
+    args: [],
+  },
+  {
     name: "convert-timezone",
     structure:
       "convertTimezone(" +
@@ -770,7 +777,9 @@ const helperTextStrings: HelpText[] = [
       ", [" +
       t`source` +
       "])",
-    description: t`Convert timezone of a date or timestamp column.`,
+    description: t`Convert timezone of a date or timestamp column.
+We support tz database time zone names.
+See the full list here: https://w.wiki/4Jx`,
     example:
       "convertTimezone([" + t`Created At` + '], "Asia/Ho_Chi_Minh", "UTC")',
     args: [
@@ -784,7 +793,7 @@ const helperTextStrings: HelpText[] = [
       },
       {
         name: t`source`,
-        description: t`(Optional) The current timezone of your column. The default timezone is your report timezone.`,
+        description: t`The current time zone. Only required for timestamps with no time zone.`,
       },
     ],
   },

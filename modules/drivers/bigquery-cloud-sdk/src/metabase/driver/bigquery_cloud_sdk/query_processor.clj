@@ -10,6 +10,7 @@
             [metabase.driver.sql :as sql]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
@@ -114,12 +115,12 @@
     (u.date/parse s timezone-id)))
 
 (defmethod parse-result-of-type "DATE"
-  [_ column-mode timezone-id v]
-  (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
+  [_ column-mode _timezone-id v]
+  (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "DATETIME"
-  [_ column-mode timezone-id v]
-  (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
+  [_ column-mode _timezone-id v]
+  (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "TIMESTAMP"
   [_ column-mode timezone-id v]
@@ -430,6 +431,18 @@
   (defmethod sql.qp/unix-timestamp->honeysql [:bigquery-cloud-sdk unix-timestamp-type]
     [_ _ expr]
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [datetime     (partial hsql/call :datetime)
+        hsql-form    (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? hsql-form "timestamp")]
+    (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+    (-> (if timestamptz?
+          hsql-form
+          (hsql/call :timestamp hsql-form (or source-timezone (qp.timezone/results-timezone-id))))
+        (datetime target-timezone)
+        (with-temporal-type :datetime))))
 
 (defmethod sql.qp/->float :bigquery-cloud-sdk
   [_ value]
@@ -791,6 +804,11 @@
 (defmethod sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk
   [_]
   (CurrentMomentForm. nil))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :now]
+  [driver _clause]
+  (->> (sql.qp/current-datetime-honeysql-form driver)
+       (->temporal-type :timestamp)))
 
 (defmethod sql.qp/quote-style :bigquery-cloud-sdk
   [_]

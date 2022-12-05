@@ -289,10 +289,11 @@
   - there are some date overrides done from lib/formatting.js
   - chop off and underscore the nasty keys in our map
   - backfill currency to the default of USD if not present"
-  [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
+  [x-col y-col {::mb.viz/keys [column-settings] :as viz-settings}]
   (let [x-col-settings (settings-from-column x-col column-settings)
         y-col-settings (settings-from-column y-col column-settings)]
-    (cond-> {:colors (public-settings/application-colors)}
+    (cond-> {:colors (public-settings/application-colors)
+             :visualization_settings (or viz-settings {})}
       x-col-settings
       (assoc :x x-col-settings)
       y-col-settings
@@ -325,19 +326,17 @@
                          "timeseries"
                          "ordinal")]
     (merge
-     {:colors      (public-settings/application-colors)
-      :stacking    (if (:stackable.stack_type viz-settings) "stack" "none")
-      :show_values (boolean (:graph.show_values viz-settings))
-      :x           {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
-                    :format x-format}
-      :y           {:type   (or (:graph.y_axis.scale viz-settings) "linear")
-                    :format y-format}
-      :labels      labels}
+     {:colors                 (public-settings/application-colors)
+      :stacking               (if (:stackable.stack_type viz-settings) "stack" "none")
+      :x                      {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
+                               :format x-format}
+      :y                      {:type   (or (:graph.y_axis.scale viz-settings) "linear")
+                               :format y-format}
+      :labels                 labels
+      :visualization_settings (or viz-settings {})}
      (when (:graph.show_goal viz-settings)
        {:goal {:value (:graph.goal_value viz-settings)
-               :label (or (:graph.goal_label viz-settings) (tru "Goal"))}})
-     (when (:series_settings viz-settings)
-       {:series_settings (:series_settings viz-settings)}))))
+               :label (or (:graph.goal_label viz-settings) (tru "Goal"))}}))))
 
 (defn- set-default-stacked
   "Default stack type is stacked for area chart with more than one metric.
@@ -462,7 +461,7 @@
         {:keys [rows percentages]}  (donut-info slice-threshold rows)
         legend-colors               (merge (zipmap (map first rows) (cycle colors))
                                            (update-keys (:pie.colors viz-settings) name))
-        settings                    {:show_values (:pie.show_data_labels viz-settings)}
+        settings                    {:percent_visibility (:pie.percent_visibility viz-settings)}
         image-bundle                (image-bundle/make-image-bundle
                                      render-type
                                      (js-svg/categorical-donut rows legend-colors settings))
@@ -556,7 +555,7 @@
                                     (or (<= min-a min-b max-a)
                                         (<= min-a max-b max-a)))]
     (if
-      overlapping-and-valid?
+    overlapping-and-valid?
       (let [[a b c d]     (sort [min-a min-b max-a max-b])
             max-width     (- d a)
             overlap-width (- c b)]
@@ -610,8 +609,7 @@
 (defn- multiple-scalar-series
   [joined-rows _x-cols _y-cols _viz-settings]
   [(for [[row-val] (map vector joined-rows)]
-     {:name          nil
-      :cardName      (first row-val)
+     {:cardName      (first row-val)
       :type          :bar
       :data          [row-val]
       :yAxisPosition "left"
@@ -645,16 +643,13 @@
   [chart-type joined-rows _x-cols y-cols {:keys [viz-settings] :as data} card-name]
   (for [[idx y-col] (map-indexed vector y-cols)]
     (let [y-col-key     (keyword (:name y-col))
-          metric-name          (or (series-setting viz-settings y-col-key :name)
-                                   (series-setting viz-settings y-col-key :title))
           card-type     (or (series-setting viz-settings y-col-key :display)
                             chart-type
                             (nth default-combo-chart-types idx))
           selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
                             (nth (default-y-pos data axis-group-threshold) idx))]
-      {:name          metric-name
-       :cardName      card-name
+      {:cardName      card-name
        :type          card-type
        :data          selected-rows
        :yAxisPosition y-axis-pos
@@ -672,15 +667,12 @@
     (for [[idx group-key] (map-indexed vector groups)]
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
-            column-name          (or (series-setting viz-settings group-key :name)
-                                   (series-setting viz-settings group-key :title))
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
                                    (nth default-combo-chart-types idx))
             y-axis-pos         (or (series-setting viz-settings group-key :axis)
                                    (nth (default-y-pos data axis-group-threshold) idx))]
-        {:name          column-name
-         :cardName      card-name
+        {:cardName      card-name
          :type          card-type
          :data          selected-row-group
          :yAxisPosition y-axis-pos
