@@ -675,17 +675,19 @@
                     (mt/formatted-rows [int int int])
                     first)))))))
 
-(mt/defdataset time-zone-edge-cases
+(mt/defdataset diff-time-zone-cases
   [["times"
     [{:field-name "a_dt",            :base-type :type/DateTime}
      {:field-name "a_dt_ltz",        :base-type :type/DateTimeWithLocalTZ}
-     {:field-name "a_dt_tz",         :base-type :type/DateTimeWithZoneOffset}
+     {:field-name "a_dt_tz",         :base-type :type/DateTimeWithTZ}
+     {:field-name "a_dt_tz_offset",  :base-type :type/DateTimeWithZoneOffset}
      {:field-name "a_dt_tz_id",      :base-type :type/DateTimeWithZoneID}
      {:field-name "a_dt_tz_text",    :base-type :type/Text}
      {:field-name "a_dt_tz_id_text", :base-type :type/Text}
      {:field-name "b_dt",            :base-type :type/DateTime}
      {:field-name "b_dt_ltz",        :base-type :type/DateTimeWithLocalTZ}
-     {:field-name "b_dt_tz",         :base-type :type/DateTimeWithZoneOffset}
+     {:field-name "b_dt_tz",         :base-type :type/DateTimeWithTZ}
+     {:field-name "b_dt_tz_offset",  :base-type :type/DateTimeWithZoneOffset}
      {:field-name "b_dt_tz_id",      :base-type :type/DateTimeWithZoneID}
      {:field-name "b_dt_tz_text",    :base-type :type/Text}
      {:field-name "b_dt_tz_id_text", :base-type :type/Text}]
@@ -703,26 +705,28 @@
       (for [a times b times]
         [(t/local-date-time (u.date/parse a))              ; a_dt
          (t/offset-date-time (u.date/parse a))             ; a_dt_ltz
-         (t/offset-date-time (u.date/parse a))             ; a_dt_tz
+         (u.date/parse a)                                  ; a_dt_tz
+         (t/offset-date-time (u.date/parse a))             ; a_dt_tz_offset
          (u.date/parse a)                                  ; a_dt_tz_id
          (t/format :iso-offset-date-time (u.date/parse a)) ; a_dt_tz_text
          a                                                 ; a_dt_tz_id_text
          (t/local-date-time (u.date/parse b))              ; b_dt
          (t/offset-date-time (u.date/parse b))             ; b_dt_ltz
-         (t/offset-date-time (u.date/parse b))             ; b_dt_tz
+         (u.date/parse b)                                  ; b_dt_tz
+         (t/offset-date-time (u.date/parse b))             ; b_dt_tz_offset
          (u.date/parse b)                                  ; b_dt_tz_id
          (t/format :iso-offset-date-time (u.date/parse b)) ; b_dt_tz_text
          b]))]])                                           ; b_dt_tz_id_text
 
 (deftest datetime-diff-time-zones-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
-    (mt/dataset time-zone-edge-cases
+    (mt/dataset diff-time-zone-cases
       (let [diffs (fn [x y]
                     (let [units [:second :minute :hour :day :week :month :year]]
                       (->> (mt/run-mbql-query times
                              {:filter [:and [:= x $a_dt_tz_text] [:= y $b_dt_tz_text]]
                               :expressions (into {} (for [unit units]
-                                                      [(name unit) [:datetime-diff x y unit]]))
+                                                      [(name unit) [:datetime-diff $a_dt_tz $b_dt_tz unit]]))
                               :fields (into [] (for [unit units]
                                                  [:expression (name unit)]))})
                            (mt/formatted-rows (repeat (count units) int))
@@ -749,7 +753,7 @@
         (testing "hour under a week"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:hour 167 :day 7 :week 1}
-                          (diffs "2022-10-02T00:00:00Z"     ; 2022-10-01T23:00:00-01:00
+                          (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                                  "2022-10-09T00:00:00+01:00")))) ; 2022-10-08T22:00:00-01:00
           (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
             (is (partial= {:hour 167 :day 6 :week 0}
