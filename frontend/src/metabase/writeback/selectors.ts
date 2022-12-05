@@ -19,6 +19,7 @@ export function createQuestionFromAction(
       name: action.name,
       description: action.description,
       dataset_query: action.dataset_query,
+      visualization_settings: action.visualization_settings,
     },
     getMetadata(state),
   ).setParameters(action.parameters);
