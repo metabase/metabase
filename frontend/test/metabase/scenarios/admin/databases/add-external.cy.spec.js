@@ -39,10 +39,10 @@ describe(
 
       // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
       typeAndBlurUsingLabel("Display name", "QA Postgres12");
-      typeAndBlurUsingLabel("Host", "localhost  \n  ");
+      typeAndBlurUsingLabel("Host", "localhost");
       typeAndBlurUsingLabel("Port", "5432");
-      typeAndBlurUsingLabel("Database name", "  sample");
-      typeAndBlurUsingLabel("Username", "  metabase  ");
+      typeAndBlurUsingLabel("Database name", "sample");
+      typeAndBlurUsingLabel("Username", "metabase");
       typeAndBlurUsingLabel("Password", "metasample123");
 
       cy.button("Save").should("not.be.disabled").click();

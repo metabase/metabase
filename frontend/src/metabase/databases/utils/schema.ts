@@ -1,25 +1,34 @@
 import * as Yup from "yup";
 import type { TestContext } from "yup";
 import * as Errors from "metabase/core/utils/errors";
-import { Engine, EngineField } from "metabase-types/api";
+import { Engine, EngineField, ScheduleType } from "metabase-types/api";
 import { ADVANCED_FIELDS, FIELD_OVERRIDES } from "../constants";
 import { DatabaseValues } from "../types";
+
+const SCHEDULE_SCHEMA = Yup.object({
+  schedule_type: Yup.mixed().nullable(),
+  schedule_day: Yup.mixed().nullable(),
+  schedule_frame: Yup.mixed().nullable(),
+  schedule_hour: Yup.number().nullable(),
+  schedule_minute: Yup.number().nullable(),
+});
 
 export const getValidationSchema = (
   engine: Engine | undefined,
   engineKey: string | undefined,
   isAdvanced: boolean,
 ) => {
-  const fields = getFields(engine, isAdvanced).filter(isDetailField);
+  const fields = getDefinedFields(engine, isAdvanced).filter(isDetailField);
   const entries = fields.map(field => [field.name, getFieldSchema(field)]);
 
   return Yup.object({
+    id: Yup.number(),
     engine: Yup.string().default(engineKey).required(Errors.required),
     name: Yup.string().default("").required(Errors.required),
     details: Yup.object(Object.fromEntries(entries)),
     schedules: Yup.object({
-      metadata_sync: Yup.object(),
-      cache_field_values: Yup.object(),
+      metadata_sync: SCHEDULE_SCHEMA.default(undefined),
+      cache_field_values: SCHEDULE_SCHEMA.default(undefined),
     }),
     auto_run_queries: Yup.boolean().nullable().default(true),
     refingerprint: Yup.boolean().nullable().default(false),
@@ -31,20 +40,40 @@ export const getValidationSchema = (
 };
 
 export const getVisibleFields = (
-  engine: Engine,
+  engine: Engine | undefined,
   values: DatabaseValues,
   isAdvanced: boolean,
 ) => {
-  const fields = getFields(engine, isAdvanced);
+  const fields = getDefinedFields(engine, isAdvanced);
   return fields.filter(field => isFieldVisible(field, values.details));
 };
 
-const getFields = (engine: Engine | undefined, isAdvanced: boolean) => {
+export const getDefinedFields = (
+  engine: Engine | undefined,
+  isAdvanced: boolean,
+) => {
   const fields = engine?.["details-fields"] ?? [];
 
   return isAdvanced
     ? fields
     : fields.filter(field => !ADVANCED_FIELDS.includes(field.name));
+};
+
+export const getSubmitValues = (
+  engine: Engine | undefined,
+  values: DatabaseValues,
+  isAdvanced: boolean,
+) => {
+  const fields = getVisibleFields(engine, values, isAdvanced);
+  const entries = fields
+    .filter(field => isDetailField(field))
+    .filter(field => isFieldVisible(field, values.details))
+    .map(field => [field.name, values.details[field.name]]);
+
+  return {
+    ...values,
+    details: Object.fromEntries(entries),
+  };
 };
 
 const getFieldSchema = (field: EngineField) => {
