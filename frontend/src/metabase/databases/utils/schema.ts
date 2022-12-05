@@ -58,7 +58,12 @@ const getFieldSchema = (field: EngineField) => {
     case "section":
       return Yup.boolean()
         .nullable()
-        .default(false)
+        .default(field.default != null ? Boolean(field.default) : false)
+        .test((value, context) => isFieldValid(field, value, context));
+    case "select":
+      return Yup.string()
+        .nullable()
+        .default(field.default != null ? String(field.default) : null)
         .test((value, context) => isFieldValid(field, value, context));
     default:
       return Yup.string()
