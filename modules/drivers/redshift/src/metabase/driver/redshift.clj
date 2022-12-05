@@ -217,7 +217,9 @@
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :week
-      (let [positive-diff (fn [a b]
+      (let [x (hx/->timestamp x)
+            y (hx/->timestamp y)
+            positive-diff (fn [a b]
                             (hx/cast
                              :integer
                              (hx/floor
