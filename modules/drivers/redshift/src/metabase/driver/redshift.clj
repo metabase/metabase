@@ -193,26 +193,35 @@
        (map (partial sql.qp/->honeysql driver))
        (reduce (partial hsql/call :concat))))
 
-(defn- date-trunc [unit temporal]
-  (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp temporal)))
+(defn- date-trunc [unit temporal] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp temporal)))
+(defn- extract    [unit temporal] (hsql/call :extract (hx/literal unit) (hx/->timestamp temporal)))
 
 (defmethod sql.qp/->honeysql [:redshift :datetime-diff]
   [driver [_ x y unit]]
-  (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)]
+  (let [x (hx/->timestamp (sql.qp/->honeysql driver x))
+        y (hx/->timestamp (sql.qp/->honeysql driver y))]
     (case unit
-      (:year :month)
-      (let [x       (hx/->timestamp x)
-            y       (hx/->timestamp y)
-            positive-diff (fn [a b] ; precondition: a <= b
+      :year
+      (let [positive-diff (fn [a b] ; precondition: a <= b
                             (hx/-
-                             (hsql/call :datediff (hsql/raw (name unit)) a b)
+                             (hx/- (extract :year b) (extract :year a))
+                             ;; decrement if a is later than b in the year calendar
                              (hx/cast
                               :integer
                               (hsql/call
-                               :>
-                               (hsql/call :datediff (hsql/raw "day") (date-trunc unit a) a)
-                               (hsql/call :datediff (hsql/raw "day") (date-trunc unit b) b)))))]
+                               :or
+                               (hsql/call :> (extract :month a) (extract :month b))
+                               (hsql/call
+                                :and
+                                (hsql/call := (extract :month a) (extract :month b))
+                                (hsql/call :> (extract :day a) (extract :day b)))))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :month
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             (hsql/call :datediff (hsql/raw (name unit)) a b)
+                             (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :week
