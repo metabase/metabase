@@ -158,10 +158,10 @@
                       ;; So technically we could make sqlserver display datetimeoffset in `report-tz`
                       ;; then the extract hour will make more sense
                       :get-hour        (case driver/*driver*
-                                         :sqlserver 5
+                                         (:sqlserver :presto-jdbc :snowflake :oracle) 5
                                          2),
                       :get-minute      (case driver/*driver*
-                                         :sqlserver 19
+                                         (:sqlserver :presto-jdbc :snowflake :oracle) 19
                                          49),
                       :get-second      9}
                      {:get-year        2003,
@@ -175,7 +175,7 @@
                  (let [ops [:get-year :get-quarter :get-month :get-day
                             :get-day-of-week :get-hour :get-minute :get-second]]
                     (->> (mt/mbql-query times {:expressions (into {"shifted-day"  [:datetime-subtract $dt_tz 78 :day]
-                                                                   ;; the idea is to extract a column with value = 2004-01-01 02:49:09 + 04:30
+                                                                   ;; the idea is to extract a column with value = 2004-01-01 02:49:09 +04:30
                                                                    ;; this way the UTC value is 2003-12-31 22:19:09 +00:00 which will make sure
                                                                    ;; the year, quarter, month, day, week is extracted correctly
                                                                    ;; TODO: it's better to use a literal for this, but the function is not working properly
@@ -187,9 +187,10 @@
                                                :filter      [:= $index 1]
                                                :limit       1})
                         mt/process-query
-                        mt/rows
+                        (mt/formatted-rows (repeat int))
                         first
                         (zipmap ops))))))))))
+
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
