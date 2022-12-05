@@ -1,8 +1,10 @@
 import { RegularCollectionId } from "./collection";
 import { User, UserId } from "./user";
 
+export type NativeQuerySnippetId = number;
+
 export interface NativeQuerySnippet {
-  id: number;
+  id: NativeQuerySnippetId;
   name: string;
   description: string | null;
   content: string;

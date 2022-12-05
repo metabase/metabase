@@ -19,7 +19,11 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
-import type { Collection, NativeQuerySnippet } from "metabase-types/api";
+import type {
+  Collection,
+  NativeQuerySnippet,
+  NativeQuerySnippetId,
+} from "metabase-types/api";
 
 import {
   FormSnippetTextArea,
@@ -140,7 +144,7 @@ function SnippetForm({
 
   const handleArchive = useCallback(async () => {
     await handleUpdateSnippet({
-      id: snippet.id as NativeQuerySnippet["id"],
+      id: snippet.id as NativeQuerySnippetId,
       archived: true,
     });
     onArchive?.();
