@@ -69,6 +69,7 @@
       (let [last-used-at (db/select-one-field :last_used_at FieldValues :field_id (mt/id :venues :price) :type :full)]
         (is (t/after? last-used-at (t/minus (t/offset-date-time) (t/hours 2))))
         (testing "Fetching again updates last-used-at"
+          (Thread/sleep 500) ;; Let clock advance to make sure last-used-at is different
           (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))
           (is (t/after?
                 (db/select-one-field :last_used_at FieldValues :field_id (mt/id :venues :price) :type :full)
