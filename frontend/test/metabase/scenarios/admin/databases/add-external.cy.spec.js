@@ -11,7 +11,7 @@ describe(
       cy.intercept("POST", "/api/database").as("createDatabase");
 
       cy.visit("/admin/databases/create");
-      cy.contains("Database type").closest(".Form-field").find("a").click();
+      cy.findByLabelText("Database type").click();
     });
 
     it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
