@@ -50,9 +50,9 @@ const DatabaseForm = ({
 
   const initialValues = useMemo(() => {
     return initialData
-      ? validationSchema.cast(initialData)
+      ? validationSchema.cast({ ...initialData, engine: engineKey })
       : validationSchema.getDefault();
-  }, [initialData, validationSchema]);
+  }, [initialData, engineKey, validationSchema]);
 
   const handleEngineChange = useCallback(
     (engineKey: string | undefined) => {
