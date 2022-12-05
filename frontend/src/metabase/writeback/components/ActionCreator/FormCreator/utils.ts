@@ -48,7 +48,7 @@ export const getDefaultFieldSettings = (
   title: "",
   description: "",
   placeholder: "",
-  order: 100,
+  order: 999,
   fieldType: "string",
   inputType: "string",
   required: true,
@@ -181,7 +181,7 @@ export const generateFieldSettingsFromParameters = (
     fields?.map(f => [slugify(f.name), f]) ?? [],
   );
 
-  params.forEach(param => {
+  params.forEach((param, index) => {
     const field = fieldMetadataMap[param.id]
       ? new Field(fieldMetadataMap[param.id])
       : undefined;
@@ -194,6 +194,7 @@ export const generateFieldSettingsFromParameters = (
       title: displayName,
       placeholder: displayName,
       required: !!param?.required,
+      order: index,
       description: field?.description ?? "",
       fieldType: getFieldType(param),
       inputType: getInputType(param, field),
