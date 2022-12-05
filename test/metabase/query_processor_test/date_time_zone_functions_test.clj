@@ -406,8 +406,8 @@
 
 (deftest now-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :now :temporal-extract)
-    (testing "now should work with temporal extract functions according to the results timezone"
-      (let [timezone "Asia/Kathmandu"] ; UTC+5:45 all year
+    (testing "now should work with temporal extract functions according to the report timezone"
+      (doseq [timezone ["UTC" "Asia/Kathmandu"]] ; UTC+5:45 all year
         (mt/with-temporary-setting-values [report-timezone timezone]
           (is (= true
                  (let [[minute hour] (->> (mt/run-mbql-query venues
@@ -422,7 +422,6 @@
                        now              (t/local-date-time (t/zone-id results-timezone))]
                    (and (close-minute? minute (.getMinute now))
                         (close-hour? hour (.getHour now)))))))))))
-
 
 (deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
