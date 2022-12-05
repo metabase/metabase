@@ -58,7 +58,7 @@ const getFieldSchema = (field: EngineField) => {
     case "section":
       return Yup.boolean()
         .nullable()
-        .default(false)
+        .default(field.default != null ? Boolean(field.default) : false)
         .test((value, context) => isFieldValid(field, value, context));
     case "select":
       return Yup.string()
