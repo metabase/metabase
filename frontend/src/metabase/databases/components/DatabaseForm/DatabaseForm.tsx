@@ -11,7 +11,11 @@ import { PLUGIN_CACHING } from "metabase/plugins";
 import { Engine } from "metabase-types/api";
 import { DatabaseValues } from "../../types";
 import { getDefaultEngineKey } from "../../utils/engine";
-import { getValidationSchema, getVisibleFields } from "../../utils/schema";
+import {
+  getSubmitValues,
+  getValidationSchema,
+  getVisibleFields,
+} from "../../utils/schema";
 import DatabaseEngineField from "../DatabaseEngineField";
 import DatabaseNameField from "../DatabaseNameField";
 import DatabaseDetailField from "../DatabaseDetailField";
@@ -24,7 +28,7 @@ export interface DatabaseFormProps {
   isHosted?: boolean;
   isAdvanced?: boolean;
   isCachingEnabled?: boolean;
-  onSubmit: (values: DatabaseValues) => void;
+  onSubmit?: (values: DatabaseValues) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
 }
@@ -39,20 +43,27 @@ const DatabaseForm = ({
   onCancel,
   onEngineChange,
 }: DatabaseFormProps): JSX.Element => {
-  const [engineKey, setEngineKey] = useState(() => {
-    return getEngineKey(engines, initialData, isAdvanced);
-  });
+  const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
+  const [engineKey, setEngineKey] = useState(initialEngineKey);
+  const engine = getEngine(engines, engineKey);
 
   const validationSchema = useMemo(() => {
-    const engine = getEngine(engines, engineKey);
     return getValidationSchema(engine, engineKey, isAdvanced);
-  }, [engines, engineKey, isAdvanced]);
+  }, [engine, engineKey, isAdvanced]);
 
   const initialValues = useMemo(() => {
-    return initialData
-      ? validationSchema.cast({ ...initialData, engine: engineKey })
-      : validationSchema.getDefault();
+    return validationSchema.cast(
+      { ...initialData, engine: engineKey },
+      { stripUnknown: true },
+    );
   }, [initialData, engineKey, validationSchema]);
+
+  const handleSubmit = useCallback(
+    (values: DatabaseValues) => {
+      return onSubmit?.(getSubmitValues(engine, values, isAdvanced));
+    },
+    [engine, isAdvanced, onSubmit],
+  );
 
   const handleEngineChange = useCallback(
     (engineKey: string | undefined) => {
@@ -67,10 +78,10 @@ const DatabaseForm = ({
       initialValues={initialValues}
       validationSchema={validationSchema}
       enableReinitialize
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       <DatabaseFormBody
-        engine={getEngine(engines, engineKey)}
+        engine={engine}
         engineKey={engineKey}
         engines={engines}
         isHosted={isHosted}
