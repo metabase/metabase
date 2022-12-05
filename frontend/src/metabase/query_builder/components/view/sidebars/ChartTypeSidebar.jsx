@@ -15,7 +15,7 @@ import {
 
 const FIXED_LAYOUT = [
   ["line", "bar", "combo", "area", "row", "waterfall"],
-  ["scatter", "pie", "funnel", "smartscalar", "progress", "gauge"],
+  ["scatter", "pie", "funnel", "smartscalar", "progress", "gauge", "sankey"],
   ["scalar", "table", "pivot", "map"],
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));

@@ -675,3 +675,142 @@ export const GRAPH_AXIS_SETTINGS = {
   // DEPRECATED" replaced with "label" series setting
   "graph.series_labels": {},
 };
+
+export const SANKEY_DATA_SETTINGS = {
+  ...columnSettings({
+    getColumns: (
+      [
+        {
+          data: { cols },
+        },
+      ],
+      settings,
+    ) => cols,
+    hidden: true,
+  }),
+  "graph._start_filter": {
+    getDefault: ([{ card }]) => {
+      return isDimension
+    },
+    useRawSeries: true,
+  },
+  "graph._destinations_filter": {
+    getDefault: ([{ card }]) => isDimension,
+    useRawSeries: true,
+  },
+  "graph._metric_filter": {
+    getDefault: ([{ card }]) => isMetric,
+    useRawSeries: true,
+  },
+  "graph.start": {
+    section: t`Data`,
+    title: t`Starting Point`,
+    widget: "fields",
+    isValid: (series, vizSettings) =>
+      series.some(
+        ({ card, data }) =>
+          columnsAreValid(
+            card.visualization_settings["graph.start"],
+            data,
+            vizSettings["graph._start_filter"],
+          ),
+      ),
+    getDefault: (series, vizSettings) =>
+      preserveExistingColumnsOrder(
+        vizSettings["graph.start"] ?? [],
+        [getDefaultColumns(series).dimensions[0]],
+      ),
+    persistDefault: true,
+    getProps: ([{ card, data }], vizSettings) => {
+      const addedDimensions = vizSettings["graph.start"];
+      const options = data.cols
+        .filter(vizSettings["graph._start_filter"])
+        .map(getOptionFromColumn);
+      return {
+        options,
+        columns: data.cols,
+        showColumnSetting: false,
+      };
+    },
+    readDependencies: ["graph._destinations_filter","graph._start_filter", "graph._metric_filter"],
+    writeDependencies: ["graph.metrics"],
+    dashboard: false,
+    useRawSeries: true,
+  },
+  "graph.destinations": {
+    section: t`Data`,
+    title: t`Destination(s)`,
+    widget: "fields",
+    isValid: (series, vizSettings) =>
+      series.some(
+        ({ card, data }) =>
+        columnsAreValid(
+          card.visualization_settings["graph.destinations"],
+          data,
+          vizSettings["graph._destinations_filter"],
+        ),
+      ),
+    getDefault: (series, vizSettings) =>
+      preserveExistingColumnsOrder(
+        vizSettings["graph.destinations"] ?? [],
+        getDefaultColumns(series).dimensions.slice(1),
+      ),
+    persistDefault: true,
+    getProps: ([{ card, data }], vizSettings) => {
+      const value = vizSettings["graph.destinations"];
+      const options = data.cols
+        .filter(vizSettings["graph._destinations_filter"])
+        .map(getOptionFromColumn);
+      return {
+        options,
+        addAnother: t`Add Destination...`,
+        columns: data.cols,
+        showColumnSetting: false,
+      };
+    },
+    readDependencies: ["graph._destinations_filter", "graph._start_filter", "graph._metric_filter"],
+    writeDependencies: ["graph.metrics"],
+    dashboard: false,
+    useRawSeries: true,
+  },
+  "graph.metrics": {
+    section: t`Data`,
+    title: t`Value`,
+    widget: "fields",
+    isValid: (series, vizSettings) =>
+      series.some(
+        ({ card, data }) =>
+          columnsAreValid(
+            card.visualization_settings["graph.start"],
+            data,
+            vizSettings["graph._start_filter"],
+          ) &&
+          columnsAreValid(
+            card.visualization_settings["graph.destinations"],
+            data,
+            vizSettings["graph._destinations_filter"],
+          ) &&
+          columnsAreValid(
+            card.visualization_settings["graph.metrics"],
+            data,
+            vizSettings["graph._metric_filter"],
+          ),
+      ),
+    getDefault: (series, vizSettings) => [getDefaultColumns(series).metrics[0]],
+    persistDefault: true,
+    getProps: ([{ card, data }], vizSettings) => {
+      const options = data.cols
+        .filter(vizSettings["graph._metric_filter"])
+        .map(getOptionFromColumn);
+      return {
+        options,
+        columns: data.cols,
+        showColumnSetting: false,
+      };
+    },
+    readDependencies: ["graph._start_filter","graph._destinations_filter", "graph._metric_filter"],
+    writeDependencies: ["graph.start", "graph.destinations"],
+    dashboard: false,
+    useRawSeries: true,
+  },
+};

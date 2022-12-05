@@ -24,6 +24,7 @@ import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./components/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
 import ListViz from "./visualizations/List";
+import Sankey from "./visualizations/Sankey";
 
 export default function () {
   registerVisualization(Scalar);
@@ -46,5 +47,6 @@ export default function () {
   registerVisualization(PivotTable);
   registerVisualization(ListViz);
   registerVisualization(ActionViz);
+  registerVisualization(Sankey);
   setDefaultVisualization(Table);
 }
