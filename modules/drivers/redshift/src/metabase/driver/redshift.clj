@@ -193,7 +193,6 @@
        (map (partial sql.qp/->honeysql driver))
        (reduce (partial hsql/call :concat))))
 
-(defn- date-trunc [unit temporal] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp temporal)))
 (defn- extract    [unit temporal] (hsql/call :extract (hx/literal unit) (hx/->timestamp temporal)))
 
 (defmethod sql.qp/->honeysql [:redshift :datetime-diff]
