@@ -7,6 +7,7 @@ import FormProvider from "metabase/core/components/FormProvider";
 import FormFooter from "metabase/core/components/FormFooter";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { Engine } from "metabase-types/api";
 import { DatabaseValues } from "../../types";
 import { getDefaultEngineKey } from "../../utils/engine";
@@ -22,6 +23,7 @@ export interface DatabaseFormProps {
   initialValues?: DatabaseValues;
   isHosted?: boolean;
   isAdvanced?: boolean;
+  isCachingEnabled?: boolean;
   onSubmit: (values: DatabaseValues) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
@@ -32,6 +34,7 @@ const DatabaseForm = ({
   initialValues: initialData,
   isHosted = false,
   isAdvanced = false,
+  isCachingEnabled = false,
   onSubmit,
   onCancel,
   onEngineChange,
@@ -70,6 +73,7 @@ const DatabaseForm = ({
         engines={engines}
         isHosted={isHosted}
         isAdvanced={isAdvanced}
+        isCachingEnabled={isCachingEnabled}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
       />
@@ -83,6 +87,7 @@ interface DatabaseFormBodyProps {
   engines: Record<string, Engine>;
   isHosted: boolean;
   isAdvanced: boolean;
+  isCachingEnabled: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
 }
@@ -93,6 +98,7 @@ const DatabaseFormBody = ({
   engines,
   isHosted,
   isAdvanced,
+  isCachingEnabled,
   onEngineChange,
   onCancel,
 }: DatabaseFormBodyProps): JSX.Element => {
@@ -120,6 +126,7 @@ const DatabaseFormBody = ({
       {fields.map(field => (
         <DatabaseDetailField key={field.name} field={field} />
       ))}
+      {isCachingEnabled && <PLUGIN_CACHING.DatabaseCacheTimeField />}
       <DatabaseFormFooter isAdvanced={isAdvanced} onCancel={onCancel} />
     </Form>
   );
