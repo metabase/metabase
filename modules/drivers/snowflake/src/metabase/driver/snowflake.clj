@@ -186,9 +186,8 @@
     (hsql/raw (int amount))
     (hx/->timestamp hsql-form)))
 
-(defn- ->timestamp-tz [x] (hx/maybe-cast :timestamp_tz x))
-(defn- extract    [unit expr] (hsql/call :date_part unit (->timestamp-tz expr)))
-(defn- date-trunc [unit expr] (hsql/call :date_trunc unit (->timestamp-tz expr)))
+(defn- extract    [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
+(defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))
 
 (defmethod sql.qp/date [:snowflake :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:snowflake :minute]          [_ _ expr] (date-trunc :minute expr))
