@@ -69,9 +69,13 @@ export const getIsAppBarVisible = createSelector(
     embedOptions,
   ) => {
     const isFullscreen = hash.includes("fullscreen");
+    const allTopNavElementsHidden =
+      !embedOptions.search &&
+      !embedOptions.new_button &&
+      !embedOptions.breadcrumbs;
     if (
       !currentUser ||
-      (isEmbedded && !embedOptions.top_nav) ||
+      (isEmbedded && (!embedOptions.top_nav || allTopNavElementsHidden)) ||
       isAdminApp ||
       isEditingDashboard ||
       isFullscreen
@@ -115,6 +119,13 @@ export const getIsNewButtonVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => {
     return !isEmbedded || embedOptions.new_button;
+  },
+);
+
+export const getIsBreadcrumbsVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => {
+    return !isEmbedded || embedOptions.breadcrumbs;
   },
 );
 

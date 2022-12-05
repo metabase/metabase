@@ -21,6 +21,7 @@ export interface AppBarLargeProps {
   isNavBarVisible?: boolean;
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
+  isBreadcrumbsVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
@@ -35,12 +36,15 @@ const AppBarLarge = ({
   isNavBarVisible,
   isSearchVisible,
   isNewButtonVisible,
+  isBreadcrumbsVisible,
   isProfileLinkVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
   onLogout,
 }: AppBarLargeProps): JSX.Element => {
+  isNavBarOpen = isNavBarOpen && isNavBarVisible;
+
   return (
     <AppBarRoot isNavBarOpen={isNavBarOpen}>
       <AppBarLeftContainer isNavBarVisible={isNavBarVisible}>
@@ -56,7 +60,7 @@ const AppBarLarge = ({
         >
           {isQuestionLineageVisible ? (
             <QuestionLineage />
-          ) : isCollectionPathVisible ? (
+          ) : isBreadcrumbsVisible && isCollectionPathVisible ? (
             <CollectionBreadcrumbs />
           ) : null}
         </AppBarInfoContainer>
