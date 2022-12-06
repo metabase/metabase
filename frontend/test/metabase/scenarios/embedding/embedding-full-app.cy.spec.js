@@ -11,10 +11,10 @@ describe("scenarios > embedding > full app", () => {
   });
 
   describe("navigation", () => {
-    it("should hide the top nav by default", () => {
+    it("should show the top nav by default", () => {
       visitUrl({ url: "/" });
       cy.findByText("Our analytics").should("be.visible");
-      cy.findByTestId("main-logo").should("not.exist");
+      cy.findByTestId("main-logo").should("be.visible");
     });
 
     it("should show the top nav by a param", () => {
@@ -73,7 +73,7 @@ describe("scenarios > embedding > full app", () => {
     it("should hide the question's additional info by a param", () => {
       visitQuestionUrl({ url: "/question/1", qs: { additional_info: false } });
 
-      cy.findByText("Our analytics").should("not.exist");
+      cy.findByText("Our analytics").should("be.visible");
       cy.findByText(/Edited/).should("not.exist");
     });
 
@@ -109,7 +109,7 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByText(/Edited/).should("not.exist");
-      cy.findByText("Our analytics").should("not.exist");
+      cy.findByText("Our analytics").should("be.visible");
     });
 
     it("should preserve embedding options with click behavior (metabase#24756)", () => {
