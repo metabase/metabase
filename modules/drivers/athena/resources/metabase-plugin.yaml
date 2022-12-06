@@ -26,11 +26,11 @@ driver:
         helper-text: Use a different data catalog (if you have federated queries, for example)
         required: false
     - name: access_key
-      display-name: Access Key
+      display-name: Access key
       helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
     - merge:
         - password
-        - display-name: Secret Key
+        - display-name: Secret key
           name: secret_key
     - advanced-options-start
     - merge:
