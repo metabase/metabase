@@ -13,7 +13,7 @@ import type { State } from "metabase-types/store";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
 
-import { isImplicitAction } from "metabase/writeback/utils";
+import { isImplicitAction } from "metabase/actions/utils";
 import { ActionCreator } from "metabase/actions/components/ActionCreator";
 
 import {
