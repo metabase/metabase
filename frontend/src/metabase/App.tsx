@@ -15,7 +15,7 @@ import {
   getErrorPage,
   getIsAdminApp,
   getIsAppBarVisible,
-  getIsNavBarVisible,
+  getIsNavBarEnabled,
 } from "metabase/selectors/app";
 import { setErrorPage } from "metabase/redux/app";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -52,7 +52,7 @@ interface AppStateProps {
   isAdminApp: boolean;
   bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
-  isNavBarVisible: boolean;
+  isNavBarEnabled: boolean;
 }
 
 interface AppDispatchProps {
@@ -73,7 +73,7 @@ const mapStateToProps = (
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
-  isNavBarVisible: getIsNavBarVisible(state, props),
+  isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
 
 const mapDispatchToProps: AppDispatchProps = {
@@ -96,7 +96,7 @@ function App({
   errorPage,
   isAdminApp,
   isAppBarVisible,
-  isNavBarVisible,
+  isNavBarEnabled,
   children,
   onError,
 }: AppProps) {
@@ -111,9 +111,9 @@ function App({
       <ScrollToTop>
         <AppContainer className="spread">
           <AppBanner />
-          {isAppBarVisible && <AppBar isNavBarVisible={isNavBarVisible} />}
+          {isAppBarVisible && <AppBar isNavBarEnabled={isNavBarEnabled} />}
           <AppContentContainer isAdminApp={isAdminApp}>
-            {isNavBarVisible && <Navbar />}
+            {isNavBarEnabled && <Navbar />}
             <AppContent ref={setViewportElement}>
               <ContentViewportContext.Provider value={viewportElement ?? null}>
                 {errorPage ? getErrorComponent(errorPage) : children}

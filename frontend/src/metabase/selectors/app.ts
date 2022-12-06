@@ -88,7 +88,7 @@ export const getIsAppBarVisible = createSelector(
   },
 );
 
-export const getIsNavBarVisible = createSelector(
+export const getIsNavBarEnabled = createSelector(
   [
     getUser,
     getRouterPath,
