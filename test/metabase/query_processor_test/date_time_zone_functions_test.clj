@@ -111,7 +111,7 @@
           (testing (format "extract %s function works as expected on %s column for driver %s" op col-type driver/*driver*)
             (is (= (set (expected-fn op)) (set (test-temporal-extract (query-fn op field-id)))))))))
 
-      ;; mongo doesn't supports cast string to date
+     ;; mongo doesn't supports cast string to date
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :temporal-extract) :mongo)
       (testing "with date columns"
         (doseq [[col-type field-id] [[:date (mt/id :times :d)] [:text-as-date (mt/id :times :as_d)]]
@@ -139,7 +139,54 @@
                                           :fields      (into [] (for [op ops] [:expression (name op)]))})
                       (mt/formatted-rows (repeat int))
                       first
-                      (zipmap ops)))))))))
+                      (zipmap ops)))))))
+
+    (testing "with timestamptz columns"
+      (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :temporal-extract))
+        (mt/with-report-timezone-id "Asia/Kabul"
+          (is (= (if (or (= driver/*driver* :sqlserver)
+                         (driver/supports? driver/*driver* :set-timezone))
+                     {:get-year        2004,
+                      :get-quarter     1,
+                      :get-month       1,
+                      :get-day         1,
+                      :get-day-of-week 5,
+                      ;; TIMEZONE FIXME these drivers are returning the extracted hours in
+                      ;; the timezone that they were inserted in
+                      ;; maybe they need explicit convert-timezone to the report-tz before extraction?
+                      :get-hour        (case driver/*driver*
+                                         (:sqlserver :presto :presto-jdbc :snowflake :oracle) 5
+                                         2),
+                      :get-minute      (case driver/*driver*
+                                         (:sqlserver :presto :presto-jdbc :snowflake :oracle) 19
+                                         49),
+                      :get-second      9}
+                     {:get-year        2003,
+                      :get-quarter     4,
+                      :get-month       12,
+                      :get-day         31,
+                      :get-day-of-week 4,
+                      :get-hour        22,
+                      :get-minute      19,
+                      :get-second      9})
+                 (let [ops [:get-year :get-quarter :get-month :get-day
+                            :get-day-of-week :get-hour :get-minute :get-second]]
+                    (->> (mt/mbql-query times {:expressions (into {"shifted-day"  [:datetime-subtract $dt_tz 78 :day]
+                                                                   ;; the idea is to extract a column with value = 2004-01-01 02:49:09 +04:30
+                                                                   ;; this way the UTC value is 2003-12-31 22:19:09 +00:00 which will make sure
+                                                                   ;; the year, quarter, month, day, week is extracted correctly
+                                                                   ;; TODO: it's better to use a literal for this, but the function is not working properly
+                                                                   ;; with OffsetDatetime for all drivers, so we'll go wit this for now
+                                                                   "shifted-hour" [:datetime-subtract [:expression "shifted-day"] 4 :hour]}
+                                                                  (for [op ops]
+                                                                    [(name op) [op [:expression "shifted-hour"]]]))
+                                               :fields      (into [] (for [op ops] [:expression (name op)]))
+                                               :filter      [:= $index 1]
+                                               :limit       1})
+                        mt/process-query
+                        (mt/formatted-rows (repeat int))
+                        first
+                        (zipmap ops))))))))))
 
 (deftest temporal-extraction-with-filter-expresion-tests
   (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
