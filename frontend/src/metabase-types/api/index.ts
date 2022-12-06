@@ -24,6 +24,6 @@ export * from "./snippets";
 export * from "./table";
 export * from "./timeline";
 export * from "./user";
-export * from "./writeback";
-export * from "./writeback-form-settings";
+export * from "./actions";
+export * from "./action-form-settings";
 export * from "./parameters";

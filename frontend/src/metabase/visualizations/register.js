@@ -3,7 +3,7 @@ import {
   setDefaultVisualization,
 } from "metabase/visualizations";
 
-import ActionViz from "metabase/writeback/components/ActionViz";
+import ActionViz from "metabase/actions/components/ActionViz";
 
 import Scalar from "./visualizations/Scalar";
 import SmartScalar from "./visualizations/SmartScalar";

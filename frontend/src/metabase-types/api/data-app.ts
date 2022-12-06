@@ -5,8 +5,8 @@ import {
   Dashboard,
   DashboardParameterMapping,
 } from "./dashboard";
-import { WritebackAction } from "./writeback";
-import { ActionDisplayType } from "./writeback-form-settings";
+import { WritebackAction } from "./actions";
+import { ActionDisplayType } from "./action-form-settings";
 import type { Card } from "./card";
 
 export type DataAppId = number;

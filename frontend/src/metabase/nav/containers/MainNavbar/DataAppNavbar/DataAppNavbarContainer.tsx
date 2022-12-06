@@ -19,10 +19,10 @@ import Search from "metabase/entities/search";
 import { setEditingDashboard as setEditingDataAppPage } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 
-import ArchiveDataAppModal from "metabase/writeback/containers/ArchiveDataAppModal";
-import ArchiveDataAppPageModal from "metabase/writeback/containers/ArchiveDataAppPageModal";
-import CreateDataAppPageModalForm from "metabase/writeback/containers/CreateDataAppPageModalForm";
-import ScaffoldDataAppPagesModal from "metabase/writeback/containers/ScaffoldDataAppPagesModal";
+import ArchiveDataAppModal from "metabase/data-apps/containers/ArchiveDataAppModal";
+import ArchiveDataAppPageModal from "metabase/data-apps/containers/ArchiveDataAppPageModal";
+import CreateDataAppPageModalForm from "metabase/data-apps/containers/CreateDataAppPageModalForm";
+import ScaffoldDataAppPagesModal from "metabase/data-apps/containers/ScaffoldDataAppPagesModal";
 
 import type { DataApp, DataAppPage } from "metabase-types/api";
 import type { State } from "metabase-types/store";

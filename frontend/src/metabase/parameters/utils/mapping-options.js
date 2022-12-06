@@ -1,5 +1,5 @@
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
-import { isActionDashCard } from "metabase/writeback/utils";
+import { isActionDashCard } from "metabase/data-apps/utils";
 import Question from "metabase-lib/Question";
 import { ExpressionDimension } from "metabase-lib/Dimension";
 import {

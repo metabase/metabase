@@ -13,7 +13,7 @@ import {
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { DATA_APPS_MAX_WIDTH } from "metabase/lib/dashboard_grid";
 
-import DataAppPageTitle from "metabase/writeback/containers/DataAppPageTitle";
+import DataAppPageTitle from "metabase/data-apps/containers/DataAppPageTitle";
 
 interface TypeForItemsThatRespondToNavBarOpen {
   isNavBarOpen: boolean;

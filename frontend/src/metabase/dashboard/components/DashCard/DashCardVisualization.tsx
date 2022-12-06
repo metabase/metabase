@@ -12,7 +12,7 @@ import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
-import { shouldHideDashcardHeader } from "metabase/writeback/utils";
+import { shouldHideDashcardHeader } from "metabase/data-apps/utils";
 
 import type {
   Dashboard,

@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 
-import { useDataAppContext } from "metabase/writeback/containers/DataAppContext";
+import { useDataAppContext } from "metabase/data-apps/containers/DataAppContext";
 
 const WIDTH = 384;
 

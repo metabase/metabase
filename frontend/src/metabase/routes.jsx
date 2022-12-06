@@ -68,8 +68,8 @@ import TableQuestionsContainer from "metabase/reference/databases/TableQuestions
 import FieldListContainer from "metabase/reference/databases/FieldListContainer";
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
 
-import DataAppLanding from "metabase/writeback/containers/DataAppLanding";
-import DataAppPageLanding from "metabase/writeback/containers/DataAppPageLanding";
+import DataAppLanding from "metabase/data-apps/containers/DataAppLanding";
+import DataAppPageLanding from "metabase/data-apps/containers/DataAppPageLanding";
 
 import getAccountRoutes from "metabase/account/routes";
 import getAdminRoutes from "metabase/admin/routes";

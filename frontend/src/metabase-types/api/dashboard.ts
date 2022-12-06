@@ -7,7 +7,7 @@ import type {
 
 import type { Card, CardId } from "./card";
 import type { Dataset } from "./dataset";
-import type { WritebackAction } from "./writeback";
+import type { WritebackAction } from "./actions";
 
 export type DashboardId = number;
 

@@ -21,7 +21,7 @@ import { mergeSettings } from "metabase/visualizations/lib/settings";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 
-import { isActionCard } from "metabase/writeback/utils";
+import { isActionCard } from "metabase/data-apps/utils";
 
 import type {
   Card,

@@ -1,13 +1,13 @@
 import _ from "underscore";
+
+import { getDefaultFieldSettings } from "metabase/actions/components/ActionCreator/FormCreator";
+
 import type {
   ActionFormSettings,
   FieldType,
   InputType,
   ParameterType,
 } from "metabase-types/api";
-
-import { getDefaultFieldSettings } from "metabase/writeback/components/ActionCreator/FormCreator";
-
 import type { Parameter as ParameterObject } from "metabase-types/types/Parameter";
 import type { TemplateTag, TemplateTagType } from "metabase-types/types/Query";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -15,7 +15,7 @@ import type Question from "metabase-lib/Question";
 
 import {
   fieldTypeToParameterTypeMap,
-  dateTypetoParameterTypeMap,
+  dateTypeToParameterTypeMap,
   fieldTypeToTagTypeMap,
 } from "./constants";
 
@@ -61,7 +61,7 @@ const getParameterTypeFromFieldSettings = (
   inputType: InputType,
 ): ParameterType => {
   if (fieldType === "date") {
-    return dateTypetoParameterTypeMap[inputType] ?? "date/single";
+    return dateTypeToParameterTypeMap[inputType] ?? "date/single";
   }
 
   return fieldTypeToParameterTypeMap[fieldType] ?? "string/=";

@@ -6,17 +6,14 @@ import _ from "underscore";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 
 import Actions from "metabase/entities/actions";
-import { humanize } from "metabase/lib/formatting";
-import { hasImplicitActions, isImplicitAction } from "metabase/writeback/utils";
+import { ActionCreator } from "metabase/actions/components/ActionCreator";
+import { hasImplicitActions, isImplicitAction } from "metabase/actions/utils";
 
 import type { WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import { ActionCreator } from "metabase/writeback/components/ActionCreator";
 import type Question from "metabase-lib/Question";
 
 import {

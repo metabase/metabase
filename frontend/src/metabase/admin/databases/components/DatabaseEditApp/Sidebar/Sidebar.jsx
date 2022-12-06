@@ -11,7 +11,7 @@ import Button from "metabase/core/components/Button";
 import {
   isDatabaseWritebackEnabled,
   isWritebackSupported,
-} from "metabase/writeback/utils";
+} from "metabase/actions/utils";
 
 import ModelCachingControl from "./ModelCachingControl";
 import { SidebarRoot } from "./Sidebar.styled";

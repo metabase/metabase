@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { getIn } from "icepick";
 
-import { isMappedExplicitActionButton } from "metabase/writeback/utils";
+import { isMappedExplicitActionButton } from "metabase/data-apps/utils";
 
 import type {
   Dashboard,

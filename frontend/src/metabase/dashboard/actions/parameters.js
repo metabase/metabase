@@ -15,7 +15,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardApi } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { isActionDashCard } from "metabase/writeback/utils";
+import { isActionDashCard } from "metabase/data-apps/utils";
 import {
   getDashboard,
   getParameterValues,
