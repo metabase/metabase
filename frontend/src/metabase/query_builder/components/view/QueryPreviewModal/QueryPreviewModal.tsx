@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { MetabaseApi } from "metabase/services";
+import ModalContent from "metabase/components/ModalContent";
 import { formatNativeQuery } from "metabase/lib/engine";
-import Modal from "metabase/components/Modal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { DatasetNativeForm } from "metabase-types/api";
 import Question from "metabase-lib/Question";
@@ -10,19 +10,18 @@ import QueryPreviewPanel from "../QueryPreviewPanel";
 
 export interface QueryPreviewModalProps {
   question: Question;
-  onClose?: () => void;
 }
 
-const QueryPreviewModal = ({ question, onClose }: QueryPreviewModalProps) => {
+const QueryPreviewModal = ({ question }: QueryPreviewModalProps) => {
   const { data, loading, error } = useNativeQuery(question);
   const code = useFormattedQuery(question, data);
 
   return (
-    <Modal title={t`Query preview`} onClose={onClose}>
+    <ModalContent title={t`Query preview`}>
       <LoadingAndErrorWrapper loading={loading} error={error}>
         {code && <QueryPreviewPanel code={code} />}
       </LoadingAndErrorWrapper>
-    </Modal>
+    </ModalContent>
   );
 };
 

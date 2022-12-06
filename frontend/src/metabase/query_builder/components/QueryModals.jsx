@@ -29,6 +29,7 @@ import BulkFilterModal from "metabase/query_builder/components/filters/modals/Bu
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
+import QueryPreviewModal from "metabase/query_builder/components/view/QueryPreviewModal";
 import QuestionMoveToast from "./QuestionMoveToast";
 
 const mapDispatchToProps = {
@@ -277,6 +278,10 @@ class QueryModals extends React.Component {
           collectionId={question.collectionId()}
           onClose={onCloseModal}
         />
+      </Modal>
+    ) : modal === MODAL_TYPES.QUERY_PREVIEW ? (
+      <Modal onClose={onCloseModal}>
+        <QueryPreviewModal question={question} />
       </Modal>
     ) : null;
   }
