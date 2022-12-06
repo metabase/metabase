@@ -7,7 +7,5 @@
   (jdbc/with-db-metadata [metadata jdbc-spec]
     {:flavor (.getDatabaseProductName metadata)
      :version (.getDatabaseProductVersion metadata)
-     :semantic-version [(.getDriverMajorVersion metadata)
-                        (.getDriverMinorVersion metadata)]
-     :driver-name (.getDriverName metadata)
-     :driver-version (.getDriverVersion metadata)}))
+     :semantic-version [(.getDatabaseMajorVersion metadata)
+                        (.getDatabaseMinorVersion metadata)]}))
