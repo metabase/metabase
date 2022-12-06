@@ -33,10 +33,6 @@ jest.mock(
   "metabase/databases/containers/DatabaseHelpCard",
   () => ComponentMock,
 );
-jest.mock(
-  "metabase/databases/containers/DatabaseEngineWarning",
-  () => ComponentMock,
-);
 
 function mockSettings({ cachingEnabled = false }) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);
