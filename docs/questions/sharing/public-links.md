@@ -20,13 +20,13 @@ Once toggled on, the **Public sharing** section will display Metabase dashboards
 
 ## Enable sharing on your saved question or dashboard
 
-If [public sharing](#enable-sharing-on-your-saved-question-or-dashboard) is enabled for your Metabase, you'll find the `Sharing and Embedding` icon on saved questions and dashboards (it looks like an arrow pointing up and to the right).
+If [public sharing](#enable-sharing-on-your-saved-question-or-dashboard) is enabled for your Metabase, you'll find the `Sharing and Embedding` icon on saved questions and dashboards (it looks like an arrow pointing up and to the right). The sharing button is located on the bottom right corner of a question, or the top right corner of a dashboard.
 
 Click on the sharing icon to bring up the sharing settings modal, then click the toggle to generate the sharing link for that question or dashboard.
 
 ![Enable sharing](../images/enable-links.png)
 
-The sharing button is located on the bottom right corner of a question, or the top right corner of a dashboard.
+For more information about the option to **Embed this item in an application**, see the docs on [signed embedding](../../embedding/signed-embedding.md).
 
 ## Public links
 
