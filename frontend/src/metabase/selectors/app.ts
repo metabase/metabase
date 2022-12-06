@@ -69,13 +69,15 @@ export const getIsAppBarVisible = createSelector(
     embedOptions,
   ) => {
     const isFullscreen = hash.includes("fullscreen");
-    const allTopNavElementsHidden =
+    const allEmbeddedAppBarElementsHidden =
       !embedOptions.search &&
       !embedOptions.new_button &&
       !embedOptions.breadcrumbs;
+    const isEmbeddedAppBarHidden =
+      !embedOptions.top_nav || allEmbeddedAppBarElementsHidden;
     if (
       !currentUser ||
-      (isEmbedded && (!embedOptions.top_nav || allTopNavElementsHidden)) ||
+      (isEmbedded && isEmbeddedAppBarHidden) ||
       isAdminApp ||
       isEditingDashboard ||
       isFullscreen
