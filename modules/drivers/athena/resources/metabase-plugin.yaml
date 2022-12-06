@@ -30,8 +30,9 @@ driver:
       helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
     - merge:
         - password
-        - display-name: Secret key
-          name: secret_key
+        - name: secret_key
+          display-name: Secret key
+          helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
     - advanced-options-start
     - merge:
         - additional-options
