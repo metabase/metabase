@@ -34,7 +34,7 @@ const getFirstEntry = (obj: any): any => {
   return Object.entries(obj)[0];
 };
 
-describe("writeback > ActionCreator > FormCreator > utils", () => {
+describe("actions > ActionCreator > FormCreator > utils", () => {
   describe("generateFieldSettingsFromParameters", () => {
     it("should generate settings for a string field", () => {
       const fields = [createField({ name: "test-field" })];

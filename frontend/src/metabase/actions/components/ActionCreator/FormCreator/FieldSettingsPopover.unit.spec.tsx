@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { FieldSettingsPopover } from "./FieldSettingsPopover";
 import { getDefaultFieldSettings } from "./utils";
 
-describe("writeback > FormCreator > FieldSettingsPopover", () => {
+describe("actions > FormCreator > FieldSettingsPopover", () => {
   it("should show the popover", async () => {
     const changeSpy = jest.fn();
     const settings = getDefaultFieldSettings();

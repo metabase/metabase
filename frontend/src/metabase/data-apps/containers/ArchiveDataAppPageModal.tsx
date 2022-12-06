@@ -7,7 +7,7 @@ import ArchiveModal from "metabase/components/ArchiveModal";
 import {
   archiveDataAppPage,
   ArchiveDataAppPagePayload,
-} from "metabase/writeback/actions";
+} from "metabase/data-apps/actions";
 
 import type { DataApp, DataAppPage } from "metabase-types/api";
 import type { State } from "metabase-types/store";

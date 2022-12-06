@@ -4,7 +4,7 @@ import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
-import { isButtonLinkDashCard } from "metabase/writeback/utils";
+import { isButtonLinkDashCard } from "metabase/data-apps/utils";
 
 import {
   Dashboard,

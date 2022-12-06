@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon";
 import {
   isActionDashCard,
   getActionButtonLabel,
-} from "metabase/writeback/utils";
+} from "metabase/data-apps/utils";
 
 import type { DashboardOrderedCard, DatasetColumn } from "metabase-types/api";
 

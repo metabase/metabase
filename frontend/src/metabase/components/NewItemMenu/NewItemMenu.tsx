@@ -7,7 +7,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import * as Urls from "metabase/lib/urls";
 
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import CreateDataAppModal from "metabase/writeback/containers/CreateDataAppModal";
+import CreateDataAppModal from "metabase/data-apps/containers/CreateDataAppModal";
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
 
 import type { CollectionId } from "metabase-types/api";

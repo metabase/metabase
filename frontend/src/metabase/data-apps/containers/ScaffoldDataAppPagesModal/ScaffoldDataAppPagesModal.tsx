@@ -14,8 +14,8 @@ import {
 import {
   scaffoldDataAppPages,
   ScaffoldNewPagesParams,
-} from "metabase/writeback/actions";
-import DataAppScaffoldingDataPicker from "metabase/writeback/components/DataAppScaffoldingDataPicker";
+} from "metabase/data-apps/actions";
+import DataAppScaffoldingDataPicker from "metabase/data-apps/components/DataAppScaffoldingDataPicker";
 
 import type { DataApp } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";

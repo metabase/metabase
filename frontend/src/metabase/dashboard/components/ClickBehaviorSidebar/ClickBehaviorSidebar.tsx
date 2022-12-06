@@ -6,7 +6,7 @@ import { usePrevious } from "metabase/hooks/use-previous";
 
 import Sidebar from "metabase/dashboard/components/Sidebar";
 
-import { isMappedExplicitActionButton } from "metabase/writeback/utils";
+import { isMappedExplicitActionButton } from "metabase/data-apps/utils";
 
 import type {
   Dashboard,

@@ -1,10 +1,10 @@
 import React, { useMemo } from "react";
 
-import { useDataAppContext } from "metabase/writeback/containers/DataAppContext";
+import { useDataAppContext } from "metabase/data-apps/containers/DataAppContext";
 
 import DataAppPageTitleView, {
   DataAppPageTitleProps as DataAppPageTitleViewProps,
-} from "metabase/writeback/components/DataAppPageTitle";
+} from "metabase/data-apps/components/DataAppPageTitle";
 
 import type { DataAppPage, DataAppNavItem } from "metabase-types/api";
 

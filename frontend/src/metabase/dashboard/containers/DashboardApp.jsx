@@ -33,7 +33,7 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import DataAppContext from "metabase/writeback/containers/DataAppContext";
+import DataAppContext from "metabase/data-apps/containers/DataAppContext";
 import * as dashboardActions from "../actions";
 import {
   getIsEditing,
