@@ -380,11 +380,7 @@
     (mt/dataset sample-dataset
       (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                           source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE
-<<<<<<< HEAD
-                          parsedatetime (extract (year from CAST (source.CREATED_AT AS timestamp)) "yyyy") AS CREATED_AT
-=======
                           date_trunc ("year" source.CREATED_AT) AS CREATED_AT
->>>>>>> fe5a3ddcc0 (Fixes more H2 tests)
                           source.pivot-grouping AS pivot-grouping
                           count (*) AS count]
                :from     [{:select    [ORDERS.ID                          AS ID
