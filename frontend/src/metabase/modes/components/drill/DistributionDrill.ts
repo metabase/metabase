@@ -3,8 +3,9 @@ import {
   distributionDrill,
   distributionDrillQuestion,
 } from "metabase-lib/queries/drills/distribution-drill";
+import type { Drill } from "../../types";
 
-export default ({ question, clicked }) => {
+const DistributionDrill: Drill = ({ question, clicked }) => {
   if (!distributionDrill({ question, clicked })) {
     return [];
   }
@@ -13,10 +14,12 @@ export default ({ question, clicked }) => {
     {
       name: "distribution",
       title: t`Distribution`,
-      buttonType: "horizontal",
       section: "summarize",
       icon: "bar",
+      buttonType: "horizontal",
       question: () => distributionDrillQuestion({ question, clicked }),
     },
   ];
 };
+
+export default DistributionDrill;
