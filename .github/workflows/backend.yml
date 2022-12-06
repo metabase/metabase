@@ -112,3 +112,19 @@ jobs:
       with:
         report_paths: 'target/junit/**/*_test.xml'
         check_name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+
+  # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
+  # as `:dev` dependencies). See #27009 for more context.
+  be-check:
+    runs-on: ubuntu-20.04
+    name: be-check-java-${{ matrix.java-version }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        java-version: [11, 17, 19]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare backend
+        uses: ./.github/actions/prepare-backend
+      - name: Check namespaces
+        run: clojure -M:ee:drivers:check
