@@ -77,7 +77,7 @@
      (ns-unalias a-namespace symb))))
 
 (defmacro require-model
-  "Rather than requiring all models inn the ns declaration, make it easy to require the ones you need for your current
+  "Rather than requiring all models in the ns declaration, make it easy to require the ones you need for your current
   session"
   [model-sym]
   `(require [(symbol (str "metabase.models." (quote ~model-sym))) :as (quote ~model-sym)]))
