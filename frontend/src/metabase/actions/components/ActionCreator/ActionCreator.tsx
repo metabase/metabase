@@ -12,7 +12,7 @@ import Actions, { ActionParams } from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import { createQuestionFromAction } from "metabase/writeback/selectors";
+import { createQuestionFromAction } from "metabase/actions/selectors";
 
 import type {
   WritebackQueryAction,
