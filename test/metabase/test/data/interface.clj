@@ -290,10 +290,12 @@
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.
 
+  `db-or-server` is either:
+
   *  `:server` - Return details for making the connection in a way that isn't DB-specific (e.g., for
                  creating/destroying databases)
   *  `:db`     - Return details for connecting specifically to the DB."
-  {:arglists '([driver context database-definition])}
+  {:arglists '([driver db-or-server database-definition])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
