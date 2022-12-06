@@ -66,7 +66,7 @@ const NativeQueryEditorSidebar = props => {
       {showSnippetSidebarButton && (
         <SnippetSidebarButton {...props} size={ICON_SIZE} className="mt3" />
       )}
-      <QueryPreviewButton {...props} />
+      {isRunnable && <QueryPreviewButton {...props} />}
       {!!canRunQuery && (
         <RunButtonWithTooltipStyled
           disabled={!isRunnable}

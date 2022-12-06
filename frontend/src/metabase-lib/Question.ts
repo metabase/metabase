@@ -49,8 +49,8 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 import { CollectionId } from "metabase-types/api";
 
 import {
-  normalizeParameterValue,
   getParameterValuesBySlug,
+  normalizeParameters,
 } from "metabase-lib/parameters/utils/parameter-values";
 import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
@@ -1074,19 +1074,7 @@ class QuestionInner {
   } = {}): Promise<[Dataset]> {
     // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
     const canUseCardApiEndpoint = !isDirty && this.isSaved();
-    const parameters = this.parameters()
-      // include only parameters that have a value applied
-      .filter(param => _.has(param, "value"))
-      // only the superset of parameters object that API expects
-      .map(param => _.pick(param, "type", "target", "value", "id"))
-      .map(({ type, value, target, id }) => {
-        return {
-          type,
-          value: normalizeParameterValue(type, value),
-          target,
-          id,
-        };
-      });
+    const parameters = normalizeParameters(this.parameters());
 
     if (canUseCardApiEndpoint) {
       const dashboardId = this._card.dashboardId;
