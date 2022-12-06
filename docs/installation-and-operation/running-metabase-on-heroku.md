@@ -6,7 +6,10 @@ redirect_from:
 
 # Running Metabase on Heroku
 
-Currently in beta. We've run Metabase on Heroku and it works just fine, but it's not hardened for production use just yet. If you're up for it then give it a shot and let us know how we can make it better!
+
+> Note: Metabase will be deprecating Heroku in an upcoming release. To migrate off Heroku, see our guide on [Migrating from Heroku to Metabase Cloud](https://www.metabase.com/cloud/docs/migrate/heroku).
+
+We've run Metabase on Heroku and it works just fine, but it's not hardened for production.
 
 ### Launching Metabase
 
