@@ -710,7 +710,7 @@
          b]))]])                                           ; b_dt_tz_id_text
 
 (deftest datetime-diff-time-zones-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
+  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff :set-timezone)
     (mt/dataset diff-time-zone-cases
       (let [diffs (fn [x y]
                     (let [units [:second :minute :hour :day :week :month :year]]
