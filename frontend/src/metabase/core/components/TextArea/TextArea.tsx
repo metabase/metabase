@@ -16,4 +16,6 @@ const TextArea = forwardRef(function TextArea(
   );
 });
 
-export default TextArea;
+export default Object.assign(TextArea, {
+  Root: TextAreaRoot,
+});
