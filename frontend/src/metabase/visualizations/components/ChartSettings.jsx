@@ -133,6 +133,10 @@ class ChartSettings extends Component {
     );
   }
 
+  _getComputedSettings() {
+    return this.props.computedSettings || {};
+  }
+
   _getWidgets() {
     if (this.props.widgets) {
       return this.props.widgets;
@@ -188,6 +192,7 @@ class ChartSettings extends Component {
   getStyleWidget = () => {
     const widgets = this._getWidgets();
     const series = this._getTransformedSeries();
+    const settings = this._getComputedSettings();
     const { currentWidget } = this.state;
     const seriesSettingsWidget =
       currentWidget && widgets.find(widget => widget.id === "series_settings");
@@ -206,9 +211,7 @@ class ChartSettings extends Component {
         },
       };
     } else if (currentWidget.props?.initialKey) {
-      const hasBreakouts = series.some(
-        singleSeries => singleSeries.card?._breakoutColumn,
-      );
+      const hasBreakouts = settings["graph.dimensions"]?.length > 1;
 
       if (hasBreakouts) {
         return null;
