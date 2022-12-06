@@ -14,20 +14,14 @@ const DatabaseScheduleToggleField = ({
   title,
   description,
 }: DatabaseScheduleToggleFieldProps): JSX.Element => {
-  const { setValues } = useFormikContext<DatabaseValues>();
+  const { setFieldValue } = useFormikContext<DatabaseValues>();
 
   const handleChange = useCallback(
     (value: boolean) => {
-      if (!value) {
-        setValues(values => ({
-          ...values,
-          schedules: {},
-          is_full_sync: true,
-          is_on_demand: false,
-        }));
-      }
+      setFieldValue("is_full_sync", !value);
+      setFieldValue("is_on_demand", false);
     },
-    [setValues],
+    [setFieldValue],
   );
 
   return (
