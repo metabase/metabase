@@ -16,7 +16,7 @@ driver:
       display-name: Workgroup
       default: "primary"
     - name: s3_staging_dir
-      display-name: S3 Staging Directory
+      display-name: S3 staging directory
       default: s3://your_bucket
     - merge:
       - dbname
@@ -27,6 +27,7 @@ driver:
         required: false
     - name: access_key
       display-name: Access Key
+      helper-text: Leave this empty to authorize using Instance Profiles or IAM Roles for Tasks
     - merge:
         - password
         - display-name: Secret Key
