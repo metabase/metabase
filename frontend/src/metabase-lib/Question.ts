@@ -1122,8 +1122,8 @@ class QuestionInner {
   }
 
   apiGetNativeQuery(): Promise<DatasetQueryData> {
-    const query = question.datasetQuery();
-    const parameters = normalizeParameters(question.parameters());
+    const query = this.datasetQuery();
+    const parameters = normalizeParameters(this.parameters());
 
     return MetabaseApi.native({ ...query, parameters });
   }
