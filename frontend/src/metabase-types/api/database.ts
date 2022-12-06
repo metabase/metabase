@@ -9,7 +9,7 @@ export type DatabaseSettings = {
   [key: string]: any;
 };
 
-export interface Database extends DatabaseValues {
+export interface Database extends DatabaseData {
   id: DatabaseId;
   is_saved_questions: boolean;
   creator_id?: number;
@@ -25,7 +25,7 @@ export interface Database extends DatabaseValues {
   "can-manage"?: boolean;
 }
 
-export interface DatabaseValues {
+export interface DatabaseData {
   id?: DatabaseId;
   name: string;
   engine: string | undefined;
