@@ -27,6 +27,10 @@ function PeopleListingApp({ children, isAdmin }) {
     handlePreviousPage,
   } = usePeopleQuery(PAGE_SIZE);
 
+  const handleSearchChange = e => {
+    updateSearchInputValue(e.target.value);
+  };
+
   const headingContent = (
     <div className="mb2 flex align-center">
       <SearchInput
@@ -34,8 +38,8 @@ function PeopleListingApp({ children, isAdmin }) {
         type="text"
         placeholder={t`Find someone`}
         value={searchInputValue}
-        onChange={updateSearchInputValue}
-        hasClearButton
+        onChange={handleSearchChange}
+        onResetClick={() => updateSearchInputValue("")}
       />
       {isAdmin && (
         <Radio

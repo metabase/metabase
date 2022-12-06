@@ -4,11 +4,10 @@ import { t } from "ttag";
 
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";
-import TextInput from "metabase/components/TextInput";
-import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import Input from "metabase/core/components/Input";
 import { PermissionsTable } from "../PermissionsTable";
 
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
@@ -59,6 +58,8 @@ export function PermissionsEditorContent({
     );
   }, [entities, debouncedFilter]);
 
+  const handleFilterChange = e => setFilter(e.target.value);
+
   return (
     <PermissionEditorContentRoot>
       <Subhead>
@@ -74,15 +75,14 @@ export function PermissionsEditorContent({
       {description && <Text>{description}</Text>}
 
       <EditorFilterContainer>
-        <TextInput
-          hasClearButton
-          colorScheme="admin"
+        <Input
+          colorScheme="filter"
           placeholder={filterPlaceholder}
-          onChange={setFilter}
+          onChange={handleFilterChange}
+          onResetClick={() => setFilter("")}
           value={filter}
-          padding="sm"
-          borderRadius="md"
-          icon={<Icon name="search" size={16} />}
+          size="small"
+          leftIcon="search"
         />
       </EditorFilterContainer>
 

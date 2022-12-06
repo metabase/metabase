@@ -82,8 +82,8 @@ const SessionTimeoutSetting = ({
               type="number"
               placeholder=""
               value={value?.amount.toString()}
-              onChange={value =>
-                handleValueChange({ amount: parseInt(value, 10) })
+              onChange={e =>
+                handleValueChange({ amount: parseInt(e.target.value, 10) })
               }
               onBlur={handleBlurChange}
             />

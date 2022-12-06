@@ -43,6 +43,7 @@ import {
   CollectionDatasetSelectList,
   CollectionDatasetAllDataLink,
   EmptyStateContainer,
+  TableSearchContainer,
 } from "./DataSelector.styled";
 
 import { DATA_BUCKET } from "./constants";
@@ -1050,14 +1051,16 @@ export class UnconnectedDataSelector extends Component {
       return (
         <>
           {this.showTableSearch() && (
-            <ListSearchField
-              hasClearButton
-              className="bg-white m1"
-              onChange={this.handleSearchTextChange}
-              value={searchText}
-              placeholder={this.getSearchInputPlaceholder()}
-              autoFocus
-            />
+            <TableSearchContainer>
+              <ListSearchField
+                fullWidth
+                autoFocus
+                value={searchText}
+                placeholder={this.getSearchInputPlaceholder()}
+                onChange={e => this.handleSearchTextChange(e.target.value)}
+                onResetClick={() => this.handleSearchTextChange("")}
+              />
+            </TableSearchContainer>
           )}
           {isSearchActive && (
             <SearchResults

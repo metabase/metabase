@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
+import { InputProps } from "metabase/core/components/Input";
 import {
   LicenseErrorMessage,
   LicenseTextInput,
@@ -28,7 +29,7 @@ export const LicenseInput = ({
 }: LicenseInputProps) => {
   const [value, setValue] = useState(token ?? "");
 
-  const handleChange = (value: string) => setValue(value);
+  const handleChange: InputProps["onChange"] = e => setValue(e.target.value);
 
   const handleActivate = () => {
     onUpdate(value);
@@ -40,7 +41,8 @@ export const LicenseInput = ({
     <>
       <LicenseInputContainer>
         <LicenseTextInput
-          invalid={invalid}
+          fullWidth
+          error={invalid}
           data-testid="license-input"
           disabled={isDisabled}
           onChange={handleChange}

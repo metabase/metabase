@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
-import InputBlurChange from "metabase/components/InputBlurChange";
-import TextInput from "metabase/components/TextInput";
+import Input from "metabase/core/components/Input";
 import { color } from "metabase/lib/colors";
 
 export const SessionTimeoutSettingRoot = styled.div`
@@ -24,7 +23,7 @@ export const SessionTimeoutInputContainer = styled.div`
 interface SessionTimeoutInputProps {
   hasError?: boolean;
 }
-export const SessionTimeoutInput = styled(TextInput)<SessionTimeoutInputProps>`
+export const SessionTimeoutInput = styled(Input)<SessionTimeoutInputProps>`
   margin-right: 0.5rem;
 `;
 

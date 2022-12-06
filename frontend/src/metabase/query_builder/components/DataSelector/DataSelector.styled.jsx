@@ -88,3 +88,7 @@ export const EmptyStateContainer = styled.div`
   width: 300px;
   padding: 80px 60px;
 `;
+
+export const TableSearchContainer = styled.div`
+  padding: 0.5rem;
+`;

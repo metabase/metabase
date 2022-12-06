@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import React from "react";
+import { t } from "ttag";
 
 import cx from "classnames";
 import { color } from "metabase/lib/colors";
@@ -8,7 +9,7 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListSearchField from "metabase/components/ListSearchField";
-import { ListCellItem } from "./AccordionListCell.styled";
+import { ListCellItem, FilterContainer } from "./AccordionListCell.styled";
 
 export const AccordionListCell = ({
   style,
@@ -30,7 +31,7 @@ export const AccordionListCell = ({
   renderItemWrapper,
   searchText,
   onChangeSearchText,
-  searchPlaceholder,
+  searchPlaceholder = t`Find...`,
   showItemArrows,
   itemTestId,
   getItemClassName,
@@ -98,15 +99,17 @@ export const AccordionListCell = ({
     );
   } else if (type === "search") {
     content = (
-      <ListSearchField
-        autoFocus
-        hasClearButton
-        className="bg-white m1"
-        onChange={onChangeSearchText}
-        value={searchText}
-        placeholder={searchPlaceholder}
-        {...searchInputProps}
-      />
+      <FilterContainer>
+        <ListSearchField
+          fullWidth
+          autoFocus
+          onChange={e => onChangeSearchText(e.target.value)}
+          onResetClick={() => onChangeSearchText("")}
+          value={searchText}
+          placeholder={searchPlaceholder}
+          {...searchInputProps}
+        />
+      </FilterContainer>
     );
   } else if (type === "item") {
     const isSelected = itemIsSelected(item, itemIndex);

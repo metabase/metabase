@@ -1,7 +1,6 @@
 import React, { useRef, useEffect } from "react";
 
-import Icon from "metabase/components/Icon";
-import TextInput from "metabase/components/TextInput";
+import Input from "metabase/core/components/Input";
 
 export default function ListSearchField({ autoFocus, ...props }) {
   const inputRef = useRef();
@@ -20,14 +19,8 @@ export default function ListSearchField({ autoFocus, ...props }) {
   }, []);
 
   return (
-    <TextInput
-      ref={inputRef}
-      {...props}
-      padding="sm"
-      borderRadius="md"
-      icon={<Icon name="search" size={16} />}
-    />
+    <Input autoFocus ref={inputRef} {...props} size="small" leftIcon="search" />
   );
 }
 
-ListSearchField.propTypes = TextInput.propTypes;
+ListSearchField.propTypes = Input.propTypes;

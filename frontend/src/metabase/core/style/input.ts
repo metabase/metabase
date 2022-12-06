@@ -1,5 +1,5 @@
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import { getFocusColor } from "metabase/lib/colors";
 
 export const inputPadding = css`
   padding: 0.625rem 0.75rem;
@@ -8,17 +8,6 @@ export const inputPadding = css`
 export const inputTypography = css`
   font-size: 0.875rem;
   font-weight: 700;
-`;
-
-export const inputFocusOutline = () => css`
-  &:focus {
-    border-color: ${color("brand")};
-    outline: 2px solid ${color("focus")};
-  }
-
-  &:focus:not(:focus-visible) {
-    outline: none;
-  }
 `;
 
 export const numericInputReset = () => css`
@@ -30,5 +19,15 @@ export const numericInputReset = () => css`
 
   &[type="number"] {
     -moz-appearance: textfield;
+  }
+`;
+
+export const focusOutlineStyle = (color: string) => css`
+  &:focus {
+    outline: 2px solid ${getFocusColor(color)};
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
   }
 `;
