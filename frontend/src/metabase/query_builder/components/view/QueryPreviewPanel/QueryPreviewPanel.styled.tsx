@@ -7,7 +7,7 @@ import {
   breakpointMinHeightSmall,
 } from "metabase/styled-components/theme";
 
-export const NativeCodeButton = styled(IconButtonWrapper)`
+export const QueryPanelButton = styled(IconButtonWrapper)`
   position: absolute;
   top: 1rem;
   right: 1rem;
@@ -17,7 +17,7 @@ export const NativeCodeButton = styled(IconButtonWrapper)`
   cursor: pointer;
 `;
 
-export const NativeCodeContainer = styled.pre`
+export const QueryPanelContainer = styled.pre`
   display: block;
   padding: 1rem;
   border: 1px solid ${color("border")};
@@ -26,7 +26,7 @@ export const NativeCodeContainer = styled.pre`
   overflow: hidden;
 `;
 
-export const NativeCodeText = styled.code`
+export const QueryPanelCode = styled.code`
   display: block;
   width: 100%;
   max-height: 20vh;
@@ -47,15 +47,15 @@ export const NativeCodeText = styled.code`
   }
 `;
 
-export const NativeCodeRoot = styled.div`
+export const QueryPanelRoot = styled.div`
   position: relative;
 
-  ${NativeCodeButton} {
+  ${QueryPanelButton} {
     display: none;
   }
 
   &:hover {
-    ${NativeCodeButton} {
+    ${QueryPanelButton} {
       display: block;
     }
   }

@@ -3,34 +3,34 @@ import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import {
-  NativeCodeText,
-  NativeCodeContainer,
-  NativeCodeRoot,
-  NativeCodeButton,
-} from "./NativeCode.styled";
+  QueryPanelCode,
+  QueryPanelContainer,
+  QueryPanelRoot,
+  QueryPanelButton,
+} from "./QueryPreviewPanel.styled";
 
-export interface NativeCodeProps {
+export interface QueryPreviewPanelProps {
   code: string;
 }
 
-const NativeCode = ({ code }: NativeCodeProps): JSX.Element => {
+const QueryPreviewPanel = ({ code }: QueryPreviewPanelProps): JSX.Element => {
   const { isCopied, handleCopy, handleHidden } = useCopyButton(code);
 
   return (
-    <NativeCodeRoot>
-      <NativeCodeContainer>
-        <NativeCodeText>{code}</NativeCodeText>
-      </NativeCodeContainer>
+    <QueryPanelRoot>
+      <QueryPanelContainer>
+        <QueryPanelCode>{code}</QueryPanelCode>
+      </QueryPanelContainer>
       <Tooltip
         tooltip={isCopied ? t`Copied!` : t`Copy to clipboard`}
         hideOnClick={false}
         onHidden={handleHidden}
       >
-        <NativeCodeButton onClick={handleCopy}>
+        <QueryPanelButton onClick={handleCopy}>
           <Icon name="copy" />
-        </NativeCodeButton>
+        </QueryPanelButton>
       </Tooltip>
-    </NativeCodeRoot>
+    </QueryPanelRoot>
   );
 };
 
@@ -56,4 +56,4 @@ const useCopyButton = (text: string) => {
   return { isCopied, handleCopy, handleHidden };
 };
 
-export default NativeCode;
+export default QueryPreviewPanel;
