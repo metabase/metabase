@@ -14,8 +14,8 @@ import type { State } from "metabase-types/store";
 
 import Search from "metabase/entities/search";
 
+import ActionPicker from "metabase/actions/containers/ActionPicker";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import ActionPicker from "metabase/containers/ActionPicker";
 import {
   addActionToDashboard,
   addLinkToDashboard,
