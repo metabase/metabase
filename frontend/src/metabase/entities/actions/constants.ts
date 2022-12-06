@@ -15,7 +15,7 @@ export const fieldTypeToParameterTypeMap: FieldTypeMap = {
   number: "number/=",
 };
 
-export const dateTypetoParameterTypeMap: FieldTypeMap = {
+export const dateTypeToParameterTypeMap: FieldTypeMap = {
   date: "date/single",
   datetime: "date/single",
   monthyear: "date/month-year",

@@ -15,7 +15,7 @@ import type Question from "metabase-lib/Question";
 
 import {
   fieldTypeToParameterTypeMap,
-  dateTypetoParameterTypeMap,
+  dateTypeToParameterTypeMap,
   fieldTypeToTagTypeMap,
 } from "./constants";
 
@@ -61,7 +61,7 @@ const getParameterTypeFromFieldSettings = (
   inputType: InputType,
 ): ParameterType => {
   if (fieldType === "date") {
-    return dateTypetoParameterTypeMap[inputType] ?? "date/single";
+    return dateTypeToParameterTypeMap[inputType] ?? "date/single";
   }
 
   return fieldTypeToParameterTypeMap[fieldType] ?? "string/=";
