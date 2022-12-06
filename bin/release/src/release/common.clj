@@ -109,6 +109,11 @@
     :oss "metabase/metabase.github.io"
     nil))
 
+(defn heroku-buildpack-repo []
+  (case (edition)
+    :oss "metabase/metabase-buildpack"
+    nil))
+
 (defn metabase-repo
   "Metabase GitHub repo"
   []
