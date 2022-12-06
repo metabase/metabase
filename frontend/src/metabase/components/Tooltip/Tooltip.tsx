@@ -25,13 +25,7 @@ export interface TooltipProps
   extends Partial<
     Pick<
       Tippy.TippyProps,
-      | "delay"
-      | "reference"
-      | "placement"
-      | "maxWidth"
-      | "offset"
-      | "hideOnClick"
-      | "onHidden"
+      "delay" | "reference" | "placement" | "maxWidth" | "offset"
     >
   > {
   preventOverflow?: boolean;
@@ -72,10 +66,8 @@ function Tooltip({
   offset,
   isEnabled,
   isOpen,
-  hideOnClick = true,
   preventOverflow = false,
   maxWidth = 200,
-  onHidden,
 }: TooltipProps) {
   const visible = isOpen != null ? isOpen : undefined;
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
@@ -115,9 +107,7 @@ function Tooltip({
         placement={placement}
         offset={offset}
         zIndex={DEFAULT_Z_INDEX}
-        hideOnClick={hideOnClick}
         popperOptions={popperOptions}
-        onHidden={onHidden}
         {...targetProps}
       />
     );
