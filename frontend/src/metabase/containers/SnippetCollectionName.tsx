@@ -1,0 +1,19 @@
+import React from "react";
+import { t } from "ttag";
+
+import SnippetCollections from "metabase/entities/snippet-collections";
+import { isRootCollection } from "metabase/collections/utils";
+
+import type { CollectionId } from "metabase-types/api";
+
+function SnippetCollectionName({ id }: { id: CollectionId }) {
+  if (isRootCollection({ id })) {
+    return <span>{t`Top folder`}</span>;
+  }
+  if (!Number.isSafeInteger(id)) {
+    return null;
+  }
+  return <SnippetCollections.Name id={id} />;
+}
+
+export default SnippetCollectionName;

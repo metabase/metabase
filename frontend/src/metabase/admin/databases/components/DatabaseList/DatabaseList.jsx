@@ -10,7 +10,7 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 import Modal from "metabase/components/Modal";
-import SyncingModal from "metabase/containers/SyncingModal";
+import DatabaseSyncModal from "metabase/databases/containers/DatabaseSyncModal";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import {
@@ -166,7 +166,7 @@ export default class DatabaseList extends Component {
           isOpen={isSyncingModalOpened}
           onClose={this.onSyncingModalClose}
         >
-          <SyncingModal onClose={this.onSyncingModalClose} />
+          <DatabaseSyncModal onClose={this.onSyncingModalClose} />
         </Modal>
       </div>
     );
