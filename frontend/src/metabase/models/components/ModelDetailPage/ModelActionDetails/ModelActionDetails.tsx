@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon";
 
 import Actions from "metabase/entities/actions";
 import { ActionCreator } from "metabase/actions/components/ActionCreator";
-import { hasImplicitActions, isImplicitAction } from "metabase/writeback/utils";
+import { hasImplicitActions, isImplicitAction } from "metabase/actions/utils";
 
 import type { WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";

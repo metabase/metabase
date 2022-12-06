@@ -5,7 +5,6 @@ import EmptyState from "metabase/components/EmptyState";
 import Form from "metabase/containers/FormikForm";
 
 import { ActionsApi } from "metabase/services";
-import { shouldPrefetchValues } from "metabase/writeback/utils";
 
 import {
   getSubmitButtonColor,
@@ -13,6 +12,7 @@ import {
   generateFieldSettingsFromParameters,
   getForm,
 } from "metabase/actions/components/ActionCreator/FormCreator";
+import { shouldPrefetchValues } from "metabase/actions/utils";
 
 import type {
   WritebackParameter,

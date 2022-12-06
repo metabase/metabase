@@ -20,7 +20,7 @@ import type {
 
 import type { Parameter } from "metabase-types/types/Parameter";
 
-import { isEditableField } from "metabase/writeback/utils";
+import { isEditableField } from "metabase/actions/utils";
 import Field from "metabase-lib/metadata/Field";
 import { TYPE } from "metabase-lib/types/constants";
 
