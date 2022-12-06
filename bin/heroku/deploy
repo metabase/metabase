@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [ $# -gt 0 ] && [ "$1" == "-h" ]; then
+    cat <<EOM
+Usage:
+
+Deploy current branch to Heroku app "metabase-CURRENT_BRANCH_NAME"
+
+    ./bin/heroku/deploy
+
+Deploy current branch to Heroku app "HEROKU_APP_NAME"
+
+    ./bin/heroku/deploy "HEROKU_APP_NAME"
+
+Deploy "GIT_REF" (branch or tag) to Heroku app "HEROKU_APP_NAME"
+
+    ./bin/heroku/deploy "HEROKU_APP_NAME" "GIT_REF"
+
+EOM
+    exit 0
+fi
+
+if [ $# -gt 0 ]; then
+    heroku_app_name="$1"
+else
+    if [ $(git rev-parse --abbrev-ref HEAD) == "HEAD" ]; then
+        echo "Detached HEAD. Specify a Heroku app name."
+        echo ""
+        echo "For more usage examples: $0 -h"
+        exit 1
+    fi
+    heroku_app_name="metabase-$(git rev-parse --abbrev-ref HEAD)"
+fi
+
+if [ $# -gt 1 ]; then
+    # "peel" annotated tags etc
+    git_local_ref="+$2^{}"
+else
+    git_local_ref="HEAD"
+fi
+
+# use explicit "master" ref in case it doesn't exist yet
+git_remote_ref="refs/heads/master"
+
+if ! heroku ps -a "$heroku_app_name" > /dev/null; then
+    heroku apps:create -n --addons "heroku-postgresql:hobby-dev" "$heroku_app_name"
+    heroku buildpacks:clear -a "$heroku_app_name"
+    heroku buildpacks:add "https://github.com/heroku/heroku-buildpack-nodejs#yarn" -a "$heroku_app_name"
+    heroku buildpacks:add "https://github.com/heroku/heroku-buildpack-clojure" -a "$heroku_app_name"
+fi
+
+echo git push -f "https://git.heroku.com/$heroku_app_name.git" "$git_local_ref:$git_remote_ref"
+time git push -f "https://git.heroku.com/$heroku_app_name.git" "$git_local_ref:$git_remote_ref"
+
+heroku open -a "$heroku_app_name"
