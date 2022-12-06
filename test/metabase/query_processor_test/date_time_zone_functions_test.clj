@@ -754,49 +754,6 @@
          (t/format :iso-offset-date-time (u.date/parse b)) ; b_dt_tz_text
          b]))]])                                           ; b_dt_tz_id_text
 
-(mt/defdataset diff-time-zone-cases
-  [["times"
-    [{:field-name "a_dt",            :base-type :type/DateTime}
-     {:field-name "a_dt_ltz",        :base-type :type/DateTimeWithLocalTZ}
-     {:field-name "a_dt_tz",         :base-type :type/DateTimeWithTZ}
-     {:field-name "a_dt_tz_offset",  :base-type :type/DateTimeWithZoneOffset}
-     {:field-name "a_dt_tz_id",      :base-type :type/DateTimeWithZoneID}
-     {:field-name "a_dt_tz_text",    :base-type :type/Text}
-     {:field-name "a_dt_tz_id_text", :base-type :type/Text}
-     {:field-name "b_dt",            :base-type :type/DateTime}
-     {:field-name "b_dt_ltz",        :base-type :type/DateTimeWithLocalTZ}
-     {:field-name "b_dt_tz",         :base-type :type/DateTimeWithTZ}
-     {:field-name "b_dt_tz_offset",  :base-type :type/DateTimeWithZoneOffset}
-     {:field-name "b_dt_tz_id",      :base-type :type/DateTimeWithZoneID}
-     {:field-name "b_dt_tz_text",    :base-type :type/Text}
-     {:field-name "b_dt_tz_id_text", :base-type :type/Text}]
-    (let [times ["2022-10-02T01:00:00+01:00[Africa/Lagos]"
-                 "2022-10-02T00:00:00Z[UTC]"
-                 "2022-10-02T01:00:00+01:00[Africa/Lagos]"
-                 "2022-10-03T00:00:00Z[UTC]"
-                 "2022-10-03T00:00:00+01:00[Africa/Lagos]"
-                 "2022-10-09T00:00:00Z[UTC]"
-                 "2022-10-09T00:00:00+01:00[Africa/Lagos]"
-                 "2022-11-02T00:00:00Z[UTC]"
-                 "2022-11-02T00:00:00+01:00[Africa/Lagos]"
-                 "2023-10-02T00:00:00Z[UTC]"
-                 "2023-10-02T00:00:00+01:00[Africa/Lagos]"]]
-      (for [a times b times]
-        [(t/local-date-time (u.date/parse a))              ; a_dt
-         (t/offset-date-time (u.date/parse a))             ; a_dt_ltz
-         (u.date/parse a)                                  ; a_dt_tz
-         (t/offset-date-time (u.date/parse a))             ; a_dt_tz_offset
-         (u.date/parse a)                                  ; a_dt_tz_id
-         (t/format :iso-offset-date-time (u.date/parse a)) ; a_dt_tz_text
-         a                                                 ; a_dt_tz_id_text
-         (t/local-date-time (u.date/parse b))              ; b_dt
-         (t/offset-date-time (u.date/parse b))             ; b_dt_ltz
-         (u.date/parse b)                                  ; b_dt_tz
-         (t/offset-date-time (u.date/parse b))             ; b_dt_tz_offset
-         (u.date/parse b)                                  ; b_dt_tz_id
-         (t/format :iso-offset-date-time (u.date/parse b)) ; b_dt_tz_text
-         b]))]])                                           ; b_dt_tz_id_text
-
 (deftest datetime-diff-time-zones-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset diff-time-zone-cases
