@@ -3,25 +3,26 @@ import {
   sortDrill,
   sortDrillQuestion,
 } from "metabase-lib/queries/drills/sort-drill";
+import type { ClickActionBase, Drill } from "../../types";
 
-const ACTIONS = {
+const ACTIONS: Record<string, ClickActionBase> = {
   asc: {
     name: "sort-ascending",
+    icon: "arrow_up",
     section: "sort",
     buttonType: "sort",
-    icon: "arrow_up",
     tooltip: t`Sort ascending`,
   },
   desc: {
     name: "sort-descending",
+    icon: "arrow_down",
     section: "sort",
     buttonType: "sort",
-    icon: "arrow_down",
     tooltip: t`Sort descending`,
   },
 };
 
-export default ({ question, clicked }) => {
+const SortDrill: Drill = ({ question, clicked }) => {
   const drill = sortDrill({ question, clicked });
   if (!drill) {
     return [];
@@ -33,3 +34,5 @@ export default ({ question, clicked }) => {
     question: () => sortDrillQuestion({ question, clicked, sortDirection }),
   }));
 };
+
+export default SortDrill;

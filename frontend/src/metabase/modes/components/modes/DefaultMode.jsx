@@ -1,4 +1,4 @@
-import SortAction from "../drill/SortAction";
+import SortDrill from "../drill/SortDrill";
 import ObjectDetailDrill from "../drill/ObjectDetailDrill";
 import QuickFilterDrill from "../drill/QuickFilterDrill";
 import ForeignKeyDrill from "../drill/ForeignKeyDrill";
@@ -14,7 +14,7 @@ const DefaultMode = {
   name: "default",
   drills: [
     ZoomDrill,
-    SortAction,
+    SortDrill,
     ObjectDetailDrill,
     QuickFilterDrill,
     ForeignKeyDrill,
