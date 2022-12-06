@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import { MetabaseApi } from "metabase/services";
 import ModalContent from "metabase/components/ModalContent";
 import { formatNativeQuery } from "metabase/lib/engine";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { DatasetNativeForm } from "metabase-types/api";
+import { DatasetQueryData } from "metabase-types/api";
 import Question from "metabase-lib/Question";
-import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
 import QueryPreviewPanel from "../QueryPreviewPanel";
 
 export interface QueryPreviewModalProps {
@@ -28,7 +26,7 @@ const QueryPreviewModal = ({ question, onClose }: QueryPreviewModalProps) => {
 };
 
 interface UseNativeQueryResult {
-  data: DatasetNativeForm | undefined;
+  data: DatasetQueryData | undefined;
   loading: boolean;
   error: unknown;
 }
@@ -41,10 +39,8 @@ const useNativeQuery = (question: Question): UseNativeQueryResult => {
   });
 
   useEffect(() => {
-    const query = question.datasetQuery();
-    const parameters = normalizeParameters(question.parameters());
-
-    MetabaseApi.native({ ...query, parameters })
+    question
+      .apiGetNativeQuery()
       .then(data => setResult({ data, loading: false, error: null }))
       .catch(error => setResult({ data: undefined, loading: false, error }));
   }, [question]);
@@ -52,7 +48,7 @@ const useNativeQuery = (question: Question): UseNativeQueryResult => {
   return result;
 };
 
-const useFormattedQuery = (question: Question, data?: DatasetNativeForm) => {
+const useFormattedQuery = (question: Question, data?: DatasetQueryData) => {
   const query = data?.query;
   const engine = question.database()?.engine;
 

@@ -46,7 +46,7 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId } from "metabase-types/api";
+import { CollectionId, DatasetQueryData } from "metabase-types/api";
 
 import {
   getParameterValuesBySlug,
@@ -1119,6 +1119,13 @@ class QuestionInner {
       );
       return Promise.all(datasetQueries.map(getDatasetQueryResult));
     }
+  }
+
+  apiGetNativeQuery(): Promise<DatasetQueryData> {
+    const query = question.datasetQuery();
+    const parameters = normalizeParameters(question.parameters());
+
+    return MetabaseApi.native({ ...query, parameters });
   }
 
   setParameters(parameters) {
