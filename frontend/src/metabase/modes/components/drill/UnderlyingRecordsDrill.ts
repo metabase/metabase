@@ -4,8 +4,9 @@ import {
   underlyingRecordsDrill,
   underlyingRecordsDrillQuestion,
 } from "metabase-lib/queries/drills/underlying-records-drill";
+import type { Drill } from "../../types";
 
-export default ({ question, clicked }) => {
+export const UnderlyingRecordsDrill: Drill = ({ question, clicked }) => {
   const drill = underlyingRecordsDrill({ question, clicked });
   if (!drill) {
     return [];
@@ -26,11 +27,13 @@ export default ({ question, clicked }) => {
   return [
     {
       name: "underlying-records",
-      section: "records",
-      buttonType: "horizontal",
-      icon: "table_spaced",
       title: actionTitle,
+      section: "records",
+      icon: "table_spaced",
+      buttonType: "horizontal",
       question: () => underlyingRecordsDrillQuestion({ question, clicked }),
     },
   ];
 };
+
+export default UnderlyingRecordsDrill;
