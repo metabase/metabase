@@ -5653,14 +5653,6 @@
     "@types/react" "*"
     redux "^3.7.2"
 
-"@types/redux-form@5.0.2":
-  version "5.0.2"
-  resolved "https://registry.yarnpkg.com/@types/redux-form/-/redux-form-5.0.2.tgz#f803f42cc3bf7ec27de55b9df585c223ba3372ca"
-  integrity sha512-E2WfGuRXm8DGQZWQN/IXqdPqm30+PaHa//d3WbtYhQA8VFW162RCB0Vz5yFd+zQmCoguFxCIO1NjyFH20hIJMg==
-  dependencies:
-    "@types/react" "*"
-    redux "^3.6.0"
-
 "@types/redux-logger@^3.0.9":
   version "3.0.9"
   resolved "https://registry.yarnpkg.com/@types/redux-logger/-/redux-logger-3.0.9.tgz#9193b3d51bb6ab98d25514ba7764e4f98a64d3ec"
@@ -12317,7 +12309,7 @@ hoist-non-react-statics@1.2.0:
   resolved "https://registry.yarnpkg.com/hoist-non-react-statics/-/hoist-non-react-statics-1.2.0.tgz#aa448cf0986d55cc40773b17174b7dd066cb7cfb"
   integrity sha1-qkSM8JhtVcxAdzsXF0t90GbLfPs=
 
-hoist-non-react-statics@^2.3.1, hoist-non-react-statics@^2.5.0:
+hoist-non-react-statics@^2.5.0:
   version "2.5.5"
   resolved "https://registry.yarnpkg.com/hoist-non-react-statics/-/hoist-non-react-statics-2.5.5.tgz#c5903cf409c0dfd908f388e619d86b9c1174cb47"
   integrity sha512-rqcy4pJo55FTTLWt+bU8ukscqHeE/e9KWvsOW2b/a3afxQZhwkQdT1rPPCJ0rYXdj4vNcasY8zHTH+jF/qStxw==
@@ -13264,11 +13256,6 @@ is-potential-custom-element-name@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/is-potential-custom-element-name/-/is-potential-custom-element-name-1.0.1.tgz#171ed6f19e3ac554394edf78caa05784a45bebb5"
   integrity sha512-bCYeRA2rVibKZd+s2625gGnGF/t7DSqDs4dP7CrLA1m7jKWz6pps0LpYLJN8Q64HtmPKJ1hrN3nzPNKFEKOUiQ==
-
-is-promise@^2.1.0:
-  version "2.2.2"
-  resolved "https://registry.yarnpkg.com/is-promise/-/is-promise-2.2.2.tgz#39ab959ccbf9a774cf079f7b40c7a26f763135f1"
-  integrity sha512-+lP4/6lKUBfQjZ2pdxThZvLUAafmZb8OAxFb8XXtiQmS35INgr85hdOGoEs124ez1FCnZJt6jau/T+alh58QFQ==
 
 is-regex@^1.0.4, is-regex@^1.1.1:
   version "1.1.1"
@@ -18079,13 +18066,6 @@ react-is@^18.0.0:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-18.2.0.tgz#199431eeaaa2e09f86427efbb4f1473edb47609b"
   integrity sha512-xWGDIW6x921xtzPkhiULtthJHoJvBbF3q26fzloPCK0hsvxtPVelvftw3zjbHWSkR2km9Z+4uxbDDK/6Zw9B8w==
 
-react-lazy-cache@^3.0.1:
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/react-lazy-cache/-/react-lazy-cache-3.0.1.tgz#0dc64d38df1767ef77678c5c94190064cb11b0cd"
-  integrity sha1-DcZNON8XZ+93Z4xclBkAZMsRsM0=
-  dependencies:
-    deep-equal "^1.0.1"
-
 react-lifecycles-compat@^3.0.0, react-lifecycles-compat@^3.0.4:
   version "3.0.4"
   resolved "https://registry.yarnpkg.com/react-lifecycles-compat/-/react-lifecycles-compat-3.0.4.tgz#4f1a273afdfc8f3488a8c516bfda78f872352362"
@@ -18446,18 +18426,6 @@ redux-auth-wrapper@^1.0.0:
     hoist-non-react-statics "1.2.0"
     lodash.isempty "4.4.0"
     prop-types "15.5.8"
-
-redux-form@5:
-  version "5.4.0"
-  resolved "https://registry.yarnpkg.com/redux-form/-/redux-form-5.4.0.tgz#daac6b47ab20cbfb5ffdcee79f1115623a6c86a7"
-  integrity sha512-Ssftdf3Or6nwEBl1SqgPbZdxhmZC8AejHTTLnt1R6SfCqyoHgPnPyxu8NuewS2KvDN925nwRT9dGxeIYDgtAWQ==
-  dependencies:
-    deep-equal "^1.0.1"
-    hoist-non-react-statics "^2.3.1"
-    invariant "^2.0.0"
-    is-promise "^2.1.0"
-    prop-types "^15.5.8"
-    react-lazy-cache "^3.0.1"
 
 redux-promise@^0.5.0:
   version "0.5.3"
