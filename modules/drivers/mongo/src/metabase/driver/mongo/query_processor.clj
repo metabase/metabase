@@ -748,14 +748,14 @@
   {:arglists '([mbql-clause])}
   (comp first unwrap-named-ag))
 
-;;; TODO -- these won't work inside expressions since we don't handle stuff like `$divide` correctly inside expressions.
-;;; See https://github.com/metabase/metabase/issues/23422 for more information.
-
 ;;; * `:group` = stuff to do in the `$group` stage
 ;;;
 ;;; * `:post` = stuff to do in the `$addFields` stage immediately following it
 ;;;
 ;;; both of these are maps of LHS column name => RHS definition
+;;;
+;;; Note that this code doesn't handle expression aggregations, but that's ok because we do not support
+;;; `:expression-aggregations` for Mongo DB.
 
 (defmethod expand-aggregation :share
   [[_ pred :as ag]]

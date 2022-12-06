@@ -75,19 +75,15 @@
                (ffirst
                 (mt/formatted-rows [1.0]
                   (mt/process-query query))))))))
-  ;; TODO -- MongoDB expressions support is actually broken, since it tries to do stuff like `$divide` that
-  ;; is not allowed in the` $group` stage. See #23422 for more information. When we address that issue, we
-  ;; should re-enable these tests.
-  (when (and (driver/database-supports? driver/*driver* :expressions (mt/db))
-             (not= driver/*driver* :mongo))
-        (testing "Inside an expression"
-          (let [query (mt/mbql-query venues
-                        {:aggregation [[:+ agg 1]]})]
-            (mt/with-native-query-testing-context query
-              (is (= (+ expected 1.0)
-                     (ffirst
-                      (mt/formatted-rows [1.0]
-                        (mt/process-query query))))))))))
+  (when (driver/database-supports? driver/*driver* :expression-aggregations (mt/db))
+    (testing "Inside an expression aggregation"
+      (let [query (mt/mbql-query venues
+                    {:aggregation [[:+ agg 1]]})]
+        (mt/with-native-query-testing-context query
+          (is (= (+ expected 1.0)
+                 (ffirst
+                  (mt/formatted-rows [1.0]
+                    (mt/process-query query))))))))))
 
 ;;; there is a test for standard deviation itself
 ;;; in [[metabase.query-processor-test.aggregation-test/standard-deviation-test]]
