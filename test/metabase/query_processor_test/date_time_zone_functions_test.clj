@@ -573,6 +573,8 @@
                      first))]
         (doseq [[unit cases] [[:year [["2021-10-03T09:18:09" "2022-10-02T09:18:09" 0 "day under a year"]
                                       ["2021-10-03T09:19:09" "2022-10-03T09:18:09" 1 "ignores time"]
+                                      ["2016-02-03T09:19:09" "2017-02-02T09:19:09" 0 "starts in leap year before leap day"]
+                                      ["2016-10-03T09:19:09" "2017-10-03T09:19:09" 1 "starts in leap year after leap day"]
                                       ["2017-06-10T08:30:00" "2019-07-10T08:30:00" 2 "multiple years"]]]
                               [:month [["2022-10-03T09:18:09" "2022-11-02T09:18:09" 0  "day under a month"]
                                        ["2022-10-02T09:19:09" "2022-11-02T09:18:09" 1  "minute under a month"]
