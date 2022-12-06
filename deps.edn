@@ -108,6 +108,7 @@
   org.clojure/core.match                    {:mvn/version "1.0.0"}
   org.clojure/core.memoize                  {:mvn/version "1.0.257"}            ; useful FIFO, LRU, etc. caching mechanisms
   org.clojure/data.csv                      {:mvn/version "1.0.1"}              ; CSV parsing / generation
+  org.clojure/data.xml                      {:mvn/version "0.0.8"}              ; XML parsing / generation
   org.clojure/java.classpath                {:mvn/version "1.0.0"}              ; examine the Java classpath from Clojure programs
   org.clojure/java.jdbc                     {:mvn/version "0.7.12"}             ; basic JDBC access from Clojure
   org.clojure/java.jmx                      {:mvn/version "1.0.0"}              ; JMX bean library, for exporting diagnostic info
