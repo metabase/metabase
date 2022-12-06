@@ -114,11 +114,16 @@ Note that the first part of the timestamp is in UTC (same thing as GMT). The tim
 
 `convertTimezone` is currently unavailable for the following databases:
 
+- Amazon Athena
+- Druid
+- Google Analytics
 - H2
 - MongoDB
 - Presto
 - SparkSQL
 - SQLite
+
+### Notes on source time zones
 
 Metabase displays timestamps without time zone or offset information, which is why you have to be so careful about the [source time zone](#choosing-a-source-time-zone) when using `convertTimezone`.
 
