@@ -1,4 +1,5 @@
 import { DatabaseId } from "./database";
+import { FieldId } from "./field";
 import { DatetimeUnit, DimensionReference } from "./query";
 import { DownloadPermission } from "./permissions";
 
@@ -6,10 +7,10 @@ export type RowValue = string | number | null | boolean;
 export type RowValues = RowValue[];
 
 export interface DatasetColumn {
-  id?: number;
+  id?: FieldId;
+  name: string;
   display_name: string;
   source: string;
-  name: string;
   // FIXME: this prop does not come from API
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
