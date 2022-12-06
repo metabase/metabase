@@ -42,6 +42,7 @@ export function getEngineLogo(engine) {
   const path = `app/assets/img/drivers`;
 
   switch (engine) {
+    case "athena":
     case "bigquery":
     case "druid":
     case "googleanalytics":
