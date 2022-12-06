@@ -24,8 +24,8 @@ const DatabaseEngineField = ({
   const { values } = useFormikContext<DatabaseValues>();
 
   const options = useMemo(() => {
-    return getEngineOptions(engines, engineKey);
-  }, [engines, engineKey]);
+    return getEngineOptions(engines, engineKey, isAdvanced);
+  }, [engines, engineKey, isAdvanced]);
 
   return isAdvanced ? (
     <DatabaseEngineSelect

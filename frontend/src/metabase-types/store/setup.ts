@@ -25,8 +25,9 @@ export interface DatabaseInfo {
   engine: string | undefined;
   details: Record<string, unknown>;
   schedules: DatabaseSchedules;
-  auto_run_queries: boolean;
-  refingerprint: boolean;
+  auto_run_queries: boolean | null;
+  refingerprint: boolean | null;
+  cache_ttl: number | null;
   is_sample: boolean;
   is_full_sync: boolean;
   is_on_demand: boolean;

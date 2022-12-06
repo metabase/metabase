@@ -312,7 +312,7 @@ Takes a datetime and returns the day of the month as an integer.
 
 Syntax: `day([datetime column])`.
 
-Example: `day("March 25, 2021, 12:52:37")` would return the day as an integer, `25`.
+Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
 ### endswith
 
@@ -350,7 +350,7 @@ Takes a datetime and returns the hour as an integer (0-23).
 
 Syntax: `hour([datetime column])`.
 
-Example: `hour("March 25, 2021, 12:52:37")` would return `12`.
+Example: `hour("2021-03-25T12:52:37")` would return `12`.
 
 ### interval
 
@@ -420,7 +420,7 @@ Takes a datetime and returns the minute as an integer (0-59).
 
 Syntax: `minute([datetime column])`.
 
-Example: `minute("March 25, 2021, 12:52:37")` would return `52`.
+Example: `minute("2021-03-25T12:52:37")` would return `52`.
 
 ### month
 
@@ -428,7 +428,7 @@ Takes a datetime and returns the month number (1-12) as an integer.
 
 Syntax: `month([datetime column])`.
 
-Example: `month("March 25, 2021, 12:52:37")` would return the month as an integer, `3`.
+Example: `month("2021-03-25T12:52:37")` would return the month as an integer, `3`.
 
 ### power
 
@@ -448,7 +448,7 @@ Takes a datetime and returns the number of the quarter in a year (1-4) as an int
 
 Syntax: `quarter([datetime column])`.
 
-Example: `quarter("March 25, 2021, 12:52:37")` would return `1` for the first quarter.
+Example: `quarter("2021-03-25T12:52:37")` would return `1` for the first quarter.
 
 ### [regexextract](./expressions/regexextract.md)
 
@@ -494,7 +494,7 @@ Takes a datetime and returns the number of seconds in the minute (0-59) as an in
 
 Syntax: `second([datetime column)`.
 
-Example: `second("March 25, 2021, 12:52:37")` would return the integer `37`.
+Example: `second("2021-03-25T12:52:37")` would return the integer `37`.
 
 ### sqrt
 
@@ -550,7 +550,7 @@ Takes a datetime and returns the week as an integer.
 
 Syntax: `week(column, mode)`.
 
-Example: `week("March 25, 2021, 12:52:37")` would return the week as an integer, `12`.
+Example: `week("2021-03-25T12:52:37")` would return the week as an integer, `12`.
 
 - column: the name of the column of the date or datetime value.
 - mode: Optional.
@@ -564,7 +564,7 @@ Takes a datetime and returns the year as an integer.
 
 Syntax: `year([datetime column])`.
 
-Example: `year("March 25, 2021, 12:52:37")` would return the year 2021 as an integer, `2,021`.
+Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer, `2,021`.
 
 ## Database limitations
 

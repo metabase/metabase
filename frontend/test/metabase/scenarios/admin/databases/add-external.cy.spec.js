@@ -11,7 +11,7 @@ describe(
       cy.intercept("POST", "/api/database").as("createDatabase");
 
       cy.visit("/admin/databases/create");
-      cy.contains("Database type").closest(".Form-field").find("a").click();
+      cy.findByLabelText("Database type").click();
     });
 
     it("should add Postgres database and redirect to listing (metabase#12972, metabase#14334, metabase#17450)", () => {
@@ -31,14 +31,18 @@ describe(
         .click()
         .should("have.attr", "aria-checked", "true");
 
-      isSyncOptionSelected("Never, I'll do this manually if I need to");
+      cy.findByLabelText("Never, I'll do this manually if I need to").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
 
       // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
       typeAndBlurUsingLabel("Display name", "QA Postgres12");
-      typeAndBlurUsingLabel("Host", "localhost  \n  ");
+      typeAndBlurUsingLabel("Host", "localhost");
       typeAndBlurUsingLabel("Port", "5432");
-      typeAndBlurUsingLabel("Database name", "  sample");
-      typeAndBlurUsingLabel("Username", "  metabase  ");
+      typeAndBlurUsingLabel("Database name", "sample");
+      typeAndBlurUsingLabel("Username", "metabase");
       typeAndBlurUsingLabel("Password", "metasample123");
 
       cy.button("Save").should("not.be.disabled").click();
@@ -69,7 +73,11 @@ describe(
         "true",
       );
 
-      isSyncOptionSelected("Never, I'll do this manually if I need to");
+      cy.findByLabelText("Never, I'll do this manually if I need to").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
     });
 
     it("should add Mongo database and redirect to listing", () => {
@@ -137,8 +145,3 @@ describe(
     });
   },
 );
-
-function isSyncOptionSelected(option) {
-  // This is a really bad way to assert that the text element is selected/active. Can it be fixed in the FE code?
-  cy.findByText(option).parent().should("have.class", "text-brand");
-}
