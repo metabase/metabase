@@ -12,7 +12,6 @@ import title from "metabase/hoc/Title";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getWritebackEnabled } from "metabase/writeback/selectors";
 
 import { getSetting } from "metabase/selectors/settings";
 
@@ -49,7 +48,7 @@ const mapStateToProps = state => {
     database: database ? new Database(database) : undefined,
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
-    isWritebackEnabled: getWritebackEnabled(state),
+    isWritebackEnabled: getSetting(state, "experimental-enable-actions"),
     isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
   };
 };
