@@ -4,13 +4,7 @@ import { createMockDatabaseData } from "metabase-types/api/mocks";
 import DatabaseStep, { DatabaseStepProps } from "./DatabaseStep";
 
 const ComponentMock = () => <div />;
-
 jest.mock("metabase/databases/containers/DatabaseForm", () => ComponentMock);
-
-jest.mock(
-  "metabase/databases/containers/DatabaseEngineWarning",
-  () => ComponentMock,
-);
 
 describe("DatabaseStep", () => {
   it("should render in active state", () => {
