@@ -615,6 +615,9 @@ workflows:
             - be-deps
           e: << matrix.version >>
           driver: mongo
+          extra-env: >-
+            MB_MONGO_TEST_USER=metabase
+            MB_MONGO_TEST_PASSWORD=metasample123
 
       - test-driver:
           name: be-tests-mysql-latest-ee
