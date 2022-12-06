@@ -53,11 +53,13 @@
 (deftest standard-deviation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
     (testing "standard deviation aggregations"
-      (is (= {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
-              :rows [[3.4]]}
-             (qp.test/rows-and-cols
-               (mt/format-rows-by [1.0]
-                 (mt/run-mbql-query venues {:aggregation [[:stddev $latitude]]})))))))
+      (let [query (mt/mbql-query venues {:aggregation [[:stddev $latitude]]})]
+        (mt/with-native-query-testing-context query
+          (is (= {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
+                  :rows [[3.4]]}
+                 (qp.test/rows-and-cols
+                  (mt/format-rows-by [1.0]
+                    (mt/process-query query)))))))))
 
   (mt/test-drivers (mt/normal-drivers-without-feature :standard-deviation-aggregations)
     (testing "Make sure standard deviations fail for drivers that don't support it"
@@ -66,6 +68,8 @@
            #"standard-deviation-aggregations is not supported by this driver"
            (mt/run-mbql-query venues
              {:aggregation [[:stddev $latitude]]}))))))
+
+;;; other advanced aggregation types are tested in [[metabase.query-processor-test.advanced-math-test]]
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -76,9 +80,9 @@
   (mt/test-drivers (mt/normal-drivers)
     (is (= [1]
            (mt/first-row
-             (mt/format-rows-by [int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:min $price]]})))))
+            (mt/format-rows-by [int]
+              (mt/run-mbql-query venues
+                {:aggregation [[:min $price]]})))))
 
     (is (= [[1 34.0071] [2 33.7701] [3 10.0646] [4 33.983]]
            (mt/formatted-rows [int 4.0]
