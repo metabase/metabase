@@ -7,7 +7,7 @@ import UnderlyingRecordsDrill from "../drill/UnderlyingRecordsDrill";
 import AutomaticDashboardDrill from "../drill/AutomaticDashboardDrill";
 import CompareToRestDrill from "../drill/CompareToRestDrill";
 import ZoomDrill from "../drill/ZoomDrill";
-import FormatAction from "../drill/FormatAction";
+import FormatDrill from "../drill/FormatDrill";
 import DashboardClickDrill from "../drill/DashboardClickDrill";
 
 const DefaultMode = {
@@ -22,7 +22,7 @@ const DefaultMode = {
     UnderlyingRecordsDrill,
     AutomaticDashboardDrill,
     CompareToRestDrill,
-    FormatAction,
+    FormatDrill,
     DashboardClickDrill,
   ],
 };
