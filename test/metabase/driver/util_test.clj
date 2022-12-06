@@ -183,15 +183,15 @@
              :type         "select"}
             {:name        "my-schema-filters-patterns"
              :placeholder "E.x. public,auth*"
-             :description "Comma separated names of schemas that <strong>should</strong> appear in Metabase"
-             :helper-text "You can use patterns like <strong>auth*</strong> to match multiple schemas"
+             :description "Comma separated names of schemas that should appear in Metabase"
+             :helper-text "You can use patterns like \"auth*\" to match multiple schemas"
              :type        "text"
              :visible-if  {:my-schema-filters-type "inclusion"}
              :required    true}
             {:name        "my-schema-filters-patterns"
              :placeholder "E.x. public,auth*"
-             :description "Comma separated names of schemas that <strong>should NOT</strong> appear in Metabase"
-             :helper-text "You can use patterns like <strong>auth*</strong> to match multiple schemas"
+             :description "Comma separated names of schemas that should NOT appear in Metabase"
+             :helper-text "You can use patterns like \"auth*\" to match multiple schemas"
              :type        "text"
              :visible-if  {:my-schema-filters-type "exclusion"}
              :required    true}

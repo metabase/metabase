@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
-import DatabaseHelpCard from "metabase/components/DatabaseHelpCard";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
+import DatabaseHelpCard from "../../components/DatabaseHelpCard";
 
 export interface DatabaseHelpCardProps {
   className?: string;

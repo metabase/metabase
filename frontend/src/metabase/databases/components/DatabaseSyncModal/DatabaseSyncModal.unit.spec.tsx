@@ -1,11 +1,11 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import SyncingModal from "./SyncingModal";
+import DatabaseSyncModal from "./DatabaseSyncModal";
 
-describe("SyncingModal", () => {
+describe("DatabaseSyncModal", () => {
   it("should render with a table from the sample database", () => {
-    render(<SyncingModal sampleUrl={"/auto/table/1"} />);
+    render(<DatabaseSyncModal sampleUrl={"/auto/table/1"} />);
 
     expect(screen.getByText("Explore sample data")).toBeInTheDocument();
   });
@@ -13,7 +13,7 @@ describe("SyncingModal", () => {
   it("should render with no sample database", () => {
     const onClose = jest.fn();
 
-    render(<SyncingModal onClose={onClose} />);
+    render(<DatabaseSyncModal onClose={onClose} />);
     userEvent.click(screen.getByText("Got it"));
 
     expect(onClose).toHaveBeenCalled();
