@@ -36,7 +36,7 @@
     (ssl-required?) (merge (ssl-params))))
 
 (defmethod tx/dbdef->connection-details :mongo
-  [_driver _db-or-server dbdef]
+  [_driver _connection-type dbdef]
   (conn-details (merge
                  {:dbname (tx/escaped-database-name dbdef)
                   :host   (tx/db-test-env-var :mongo :host "localhost")
