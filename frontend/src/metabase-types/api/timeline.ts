@@ -6,13 +6,13 @@ export type TimelineId = number;
 export type TimelineEventId = number;
 export type TimelineEventSource = "question" | "collections" | "api";
 
-export interface Timeline extends TimelineValues {
+export interface Timeline extends TimelineData {
   id: TimelineId;
   collection?: Collection;
   events?: TimelineEvent[];
 }
 
-export interface TimelineValues {
+export interface TimelineData {
   id?: TimelineId;
   collection_id: RegularCollectionId | null;
   name: string;

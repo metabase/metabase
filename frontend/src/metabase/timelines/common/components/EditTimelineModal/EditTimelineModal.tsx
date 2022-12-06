@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import { Timeline, TimelineValues } from "metabase-types/api";
+import { Timeline, TimelineData } from "metabase-types/api";
 import ModalBody from "../ModalBody";
 import ModalHeader from "../ModalHeader";
 import TimelineForm from "../TimelineForm";
@@ -25,7 +25,7 @@ const EditTimelineModal = ({
   onClose,
 }: EditTimelineModalProps): JSX.Element => {
   const handleSubmit = useCallback(
-    async (values: TimelineValues) => {
+    async (values: TimelineData) => {
       await onSubmit({ ...timeline, ...values, default: false });
       onSubmitSuccess?.();
     },
