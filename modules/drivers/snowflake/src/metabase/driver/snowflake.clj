@@ -253,7 +253,7 @@
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :month
-      (let [positive-diff (fn [a b] ; precondition: a <= b
+      (let [positive-diff (fn [a b]
                             (hx/-
                              (hsql/call :datediff (hsql/raw (name unit)) a b)
                              (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
