@@ -6,6 +6,8 @@
 
 (sql-jdbc.tx/add-test-extensions! :sqlite)
 
+(defmethod tx/supports-timestamptz-type? :sqlite [_driver] false)
+
 (defmethod tx/dbdef->connection-details :sqlite
   [_driver _context dbdef]
   {:db (str (tx/escaped-database-name dbdef) ".sqlite")})

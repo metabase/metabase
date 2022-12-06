@@ -8,12 +8,13 @@ import {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
 } from "metabase/plugins";
 
+import Modal from "metabase/components/Modal";
 import MetabaseSettings from "metabase/lib/settings";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
-import Modal from "metabase/components/Modal";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import CollectionRow from "./components/CollectionRow";
-import SnippetCollectionModal from "./components/SnippetCollectionModal";
+import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
 import CollectionOptionsButton from "./components/CollectionOptionsButton";
 
 if (MetabaseSettings.enhancementsEnabled()) {
@@ -23,7 +24,9 @@ if (MetabaseSettings.enhancementsEnabled()) {
     onClick: () =>
       snippetSidebar.setState({
         modalSnippetCollection: {
-          parent_id: snippetSidebar.props.snippetCollection.id,
+          parent_id: canonicalCollectionId(
+            snippetSidebar.props.snippetCollection.id,
+          ),
         },
       }),
   }));
@@ -32,15 +35,21 @@ if (MetabaseSettings.enhancementsEnabled()) {
 PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
   snippetSidebar =>
     snippetSidebar.state.modalSnippetCollection && (
-      <SnippetCollectionModal
-        collection={snippetSidebar.state.modalSnippetCollection}
+      <Modal
         onClose={() =>
           snippetSidebar.setState({ modalSnippetCollection: null })
         }
-        onSaved={() => {
-          snippetSidebar.setState({ modalSnippetCollection: null });
-        }}
-      />
+      >
+        <SnippetCollectionFormModal
+          collection={snippetSidebar.state.modalSnippetCollection}
+          onClose={() =>
+            snippetSidebar.setState({ modalSnippetCollection: null })
+          }
+          onSaved={() => {
+            snippetSidebar.setState({ modalSnippetCollection: null });
+          }}
+        />
+      </Modal>
     ),
   snippetSidebar =>
     snippetSidebar.state.permissionsModalCollectionId != null && (

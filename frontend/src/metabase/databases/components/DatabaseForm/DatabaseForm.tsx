@@ -11,7 +11,11 @@ import { PLUGIN_CACHING } from "metabase/plugins";
 import { Engine } from "metabase-types/api";
 import { DatabaseValues } from "../../types";
 import { getDefaultEngineKey } from "../../utils/engine";
-import { getValidationSchema, getVisibleFields } from "../../utils/schema";
+import {
+  getSubmitValues,
+  getValidationSchema,
+  getVisibleFields,
+} from "../../utils/schema";
 import DatabaseEngineField from "../DatabaseEngineField";
 import DatabaseNameField from "../DatabaseNameField";
 import DatabaseDetailField from "../DatabaseDetailField";
@@ -24,7 +28,7 @@ export interface DatabaseFormProps {
   isHosted?: boolean;
   isAdvanced?: boolean;
   isCachingEnabled?: boolean;
-  onSubmit: (values: DatabaseValues) => void;
+  onSubmit?: (values: DatabaseValues) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
 }
@@ -39,20 +43,27 @@ const DatabaseForm = ({
   onCancel,
   onEngineChange,
 }: DatabaseFormProps): JSX.Element => {
-  const [engineKey, setEngineKey] = useState(() =>
-    getInitialEngineKey(engines, initialData, isAdvanced),
-  );
-  const engine = engineKey ? engines[engineKey] : undefined;
+  const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
+  const [engineKey, setEngineKey] = useState(initialEngineKey);
+  const engine = getEngine(engines, engineKey);
 
   const validationSchema = useMemo(() => {
     return getValidationSchema(engine, engineKey, isAdvanced);
   }, [engine, engineKey, isAdvanced]);
 
   const initialValues = useMemo(() => {
-    return initialData
-      ? validationSchema.cast(initialData, { stripUnknown: true })
-      : validationSchema.getDefault();
-  }, [initialData, validationSchema]);
+    return validationSchema.cast(
+      { ...initialData, engine: engineKey },
+      { stripUnknown: true },
+    );
+  }, [initialData, engineKey, validationSchema]);
+
+  const handleSubmit = useCallback(
+    (values: DatabaseValues) => {
+      return onSubmit?.(getSubmitValues(engine, values, isAdvanced));
+    },
+    [engine, isAdvanced, onSubmit],
+  );
 
   const handleEngineChange = useCallback(
     (engineKey: string | undefined) => {
@@ -67,7 +78,7 @@ const DatabaseForm = ({
       initialValues={initialValues}
       validationSchema={validationSchema}
       enableReinitialize
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       <DatabaseFormBody
         engine={engine}
@@ -104,14 +115,14 @@ const DatabaseFormBody = ({
   onEngineChange,
   onCancel,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, dirty } = useFormikContext<DatabaseValues>();
+  const { values } = useFormikContext<DatabaseValues>();
 
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];
   }, [engine, values, isAdvanced]);
 
   return (
-    <Form disabled={isAdvanced && !dirty}>
+    <Form>
       <DatabaseEngineField
         engineKey={engineKey}
         engines={engines}
@@ -143,17 +154,13 @@ const DatabaseFormFooter = ({
   isAdvanced,
   onCancel,
 }: DatabaseFormFooterProps) => {
-  const { values, dirty } = useFormikContext<DatabaseValues>();
+  const { values } = useFormikContext<DatabaseValues>();
   const isNew = values.id == null;
 
   if (isAdvanced) {
     return (
       <div>
-        <FormSubmitButton
-          title={isNew ? t`Save` : t`Save changes`}
-          disabled={!dirty}
-          primary
-        />
+        <FormSubmitButton title={isNew ? t`Save` : t`Save changes`} primary />
         <FormErrorMessage />
       </div>
     );
@@ -176,7 +183,11 @@ const DatabaseFormFooter = ({
   }
 };
 
-const getInitialEngineKey = (
+const getEngine = (engines: Record<string, Engine>, engineKey?: string) => {
+  return engineKey ? engines[engineKey] : undefined;
+};
+
+const getEngineKey = (
   engines: Record<string, Engine>,
   values?: DatabaseValues,
   isAdvanced?: boolean,

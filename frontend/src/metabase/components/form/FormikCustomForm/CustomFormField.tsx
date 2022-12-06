@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from "react";
-import { getIn } from "icepick";
 import _ from "underscore";
 
 import { isCustomWidget } from "metabase-types/guards";

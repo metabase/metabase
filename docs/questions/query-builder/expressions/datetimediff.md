@@ -64,7 +64,7 @@ datetimeDiff([Aging Start], [Aging End], "month")
 
 ## Calculating current age
 
-Metabase doesn't currently support datetime functions like `today`. To calculate the _current_ age of a cheese:
+Metabase doesn't currently support datetime functions like `today`. To calculate the _current_ age in our [cheese example](#calculating-age):
 
 1. Ask your database admin if there's table in your database that stores dates for reporting (sometimes called a date dimension table).
 2. Create a new question using the date dimension table, with a filter for "Today".
