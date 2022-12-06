@@ -74,12 +74,13 @@
        request-param
        ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
        ;; vector so the parameter handling code doesn't explode.
-       (when (and (params.ops/operator? (:type matching-param))
-                  (if (string? (:value request-param))
-                    (not (str/blank? (:value request-param)))
-                    (some? (:value request-param)))
-                  (not (sequential? (:value request-param))))
-         {:value [(:value request-param)]})
+       (let [value (:value request-param)]
+         (when (and (params.ops/operator? (:type matching-param))
+                    (if (string? value)
+                      (not (str/blank? value))
+                      (some? value))
+                    (not (sequential? value)))
+           {:value [value]}))
        {:id     param-id
         :target (:target matching-mapping)}))))
 
