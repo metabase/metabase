@@ -122,13 +122,6 @@ export const getIsNewButtonVisible = createSelector(
   },
 );
 
-export const getIsBreadcrumbsVisible = createSelector(
-  [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => {
-    return !isEmbedded || embedOptions.breadcrumbs;
-  },
-);
-
 export const getIsProfileLinkVisible = createSelector(
   [getIsEmbedded],
   isEmbedded => !isEmbedded,
@@ -150,10 +143,17 @@ export const getCollectionId = createSelector(
 );
 
 export const getIsCollectionPathVisible = createSelector(
-  [getQuestion, getDashboard, getRouterPath],
-  (question, dashboard, path) =>
-    ((question != null && question.isSaved()) || dashboard != null) &&
-    PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
+  [getQuestion, getDashboard, getRouterPath, getIsEmbedded, getEmbedOptions],
+  (question, dashboard, path, isEmbedded, embedOptions) => {
+    if (isEmbedded && !embedOptions.breadcrumbs) {
+      return false;
+    }
+
+    return (
+      ((question != null && question.isSaved()) || dashboard != null) &&
+      PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path))
+    );
+  },
 );
 
 export const getIsQuestionLineageVisible = createSelector(

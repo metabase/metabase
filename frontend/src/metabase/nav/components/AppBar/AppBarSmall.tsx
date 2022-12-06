@@ -22,7 +22,6 @@ export interface AppBarSmallProps {
   isNavBarOpen?: boolean;
   isNavBarVisible?: boolean;
   isSearchVisible?: boolean;
-  isBreadcrumbsVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
@@ -36,7 +35,6 @@ const AppBarSmall = ({
   isNavBarOpen,
   isNavBarVisible,
   isSearchVisible,
-  isBreadcrumbsVisible,
   isProfileLinkVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
@@ -97,7 +95,7 @@ const AppBarSmall = ({
         <AppBarSubheader isNavBarOpen={isNavBarOpen}>
           {isQuestionLineageVisible ? (
             <QuestionLineage />
-          ) : isBreadcrumbsVisible && isCollectionPathVisible ? (
+          ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />
           ) : null}
         </AppBarSubheader>

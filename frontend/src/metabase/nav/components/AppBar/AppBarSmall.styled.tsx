@@ -28,10 +28,6 @@ export const AppBarSubheader = styled.div<AppBarSubheaderProps>`
   transition: border-bottom-color 200ms ease;
   border-bottom: 1px solid
     ${props => (props.isNavBarOpen ? color("border") : "transparent")};
-
-  &:empty {
-    display: none;
-  }
 `;
 
 export const AppBarMainContainer = styled.div`

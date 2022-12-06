@@ -21,7 +21,6 @@ export interface AppBarLargeProps {
   isNavBarVisible?: boolean;
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
-  isBreadcrumbsVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
@@ -36,7 +35,6 @@ const AppBarLarge = ({
   isNavBarVisible,
   isSearchVisible,
   isNewButtonVisible,
-  isBreadcrumbsVisible,
   isProfileLinkVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
@@ -48,19 +46,17 @@ const AppBarLarge = ({
   return (
     <AppBarRoot isNavBarOpen={isNavBarOpen}>
       <AppBarLeftContainer isNavBarVisible={isNavBarVisible}>
-        {isNavBarVisible && (
-          <AppBarLogo
-            isNavBarOpen={isNavBarOpen}
-            isToggleVisible={isNavBarVisible}
-            onToggleClick={onToggleNavbar}
-          />
-        )}
+        <AppBarLogo
+          isNavBarOpen={isNavBarOpen}
+          isToggleVisible={isNavBarVisible}
+          onToggleClick={onToggleNavbar}
+        />
         <AppBarInfoContainer
           isVisible={!isNavBarOpen || isQuestionLineageVisible}
         >
           {isQuestionLineageVisible ? (
             <QuestionLineage />
-          ) : isBreadcrumbsVisible && isCollectionPathVisible ? (
+          ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />
           ) : null}
         </AppBarInfoContainer>
