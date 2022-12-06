@@ -3,6 +3,10 @@ import {
   setOrUnsetParameterValues,
   setParameterValue,
 } from "metabase/dashboard/actions";
+
+import type { ReduxAction } from "metabase-types/store";
+import type Question from "metabase-lib/Question";
+
 import {
   getDashboardDrillLinkUrl,
   getDashboardDrillPageUrl,
@@ -12,7 +16,21 @@ import {
   getDashboardDrillUrl,
 } from "metabase-lib/queries/drills/dashboard-click-drill";
 
-function getAction(type, question, clicked) {
+import type { ClickObject, Drill, RegularClickActionEffect } from "../../types";
+
+type DashboardDrillType =
+  | "link-url"
+  | "question-url"
+  | "page-url"
+  | "dashboard-url"
+  | "dashboard-filter"
+  | "dashboard-reset";
+
+function getAction(
+  type: DashboardDrillType,
+  question: Question,
+  clicked: ClickObject,
+): RegularClickActionEffect {
   switch (type) {
     case "link-url":
       return {
@@ -24,7 +42,9 @@ function getAction(type, question, clicked) {
         url: () => getDashboardDrillQuestionUrl(question, clicked),
       };
     case "page-url":
-      return { action: () => push(getDashboardDrillPageUrl(clicked)) };
+      return {
+        action: () => push(getDashboardDrillPageUrl(clicked)) as ReduxAction,
+      };
     case "dashboard-url":
       return { url: () => getDashboardDrillUrl(clicked) };
     case "dashboard-filter":
@@ -46,7 +66,7 @@ function getAction(type, question, clicked) {
   }
 }
 
-export default ({ question, clicked }) => {
+const DashboardClickDrill: Drill = ({ question, clicked }) => {
   const type = getDashboardDrillType(clicked);
   if (!type) {
     return [];
@@ -60,3 +80,5 @@ export default ({ question, clicked }) => {
     },
   ];
 };
+
+export default DashboardClickDrill;
