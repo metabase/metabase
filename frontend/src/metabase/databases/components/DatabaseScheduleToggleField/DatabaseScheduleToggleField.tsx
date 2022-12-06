@@ -1,7 +1,7 @@
 import React, { ReactNode, useCallback } from "react";
 import { useFormikContext } from "formik";
 import FormToggle from "metabase/core/components/FormToggle";
-import { DatabaseValues } from "../../types";
+import { DatabaseValues } from "metabase-types/api";
 
 export interface DatabaseScheduleToggleFieldProps {
   name: string;

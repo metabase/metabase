@@ -1,9 +1,8 @@
 import * as Yup from "yup";
 import type { TestContext } from "yup";
 import * as Errors from "metabase/core/utils/errors";
-import { Engine, EngineField, ScheduleType } from "metabase-types/api";
+import { DatabaseValues, Engine, EngineField } from "metabase-types/api";
 import { ADVANCED_FIELDS, FIELD_OVERRIDES } from "../constants";
-import { DatabaseValues } from "../types";
 
 const SCHEDULE_SCHEMA = Yup.object({
   schedule_type: Yup.mixed().nullable(),

@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import { useFormikContext } from "formik";
-import { Engine } from "metabase-types/api";
-import { DatabaseValues } from "../../types";
+import { DatabaseValues, Engine } from "metabase-types/api";
 import { getEngineOptions } from "../../utils/engine";
 import DatabaseEngineSelect from "./DatabaseEngineSelect";
 import DatabaseEngineWidget from "./DatabaseEngineWidget";

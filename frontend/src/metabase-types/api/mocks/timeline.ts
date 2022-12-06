@@ -1,4 +1,4 @@
-import { TimelineEvent, Timeline, TimelineData } from "../timeline";
+import { TimelineEvent, Timeline, TimelineValues } from "../timeline";
 import { createMockUser } from "./user";
 
 export const createMockTimeline = (opts?: Partial<Timeline>): Timeline => ({
@@ -13,8 +13,8 @@ export const createMockTimeline = (opts?: Partial<Timeline>): Timeline => ({
 });
 
 export const createMockTimelineData = (
-  opts?: Partial<TimelineData>,
-): TimelineData => ({
+  opts?: Partial<TimelineValues>,
+): TimelineValues => ({
   collection_id: 1,
   name: "Events",
   description: null,

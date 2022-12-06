@@ -2,14 +2,14 @@ import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { Collection, TimelineData } from "metabase-types/api";
+import { Collection, TimelineValues } from "metabase-types/api";
 import ModalBody from "../ModalBody";
 import ModalHeader from "../ModalHeader";
 import TimelineForm from "../TimelineForm";
 
 export interface NewTimelineModalProps {
   collection: Collection;
-  onSubmit: (values: TimelineData, collection: Collection) => void;
+  onSubmit: (values: TimelineValues, collection: Collection) => void;
   onSubmitSuccess?: () => void;
   onCancel: () => void;
   onClose?: () => void;
@@ -27,7 +27,7 @@ const NewTimelineModal = ({
   }, [collection]);
 
   const handleSubmit = useCallback(
-    async (values: TimelineData) => {
+    async (values: TimelineValues) => {
       await onSubmit(values, collection);
       onSubmitSuccess?.();
     },
@@ -48,7 +48,7 @@ const NewTimelineModal = ({
   );
 };
 
-const getInitialValues = (collection: Collection): TimelineData => ({
+const getInitialValues = (collection: Collection): TimelineValues => ({
   name: "",
   description: null,
   collection_id: canonicalCollectionId(collection.id),

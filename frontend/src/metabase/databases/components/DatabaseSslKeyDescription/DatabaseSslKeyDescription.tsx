@@ -3,7 +3,7 @@ import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { DatabaseValues } from "../../types";
+import { DatabaseValues } from "metabase-types/api";
 
 const DatabaseSslKeyDescription = (): JSX.Element | null => {
   const { values } = useFormikContext<DatabaseValues>();
