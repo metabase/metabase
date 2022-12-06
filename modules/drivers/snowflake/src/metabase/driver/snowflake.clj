@@ -271,9 +271,7 @@
       (hsql/call :datediff (hsql/raw (name unit)) x y)
 
       (:hour :minute :second)
-      (let [x x
-            y y
-            positive-diff (fn [a b]
+      (let [positive-diff (fn [a b]
                             (hx/cast
                              :integer
                              (hx/floor
