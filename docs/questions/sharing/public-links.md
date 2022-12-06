@@ -34,8 +34,6 @@ Once you've [enabled sharing on your question or dashboard](#enable-sharing-on-y
 
 However, public URLs preserve [custom click behavior](../../dashboards/interactive.md) to external URLs. If you want to create a custom drill-down pathway, you can link to the public links of other questions or dashboards.
 
-If you want to restrict what people can see in a public link based on a filter value, see [Public link parameters](#public-link-parameters).
-
 ### Public link to export question results in CSV, XLSX, JSON
 
 To create a public link that people can use to download the results of a question:
@@ -53,7 +51,7 @@ This public link export option is only available for questions, not dashboards.
 
 If you want to embed the link to your dashboard or question in a simple web page or blog post, copy and paste the iframe snippet to your destination of choice.
 
-You can update the link in the `src` attribute with [public embed parameters](#public-link-parameters) to customize the appearance of your question or dashboard.
+You can update the link in the `src` attribute with [public embed parameters](#public-embed-parameters) to customize the appearance of your question or dashboard.
 
 ## Public embed parameters
 
