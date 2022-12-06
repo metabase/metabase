@@ -5,7 +5,6 @@ import { space } from "metabase/styled-components/theme";
 import Select from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import EditableTextBase from "metabase/core/components/EditableText";
-import ButtonBase from "metabase/core/components/Button";
 
 export const Container = styled.div`
   display: flex;

@@ -1,13 +1,13 @@
 import _ from "underscore";
+
+import { getDefaultFieldSettings } from "metabase/actions/components/ActionCreator/FormCreator";
+
 import type {
   ActionFormSettings,
   FieldType,
   InputType,
   ParameterType,
 } from "metabase-types/api";
-
-import { getDefaultFieldSettings } from "metabase/writeback/components/ActionCreator/FormCreator";
-
 import type { Parameter as ParameterObject } from "metabase-types/types/Parameter";
 import type { TemplateTag, TemplateTagType } from "metabase-types/types/Query";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";

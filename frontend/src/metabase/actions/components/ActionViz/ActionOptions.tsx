@@ -10,7 +10,7 @@ import Select from "metabase/core/components/Select";
 import Button from "metabase/core/components/Button";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { ActionCreator } from "metabase/writeback/components/ActionCreator";
+import { ActionCreator } from "metabase/actions/components/ActionCreator";
 
 import Actions from "metabase/entities/actions";
 import Questions from "metabase/entities/questions";

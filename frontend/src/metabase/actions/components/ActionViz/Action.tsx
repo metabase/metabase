@@ -2,6 +2,13 @@ import React, { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
+import {
+  getDashcardParamValues,
+  getNotProvidedActionParameters,
+} from "metabase/modes/components/drill/ActionClickDrill/utils";
+import { executeRowAction } from "metabase/dashboard/actions";
+import { setNumericValues } from "metabase/actions/containers/ActionParametersInputForm/utils";
+
 import type {
   ActionDashboardCard,
   DataAppPage,
@@ -12,20 +19,12 @@ import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { Dispatch } from "metabase-types/store";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
-import {
-  getDashcardParamValues,
-  getNotProvidedActionParameters,
-} from "metabase/modes/components/drill/ActionClickDrill/utils";
-import { executeRowAction } from "metabase/dashboard/actions";
-import { setNumericValues } from "metabase/writeback/containers/ActionParametersInputForm/utils";
 import { generateFieldSettingsFromParameters } from "../ActionCreator/FormCreator";
-import { StyledButton } from "./ActionButton.styled";
-
 import LinkButton from "./LinkButton";
 import ActionForm from "./ActionForm";
-
-import { shouldShowConfirmation } from "./utils";
 import { ActionParameterOptions } from "./ActionOptions";
+import { shouldShowConfirmation } from "./utils";
+import { StyledButton } from "./ActionButton.styled";
 
 interface ActionProps extends VisualizationProps {
   dashcard: ActionDashboardCard;

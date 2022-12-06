@@ -1,10 +1,6 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
-import type {
-  OnSubmitActionForm,
-  WritebackParameter,
-} from "metabase-types/api";
 
 import ActionButtonView from "./ActionButtonView";
 

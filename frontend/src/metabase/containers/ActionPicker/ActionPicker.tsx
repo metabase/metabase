@@ -10,11 +10,11 @@ import Questions from "metabase/entities/questions";
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { ActionCreator } from "metabase/writeback/components/ActionCreator";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
 import Button from "metabase/core/components/Button";
-import Modal from "metabase/components/Modal";
+
+import { ActionCreator } from "metabase/actions/components/ActionCreator";
+
 import {
   ModelTitle,
   ActionItem,

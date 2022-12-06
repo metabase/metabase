@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
 import DataReference from "metabase/query_builder/components/dataref/DataReference";

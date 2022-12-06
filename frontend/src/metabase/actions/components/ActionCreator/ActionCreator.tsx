@@ -4,10 +4,14 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
+import Button from "metabase/core/components/Button";
+import Modal from "metabase/components/Modal";
+
 import { useToggle } from "metabase/hooks/use-toggle";
 import Actions, { ActionParams } from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
+
 import { createQuestionFromAction } from "metabase/writeback/selectors";
 
 import type {
@@ -15,13 +19,11 @@ import type {
   ActionFormSettings,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import Modal from "metabase/components/Modal";
-import { SavedCard } from "metabase-types/types/Card";
-import Button from "metabase/core/components/Button";
-import Question from "metabase-lib/Question";
+import type { SavedCard } from "metabase-types/types/Card";
 
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Metadata from "metabase-lib/metadata/Metadata";
+import type Question from "metabase-lib/Question";
 
 import { ActionCreatorHeader } from "./ActionCreatorHeader";
 import { QueryActionEditor } from "./QueryActionEditor";

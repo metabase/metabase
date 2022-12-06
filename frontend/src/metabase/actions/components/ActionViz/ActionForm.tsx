@@ -10,7 +10,7 @@ import type {
   DataAppPage,
   VisualizationSettings,
 } from "metabase-types/api";
-import { getFormTitle } from "metabase/writeback/components/ActionCreator/FormCreator";
+import { getFormTitle } from "metabase/actions/components/ActionCreator/FormCreator";
 
 import ActionParametersInputForm from "../../containers/ActionParametersInputForm";
 import ActionParametersInputModal from "../../containers/ActionParametersInputModal";

@@ -1,6 +1,7 @@
 import React from "react";
 
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Question from "metabase-lib/Question";
 

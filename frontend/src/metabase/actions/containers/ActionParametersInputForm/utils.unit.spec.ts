@@ -6,7 +6,7 @@ import {
   formatValue,
 } from "./utils";
 
-describe("writeback > containers > ActionParametersInputForm > utils", () => {
+describe("actions > containers > ActionParametersInputForm > utils", () => {
   describe("setDefaultValues", () => {
     it("should set a default value for a non-required empty form field", () => {
       const params = {
