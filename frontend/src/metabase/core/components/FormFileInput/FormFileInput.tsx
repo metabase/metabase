@@ -49,7 +49,6 @@ const FormFileInput = forwardRef(function FormFileInput(
       style={style}
       title={title}
       description={description}
-      orientation="horizontal"
       htmlFor={id}
       error={touched ? error : undefined}
     >

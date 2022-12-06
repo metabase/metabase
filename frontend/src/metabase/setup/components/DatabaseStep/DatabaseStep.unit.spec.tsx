@@ -1,16 +1,10 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { createMockDatabaseInfo } from "metabase-types/store/mocks";
+import { createMockDatabaseData } from "metabase-types/api/mocks";
 import DatabaseStep, { DatabaseStepProps } from "./DatabaseStep";
 
 const ComponentMock = () => <div />;
-
 jest.mock("metabase/databases/containers/DatabaseForm", () => ComponentMock);
-
-jest.mock(
-  "metabase/databases/containers/DatabaseEngineWarning",
-  () => ComponentMock,
-);
 
 describe("DatabaseStep", () => {
   it("should render in active state", () => {
@@ -26,7 +20,7 @@ describe("DatabaseStep", () => {
 
   it("should render in completed state", () => {
     const props = getProps({
-      database: createMockDatabaseInfo({ name: "Test" }),
+      database: createMockDatabaseData({ name: "Test" }),
       isStepActive: false,
       isStepCompleted: true,
     });

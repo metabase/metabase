@@ -3,8 +3,11 @@ import { useField, useFormikContext } from "formik";
 import { t } from "ttag";
 import FormField from "metabase/core/components/FormField";
 import SchedulePicker from "metabase/components/SchedulePicker";
-import { ScheduleSettings, ScheduleType } from "metabase-types/api";
-import { DatabaseValues } from "../../types";
+import {
+  DatabaseData,
+  ScheduleSettings,
+  ScheduleType,
+} from "metabase-types/api";
 import {
   ScheduleOptionList,
   ScheduleOptionBody,
@@ -36,7 +39,7 @@ const DatabaseCacheScheduleField = ({
   title,
   description,
 }: DatabaseCacheScheduleFieldProps): JSX.Element => {
-  const { values, setValues } = useFormikContext<DatabaseValues>();
+  const { values, setFieldValue } = useFormikContext<DatabaseData>();
   const [{ value }, , { setValue }] = useField(name);
 
   const handleScheduleChange = useCallback(
@@ -47,30 +50,19 @@ const DatabaseCacheScheduleField = ({
   );
 
   const handleFullSyncSelect = useCallback(() => {
-    setValues(values => ({
-      ...values,
-      is_full_sync: true,
-      is_on_demand: false,
-    }));
-  }, [setValues]);
+    setFieldValue("is_full_sync", true);
+    setFieldValue("is_on_demand", false);
+  }, [setFieldValue]);
 
   const handleOnDemandSyncSelect = useCallback(() => {
-    setValues(values => ({
-      ...values,
-      schedules: {},
-      is_full_sync: false,
-      is_on_demand: true,
-    }));
-  }, [setValues]);
+    setFieldValue("is_full_sync", false);
+    setFieldValue("is_on_demand", true);
+  }, [setFieldValue]);
 
   const handleNoneSyncSelect = useCallback(() => {
-    setValues(values => ({
-      ...values,
-      schedules: {},
-      is_full_sync: false,
-      is_on_demand: false,
-    }));
-  }, [setValues]);
+    setFieldValue("is_full_sync", false);
+    setFieldValue("is_on_demand", false);
+  }, [setFieldValue]);
 
   return (
     <FormField title={title} description={description}>
@@ -119,7 +111,13 @@ const ScheduleOption = ({
   onSelect,
 }: ScheduleOptionProps): JSX.Element => {
   return (
-    <ScheduleOptionRoot isSelected={isSelected} onClick={onSelect}>
+    <ScheduleOptionRoot
+      isSelected={isSelected}
+      role="option"
+      aria-label={title}
+      aria-selected={isSelected}
+      onClick={onSelect}
+    >
       <ScheduleOptionIndicator isSelected={isSelected}>
         <ScheduleOptionIndicatorBackground isSelected={isSelected} />
       </ScheduleOptionIndicator>
