@@ -555,14 +555,16 @@
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetime-diff]
   [driver [_ x y unit]]
-  (let [x'               (sql.qp/->honeysql driver x)
-        y'               (sql.qp/->honeysql driver y)
+  (let [x               (sql.qp/->honeysql driver x)
+        y               (sql.qp/->honeysql driver y)
         disallowed-types (keep
                           (fn [x]
                             (when-not (contains? #{:timestamp :date :datetime} (temporal-type x))
                               (or (some-> (temporal-type x) name)
                                   (hx/type-info->db-type (hx/type-info x)))))
-                          [x' y'])]
+                          [x y])
+        x                (hx/->timestamp x)
+        y                (hx/->timestamp y)]
     (when (seq disallowed-types)
       (throw
        (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
@@ -585,7 +587,7 @@
                                 :and
                                 (hsql/call := (extract :month a) (extract :month b))
                                 (hsql/call :> (extract :day a) (extract :day b)))))))]
-        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :month
       (let [positive-diff (fn [a b] ; precondition: a <= b
@@ -593,27 +595,25 @@
                              ;; timestamp_diff doesn't support months, so convert to datetime to use datetime_diff
                              (hsql/call :datetime_diff (hx/->datetime b) (hx/->datetime a) (hsql/raw (name unit)))
                              (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
-        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :week
-      (let [x' (trunc :day (hx/->timestamp x'))
-            y' (trunc :day (hx/->timestamp y'))
+      (let [x (trunc :day x)
+            y (trunc :day y)
             positive-diff (fn [a b]
                             (hx/cast
                              :integer
                              (hx/floor
                               (hx// (hsql/call :timestamp_diff b a (hsql/raw "day")) 7))))]
-        (hsql/call :case (hsql/call :<= x' y') (positive-diff x' y') :else (hx/* -1 (positive-diff y' x'))))
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :day
-      (let [x' (trunc :day (hx/->timestamp x'))
-            y' (trunc :day (hx/->timestamp y'))]
-        (hsql/call :timestamp_diff y' x' (hsql/raw (name unit))))
+      (let [x (trunc :day x)
+            y (trunc :day y)]
+        (hsql/call :timestamp_diff y x (hsql/raw (name unit))))
 
       (:hour :minute :second)
-      (let [x' (hx/->timestamp x')
-            y' (hx/->timestamp y')]
-        (hsql/call :timestamp_diff y' x' (hsql/raw (name unit)))))))
+      (hsql/call :timestamp_diff y x (hsql/raw (name unit))))))
 
 (defmethod driver/escape-alias :bigquery-cloud-sdk
   [driver s]
