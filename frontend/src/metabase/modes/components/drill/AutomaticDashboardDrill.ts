@@ -4,8 +4,9 @@ import {
   automaticDashboardDrill,
   automaticDashboardDrillUrl,
 } from "metabase-lib/queries/drills/automatic-dashboard-drill";
+import type { Drill } from "../../types";
 
-export default ({ question, clicked }) => {
+const AutomaticDashboardDrill: Drill = ({ question, clicked }) => {
   const enableXrays = MetabaseSettings.get("enable-xrays");
   if (!automaticDashboardDrill({ question, clicked, enableXrays })) {
     return [];
@@ -14,11 +15,13 @@ export default ({ question, clicked }) => {
   return [
     {
       name: "exploratory-dashboard",
+      title: t`X-ray`,
       section: "auto",
       icon: "bolt",
       buttonType: "token",
-      title: t`X-ray`,
       url: () => automaticDashboardDrillUrl({ question, clicked }),
     },
   ];
 };
+
+export default AutomaticDashboardDrill;
