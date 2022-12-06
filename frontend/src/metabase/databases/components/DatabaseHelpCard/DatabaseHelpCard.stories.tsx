@@ -3,7 +3,7 @@ import type { ComponentStory } from "@storybook/react";
 import DatabaseHelpCard from "./DatabaseHelpCard";
 
 export default {
-  title: "Components/DatabaseHelpCard",
+  title: "Databases/DatabaseHelpCard",
   component: DatabaseHelpCard,
 };
 

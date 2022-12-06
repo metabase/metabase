@@ -226,6 +226,9 @@
     mbql-entity-reference?
     (mbql-id->fully-qualified-name &match)
 
+    sequential?
+    (mapv ids->fully-qualified-names &match)
+
     map?
     (as-> &match entity
       (m/update-existing entity :database (fn [db-id]
@@ -240,14 +243,14 @@
                                                (mapv mbql-id->fully-qualified-name breakout)))
       (m/update-existing entity :aggregation (fn [aggregation]
                                                (mapv mbql-id->fully-qualified-name aggregation)))
-      (m/update-existing entity :filter      (fn [filter]
-                                               (m/map-vals mbql-id->fully-qualified-name filter)))
+      (m/update-existing entity :filter      ids->fully-qualified-names)
       (m/update-existing entity ::mb.viz/param-mapping-source export-field-fk)
+      (m/update-existing entity :segment    export-fk 'Segment)
       (m/update-existing entity :snippet-id export-fk 'NativeQuerySnippet)
       (merge entity
              (m/map-vals ids->fully-qualified-names
                          (dissoc entity
-                                 :database :card_id :card-id :source-table :breakout :aggregation :filter
+                                 :database :card_id :card-id :source-table :breakout :aggregation :filter :segment
                                  ::mb.viz/param-mapping-source :snippet-id))))))
 
 ;(ids->fully-qualified-names {:aggregation [[:sum [:field 277405 nil]]]})
@@ -321,7 +324,12 @@
     (_ :guard (every-pred map? (comp portable-id? :source_table)))
     (-> &match
         (assoc :source_table (str "card__" (import-fk (:source_table &match) 'Card)))
-        mbql-fully-qualified-names->ids*))) ;; process other keys
+        mbql-fully-qualified-names->ids*) ;; process other keys
+
+    (_ :guard (every-pred map? (comp portable-id? :snippet-id)))
+    (-> &match
+        (assoc :snippet-id (import-fk (:snippet-id &match) 'NativeQuerySnippet))
+        mbql-fully-qualified-names->ids*)))
 
 (defn- mbql-fully-qualified-names->ids
   [entity]
@@ -365,6 +373,7 @@
            (and (= k :source-table) (vector? v))      #{(table->path v)}
            (and (= k :source-table) (portable-id? v)) #{[{:model "Card" :id v}]}
            (and (= k :source-field) (vector? v))      #{(field->path v)}
+           (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
            (and (= k :card_id)      (string? v))      #{[{:model "Card" :id v}]}
            (and (= k :card-id)      (string? v))      #{[{:model "Card" :id v}]}
            (map? v)                                   (mbql-deps-map v)

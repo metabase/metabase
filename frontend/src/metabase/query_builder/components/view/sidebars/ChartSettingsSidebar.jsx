@@ -21,6 +21,7 @@ export default class ChartSettingsSidebar extends React.Component {
       onReplaceAllVisualizationSettings,
       onClose,
       onOpenChartType,
+      visualizationSettings,
     } = this.props;
     const { sidebarPropsOverride } = this.state;
     return (
@@ -46,6 +47,7 @@ export default class ChartSettingsSidebar extends React.Component {
             noPreview
             initial={initialChartSetting}
             setSidebarPropsOverride={this.setSidebarPropsOverride}
+            computedSettings={visualizationSettings}
           />
         </SidebarContent>
       )
