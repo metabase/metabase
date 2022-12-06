@@ -12,6 +12,8 @@
   * Life cycle
   - Full FieldValues are created by the fingerprint or scanning process.
     Once it's created the values will be updated by the scanning process that runs daily.
+    Only active FieldValues that have a last_used_at within [[active-field-values-cutoff]] will be updated on sync.
+    FieldValues get a new last_used_at when going through [[get-or-create-full-field-values!]].
   - Advanced FieldValues are created on demand: for example the Sandbox FieldValues are created when a user with
     sandboxed permission try to get values of a Field.
     Normally these FieldValues will be deleted after [[advanced-field-values-max-age]] days by the scanning process.
@@ -55,6 +57,11 @@
   "Age of an advanced FieldValues in days.
   After this time, these field values should be deleted by the `delete-expired-advanced-field-values` job."
   (t/days 30))
+
+(def ^:private active-field-values-cutoff
+  "How many days until a FieldValues is considered inactive. Inactive FieldValues will not be synced until
+   they are used again."
+  (t/days 14))
 
 (def advanced-field-values-types
   "A class of fieldvalues that has additional constraints/filters."
@@ -179,7 +186,7 @@
   "If FieldValues have not been accessed recently they are considered inactive."
   [field-values]
   (and field-values (t/before? (:last_used_at field-values)
-                               (t/minus (t/offset-date-time) (t/days 14)))))
+                               (t/minus (t/offset-date-time) active-field-values-cutoff))))
 
 (defn field-should-have-field-values?
   "Should this `field` be backed by a corresponding FieldValues object?"

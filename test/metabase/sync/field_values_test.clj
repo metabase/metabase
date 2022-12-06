@@ -58,8 +58,8 @@
   (testing "Test that syncing will skip updating inactive FieldValues"
     (db/update! FieldValues
                 (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full)
-                :last_used_at (t/minus (t/offset-date-time) (t/days 20)))
-    (db/update! FieldValues (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full) :values [1 2 3])
+                :last_used_at (t/minus (t/offset-date-time) (t/days 20))
+                :values [1 2 3])
     (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
            (sync-database!' "update-field-values" (data/db))))
     (is (= [1 2 3] (venues-price-field-values)))
