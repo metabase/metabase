@@ -194,7 +194,7 @@
        (reduce (partial hsql/call :concat))))
 
 (defn- extract [unit temporal]
-  (hsql/call :extract (hx/literal unit) (hx/->timestamp temporal)))
+  (hsql/call :extract (format "'%s'" (name unit)) temporal))
 
 (defmethod sql.qp/->honeysql [:redshift :datetime-diff]
   [driver [_ x y unit]]
@@ -225,9 +225,7 @@
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :week
-      (let [x (hx/->timestamp x)
-            y (hx/->timestamp y)
-            positive-diff (fn [a b]
+      (let [positive-diff (fn [a b]
                             (hx/cast
                              :integer
                              (hx/floor
@@ -235,14 +233,10 @@
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :day
-      (let [x (hx/->timestamp x)
-            y (hx/->timestamp y)]
-        (hsql/call :datediff (hsql/raw (name unit)) x y))
+      (hsql/call :datediff (hsql/raw (name unit)) x y)
 
       (:hour :minute :second)
-      (let [x (hx/->timestamp x)
-            y (hx/->timestamp y)
-            positive-diff (fn [a b]
+      (let [positive-diff (fn [a b]
                             (hx/cast
                              :integer
                              (hx/floor
