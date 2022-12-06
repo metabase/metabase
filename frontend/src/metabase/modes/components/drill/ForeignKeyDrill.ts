@@ -4,8 +4,9 @@ import {
   foreignKeyDrill,
   foreignKeyDrillQuestion,
 } from "metabase-lib/queries/drills/foreign-key-drill";
+import type { Drill } from "../../types";
 
-export default function ForeignKeyDrill({ question, clicked }) {
+const ForeignKeyDrill: Drill = ({ question, clicked }) => {
   const drill = foreignKeyDrill({ question, clicked });
   if (!drill) {
     return [];
@@ -15,12 +16,16 @@ export default function ForeignKeyDrill({ question, clicked }) {
   const columnTitle = singularize(columnName);
   const tableTitle = pluralize(tableName);
 
-  return {
-    name: "view-fks",
-    section: "standalone_filter",
-    buttonType: "horizontal",
-    icon: "filter",
-    title: t`View this ${columnTitle}'s ${tableTitle}`,
-    question: () => foreignKeyDrillQuestion({ question, clicked }),
-  };
-}
+  return [
+    {
+      name: "view-fks",
+      title: t`View this ${columnTitle}'s ${tableTitle}`,
+      section: "standalone_filter",
+      icon: "filter",
+      buttonType: "horizontal",
+      question: () => foreignKeyDrillQuestion({ question, clicked }),
+    },
+  ];
+};
+
+export default ForeignKeyDrill;
