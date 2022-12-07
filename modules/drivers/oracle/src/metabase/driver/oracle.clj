@@ -452,7 +452,7 @@
   (str/replace entity-name "/" "//"))
 
 (defmethod sql-jdbc.describe-table/get-table-pks :oracle
-  [_driver ^Connection conn db-name-or-nil table]
+  [_driver ^Connection conn _ table]
   (let [^DatabaseMetaData metadata (.getMetaData conn)]
     (into #{} (sql-jdbc.sync.common/reducible-results
                #(.getPrimaryKeys metadata nil nil (:name table))
