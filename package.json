@@ -90,6 +90,7 @@
     "redux-promise": "^0.5.0",
     "redux-router": "^2.1.2",
     "regenerator": "^0.14.1",
+    "rehype-external-links": "^2.0.1",
     "remark-gfm": "1.0.0",
     "reselect": "^3.0.0",
     "screenfull": "^4.2.1",
