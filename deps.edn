@@ -191,7 +191,7 @@
   ;;    (dev/start!)
   :dev
   {:extra-deps
-   {methodical/methodical                                 {:mvn/version "0.12.2"}
+   {methodical/methodical                                 {:mvn/version "0.15.0.1"}
     clj-http-fake/clj-http-fake                           {:mvn/version "1.0.3"
                                                            :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo                                   {:mvn/version "2022.08.03"} ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
