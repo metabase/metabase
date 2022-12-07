@@ -23,6 +23,7 @@
             [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.models.params.chain-filter :as chain-filter]
+            [metabase.models.params.custom-values :as custom-values]
             [metabase.models.query :as query :refer [Query]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision :as revision]
@@ -688,6 +689,7 @@
                  field-id          (param-key->field-ids dashboard param-key)]
              [field-id value])))
 
+;; TODO: Resolve these two
 (defn param-values-for
   [{:params parameters :as dashboard} param-key query-params]
   (condp = (:sourceType params)
@@ -695,6 +697,24 @@
     "card"        (println "TODO: coming soon")
     ;; "all-values" or the default:
     (chain-filter dashboard param-key query-params)))
+
+(defn param-values
+  ([dashboard param-key constraint-param-key->value]
+   (chain-filter dashboard param-key constraint-param-key->value nil))
+  ([dashboard param-key constraint-param-key->value query]
+   (let [dashboard (hydrate dashboard :resolved-params)
+         param     (get (:resolved-params dashboard) param-key)]
+     (when-not param
+       (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
+                       {:resolved-params (keys (:resolved-params dashboard))
+                        :status-code     400})))
+     (case (:source param)
+       :card        (custom-values (get-in param [:source-options :card-id])
+                                   (get-in param [:source-options :value-field])
+                                   (get-in param [:source-options :label-field])
+                                   query)
+       :always
+       (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 (s/defn chain-filter
   "C H A I N filters!
@@ -753,7 +773,8 @@
     GET /api/dashboard/1/params/abc/values?def=100"
   [id param-key :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (param-values-for dashboard param-key query-params)))
+#_    (param-values-for dashboard param-key query-params);))
+    (param-values dashboard param-key query-params)))
 
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
@@ -766,7 +787,7 @@
   Currently limited to first 1000 results."
   [id param-key query :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (chain-filter dashboard param-key query-params query)))
+    (param-values dashboard param-key query-params query)))
 
 (api/defendpoint GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
