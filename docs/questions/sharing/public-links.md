@@ -14,15 +14,15 @@ Sometimes you'll want to share a dashboard or question you've saved with someone
 
 ![Enable public sharing](../images/enable-public-sharing.png)
 
-An admin needs to enable public sharing from **Settings** > **Admin settings** > **Public sharing** before you'll see the [sharing icon](#enable-sharing-on-your-saved-question-or-dashboard) option on questions and dashboards.
+In order to share Metabase items like questions and dashboards via a public link or an embedded iframe, an admin needs to enable public sharing for that Metabase instance by going to **Settings gear icon** > **Admin settings** > **Public sharing**.
 
 Once toggled on, the **Public sharing** section will display Metabase dashboards and questions with active public links. To make a public link inactive, click **Revoke link**.
 
 ## Enable sharing on your saved question or dashboard
 
-If [public sharing](#enable-sharing-on-your-saved-question-or-dashboard) is enabled for your Metabase, you'll find the `Sharing and Embedding` icon on saved questions and dashboards (it looks like an arrow pointing up and to the right). The sharing button is located on the bottom right corner of a question, or the top right corner of a dashboard.
+If [public sharing](#enable-sharing-on-your-saved-question-or-dashboard) is enabled for your Metabase, you'll find the **Sharing and Embedding** icon on saved questions and dashboards (it looks like an arrow pointing up and to the right). The sharing button is located on the bottom right corner of a question, or the top right corner of a dashboard.
 
-Click on the sharing icon to bring up the sharing settings modal, then click the toggle to generate the sharing link for that question or dashboard.
+To generate the sharing link for that question or dashboard, click on the sharing icon to bring up the sharing settings modal, then click the toggle.
 
 ![Enable sharing](../images/enable-links.png)
 
@@ -51,11 +51,11 @@ This public link export option is only available for questions, not dashboards.
 
 If you want to embed the link to your dashboard or question in a simple web page or blog post, copy and paste the iframe snippet to your destination of choice.
 
-You can update the link in the `src` attribute with [public embed parameters](#public-embed-parameters) to customize the appearance of your question or dashboard.
+To customize the appearance of your question or dashboard, you can update the link in the `src` attribute with [public embed parameters](#public-embed-parameters).
 
 ## Public embed parameters
 
-You can add hash parameters at the end of the public link in your iframe's `src` attribute to toggle appearance settings or set filter values. 
+To toggle appearance settings or set filter values, you can add hash parameters at the end of the public link in your iframe's `src` attribute.
 
 Note that it's possible to find the a public link URL behind a public embed. If someone gets access to the public link URL, they can remove the hash parameters from the URL to view the original question or dashboard (without any appearance or filter settings).
 
@@ -63,13 +63,17 @@ If you'd like to create a secure embed that prevents people from changing filter
 
 ### Appearance
 
-| Parameter name         | Possible values                                  |
-| ---------------------- | ------------------------------------------------ |
-| bordered               | true, false                                      |
-| titled                 | true, false                                      |
-| theme                  | null, transparent, night                         |
-| font                   | [font name](../../configuring-metabase/fonts.md) |
-| hide_download_button   | true, false                                      |
+| Parameter name          | Possible values                                  |
+| ----------------------- | ------------------------------------------------ |
+| bordered                | true, false                                      |
+| titled                  | true, false                                      |
+| theme                   | null, transparent, night                         |
+| font¹                   | [font name](../../configuring-metabase/fonts.md) |
+| hide_download_button²   | true, false                                      |
+
+¹ Available on [paid plans](https://www.metabase.com/pricing).
+
+² Available on [paid plans](https://www.metabase.com/pricing) and hides the download button on questions only (not dashboards).
 
 ### Filters
 
