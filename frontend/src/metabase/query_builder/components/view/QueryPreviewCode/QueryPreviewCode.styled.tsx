@@ -7,7 +7,7 @@ import {
   breakpointMinHeightSmall,
 } from "metabase/styled-components/theme";
 
-export const QueryPanelButton = styled(IconButtonWrapper)`
+export const CodeCopyButton = styled(IconButtonWrapper)`
   position: absolute;
   top: 1rem;
   right: 1rem;
@@ -17,7 +17,7 @@ export const QueryPanelButton = styled(IconButtonWrapper)`
   cursor: pointer;
 `;
 
-export const QueryPanelContainer = styled.pre`
+export const CodeContainer = styled.pre`
   display: block;
   padding: 1rem;
   border: 1px solid ${color("border")};
@@ -26,7 +26,7 @@ export const QueryPanelContainer = styled.pre`
   overflow: hidden;
 `;
 
-export const QueryPanelCode = styled.code`
+export const CodeText = styled.code`
   display: block;
   width: 100%;
   max-height: 20vh;
@@ -47,15 +47,15 @@ export const QueryPanelCode = styled.code`
   }
 `;
 
-export const QueryPanelRoot = styled.div`
+export const CodeRoot = styled.div`
   position: relative;
 
-  ${QueryPanelButton} {
+  ${CodeCopyButton} {
     display: none;
   }
 
   &:hover {
-    ${QueryPanelButton} {
+    ${CodeCopyButton} {
       display: block;
     }
   }
