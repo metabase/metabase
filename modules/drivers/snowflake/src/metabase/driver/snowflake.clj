@@ -252,10 +252,21 @@
                                 (hsql/call :> (extract :day a) (extract :day b)))))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
+      :quarter
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx/-
+                               (hsql/call :datediff (hsql/raw "month") a b)
+                               (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b))))
+                              3)))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
       :month
       (let [positive-diff (fn [a b]
                             (hx/-
-                             (hsql/call :datediff (hsql/raw (name unit)) a b)
+                             (hsql/call :datediff (hsql/raw "month") a b)
                              (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
