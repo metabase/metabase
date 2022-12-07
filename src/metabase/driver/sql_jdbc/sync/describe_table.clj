@@ -184,8 +184,8 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod get-table-pks :default
-  [_driver conn db-name-or-nil table]
-  (let [metadata (.getMetaData conn)]
+  [_driver ^Connection conn db-name-or-nil table]
+  (let [^DatabaseMetaData metadata (.getMetaData conn)]
     (into #{} (sql-jdbc.sync.common/reducible-results
                #(.getPrimaryKeys metadata db-name-or-nil (:schema table) (:name table))
                (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))

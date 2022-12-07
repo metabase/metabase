@@ -27,7 +27,7 @@
             [metabase.util.i18n :refer [trs]]
             [metabase.util.ssh :as ssh])
   (:import com.mchange.v2.c3p0.C3P0ProxyConnection
-           [java.sql Connection ResultSet Types]
+           [java.sql Connection DatabaseMetaData ResultSet Types]
            [java.time Instant OffsetDateTime ZonedDateTime]
            [oracle.jdbc OracleConnection OracleTypes]
            oracle.sql.TIMESTAMPTZ))
@@ -452,8 +452,8 @@
   (str/replace entity-name "/" "//"))
 
 (defmethod sql-jdbc.describe-table/get-table-pks :oracle
-  [_driver conn db-name-or-nil table]
-  (let [metadata (.getMetaData conn)]
+  [_driver ^Connection conn db-name-or-nil table]
+  (let [^DatabaseMetaData metadata (.getMetaData conn)]
     (into #{} (sql-jdbc.sync.common/reducible-results
                #(.getPrimaryKeys metadata
                                  db-name-or-nil
