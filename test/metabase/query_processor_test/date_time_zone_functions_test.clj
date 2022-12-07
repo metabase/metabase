@@ -715,6 +715,9 @@
                                       ["2016-02-03T09:19:09" "2017-02-02T09:19:09" 0 "starts in leap year before leap day"]
                                       ["2016-10-03T09:19:09" "2017-10-03T09:19:09" 1 "starts in leap year after leap day"]
                                       ["2017-06-10T08:30:00" "2019-07-10T08:30:00" 2 "multiple years"]]]
+                              [:quarter [["2021-10-03T09:18:09" "2022-01-02T09:18:09" 0 "day under a quarter"]
+                                         ["2021-10-03T09:19:09" "2022-01-03T09:18:09" 1 "ignores time"]
+                                         ["2017-06-10T08:30:00" "2019-07-10T08:30:00" 8 "multiple years"]]]
                               [:month [["2022-10-03T09:18:09" "2022-11-02T09:18:09" 0  "day under a month"]
                                        ["2022-10-02T09:19:09" "2022-11-02T09:18:09" 1  "minute under a month"]
                                        ["2022-10-02T09:18:09" "2023-10-03T09:18:09" 12 "over a year"]]]
@@ -783,6 +786,8 @@
                  "2022-10-09T00:00:00+01:00[Africa/Lagos]"
                  "2022-11-02T00:00:00Z[UTC]"
                  "2022-11-02T00:00:00+01:00[Africa/Lagos]"
+                 "2023-01-02T00:00:00Z[UTC]"
+                 "2023-01-02T00:00:00+01:00[Africa/Lagos]"
                  "2023-10-02T00:00:00Z[UTC]"
                  "2023-10-02T00:00:00+01:00[Africa/Lagos]"]]
       (for [a times b times]
@@ -805,7 +810,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
     (mt/dataset diff-time-zone-cases
       (let [diffs (fn [x y]
-                    (let [units [:second :minute :hour :day :week :month :year]]
+                    (let [units [:second :minute :hour :day :week :month :quarter :year]]
                       (->> (mt/run-mbql-query times
                              {:filter [:and [:= x $a_dt_tz_text] [:= y $b_dt_tz_text]]
                               :expressions (into {} (for [unit units]
@@ -875,6 +880,24 @@
             (is (partial= {:hour 744 :day 31 :month 1 :year 0}
                           (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00Z
                                  "2022-11-02T00:00:00Z")))))      ; 2022-11-02T00:00:00Z
+        (testing "hour under a quarter"
+          (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+            (is (partial= {:month 3 :quarter 1}
+                          (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
+                                 "2023-01-02T00:00:00+01:00")))) ; 2023-01-01T22:00:00-01:00
+          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+            (is (partial= {:month 2 :quarter 0}
+                          (diffs "2022-10-02T00:00:00Z"           ; 2022-10-02T00:00:00Z
+                                 "2023-01-02T00:00:00+01:00"))))) ; 2023-01-01T23:00:00Z
+        (testing "quarter"
+          (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
+            (is (partial= {:month 3 :quarter 1}
+                          (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-01T23:00:00-01:00
+                                 "2023-01-02T00:00:00Z"))))       ; 2023-01-01T23:00:00-01:00
+          (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+            (is (partial= {:month 3 :quarter 1}
+                          (diffs "2022-10-02T01:00:00+01:00"      ; 2022-10-02T00:00:00Z
+                                 "2023-01-02T00:00:00Z")))))      ; 2023-01-02T00:00:00Z
         (testing "year"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
             (is (partial= {:day 365, :week 52, :month 12, :year 1}
@@ -901,7 +924,7 @@
     (mt/dataset sample-dataset
       (testing "Args can be expressions that return datetime values"
         (let [diffs (fn [x y]
-                      (let [units [:second :minute :hour :day :week :month :year]]
+                      (let [units [:second :minute :hour :day :week :month :quarter :year]]
                         (->> (mt/run-mbql-query orders
                                {:limit 1
                                 :expressions (into {} (for [unit units]
@@ -911,7 +934,7 @@
                              (mt/formatted-rows (repeat (count units) int))
                              first
                              (zipmap units))))]
-          (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :year 1}
+          (is (= {:second 31795200, :minute 529920, :hour 8832, :day 368, :week 52, :month 12, :quarter 4, :year 1}
                  (diffs [:datetime-add #t "2022-10-03T00:00:00" 1 "day"] [:datetime-add #t "2023-10-03T00:00:00" 4 "day"])))))
       (testing "Result works in arithmetic expressions"
         (let [start "2021-10-03T09:19:09"
