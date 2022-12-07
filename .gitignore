@@ -13,6 +13,9 @@
 .idea/
 .nrepl-port
 .vscode
+/.clj-kondo/babashka
+/.clj-kondo/com.github.camsaul
+/.clj-kondo/methodical
 /*.h2.db
 /*.lock.db
 /*.mv.db

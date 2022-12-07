@@ -26,11 +26,21 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v3
-    - name: Run clj-kondo
+    - name: Start clj-kondo Docker image
       run: >-
         docker run
         --volume $PWD:/work
         --rm cljkondo/clj-kondo:2022.08.03
+    - name: Fetch clj-kondo config for libraries
+      run: >-
+        clj-kondo
+        --lint "$(clojure -A:dev -Spath)"
+        --copy-configs
+        --dependencies
+        --skip-lint
+        --parallel
+    - name: Lint files with clj-kondo
+      run: >-
         clj-kondo
         --config /work/.clj-kondo/config.edn
         --config-dir /work/.clj-kondo
