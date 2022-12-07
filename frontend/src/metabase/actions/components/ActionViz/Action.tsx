@@ -21,7 +21,7 @@ import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 import { generateFieldSettingsFromParameters } from "../ActionCreator/FormCreator";
 import LinkButton from "./LinkButton";
-import ActionForm from "./ActionForm";
+import ActionVizForm from "./ActionVizForm";
 import { ActionParameterOptions } from "./ActionOptions";
 import { shouldShowConfirmation } from "./utils";
 import { StyledButton } from "./ActionButton.styled";
@@ -101,7 +101,7 @@ function ActionComponent({
         {showParameterMapper && (
           <ActionParameterOptions dashcard={dashcard} page={page} />
         )}
-        <ActionForm
+        <ActionVizForm
           onSubmit={onSubmit}
           dashcard={dashcard}
           page={page}
