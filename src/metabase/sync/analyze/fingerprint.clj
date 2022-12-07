@@ -4,9 +4,10 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as hh]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.db.util :as mdb.u]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.driver.workarounds :as driver.workarounds]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.table :as table]
             [metabase.query-processor.store :as qp.store]
@@ -19,6 +20,10 @@
             [redux.core :as redux]
             [schema.core :as s]
             [toucan.db :as db]))
+
+(comment
+  metadata-queries/keep-me-for-default-table-row-sample
+  )
 
 (s/defn ^:private save-fingerprint!
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
@@ -67,7 +72,7 @@
                          (map vector fields fingerprints)))))
         driver (driver.u/database->driver (table/database table))
         opts {:truncation-size truncation-size}]
-    (driver.workarounds/table-rows-sample driver table fields rff opts)))
+    (driver/table-rows-sample driver table fields rff opts)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |

@@ -10,7 +10,6 @@
             [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
             [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
             [metabase.driver.sync :as driver.s]
-            [metabase.driver.workarounds :as driver.workarounds]
             [metabase.models :refer [Database]]
             [metabase.models.table :as table :refer [Table] :rename {Table MetabaseTable}] ; Table clashes with the class below
             [metabase.query-processor.context :as qp.context]
@@ -204,14 +203,19 @@
                (rff {:cols fields})
                (-> rows .iterateAll .iterator iterator-seq))))
 
-(defmethod driver.workarounds/table-rows-sample :bigquery-cloud-sdk
+(defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
   (let [database (table/database table)
         bq-table (get-table database dataset-id table-name)]
-    (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW} (.. bq-table getDefinition getType))
+    (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
+           ;; We couldn't easily test if the following two can show up as
+           ;; tables and if `.list` is supported for hem, so they are here
+           ;; to make sure we don't break existing instances.
+           TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
+         (.. bq-table getDefinition getType))
       (do (log/debugf "%s.%s is a view, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
-          ((get-method driver.workarounds/table-rows-sample :sql-jdbc) driver table fields rff opts))
+          ((get-method driver/table-rows-sample :sql-jdbc) driver table fields rff opts))
       (sample-table bq-table fields rff))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
