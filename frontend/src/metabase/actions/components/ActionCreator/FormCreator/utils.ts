@@ -44,6 +44,7 @@ const getOptionsFromArray = (
 export const getDefaultFieldSettings = (
   overrides: Partial<FieldSettings> = {},
 ): FieldSettings => ({
+  id: "",
   name: "",
   title: "",
   description: "",
@@ -71,19 +72,15 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
   date: "date",
   datetime: "datetime-local",
   time: "time",
-  monthyear: "date",
-  quarteryear: "date",
-  email: "email",
-  password: "password",
   number: "integer", // this input type is badly named, it works for floats too
   boolean: "boolean",
   category: "categoryPillOrSearch",
-  dropdown: "select",
+  select: "select",
   radio: "radio",
 };
 
 const inputTypeHasOptions = (fieldSettings: FieldSettings) =>
-  ["dropdown", "radio"].includes(fieldSettings.inputType);
+  ["select", "radio"].includes(fieldSettings.inputType);
 
 export const getFormField = (
   parameter: Parameter,
@@ -122,7 +119,7 @@ export const getFormField = (
 };
 
 export const getForm = (
-  parameters: WritebackParameter[],
+  parameters: WritebackParameter[] | Parameter[],
   fieldSettings: Record<string, FieldSettings>,
 ): ActionFormProps => {
   const sortedParams = parameters.sort(
@@ -232,7 +229,7 @@ export const getInputType = (param: Parameter, field?: Field) => {
     return field.isDateWithoutTime() ? "date" : "datetime";
   }
   if (field.semantic_type === TYPE.Email) {
-    return "email";
+    return "string";
   }
   if (
     field.semantic_type === TYPE.Description ||

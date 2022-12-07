@@ -50,7 +50,7 @@ const getTextInputs = (): InputOptionType[] => [
 
 const getSelectInputs = (): InputOptionType[] => [
   {
-    value: "dropdown",
+    value: "select",
     name: t`dropdown`,
   },
   {

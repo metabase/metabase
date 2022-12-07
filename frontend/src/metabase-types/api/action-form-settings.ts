@@ -5,22 +5,15 @@ import type { ParameterId } from "./parameters";
 export type ActionDisplayType = "form" | "button";
 export type FieldType = "string" | "number" | "date" | "category";
 
-export type DateInputType =
-  | "date"
-  | "time"
-  | "datetime"
-  | "monthyear"
-  | "quarteryear";
+export type DateInputType = "date" | "time" | "datetime";
 
 export type InputType =
   | DateInputType
   | "string"
   | "text"
   | "number"
-  | "dropdown"
+  | "select"
   | "radio"
-  | "email"
-  | "password"
   | "boolean"
   | "category";
 
@@ -30,6 +23,7 @@ export type DateRange = [string, string];
 export type NumberRange = [number, number];
 
 export interface FieldSettings {
+  id: string;
   name: string;
   title: string;
   order: number;

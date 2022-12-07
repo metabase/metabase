@@ -50,7 +50,7 @@ export const addMissingSettings = (
     fields: {
       ...settings.fields,
       ...Object.fromEntries(
-        missingIds.map(id => [id, getDefaultFieldSettings()]),
+        missingIds.map(id => [id, getDefaultFieldSettings({ id })]),
       ),
     },
   };

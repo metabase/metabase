@@ -66,7 +66,7 @@ describe("actions > FormCreator > FieldSettingsPopover", () => {
 
     expect(changeSpy).toHaveBeenCalledWith({
       ...settings,
-      inputType: "dropdown",
+      inputType: "select",
     });
   });
 
