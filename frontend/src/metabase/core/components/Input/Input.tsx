@@ -116,6 +116,7 @@ const Input = forwardRef(function Input(
       {showResetButton && (
         <Tooltip tooltip={t`Clear`} placement="right">
           <InputResetButton
+            data-testid="input-reset-button"
             size={size}
             hasRightIcon={!!rightIcon}
             onClick={onResetClick}

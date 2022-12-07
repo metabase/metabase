@@ -68,12 +68,10 @@ describe("scenarios > question > new", () => {
         .should("have.attr", "href")
         .and("eq", `/browse/${SAMPLE_DB_ID}-sample-database`);
 
-      // Discarding the search qquery should take us back to the original selector
+      // Discarding the search query should take us back to the original selector
       // that starts with the list of databases and saved questions
-      cy.findByPlaceholderText("Search for a table…")
-        .next()
-        .find(".Icon-close")
-        .click();
+      cy.findByPlaceholderText("Search for a table…");
+      cy.findByTestId("input-reset-button").click();
 
       cy.findByText("Saved Questions").click();
 
