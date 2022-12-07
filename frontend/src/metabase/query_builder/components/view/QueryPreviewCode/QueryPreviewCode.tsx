@@ -10,16 +10,16 @@ import {
 } from "./QueryPreviewCode.styled";
 
 export interface QueryPreviewCodeProps {
-  code: string;
+  value: string;
 }
 
-const QueryPreviewCode = ({ code }: QueryPreviewCodeProps): JSX.Element => {
-  const { isCopied, handleCopy } = useCopyButton(code);
+const QueryPreviewCode = ({ value }: QueryPreviewCodeProps): JSX.Element => {
+  const { isCopied, handleCopy } = useCopyButton(value);
 
   return (
     <CodeRoot>
       <CodeContainer>
-        <CodeText>{code}</CodeText>
+        <CodeText>{value}</CodeText>
       </CodeContainer>
       <Tooltip tooltip={t`Copied!`} isOpen={isCopied}>
         <CodeCopyButton onClick={handleCopy}>
@@ -30,13 +30,13 @@ const QueryPreviewCode = ({ code }: QueryPreviewCodeProps): JSX.Element => {
   );
 };
 
-const useCopyButton = (code: string) => {
+const useCopyButton = (value: string) => {
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(code);
+    navigator.clipboard.writeText(value);
     setIsCopied(true);
-  }, [code]);
+  }, [value]);
 
   useEffect(() => {
     if (isCopied) {

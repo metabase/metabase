@@ -1,7 +1,12 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+
+export const ModalRoot = styled.div`
+  min-height: 20rem;
+`;
 
 export const ModalHeader = styled.div`
   display: flex;
@@ -9,8 +14,22 @@ export const ModalHeader = styled.div`
   padding: 2rem 2rem 0;
 `;
 
-export const ModalBody = styled.div`
+interface ModalBodyProps {
+  centered?: boolean;
+}
+
+export const ModalBody = styled.div<ModalBodyProps>`
+  display: ${props => props.centered && "flex"};
+  align-items: center;
+  justify-content: center;
   padding: 2rem;
+  min-height: 20rem;
+`;
+
+export const ModalFooter = styled.div`
+  display: flex;
+  justify-content: end;
+  margin-top: 1.5rem;
 `;
 
 export const ModalTitle = styled.div`
@@ -35,4 +54,8 @@ export const ModalCloseButton = styled(IconButtonWrapper)`
 
 export const ModalCloseIcon = styled(Icon)`
   color: ${color("text-light")};
+`;
+
+export const ModalLoadingSpinner = styled(LoadingSpinner)`
+  color: ${color("brand")};
 `;

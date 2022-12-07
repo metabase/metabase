@@ -280,7 +280,7 @@ class QueryModals extends React.Component {
         />
       </Modal>
     ) : modal === MODAL_TYPES.QUERY_PREVIEW ? (
-      <Modal onClose={onCloseModal}>
+      <Modal wide onClose={onCloseModal}>
         <QueryPreviewModal question={question} onClose={onCloseModal} />
       </Modal>
     ) : null;

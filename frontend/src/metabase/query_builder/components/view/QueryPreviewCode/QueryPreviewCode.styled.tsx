@@ -29,22 +29,9 @@ export const CodeContainer = styled.pre`
 export const CodeText = styled.code`
   display: block;
   width: 100%;
-  max-height: 20vh;
   overflow: auto;
   white-space: pre;
   word-break: break-all;
-
-  ${breakpointMinHeightExtraSmall} {
-    max-height: 25vh;
-  }
-
-  ${breakpointMinHeightSmall} {
-    max-height: 45vh;
-  }
-
-  ${breakpointMinHeightMedium} {
-    max-height: 60vh;
-  }
 `;
 
 export const CodeRoot = styled.div`
