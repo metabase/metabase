@@ -5,25 +5,24 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const ModalRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
   min-height: 20rem;
+  max-height: 90vh;
 `;
 
 export const ModalHeader = styled.div`
   display: flex;
   align-items: center;
-  padding: 2rem 2rem 0;
+  margin-bottom: 2rem;
 `;
 
-interface ModalBodyProps {
-  centered?: boolean;
-}
-
-export const ModalBody = styled.div<ModalBodyProps>`
-  display: ${props => props.centered && "flex"};
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  min-height: 20rem;
+export const ModalBody = styled.div`
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
 `;
 
 export const ModalFooter = styled.div`

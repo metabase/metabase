@@ -1,10 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { getIn } from "icepick";
 import { t } from "ttag";
 import { formatNativeQuery } from "metabase/lib/engine";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { NativeQueryData } from "metabase-types/api";
+import Question from "metabase-lib/Question";
 import QueryPreviewCode from "../QueryPreviewCode";
 import {
   ModalBody,
@@ -19,23 +20,20 @@ import {
 } from "./QueryPreviewModal.styled";
 
 interface QueryPreviewModalProps {
-  data?: NativeQueryData;
-  error?: unknown;
-  loading?: boolean;
-  engine?: string;
+  question: Question;
   onClose?: () => void;
 }
 
 const QueryPreviewModal = ({
-  data,
-  error,
-  engine,
-  loading,
+  question,
   onClose,
 }: QueryPreviewModalProps): JSX.Element => {
+  const { data, error, loading } = useNativeQuery(question);
+
   const queryText = useMemo(() => {
+    const engine = question.database()?.engine;
     return data ? formatNativeQuery(data.query, engine) : undefined;
-  }, [data, engine]);
+  }, [question, data]);
 
   const errorText = useMemo(() => {
     return error ? getErrorMessage(error) : undefined;
@@ -52,7 +50,7 @@ const QueryPreviewModal = ({
           <ModalCloseIcon name="close" onClick={onClose} />
         </ModalCloseButton>
       </ModalHeader>
-      <ModalBody centered={loading}>
+      <ModalBody>
         {loading ? (
           <ModalLoadingSpinner />
         ) : errorText ? (
@@ -72,6 +70,25 @@ const QueryPreviewModal = ({
       )}
     </ModalRoot>
   );
+};
+
+interface UseNativeQuery {
+  data?: NativeQueryData;
+  error?: unknown;
+  loading: boolean;
+}
+
+const useNativeQuery = (question: Question) => {
+  const [state, setState] = useState<UseNativeQuery>({ loading: true });
+
+  useEffect(() => {
+    question
+      .apiGetNativeQuery()
+      .then(data => setState({ data, loading: false }))
+      .catch(error => setState({ loading: false, error }));
+  }, [question]);
+
+  return state;
 };
 
 const getErrorMessage = (error: unknown): string | undefined => {
