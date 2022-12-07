@@ -29,6 +29,7 @@
             [metabase.models.revision :as revision]
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
+            [metabase.models.values-card :as values-card]
             [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -689,33 +690,6 @@
                  field-id          (param-key->field-ids dashboard param-key)]
              [field-id value])))
 
-;; TODO: Resolve these two
-(defn param-values-for
-  [{:params parameters :as dashboard} param-key query-params]
-  (condp = (:sourceType params)
-    "static-list" (println "TODO: Not implemented!!!!")
-    "card"        (println "TODO: coming soon")
-    ;; "all-values" or the default:
-    (chain-filter dashboard param-key query-params)))
-
-(defn param-values
-  ([dashboard param-key constraint-param-key->value]
-   (chain-filter dashboard param-key constraint-param-key->value nil))
-  ([dashboard param-key constraint-param-key->value query]
-   (let [dashboard (hydrate dashboard :resolved-params)
-         param     (get (:resolved-params dashboard) param-key)]
-     (when-not param
-       (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:resolved-params (keys (:resolved-params dashboard))
-                        :status-code     400})))
-     (case (:source param)
-       :card        (custom-values (get-in param [:source-options :card-id])
-                                   (get-in param [:source-options :value-field])
-                                   (get-in param [:source-options :label-field])
-                                   query)
-       :always
-       (chain-filter dashboard param-key constraint-param-key->value query)))))
-
 (s/defn chain-filter
   "C H A I N filters!
 
@@ -735,35 +709,43 @@
     param-key                   :- su/NonBlankString
     constraint-param-key->value :- su/Map
     query                       :- (s/maybe su/NonBlankString)]
-   (let [dashboard (hydrate dashboard :resolved-params)]
-     (when-not (get (:resolved-params dashboard) param-key)
+   (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
+         field-ids   (param-key->field-ids dashboard param-key)]
+     (when (empty? field-ids)
+       (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
+                       {:param       (get (:resolved-params dashboard) param-key)
+                        :status-code 400})))
+     ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
+     ;; separate query for each Field (for parameters that are mapped to more than one Field)
+     (try
+       (let [results (map (if (seq query)
+                            #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                            #(chain-filter/chain-filter % constraints :limit result-limit))
+                          field-ids)
+             values (distinct (mapcat :values results))
+             has_more_values (boolean (some true? (map :has_more_values results)))]
+         ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+         {:values          (if (sequential? (first values))
+                             (sort-by second values)
+                             (sort values))
+          :has_more_values has_more_values})
+       (catch clojure.lang.ExceptionInfo e
+         (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+           (api/throw-403 e)
+           (throw e)))))))
+
+(defn param-values
+  [dashboard param-key query-params]
+   (let [dashboard (hydrate dashboard :resolved-params)
+         param     (get (:resolved-params dashboard) param-key)]
+     (when-not param
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
-     (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
-           field-ids   (param-key->field-ids dashboard param-key)]
-      (when (empty? field-ids)
-        (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                        {:param       (get (:resolved-params dashboard) param-key)
-                         :status-code 400})))
-       ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
-       ;; separate query for each Field (for parameters that are mapped to more than one Field)
-      (try
-        (let [results (map (if (seq query)
-                               #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                               #(chain-filter/chain-filter % constraints :limit result-limit))
-                           field-ids)
-              values (distinct (mapcat :values results))
-              has_more_values (boolean (some true? (map :has_more_values results)))]
-          ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
-          {:values          (if (sequential? (first values))
-                              (sort-by second values)
-                              (sort values))
-           :has_more_values has_more_values})
-        (catch clojure.lang.ExceptionInfo e
-          (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-            (api/throw-403 e)
-            (throw e))))))))
+     (case (:sourceType param)
+       "static-list" (println "TODO: Not implemented yet!!")
+       "card"        (values-card/values-for-dashboard dashboard param-key)
+       (chain-filter dashboard param-key query-params))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
@@ -773,7 +755,6 @@
     GET /api/dashboard/1/params/abc/values?def=100"
   [id param-key :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-#_    (param-values-for dashboard param-key query-params);))
     (param-values dashboard param-key query-params)))
 
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
