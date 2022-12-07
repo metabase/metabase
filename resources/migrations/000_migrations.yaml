@@ -13005,6 +13005,22 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  - changeSet:
+      id: v46.00-027
+      author: snoe
+      comment: Added 0.46.0 -- add last_used_at to FieldValues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of when these FieldValues were last used.
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

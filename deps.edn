@@ -308,11 +308,33 @@
 
 ;;; Linters
 
-  ;; clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check
+  ;; clojure -M:ee:drivers:check
+  ;;
+  ;; checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't
+  ;; ship (such as `:dev` dependencies). See #27009 for more context.
   :check
   {:extra-deps {athos/clj-check {:git/url "https://github.com/athos/clj-check.git"
                                  :sha     "518d5a1cbfcd7c952f548e6dbfcb9a4a5faf9062"}}
-   :main-opts  ["-m" "clj-check.check"]}
+   :main-opts  ["-m" "clj-check.check"
+                "src"
+                "shared/src"
+                "enterprise/backend/src"
+                "modules/drivers/athena/src"
+                "modules/drivers/bigquery-cloud-sdk/src"
+                "modules/drivers/druid/src"
+                "modules/drivers/googleanalytics/src"
+                "modules/drivers/mongo/src"
+                "modules/drivers/oracle/src"
+                "modules/drivers/presto/src"
+                "modules/drivers/presto-common/src"
+                "modules/drivers/presto-jdbc/src"
+                "modules/drivers/redshift/src"
+                "modules/drivers/snowflake/src"
+                "modules/drivers/sparksql/src"
+                "modules/drivers/sqlite/src"
+                "modules/drivers/sqlserver/src"
+                "modules/drivers/vertica/src"]
+   :jvm-opts   ["-Dclojure.main.report=stderr"]}
 
   ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
   :eastwood

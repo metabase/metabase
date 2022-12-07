@@ -59,7 +59,7 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
   pulse: palette => color("accent4", palette),
 
   "brand-light": palette => lighten(color("brand", palette), 0.532),
-  focus: palette => lighten(color("brand", palette), 0.465),
+  focus: palette => getFocusColor("brand", palette),
 
   "accent0-light": palette => tint(color(`accent0`, palette)),
   "accent1-light": palette => tint(color(`accent1`, palette)),
@@ -136,33 +136,10 @@ export const isDark = (c: string) => {
   return Color(color(c)).isDark();
 };
 
-const LIGHT_HSL_RANGES = [
-  [
-    [42, 105],
-    [70, 100],
-    [75, 100],
-  ],
-  [
-    [140, 185],
-    [70, 100],
-    [75, 100],
-  ],
-  [
-    [40, 120],
-    [70, 100],
-    [70, 100],
-  ],
-  [
-    [40, 110],
-    [90, 100],
-    [0, 100],
-  ],
-  [
-    [150, 185],
-    [90, 100],
-    [0, 100],
-  ],
-];
+export const getFocusColor = (
+  colorName: string,
+  palette: ColorPalette = colors,
+) => lighten(color(colorName, palette), 0.465);
 
 // We intentionally want to return white text color more frequently
 // https://www.notion.so/Maz-notes-on-viz-settings-67aed0e4ddcc4d4a83028992c4301820?d=513f4f7fa9c143cb874c7e4525dfb1e9#277d6b3eeb464eac86088abd144fde9e
