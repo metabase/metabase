@@ -289,6 +289,11 @@
                                     str/lower-case
                                     #{"time"}))
                           [x y])
+        _ (when (seq disallowed-types)
+            (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                                 (pr-str disallowed-types))
+                            {:found disallowed-types
+                             :type  qp.error-type/invalid-query})))
         x (if (hx/is-of-type? x "datetimeoffset")
             (hx/->AtTimeZone x (zone-id->windows-zone (qp.timezone/results-timezone-id)))
             x)
@@ -297,11 +302,6 @@
             (hx/->AtTimeZone y (zone-id->windows-zone (qp.timezone/results-timezone-id)))
             y)
         y (hx/cast "datetime2" y)]
-    (when (seq disallowed-types)
-      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
-                           (pr-str disallowed-types))
-                      {:found disallowed-types
-                       :type  qp.error-type/invalid-query})))
     (case unit
       :year
       (let [positive-diff (fn [a b] ; precondition: a <= b
