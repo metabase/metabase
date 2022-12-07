@@ -24,6 +24,10 @@
    :output-dir "frontend/src/cljs/"
    :entries    [metabase.mbql.js
                 metabase.types
+                metabase.shared.formatting.internal.numbers-core
+                metabase.shared.formatting.internal.numbers
+                metabase.shared.formatting.numbers
+                metabase.shared.util
                 metabase.shared.util.currency
                 metabase.shared.parameters.parameters]}
 

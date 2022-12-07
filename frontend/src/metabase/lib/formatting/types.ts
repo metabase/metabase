@@ -15,7 +15,8 @@ export interface OptionsType {
   local?: boolean;
   majorWidth?: number;
   markdown_template?: any;
-  maximumFractionDigits?: number;
+  maximum_fraction_digits?: number;
+  minimum_fraction_digits?: number;
   noRange?: boolean;
   number_separators?: string;
   number_style?: string;

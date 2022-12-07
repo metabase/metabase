@@ -20,7 +20,7 @@ function renderValue(fields, formatOptions, value, options) {
     <ValueComponent
       value={value}
       column={fields[0]}
-      maximumFractionDigits={20}
+      maximum_fraction_digits={20}
       remap={showRemapping(fields)}
       {...formatOptions}
       {...options}

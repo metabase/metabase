@@ -1,4 +1,5 @@
-import { isElementOfType } from "react-dom/test-utils";
+import { render, unmountComponentAtNode } from "react-dom";
+import { act, isElementOfType } from "react-dom/test-utils";
 import moment from "moment-timezone";
 
 import {
@@ -69,15 +70,50 @@ describe("formatting", () => {
     });
     describe("in enclosing negative mode", () => {
       it("should format -4 as (4)", () => {
-        expect(formatNumber(-4, { negativeInParentheses: true })).toEqual(
+        expect(formatNumber(-4, { negative_in_parentheses: true })).toEqual(
           "(4)",
         );
       });
       it("should format 7 as 7", () => {
-        expect(formatNumber(7, { negativeInParentheses: true })).toEqual("7");
+        expect(formatNumber(7, { negative_in_parentheses: true })).toEqual("7");
       });
       it("should format 0 as 0", () => {
-        expect(formatNumber(0, { negativeInParentheses: true })).toEqual("0");
+        expect(formatNumber(0, { negative_in_parentheses: true })).toEqual("0");
+      });
+    });
+    describe("with currency_in_header drops the currency symbol", () => {
+      const options = {
+        number_style: "currency",
+        currency: "USD",
+        currency_in_header: true,
+        type: "cell",
+      };
+
+      it("from positive USD", () => {
+        expect(formatNumber(1234.56, options)).toBe("1,234.56");
+      });
+      it("from negative USD", () => {
+        expect(formatNumber(-1234.56, options)).toBe("-1,234.56");
+      });
+      it("from negative USD represented with parentheses", () => {
+        expect(
+          formatNumber(-1234.56, { ...options, negative_in_parentheses: true }),
+        ).toBe("(1,234.56)");
+      });
+      it("from positive JPY", () => {
+        expect(formatNumber(1234.56, { ...options, currency: "JPY" })).toBe(
+          "1,234.56",
+        );
+      });
+      it("from negative EUR", () => {
+        expect(formatNumber(-1234.56, { ...options, currency: "EUR" })).toBe(
+          "-1,234.56",
+        );
+      });
+      it("only with type: cell", () => {
+        expect(formatNumber(-1234.56, { ...options, type: undefined })).toBe(
+          "-$1,234.56",
+        );
       });
     });
     describe("in compact mode", () => {
@@ -189,28 +225,63 @@ describe("formatting", () => {
           formatNumber(-1.23, { number_style: "currency", currency: "USD" }),
         ).toBe("-$1.23");
       });
+    });
 
-      describe("with currency_in_header = true and type = cell", () => {
-        it("should handle positive currency", () => {
-          expect(
-            formatNumber(1.23, {
-              number_style: "currency",
-              currency: "USD",
-              currency_in_header: true,
-              type: "cell",
-            }),
-          ).toBe("1.23");
+    describe("scientific notation", () => {
+      it("should format as strings normally", () => {
+        expect(formatNumber(0, { number_style: "scientific" })).toBe("0e+0");
+        expect(formatNumber(0.5, { number_style: "scientific" })).toBe("5e-1");
+        expect(formatNumber(0.54, { number_style: "scientific" })).toBe(
+          "5.4e-1",
+        );
+        expect(formatNumber(123456.78, { number_style: "scientific" })).toBe(
+          "1.23e+5",
+        );
+        expect(formatNumber(-123456.78, { number_style: "scientific" })).toBe(
+          "-1.23e+5",
+        );
+      });
+
+      describe("with jsx: true", () => {
+        let container = null;
+        beforeEach(() => {
+          container = document.createElement("div");
+          document.body.appendChild(container);
         });
 
-        it("should handle negative currency", () => {
-          expect(
-            formatNumber(-1.23, {
-              number_style: "currency",
-              currency: "USD",
-              currency_in_header: true,
-              type: "cell",
-            }),
-          ).toBe("-1.23");
+        afterEach(() => {
+          unmountComponentAtNode(container);
+          container.remove();
+          container = null;
+        });
+
+        it("should render using HTML <sup>", () => {
+          act(() => {
+            render(
+              formatNumber(123456.78, {
+                number_style: "scientific",
+                jsx: true,
+              }),
+              container,
+            );
+          });
+          expect(container.innerHTML).toEqual(
+            "<span>1.23x10<sup>5</sup></span>",
+          );
+        });
+        it("should render using HTML <sup> for small values", () => {
+          act(() => {
+            render(
+              formatNumber(0.000123456, {
+                number_style: "scientific",
+                jsx: true,
+              }),
+              container,
+            );
+          });
+          expect(container.innerHTML).toEqual(
+            "<span>1.23x10<sup>-4</sup></span>",
+          );
         });
       });
     });

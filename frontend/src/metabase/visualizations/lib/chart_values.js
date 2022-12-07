@@ -183,9 +183,6 @@ export function onRenderValueLabels(
         // non-compact formatting. This prevents auto's logic from depending on
         // those settings.
         ...COMPACT_CURRENCY_OPTIONS,
-        // We need this to ensure the settings are used. Otherwise, a cached
-        // _numberFormatter would take precedence.
-        _numberFormatter: undefined,
       };
       const lengths = data.map(d => formatYValue(d.y, options).length);
       return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
@@ -306,7 +303,7 @@ export function onRenderValueLabels(
         .text(({ y, seriesIndex }) => {
           const options = {
             extent: [],
-            negativeInParentheses: displays[seriesIndex] === "waterfall",
+            negative_in_parentheses: displays[seriesIndex] === "waterfall",
             compact: compact === null ? compactForSeries[seriesIndex] : compact,
           };
 
