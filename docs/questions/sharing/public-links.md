@@ -20,9 +20,11 @@ Once toggled on, the **Public sharing** section will display Metabase questions 
 
 ## Enable sharing on your saved question or dashboard
 
-Once [public sharing](#enable-sharing-on-your-saved-question-or-dashboard) is enabled for your Metabase, you'll find the **Sharing icon** on saved questions and dashboards (it looks like an arrow pointing up and to the right). The sharing icon is located on the bottom right corner of a question, or the top right corner of a dashboard.
+Once [public sharing](#enable-sharing-on-your-saved-question-or-dashboard) is enabled for your Metabase, you'll find the **Sharing and embedding icon** on saved questions and dashboards (it looks like a box with an arrow pointing to the upper right). 
 
-To generate the sharing link for a question or dashboard, click on the sharing icon to bring up the sharing settings modal, then click on the toggle.
+You can find the **Sharing and embedding icon** icon at the bottom right corner of a question, or the top right corner of a dashboard.
+
+To enable public sharing on a question or dashboard, click on the **Sharing and embedding icon** icon to bring up the sharing settings modal, then click on the toggle.
 
 ![Enable sharing](../images/enable-links.png)
 
@@ -30,7 +32,7 @@ For more information about the option to **Embed this item in an application**, 
 
 ## Public links
 
-If you've [enabled sharing on your question or dashboard](#enable-sharing-on-your-saved-question-or-dashboard), you can copy and share the public link URL with whomever you please. The public link URL will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
+Once you've [enabled sharing on your question or dashboard](#enable-sharing-on-your-saved-question-or-dashboard), you can copy and share the public link URL with whomever you please. The public link URL will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
 
 If you want to create a drill-down pathway on your question or dashboard, you can set up a [custom destination](../../dashboards/interactive.md) that goes to the public link of another question or dashboard.
 
