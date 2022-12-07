@@ -55,19 +55,20 @@ To customize the appearance of your question or dashboard, you can update the li
 
 ## Public embed parameters
 
-To toggle appearance settings or set filter values, you can add hash parameters at the end of the public link in your iframe's `src` attribute.
+To toggle appearance settings or set filter values, you can add parameters to the end of the public link in your iframe's `src` attribute.
 
 Note that it's possible to find the a public link URL behind a public embed. If someone gets access to the public link URL, they can remove the hash parameters from the URL to view the original question or dashboard (without any appearance or filter settings).
 
 If you'd like to create a secure embed that prevents people from changing filter names or values, check out [signed embedding](../../embedding/signed-embedding.md).
 
-### Appearance
+### Appearance parameters
 
 | Parameter name          | Possible values                                  |
 | ----------------------- | ------------------------------------------------ |
 | bordered                | true, false                                      |
 | titled                  | true, false                                      |
 | theme                   | null, transparent, night                         |
+| hide_parameters         | true, false                                      |
 | font¹                   | [font name](../../configuring-metabase/fonts.md) |
 | hide_download_button²   | true, false                                      |
 
@@ -75,44 +76,52 @@ If you'd like to create a secure embed that prevents people from changing filter
 
 ² Available on [paid plans](https://www.metabase.com/pricing) and hides the download button on questions only (not dashboards).
 
-### Filters
+To toggle appearance settings, add _hash_ parameters to the end of the public link in your iframe's `src` attribute. For example, to embed a dashboard with a border, title, and night (dark) theme:
+
+```
+https://yourcompany.metabaseapp.com/dashboard/42#bordered=true&titled=true&theme=night
+```
+
+For info about `hide_parameters`, see the next section on [Filter parameters](#filter-parameters)
+
+### Filter parameters
 
 You can display a filtered view of your question or dashboard in a public embed. Make sure you've set up a [question filter](../query-builder/introduction.md#filtering) or [dashboard filter](../../dashboards/filters.md) first.
 
-To display the filtered results in a public embed, add a query parameter at the end of the public link in your `src` attribute:
+To apply filter settings, add _query_ parameters to the end of the public link in your iframe's `src` attribute:
 
 ```
 ?filter_name=value
 ```
 
-For example, say that we have a dashboard with an "ID" filter. We can give this filter a value of 7 and simultaneously prevent the filter widget from showing up on the embedded dashboard:
+For example, say that we have a dashboard with an "ID" filter. We can give this filter a value of 7:
 
 ```
-/dashboard/42?id=7#hide_parameters=id
+/dashboard/42?id=7
 ```
 
-You don't _have_ to assign a filter a value, though — if you only want to hide the filter, you can do this:
+To specify multiple values for filters, separate the values with ampersands (&), like this:
 
 ```
-/dashboard/42#hide_parameters=id
+/dashboard/42?id=7&customer_name=janet
 ```
 
-Note that the name of the filter in the URL should be specified in lower case, and with underscores instead of spaces. So if your filter was called "Filter for User ZIP Code," you'd write:
+Note that the name of the filter in the URL should be specified in lower case, and with underscores instead of spaces. If your filter is called "Filter for User ZIP Code", you'd write:
 
 ```
 /dashboard/42#hide_parameters=filter_for_user_zip_code
 ```
 
-You can specify multiple filters to hide by separating them with commas, like this:
+To set the ID filter to a value of 7 _and_ hide the ID filter from the public embed:
+
+```
+/dashboard/42?id=7#hide_parameters=id
+```
+
+You can hide multiple filters by separating them with commas, like this:
 
 ```
 /dashboard/42#hide_parameters=id,customer_name
-```
-
-To specify multiple values for filters, though, you'll need to separate them with ampersands (&), like this:
-
-```
-/dashboard/42?id=7&customer_name=janet
 ```
 
 ## Further reading
