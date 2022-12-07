@@ -82,9 +82,12 @@
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
+(def ^:private formats-list
+  (conj (map u/qualified-name (qp.streaming/export-formats)) "png"))
+
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (apply s/enum (conj (map u/qualified-name (qp.streaming/export-formats)) "png")))
+  (apply s/enum formats-list))
 
 (s/defn export-format->context :- mbql.s/Context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
@@ -111,6 +114,31 @@
      json-key
      (keyword json-key)))
 
+(defn image-response
+  "Returns a Ring response to serve a static-viz image download."
+  [byte-array]
+  (-> (response/response byte-array)
+      (#'response/content-length (count byte-array))))
+
+(defn- render-query
+  "Render the query to png as if it were an existing card."
+  [dataset-query]
+  (let [query-results (qp/process-query-and-save-execution!
+                       (-> dataset-query
+                           (assoc :async? false)
+                           (assoc-in [:middleware :process-viz-settings?] true)
+                           (assoc-in [:middleware :format-rows?] true))
+                       {:executed-by api/*current-user-id*
+                        :context     (export-format->context "png")})
+        card          {}
+        png-bytes     (render/render-pulse-card-to-png "UTC" #_(pulse-impl/defaulted-timezone card)
+                                                       card
+                                                       query-results
+                                                       1000)]
+    (-> png-bytes
+        image-response
+        (response/header "Content-Disposition" (format "attachment; filename=\"card-%d.png\"" -1)))))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
@@ -131,11 +159,13 @@
                                                   (assoc :process-viz-settings? true
                                                          :skip-results-metadata? true
                                                          :format-rows? false))))]
-    (run-query-async
-     query
-     :export-format export-format
-     :context       (export-format->context export-format)
-     :qp-runner     qp/process-query-and-save-execution!)))
+    (case export-format
+      "png" (render-query query)
+      (run-query-async
+       query
+       :export-format export-format
+       :context       (export-format->context export-format)
+       :qp-runner     qp/process-query-and-save-execution!))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
