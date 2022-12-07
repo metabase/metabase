@@ -9,7 +9,7 @@
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.schema :as mbql.s]
@@ -72,7 +72,7 @@
   (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver table-schema table-name)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
-        (with-open [stmt (sql-jdbc.common/prepare-statement driver conn sql params)
+        (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)
                     rs   (.executeQuery stmt)]
           (let [metadata (.getMetaData rs)]
             (reduce
@@ -85,7 +85,7 @@
 (defn- jdbc-fields-metadata
   "Reducible metadata about the Fields belonging to a Table, fetching using JDBC DatabaseMetaData methods."
   [driver ^Connection conn db-name-or-nil schema table-name]
-  (sql-jdbc.common/reducible-results
+  (sql-jdbc.sync.common/reducible-results
     #(.getColumns (.getMetaData conn)
                   db-name-or-nil
                   (some->> schema (driver/escape-entity-name-for-metadata driver))
@@ -186,7 +186,7 @@
 (defmethod get-table-pks :default
   [_driver conn db-name-or-nil table]
   (let [metadata (.getMetaData conn)]
-    (into #{} (sql-jdbc.common/reducible-results
+    (into #{} (sql-jdbc.sync.common/reducible-results
                #(.getPrimaryKeys metadata db-name-or-nil (:schema table) (:name table))
                (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
@@ -223,7 +223,7 @@
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
   (into
    #{}
-   (sql-jdbc.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
+   (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
                                       (fn [^ResultSet rs]
                                         (fn []
                                           {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
