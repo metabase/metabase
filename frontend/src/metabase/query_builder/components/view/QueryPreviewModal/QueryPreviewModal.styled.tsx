@@ -8,6 +8,8 @@ export const ModalRoot = styled.div`
   display: flex;
   flex-direction: column;
   padding: 2rem;
+  min-width: 65vw;
+  max-width: 85vw;
   min-height: 20rem;
   max-height: 90vh;
 `;
@@ -49,6 +51,7 @@ export const ModalWarningIcon = styled(Icon)`
 
 export const ModalCloseButton = styled(IconButtonWrapper)`
   flex: 0 0 auto;
+  margin-left: 1rem;
 `;
 
 export const ModalCloseIcon = styled(Icon)`
