@@ -890,7 +890,9 @@
                                      remap)
                              remap)]
             (fn []
-              (let [preexisting-id (db/select-one-id FieldValues :field_id (:id original))
+              (let [preexisting-id (db/select-one-id FieldValues
+                                                     :field_id (:id original)
+                                                     :type :full)
                     testing-thunk (fn []
                                     (testing (format "With human readable values remapping %s -> %s\n"
                                                      (describe-field original) (pr-str values-map))
