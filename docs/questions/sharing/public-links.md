@@ -8,21 +8,21 @@ redirect_from:
 
 # Public sharing
 
-Sometimes you'll want to share a dashboard or question you've saved with someone that isn't a part of your organization or company, or someone who doesn't need access to your full Metabase instance. Metabase lets administrators create public links and [public embeds](#public-embed) to let you do just that.
+Sometimes you'll want to share a dashboard or question with someone who isn't a part of your organization or company. To share your work with people who don't need access to your full Metabase instance, you can create public links and [public embeds](#public-embed).
 
-## Enable public sharing on Metabase
+## Enable public sharing in Metabase
 
 ![Enable public sharing](../images/enable-public-sharing.png)
 
 In order to share Metabase items like questions and dashboards via a public link or an embedded iframe, an admin needs to enable public sharing for that Metabase instance by going to **Settings gear icon** > **Admin settings** > **Public sharing**.
 
-Once toggled on, the **Public sharing** section will display Metabase dashboards and questions with active public links. To make a public link inactive, click **Revoke link**.
+Once toggled on, the **Public sharing** section will display Metabase questions and dashboards with active public links. To deactivate a public link, click **Revoke link**.
 
 ## Enable sharing on your saved question or dashboard
 
-If [public sharing](#enable-sharing-on-your-saved-question-or-dashboard) is enabled for your Metabase, you'll find the **Sharing and Embedding** icon on saved questions and dashboards (it looks like an arrow pointing up and to the right). The sharing button is located on the bottom right corner of a question, or the top right corner of a dashboard.
+Once [public sharing](#enable-sharing-on-your-saved-question-or-dashboard) is enabled for your Metabase, you'll find the **Sharing icon** on saved questions and dashboards (it looks like an arrow pointing up and to the right). The sharing icon is located on the bottom right corner of a question, or the top right corner of a dashboard.
 
-To generate the sharing link for that question or dashboard, click on the sharing icon to bring up the sharing settings modal, then click the toggle.
+To generate the sharing link for a question or dashboard, click on the sharing icon to bring up the sharing settings modal, then click on the toggle.
 
 ![Enable sharing](../images/enable-links.png)
 
@@ -30,38 +30,53 @@ For more information about the option to **Embed this item in an application**, 
 
 ## Public links
 
-Once you've [enabled sharing on your question or dashboard](#enable-sharing-on-your-saved-question-or-dashboard), you can copy and share the public link URL with whomever you please. The public link URL will display static results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
+If you've [enabled sharing on your question or dashboard](#enable-sharing-on-your-saved-question-or-dashboard), you can copy and share the public link URL with whomever you please. The public link URL will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
 
-However, public URLs preserve [custom click behavior](../../dashboards/interactive.md) to external URLs. If you want to create a custom drill-down pathway, you can link to the public links of other questions or dashboards.
+If you want to create a drill-down pathway on your question or dashboard, you can set up a [custom destination](../../dashboards/interactive.md) that goes to the public link of another question or dashboard.
 
 ### Public link to export question results in CSV, XLSX, JSON
 
+The export option is only available for questions, not dashboards.
+
 To create a public link that people can use to download the results of a question:
 
-1. Click on the **Sharing and embedding** icon for the question,
-2. [Enable sharing](#enable-sharing-on-your-saved-question-or-dashboard).
-3. Click on the format you want (CSV, XLSX, or JSON) below the **Public link** option (the link gets updated based on your selection).
-4. Copy the public link and test it out to confirm that the link downloads the expected format.
+1. Click on the **Sharing and embedding** icon for the question.
+2. Click the toggle to [enable sharing](#enable-sharing-on-your-saved-question-or-dashboard).
+3. Click on the file format you want (below the **Public link** URL).
+4. Open the public link in a new tab to test the download.
 
 ![Public export](../images/public-export.png)
 
-This public link export option is only available for questions, not dashboards.
+## Public embeds
 
-## Public embed
+If you want to embed your question or dashboard in a simple web page or blog post:
 
-If you want to embed the link to your dashboard or question in a simple web page or blog post, copy and paste the iframe snippet to your destination of choice.
+1. Click on the **Sharing and embedding** icon for your question or dashboard.
+2. Click the toggle to [enable sharing](#enable-sharing-on-your-saved-question-or-dashboard).
+3. Copy the **Public embed** iframe snippet.
+4. Paste the iframe snippet in your destination of choice.
 
 To customize the appearance of your question or dashboard, you can update the link in the `src` attribute with [public embed parameters](#public-embed-parameters).
 
 ## Public embed parameters
 
-To toggle appearance settings or set filter values, you can add parameters to the end of the public link in your iframe's `src` attribute.
+To apply appearance or filter settings to your public embed, you can add parameters to the end of the link in your iframe's `src` attribute.
 
-Note that it's possible to find the a public link URL behind a public embed. If someone gets access to the public link URL, they can remove the hash parameters from the URL to view the original question or dashboard (without any appearance or filter settings).
+Note that it's possible to find the public link URL behind a public embed. If someone gets access to the public link URL, they can remove the parameters from the URL to view the original question or dashboard (that is, without any appearance or filter settings).
 
 If you'd like to create a secure embed that prevents people from changing filter names or values, check out [signed embedding](../../embedding/signed-embedding.md).
 
 ### Appearance parameters
+
+To toggle appearance settings, add _hash_ parameters to the end of the public link in your iframe's `src` attribute.
+
+For example, to embed a dashboard with a border, title, and night (dark) theme:
+
+```
+/dashboard/42#bordered=true&titled=true&theme=night
+```
+
+For more info about `hide_parameters`, see the next section on [Filter parameters](#filter-parameters).
 
 | Parameter name          | Possible values                                  |
 | ----------------------- | ------------------------------------------------ |
@@ -76,22 +91,14 @@ If you'd like to create a secure embed that prevents people from changing filter
 
 ² Available on [paid plans](https://www.metabase.com/pricing) and hides the download button on questions only (not dashboards).
 
-To toggle appearance settings, add _hash_ parameters to the end of the public link in your iframe's `src` attribute. For example, to embed a dashboard with a border, title, and night (dark) theme:
-
-```
-https://yourcompany.metabaseapp.com/dashboard/42#bordered=true&titled=true&theme=night
-```
-
-For info about `hide_parameters`, see the next section on [Filter parameters](#filter-parameters)
-
 ### Filter parameters
 
 You can display a filtered view of your question or dashboard in a public embed. Make sure you've set up a [question filter](../query-builder/introduction.md#filtering) or [dashboard filter](../../dashboards/filters.md) first.
 
-To apply filter settings, add _query_ parameters to the end of the public link in your iframe's `src` attribute:
+To apply a filter to your embedded question or dashboard, add a _query_ parameter to the end of the link in your iframe's `src` attribute, like this:
 
 ```
-?filter_name=value
+/dashboard/42?filter_name=value
 ```
 
 For example, say that we have a dashboard with an "ID" filter. We can give this filter a value of 7:
@@ -100,28 +107,28 @@ For example, say that we have a dashboard with an "ID" filter. We can give this 
 /dashboard/42?id=7
 ```
 
-To specify multiple values for filters, separate the values with ampersands (&), like this:
-
-```
-/dashboard/42?id=7&customer_name=janet
-```
-
-Note that the name of the filter in the URL should be specified in lower case, and with underscores instead of spaces. If your filter is called "Filter for User ZIP Code", you'd write:
-
-```
-/dashboard/42#hide_parameters=filter_for_user_zip_code
-```
-
 To set the ID filter to a value of 7 _and_ hide the ID filter from the public embed:
 
 ```
 /dashboard/42?id=7#hide_parameters=id
 ```
 
+To specify multiple values for filters, separate the values with ampersands (&), like this:
+
+```
+/dashboard/42?id=7&name=janet
+```
+
 You can hide multiple filters by separating them with commas, like this:
 
 ```
 /dashboard/42#hide_parameters=id,customer_name
+```
+
+Note that the name of the filter in the URL should be specified in lower case, and with underscores instead of spaces. If your filter is called "Filter for User ZIP Code", you'd write:
+
+```
+/dashboard/42?filter_for_user_zip_code=02116
 ```
 
 ## Further reading
