@@ -2,7 +2,7 @@
 info:
   name: Metabase Athena Driver
   version: 1.0.0-athena-jdbc-2.0.13
-  description: Allows Metabase to connect to AWS Athena databases. Community Supported driver.
+  description: Allows Metabase to connect to AWS Athena databases.
 driver:
   name: athena
   display-name: Amazon Athena
@@ -16,7 +16,8 @@ driver:
       display-name: Workgroup
       default: "primary"
     - name: s3_staging_dir
-      display-name: S3 Staging dir
+      display-name: S3 staging directory
+      helper-text: This S3 staging directory must be in the same region you specify above.
       default: s3://your_bucket
     - merge:
       - dbname
@@ -25,20 +26,14 @@ driver:
         display-name: Catalog
         helper-text: Use a different data catalog (if you have federated queries, for example)
         required: false
-    - name: iam_keys
-      type: boolean
-      display-name: "Use hard-coded IAM credentials (not recommended)"
-      default: false
     - name: access_key
-      display-name: Access Key
-      visible-if:
-        iam_keys: true
+      display-name: Access key
+      helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
     - merge:
         - password
-        - display-name: Secret Key
-          name: secret_key
-          visible-if:
-            iam_keys: true
+        - name: secret_key
+          display-name: Secret key
+          helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
     - advanced-options-start
     - merge:
         - additional-options

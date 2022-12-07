@@ -1,5 +1,4 @@
 import {
-  DatabaseInfo,
   InviteInfo,
   Locale,
   SetupState,
@@ -29,21 +28,6 @@ export const createMockInviteInfo = (
   first_name: "Test",
   last_name: "Testy",
   email: "testy@metabase.test",
-  ...opts,
-});
-
-export const createMockDatabaseInfo = (
-  opts?: Partial<DatabaseInfo>,
-): DatabaseInfo => ({
-  name: "Database",
-  engine: "H2",
-  details: {},
-  schedules: {},
-  auto_run_queries: false,
-  refingerprint: false,
-  is_sample: false,
-  is_full_sync: false,
-  is_on_demand: false,
   ...opts,
 });
 

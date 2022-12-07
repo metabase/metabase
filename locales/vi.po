@@ -159,7 +159,7 @@ msgstr "trong hộp thoại này:"
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:101
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:121
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:161
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:167
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:165
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:403
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:174
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:230
@@ -191,7 +191,7 @@ msgstr "trong hộp thoại này:"
 #: frontend/src/metabase/timelines/common/components/MoveEventModal/MoveEventModal.tsx:58
 #: frontend/src/metabase/timelines/common/components/MoveTimelineModal/MoveTimelineModal.tsx:48
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:64
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:428
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:433
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:481
 #: frontend/src/metabase/writeback/containers/CreateDataAppModal/CreateDataAppModal.tsx:71
 #: frontend/src/metabase/writeback/containers/ScaffoldDataAppPagesModal/ScaffoldDataAppPagesModal.tsx:71
@@ -243,8 +243,8 @@ msgstr "Lên lịch"
 #: frontend/src/metabase/admin/datamodel/components/MetricForm/MetricForm.tsx:131
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:130
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.jsx:35
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:97
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:32
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:84
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:38
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:212
 #: frontend/src/metabase/admin/settings/slack/components/SlackForm/SlackForm.tsx:64
@@ -335,7 +335,7 @@ msgstr "Thêm cơ sở dữ liệu"
 #: frontend/src/metabase/entities/dashboards/forms.jsx:11
 #: frontend/src/metabase/entities/questions/forms.js:9
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx:50
-#: frontend/src/metabase/visualizations/lib/settings/column.js:341
+#: frontend/src/metabase/visualizations/lib/settings/column.js:334
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:80
 msgid "Name"
 msgstr "Tên"
@@ -369,8 +369,8 @@ msgid "Successfully saved!"
 msgstr "Lưu thành công!"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectActionSelect.jsx:47
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:114
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:102
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:113
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:495
 #: frontend/src/metabase/query_builder/components/AlertListPopoverContent.jsx:182
 #: frontend/src/metabase/query_builder/components/template_tags/snippet-sidebar/SnippetRow.jsx:83
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:87
@@ -428,7 +428,7 @@ msgid "Success"
 msgstr "Thành công"
 
 #: frontend/src/metabase/admin/datamodel/components/PartialQueryBuilder.jsx:103
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:102
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:495
 #: frontend/src/metabase/public/components/widgets/AdvancedEmbedPane.jsx:72
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:192
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStepPreview.jsx:66
@@ -453,8 +453,8 @@ msgstr "Không có kiểu đặc biệt"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:66
 #: frontend/src/metabase/reference/components/Field.jsx:54
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:35
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:342
-#: metabase/pulse/render/body.clj:414
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:344
+#: metabase/pulse/render/body.clj:415
 msgid "Other"
 msgstr "Khác"
 
@@ -1077,7 +1077,7 @@ msgstr "Xoá nhóm"
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:87
 #: frontend/src/metabase/query_builder/components/SidebarContent/SidebarContent.tsx:31
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:126
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:434
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:439
 msgid "Done"
 msgstr "Xong"
 
@@ -1120,7 +1120,7 @@ msgid "Reset Password"
 msgstr "Đặt lại mật khẩu"
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:34
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:169
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:167
 msgid "Deactivate"
 msgstr "Huỷ kích hoạt"
 
@@ -1176,7 +1176,7 @@ msgid "Any previous email invites they have will no longer work."
 msgstr "Các email mời trước đó sẽ không còn hiệu lực"
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:25
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:165
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:163
 msgid "Deactivate {0}?"
 msgstr "Huỷ kích hoạt {0} ?"
 
@@ -1223,7 +1223,7 @@ msgid "We've sent them an email with instructions for creating a new password."
 msgstr "Chúng tôi đã gửi cho họ một email hướng dẫn tạo mật khẩu mới."
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:45
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:107
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:106
 msgid "Active"
 msgstr "Kích hoạt"
 
@@ -1462,14 +1462,14 @@ msgstr "Xem schema"
 msgid "Data Model"
 msgstr "Dữ liệu mẫu"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:63
 #: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:15
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:58
 #: frontend/src/metabase/auth/components/GoogleButton/GoogleButton.tsx:61
 msgid "Sign in with Google"
 msgstr "Đăng nhập với Google"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:65
 #: frontend/src/metabase/admin/settings/auth/containers/GoogleAuthCard/GoogleAuthCard.tsx:16
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:60
 msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
 msgstr "Cho phép người dùng có tài khoản Metabase hiện tại đăng nhập bằng tài khoản Google khớp với địa chỉ email của họ bên cạnh tên người dùng và mật khẩu Metabase của họ."
 
@@ -1527,7 +1527,7 @@ msgstr "Xoá"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.jsx:67
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:67
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:24
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:54
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:90
 #: frontend/src/metabase/admin/settings/selectors.js:228
 msgid "Authentication"
@@ -1567,7 +1567,7 @@ msgstr "Một vài điều bạn có thể làm để tận dụng tối đa Met
 msgid "Recommended next step"
 msgstr "Đề xuất bước tiếp theo"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:25
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:55
 msgid "Google Sign-In"
 msgstr "Đăng nhập Google"
 
@@ -1639,7 +1639,7 @@ msgstr "Xoá bản đồ tuỳ chỉnh"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:238
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:278
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:195
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:415
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:118
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:137
@@ -1648,7 +1648,7 @@ msgid "Remove"
 msgstr "Xoá"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:270
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:157
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:153
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:144
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:165
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:223
@@ -1995,32 +1995,32 @@ msgstr "Cơ sở tìm kiếm người dùng"
 msgid "User filter"
 msgstr "Lọc người dùng"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:254
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:255
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:83
 msgid "Check your parentheses"
 msgstr "Kiểm tra dấu ngoặc đơn"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:125
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:187
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:126
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:188
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:89
 msgid "Email attribute"
 msgstr "Thuộc tính email"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:130
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:192
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:131
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:193
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:94
 msgid "First name attribute"
 msgstr "Thuộc tính tên"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:135
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:197
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:136
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:198
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:99
 msgid "Last name attribute"
 msgstr "Thuộc tính họ"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:163
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:140
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:202
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:141
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:203
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:104
 msgid "Synchronize group memberships"
 msgstr "Đồng bộ thành viên nhóm"
@@ -2086,7 +2086,7 @@ msgid "Embedded Questions"
 msgstr "Các câu hỏi được nhúng"
 
 #: frontend/src/metabase/admin/settings/selectors.js:488
-#: frontend/src/metabase/entities/questions/forms.js:44
+#: frontend/src/metabase/entities/questions/forms.js:38
 msgid "Caching"
 msgstr "Bộ nhớ đệm"
 
@@ -2272,9 +2272,9 @@ msgstr "Bảng điều khiển, bộ sưu tập và xung trong bộ sưu tập n
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:228
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:233
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:234
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:209
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:197
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:58
-#: frontend/src/metabase/routes.jsx:210
+#: frontend/src/metabase/routes.jsx:211
 msgid "Archive"
 msgstr "Lưu trữ"
 
@@ -2400,7 +2400,7 @@ msgstr "Kéo thứ gì đó vào đây để ghim nó lên đầu"
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.jsx:20
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.js:78
-#: frontend/src/metabase/entities/collections/getExpandedCollectionsById.js:35
+#: frontend/src/metabase/entities/collections/collections.js:162
 #: frontend/src/metabase/home/containers/SearchApp.jsx:42
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx:212
 msgid "Collections"
@@ -2430,7 +2430,7 @@ msgstr "Di chuyển \"{0}\"?"
 #: frontend/src/metabase/components/EntityMenu.info.js:87
 #: frontend/src/metabase/containers/CollectionMoveModal.jsx:69
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:323
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:167
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:164
 #: frontend/src/metabase/timelines/common/components/MoveEventModal/MoveEventModal.tsx:60
 #: frontend/src/metabase/timelines/common/components/MoveTimelineModal/MoveTimelineModal.tsx:50
 msgid "Move"
@@ -2560,7 +2560,7 @@ msgstr "Hành động lưu trữ"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:47
 #: frontend/src/metabase/components/EntityMenu.info.js:99
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:158
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:155
 msgid "Add to dashboard"
 msgstr "Thêm vào bảng tổng quan"
 
@@ -2748,7 +2748,7 @@ msgid "Questions"
 msgstr "Các câu hỏi"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:72
-#: frontend/src/metabase/routes.jsx:338
+#: frontend/src/metabase/routes.jsx:349
 msgid "Pulses"
 msgstr "Xung"
 
@@ -2796,16 +2796,16 @@ msgstr "Mật khẩu tạm thời"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:223
 #: frontend/src/metabase/components/PasswordReveal.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:556
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:573
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:559
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:576
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:55
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:69
 msgid "Hide"
 msgstr "Ẩn"
 
 #: frontend/src/metabase/components/PasswordReveal.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:557
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:574
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:560
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:577
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:56
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:70
 msgid "Show"
@@ -3091,7 +3091,7 @@ msgstr "Chúng tôi không chắc câu hỏi này là phù hợp"
 msgid "Archive Dashboard"
 msgstr "Lưu trữ bảng điều khiển"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper.jsx:20
+#: frontend/src/metabase/dashboard/components/DashCardParameterMapper.jsx:19
 msgid "Make sure to make a selection for each series, or the filter won't work on this card."
 msgstr "Đảm bảo thực hiện lựa chọn cho từng chuỗi hoặc bộ lọc sẽ không hoạt động trên thẻ này."
 
@@ -3187,6 +3187,7 @@ msgstr "Kiểu của bộ lọc là gì?"
 #: frontend/src/metabase/dashboard/components/RefreshWidget.jsx:19
 #: frontend/src/metabase/visualizations/lib/settings/column.js:156
 #: frontend/src/metabase/visualizations/lib/settings/series.js:98
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:134
 msgid "Off"
 msgstr "Tắt"
 
@@ -3244,7 +3245,7 @@ msgstr "Lưu"
 msgid "Show more about this"
 msgstr "Hiển thị thêm về điều nàys"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:135
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:131
 msgid "This card doesn't have any fields or parameters that can be mapped to this parameter type."
 msgstr "Thẻ này không có bất kỳ trường hoặc tham số nào có thể được ánh xạ tới loại tham số này."
 
@@ -3252,7 +3253,7 @@ msgstr "Thẻ này không có bất kỳ trường hoặc tham số nào có th�
 msgid "The values in this field don't overlap with the values of any other fields you've chosen."
 msgstr "Các giá trị trong trường này không trùng với giá trị của bất kỳ trường nào khác bạn đã chọn."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:136
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:132
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx:71
 msgid "No valid fields"
 msgstr "Trường không khả dụng"
@@ -3758,7 +3759,7 @@ msgstr "Trung bình"
 #: frontend/src/metabase/query_builder/components/filters/modals/InlineValuePicker/InlineValuePicker.tsx:97
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:28
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:592
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:595
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:88
 msgid "Min"
 msgstr "Nhỏ nhất"
@@ -3768,7 +3769,7 @@ msgstr "Nhỏ nhất"
 #: frontend/src/metabase/query_builder/components/filters/modals/InlineValuePicker/InlineValuePicker.tsx:104
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:29
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:602
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:605
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:98
 msgid "Max"
 msgstr "Lớn nhất"
@@ -4409,6 +4410,7 @@ msgid "Use the simple question builder to see trends, lists of things, or to cre
 msgstr "Sử dụng trình tạo câu hỏi đơn giản để xem xu hướng, danh sách các thứ hoặc để tạo số liệu của riêng bạn."
 
 #: frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx:75
+#: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:106
 #: metabase/automagic_dashboards/core.clj:270
 #: resources/automagic_dashboards/table/example.yaml
 msgid "Native query"
@@ -4459,14 +4461,14 @@ msgstr "7 ngày vừa qua"
 msgid "Past 30 days"
 msgstr "30 ngày vừa qua"
 
-#: frontend/src/metabase-lib/Dimension.ts:1711
+#: frontend/src/metabase-lib/Dimension.ts:1715
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:35
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:40
 #: metabase/api/table.clj:140
 msgid "Week"
 msgstr "tuần"
 
-#: frontend/src/metabase-lib/Dimension.ts:1717
+#: frontend/src/metabase-lib/Dimension.ts:1721
 #: frontend/src/metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/CronExpressionInput.tsx:94
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:36
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:41
@@ -4474,7 +4476,7 @@ msgstr "tuần"
 msgid "Month"
 msgstr "tháng"
 
-#: frontend/src/metabase-lib/Dimension.ts:1729
+#: frontend/src/metabase-lib/Dimension.ts:1733
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:37
 #: frontend/src/metabase/components/DateRelativeWidget/DateRelativeWidget.tsx:42
 #: metabase/api/table.clj:143
@@ -4572,13 +4574,13 @@ msgid "Publish"
 msgstr "Xuất bản"
 
 #: frontend/src/metabase/public/components/widgets/AdvancedEmbedPane.jsx:73
-#: frontend/src/metabase/visualizations/lib/settings/column.js:337
+#: frontend/src/metabase/visualizations/lib/settings/column.js:330
 msgid "Code"
 msgstr "Mã"
 
 #: frontend/src/metabase/public/components/widgets/DisplayOptionsPane.jsx:44
-#: frontend/src/metabase/visualizations/lib/settings/column.js:283
-#: frontend/src/metabase/visualizations/lib/settings/series.js:163
+#: frontend/src/metabase/visualizations/lib/settings/column.js:279
+#: frontend/src/metabase/visualizations/lib/settings/series.js:164
 msgid "Style"
 msgstr "Phong cách"
 
@@ -5320,9 +5322,9 @@ msgstr "Thêm một nhóm"
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:76
 #: frontend/src/metabase/visualizations/components/ChartSettings.jsx:36
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:104
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:164
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:227
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:287
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:167
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:230
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:290
 #: frontend/src/metabase/visualizations/lib/settings/validation.js:21
 #: frontend/src/metabase/visualizations/lib/settings/validation.js:30
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:66
@@ -5621,7 +5623,7 @@ msgstr "Số {0} được nhóm theo {1}"
 #: frontend/src/metabase/reference/metrics/MetricSidebar.jsx:22
 #: frontend/src/metabase/reference/segments/SegmentFieldSidebar.jsx:22
 #: frontend/src/metabase/reference/segments/SegmentSidebar.jsx:22
-#: frontend/src/metabase/routes.jsx:273
+#: frontend/src/metabase/routes.jsx:284
 msgid "Data Reference"
 msgstr "Dữ liệu tham khảo"
 
@@ -5881,7 +5883,7 @@ msgstr "Loại biến"
 #: frontend/src/metabase/parameters/utils/dashboard-options.js:40
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:168
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:145
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:258
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:259
 msgid "Text"
 msgstr "Bản văn"
 
@@ -6456,22 +6458,22 @@ msgstr "Câu hỏi về phân khúc này"
 msgid "X-ray this segment"
 msgstr "X-ray phân khúc này"
 
-#: frontend/src/metabase/routes.jsx:187 frontend/src/metabase/routes.jsx:188
+#: frontend/src/metabase/routes.jsx:188 frontend/src/metabase/routes.jsx:189
 msgid "Login"
 msgstr "Đăng nhập"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableWithSearch.jsx:17
 #: frontend/src/metabase/components/FieldValuesWidget.jsx:488
-#: frontend/src/metabase/containers/ItemPicker/ItemPickerView.tsx:102
+#: frontend/src/metabase/containers/ItemPicker.jsx:145
 #: frontend/src/metabase/nav/components/SearchBar.tsx:174
-#: frontend/src/metabase/routes.jsx:209
+#: frontend/src/metabase/routes.jsx:210
 msgid "Search"
 msgstr "Tìm kiếm"
 
 #: frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx:88
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/LinkOptions.tsx:33
 #: frontend/src/metabase/nav/utils/model-names.ts:7
-#: frontend/src/metabase/routes.jsx:229
+#: frontend/src/metabase/routes.jsx:230
 msgid "Dashboard"
 msgstr "Bảng điều khiển"
 
@@ -6793,7 +6795,7 @@ msgstr "Đăng nhập bằng địa chỉ Google Email"
 msgid "User Details"
 msgstr "Thông tin người sử dụng"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:444
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:449
 msgid "Reset to defaults"
 msgstr "Đặt lại về mặc định"
 
@@ -6834,7 +6836,7 @@ msgstr "Hủy lọc"
 msgid "Pin Map"
 msgstr "Gắn bản đồ"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:423
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:424
 msgid "Unset"
 msgstr "Không đặt"
 
@@ -6880,7 +6882,7 @@ msgstr "Điều này thường khá nhanh nhưng dường như đang mất một
 msgid "Select a field"
 msgstr "Chọn một trường"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx:97
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx:103
 msgid "error"
 msgstr "lỗi"
 
@@ -6978,7 +6980,7 @@ msgid "Highlight the whole row"
 msgstr "Đánh dấu toàn bộ hàng"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:409
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:146
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:148
 msgid "Colors"
 msgstr "Màu"
 
@@ -7058,7 +7060,7 @@ msgstr "Loại biểu đồ này không hỗ trợ nhiều hơn {0} chuỗi dữ
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:19
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:45
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:64
-#: metabase/pulse/render/body.clj:338
+#: metabase/pulse/render/body.clj:339
 msgid "Goal"
 msgstr "Mục đích"
 
@@ -7135,7 +7137,7 @@ msgstr "Đừng! Dữ liệu từ truy vấn của bạn không phù hợp với
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:745
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:750
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:767
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:778
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:780
 #: frontend/src/metabase/dashboard/components/ClickMappings.jsx:90
 #: frontend/src/metabase/dashboard/components/ClickMappings.jsx:248
 #: frontend/src/metabase/visualizations/lib/errors.js:7
@@ -7168,11 +7170,11 @@ msgid "xValues missing!"
 msgstr "Giá trị thiếu"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:105
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:499
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:550
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:620
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:631
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:344
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:502
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:553
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:623
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:634
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:346
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:36
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:65
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:77
@@ -7187,16 +7189,16 @@ msgstr "Trục X"
 msgid "Add a series breakout..."
 msgstr "Thêm chuỗi"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:228
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:537
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:569
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:581
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:590
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:600
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:610
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:646
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:655
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:348
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:231
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:540
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:572
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:584
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:593
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:603
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:613
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:649
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:658
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:350
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:23
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:49
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:106
@@ -7208,7 +7210,7 @@ msgstr "trục Y"
 msgid "Add another series..."
 msgstr "Thêm chuỗi khác..."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:288
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:291
 msgid "Bubble size"
 msgstr "Kích thước bong bóng"
 
@@ -7228,22 +7230,22 @@ msgstr "Bước"
 msgid "Show point markers on lines"
 msgstr "Hiển thị điểm đánh dấu trên đường"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:330
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:333
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:8
 msgid "Stacking"
 msgstr "Đang xếp chồng"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:334
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:337
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:14
 msgid "Don't stack"
 msgstr "Không xếp chồng"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:335
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:338
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:15
 msgid "Stack"
 msgstr "Xếp chồng"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:336
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:339
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:16
 msgid "Stack - 100%"
 msgstr "Xếp chồng - 100%"
@@ -7276,33 +7278,33 @@ msgstr "Nội suy tuyến tính"
 msgid "X-axis scale"
 msgstr "Kích thước trục X"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:519
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:522
 msgid "Timeseries"
 msgstr "Dòng thời gian"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:522
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:542
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:525
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:545
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:41
 msgid "Linear"
 msgstr "Tuyến tính"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:524
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:543
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:527
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:546
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:42
 msgid "Power"
 msgstr "Nguồn"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:525
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:544
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:528
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:547
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:43
 msgid "Log"
 msgstr "Khóa"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:527
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:530
 msgid "Histogram"
 msgstr "Biểu đồ"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:529
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:532
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:29
 msgid "Ordinal"
 msgstr "Bình thường"
@@ -7315,17 +7317,17 @@ msgstr "Kích thước trục Y"
 msgid "Show x-axis line and marks"
 msgstr "Hiển thị dòng trục x và điểm"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:445
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:558
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:448
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:561
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:179
 msgid "Compact"
 msgstr "Gọn nhẹ"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:559
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:562
 msgid "Rotate 45°"
 msgstr "Xoay 45 độ"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:560
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:563
 msgid "Rotate 90°"
 msgstr "Xoay 90 độ"
 
@@ -7333,7 +7335,7 @@ msgstr "Xoay 90 độ"
 msgid "Show y-axis line and marks"
 msgstr "Hiển thị dòng trục y và điểm"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:583
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:586
 msgid "Auto y-axis range"
 msgstr "Tự động phạm vi trục y "
 
@@ -7501,7 +7503,7 @@ msgstr "đối tượng"
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:136
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:253
 #: frontend/src/metabase/visualizations/lib/apply_axis.js:325
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:460
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:462
 msgid "Total"
 msgstr "Tổng"
 
@@ -7525,21 +7527,21 @@ msgstr "Hiển thị huyền thoại"
 msgid "Show percentages in legend"
 msgstr "Hiển thị phần trăm trong huyền thoại"
 
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:140
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:142
 msgid "Minimum slice percentage"
 msgstr "Tỉ lệ phần trăm tối thiểu"
 
-#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:31
+#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:29
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:156
 msgid "Goal met"
 msgstr "Đạt được mục tiêu"
 
-#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:33
+#: frontend/src/metabase/static-viz/components/ProgressBar/utils.ts:31
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:158
 msgid "Goal exceeded"
 msgstr "Vượt quá mục tiêu"
 
-#: frontend/src/metabase/static-viz/components/ProgressBar/ProgressBar.tsx:148
+#: frontend/src/metabase/static-viz/components/ProgressBar/ProgressBar.tsx:145
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:226
 msgid "Goal {0}"
 msgstr "Mục tiêu {0}"
@@ -7565,11 +7567,11 @@ msgstr "Màu"
 msgid "Row Chart"
 msgstr "Biểu đồ hàng"
 
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:318
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:320
 msgid "row chart"
 msgstr "biểu đồ hàng"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:374
+#: frontend/src/metabase/visualizations/lib/settings/column.js:366
 msgid "Separator style"
 msgstr "Kiểu tách"
 
@@ -7577,15 +7579,15 @@ msgstr "Kiểu tách"
 msgid "Number of decimal places"
 msgstr "Số vị thập phân"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:405
+#: frontend/src/metabase/visualizations/lib/settings/column.js:394
 msgid "Add a prefix"
 msgstr "Thêm một tiền tố"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:413
+#: frontend/src/metabase/visualizations/lib/settings/column.js:401
 msgid "Add a suffix"
 msgstr "Thêm một hậu tố"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:397
+#: frontend/src/metabase/visualizations/lib/settings/column.js:387
 msgid "Multiply by a number"
 msgstr "Nhân với một số"
 
@@ -7898,7 +7900,7 @@ msgstr "Có rất nhiều câu hỏi được lưu trong {0}? Tạo các bộ s�
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:101
 #: frontend/src/metabase/public/components/LogoBadge.jsx:17
 #: frontend/src/metabase/routes-public.jsx:13
-#: frontend/src/metabase/routes.jsx:150 metabase/api/setup.clj:243
+#: frontend/src/metabase/routes.jsx:151 metabase/api/setup.clj:243
 #: metabase/email/messages.clj:47
 msgid "Metabase"
 msgstr "Cơ sở dữ liệu"
@@ -7923,7 +7925,7 @@ msgstr "Giữ tất cả mọi người trên cùng một trang bằng cách t�
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "Bảng '' {0} '' hiện có thể nhìn thấy. Tái đồng bộ"
 
-#: frontend/src/metabase-lib/Dimension.ts:1651 metabase/api/table.clj:122
+#: frontend/src/metabase-lib/Dimension.ts:1655 metabase/api/table.clj:122
 msgid "Auto bin"
 msgstr "Tự động ngăn"
 
@@ -7931,85 +7933,85 @@ msgstr "Tự động ngăn"
 msgid "Don''t bin"
 msgstr "Không ngăn"
 
-#: frontend/src/metabase-lib/Dimension.ts:1705 metabase/api/table.clj:126
+#: frontend/src/metabase-lib/Dimension.ts:1709 metabase/api/table.clj:126
 msgid "Day"
 msgstr "ngày"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/Dimension.ts:1693 metabase/api/table.clj:124
+#: frontend/src/metabase-lib/Dimension.ts:1697 metabase/api/table.clj:124
 msgid "Minute"
 msgstr "Phút"
 
-#: frontend/src/metabase-lib/Dimension.ts:1699
+#: frontend/src/metabase-lib/Dimension.ts:1703
 #: frontend/src/metabase/admin/settings/selectors.js:546
 #: metabase/api/table.clj:125
 msgid "Hour"
 msgstr "giờ"
 
 #. Quý
-#: frontend/src/metabase-lib/Dimension.ts:1723 metabase/api/table.clj:142
+#: frontend/src/metabase-lib/Dimension.ts:1727 metabase/api/table.clj:142
 #, fuzzy
 msgid "Quarter"
 msgstr "Quý"
 
-#: frontend/src/metabase-lib/Dimension.ts:1735 metabase/api/table.clj:144
+#: frontend/src/metabase-lib/Dimension.ts:1739 metabase/api/table.clj:144
 #: metabase/api/table.clj:158
 msgid "Minute of Hour"
 msgstr "Phút của giờ"
 
-#: frontend/src/metabase-lib/Dimension.ts:1741 metabase/api/table.clj:145
+#: frontend/src/metabase-lib/Dimension.ts:1745 metabase/api/table.clj:145
 msgid "Hour of Day"
 msgstr "Giờ của ngày"
 
-#: frontend/src/metabase-lib/Dimension.ts:1747 metabase/api/table.clj:146
+#: frontend/src/metabase-lib/Dimension.ts:1751 metabase/api/table.clj:146
 msgid "Day of Week"
 msgstr "Ngày của tuần"
 
-#: frontend/src/metabase-lib/Dimension.ts:1753 metabase/api/table.clj:147
+#: frontend/src/metabase-lib/Dimension.ts:1757 metabase/api/table.clj:147
 msgid "Day of Month"
 msgstr "Ngày của tháng"
 
-#: frontend/src/metabase-lib/Dimension.ts:1759 metabase/api/table.clj:148
+#: frontend/src/metabase-lib/Dimension.ts:1763 metabase/api/table.clj:148
 msgid "Day of Year"
 msgstr "Ngày của năm"
 
-#: frontend/src/metabase-lib/Dimension.ts:1765 metabase/api/table.clj:149
+#: frontend/src/metabase-lib/Dimension.ts:1769 metabase/api/table.clj:149
 msgid "Week of Year"
 msgstr "Tuần của năm"
 
-#: frontend/src/metabase-lib/Dimension.ts:1771 metabase/api/table.clj:150
+#: frontend/src/metabase-lib/Dimension.ts:1775 metabase/api/table.clj:150
 msgid "Month of Year"
 msgstr "Tháng của năm"
 
-#: frontend/src/metabase-lib/Dimension.ts:1777 metabase/api/table.clj:151
+#: frontend/src/metabase-lib/Dimension.ts:1781 metabase/api/table.clj:151
 msgid "Quarter of Year"
 msgstr "Quý của năm"
 
-#: frontend/src/metabase-lib/Dimension.ts:1659 metabase/api/table.clj:167
+#: frontend/src/metabase-lib/Dimension.ts:1663 metabase/api/table.clj:167
 msgid "10 bins"
 msgstr "10 thùng"
 
-#: frontend/src/metabase-lib/Dimension.ts:1668 metabase/api/table.clj:168
+#: frontend/src/metabase-lib/Dimension.ts:1672 metabase/api/table.clj:168
 msgid "50 bins"
 msgstr "50 thùng"
 
-#: frontend/src/metabase-lib/Dimension.ts:1677 metabase/api/table.clj:169
+#: frontend/src/metabase-lib/Dimension.ts:1681 metabase/api/table.clj:169
 msgid "100 bins"
 msgstr "100 thùng"
 
-#: frontend/src/metabase-lib/Dimension.ts:1786 metabase/api/table.clj:181
+#: frontend/src/metabase-lib/Dimension.ts:1790 metabase/api/table.clj:181
 msgid "Bin every 0.1 degrees"
 msgstr "Ngăn mỗi 0.1 độ"
 
-#: frontend/src/metabase-lib/Dimension.ts:1795 metabase/api/table.clj:182
+#: frontend/src/metabase-lib/Dimension.ts:1799 metabase/api/table.clj:182
 msgid "Bin every 1 degree"
 msgstr "Ngăn mỗi 1 độ"
 
-#: frontend/src/metabase-lib/Dimension.ts:1804 metabase/api/table.clj:183
+#: frontend/src/metabase-lib/Dimension.ts:1808 metabase/api/table.clj:183
 msgid "Bin every 10 degrees"
 msgstr "Ngăn mỗi 10 độ"
 
-#: frontend/src/metabase-lib/Dimension.ts:1813 metabase/api/table.clj:184
+#: frontend/src/metabase-lib/Dimension.ts:1817 metabase/api/table.clj:184
 msgid "Bin every 20 degrees"
 msgstr "Ngăn mỗi 20 độ"
 
@@ -8328,40 +8330,40 @@ msgstr "Khởi chạy Metabase trong STANDALON"
 msgid "Metabase Initialization FAILED"
 msgstr "Lỗi khởi tạo Metabas"
 
-#: metabase/db/liquibase.clj:126
+#: metabase/db/liquibase.clj:127
 msgid "Database has migration lock; cannot run migrations."
 msgstr "Cơ sở dữ liệu có khóa di chuyển; không thể chạy di chuyển."
 
-#: metabase/db/liquibase.clj:128
+#: metabase/db/liquibase.clj:129
 msgid "You can force-release these locks by running `java -jar metabase.jar migrate release-locks`."
 msgstr "Bạn có thể buộc giải phóng các khóa này bằng cách chạy `java -jar metabase.jar di chuyển các khóa phát hành"
 
-#: metabase/db/liquibase.clj:133
+#: metabase/db/liquibase.clj:134
 msgid "Checking if Database has unrun migrations..."
 msgstr "Kiểm tra xem Cơ sở dữ liệu có di chuyển không vượt quá ..."
 
-#: metabase/db/liquibase.clj:135
+#: metabase/db/liquibase.clj:136
 msgid "Database has unrun migrations. Waiting for migration lock to be cleared..."
 msgstr "Cơ sở dữ liệu đã di chuyển không di chuyển. Đang chờ khóa di chuyển bị xóa ..."
 
-#: metabase/db/liquibase.clj:141
+#: metabase/db/liquibase.clj:142
 msgid "Migration lock is cleared. Running migrations..."
 msgstr "Khóa di chuyển bị xóa. Chạy di chuyển ..."
 
-#: metabase/db/liquibase.clj:144
+#: metabase/db/liquibase.clj:145
 msgid "Migration lock cleared, but nothing to do here! Migrations were finished by another instance."
 msgstr "Xóa khóa di chuyển, nhưng không có gì để làm ở đây! Di chuyển đã được hoàn thành bởi một ví dụ khác."
 
 #. Set up liquibase and let it do its thing
-#: metabase/db/setup.clj:60
+#: metabase/db/setup.clj:61
 msgid "Setting up Liquibase..."
 msgstr "Thiết lập Liquibase ..."
 
-#: metabase/db/setup.clj:64
+#: metabase/db/setup.clj:65
 msgid "Liquibase is ready."
 msgstr "Liquibase đã sẵn sàng."
 
-#: metabase/db/setup.clj:94
+#: metabase/db/setup.clj:95
 msgid "Verifying {0} Database Connection ..."
 msgstr "Đang xác minh {0} Kết nối cơ sở dữ liệu ... "
 
@@ -8369,11 +8371,11 @@ msgstr "Đang xác minh {0} Kết nối cơ sở dữ liệu ... "
 msgid "Verify Database Connection ... "
 msgstr "Xác minh kết nối cơ sở dữ liệu ..."
 
-#: metabase/db/setup.clj:118
+#: metabase/db/setup.clj:119
 msgid "Running Database Migrations..."
 msgstr "Chạy di chuyển cơ sở dữ liệu ..."
 
-#: metabase/db/setup.clj:120
+#: metabase/db/setup.clj:121
 msgid "Database Migrations Current ... "
 msgstr "Di chuyển cơ sở dữ liệu hiện tại ..."
 
@@ -8635,10 +8637,6 @@ msgstr "OK, chờ một giây..."
 msgid "Not Found"
 msgstr "Không tìm thấy"
 
-#: target/classes/metabase/metabot/command.clj
-msgid "Loading Kanye quotes..."
-msgstr "Đang tải câu của Kanye..."
-
 #: target/classes/metabase/metabot/events.clj
 msgid "Evaluating Metabot command:"
 msgstr "Đánh giá lệnh Metabot"
@@ -8694,11 +8692,11 @@ msgstr "Chỉ định điều này để bật Ghim khóa công khai HTTP."
 msgid "See {0} for more information."
 msgstr "Xem {0} để biết thêm thông tin."
 
-#: metabase/models/card.clj:153
+#: metabase/models/card.clj:152
 msgid "Cannot save Question: source query has circular references."
 msgstr "Không thể lưu Câu hỏi: truy vấn nguồn có tham chiếu vòng tròn."
 
-#: metabase/models/card.clj:158 metabase/models/query/permissions.clj:107
+#: metabase/models/card.clj:157 metabase/models/query/permissions.clj:107
 #: metabase/query_processor/middleware/fetch_source_query.clj:117
 #: metabase/query_processor/middleware/permissions.clj:59
 msgid "Card {0} does not exist."
@@ -8773,7 +8771,7 @@ msgstr "Bạn không thể di chuyển Bộ sưu tập và lưu trữ nó cùng 
 msgid "You cannot delete a Personal Collection!"
 msgstr "Bạn không thể xóa Bộ sưu tập cá nhân!"
 
-#: metabase/models/collection.clj:1024 metabase/models/collection.clj:1027
+#: metabase/models/collection.clj:1039 metabase/models/collection.clj:1042
 msgid "{0} {1}''s Personal Collection"
 msgstr "Bộ sưu tập cá nhân của {0} {1}"
 
@@ -8781,19 +8779,19 @@ msgstr "Bộ sưu tập cá nhân của {0} {1}"
 msgid "You cannot update a CollectionRevision!"
 msgstr "Bạn không thể cập nhật CollectionRevision!"
 
-#: metabase/models/field_values.clj:335
+#: metabase/models/field_values.clj:336
 msgid "Field {0} was previously automatically set to show a list widget, but now has {1} values."
 msgstr "Trường {0} trước đây được đặt tự động để hiển thị tiện ích danh sách, nhưng hiện tại có giá trị {1}."
 
-#: metabase/models/field_values.clj:337
+#: metabase/models/field_values.clj:338
 msgid "Switching Field to use a search widget instead."
 msgstr "Thay đổi Trường để sử dụng widget tìm kiếm thay thế."
 
-#: metabase/models/field_values.clj:349
+#: metabase/models/field_values.clj:350
 msgid "Storing updated FieldValues for Field {0}..."
 msgstr "Lưu trữ FieldValues được cập nhật cho Trường {0}.."
 
-#: metabase/models/field_values.clj:359
+#: metabase/models/field_values.clj:360
 msgid "Storing FieldValues for Field {0}..."
 msgstr "Lưu trữ FieldValues cho Trường {0} ..."
 
@@ -9499,7 +9497,7 @@ msgstr "Thêm tia X"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditTableVisualization.jsx:115
 #: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:141
-#: metabase/pulse/render/body.clj:944 metabase/pulse/render/body.clj:945
+#: metabase/pulse/render/body.clj:939 metabase/pulse/render/body.clj:940
 msgid "No results"
 msgstr "Không có kết quả"
 
@@ -9607,7 +9605,7 @@ msgstr "ID dữ liệu"
 msgid "toucanSightings"
 msgstr "toucanSightings"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:76
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:69
 #: frontend/src/metabase/entities/databases/big-query-fields.js:101
 msgid "Client ID"
 msgstr "ID khách hàng"
@@ -9688,7 +9686,7 @@ msgstr "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
 msgid "toucan_sightings"
 msgstr "toucan_sightings"
 
-#: metabase/models/collection.clj:1142
+#: metabase/models/collection.clj:1157
 msgid "default"
 msgstr "mặc định"
 
@@ -9708,7 +9706,7 @@ msgstr "BirdsOfTheWorld"
 msgid "Database instance name"
 msgstr "Tên ví dụ cơ sở dữ liệu"
 
-#: metabase/pulse/render/body.clj:419
+#: metabase/pulse/render/body.clj:420
 msgid "N/A"
 msgstr "Không có"
 
@@ -9752,20 +9750,19 @@ msgstr "Chia sẻ"
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:25
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:33
 #: frontend/src/metabase/visualizations/lib/settings/goal.ts:42
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:329
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:365
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:394
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:410
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:420
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:436
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:332
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:368
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:397
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:413
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:423
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:439
 #: frontend/src/metabase/visualizations/lib/settings/nested.js:85
-#: frontend/src/metabase/visualizations/lib/settings/series.js:163
+#: frontend/src/metabase/visualizations/lib/settings/series.js:164
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:171
 #: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:121
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:127
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:133
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:139
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:145
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:128
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:141
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:147
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:63
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:69
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:7
@@ -9777,25 +9774,25 @@ msgstr "Chia sẻ"
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:25
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:31
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:37
-#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:43
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:44
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:27
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:38
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:43
 msgid "Display"
 msgstr "Hiển thị"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:498
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:534
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:549
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:566
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:580
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:589
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:599
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:609
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:619
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:628
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:643
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:652
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:501
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:537
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:552
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:569
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:583
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:592
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:602
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:612
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:622
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:631
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:646
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:655
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:22
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:33
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:48
@@ -9863,7 +9860,7 @@ msgstr "Bảng điều khiển quan trọng nhất của nhóm của bạn ở �
 msgid "Pin dashboards in {0} to have them appear in this space for everyone"
 msgstr "Ghim bảng điều khiển trong {0} để chúng xuất hiện trong không gian này cho mọi người"
 
-#: metabase/db/liquibase.clj:212
+#: metabase/db/liquibase.clj:245
 msgid "Unable to release the Liquibase lock after a migration failure"
 msgstr "Không thể giải phóng khóa Liquibase sau khi lỗi di chuyển"
 
@@ -10021,7 +10018,7 @@ msgstr "Hình dung này đòi hỏi bạn phải nhóm theo một lĩnh vực."
 msgid "Date style"
 msgstr "Kiểu ngày"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:205
+#: frontend/src/metabase/visualizations/lib/settings/column.js:204
 msgid "Date separators"
 msgstr "Dấu phân cách ngày"
 
@@ -10029,7 +10026,7 @@ msgstr "Dấu phân cách ngày"
 msgid "Abbreviate names of days and months"
 msgstr "Tên viết tắt của ngày và tháng"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:235
+#: frontend/src/metabase/visualizations/lib/settings/column.js:233
 msgid "Show the time"
 msgstr "Hiển thị thời gian"
 
@@ -10045,27 +10042,27 @@ msgstr "HH:MM:SS"
 msgid "HH:MM:SS.MS"
 msgstr "HH:MM:SS.MS"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:251
+#: frontend/src/metabase/visualizations/lib/settings/column.js:248
 msgid "Time style"
 msgstr "Kiểu thời gian"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:302
+#: frontend/src/metabase/visualizations/lib/settings/column.js:297
 msgid "Unit of currency"
 msgstr "Đơn vị tiền tệ"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:318
+#: frontend/src/metabase/visualizations/lib/settings/column.js:312
 msgid "Currency label style"
 msgstr "Kiểu nhãn tiền tệ"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:357
+#: frontend/src/metabase/visualizations/lib/settings/column.js:350
 msgid "Where to display the unit of currency"
 msgstr "Nơi hiển thị đơn vị tiền tệ"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:389
+#: frontend/src/metabase/visualizations/lib/settings/column.js:380
 msgid "Minimum number of decimal places"
 msgstr "Số lượng thập phân tối thiểu"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:366
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:369
 msgid "Stacked chart type"
 msgstr "Loại biểu đồ xếp chồng"
 
@@ -10086,7 +10083,7 @@ msgid "Show dots on lines"
 msgstr "Hiển thị dấu chấm trên dòng"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ChartColorSettings/ChartColorSettings.tsx:160
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:444
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:447
 #: frontend/src/metabase/visualizations/lib/settings/series.js:96
 #: frontend/src/metabase/visualizations/lib/settings/series.js:134
 msgid "Auto"
@@ -10120,15 +10117,15 @@ msgstr "Phạm vi đo"
 msgid "Field to show"
 msgstr "Lĩnh vực để hiển thị"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:139
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:140
 msgid "last {0}"
 msgstr "cuối {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:211
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:212
 msgid "{0} was {1} {2}"
 msgstr "{0} là {1} {2}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:77
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:78
 msgid "Group by a time field to see how this has changed over time"
 msgstr "Nhóm theo trường thời gian để xem điều này đã thay đổi theo thời gian như thế nào"
 
@@ -10154,7 +10151,7 @@ msgid "Conditional Formatting"
 msgstr "Định dạng có điều kiện"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:129
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:275
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:276
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:242
 msgid "Column title"
 msgstr "Tiêu đề cột"
@@ -10166,23 +10163,23 @@ msgstr "Hiển thị biểu đồ cột nhỏ"
 
 #: frontend/src/metabase/dashboard/actions/cards.js:158
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:146
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:259
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:260
 msgid "Link"
 msgstr "Liên kết"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:151
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:264
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:265
 msgid "Email link"
 msgstr "Liên kết email"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:155
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:268
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:269
 msgid "Image"
 msgstr "Hình ảnh"
 
 #: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:84
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:159
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:272
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:273
 msgid "Automatic"
 msgstr "Tự động"
 
@@ -10191,7 +10188,7 @@ msgid "View as link or image"
 msgstr "Xem dưới dạng liên kết hoặc hình ảnh"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:176
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:289
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:290
 msgid "Link text"
 msgstr "văn bản liên kết"
 
@@ -10385,7 +10382,7 @@ msgstr "FieldValues được phép cho Trường này."
 msgid "FieldValues are NOT allowed for this Field."
 msgstr "Trường {0} '' {1} '' nên có FieldValues và thuộc về Cơ sở dữ liệu với Cập nhật FieldValues theo yêu cầu."
 
-#: metabase/models/field_values.clj:416
+#: metabase/models/field_values.clj:417
 msgid "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
 msgstr "Trường {0} '' {1} '' nên có FieldValues và thuộc về Cơ sở dữ liệu với Cập nhật FieldValues theo yêu cầu."
 
@@ -11772,7 +11769,7 @@ msgstr "Các câu lệnh BigQuery không thể được tham số hóa!"
 msgid "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."
 msgstr "CẢNH BÁO: Druid không cho phép giới hạnSpec trong các truy vấn chuỗi thời gian. Bỏ qua mệnh đề LIMIT."
 
-#: metabase/driver/snowflake.clj:214
+#: metabase/driver/snowflake.clj:220
 msgid "Invalid Snowflake connection details: missing DB name."
 msgstr "Chi tiết kết nối Snowflake không hợp lệ: thiếu tên cơ sở dữ liệu."
 
@@ -11843,7 +11840,7 @@ msgstr "Các giá trị lớn hơn {1} không được phép."
 #. we need the Database instance no matter what (in order to compare details hash with cached value)
 #. passed in
 #. look up by ID
-#: metabase/driver/sql_jdbc/connection.clj:202
+#: metabase/driver/sql_jdbc/connection.clj:217
 #: metabase/query_processor/store.clj:169
 msgid "Database {0} does not exist."
 msgstr "Cơ sở dữ liệu {0} không tồn tại."
@@ -11963,7 +11960,7 @@ msgstr "Tạo bản sao \"{0}\""
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:315
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:26
 #: frontend/src/metabase/entities/containers/EntityCopyModal.jsx:31
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:200
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:188
 #: metabase/api/dashboard.clj:264
 msgid "Duplicate"
 msgstr "Tạo bản sao"
@@ -12079,7 +12076,7 @@ msgstr "Không phù hợp"
 msgid "Add a time"
 msgstr "Thêm thời gian"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:197
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:198
 msgid "Nothing to compare for the previous {0}."
 msgstr "Không có gì để so sánh với {0}."
 
@@ -12127,7 +12124,7 @@ msgstr "Nếu bạn quyết định tiếp tục sử dụng H2, vui lòng đả
 msgid "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information."
 msgstr "Xem https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-USE-the-h2-database-to-mysql-or-postgres để biết thêm thông tin."
 
-#: metabase/db/setup.clj:96
+#: metabase/db/setup.clj:97
 msgid "Unable to connect to Metabase {0} DB."
 msgstr "Không thể kết nối với Metabase {0} DB."
 
@@ -12227,11 +12224,11 @@ msgstr "Lỗi trong lệnh Metabot"
 msgid "Websocket associated with this Slack event is different from the websocket we're currently using."
 msgstr "Websocket liên quan đến sự kiện Slack này khác với websocket chúng tôi hiện đang sử dụng."
 
-#: metabase/models/field_values.clj:344
+#: metabase/models/field_values.clj:345
 msgid "FieldValues for Field {0} remain unchanged. Skipping..."
 msgstr "FieldValues cho Field {0} không thay đổi. Bỏ qua ..."
 
-#: metabase/models/interface.clj:97
+#: metabase/models/interface.clj:98
 msgid "Unable to normalize:"
 msgstr "Không thể bình thường hóa:"
 
@@ -12239,27 +12236,27 @@ msgstr "Không thể bình thường hóa:"
 msgid "Could not find matching Field ID for target:"
 msgstr "Không thể tìm thấy ID trường phù hợp cho mục tiêu:"
 
-#: metabase/plugins.clj:29
+#: metabase/plugins.clj:30
 msgid "Metabase does not have permissions to write to plugins directory {0}"
 msgstr "Metabase không có quyền ghi vào thư mục plugin {0}"
 
-#: metabase/plugins.clj:36
+#: metabase/plugins.clj:37
 msgid "Metabase cannot use the plugins directory {0}"
 msgstr "Metabase không thể sử dụng thư mục plugin {0}"
 
-#: metabase/plugins.clj:38
+#: metabase/plugins.clj:39
 msgid "Please make sure the directory exists and that Metabase has permission to write to it."
 msgstr "Vui lòng đảm bảo thư mục tồn tại và Metabase có quyền ghi vào thư mục đó."
 
-#: metabase/plugins.clj:39
+#: metabase/plugins.clj:40
 msgid "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
 msgstr "Bạn có thể thay đổi thư mục Metabase sử dụng cho các mô-đun bằng cách đặt biến môi trường MB_PLUGINS_DIR."
 
-#: metabase/plugins.clj:40
+#: metabase/plugins.clj:41
 msgid "Falling back to a temporary directory for now."
 msgstr "Quay trở lại một thư mục tạm thời bây giờ."
 
-#: metabase/plugins.clj:45
+#: metabase/plugins.clj:46
 msgid "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
 msgstr "Metabase không thể ghi vào thư mục tạm thời. Vui lòng đặt MB_PLUGINS_DIR thành thư mục có thể ghi và khởi động lại Metabase."
 
@@ -12267,11 +12264,11 @@ msgstr "Metabase không thể ghi vào thư mục tạm thời. Vui lòng đặt
 msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
 msgstr "spark-deps.jar không còn cần bởi Metabase 1.0+. Bạn có thể xóa nó khỏi thư mục plugin."
 
-#: metabase/plugins.clj:155
+#: metabase/plugins.clj:163
 msgid "Failied to initialize plugin {0}"
 msgstr "Không thể khởi chạy plugin {0}"
 
-#: metabase/plugins.clj:158
+#: metabase/plugins.clj:166
 msgid "Loading plugins in {0}..."
 msgstr "Đang tải các plugin trong {0} ..."
 
@@ -12323,11 +12320,11 @@ msgstr "{0} phụ thuộc {1} được đáp ứng? {2}"
 msgid "Plugins with unsatisfied deps: {0}"
 msgstr "Các plugin có deps không thỏa mãn: {0}"
 
-#: metabase/util/files.clj:82
+#: metabase/util/files.clj:84
 msgid "Extract file {0} -> {1}"
 msgstr "Trích xuất file {0} -> {1}"
 
-#: metabase/util/files.clj:112
+#: metabase/util/files.clj:114
 msgid "Resource does not exist."
 msgstr "Tài nguyên không tồn tại."
 
@@ -12677,11 +12674,11 @@ msgstr "Kích hoạt lại {0}?"
 msgid "We couldn’t send them an email invitation, so make sure to tell them to log in using {0} and this password we’ve generated for them:"
 msgstr "Chúng tôi không thể gửi cho họ lời mời qua email, vì vậy hãy yêu cầu họ đăng nhập bằng {0} và mật khẩu này mà chúng tôi đã tạo cho họ:"
 
-#: frontend/src/metabase/entities/collections/collections.ts:33
+#: frontend/src/metabase/entities/collections/collections.js:30
 msgid "collection"
 msgstr "bộ sưu tập"
 
-#: frontend/src/metabase/entities/collections/collections.ts:34
+#: frontend/src/metabase/entities/collections/collections.js:31
 msgid "collections"
 msgstr "bộ sưu tập"
 
@@ -12828,7 +12825,7 @@ msgstr "Lỗi bắt gặp khi chạy {0}"
 msgid "Request canceled, canceling future"
 msgstr "Yêu cầu bị hủy bỏ, đang hủy các yêu cầu tương lai"
 
-#: metabase/driver/sql_jdbc/connection.clj:131
+#: metabase/driver/sql_jdbc/connection.clj:146
 msgid "Closing old connection pool for database {0} ..."
 msgstr "Đóng nhóm kết nối cũ cho cơ sở dữ liệu {0} ..."
 
@@ -13253,7 +13250,7 @@ msgstr "Điều này thường khá nhanh nhưng bây giờ dường như sẽ m
 msgid "Combo"
 msgstr "Combo"
 
-#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:315
+#: frontend/src/metabase/visualizations/visualizations/RowChart/RowChart.tsx:317
 msgid "Row"
 msgstr "Hàng"
 
@@ -13341,7 +13338,7 @@ msgstr "Không thể tìm thấy trình điều khiển {0}."
 msgid "Abstract drivers cannot derive from concrete parent drivers."
 msgstr "Trình điều khiển trừu tượng không thể xuất phát từ trình điều khiển cha cụ thể."
 
-#: metabase/driver/mysql.clj:467
+#: metabase/driver/mysql.clj:481
 msgid "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."
 msgstr "Bạn có thể cần thêm 'trustServerCertert = true' vào các tùy chọn kết nối bổ sung để kết nối với SSL."
 
@@ -13387,7 +13384,7 @@ msgstr "Thay đổi chiến lược nhân hóa tên bảng và trường từ ''
 msgid "Error saving task history"
 msgstr "Lỗi lưu lịch sử nhiệm vụ"
 
-#: metabase/plugins.clj:105
+#: metabase/plugins.clj:113
 msgid "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory."
 msgstr "spark-deps.jar không còn cần thiết bởi Metabase 0.32.0+. Bạn có thể xóa nó khỏi thư mục plugin"
 
@@ -13395,7 +13392,7 @@ msgstr "spark-deps.jar không còn cần thiết bởi Metabase 0.32.0+. Bạn c
 msgid "Using NEWLY CREATED classloader as shared context classloader: {0}"
 msgstr "Sử dụng trình tải lớp MỚI TẠO làm trình tải lớp ngữ cảnh được chia sẻ: {0}"
 
-#: metabase/util/files.clj:95
+#: metabase/util/files.clj:97
 msgid "Failed to copy file"
 msgstr "Sao chép file thất bại"
 
@@ -13413,15 +13410,15 @@ msgstr "url trang web không hợp lệ; trở về nil bây giờ\n"
 msgid "More results have been included as a file attachment"
 msgstr "Nhiều kết quả đã được đưa vào dưới dạng tệp đính kèm"
 
-#: metabase/pulse/render/body.clj:961
+#: metabase/pulse/render/body.clj:956
 msgid "This question has been included as a file attachment"
 msgstr "Câu hỏi này đã được đưa vào dưới dạng tệp đính kèm"
 
-#: metabase/pulse/render/body.clj:973
+#: metabase/pulse/render/body.clj:968
 msgid "We were unable to display this Pulse."
 msgstr "Chúng tôi không thể hiển thị Pulse này."
 
-#: metabase/pulse/render/body.clj:975
+#: metabase/pulse/render/body.clj:970
 msgid "Please view this card in Metabase."
 msgstr "Vui lòng xem thẻ này trong Metabase."
 
@@ -13887,16 +13884,16 @@ msgstr "(trống)"
 msgid "Goal line"
 msgstr "Mục tiêu"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:395
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:398
 msgid "Trend line"
 msgstr "Đường xu hướng"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:411
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:414
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:163
 msgid "Show values on data points"
 msgstr "Hiển thị giá trị trên các điểm dữ liệu"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:421
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:424
 msgid "Values to show"
 msgstr "Các giá trị để hiển thị"
 
@@ -13904,7 +13901,7 @@ msgstr "Các giá trị để hiển thị"
 msgid "As many as can fit nicely"
 msgstr "Nhiều như có thể nhét vừa đẹp"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:429
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:432
 #: metabase/driver/util.clj:283
 msgid "All"
 msgstr "Tất cả"
@@ -13945,7 +13942,7 @@ msgstr "CSDL mục tiêu đã được đưa vào!"
 msgid "System info:n {0}"
 msgstr "Thông tin hệ thống: n {0}"
 
-#: metabase/db/setup.clj:142
+#: metabase/db/setup.clj:143
 msgid "Database setup"
 msgstr "Cài đặt cơ sở dữ liệu"
 
@@ -13994,7 +13991,7 @@ msgstr "Không thể chạy truy vấn: thiếu tham số bắt buộc: {0}"
 msgid "Don''t know how to parse {0} {1}"
 msgstr "Không biết cách phân tích {0} {1}"
 
-#: metabase/driver/sql/util.clj:77
+#: metabase/driver/sql/util.clj:78
 msgid "Don''t know how to alias {0}, expected an Identifier."
 msgstr "Không biết cách đặt bí danh {0}, mong đợi một Định danh."
 
@@ -14004,7 +14001,7 @@ msgstr "Không biết cách đặt bí danh {0}, mong đợi một Định danh.
 msgid "Don''t know how to unprepare values of class {0}"
 msgstr "Không biết cách chuẩn bị các giá trị của lớp {0}"
 
-#: metabase/driver/sql_jdbc/connection.clj:119
+#: metabase/driver/sql_jdbc/connection.clj:134
 msgid "Creating new connection pool for {0} database {1} ..."
 msgstr "Tạo nhóm kết nối mới cho {0} cơ sở dữ liệu {1} ..."
 
@@ -14028,7 +14025,7 @@ msgstr "Không thể đặt múi giờ '' {0} ''"
 msgid "Database connection error"
 msgstr "Lỗi kết nối cơ sở dữ liệu"
 
-#: metabase/models/interface.clj:60
+#: metabase/models/interface.clj:61
 msgid "Error parsing JSON"
 msgstr "Lỗi khi phân tích cú pháp JSON"
 
@@ -14161,7 +14158,7 @@ msgstr "Có một lỗi lưu"
 msgid "OK"
 msgstr "Đồng ý"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:68
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:63
 msgid "To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found {0}."
 msgstr "Để cho phép người dùng đăng nhập bằng Google, bạn cần cung cấp cho Metabase ID ứng dụng khách ứng dụng bảng điều khiển Google Developers. Chỉ cần một vài bước và hướng dẫn về cách tạo khóa có thể được tìm thấy {0}."
 
@@ -14266,7 +14263,7 @@ msgstr "{0} để lấy mã xác thực."
 
 #: frontend/src/metabase/components/HeaderModal.jsx:44
 #: frontend/src/metabase/entities/databases/forms.js:227
-#: metabase/models/collection.clj:1142
+#: metabase/models/collection.clj:1157
 msgid "or"
 msgstr "hoặc"
 
@@ -14293,7 +14290,7 @@ msgid "Metabase can scan the values present in each field in this database to en
 msgstr "Metabase có thể quét các giá trị hiện diện trong từng trường trong cơ sở dữ liệu này để bật các bộ lọc hộp kiểm trong bảng điều khiển và câu hỏi. Đây có thể là một quá trình hơi tốn tài nguyên, đặc biệt nếu bạn có một cơ sở dữ liệu rất lớn."
 
 #: frontend/src/metabase/components/NewItemMenu/NewItemMenu.tsx:94
-#: frontend/src/metabase/entities/questions/forms.js:30
+#: frontend/src/metabase/entities/questions/forms.js:24
 #: frontend/src/metabase/nav/utils/model-names.ts:10
 #: frontend/src/metabase/search/components/InfoText.jsx:73
 #: frontend/src/metabase/search/components/InfoText.jsx:76
@@ -14919,23 +14916,23 @@ msgstr "Chọn một khoá ngoài"
 msgid "Hi, {0}. Nice to meet you!"
 msgstr "Xin chào, {0}. Rất vui được gặp bạn!"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:257
+#: frontend/src/metabase/visualizations/lib/settings/column.js:253
 msgid "12-hour clock"
 msgstr "Đồng hồ 12 giờ"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:261
+#: frontend/src/metabase/visualizations/lib/settings/column.js:257
 msgid "24-hour clock"
 msgstr "Đồng hồ 24 giờ"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:331
+#: frontend/src/metabase/visualizations/lib/settings/column.js:324
 msgid "Symbol"
 msgstr "Ký tự"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:362
+#: frontend/src/metabase/visualizations/lib/settings/column.js:354
 msgid "In the column heading"
 msgstr "Trong tiêu đề cột"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:363
+#: frontend/src/metabase/visualizations/lib/settings/column.js:355
 msgid "In every table cell"
 msgstr "Trong mỗi ô"
 
@@ -14943,12 +14940,12 @@ msgstr "Trong mỗi ô"
 msgid "Value formatting"
 msgstr "Định dạng dữ liệu"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:446
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:449
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:180
 msgid "Full"
 msgstr "Đầy"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:199
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:200
 msgid "No change from last {0}"
 msgstr "Không thay đổi so với trước {0}"
 
@@ -15047,7 +15044,7 @@ msgstr "Vô hiệu hóa tự động commit ..."
 msgid "Set default db connection with connection pool..."
 msgstr "Đặt kết nối CSDL mặc định với nhóm kết nối ..."
 
-#: metabase/db/setup.clj:102
+#: metabase/db/setup.clj:103
 msgid "Successfully verified {0} {1} application database connection."
 msgstr "Xác minh thành công kết nối cơ sở dữ liệu ứng dụng {0} {1}."
 
@@ -15060,11 +15057,11 @@ msgstr "Không biết cách phân tích tham số ngày '' {0} '' - định dạ
 msgid "The sub-query from referenced question #{0} failed with the following error: {1}"
 msgstr "Truy vấn phụ từ câu hỏi được tham chiếu # {0} không thành công với lỗi sau: {1}"
 
-#: metabase/driver/mysql.clj:87
+#: metabase/driver/mysql.clj:92
 msgid "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
 msgstr "CẢNH BÁO: Metabase chỉ chính thức hỗ trợ MySQL {0} / MariaDB {1} trở lên."
 
-#: metabase/driver/mysql.clj:91
+#: metabase/driver/mysql.clj:96
 msgid "All Metabase features may not work properly when using an unsupported version."
 msgstr "Tất cả các tính năng Metabase có thể không hoạt động đúng khi sử dụng phiên bản không được hỗ trợ."
 
@@ -15096,15 +15093,15 @@ msgstr "Không thể đặt múi giờ '' {0} '' cho cơ sở dữ liệu {1}"
 msgid "Error setting transaction isolation level for {0} database to {1}"
 msgstr "Lỗi thiết lập mức cô lập giao dịch cho cơ sở dữ liệu {0} thành {1}"
 
-#: metabase/driver/presto_jdbc.clj:440 metabase/driver/sql_jdbc/execute.clj:198
+#: metabase/driver/presto_jdbc.clj:431 metabase/driver/sql_jdbc/execute.clj:198
 msgid "Error setting connection to read-only"
 msgstr "Lỗi thiết lập kết nối thành chỉ đọc"
 
-#: metabase/driver/redshift.clj:146 metabase/driver/sql_jdbc/execute.clj:208
+#: metabase/driver/redshift.clj:144 metabase/driver/sql_jdbc/execute.clj:208
 msgid "Error setting default holdability for connection"
 msgstr "Lỗi thiết lập khả năng giữ mặc định cho kết nối"
 
-#: metabase/driver/oracle.clj:446 metabase/driver/oracle.clj:463
+#: metabase/driver/oracle.clj:463 metabase/driver/oracle.clj:480
 msgid "Error setting result set fetch direction to FETCH_FORWARD"
 msgstr "Lỗi thiết lập kết quả đặt hướng tìm nạp thành FETCH_FORWARD"
 
@@ -15116,11 +15113,11 @@ msgstr "Truy vấn bị hủy, gọi PreparedStatement.cancel()"
 msgid "Failed to connect to database"
 msgstr "Kết nối cơ sở dữ liệu thất bại"
 
-#: metabase/driver/util.clj:458
+#: metabase/driver/util.clj:474
 msgid "Unable to determine connection properties for driver {0}"
 msgstr "Không thể xác định thuộc tính kết nối cho trình điều khiển {0}"
 
-#: metabase/models/field_values.clj:307
+#: metabase/models/field_values.clj:308
 msgid "Error fetching field values"
 msgstr "Lỗi tìm nạp các giá trị trường"
 
@@ -15136,7 +15133,7 @@ msgstr "defsetting các chuỗi mô tả phải có `: visibilty``: Internal`, `
 msgid "Setting {0} is internal"
 msgstr "Đặt {0} là nội bộ"
 
-#: metabase/plugins.clj:139
+#: metabase/plugins.clj:147
 msgid "Loading local plugin manifest at {0}"
 msgstr "Đang tải bảng kê khai plugin cục bộ tại {0}"
 
@@ -15161,7 +15158,6 @@ msgstr "Kết xuất thẻ xung với loại biểu đồ {0} và loại kết x
 msgid "FIXME: These aren''t valid temporal literals: {0} {1}. Why are we attempting to format them as such?"
 msgstr "SỬA: Những chữ này không đúng thời gian: {0} {1}. Tại sao chúng ta cố gắng định dạng chúng như vậy?"
 
-#: metabase/query_processor/context/default.clj:59
 #: metabase/query_processor/pivot.clj:185
 msgid "Error reducing result rows"
 msgstr "Lỗi giảm hàng kết quả"
@@ -15351,7 +15347,7 @@ msgstr "Tùy chọn nội địa hóa"
 msgid "This database doesn't have any tables."
 msgstr "Cơ sở dữ liệu này không có bất kỳ bảng nào."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:256
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:252
 msgid "This field only accepts a single value because it's used in a SQL query."
 msgstr "Trường này chỉ chấp nhận một giá trị duy nhất vì nó được sử dụng trong truy vấn SQL."
 
@@ -15401,7 +15397,7 @@ msgid "SSH Key"
 msgstr "Khóa SSH"
 
 #: frontend/src/metabase/entities/databases/forms.js:76
-#: metabase/driver/mysql.clj:107
+#: metabase/driver/mysql.clj:112
 msgid "Server SSL certificate chain"
 msgstr "Chuỗi chứng chỉ SSL máy chủ"
 
@@ -15626,11 +15622,11 @@ msgstr "Bộ sưu tập cá nhân phải ở trong không gian tên mặc địn
 msgid "You cannot move a Collection to a different namespace once it has been created."
 msgstr "Bạn không thể di chuyển Bộ sưu tập sang một không gian tên khác sau khi nó được tạo."
 
-#: metabase/models/collection.clj:1134 metabase/models/permissions.clj:925
+#: metabase/models/collection.clj:1149 metabase/models/permissions.clj:925
 msgid "Collection does not exist."
 msgstr "Bộ sưu tập không tồn tại."
 
-#: metabase/models/collection.clj:1140
+#: metabase/models/collection.clj:1155
 msgid "A {0} can only go in Collections in the {1} namespace."
 msgstr "{0} chỉ có thể đi vào Bộ sưu tập trong không gian tên {1}."
 
@@ -15777,7 +15773,6 @@ msgid "User attribute configuration (optional)"
 msgstr "Cấu hình thuộc tính người dùng (tùy chọn)"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:143
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:110
 #: frontend/src/metabase/admin/settings/containers/PremiumEmbeddingLicensePage/PremiumEmbeddingLicensePage.tsx:88
 #: frontend/src/metabase/admin/settings/utils.js:14
 msgid "Using {0}"
@@ -15848,12 +15843,12 @@ msgid "SAML Identity Provider URL"
 msgstr "URL nhà cung cấp danh tính SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:121
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:98
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:99
 msgid "SAML Identity Provider Certificate"
 msgstr "Chứng chỉ nhà cung cấp danh tính SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:128
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:104
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:105
 msgid "SAML Application Name"
 msgstr "Tên ứng dụng SAML"
 
@@ -15862,12 +15857,12 @@ msgid "Sign SSO requests (optional)"
 msgstr "Ký yêu cầu SSO (tùy chọn)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:140
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:109
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:110
 msgid "SAML Keystore Path"
 msgstr "Đường dẫn kho khóa SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:144
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:114
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:115
 msgid "SAML Keystore Password"
 msgstr "Mật khẩu kho khóa SAML"
 
@@ -15876,7 +15871,7 @@ msgid "Shh..."
 msgstr "Suỵt ..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:150
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:120
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:121
 msgid "SAML Keystore Alias"
 msgstr "Bí danh kho khóa SAML"
 
@@ -15891,13 +15886,13 @@ msgstr "Để kích hoạt điều này, bạn sẽ cần tạo ánh xạ để 
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:172
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:173
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:145
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:207
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:146
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:208
 msgid "Group Name"
 msgstr "Tên nhóm"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:179
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:151
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:152
 msgid "Group attribute name"
 msgstr "Tên thuộc tính nhóm"
 
@@ -15917,19 +15912,19 @@ msgstr "Cho phép người dùng đăng nhập qua Nhà cung cấp danh tính SA
 msgid "Allows users to login via a JWT Identity Provider."
 msgstr "Cho phép người dùng đăng nhập thông qua Nhà cung cấp danh tính JWT."
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:43
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:44
 msgid "Enable Password Authentication"
 msgstr "Bật xác thực mật khẩu"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:44
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:45
 msgid "When enabled, users can additionally log in with email and password."
 msgstr "Khi được bật, người dùng có thể đăng nhập thêm bằng email và mật khẩu."
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:54
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:55
 msgid "Notify admins of new SSO users"
 msgstr "Thông báo cho quản trị viên về những người dùng SSO mới"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:55
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:56
 msgid "When enabled, administrators will receive an email the first time a user uses Single Sign-On."
 msgstr "Khi được bật, quản trị viên sẽ nhận được email lần đầu tiên người dùng sử dụng Đăng nhập một lần."
 
@@ -15945,15 +15940,15 @@ msgstr "tài liệu"
 msgid "SAML Identity Provider URI"
 msgstr "URI của nhà cung cấp danh tính SAML"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:164
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:165
 msgid "JWT Authentication"
 msgstr "Xác thực JWT"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:170
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:171
 msgid "JWT Identity Provider URI"
 msgstr "URI của nhà cung cấp danh tính JWT"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:179
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:180
 msgid "String used by the JWT signing key"
 msgstr "Chuỗi được sử dụng bởi khóa ký JWT"
 
@@ -16456,28 +16451,28 @@ msgstr "Các cột có sẵn"
 msgid "user attribute"
 msgstr "thuộc tính người dùng"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCard.tsx:310
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:278
 #: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:52
 msgid "Text card"
 msgstr "Thẻ văn bản"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:168
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:388
 msgid "Click behavior"
 msgstr "Hành vi nhấp chuột"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:30
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:431
 msgid "Visualization options"
 msgstr "Tùy chọn hiển thị"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:74
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:471
 msgid "Edit series"
 msgstr "Chỉnh sửa chuỗi"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionButtons/DashCardActionButtons.jsx:74
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:471
 msgid "Add series"
 msgstr "Thêm chuỗi"
 
-#: frontend/src/metabase/dashboard/components/DashCard/ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay.tsx:49
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:547
 msgid "On click"
 msgstr "Trong một cái nhấp chuột"
 
@@ -16498,7 +16493,7 @@ msgstr "Thêm câu hỏi"
 msgid "You're editing this dashboard."
 msgstr "Bạn đang chỉnh sửa bảng điều khiển này."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:171
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:167
 msgid "Column to filter on"
 msgstr "Cột để lọc"
 
@@ -16790,7 +16785,7 @@ msgstr "Kiểm tra giá trị của cột ngày hoặc số để xem chúng có
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:713
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:726
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:747
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:775
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:777
 msgid "Created At"
 msgstr "Được tạo lúc"
 
@@ -16867,8 +16862,8 @@ msgid "Linked filters"
 msgstr "Bộ lọc được liên kết"
 
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:81
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:629
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:653
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:632
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:656
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:115
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:139
 #: frontend/src/metabase/writeback/components/ActionViz/ActionViz.tsx:39
@@ -17154,11 +17149,11 @@ msgstr "Thư mục trên cùng"
 msgid ":parameters must be a sequence of maps with String :id keys"
 msgstr ":tham số phải là một chuỗi bản đồ với các khóa String: id"
 
-#: metabase/models/field_values.clj:76
+#: metabase/models/field_values.clj:77
 msgid "Invalid human-readable-values: values must be a sequence; each item must be nil or a string"
 msgstr "Giá trị con người có thể đọc được không hợp lệ: giá trị phải là một chuỗi; mỗi mục phải là nil hoặc một chuỗi"
 
-#: metabase/models/field_values.clj:149
+#: metabase/models/field_values.clj:150
 msgid ":values must be present to fetch :human_readable_values"
 msgstr ": giá trị phải có để tìm nạp: giá trị con người có thể đọc được"
 
@@ -17175,7 +17170,7 @@ msgstr "tên đoạn mã không được bao gồm '}' hoặc bắt đầu bằn
 msgid "Error executing chain filter query"
 msgstr "Lỗi khi thực hiện truy vấn bộ lọc chuỗi"
 
-#: metabase/models/field_values.clj:183
+#: metabase/models/field_values.clj:184
 #: metabase/models/params/chain_filter.clj:597
 msgid "Field {0} does not exist."
 msgstr "Trường {0} không tồn tại."
@@ -17292,11 +17287,11 @@ msgid "Skipping update, automatic Field value updates are disabled for Database 
 msgstr "Bỏ qua cập nhật, cập nhật giá trị Trường tự động bị tắt cho Cơ sở dữ liệu {0}."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:132
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:91
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:92
 msgid "SAML Identity Provider Issuer"
 msgstr "Nhà cung cấp dịch vụ nhận dạng SAML"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:83
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:84
 msgid "SAML Identity Provider SSO URL"
 msgstr "URL SSO của nhà cung cấp danh tính SAML"
 
@@ -17513,7 +17508,7 @@ msgstr "Hàng {0} - {1} trong số {2} đầu tiên"
 msgid "Drag fields here"
 msgstr "Kéo các trường vào đây"
 
-#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:441
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:443
 msgid "Percentage"
 msgstr "Phần trăm"
 
@@ -17569,7 +17564,7 @@ msgstr "Giảm màu"
 msgid "Show total"
 msgstr "Hiển thị tổng số"
 
-#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:44
+#: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:45
 msgid "Total color"
 msgstr "Tổng số màu"
 
@@ -17865,19 +17860,19 @@ msgstr "Thông báo email mới có nên được gửi tới quản trị viên
 msgid "New SSO user created: {0} ({1})"
 msgstr "Người dùng SSO mới được tạo: {0} ({1})"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:234
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:235
 msgid "Cannot convert a {0} to a {1}"
 msgstr "Không thể chuyển đổi {0} thành {1}"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:369
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:370
 msgid "Cannot extract {0} from a TIME field"
 msgstr "Không thể trích xuất {0} từ trường TIME"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:377
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:378
 msgid "Cannot extract {0} from a DATE field"
 msgstr "Không thể trích xuất {0} từ trường DATE"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:384
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:385
 msgid "Cannot extract {0} from a DATETIME or TIMESTAMP"
 msgstr "Không thể giải nén {0} từ DATETIME hoặc TIMESTAMP"
 
@@ -17887,7 +17882,7 @@ msgstr "Không thể giải nén {0} từ DATETIME hoặc TIMESTAMP"
 msgid "Invalid query: you cannot add a {0} to a {1} column."
 msgstr "Truy vấn không hợp lệ: bạn không thể thêm cột {0} vào cột {1}."
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:735
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:748
 msgid "It doesn''t make sense to convert between DATEs and TIMEs!"
 msgstr "Sẽ không hợp lý khi chuyển đổi giữa DATEs và TIMEs!"
 
@@ -18027,7 +18022,7 @@ msgstr "Lỗi khi hủy truy vấn với ID {0}"
 msgid "Error executing query"
 msgstr "Lỗi khi thực thi truy vấn"
 
-#: metabase/driver/vertica.clj:147
+#: metabase/driver/vertica.clj:166
 msgid "Failed to fetch materialized views for this database"
 msgstr "Không tìm nạp được các dạng xem cụ thể hóa cho cơ sở dữ liệu này"
 
@@ -18056,7 +18051,7 @@ msgstr "Bạn không thể chỉ định giá trị cho {0} nếu nó đã đư�
 msgid "Error compiling HoneySQL form"
 msgstr "Lỗi khi biên dịch biểu mẫu HoneySQL"
 
-#: metabase/driver/sql_jdbc/connection.clj:253
+#: metabase/driver/sql_jdbc/connection.clj:268
 msgid "Not a valid Database/Database ID/JDBC spec"
 msgstr "Không phải là thông số cơ sở dữ liệu / ID cơ sở dữ liệu / JDBC hợp lệ"
 
@@ -18306,12 +18301,12 @@ msgstr "Loại cơ sở dữ liệu ứng dụng không được hỗ trợ: {0}
 msgid "Check the value of MB_DB_CONNECTION_URI."
 msgstr "Kiểm tra giá trị của MB_DB_CONNECTION_URI."
 
-#: metabase/driver/sql/query_processor.clj:290
-#: metabase/driver/sql/query_processor.clj:310
+#: metabase/driver/sql/query_processor.clj:292
+#: metabase/driver/sql/query_processor.clj:312
 msgid "Driver {0} does not support {1}"
 msgstr "Trình điều khiển {0} không hỗ trợ {1}"
 
-#: metabase/driver/sql/query_processor.clj:367
+#: metabase/driver/sql/query_processor.clj:369
 msgid "No magnitude known for {0}"
 msgstr "Không có cường độ nào được biết đến cho {0}"
 
@@ -18340,11 +18335,11 @@ msgstr "Di chuyển sang Metabase Cloud."
 msgid "Manage Metabase Cloud"
 msgstr "Quản lý đám mây Metabase"
 
-#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:258
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:259
 msgid "Show totals"
 msgstr "Hiển thị tổng số"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:240
 msgid "Sort order"
 msgstr "Thứ tự sắp xếp"
 
@@ -18376,7 +18371,7 @@ msgstr "{0} không hợp lệ: đột phá được chỉ định tại chỉ m�
 msgid "Error generating pivot queries"
 msgstr "Lỗi khi tạo truy vấn tổng hợp"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:260
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:261
 msgid "Sync Administrator group"
 msgstr "Đồng bộ hóa nhóm quản trị viên"
 
@@ -18446,11 +18441,11 @@ msgstr "Các cột để kiểm tra."
 msgid "Checks if a column is empty"
 msgstr "Kiểm tra xem một cột có trống không"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:104
+#: frontend/src/metabase-lib/expressions/resolver.js:117
 msgid "CASE expects 2 arguments or more"
 msgstr "CASE yêu cầu 2 đối số trở lên"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:152
+#: frontend/src/metabase-lib/expressions/resolver.js:165
 msgid "Function {0} expects {1} argument"
 msgid_plural "Function {0} expects {1} arguments"
 msgstr[0] "Hàm {0} mong đợi {1} đối số"
@@ -18601,16 +18596,16 @@ msgstr "Không có tổng hợp nào tại chỉ mục {0}"
 msgid "Multiple date filters are not supported."
 msgstr "Nhiều bộ lọc ngày không được hỗ trợ."
 
-#: metabase/driver/redshift.clj:282
+#: metabase/driver/redshift.clj:280
 msgid "Error checking schema permissions"
 msgstr "Lỗi khi kiểm tra quyền của giản đồ"
 
-#: metabase/driver/presto_jdbc.clj:401 metabase/driver/sql_jdbc/execute.clj:295
+#: metabase/driver/presto_jdbc.clj:392 metabase/driver/sql_jdbc/execute.clj:295
 msgid "Error setting prepared statement fetch direction to FETCH_FORWARD"
 msgstr "Lỗi khi đặt hướng tìm nạp câu lệnh đã chuẩn bị thành FETCH_FORWARD"
 
-#: metabase/driver/presto_jdbc.clj:418 metabase/driver/sql_jdbc/execute.clj:322
-#: metabase/driver/sqlserver.clj:501
+#: metabase/driver/presto_jdbc.clj:409 metabase/driver/sql_jdbc/execute.clj:322
+#: metabase/driver/sqlserver.clj:540
 msgid "Error setting statement fetch direction to FETCH_FORWARD"
 msgstr "Lỗi khi đặt hướng tìm nạp câu lệnh thành FETCH_FORWARD"
 
@@ -18626,7 +18621,7 @@ msgstr "Lỗi điểm cuối xác thực"
 msgid "SSH tunnel can only be established for H2 connections using the TCP protocol"
 msgstr "Đường hầm SSH chỉ có thể được thiết lập cho các kết nối H2 bằng giao thức TCP"
 
-#: metabase/driver/sql_jdbc/connection.clj:181
+#: metabase/driver/sql_jdbc/connection.clj:196
 msgid "ssh tunnel for database {0} looks closed; marking pool invalid to reopen it"
 msgstr "đường hầm ssh cho cơ sở dữ liệu {0} có vẻ như đã đóng; đánh dấu nhóm không hợp lệ để mở lại nó"
 
@@ -18779,7 +18774,7 @@ msgstr "Tên câu hỏi"
 msgid "Collection name"
 msgstr "Tên bộ sưu tập"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:248
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:249
 msgid "Group membership filter"
 msgstr "Bộ lọc thành viên nhóm"
 
@@ -18801,15 +18796,15 @@ msgstr "Tìm một ai đó"
 msgid "Invite someone"
 msgstr "Mời ai đó"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:70
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:64
 msgid "here"
 msgstr "đây"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:77
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:71
 msgid "{your-client-id}.apps.googleusercontent.com"
 msgstr "{your-client-id} .apps.googleusercontent.com"
 
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:82
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:77
 msgid "Domain"
 msgstr "Miền"
 
@@ -18983,12 +18978,12 @@ msgid "Explore results"
 msgstr "Khám phá kết quả"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:173
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:286
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:287
 msgid "You can use the value of any column here like this: {{COLUMN}}"
 msgstr "Bạn có thể sử dụng giá trị của bất kỳ cột nào ở đây như sau: {{COLUMN}}"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:203
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:316
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:317
 msgid "Link URL"
 msgstr "Liên kết URL"
 
@@ -19094,7 +19089,7 @@ msgstr "Bạn không thể cập nhật CollectionPermissionGraphRevision!"
 msgid "Invalid Field {0} {1}"
 msgstr "Trường Không hợp lệ {0} {1}"
 
-#: metabase/models/field.clj:98
+#: metabase/models/field.clj:99
 msgid "Invalid Field {0} {1}: falling back to {2}"
 msgstr "Trường Không hợp lệ {0} {1}: lùi về {2}"
 
@@ -19304,7 +19299,7 @@ msgstr "{0} đã chỉnh sửa điều này"
 
 #: enterprise/frontend/src/metabase-enterprise/collections/constants.js:5
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontFilesWidget/utils.ts:8
-#: frontend/src/metabase/plugins/index.ts:105
+#: frontend/src/metabase/plugins/index.ts:100
 msgid "Regular"
 msgstr "Đều đặn"
 
@@ -19361,7 +19356,7 @@ msgstr "Chỉnh sửa chi tiết"
 msgid "History"
 msgstr "Môn lịch sử"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:461
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:462
 msgid "Every field is hidden right now"
 msgstr "Mọi trường hiện bị ẩn"
 
@@ -19378,15 +19373,15 @@ msgstr "Quản lý tài khoản Đám mây của bạn, bao gồm tùy chọn th
 msgid "Go to the Metabase Store"
 msgstr "Đi tới Cửa hàng Metabase"
 
-#: metabase/driver/presto_jdbc.clj:340
+#: metabase/driver/presto_jdbc.clj:331
 msgid "Running statement in describe-schema: {0}"
 msgstr "Đang chạy câu lệnh trong mô tả-giản đồ: {0}"
 
-#: metabase/driver/presto_jdbc.clj:353
+#: metabase/driver/presto_jdbc.clj:344
 msgid "Running statement in all-schemas: {0}"
 msgstr "Câu lệnh đang chạy trong tất cả các lược đồ: {0}"
 
-#: metabase/driver/presto_jdbc.clj:373
+#: metabase/driver/presto_jdbc.clj:364
 msgid "Running statement in describe-table: {0}"
 msgstr "Câu lệnh đang chạy trong bảng mô tả: {0}"
 
@@ -19398,11 +19393,11 @@ msgstr "Lỗi phân tích cú pháp cài đặt JSON {0}: {1}"
 msgid "Plugin ''{0}'' depends on environment variable ''{1}'' being set to something"
 msgstr "Plugin '' {0} '' phụ thuộc vào biến môi trường '' {1} '' được đặt thành thứ gì đó"
 
-#: metabase/pulse/render/body.clj:840
+#: metabase/pulse/render/body.clj:835
 msgid "Down"
 msgstr "Xuống"
 
-#: metabase/pulse/render/body.clj:840
+#: metabase/pulse/render/body.clj:835
 msgid "Up"
 msgstr "Hướng lên"
 
@@ -19775,7 +19770,7 @@ msgstr "Chỉnh sửa chi tiết trang tổng quan"
 msgid "More options"
 msgstr "Lựa chọn khác"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:92
+#: frontend/src/metabase-lib/expressions/resolver.js:105
 msgid "Expecting field but found {0}"
 msgstr "Đang mong đợi trường nhưng đã tìm thấy {0}"
 
@@ -20099,7 +20094,7 @@ msgstr "Bị chặn: bạn không được phép chạy truy vấn vào CSDL {0}
 msgid "BigQueryException executing query"
 msgstr "Truy vấn thực thi BigQueryException"
 
-#: metabase/driver/presto_jdbc.clj:221
+#: metabase/driver/presto_jdbc.clj:212
 msgid "SSL must be enabled to use Kerberos authentication"
 msgstr "SSL phải được bật để sử dụng xác thực Kerberos"
 
@@ -20107,7 +20102,7 @@ msgstr "SSL phải được bật để sử dụng xác thực Kerberos"
 msgid "Cannot parse permissions graph because it is invalid: {0}"
 msgstr "Không thể phân tích cú pháp biểu đồ quyền vì nó không hợp lệ: {0}"
 
-#: metabase/driver/sql_jdbc/connection.clj:186
+#: metabase/driver/sql_jdbc/connection.clj:201
 msgid "Hash of database {0} details changed; marking pool invalid to reopen it"
 msgstr "Chi tiết băm cơ sở dữ liệu {0} đã thay đổi; đánh dấu nhóm không hợp lệ để mở lại nó"
 
@@ -20324,7 +20319,7 @@ msgstr[0] "{0} giá trị khác biệt"
 msgid "Getting distinct values..."
 msgstr "Nhận các giá trị khác biệt ..."
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:128
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:124
 msgid "You don’t have permission to see this question’s columns."
 msgstr "Bạn không được phép xem các cột của câu hỏi này."
 
@@ -20396,15 +20391,15 @@ msgstr "Phân đoạn không xác định: {0}"
 msgid "Unknown Field: {0}"
 msgstr "Trường không xác định: {0}"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:133
+#: frontend/src/metabase-lib/expressions/resolver.js:146
 msgid "Unknown function {0}"
 msgstr "Chức năng không xác định {0}"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:138
+#: frontend/src/metabase-lib/expressions/resolver.js:151
 msgid "Expecting {0} but found function {1} returning {2}"
 msgstr "Đang mong đợi {0} nhưng tìm thấy hàm {1} trả về {2}"
 
-#: frontend/src/metabase-lib/expressions/resolver.js:176
+#: frontend/src/metabase-lib/expressions/resolver.js:189
 msgid "Expecting {0} but found {1}"
 msgstr "Đang mong đợi {0} nhưng đã tìm thấy {1}"
 
@@ -20620,7 +20615,7 @@ msgid "Model in {0}"
 msgstr "Mô hình trong {0}"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:164
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:277
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:278
 msgid "Display as"
 msgstr "Hiển thị dưới dạng"
 
@@ -20754,7 +20749,7 @@ msgstr "Tìm kiếm một loại đặc biệt"
 msgid "Model management"
 msgstr "Quản lý mô hình"
 
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:130
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:127
 #: frontend/src/metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetManagementSection.jsx:58
 msgid "Edit query definition"
 msgstr "Chỉnh sửa định nghĩa truy vấn"
@@ -20787,7 +20782,7 @@ msgstr "Lỗi xử lý trước truy vấn nguồn khi áp dụng GTAP: {0}"
 msgid "Exception caught in :bigquery-cloud-sdk can-connect?"
 msgstr "Ngoại lệ mắc phải: bigquery-cloud-sdk có thể kết nối?"
 
-#: metabase/driver/bigquery_cloud_sdk.clj:351
+#: metabase/driver/bigquery_cloud_sdk.clj:355
 msgid "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
 msgstr "DB {0} có id tập dữ liệu được mã hóa cứng; thay đổi thành một mẫu bao gồm và cập nhật các lược đồ bảng"
 
@@ -21000,7 +20995,7 @@ msgstr "Các tham số truy vấn nguồn gốc mong đợi là tuần tự, có
 msgid "No expression named {0} at this level of the query"
 msgstr "Không có biểu thức nào có tên {0} ở cấp độ này của truy vấn"
 
-#: metabase/driver/sql/query_processor.clj:477
+#: metabase/driver/sql/query_processor.clj:479
 msgid "Error compiling :field clause: {0}"
 msgstr "Lỗi biên dịch: mệnh đề trường: {0}"
 
@@ -21021,7 +21016,7 @@ msgid "Error setting statement fetch size to fetch-size"
 msgstr "Lỗi khi đặt kích thước tìm nạp câu lệnh thành kích thước tìm nạp"
 
 #: metabase/driver/bigquery_cloud_sdk.clj:173
-#: metabase/driver/druid/execute.clj:160 metabase/driver/snowflake.clj:293
+#: metabase/driver/druid/execute.clj:160 metabase/driver/snowflake.clj:311
 #: metabase/driver/sql_jdbc/execute.clj:501
 msgid "Error executing query: {0}"
 msgstr "Lỗi khi thực thi truy vấn: {0}"
@@ -21126,7 +21121,7 @@ msgstr "Kênh Slack có tên `{0} 'bị thiếu!"
 msgid "The channel is used for storing images that are included in dashboard subscriptions."
 msgstr "Kênh được sử dụng để lưu trữ hình ảnh có trong đăng ký trang tổng quan."
 
-#: metabase/models/collection.clj:980
+#: metabase/models/collection.clj:995
 msgid "You do not have curate permissions for this Collection."
 msgstr "Bạn không có quyền quản lý Bộ sưu tập này."
 
@@ -21138,7 +21133,7 @@ msgstr "Trang tổng quan {0} không có Thẻ trang tổng quan với ID {1}"
 msgid "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
 msgstr "Xóa ID bí mật {0} khỏi ứng dụng DB vì cơ sở dữ liệu sở hữu ({1}) đang bị xóa"
 
-#: metabase/models/field.clj:80
+#: metabase/models/field.clj:81
 msgid "Invalid value for Field column {0}: {1} is not a descendant of any of these types: {2}"
 msgstr "Giá trị không hợp lệ cho cột Trường {0}: {1} không phải là con của bất kỳ loại nào sau đây: {2}"
 
@@ -21234,7 +21229,7 @@ msgstr "Mặc định là false nếu bất kỳ cơ sở dữ liệu không ph�
 msgid "Alert: {0} has {1}"
 msgstr "Cảnh báo: {0} có {1}"
 
-#: metabase/pulse/render/body.clj:866 metabase/pulse/render/body.clj:868
+#: metabase/pulse/render/body.clj:861 metabase/pulse/render/body.clj:863
 msgid "Nothing to compare to."
 msgstr "Không có gì để so sánh với."
 
@@ -21306,15 +21301,15 @@ msgstr "Tổng hợp không tồn tại ở chỉ mục {0}"
 msgid "No expression named {0}"
 msgstr "Không có biểu thức nào có tên {0}"
 
-#: metabase/sample_data.clj:16
+#: metabase/sample_data.clj:51
 msgid "Sample database DB file ''{0}'' cannot be found."
 msgstr "Không thể tìm thấy tệp DB cơ sở dữ liệu mẫu '' {0} ''."
 
-#: metabase/sample_data.clj:29
+#: metabase/sample_data.clj:69
 msgid "Loading sample database"
 msgstr "Đang tải cơ sở dữ liệu mẫu"
 
-#: metabase/sample_data.clj:36
+#: metabase/sample_data.clj:77
 msgid "Failed to load sample database"
 msgstr "Không tải được cơ sở dữ liệu mẫu"
 
@@ -21903,7 +21898,7 @@ msgid "Most"
 msgstr "Phần lớn"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator.tsx:34
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:428
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:431
 msgid "Some"
 msgstr "Một số"
 
@@ -21936,7 +21931,7 @@ msgid "Instead of having your end users wade through your complex raw data, you 
 msgstr "Thay vì để người dùng cuối lướt qua dữ liệu thô phức tạp của bạn, bạn có thể tạo các mô hình tùy chỉnh dễ tìm, dễ hiểu và khám phá."
 
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp/ModelEducationalModal.jsx:46
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:210
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:206
 msgid "Learn how"
 msgstr "Học cách"
 
@@ -22081,16 +22076,16 @@ msgstr "Quản lý cơ sở dữ liệu"
 msgid "Unbinned"
 msgstr "Đã hủy bỏ thùng rác"
 
-#: frontend/src/metabase-lib/Dimension.ts:1556
+#: frontend/src/metabase-lib/Dimension.ts:1560
 msgid "Invalid template tag \"{0}\""
 msgstr "Thẻ mẫu không hợp lệ \"{0}\""
 
-#: frontend/src/metabase-lib/Dimension.ts:1561
+#: frontend/src/metabase-lib/Dimension.ts:1565
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "Biến \"{0}\" cần được ánh xạ tới một trường."
 
-#: frontend/src/metabase-lib/Dimension.ts:1686
-#: frontend/src/metabase-lib/Dimension.ts:1822
+#: frontend/src/metabase-lib/Dimension.ts:1690
+#: frontend/src/metabase-lib/Dimension.ts:1826
 msgid "Don't bin"
 msgstr "Đừng thùng rác"
 
@@ -22594,13 +22589,13 @@ msgstr "Nguồn lực và hỗ trợ"
 
 #: frontend/src/metabase/components/EntityItem.jsx:141
 #: frontend/src/metabase/core/components/BookmarkToggle/BookmarkToggle.tsx:44
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:83
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:81
 msgid "Remove from bookmarks"
 msgstr "Xóa khỏi dấu trang"
 
 #: frontend/src/metabase/components/EntityItem.jsx:141
 #: frontend/src/metabase/core/components/BookmarkToggle/BookmarkToggle.tsx:44
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:83
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:81
 msgid "Bookmark"
 msgstr "Dấu trang"
 
@@ -22753,7 +22748,7 @@ msgstr "(Các) miền địa chỉ email được phép cho Đăng ký và Cản
 msgid "You do not have permissions to download the results of this query."
 msgstr "Bạn không có quyền tải xuống kết quả của truy vấn này."
 
-#: metabase/driver/snowflake.clj:74
+#: metabase/driver/snowflake.clj:80
 msgid "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect results. Set the Start of Week Setting instead."
 msgstr "Bạn không nên đặt WEEK_START trong các tùy chọn kết nối Snowflake; điều này có thể dẫn đến kết quả không chính xác. Thay vào đó, hãy đặt Cài đặt bắt đầu tuần."
 
@@ -22814,7 +22809,7 @@ msgstr "Lỗi khi xác định giá trị cho tham số {0}: {1}"
 msgid "You cannot update a ApplicationPermissionsRevision!"
 msgstr "Bạn không thể cập nhật ApplicationPermissionsRevision!"
 
-#: metabase/models/card.clj:189
+#: metabase/models/card.clj:188
 msgid "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
 msgstr "Bộ lọc Trường Không hợp lệ: Trường {0} thuộc về Cơ sở dữ liệu {1}, nhưng truy vấn chống lại Cơ sở dữ liệu {2}"
 
@@ -23216,19 +23211,19 @@ msgstr "Không thể giải quyết Trường {0} trong ngữ cảnh phân tích
 msgid "Error decomposing question: {0}"
 msgstr "Lỗi khi phân tách câu hỏi: {0}"
 
-#: metabase/driver/ddl/interface.clj:50
+#: metabase/driver/ddl/interface.clj:54
 msgid "Lack permissions to create {0} schema"
 msgstr "Thiếu quyền để tạo lược đồ {0}"
 
-#: metabase/driver/ddl/interface.clj:51
+#: metabase/driver/ddl/interface.clj:55
 msgid "Lack permission to create table in schema {0}"
 msgstr "Thiếu quyền tạo bảng trong giản đồ {0}"
 
-#: metabase/driver/ddl/interface.clj:52
+#: metabase/driver/ddl/interface.clj:56
 msgid "Lack permission to read table in schema {0}"
 msgstr "Thiếu quyền đọc bảng trong giản đồ {0}"
 
-#: metabase/driver/ddl/interface.clj:53
+#: metabase/driver/ddl/interface.clj:57
 msgid "Lack permission to delete table in schema {0}"
 msgstr "Thiếu quyền xóa bảng trong giản đồ {0}"
 
@@ -23367,27 +23362,26 @@ msgid "Add description"
 msgstr "Thêm mô tả"
 
 #: frontend/src/metabase/models/components/ModelDetailPage/ModelSchemaDetails/ModelSchemaDetails.tsx:51
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:137
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:134
 msgid "Edit metadata"
 msgstr "Chỉnh sửa siêu dữ liệu"
 
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:174
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:171
 msgid "Turn into a model"
 msgstr "Biến thành người mẫu"
 
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:182
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:190
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:179
 msgid "Turn back to saved question"
 msgstr "Quay lại câu hỏi đã lưu"
 
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:352
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:226
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:214
 msgid "More info"
 msgstr "Thêm thông tin"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionMenu.tsx:78
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:368
-#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:241
+#: frontend/src/metabase/query_builder/components/QuestionActions.tsx:229
 msgid "Move, archive, and more..."
 msgstr "Di chuyển, lưu trữ và hơn thế nữa ..."
 
@@ -23737,7 +23731,7 @@ msgid "Invalid cron expression"
 msgstr "Biểu thức cron không hợp lệ"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/lib/loading-message.ts:4
-#: frontend/src/metabase/plugins/index.ts:88
+#: frontend/src/metabase/plugins/index.ts:83
 msgid "Doing science..."
 msgstr "Làm khoa học ..."
 
@@ -24235,23 +24229,23 @@ msgstr "Lỗi khi chuẩn hóa biểu mẫu: {0}"
 msgid "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
 msgstr "{0} không phải là đơn vị thời gian hợp lệ cho {1}; không thêm vào mệnh đề {2}"
 
-#: metabase/models/collection.clj:1025 metabase/models/collection.clj:1028
+#: metabase/models/collection.clj:1040 metabase/models/collection.clj:1043
 msgid "{0}''s Personal Collection"
 msgstr "Bộ sưu tập Cá nhân của {0}"
 
-#: metabase/models/field_values.clj:90
+#: metabase/models/field_values.clj:91
 msgid "Full FieldValues shouldn't have hash_key."
 msgstr "Full FieldValues không được có hash_key."
 
-#: metabase/models/field_values.clj:84
+#: metabase/models/field_values.clj:85
 msgid "Invalid field-values type."
 msgstr "Loại giá trị trường không hợp lệ."
 
-#: metabase/models/field_values.clj:97
+#: metabase/models/field_values.clj:98
 msgid "Advanced FieldValues requires a hash_key."
 msgstr "FieldValues nâng cao yêu cầu một hash_key."
 
-#: metabase/models/field_values.clj:125
+#: metabase/models/field_values.clj:126
 msgid "Can't update type or hash_key for a FieldValues."
 msgstr "Không thể cập nhật loại hoặc hash_key cho FieldValues."
 
@@ -24484,11 +24478,11 @@ msgstr "⚠️ Các tính năng chuyên nghiệp sẽ không hoạt động ngay
 msgid "Review your payment settings"
 msgstr "Xem lại cài đặt thanh toán của bạn"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:65
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:66
 msgid "Session timeout"
 msgstr "Thời gian chờ của phiên"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/index.js:66
+#: enterprise/frontend/src/metabase-enterprise/auth/index.js:67
 msgid "Time before inactive users are logged out."
 msgstr "Thời gian trước khi người dùng không hoạt động được đăng xuất."
 
@@ -24496,11 +24490,11 @@ msgstr "Thời gian trước khi người dùng không hoạt động được �
 msgid "Lighthouse illustration"
 msgstr "Minh họa ngọn hải đăng"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:173
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:169
 msgid "Variable to map to"
 msgstr "Biến để ánh xạ tới"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.jsx:179
+#: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:175
 msgid "You can connect widgets to {{variables}} in text cards."
 msgstr "Bạn có thể kết nối tiện ích con với {{biến}} trong thẻ văn bản."
 
@@ -24508,7 +24502,7 @@ msgstr "Bạn có thể kết nối tiện ích con với {{biến}} trong thẻ
 msgid "If you have a PEM SSL client key, you can convert that key to the PKCS-8/DER format using OpenSSL. {0}."
 msgstr "Nếu bạn có khóa ứng dụng PEM SSL, bạn có thể chuyển đổi khóa đó sang định dạng PKCS-8 / DER bằng OpenSSL. {0}."
 
-#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:168
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:169
 msgid "You can use Markdown here, and include variables {{like_this}}"
 msgstr "Bạn có thể sử dụng Markdown tại đây và bao gồm các biến {{like_this}}"
 
@@ -24751,12 +24745,12 @@ msgid "Info"
 msgstr "Thông tin"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:197
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:310
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:311
 msgid "Link to {{bird_id}}"
 msgstr "Liên kết tới {{bird_id}}"
 
 #: frontend/src/metabase/visualizations/visualizations/List.tsx:224
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:336
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:337
 msgid "http://toucan.example/{{bird_id}}"
 msgstr "http://toucan.example/{{bird_id}}"
 
@@ -24820,7 +24814,7 @@ msgstr "Nhúng vào ứng dụng của bạn"
 msgid "Add this {0} to your application server code. You’ll be able to preview the way it looks and behaves before making it securely visible for your users."
 msgstr "Thêm {0} này vào mã máy chủ ứng dụng của bạn. Bạn sẽ có thể xem trước giao diện và hoạt động của nó trước khi hiển thị an toàn cho người dùng của bạn."
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:114
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:113
 #: frontend/src/metabase/public/components/widgets/SharingPane.tsx:172
 msgid "Set up"
 msgstr "Cài đặt"
@@ -24897,7 +24891,7 @@ msgstr "Kết quả: {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.jsx:36
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.jsx:188
-#: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx:97
+#: frontend/src/metabase/admin/settings/components/SettingsGoogleForm/SettingsGoogleForm.tsx:84
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:38
 msgid "Save and enable"
 msgstr "Lưu và kích hoạt"
@@ -25099,7 +25093,7 @@ msgstr "Thêm một số đơn vị thời gian vào giá trị ngày hoặc d�
 
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:730
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:751
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:779
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:781
 msgid "The column with your date or timestamp values."
 msgstr "Cột có giá trị ngày hoặc dấu thời gian của bạn."
 
@@ -25243,7 +25237,7 @@ msgstr "Lựa chọn Hai"
 msgid "Option Three"
 msgstr "Lựa chọn Ba"
 
-#: frontend/src/metabase/routes.jsx:247
+#: frontend/src/metabase/routes.jsx:256
 msgid "New Model"
 msgstr "Người mẫu mới"
 
@@ -25319,23 +25313,23 @@ msgstr "đã tạo đăng ký"
 msgid "deleted a subscription"
 msgstr "đã xóa đăng ký"
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:74
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:77
 msgid "Use the notebook editor"
 msgstr "Sử dụng trình chỉnh sửa sổ ghi chép"
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:75
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:78
 msgid "This automatically inherits metadata from your source tables, and gives your models drill-through."
 msgstr "Thao tác này sẽ tự động kế thừa siêu dữ liệu từ các bảng nguồn của bạn và cung cấp thông tin chi tiết về các mô hình của bạn."
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:90
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:93
 msgid "Use a native query"
 msgstr "Sử dụng truy vấn gốc"
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:91
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:94
 msgid "You can always fall back to a SQL or native query, which is a bit more manual."
 msgstr "Bạn luôn có thể quay lại truy vấn SQL hoặc truy vấn gốc, thủ công hơn một chút."
 
-#: frontend/src/metabase/new_model/containers/NewModelOptions.jsx:110
+#: frontend/src/metabase/new_query/containers/NewDatasetOptions.jsx:113
 msgid "What's a model?"
 msgstr "Mô hình là gì?"
 
@@ -25343,7 +25337,7 @@ msgstr "Mô hình là gì?"
 msgid "Your page is ready"
 msgstr "Trang của bạn đã sẵn sàng"
 
-#: frontend/src/metabase/dashboard/components/DashCard/DashCard.tsx:310
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:279
 msgid "Action button"
 msgstr "nút hành động"
 
@@ -25391,11 +25385,11 @@ msgstr "loại bỏ"
 msgid "Question in {0}"
 msgstr "Câu hỏi trong {0}"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:224
+#: frontend/src/metabase/visualizations/lib/settings/column.js:222
 msgid "Abbreviate days and months"
 msgstr "Viết tắt ngày và tháng"
 
-#: frontend/src/metabase/visualizations/lib/settings/column.js:417
+#: frontend/src/metabase/visualizations/lib/settings/column.js:404
 msgid "dollars"
 msgstr "USD"
 
@@ -25475,34 +25469,34 @@ msgstr "Giá trị cột"
 msgid "Add series breakout"
 msgstr "Thêm chuỗi đột phá"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:265
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:268
 msgid "Add another series"
 msgstr "Thêm một loạt khác"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:440
 msgid "Auto formatting"
 msgstr "tự động định dạng"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:500
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:535
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:503
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:538
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:24
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:34
 msgid "Scale"
 msgstr "Tỉ lệ"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:551
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:567
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:554
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:570
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:50
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:63
 msgid "Show lines and marks"
 msgstr "Hiển thị các dòng và đánh dấu"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:612
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:615
 msgid "Split y-axis when necessary"
 msgstr "Tách trục y khi cần thiết"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:622
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:644
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:625
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:647
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:108
 #: frontend/src/metabase/visualizations/visualizations/RowChart/utils/settings-definitions.js:130
 msgid "Show label"
@@ -25664,11 +25658,11 @@ msgstr "vi phạm ràng buộc duy nhất {0}"
 msgid "{0} violates not-null constraint"
 msgstr "{0} vi phạm ràng buộc không null"
 
-#: metabase/driver/redshift.clj:300
+#: metabase/driver/redshift.clj:298
 msgid "Error fetching field metadata for table {0}"
 msgstr "Lỗi khi tìm nạp siêu dữ liệu trường cho bảng {0}"
 
-#: metabase/driver/snowflake.clj:189
+#: metabase/driver/snowflake.clj:195
 msgid "sqlite doesn't support extract us week"
 msgstr "sqlite không hỗ trợ giải nén chúng tôi trong tuần"
 
@@ -25752,11 +25746,11 @@ msgstr "Cài đặt LDAP bắt buộc (cơ sở tìm kiếm của máy chủ và
 msgid "Data apps are not enabled."
 msgstr "Ứng dụng dữ liệu không được bật."
 
-#: metabase/models/card.clj:213
+#: metabase/models/card.clj:212
 msgid "A model made from a native SQL question cannot have a variable or field filter."
 msgstr "Một mô hình được tạo từ câu hỏi SQL gốc không thể có biến hoặc bộ lọc trường."
 
-#: metabase/models/dashboard_card.clj:194
+#: metabase/models/dashboard_card.clj:195
 msgid "You cannot add an is_write Card to a Dashboard."
 msgstr "Bạn không thể thêm Thẻ is_write vào Trang tổng quan."
 
@@ -25822,27 +25816,27 @@ msgstr "giá trị phải là một bản đồ với lược đồ: (\n"
 msgid "{0} (optional)"
 msgstr "{0} (tùy chọn)"
 
-#: metabase_enterprise/advanced_config/file.clj:163
+#: metabase_enterprise/advanced_config/file.clj:164
 msgid "Found config file at path {0}; Metabase will be initialized with values from this file"
 msgstr "Đã tìm thấy tệp cấu hình tại đường dẫn {0}; Metabase sẽ được khởi tạo với các giá trị từ tệp này"
 
-#: metabase_enterprise/advanced_config/file.clj:257
+#: metabase_enterprise/advanced_config/file.clj:265
 msgid "Done initializing from file."
 msgstr "Xong khởi tạo từ file."
 
-#: metabase_enterprise/advanced_config/file.clj:166
+#: metabase_enterprise/advanced_config/file.clj:167
 msgid "No config file found at path {0}"
 msgstr "Không tìm thấy tệp cấu hình tại đường dẫn {0}"
 
-#: metabase_enterprise/advanced_config/file.clj:180
+#: metabase_enterprise/advanced_config/file.clj:181
 msgid "Don''t know how to expand template form: {0}"
 msgstr "Không biết cách mở rộng biểu mẫu mẫu: {0}"
 
-#: metabase_enterprise/advanced_config/file.clj:255
+#: metabase_enterprise/advanced_config/file.clj:263
 msgid "Initializing {0} from config file..."
 msgstr "Đang khởi tạo {0} từ tệp cấu hình..."
 
-#: metabase_enterprise/advanced_config/file.clj:210
+#: metabase_enterprise/advanced_config/file.clj:211
 msgid "Error parsing template string {0}: {1}"
 msgstr "Lỗi khi phân tích chuỗi mẫu {0}: {1}"
 
@@ -25934,19 +25928,19 @@ msgstr "Xem chi tiết không hoạt động với các câu hỏi SQL."
 msgid "Drill-through doesn’t work on native questions."
 msgstr "Xem chi tiết không hoạt động đối với các câu hỏi gốc."
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:107
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:106
 msgid "Paused"
 msgstr "Đã tạm dừng"
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:135
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:133
 msgid "Pause"
 msgstr "Tạm ngừng"
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:135
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:133
 msgid "Resume"
 msgstr "Sơ yếu lý lịch"
 
-#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:173
+#: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx:171
 msgid "This will clear all your settings."
 msgstr "Điều này sẽ xóa tất cả các cài đặt của bạn."
 
@@ -25995,12 +25989,12 @@ msgid "The name of the column with your date or datetime value."
 msgstr "Tên của cột có giá trị ngày hoặc giờ của bạn."
 
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:769
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:782
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:784
 msgid "target"
 msgstr "Mục tiêu"
 
 #: frontend/src/metabase-lib/expressions/helper-text-strings.ts:771
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:786
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:788
 msgid "source"
 msgstr "nguồn"
 
@@ -26008,7 +26002,7 @@ msgstr "nguồn"
 msgid "Convert timezone of a date or timestamp column."
 msgstr "Chuyển đổi múi giờ của cột ngày hoặc dấu thời gian."
 
-#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:783
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:785
 msgid "The timezone you want to assign to your column."
 msgstr "Múi giờ bạn muốn chỉ định cho cột của mình."
 
@@ -26053,8 +26047,8 @@ msgstr "Truy vấn siêu dữ liệu"
 msgid "No copied card information found"
 msgstr "Không tìm thấy thông tin thẻ đã sao chép"
 
-#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:555
-#: metabase/driver/mysql.clj:368 metabase/driver/postgres.clj:382
+#: metabase/driver/bigquery_cloud_sdk/query_processor.clj:568
+#: metabase/driver/mysql.clj:382 metabase/driver/postgres.clj:377
 msgid "Only datetime, timestamp, or date types allowed. Found {0}"
 msgstr "Chỉ cho phép các loại ngày giờ, dấu thời gian hoặc ngày. Đã tìm thấy {0}"
 
@@ -26077,4 +26071,56 @@ msgstr "Lỗi khi chạy bước ''{0}'' cho {1}"
 #: metabase_enterprise/serialization/v2/backfill_ids.clj:23
 msgid "Backfilling entity_id for {0} rows of {1}"
 msgstr "Chèn thực thể_id cho {0} hàng của {1}"
+
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:773
+msgid "Convert timezone of a date or timestamp column.\n"
+"We support tz database time zone names.\n"
+"See the full list here: https://w.wiki/4Jx"
+msgstr "Chuyển đổi múi giờ của cột ngày hoặc dấu thời gian.\n"
+"Chúng tôi hỗ trợ tên múi giờ cơ sở dữ liệu tz.\n"
+"Xem danh sách đầy đủ tại đây: https://w.wiki/4Jx"
+
+#: frontend/src/metabase-lib/expressions/helper-text-strings.ts:789
+msgid "The current time zone. Only required for timestamps with no time zone."
+msgstr "Múi giờ hiện tại. Chỉ cần thiết cho dấu thời gian không có múi giờ."
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:129
+msgid "Show percentages"
+msgstr "Hiển thị tỷ lệ phần trăm"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:135
+msgid "In legend"
+msgstr "trong truyền thuyết"
+
+#: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:136
+msgid "On the chart"
+msgstr "trên biểu đồ"
+
+#: metabase/driver/sql/query_processor.clj:1002
+msgid "Error compiling HoneySQL form: {0}"
+msgstr "Lỗi biên dịch biểu mẫu HoneySQL: {0}"
+
+#: metabase/driver/sql/query_processor.clj:998
+msgid "Invalid HoneySQL form: {0}"
+msgstr "Biểu mẫu HoneySQL không hợp lệ: {0}"
+
+#: metabase/driver/sql/util.clj:134
+msgid "input column already has a set timezone. Please remove the source parameter in convertTimezone."
+msgstr "cột đầu vào đã có múi giờ được đặt. Vui lòng xóa tham số nguồn trong convertTimezone."
+
+#: metabase/driver/sql/util.clj:139
+msgid "input column doesn't have a set timezone. Please set the source parameter in convertTimezone to convert it."
+msgstr "cột đầu vào không có múi giờ đã đặt. Vui lòng đặt tham số nguồn trong convertTimezone để chuyển đổi nó."
+
+#: metabase/query_processor/context/default.clj:59
+msgid "Error reducing result rows: {0}"
+msgstr "Lỗi khi giảm hàng kết quả: {0}"
+
+#: metabase/sample_data.clj:59
+msgid "Sample database could not be extracted to the plugins directory,which may result in slow startup times. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."
+msgstr "Không thể trích xuất cơ sở dữ liệu mẫu vào thư mục phần bổ trợ, điều này có thể dẫn đến thời gian khởi động chậm. Vui lòng đặt MB_PLUGINS_DIR thành thư mục có thể ghi và khởi động lại Metabase."
+
+#: metabase_enterprise/advanced_config/file.clj:261
+msgid "Metabase config files require a Premium token with the :advanced-config feature."
+msgstr "Tệp cấu hình Metabase yêu cầu mã thông báo Cao cấp với tính năng :advanced-config."
 

@@ -194,3 +194,7 @@
 (defmethod tx/supports-time-type? :athena
   [_driver]
   false)
+
+(defmethod tx/supports-timestamptz-type? :athena
+  [_driver]
+  false)

@@ -145,6 +145,7 @@ export interface Settings {
   "embedding-secret-key"?: string;
   "enable-embedding": boolean;
   "enable-nested-queries": boolean;
+  "enable-query-caching"?: boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "experimental-enable-actions": boolean;

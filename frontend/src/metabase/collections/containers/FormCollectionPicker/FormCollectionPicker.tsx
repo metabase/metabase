@@ -15,6 +15,10 @@ import SelectButton from "metabase/core/components/SelectButton";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
 import CollectionName from "metabase/containers/CollectionName";
+import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
+
+import Collections from "metabase/entities/collections";
+import SnippetCollections from "metabase/entities/snippet-collections";
 
 import { isValidCollectionId } from "metabase/collections/utils";
 
@@ -30,9 +34,24 @@ export interface FormCollectionPickerProps
   name: string;
   title?: string;
   placeholder?: string;
+  type?: "collections" | "snippet-collections";
 }
 
 const ITEM_PICKER_MODELS = ["collection"];
+
+function ItemName({
+  id,
+  type = "collections",
+}: {
+  id: CollectionId;
+  type?: "collections" | "snippet-collections";
+}) {
+  return type === "snippet-collections" ? (
+    <SnippetCollectionName id={id} />
+  ) : (
+    <CollectionName id={id} />
+  );
+}
 
 function FormCollectionPicker({
   className,
@@ -40,6 +59,7 @@ function FormCollectionPicker({
   name,
   title,
   placeholder = t`Select a collection`,
+  type = "collections",
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -66,29 +86,38 @@ function FormCollectionPicker({
       >
         <SelectButton onClick={handleShowPopover}>
           {isValidCollectionId(value) ? (
-            <CollectionName id={value} />
+            <ItemName id={value} type={type} />
           ) : (
             placeholder
           )}
         </SelectButton>
       </FormField>
     ),
-    [id, value, title, placeholder, error, touched, className, style],
+    [id, value, type, title, placeholder, error, touched, className, style],
   );
 
   const renderContent = useCallback(
-    ({ closePopover }) => (
-      <PopoverItemPicker
-        value={{ id: value, model: "collection" }}
-        models={ITEM_PICKER_MODELS}
-        onChange={({ id }: { id: CollectionId }) => {
-          setValue(id);
-          closePopover();
-        }}
-        width={width}
-      />
-    ),
-    [value, width, setValue],
+    ({ closePopover }) => {
+      // Search API doesn't support collection namespaces yet
+      const hasSearch = type === "collections";
+
+      const entity = type === "collections" ? Collections : SnippetCollections;
+
+      return (
+        <PopoverItemPicker
+          value={{ id: value, model: "collection" }}
+          models={ITEM_PICKER_MODELS}
+          entity={entity}
+          onChange={({ id }: { id: CollectionId }) => {
+            setValue(id);
+            closePopover();
+          }}
+          showSearch={hasSearch}
+          width={width}
+        />
+      );
+    },
+    [value, type, width, setValue],
   );
 
   return (

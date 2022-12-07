@@ -420,7 +420,7 @@
                            #{"/db/1/" "//"}
                            #{"/db/1/" "/db/1/table/2/"}
                            #{"/db/1/native/schema/"}
-                           #{"/db/1/schema/public/" "/kanye/"}
+                           #{"/db/1/schema/public/" "/parroty/"}
                            #{"/db/1/schema/public/table/1/" "/ocean/"}]}]
       (testing group
         (doseq [perms-set sets]

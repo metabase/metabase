@@ -20,6 +20,7 @@ export * from "./revision";
 export * from "./segment";
 export * from "./settings";
 export * from "./slack";
+export * from "./snippets";
 export * from "./table";
 export * from "./timeline";
 export * from "./user";

@@ -37,6 +37,8 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+(defmethod driver/database-supports? [:snowflake :datetime-diff] [_ _ _] true)
+
 (defmethod driver/database-supports? [:snowflake :now] [_driver _feat _db] true)
 
 (defmethod driver/supports? [:snowflake :convert-timezone]
@@ -224,6 +226,58 @@
 (defmethod sql.qp/date [:snowflake :day-of-week]
   [_driver _unit expr]
   (extract :dayofweek expr))
+
+(defmethod sql.qp/->honeysql [:snowflake :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (hsql/call :convert_timezone
+                     (qp.timezone/results-timezone-id)
+                     (sql.qp/->honeysql driver x))
+        y (hsql/call :convert_timezone
+                     (qp.timezone/results-timezone-id)
+                     (sql.qp/->honeysql driver y))]
+    (case unit
+      :year
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             (hx/- (extract :year b) (extract :year a))
+                             ;; decrement if a is later than b in the year calendar
+                             (hx/cast
+                              :integer
+                              (hsql/call
+                               :or
+                               (hsql/call :> (extract :month a) (extract :month b))
+                               (hsql/call
+                                :and
+                                (hsql/call := (extract :month a) (extract :month b))
+                                (hsql/call :> (extract :day a) (extract :day b)))))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :month
+      (let [positive-diff (fn [a b]
+                            (hx/-
+                             (hsql/call :datediff (hsql/raw (name unit)) a b)
+                             (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :week
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (hsql/call :datediff (hsql/raw "day") a b) 7))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :day
+      (hsql/call :datediff (hsql/raw (name unit)) x y)
+
+      (:hour :minute :second)
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (hx/cast :float (hsql/call :datediff (hsql/raw "millisecond") a b)) ; datediff returns integer, so cast to float
+                                    (case unit :hour 3600000 :minute 60000 :second 1000)))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x)))))))
 
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
   [driver [_ arg pattern]]

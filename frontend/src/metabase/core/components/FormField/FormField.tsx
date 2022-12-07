@@ -41,18 +41,13 @@ const FormField = forwardRef(function FormField(
   const hasError = Boolean(error);
 
   return (
-    <FieldRoot
-      {...props}
-      ref={ref}
-      orientation={orientation}
-      hasError={hasError}
-    >
+    <FieldRoot {...props} ref={ref} orientation={orientation}>
       {alignment === "start" && children}
       {(title || description) && (
         <FieldCaption alignment={alignment} orientation={orientation}>
           <FieldLabelContainer>
             {title && (
-              <FieldLabel htmlFor={htmlFor}>
+              <FieldLabel hasError={hasError} htmlFor={htmlFor}>
                 {title}
                 {hasError && <FieldLabelError>: {error}</FieldLabelError>}
               </FieldLabel>

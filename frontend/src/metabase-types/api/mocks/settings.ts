@@ -116,6 +116,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "email-configured?": false,
   "enable-embedding": false,
   "enable-nested-queries": true,
+  "enable-query-caching": undefined,
   "enable-public-sharing": false,
   "enable-xrays": false,
   "experimental-enable-actions": false,
