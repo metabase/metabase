@@ -54,7 +54,8 @@ const getFieldType = (field: EngineField, override?: EngineFieldOverride) => {
 };
 
 const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
-  const placeholder = override?.placeholder ?? field.placeholder;
+  const placeholder =
+    override?.placeholder ?? field.placeholder ?? field.default;
 
   return {
     name: override?.name ?? `details.${field.name}`,

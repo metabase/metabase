@@ -2,7 +2,7 @@ import React from "react";
 import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { DatabaseValues } from "../../types";
+import { DatabaseData } from "metabase-types/api";
 
 const CREDENTIAL_URLS: Record<string, string> = {
   bigquery:
@@ -10,7 +10,7 @@ const CREDENTIAL_URLS: Record<string, string> = {
 };
 
 const DatabaseClientIdDescription = (): JSX.Element | null => {
-  const { values } = useFormikContext<DatabaseValues>();
+  const { values } = useFormikContext<DatabaseData>();
   const { engine, details } = values;
 
   if (!engine || !CREDENTIAL_URLS[engine]) {

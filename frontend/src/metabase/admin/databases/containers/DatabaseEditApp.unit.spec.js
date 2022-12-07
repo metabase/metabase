@@ -29,9 +29,8 @@ const ENGINES_MOCK = {
 };
 
 const ComponentMock = () => <div />;
-jest.mock("metabase/containers/DatabaseHelpCard", () => ComponentMock);
 jest.mock(
-  "metabase/databases/containers/DatabaseEngineWarning",
+  "metabase/databases/containers/DatabaseHelpCard",
   () => ComponentMock,
 );
 
@@ -66,6 +65,8 @@ async function setup({ cachingEnabled = false } = {}) {
 
   const settingsReducer = () => ({
     values: {
+      engines: ENGINES_MOCK,
+      "enable-query-caching": cachingEnabled,
       "persisted-models-enabled": false,
     },
   });

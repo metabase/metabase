@@ -54,7 +54,7 @@ export function isPersonalCollectionChild(
   return Boolean(parentCollection && !!parentCollection.personal_owner_id);
 }
 
-export function isRootCollection(collection: Collection): boolean {
+export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection.id) === null;
 }
 

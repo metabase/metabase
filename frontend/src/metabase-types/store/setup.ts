@@ -1,4 +1,4 @@
-import { DatabaseSchedules } from "metabase-types/api";
+import { DatabaseData } from "metabase-types/api";
 
 export interface Locale {
   name: string;
@@ -20,19 +20,6 @@ export interface InviteInfo {
   email: string;
 }
 
-export interface DatabaseInfo {
-  name: string;
-  engine: string | undefined;
-  details: Record<string, unknown>;
-  schedules: DatabaseSchedules;
-  auto_run_queries: boolean;
-  refingerprint: boolean;
-  cache_ttl: number | null;
-  is_sample: boolean;
-  is_full_sync: boolean;
-  is_on_demand: boolean;
-}
-
 export interface SubscribeInfo {
   email: string;
 }
@@ -42,7 +29,7 @@ export interface SetupState {
   locale?: Locale;
   user?: UserInfo;
   databaseEngine?: string;
-  database?: DatabaseInfo;
+  database?: DatabaseData;
   invite?: InviteInfo;
   isLocaleLoaded: boolean;
   isTrackingAllowed: boolean;
