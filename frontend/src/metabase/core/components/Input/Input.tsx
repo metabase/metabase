@@ -14,9 +14,11 @@ import {
   InputRightButton,
   InputRoot,
   InputSubtitle,
-  ResetButton,
+  InputResetButton,
 } from "./Input.styled";
 import { InputSize } from "./types";
+
+export type InputColorScheme = "brand" | "filter";
 
 export type InputAttributes = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -33,7 +35,7 @@ export interface InputProps extends InputAttributes {
   rightIcon?: string;
   rightIconTooltip?: ReactNode;
   subtitle?: string;
-  colorScheme?: string;
+  colorScheme?: InputColorScheme;
   onLeftIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onRightIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onResetClick?: () => void;
@@ -113,13 +115,13 @@ const Input = forwardRef(function Input(
 
       {showResetButton && (
         <Tooltip tooltip={t`Clear`} placement="right">
-          <ResetButton
+          <InputResetButton
             size={size}
             hasRightIcon={!!rightIcon}
             onClick={onResetClick}
           >
             <Icon name="close" />
-          </ResetButton>
+          </InputResetButton>
         </Tooltip>
       )}
     </InputRoot>

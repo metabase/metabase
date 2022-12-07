@@ -124,11 +124,11 @@ export const InputRightButton = styled(InputButton)<InputButtonProps>`
   right: 0;
 `;
 
-type ResetButtonProps = {
+type InputResetButtonProps = {
   hasRightIcon: boolean;
 };
 
-export const ResetButton = styled(InputButton)<ResetButtonProps>`
+export const InputResetButton = styled(InputButton)<InputResetButtonProps>`
   right: ${props => (props.hasRightIcon ? "0.75rem" : 0)};
 `;
 

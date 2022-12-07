@@ -140,13 +140,13 @@ export default class Progress extends Component {
     const column = cols[0];
     const goal = settings["progress.goal"] || 0;
 
-    const colorScheme = settings["progress.color"];
-    const lightColor = Color(colorScheme).lighten(0.25).rgb().string();
-    const darkColor = Color(colorScheme).darken(0.3).rgb().string();
+    const mainColor = settings["progress.color"];
+    const lightColor = Color(mainColor).lighten(0.25).rgb().string();
+    const darkColor = Color(mainColor).darken(0.3).rgb().string();
 
-    const progressColor = colorScheme;
+    const progressColor = mainColor;
     const restColor = value > goal ? darkColor : lightColor;
-    const arrowColor = value > goal ? darkColor : colorScheme;
+    const arrowColor = value > goal ? darkColor : mainColor;
 
     const barPercent = Math.max(0, value < goal ? value / goal : goal / value);
     const arrowPercent = Math.max(0, value < goal ? value / goal : 1);
