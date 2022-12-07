@@ -1,0 +1,138 @@
+(ns metabase.test-runner.assert-exprs.approximately-equal
+  "This adds a new test expression type `=?` that uses a [Methodical](https://github.com/camsaul/methodical) multimethod
+  to decide whether `expected` and `actual` should be \"approximately equal\". It dispatches on the types of `expected`
+  and `actual`.
+
+  Now while you can already write all the sort of \"approximately equal\" things you want in theory using
+  `schema=` (defined in [[metabase.test-runner.assert-exprs]]), in practice it's a bit of a hassle. Want to convert an
+  `=` to `schema=` and change one key in a map to use `s/Int` instead of a specific number? Have fun wrapping every
+  other value in `s/eq`. Want to ignore unused keys like `partial=`? You need to stick `s/Keyword s/Any` in every.
+  single. map. `=?` takes the best of `schema=` and `partial=`, steals a few ideas
+  from [Expectations](https://github.com/clojure-expectations/expectations), and is more powerful and easier to use
+  than any of those three.
+
+  `=` usages can be replaced with `=?` with no other changes -- you can replace that one single key with a predicate
+  function and leave everything else the same.
+
+  Here's some rules I've defined already:
+
+  - Two regex patterns that are the exact same pattern should be considered =?. (For some wacko reason regex patterns
+    aren't equal unless they're the same object)
+
+  - An `expected` plain Clojure map should be approximately equal to an `actual` record type. We shouldn't need some
+    hack like `mt/derecordize` to be able to write tests for this stuff
+
+  - an `expected` regex pattern should be approximately equal to an `actual` string if the string matches the
+    regex. (This is what `re=` currently does. We can replace `re=` with `=?` entirely.)
+
+  - an `expected` function should be approximately equal to a an `actual` value if `(expected actual)` returns truthy.
+
+  - an `expected` map should be approximately equal to an `actual` map if all the keys in `expected` are present in
+    `actual` and their respective values are approximately equal. In other words, extra keys in `actual` should be
+    ignored (this is what our `partial=` works)
+
+  - Motivating example: two sublcasses of `Temporal` e.g. `OffsetDateTime` and `ZonedDateTime` should be `=?` if we
+    would print them exactly the same way.
+
+  Defining new `=?` behaviors is as simple as writing a new `defmethod`.
+
+    (methodical/defmethod =?-diff [java.util.regex.Pattern String]
+      [expected-regex s]
+      (when-not (re-find expected-regex s)
+        (list 'not (list 're-find expected-regex s))))
+
+  Methods are expected to return `nil` if things are approximately equal, or a form explaining why they aren't if they
+  aren't. In this case, it returns something like
+
+    (not (re-find #\"\\d+cans\" \"toucans\")))
+
+  This is printed in the correct place by humanized test output and other things that can print diffs."
+  (:require
+   [methodical.core :as methodical]))
+
+(methodical/defmulti =?-diff
+  {:arglists '([expected actual])}
+  (fn [expected actual]
+    [(type expected) (type actual)]))
+
+(def ^:dynamic ^:private *impl*
+  "Multifn that [[=?]] should use. Normally [[=?-diff]] but this will be rebound when using the 3-arity version of the test
+  assertion. (Methodical allows you to create new multifns programatically and add new methods non-destructively.)"
+  =?-diff)
+
+(defn- add-primary-methods
+  "Add primary methods in map `m` of dispatch value -> method fn to [[*impl*]]. Return a new multifn with those methods
+  added."
+  [m]
+  (reduce
+   (fn [multifn [dispatch-value f]]
+     (methodical/add-primary-method multifn dispatch-value f))
+   *impl*
+   m))
+
+(def ^:dynamic *debug*
+  "Whether to enable Methodical method tracing for debug purposes."
+  false)
+
+(defn =?
+  "Are `expected` and `actual` 'approximately' equal to one another?"
+  ([expected actual]
+   (=? *impl* expected actual))
+
+  ([=?-multifn expected actual]
+   (let [=?-multifn (if (map? =?-multifn)
+                     (add-primary-methods =?-multifn)
+                     =?-multifn)]
+     (binding [*impl* =?-multifn]
+       (if *debug*
+         (methodical/trace =?-multifn expected actual)
+         (=?-multifn expected actual))))))
+
+;;;; Default method impls
+
+(methodical/defmethod =?-diff :default
+  [expected actual]
+  (when-not (= expected actual)
+    (list 'not= expected actual)))
+
+(methodical/defmethod =?-diff [Class Object]
+  [expected-class actual]
+  (when-not (instance? expected-class actual)
+    (list 'not (list 'instance? expected-class actual))))
+
+(methodical/defmethod =?-diff [java.util.regex.Pattern String]
+  [expected-regex s]
+  (when-not (re-find expected-regex s)
+    (list 'not (list 're-find expected-regex s))))
+
+;;; two regexes should be treated as equal if they're the same pattern.
+(methodical/defmethod =?-diff [java.util.regex.Pattern java.util.regex.Pattern]
+  [expected actual]
+  (when-not (= (str expected) (str actual))
+    (list 'not= (list 'str expected) (list 'str actual))))
+
+(methodical/defmethod =?-diff [clojure.lang.AFunction Object]
+  [pred actual]
+  (when-not (pred actual)
+    (list 'not (list pred actual))))
+
+(methodical/defmethod =?-diff [clojure.lang.Sequential clojure.lang.Sequential]
+  [expected-seq actual-seq]
+  (loop [acc                        []
+         [expected & more-expected] expected-seq
+         [actual & more-actual]     actual-seq]
+    (let [result (=? expected actual)
+          acc    (conj acc result)]
+      (if (or (seq more-expected)
+              (seq more-actual))
+        (recur acc more-expected more-actual)
+        (when (some some? acc)
+          acc)))))
+
+(methodical/defmethod =?-diff [clojure.lang.IPersistentMap clojure.lang.IPersistentMap]
+  [expected-map actual-map]
+  (not-empty (into {} (for [[k expected] expected-map
+                            :let         [actual       (get actual-map k (symbol "nil #_\"key is not present.\""))
+                                          =?-result (=? expected actual)]
+                            :when        =?-result]
+                        [k =?-result]))))

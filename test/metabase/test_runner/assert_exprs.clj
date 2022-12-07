@@ -1,11 +1,12 @@
 (ns metabase.test-runner.assert-exprs
   "Custom implementations of [[clojure.test/is]] expressions (i.e., implementations of [[clojure.test/assert-expr]]).
-  `re=`, `schema=`, `query=`, `sql=`, and more."
-  (:require [clojure.data :as data]
-            [clojure.test :as t]
-            [clojure.walk :as walk]
-            [schema.core :as s]
-            [metabase.test-runner.assert-exprs.approximately-equal :as approximately-equal]))
+  `re=`, `schema=`, `query=`, `sql=`, `=?`, and more."
+  (:require
+   [clojure.data :as data]
+   [clojure.test :as t]
+   [clojure.walk :as walk]
+   [metabase.test-runner.assert-exprs.approximately-equal :as approximately-equal]
+   [schema.core :as s]))
 
 (defmethod t/assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
@@ -149,21 +150,21 @@
         (t/do-report
          (sql=-report ~message ~expected query#))))))
 
-(defn ≈-report
+(defn =?-report
   [message multifn expected actual]
   (let [error (if multifn
-                (approximately-equal/≈ multifn expected actual)
-                (approximately-equal/≈ expected actual))]
+                (approximately-equal/=? multifn expected actual)
+                (approximately-equal/=? expected actual))]
     {:type     (if (not error) :pass :fail)
      :message  message
      :expected expected
      :actual   actual
      :diffs    [[actual [error nil]]]}))
 
-(defmethod t/assert-expr '≈
+(defmethod t/assert-expr '=?
   [message [_ & form]]
   (let [[multifn expected actual] (case (count form)
                                     2 (cons nil form)
                                     3 form
-                                    (throw (ex-info "≈ expects either 2 or 3 arguments" {:form form})))]
-    `(t/do-report (≈-report ~message ~multifn ~expected ~actual))))
+                                    (throw (ex-info "=? expects either 2 or 3 arguments" {:form form})))]
+    `(t/do-report (=?-report ~message ~multifn ~expected ~actual))))
