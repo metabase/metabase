@@ -14,6 +14,8 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
             [metabase.driver.sql.util :as sql.u]
@@ -448,6 +450,16 @@
 (defmethod driver/escape-entity-name-for-metadata :oracle
   [_ entity-name]
   (str/replace entity-name "/" "//"))
+
+(defmethod sql-jdbc.describe-table/get-table-pks :oracle
+  [_driver conn db-name-or-nil table]
+  (let [metadata (.getMetaData conn)]
+    (into #{} (sql-jdbc.sync.common/reducible-results
+               #(.getPrimaryKeys metadata
+                                 db-name-or-nil
+                                 (:schema table)
+                                 (:name table))
+               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle
   [_]

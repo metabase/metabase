@@ -175,15 +175,26 @@
    (describe-table-fields-xf driver table)
    (fields-metadata driver conn table db-name-or-nil)))
 
+(defmulti get-table-pks
+  "Returns a set of primary keys for `table` using a JDBC DatabaseMetaData from JDBC Connection `conn`.
+  Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection can access."
+  {:added    "0.45.0"
+   :arglists '([driver ^Connection conn db-name-or-nil table])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod get-table-pks :default
+  [_driver conn db-name-or-nil table]
+  (let [metadata (.getMetaData conn)]
+    (into #{} (sql-jdbc.common/reducible-results
+               #(.getPrimaryKeys metadata db-name-or-nil (:schema table) (:name table))
+               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
+
 (defn add-table-pks
-  "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
-  [driver ^DatabaseMetaData metadata db-name-or-nil table]
-  (let [pks (into #{} (sql-jdbc.common/reducible-results
-                       #(.getPrimaryKeys metadata
-                                         (driver/escape-entity-name-for-metadata driver db-name-or-nil)
-                                         (driver/escape-entity-name-for-metadata driver (:schema table))
-                                         (driver/escape-entity-name-for-metadata driver (:name table)))
-                       (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))]
+  "Using `conn`, find any primary keys for `table` (or more, see: [[get-table-pks]]) and finally assoc `:pk?` to true for those columns."
+  [driver ^Connection conn db-name-or-nil table]
+  (def in [driver conn db-name-or-nil table])
+  (let [pks (get-table-pks driver conn db-name-or-nil table)]
     (update table :fields (fn [fields]
                             (set (for [field fields]
                                    (if-not (contains? pks (:name field))
@@ -198,7 +209,7 @@
    (->> (assoc (select-keys table [:name :schema])
                :fields (describe-table-fields driver conn table nil))
         ;; find PKs and mark them
-        (add-table-pks driver (.getMetaData conn) db-name-or-nil))))
+        (add-table-pks driver conn db-name-or-nil))))
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
