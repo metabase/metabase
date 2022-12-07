@@ -455,10 +455,7 @@
   [_driver ^Connection conn db-name-or-nil table]
   (let [^DatabaseMetaData metadata (.getMetaData conn)]
     (into #{} (sql-jdbc.sync.common/reducible-results
-               #(.getPrimaryKeys metadata
-                                 db-name-or-nil
-                                 (:schema table)
-                                 (:name table))
+               #(.getPrimaryKeys metadata nil nil (:name table))
                (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle
