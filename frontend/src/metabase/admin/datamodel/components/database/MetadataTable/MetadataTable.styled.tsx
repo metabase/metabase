@@ -36,20 +36,31 @@ const headerInputsStyles = css`
 `;
 
 export const TableNameInput = styled(InputBlurChange)`
-  ${headerInputsStyles}
-  font-weight: 700;
-  font-size: 20px;
-  color: ${color("text-dark")};
-  border-radius: 8px 8px 0 0;
+  //${headerInputsStyles}
+
+  ${InputBlurChange.Field} {
+    width: 100%;
+    font-weight: 700;
+    font-size: 20px;
+    color: ${color("text-dark")};
+    border-radius: 8px 8px 0 0;
+    background-color: ${color("bg-light")};
+    padding: 0.75rem 1.5rem;
+  }
 `;
 
 export const TableDescriptionInput = styled(InputBlurChange)`
-  ${headerInputsStyles}
-  color: ${color("text-dark")};
-  margin-top: -1px;
-  border-radius: 0 0 8px 8px;
-  font-weight: 400;
-  font-size: 14px;
+  //${headerInputsStyles}
+  ${InputBlurChange.Field} {
+    width: 100%;
+    color: ${color("text-dark")};
+    margin-top: -1px;
+    border-radius: 0 0 8px 8px;
+    font-weight: 400;
+    font-size: 14px;
+    background-color: ${color("bg-light")};
+    padding: 0.75rem 1.5rem;
+  }
 `;
 
 export const TableName = styled.div`
