@@ -407,13 +407,17 @@
 (defmethod serdes.base/serdes-descendants "Card" [_model-name id]
   (let [card          (db/select-one Card :id id)
         source-table  (some->  card :dataset_query :query :source-table)
-        template-tags (some->> card :dataset_query :native :template-tags vals (filter :card-id))]
+        template-tags (some->> card :dataset_query :native :template-tags vals (keep :card-id))
+        snippets      (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
     (set/union
       (when (and (string? source-table)
                  (.startsWith ^String source-table "card__"))
         #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})
       (when (seq template-tags)
-        (set (for [{:keys [card-id]} template-tags]
-               ["Card" card-id]))))))
+        (set (for [card-id template-tags]
+               ["Card" card-id])))
+      (when (seq snippets)
+        (set (for [snippet-id snippets]
+               ["NativeQuerySnippet" snippet-id]))))))
 
 (serdes.base/register-ingestion-path! "Card" (serdes.base/ingestion-matcher-collected "collections" "Card"))

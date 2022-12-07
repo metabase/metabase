@@ -10,11 +10,11 @@ summary: |
 
 ## `PUT /api/google/settings`
 
-Update Google Sign-In related settings. You must be a superuser to do this.
+Update Google Sign-In related settings. You must be a superuser or have `setting` permission to do this.
 
 ### PARAMS:
 
-*  **`google-auth-client-id`** value must be a string.
+*  **`google-auth-client-id`** value may be nil, or if non-nil, value must be a string.
 
 *  **`google-auth-enabled`** value may be nil, or if non-nil, value must be a boolean.
 
