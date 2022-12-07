@@ -304,7 +304,7 @@
                   "FROM \"PUBLIC\".\"ATTEMPTS\" "
                   "WHERE"
                   " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
-                  " >= date_trunc('month', dateadd('month', CAST(-1 AS long), now()))"
+                  " >= date_trunc('month', dateadd('month', CAST(-1 AS long), CAST(now() AS datetime)))"
                   " AND"
                   " \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
                   " < date_trunc('month', now()))")

@@ -231,9 +231,13 @@
       (is (= (hsql/call :dateadd
                (hx/literal "day")
                (hx/with-database-type-info (hsql/call :cast -1 #sql/raw "long") "long")
-               (hsql/call :week (hsql/call :dateadd (hx/literal "day")
-                                  (hx/with-database-type-info (hsql/call :cast 1 #sql/raw "long") "long")
-                                  :created_at)))
+               (hx/with-database-type-info
+                 (hsql/call :cast
+                   (hsql/call :week (hsql/call :dateadd (hx/literal "day")
+                                    (hx/with-database-type-info (hsql/call :cast 1 #sql/raw "long") "long")
+                                    (hx/with-database-type-info (hsql/call :cast :created_at #sql/raw "datetime") "datetime")))
+                   #sql/raw "datetime")
+                   "datetime"))
              (sql.qp/adjust-start-of-week :h2 (partial hsql/call :week) :created_at))))
     (testing "Do we skip the adjustment if offset = 0"
       (with-redefs [driver/db-start-of-week   (constantly :monday)
@@ -408,7 +412,7 @@
                            AND
                            (source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ? OR source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?)
                            AND
-                           source.CREATED_AT >= date_trunc ("year" dateadd ("year" CAST (-2 AS long) now ()))
+                           source.CREATED_AT >= date_trunc ("year" dateadd ("year" CAST (-2 AS long) CAST (now () AS datetime)))
                            AND
                            source.CREATED_AT < date_trunc ("year" now ()))]
                :group-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY
