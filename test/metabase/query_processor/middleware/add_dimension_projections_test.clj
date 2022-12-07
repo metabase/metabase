@@ -214,15 +214,6 @@
       (mt/with-column-remappings [venues.name {"apple"  "Appletini"
                                                "banana" "Bananasplit"
                                                "kiwi"   "Kiwi-flavored Thing"}]
-        ;; todo: logging code for if this errors in CI
-        (let [remappings (db/select 'FieldValues :field_id (mt/id :venues :name))
-              dimensions (db/select 'Dimension :field_id (mt/id :venues :name))]
-          (when (> (count remappings) 1)
-            (throw (ex-info "Too many remappings"
-                            {:remappings (map #(update % :values (fn [vs] (take 5 vs))) remappings)})))
-          (when (> (count dimensions) 1)
-            (ex-info "Too many dimensions"
-                            {:dimensions dimensions})))
         (is (partial= {:status    :completed
                        :row_count 3
                        :data      {:rows [[1 "apple"   4 3 "Appletini"]
