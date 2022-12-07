@@ -218,7 +218,7 @@
                                                            :name           "value",
                                                            :type           "category",
                                                            :source         "custom-list"
-                                                           :source-options {"values" [[1] [2] [3]]}}
+                                                           :source-options {"values" [1 2 3]}}
                                                           {:id             "_value-with-label_",
                                                            :name           "value_with_label",
                                                            :type           "category",
@@ -230,27 +230,28 @@
                  :name           "value",
                  :type           "category",
                  :source         "custom-list"
-                 :source-options {:values [[1] [2] [3]]}}
+                 :source-options {:values [1 2 3]}}
                 {:id             "_value-with-label_",
                  :name           "value_with_label",
                  :type           "category",
                  :source         "custom-list"
                  :source-options {:values [[1 "one"] [2 "two"] [3 "three"]]}}]
                (:parameters dashboard)))
+
         (testing "make sure we could update and delete the params"
           (let [dashboard (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
                                                 {:parameters [{:id             "_value_",
                                                                :name           "value",
                                                                :type           "category",
                                                                :source         "custom-list"
-                                                               :source-options {"values" [[1] [2] [3]]}}]})]
+                                                               :source-options {"values" [4 5 6]}}]})]
 
 
             (is (= [{:id             "_value_",
                      :name           "value",
                      :type           "category",
                      :source         "custom-list"
-                     :source-options {:values [[1] [2] [3]]}}]
+                     :source-options {:values [4 5 6]}}]
                    (:parameters dashboard))))))
 
       (testing "source-options must be a map and source must be a string"
@@ -261,7 +262,7 @@
                                                            :name           "value",
                                                            :type           "category",
                                                            :source         []
-                                                           :source-options {"values" [[1] [2] [3]]}}]})
+                                                           :source-options {"values" [1 2 3]}}]})
                       [:errors :parameters])))
         (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
                (get-in (mt/user-http-request :rasta :post 400 "dashboard"
