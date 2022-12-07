@@ -28,7 +28,7 @@ describe("visual tests > visualizations > funnel", () => {
     });
 
     cy.findByTestId("funnel-chart");
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("normal", () => {
@@ -54,6 +54,6 @@ describe("visual tests > visualizations > funnel", () => {
     });
 
     cy.findByTestId("funnel-chart");
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });

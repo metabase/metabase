@@ -13,10 +13,10 @@
   []
   (mt/dataset sample-dataset
     (-> (mt/mbql-query orders
-          {:aggregation [[:count] [:sum $orders.quantity]]
-           :breakout    [$orders.user_id->people.state
-                         $orders.user_id->people.source
-                         $orders.product_id->products.category]})
+                       {:aggregation [[:count] [:sum $orders.quantity]]
+                        :breakout    [$orders.user_id->people.state
+                                      $orders.user_id->people.source
+                                      $orders.product_id->products.category]})
         (assoc :pivot_rows [1 0]
                :pivot_cols [2]))))
 

@@ -1,8 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import cx from "classnames";
-
-import FieldList from "metabase/query_builder/components/FieldList";
+import { BreakoutFieldList } from "./BreakoutPopover.styled";
 
 const BreakoutPopover = ({
   className,
@@ -24,10 +22,12 @@ const BreakoutPopover = ({
   const fieldOptions = breakoutOptions || query.breakoutOptions(breakout);
 
   return (
-    <FieldList
-      className={cx(className, "text-green")}
+    <BreakoutFieldList
+      className={className}
       width={width}
       field={breakout}
+      query={query}
+      metadata={query.metadata()}
       fieldOptions={fieldOptions}
       onFieldChange={field => {
         onChangeBreakout(field);

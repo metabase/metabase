@@ -1,23 +1,12 @@
 ---
 title: "Permissions"
-summary: "/api/permissions endpoints."
+summary: |
+  /api/permissions endpoints.
 ---
 
 # Permissions
 
 /api/permissions endpoints.
-
-  - [DELETE /api/permissions/group/:group-id](#delete-apipermissionsgroupgroup-id)
-  - [DELETE /api/permissions/membership/:id](#delete-apipermissionsmembershipid)
-  - [GET /api/permissions/graph](#get-apipermissionsgraph)
-  - [GET /api/permissions/group](#get-apipermissionsgroup)
-  - [GET /api/permissions/group/:id](#get-apipermissionsgroupid)
-  - [GET /api/permissions/membership](#get-apipermissionsmembership)
-  - [POST /api/permissions/group](#post-apipermissionsgroup)
-  - [POST /api/permissions/membership](#post-apipermissionsmembership)
-  - [PUT /api/permissions/graph](#put-apipermissionsgraph)
-  - [PUT /api/permissions/group/:group-id](#put-apipermissionsgroupgroup-id)
-  - [PUT /api/permissions/membership/:id](#put-apipermissionsmembershipid)
 
 ## `DELETE /api/permissions/group/:group-id`
 

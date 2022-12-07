@@ -1,5 +1,5 @@
 import React from "react";
-import moment from "moment";
+import moment from "moment-timezone";
 import styled from "@emotion/styled";
 
 import Timeline from "metabase/components/Timeline";

@@ -5,7 +5,10 @@
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
   (:require [cheshire.core :as json]
             [clojure.string :as str]
-            [metabase.pulse.render.js-engine :as js])
+            [metabase.config :as config]
+            [metabase.public-settings :as public-settings]
+            [metabase.pulse.render.js-engine :as js]
+            [metabase.pulse.render.style :as style])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            [org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument]
@@ -28,16 +31,19 @@
     (js/load-resource bundle-path)
     (js/load-resource interface-path)))
 
-(defn- static-viz-context
-  "Load the static viz js bundle into a new graal js context."
-  []
-  (load-viz-bundle (js/context)))
-
-(def ^:private ^Context context
-  "Javascript context suitable for evaluating the charts. It has the chart bundle and the above `src-api` in its
-  environment suitable for creating charts."
+(def ^:private static-viz-context-delay
+  "Delay containing a graal js context. It has the chart bundle and the above `src-api` in its environment suitable
+  for creating charts."
   ;; todo is this thread safe? Should we have a resource pool on top of this? Or create them fresh for each invocation
-  (delay (static-viz-context)))
+  (delay (load-viz-bundle (js/context))))
+
+(defn- context
+  "Returns a static viz context. In dev mode, this will be a new context each time. In prod or test modes, it will
+  return the derefed contents of `static-viz-context-delay`."
+  ^Context []
+  (if config/is-dev?
+    (load-viz-bundle (js/context))
+    @static-viz-context-delay))
 
 (defn- post-process
   "Mutate in place the elements of the svg document. Remove the fill=transparent attribute in favor of
@@ -86,6 +92,7 @@
 
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
+  (style/register-fonts-if-needed!)
   (with-open [os (ByteArrayOutputStream.)]
     (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill)
           in                           (TranscoderInput. fixed-svg-doc)
@@ -100,47 +107,22 @@
 (defn- svg-string->bytes [s]
   (-> s parse-svg-string render-svg))
 
-(defn timelineseries-line
-  "Clojure entrypoint to render a timeseries line char. Rows should be tuples of [datetime numeric-value]. Labels is a
-  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_line" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn timelineseries-waterfall
-  "Clojure entrypoint to render a timeseries waterfall chart. Rows should be tuples of [datetime numeric-value]. Labels is
+(defn waterfall
+  "Clojure entrypoint to render a timeseries or categorical waterfall chart. Rows should be tuples of [datetime numeric-value]. Labels is
   a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_waterfall" rows
+  [rows labels settings waterfall-type]
+  (let [svg-string (.asString (js/execute-fn-name (context) "waterfall" rows
                                                   (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
+                                                  (json/generate-string settings)
+                                                  (name waterfall-type)
+                                                  (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
 (defn funnel
   "Clojure entrypoint to render a funnel chart. Data should be vec of [[Step Measure]] where Step is {:name name :format format-options} and Measure is {:format format-options} and you go and look to frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options.
   Returns a byte array of a png file."
   [data settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "funnel" (json/generate-string data)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn timelineseries-bar
-  "Clojure entrypoint to render a timeseries bar chart. Rows should be tuples of [datetime numeric-value]. Labels is a
-  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn timelineseries-area
-  "Clojure entrypoint to render a timeseries area chart. Rows should be tuples of [datetime numeric-value]. Labels is a
-  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_area" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
+  (let [svg-string (.asString (js/execute-fn-name (context) "funnel" (json/generate-string data)
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
@@ -151,63 +133,46 @@
   Series should be list of dicts of {rows: rows, cols: cols, type: type}, where types is 'line' or 'bar' or 'area'.
   Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [series settings]
-  (let [svg-string (.asString (js/execute-fn-name @context
-                                                  "combo_chart"
-                                                  (json/generate-string series)
+  [series-seqs settings]
+  (svg-string->bytes
+   (.asString (js/execute-fn-name (context)
+                                  "combo_chart"
+                                  (json/generate-string series-seqs)
+                                  (json/generate-string settings)
+                                  (json/generate-string (public-settings/application-colors))))))
+
+(defn row-chart
+  "Clojure entrypoint to render a row chart."
+  [settings data]
+  (let [svg-string (.asString (js/execute-fn-name (context) "row_chart"
                                                   (json/generate-string settings)
-                                                  (json/generate-string (:colors settings))))]
-    (svg-string->bytes svg-string)))
-
-(defn categorical-line
-  "Clojure entrypoint to render a categorical line chart. Rows should be tuples of [stringable numeric-value]. Labels is
-  a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "categorical_line" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn categorical-waterfall
-  "Clojure entrypoint to render a categorical waterfall chart. Rows should be tuples of [stringable numeric-value]. Labels is
-  a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "categorical_waterfall" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn categorical-bar
-  "Clojure entrypoint to render a categorical bar chart. Rows should be tuples of [stringable numeric-value]. Labels is
-  a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "categorical_bar" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
-(defn categorical-area
-  "Clojure entrypoint to render a categorical area chart. Rows should be tuples of [stringable numeric-value]. Labels is a
-  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
-  [rows labels settings]
-  (let [svg-string (.asString (js/execute-fn-name @context "categorical_area" rows
-                                                  (map (fn [[k v]] [(name k) v]) labels)
-                                                  (json/generate-string settings)))]
+                                                  (json/generate-string data)
+                                                  (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"
-  [rows colors]
-  (let [svg-string (.asString (js/execute-fn-name @context "categorical_donut" rows (seq colors)))]
+  [rows legend-colors settings]
+  (let [svg-string (.asString (js/execute-fn-name (context) "categorical_donut" rows (seq legend-colors) (json/generate-string settings)))]
+    (svg-string->bytes svg-string)))
+
+(defn gauge
+  "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
+  [card data]
+  (let [js-res (js/execute-fn-name (context) "gauge"
+                                   (json/generate-string card)
+                                   (json/generate-string data))
+        svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 
 (defn progress
   "Clojure entrypoint to render a progress bar. Returns a byte array of a png file"
   [value goal settings]
-  (let [js-res (js/execute-fn-name @context "progress"
+  (let [js-res (js/execute-fn-name (context) "progress"
                                    (json/generate-string {:value value :goal goal})
-                                   (json/generate-string settings))
+                                   (json/generate-string settings)
+                                   (json/generate-string (public-settings/application-colors)))
         svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 

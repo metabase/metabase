@@ -7,8 +7,6 @@ import * as Urls from "metabase/lib/urls";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import Button from "metabase/core/components/Button";
-import ButtonBar from "metabase/components/ButtonBar";
 import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
@@ -21,10 +19,10 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
+import QuestionActions from "../QuestionActions";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
 import QuestionFilters, {
   FilterHeaderToggle,
@@ -32,7 +30,6 @@ import QuestionFilters, {
   QuestionFilterWidget,
 } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
-import QuestionActions from "../QuestionActions";
 import NativeQueryButton from "./NativeQueryButton";
 import {
   AdHocViewHeading,
@@ -41,13 +38,13 @@ import {
   ViewHeaderMainLeftContentContainer,
   ViewHeaderLeftSubHeading,
   ViewHeaderContainer,
-  ViewSubHeaderRoot,
   StyledLastEditInfoLabel,
   StyledQuestionDataSource,
   SavedQuestionLeftSideRoot,
   AdHocLeftSideRoot,
   HeaderDivider,
   ViewHeaderActionPanel,
+  ViewHeaderIconButtonContainer,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -64,34 +61,27 @@ const viewTitleHeaderPropTypes = {
   isRunning: PropTypes.bool,
   isResultDirty: PropTypes.bool,
   isNativeEditorOpen: PropTypes.bool,
-  isShowingFilterSidebar: PropTypes.bool,
+  isNavBarOpen: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   isAdditionalInfoVisible: PropTypes.bool,
-  isWritebackEnabled: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
+  updateQuestion: PropTypes.func,
 
   onOpenModal: PropTypes.func,
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
-  onAddFilter: PropTypes.func,
-  onCloseFilter: PropTypes.func,
   onOpenQuestionDetails: PropTypes.func,
-  onCloseQuestionDetails: PropTypes.func,
-
-  isPreviewable: PropTypes.bool,
-  isPreviewing: PropTypes.bool,
-  setIsPreviewing: PropTypes.func,
 
   className: PropTypes.string,
   style: PropTypes.object,
 };
 
 export function ViewTitleHeader(props) {
-  const { question, className, style } = props;
+  const { question, className, style, isNavBarOpen, updateQuestion } = props;
 
   const [
     areFiltersExpanded,
@@ -121,12 +111,20 @@ export function ViewTitleHeader(props) {
   const isSummarized =
     isStructured && question.query().topLevelQuery().hasAggregations();
 
+  const onQueryChange = useCallback(
+    newQuery => {
+      updateQuestion(newQuery.question(), { run: true });
+    },
+    [updateQuestion],
+  );
+
   return (
     <>
       <ViewHeaderContainer
         className={className}
         style={style}
         data-testid="qb-header"
+        isNavBarOpen={isNavBarOpen}
       >
         {isSaved ? (
           <SavedQuestionLeftSide {...props} />
@@ -146,6 +144,7 @@ export function ViewTitleHeader(props) {
           areFiltersExpanded={areFiltersExpanded}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
+          onQueryChange={onQueryChange}
         />
       </ViewHeaderContainer>
       {QuestionFilters.shouldRender(props) && (
@@ -153,6 +152,7 @@ export function ViewTitleHeader(props) {
           {...props}
           expanded={areFiltersExpanded}
           question={question}
+          onQueryChange={onQueryChange}
         />
       )}
     </>
@@ -266,7 +266,13 @@ function AhHocQuestionLeftSide(props) {
     onOpenModal,
   } = props;
 
-  const handleTitleClick = () => onOpenModal(MODAL_TYPES.SAVE);
+  const handleTitleClick = () => {
+    const query = question.query();
+    if (!query.readOnly()) {
+      onOpenModal(MODAL_TYPES.SAVE);
+    }
+  };
+
   return (
     <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
@@ -320,22 +326,20 @@ ViewTitleHeaderRightSide.propTypes = {
   isNative: PropTypes.bool,
   isRunnable: PropTypes.bool,
   isRunning: PropTypes.bool,
-  isPreviewing: PropTypes.bool,
   isNativeEditorOpen: PropTypes.bool,
-  isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
-  isWritebackEnabled: PropTypes.bool,
   isDirty: PropTypes.bool,
   isResultDirty: PropTypes.bool,
   isActionListVisible: PropTypes.bool,
   runQuestionQuery: PropTypes.func,
+  updateQuestion: PropTypes.func.isRequired,
   cancelQuery: PropTypes.func,
   onOpenModal: PropTypes.func,
-  onAddFilter: PropTypes.func,
-  onCloseFilter: PropTypes.func,
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   setQueryBuilderMode: PropTypes.func,
+  turnQuestionIntoAction: PropTypes.func,
+  turnActionIntoQuestion: PropTypes.func,
   turnDatasetIntoQuestion: PropTypes.func,
   areFiltersExpanded: PropTypes.bool,
   onExpandFilters: PropTypes.func,
@@ -346,6 +350,7 @@ ViewTitleHeaderRightSide.propTypes = {
   onCloseQuestionInfo: PropTypes.func,
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.bool,
+  onQueryChange: PropTypes.func,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -360,23 +365,21 @@ function ViewTitleHeaderRightSide(props) {
     isNative,
     isRunnable,
     isRunning,
-    isPreviewing,
     isNativeEditorOpen,
-    isShowingFilterSidebar,
     isShowingSummarySidebar,
-    isWritebackEnabled,
     isDirty,
     isResultDirty,
     isActionListVisible,
     runQuestionQuery,
+    updateQuestion,
     cancelQuery,
     onOpenModal,
-    onAddFilter,
-    onCloseFilter,
     onEditSummary,
     onCloseSummary,
     setQueryBuilderMode,
     turnDatasetIntoQuestion,
+    turnQuestionIntoAction,
+    turnActionIntoQuestion,
     areFiltersExpanded,
     onExpandFilters,
     onCollapseFilters,
@@ -384,6 +387,7 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
+    onQueryChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
@@ -409,8 +413,6 @@ function ViewTitleHeaderRightSide(props) {
   const hasRunButton =
     isRunnable && !isNativeEditorOpen && !isMissingPermissions;
 
-  const hasNewRowButton = isWritebackEnabled && !isNative && query.isRaw();
-
   const handleInfoClick = useCallback(() => {
     if (isShowingQuestionInfoSidebar) {
       onCloseQuestionInfo();
@@ -428,31 +430,18 @@ function ViewTitleHeaderRightSide(props) {
           expanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
+          onQueryChange={onQueryChange}
         />
-      )}
-      {hasNewRowButton && (
-        <Button
-          primary
-          icon="add"
-          onClick={() => onOpenModal(MODAL_TYPES.INSERT_ROW)}
-          ml={1}
-        >
-          {t`New row`}
-        </Button>
       )}
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget
-          className="hide sm-show ml1"
-          isShowingFilterSidebar={isShowingFilterSidebar}
-          onAddFilter={onAddFilter}
+          className="hide sm-show"
           onOpenModal={onOpenModal}
-          onCloseFilter={onCloseFilter}
         />
       )}
       {QuestionSummarizeWidget.shouldRender(props) && (
         <QuestionSummarizeWidget
           className="hide sm-show"
-          ml={1}
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
@@ -460,43 +449,48 @@ function ViewTitleHeaderRightSide(props) {
         />
       )}
       {QuestionNotebookButton.shouldRender(props) && (
-        <QuestionNotebookButton
-          ml={2}
-          question={question}
-          isShowingNotebook={isShowingNotebook}
-          setQueryBuilderMode={setQueryBuilderMode}
-          data-metabase-event={
-            isShowingNotebook
-              ? `Notebook Mode;Go to View Mode`
-              : `View Mode; Go to Notebook Mode`
-          }
-        />
+        <ViewHeaderIconButtonContainer>
+          <QuestionNotebookButton
+            iconSize={16}
+            question={question}
+            isShowingNotebook={isShowingNotebook}
+            setQueryBuilderMode={setQueryBuilderMode}
+            data-metabase-event={
+              isShowingNotebook
+                ? `Notebook Mode;Go to View Mode`
+                : `View Mode; Go to Notebook Mode`
+            }
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {NativeQueryButton.shouldRender(props) && (
-        <NativeQueryButton
-          size={16}
-          question={question}
-          data-metabase-event="Notebook Mode; Convert to SQL Click"
-        />
+        <ViewHeaderIconButtonContainer>
+          <NativeQueryButton
+            size={16}
+            question={question}
+            updateQuestion={updateQuestion}
+            data-metabase-event="Notebook Mode; Convert to SQL Click"
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
-      {hasRunButton && (
-        <RunButtonWithTooltip
-          className={cx("text-brand-hover text-dark", {
-            hide: isShowingNotebook,
-            "text-white-hover": isResultDirty,
-          })}
-          medium
-          borderless
-          ml={1}
-          compact
-          result={result}
-          isRunning={isRunning}
-          isDirty={isResultDirty}
-          isPreviewing={isPreviewing}
-          onRun={() => runQuestionQuery({ ignoreCache: true })}
-          onCancel={cancelQuery}
-        />
+      {hasRunButton && !isShowingNotebook && (
+        <ViewHeaderIconButtonContainer>
+          <RunButtonWithTooltip
+            className={cx("text-brand-hover text-dark", {
+              "text-white-hover": isResultDirty,
+            })}
+            iconSize={16}
+            onlyIcon
+            medium
+            compact
+            result={result}
+            isRunning={isRunning}
+            isDirty={isResultDirty}
+            onRun={() => runQuestionQuery({ ignoreCache: true })}
+            onCancel={cancelQuery}
+          />
+        </ViewHeaderIconButtonContainer>
       )}
       {isSaved && (
         <QuestionActions
@@ -507,6 +501,8 @@ function ViewTitleHeaderRightSide(props) {
           question={question}
           setQueryBuilderMode={setQueryBuilderMode}
           turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          turnQuestionIntoAction={turnQuestionIntoAction}
+          turnActionIntoQuestion={turnActionIntoQuestion}
           onInfoClick={handleInfoClick}
           onModelPersistenceChange={onModelPersistenceChange}
         />
@@ -554,43 +550,3 @@ function ExploreResultsLink({ question }) {
 }
 
 ViewTitleHeader.propTypes = viewTitleHeaderPropTypes;
-
-const viewSubHeaderPropTypes = {
-  isPreviewable: PropTypes.bool,
-  isPreviewing: PropTypes.bool,
-  setIsPreviewing: PropTypes.func,
-};
-
-export class ViewSubHeader extends React.Component {
-  render() {
-    const { isPreviewable, isPreviewing, setIsPreviewing } = this.props;
-
-    const middle = [];
-    const left = [];
-    const right = [];
-
-    if (isPreviewable) {
-      right.push(
-        <QuestionPreviewToggle
-          key="preview"
-          className="ml2"
-          isPreviewing={isPreviewing}
-          setIsPreviewing={setIsPreviewing}
-        />,
-      );
-    }
-
-    return left.length > 0 || middle.length > 0 || right.length > 0 ? (
-      <ViewSubHeaderRoot>
-        <ButtonBar
-          className="flex-full"
-          left={left}
-          center={middle}
-          right={right}
-        />
-      </ViewSubHeaderRoot>
-    ) : null;
-  }
-}
-
-ViewSubHeader.propTypes = viewSubHeaderPropTypes;

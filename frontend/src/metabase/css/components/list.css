@@ -64,8 +64,6 @@
 .List-item:not(.List-item--disabled):hover,
 .List-item--selected:not(.List-item--disabled) {
   background-color: currentColor;
-  border-color: color-mod(var(--color-accent2) alpha(-80%));
-  /*color: white;*/
 }
 
 /* LIST ITEM TITLE */

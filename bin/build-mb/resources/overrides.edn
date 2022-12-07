@@ -46,6 +46,7 @@
  "net.jcip"                   {"jcip-annotations" {:resource "CC_2_5.txt"}}
  "net.redhogs.cronparser"     {"cron-parser-core" {:resource "MIT.txt"}}
  "net.shibboleth.utilities"   {"java-support" {:resource "apache2_0.txt"}}
+ "net.thisptr"                {"jackson-jq" {:resource "apache2_0.txt"}}
  "org.antlr"                  {"antlr-runtime"  {:resource "BSD.txt"}
                                "antlr4-runtime" {:resource "BSD.txt"}}
  "org.eclipse.jetty"          {"jetty-webapp" {:resource "EPL.txt"}}

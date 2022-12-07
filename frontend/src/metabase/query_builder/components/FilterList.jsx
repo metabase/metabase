@@ -2,10 +2,9 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
+import { getMetadata } from "metabase/selectors/metadata";
 import Filter from "./Filter";
 import { filterWidgetFilterRenderer } from "./filters/FilterWidget";
-
-import { getMetadata } from "metabase/selectors/metadata";
 
 const mapStateToProps = state => ({
   metadata: getMetadata(state),

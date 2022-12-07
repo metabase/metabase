@@ -1,22 +1,12 @@
 ---
 title: "Pulse"
-summary: "/api/pulse endpoints."
+summary: |
+  /api/pulse endpoints.
 ---
 
 # Pulse
 
 /api/pulse endpoints.
-
-  - [DELETE /api/pulse/:id/subscription](#delete-apipulseidsubscription)
-  - [GET /api/pulse/](#get-apipulse)
-  - [GET /api/pulse/:id](#get-apipulseid)
-  - [GET /api/pulse/form_input](#get-apipulseform_input)
-  - [GET /api/pulse/preview_card/:id](#get-apipulsepreview_cardid)
-  - [GET /api/pulse/preview_card_info/:id](#get-apipulsepreview_card_infoid)
-  - [GET /api/pulse/preview_card_png/:id](#get-apipulsepreview_card_pngid)
-  - [POST /api/pulse/](#post-apipulse)
-  - [POST /api/pulse/test](#post-apipulsetest)
-  - [PUT /api/pulse/:id](#put-apipulseid)
 
 ## `DELETE /api/pulse/:id/subscription`
 

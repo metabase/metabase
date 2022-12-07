@@ -3,12 +3,11 @@
  * file 'LICENSE-EMBEDDING.txt', which is part of this source code package.
  */
 
+import { IFRAMED } from "metabase/lib/dom";
 import { init } from "./app";
 
 import { getRoutes } from "./routes-embed";
 import reducers from "./reducers-public";
-
-import { IFRAMED } from "metabase/lib/dom";
 
 init(reducers, getRoutes, () => {
   if (IFRAMED) {

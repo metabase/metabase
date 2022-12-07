@@ -6,15 +6,15 @@ import { t } from "ttag";
 import _ from "underscore";
 import AceEditor from "react-ace";
 
-import { format } from "metabase/lib/expressions/format";
-import { suggest } from "metabase/lib/expressions/suggest";
-import { processSource } from "metabase/lib/expressions/process";
-import { diagnose } from "metabase/lib/expressions/diagnostics";
-import { tokenize } from "metabase/lib/expressions/tokenizer";
-
+import * as ace from "ace-builds/src-noconflict/ace";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import { format } from "metabase-lib/expressions/format";
+import { suggest } from "metabase-lib/expressions/suggest";
+import { processSource } from "metabase-lib/expressions/process";
+import { diagnose } from "metabase-lib/expressions/diagnostics";
+import { tokenize } from "metabase-lib/expressions/tokenizer";
 
-import { isExpression } from "metabase/lib/expressions";
+import { isExpression } from "metabase-lib/expressions";
 
 import HelpText from "./ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
@@ -24,10 +24,6 @@ import {
 } from "./ExpressionEditorTextfield.styled";
 
 import ExpressionMode from "./ExpressionMode";
-
-import "./expressions.css";
-
-import * as ace from "ace-builds/src-noconflict/ace";
 
 ace.config.set("basePath", "/assets/ui/");
 

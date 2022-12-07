@@ -5,11 +5,14 @@ import { merge } from "icepick";
 import { createMemoryHistory } from "history";
 import { Router, Route } from "react-router";
 import { Provider } from "react-redux";
-import { reducer as form } from "redux-form";
 import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";
+import {
+  createMockSettingsState,
+  createMockEmbedState,
+} from "metabase-types/store/mocks";
 import { getStore } from "./entities-store";
 
 function getUser(user = {}) {
@@ -48,6 +51,8 @@ export function renderWithProviders(
     withSampleDatabase,
     withRouter = false,
     withDND = false,
+    withSettings = false,
+    withEmbedSettings = false,
     ...options
   } = {},
 ) {
@@ -57,8 +62,9 @@ export function renderWithProviders(
 
   const store = getStore(
     {
-      form,
       currentUser: () => getUser(currentUser),
+      settings: withSettings ? () => createMockSettingsState() : undefined,
+      embed: withEmbedSettings ? () => createMockEmbedState() : undefined,
       ...reducers,
     },
     initialReduxState,

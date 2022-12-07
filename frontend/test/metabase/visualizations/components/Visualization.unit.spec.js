@@ -1,27 +1,18 @@
 import React from "react";
 import { renderWithProviders } from "__support__/ui";
 
-import {
-  NumberColumn,
-  StringColumn,
-  createFixture,
-  cleanupFixture,
-} from "../__support__/visualizations";
-
 import { delay } from "metabase/lib/promise";
 
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { NumberColumn, StringColumn } from "../__support__/visualizations";
 
 describe("Visualization", () => {
-  // eslint-disable-next-line no-unused-vars
-  let element;
-
   const renderViz = async series => {
-    const utils = renderWithProviders(
-      <Visualization rawSeries={series} />,
-      element,
-    );
+    const utils = renderWithProviders(<Visualization rawSeries={series} />, {
+      withSettings: true,
+      withEmbedSettings: true,
+    });
     // The chart isn't rendered until the next tick. This is due to ExplicitSize
     // not setting the dimensions until after mounting.
     await delay(0);
@@ -32,14 +23,6 @@ describe("Visualization", () => {
     const bars = [...container.querySelectorAll(".bar")];
     return bars.map(bar => bar.getAttribute("fill"));
   };
-
-  beforeEach(() => {
-    element = createFixture();
-  });
-
-  afterEach(() => {
-    cleanupFixture(element);
-  });
 
   describe("scalar", () => {
     it("should render", async () => {

@@ -1,24 +1,12 @@
 ---
 title: "Table"
-summary: "/api/table endpoints."
+summary: |
+  /api/table endpoints.
 ---
 
 # Table
 
 /api/table endpoints.
-
-  - [GET /api/table/](#get-apitable)
-  - [GET /api/table/:id](#get-apitableid)
-  - [GET /api/table/:id/fks](#get-apitableidfks)
-  - [GET /api/table/:id/query_metadata](#get-apitableidquery_metadata)
-  - [GET /api/table/:id/related](#get-apitableidrelated)
-  - [GET /api/table/card__:id/fks](#get-apitablecard__idfks)
-  - [GET /api/table/card__:id/query_metadata](#get-apitablecard__idquery_metadata)
-  - [POST /api/table/:id/discard_values](#post-apitableiddiscard_values)
-  - [POST /api/table/:id/rescan_values](#post-apitableidrescan_values)
-  - [PUT /api/table/](#put-apitable)
-  - [PUT /api/table/:id](#put-apitableid)
-  - [PUT /api/table/:id/fields/order](#put-apitableidfieldsorder)
 
 ## `GET /api/table/`
 

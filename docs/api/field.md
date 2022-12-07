@@ -1,25 +1,12 @@
 ---
 title: "Field"
-summary: "API endpoints for Field."
+summary: |
+  API endpoints for Field.
 ---
 
 # Field
 
 API endpoints for Field.
-
-  - [DELETE /api/field/:id/dimension](#delete-apifieldiddimension)
-  - [GET /api/field/:id](#get-apifieldid)
-  - [GET /api/field/:id/related](#get-apifieldidrelated)
-  - [GET /api/field/:id/remapping/:remapped-id](#get-apifieldidremappingremapped-id)
-  - [GET /api/field/:id/search/:search-id](#get-apifieldidsearchsearch-id)
-  - [GET /api/field/:id/summary](#get-apifieldidsummary)
-  - [GET /api/field/:id/values](#get-apifieldidvalues)
-  - [GET /api/field/field%2C:field-name%2C:options/values](#get-apifieldfield2cfield-name2coptionsvalues)
-  - [POST /api/field/:id/dimension](#post-apifieldiddimension)
-  - [POST /api/field/:id/discard_values](#post-apifieldiddiscard_values)
-  - [POST /api/field/:id/rescan_values](#post-apifieldidrescan_values)
-  - [POST /api/field/:id/values](#post-apifieldidvalues)
-  - [PUT /api/field/:id](#put-apifieldid)
 
 ## `DELETE /api/field/:id/dimension`
 

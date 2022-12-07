@@ -2,9 +2,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { t } from "ttag";
 import cx from "classnames";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 export default class LoadingAndErrorWrapper extends Component {
   state = {

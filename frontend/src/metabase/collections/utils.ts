@@ -1,22 +1,5 @@
 import { t } from "ttag";
-import { Collection } from "metabase-types/api";
-
-export type Item = {
-  id: number;
-  model: string;
-  name: string;
-  description: string | null;
-  copy?: boolean;
-  collection_position?: number | null;
-  collection_preview?: boolean | null;
-  fully_parametrized?: boolean | null;
-  getIcon: () => { name: string };
-  getUrl: () => string;
-  setArchived: (isArchived: boolean) => void;
-  setPinned: (isPinned: boolean) => void;
-  setCollection?: (collection: Collection) => void;
-  setCollectionPreview?: (isEnabled: boolean) => void;
-};
+import { Collection, CollectionId, CollectionItem } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -25,7 +8,7 @@ export function nonPersonalOrArchivedCollection(
   return !isPersonalCollection(collection) && !collection.archived;
 }
 
-export function isPersonalCollection(collection: Collection): boolean {
+export function isPersonalCollection(collection: Partial<Collection>): boolean {
   return typeof collection.personal_owner_id === "number";
 }
 
@@ -51,8 +34,7 @@ export function currentUserPersonalCollections(
 
 function getNonRootParentId(collection: Collection) {
   if (Array.isArray(collection.effective_ancestors)) {
-    // eslint-disable-next-line no-unused-vars
-    const [root, nonRootParent] = collection.effective_ancestors;
+    const [, nonRootParent] = collection.effective_ancestors;
     return nonRootParent ? nonRootParent.id : undefined;
   }
   // location is a string like "/1/4" where numbers are parent collection IDs
@@ -72,29 +54,33 @@ export function isPersonalCollectionChild(
   return Boolean(parentCollection && !!parentCollection.personal_owner_id);
 }
 
-export function isRootCollection(collection: Collection): boolean {
-  return collection.id === "root";
+export function isRootCollection(collection: Pick<Collection, "id">): boolean {
+  return canonicalCollectionId(collection.id) === null;
 }
 
-export function isItemPinned(item: Item) {
+export function isItemPinned(item: CollectionItem) {
   return item.collection_position != null;
 }
 
-export function isPreviewShown(item: Item) {
+export function isItemQuestion(item: CollectionItem) {
+  return item.model === "card";
+}
+
+export function isPreviewShown(item: CollectionItem) {
   return isPreviewEnabled(item) && isFullyParametrized(item);
 }
 
-export function isPreviewEnabled(item: Item) {
+export function isPreviewEnabled(item: CollectionItem) {
   return item.collection_preview ?? true;
 }
 
-export function isFullyParametrized(item: Item) {
+export function isFullyParametrized(item: CollectionItem) {
   return item.fully_parametrized ?? true;
 }
 
 export function coerceCollectionId(
-  collectionId: number | null | undefined,
-): string | number {
+  collectionId: CollectionId | null | undefined,
+): CollectionId {
   return collectionId == null ? "root" : collectionId;
 }
 
@@ -110,4 +96,40 @@ export function canonicalCollectionId(
   } else {
     return parseInt(collectionId, 10);
   }
+}
+
+export function isValidCollectionId(
+  collectionId: string | number | null | undefined,
+): boolean {
+  const id = canonicalCollectionId(collectionId);
+  return id === null || typeof id === "number";
+}
+
+function isPersonalOrPersonalChild(
+  collection: Collection,
+  collections: Collection[],
+) {
+  if (!collection) {
+    return false;
+  }
+  return (
+    isPersonalCollection(collection) ||
+    isPersonalCollectionChild(collection, collections)
+  );
+}
+
+export function canManageCollectionAuthorityLevel(
+  collection: Partial<Collection>,
+  collectionMap: Record<CollectionId, Collection>,
+) {
+  if (isPersonalCollection(collection)) {
+    return false;
+  }
+  const parentId = coerceCollectionId(collection.parent_id);
+  const parentCollection = collectionMap[parentId];
+  const collections = Object.values(collectionMap);
+  return (
+    parentCollection &&
+    !isPersonalOrPersonalChild(parentCollection, collections)
+  );
 }

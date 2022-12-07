@@ -2,12 +2,12 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import Popover from "metabase/components/Popover";
 import {
   Anchor,
   Container,
   IconStyled as Icon,
 } from "./RightClickPopover.styled";
-import Popover from "metabase/components/Popover";
 
 const propTypes = {
   isOpen: PropTypes.bool,

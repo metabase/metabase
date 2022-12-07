@@ -1,30 +1,29 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
-import { BookmarksType, Collection } from "metabase-types/api";
 import Tooltip from "metabase/components/Tooltip";
-import { Item } from "metabase/collections/utils";
+import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
 import {
-  ItemLink,
-  ItemCard,
-  Header,
   Body,
-  ItemIcon,
-  Title,
   Description,
+  Header,
   HoverMenu,
+  ItemCard,
+  ItemIcon,
+  ItemLink,
+  Title,
 } from "./PinnedItemCard.styled";
 
 type Props = {
-  bookmarks?: BookmarksType;
+  bookmarks?: Bookmark[];
   createBookmark: (id: string, collection: string) => void;
   deleteBookmark: (id: string, collection: string) => void;
   className?: string;
-  item: Item;
+  item: CollectionItem;
   collection: Collection;
-  onCopy: (items: Item[]) => void;
-  onMove: (items: Item[]) => void;
+  onCopy: (items: CollectionItem[]) => void;
+  onMove: (items: CollectionItem[]) => void;
 };
 
 const TOOLTIP_MAX_WIDTH = 450;
@@ -66,7 +65,7 @@ function PinnedItemCard({
   };
 
   return (
-    <ItemLink className={className} to={item.getUrl()}>
+    <ItemLink className={className} to={item.getUrl({ isModelDetail: true })}>
       <ItemCard flat>
         <Body>
           <Header>

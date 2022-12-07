@@ -6,7 +6,7 @@
             [metabase.db.connection :as mdb.connection]
             [metabase.db.data-source :as mdb.data-source]
             [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database Dependency
+            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
                                      Field Metric NativeQuerySnippet Pulse PulseCard Segment Table User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions-group :as perms-group]
@@ -21,14 +21,12 @@
 (def temp-db-name "Fingerprint test-data copy")
 
 (defn temp-field [from-field-id table-id]
-  (-> from-field-id
-      Field
+  (-> (db/select-one Field :id from-field-id)
       (dissoc :id)
       (assoc :table_id table-id)))
 
 (defn temp-table [from-tbl-id db-id]
-  (-> from-tbl-id
-      Table
+  (-> (db/select-one Table :id from-tbl-id)
       (dissoc :id)
       (update :display_name #(str "Temp " %))
       (assoc :db_id db-id)))
@@ -79,9 +77,7 @@
                 (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 data-source)]
                   (testing (format "\nApp DB = %s" (pr-str connection-string))
                     (thunk))))]
-        (do-with-app-db
-         (fn []
-           (mdb/setup-db!)))
+        (do-with-app-db mdb/setup-db!)
         (f do-with-app-db)))))
 
 (defn do-with-source-and-dest-dbs [f]
@@ -208,11 +204,6 @@
                                                                              [:field
                                                                               ~'category-pk-field-id
                                                                               {:join-alias "cat"}]]}]}}}]
-                   Dependency [{~'dependency-id :id} {:model "Card"
-                                                      :model_id ~'card-id
-                                                      :dependent_on_model "Segment"
-                                                      :dependent_on_id ~'segment-id
-                                                      :created_at :%now}]
                    Card       [{~'card-arch-id :id}
                                {;:archived true
                                 :table_id ~'table-id

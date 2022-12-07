@@ -5,6 +5,7 @@
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
   (:require [clojure.core.async :as a]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
@@ -38,12 +39,12 @@
 
   1. Calls util fn `datasource` to get a c3p0 connection pool DataSource
   2. Calls `.getConnection()` the normal way
-  3. Executes `set-timezone-sql` if implemented by the driver.
+  3. Executes [[set-timezone-sql]] if implemented by the driver.
 
   `timezone-id` will be `nil` if a `report-timezone` Setting is not currently set; don't change the session time zone
   if this is the case.
 
-  For drivers that support session timezones, the default implementation and `set-timezone-sql` should be considered
+  For drivers that support session timezones, the default implementation and [[set-timezone-sql]] should be considered
   deprecated in favor of implementing `connection-with-timezone` directly. This way you can set the session timezone
   in the most efficient manner, e.g. only setting it if needed (if there's an easy way for you to check this), or by
   setting it as a parameter of the connection itself (the default connection pools are automatically flushed when
@@ -329,29 +330,27 @@
         (.close stmt)
         (throw e)))))
 
-(defn- prepared-statement*
-  ^PreparedStatement [driver conn sql params canceled-chan]
-  ;; if canceled-chan gets a message, cancel the PreparedStatement
-  (let [^PreparedStatement stmt (prepared-statement driver conn sql params)]
+(defn- wire-up-canceled-chan-to-cancel-Statement!
+  "If `canceled-chan` gets a message, cancel the Statement `stmt`."
+  [^Statement stmt canceled-chan]
+  (when canceled-chan
     (a/go
       (when (a/<! canceled-chan)
-        (log/debug (trs "Query canceled, calling PreparedStatement.cancel()"))
+        (log/debug (trs "Query canceled, calling Statement.cancel()"))
         (u/ignore-exceptions
-          (.cancel stmt))))
-    stmt))
+          (.cancel stmt))))))
+
+(defn- prepared-statement*
+  ^PreparedStatement [driver conn sql params canceled-chan]
+  (doto (prepared-statement driver conn sql params)
+    (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
 
 (defn- use-statement? [driver params]
   (and (statement-supported? driver) (empty? params)))
 
 (defn- statement* ^Statement [driver conn canceled-chan]
-  ;; if canceled-chan gets a message, cancel the Statement
-  (let [^Statement stmt (statement driver conn)]
-    (a/go
-      (when (a/<! canceled-chan)
-        (log/debug (trs "Query canceled, calling Statement.cancel()"))
-        (u/ignore-exceptions
-         (.cancel stmt))))
-    stmt))
+  (doto (statement driver conn)
+    (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
 
 (defn- statement-or-prepared-statement ^Statement [driver conn sql params canceled-chan]
   (if (use-statement? driver params)
@@ -506,6 +505,27 @@
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (qp.context/canceled-chan context)))))))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 Actions Stuff                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/execute-write-query! :sql-jdbc
+  [driver {{sql :query, :keys [params]} :native}]
+  {:pre [(string? sql)]}
+  (try
+    (let [{:keys [details]} (qp.store/database)
+          jdbc-spec         (sql-jdbc.conn/connection-details->spec driver details)]
+      ;; TODO -- should this be done in a transaction? Should we set the isolation level?
+      (with-open [conn (jdbc/get-connection jdbc-spec)
+                  stmt (statement-or-prepared-statement driver conn sql params nil)]
+        {:rows-affected (if (instance? PreparedStatement stmt)
+                          (.executeUpdate ^PreparedStatement stmt)
+                          (.executeUpdate stmt sql))}))
+    (catch Throwable e
+      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
+                      {:sql sql, :params params, :type qp.error-type/invalid-query}
+                      e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Convenience Imports from Old Impl                                        |

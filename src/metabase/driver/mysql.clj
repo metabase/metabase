@@ -12,26 +12,28 @@
             [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.ddl.mysql :as ddl.mysql]
+            [metabase.driver.mysql.ddl :as mysql.ddl]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs]])
+            [metabase.util.i18n :refer [deferred-tru trs tru]])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
 (comment
-  ddl.mysql/keep-me)
+  mysql.ddl/keep-me)
 
 (driver/register! :mysql, :parent :sql-jdbc)
 
@@ -41,7 +43,10 @@
 (defmethod driver/display-name :mysql [_] "MySQL")
 
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
-  (or (get-in database [:details :json-unfolding]) true))
+  (let [json-setting (get-in database [:details :json-unfolding])]
+    (if (nil? json-setting)
+      true
+      json-setting)))
 
 (defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 
@@ -49,6 +54,15 @@
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
+(defmethod driver/database-supports? [:mysql :convert-timezone]
+  [_driver _feature _db]
+  true)
+
+(defmethod driver/database-supports? [:mysql :datetime-diff]
+  [_driver _feature _db]
+  true)
+
+(defmethod driver/database-supports? [:mysql :now] [_ _ _] true)
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 
@@ -69,19 +83,19 @@
      (if (mariadb? metadata) min-supported-mariadb-version min-supported-mysql-version)))
 
 (defn- warn-on-unsupported-versions [driver details]
-  (let [jdbc-spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)]
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (jdbc/with-db-metadata [metadata jdbc-spec]
       (when (unsupported-version? metadata)
         (log/warn
          (u/format-color 'red
-             (str
-              "\n\n********************************************************************************\n"
-              (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
-                   min-supported-mysql-version
-                   min-supported-mariadb-version)
-              "\n"
-              (trs "All Metabase features may not work properly when using an unsupported version.")
-              "\n********************************************************************************\n")))))))
+                         (str
+                          "\n\n********************************************************************************\n"
+                          (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+                               min-supported-mysql-version
+                               min-supported-mariadb-version)
+                          "\n"
+                          (trs "All Metabase features may not work properly when using an unsupported version.")
+                          "\n********************************************************************************\n")))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -130,7 +144,7 @@
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
   [_]
-  (hsql/call :now 6))
+  (hx/with-database-type-info (hsql/call :now 6) "timestamp"))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
@@ -222,11 +236,14 @@
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
 
-
 (defmethod sql.qp/->float :mysql
   [_ value]
   ;; no-op as MySQL doesn't support cast to float
   value)
+
+(defmethod sql.qp/->integer :mysql
+  [_ value]
+  (hx/maybe-cast :signed value))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
@@ -236,17 +253,33 @@
   [driver [_ arg]]
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
+(def ^:private database-type->mysql-cast-type-name
+  "MySQL supports the ordinary SQL standard database type names for actual type stuff but not for coercions, sometimes.
+  If it doesn't support the ordinary SQL standard type, then we coerce it to a different type that MySQL does support here"
+  {"integer"          "signed"
+   "text"             "char"
+   "double precision" "double"
+   "bigint"           "unsigned"})
+
 (defmethod sql.qp/json-query :mysql
   [_ unwrapped-identifier stored-field]
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
-    (let [nfc-path             (:nfc_path stored-field)
-          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
-          jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))]
-      (reify
-        hformat/ToSql
-        (to-sql [_]
-          (hformat/to-params-default jsonpath-query "nfc_path")
-          (format "JSON_EXTRACT(%s, ?)" (hformat/to-sql parent-identifier)))))))
+    (let [field-type            (:database_type stored-field)
+          field-type            (get database-type->mysql-cast-type-name field-type field-type)
+          nfc-path              (:nfc_path stored-field)
+          parent-identifier     (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
+          jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
+          json-extract+jsonpath (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)]
+      (case field-type
+        ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
+        ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
+        "timestamp" (hsql/call :convert
+                               (hsql/call :str_to_date json-extract+jsonpath "\"%Y-%m-%dT%T.%fZ\"")
+                               (hsql/raw "DATETIME"))
+
+        "boolean" json-extract+jsonpath
+
+        (hsql/call :convert json-extract+jsonpath (hsql/raw (str/upper-case field-type)))))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as clause]]
@@ -308,6 +341,8 @@
                                                   (hx/literal " Sunday"))))]
     (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)))
 
+(defmethod sql.qp/date [:mysql :week-of-year-iso] [_ _ expr] (hx/week expr 3))
+
 (defmethod sql.qp/date [:mysql :month] [_ _ expr]
   (str-to-date "%Y-%m-%d"
                (hx/concat (date-format "%Y-%m" expr)
@@ -324,6 +359,44 @@
                                 2)
                           (hx/literal "-01"))))
 
+(defmethod sql.qp/->honeysql [:mysql :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr       (sql.qp/->honeysql driver arg)
+        timestamp? (hx/is-of-type? expr "timestamp")]
+    (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
+    (hx/with-database-type-info
+      (hsql/call :convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
+      "datetime")))
+
+(defmethod sql.qp/->honeysql [:mysql :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [v]
+                            (when-let [db-type (some-> v hx/type-info hx/type-info->db-type str/upper-case keyword)]
+                              (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
+                                (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
+                                  (name db-type)))))
+                          [x y])]
+    (when (seq disallowed-types)
+      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                           (pr-str disallowed-types))
+                      {:found disallowed-types
+                       :type  qp.error-type/invalid-query})))
+    (case unit
+      (:year :month)
+      (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))
+
+      :week
+      (let [positive-diff (fn [a b] (hx/floor (hx// (hsql/call :datediff b a) 7)))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :day
+      (hsql/call :datediff y x)
+
+      (:hour :minute :second)
+      (hsql/call :timestampdiff (hsql/raw (name unit)) x y))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -361,7 +434,8 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Date}
+    :YEAR       :type/Date
+    :JSON       :type/SerializedJSON}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 

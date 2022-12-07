@@ -4,7 +4,7 @@
            [com.google.api.services.analytics Analytics Analytics$Builder AnalyticsScopes]
            java.util.Collections))
 
-(defn- ^Analytics credential->client [^GoogleCredential credential]
+(defn- credential->client ^Analytics [^GoogleCredential credential]
   (.build (doto (Analytics$Builder. google/http-transport google/json-factory credential)
             (.setApplicationName google/application-name))))
 

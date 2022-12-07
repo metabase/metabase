@@ -128,7 +128,7 @@
 
               (get-manifest [user status]
                 (testing (format "get slack manifest %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "slack/manifest" )))]
+                  (mt/user-http-request user :get status "slack/manifest")))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
           (premium-features-test/with-premium-features #{}
@@ -179,6 +179,31 @@
               (update-ldap-settings user 200)
               (update-ldap-settings :crowberto 200))))))))
 
+(deftest google-api-test
+  (testing "/api/google"
+    (mt/with-user-in-groups
+      [group {:name "New Group"}
+       user  [group]]
+      (letfn [(update-google-settings [user status]
+                (testing (format "update google settings with %s user" (mt/user-descriptor user))
+                  (mt/user-http-request user :put status "google/settings"
+                                        {:google-auth-client-id "test-client-id.apps.googleusercontent.com"
+                                         :google-auth-enabled true})))]
+        (testing "if `advanced-permissions` is disabled, require admin status"
+          (premium-features-test/with-premium-features #{}
+            (update-google-settings user 403)
+            (update-google-settings :crowberto 200)))
+
+        (testing "if `advanced-permissions` is enabled"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "still fail if user's group doesn't have `setting` permission"
+              (update-google-settings user 403)
+              (update-google-settings :crowberto 200))
+
+            (testing "succeed if user's group has `setting` permission"
+              (perms/grant-application-permissions! group :setting)
+              (update-google-settings user 200)
+              (update-google-settings :crowberto 200))))))))
 
 (deftest geojson-api-test
   (testing "/api/geojson"

@@ -2,7 +2,7 @@ import { restore, withDatabase } from "__support__/e2e/helpers";
 
 const CC_NAME = "Abbr";
 
-describe.skip("issue 12445", () => {
+describe.skip("issue 12445", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("mysql-8");
     cy.signInAsAdmin();

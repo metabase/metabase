@@ -1,16 +1,22 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { DatasetData, Column, Row, Value } from "metabase-types/types/Dataset";
 import { Card } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { ReduxAction } from "metabase-types/types/redux";
 
-// import Question from "metabase-lib/lib/Question";
+// import Question from "metabase-lib/Question";
 type Question = any;
 
 export type ActionCreator = (props: ClickActionProps) => ClickAction[];
 
 export type QueryMode = {
   name: string;
-  drills: () => ActionCreator[];
+  drills: ActionCreator[];
+  fallback?: ActionCreator;
 };
 
 export type HoverData = Array<{ key: string; value: any; col?: Column }>;
@@ -76,7 +82,16 @@ export type ClickActionPopoverProps = {
   onClose: () => void;
 };
 
-export type SingleSeries = { card: Card; data: DatasetData };
+export type SingleSeries = {
+  card: Card;
+  data: DatasetData;
+  error_type?: string;
+  error?: {
+    status: number; // HTTP status code
+    data?: string;
+  };
+};
+
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };
 export type Series = RawSeries | TransformedSeries;
@@ -116,6 +131,7 @@ export type VisualizationProps = {
   onHoverChange: (hoverObject?: HoverObject) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
   visualizationIsClickable: (clickObject?: ClickObject) => boolean;
+  getExtraDataForClick?: (clickObject?: ClickObject) => Record<string, unknown>;
   onChangeCardAndRun: OnChangeCardAndRun;
 
   onUpdateVisualizationSettings: (settings: Record<string, any>) => void;

@@ -95,18 +95,6 @@
   border-color: var(--color-border);
 }
 
-.Button--purple {
-  color: white;
-  background-color: var(--color-accent7);
-  border: 1px solid var(--color-accent7);
-}
-
-.Button--purple:hover {
-  color: white;
-  background-color: color-mod(var(--color-accent7) alpha(-12%));
-  border-color: color-mod(var(--color-accent7) alpha(-12%));
-}
-
 .Button--borderless {
   border-color: transparent;
   background: transparent;

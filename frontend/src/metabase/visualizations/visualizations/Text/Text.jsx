@@ -2,15 +2,15 @@
 import React, { Component } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import styles from "./Text.css";
 
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
 
-import { withInstanceLocalization } from "metabase/lib/i18n";
-
 import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
+import { withInstanceLanguage, siteLocale } from "metabase/lib/i18n";
+
+import styles from "./Text.css";
 
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",
@@ -88,6 +88,7 @@ export default class Text extends Component {
       section: t`Display`,
       title: t`Show background`,
       dashboard: true,
+      inline: true,
       widget: "toggle",
       default: true,
     },
@@ -135,8 +136,8 @@ export default class Text extends Component {
     if (!_.isEmpty(parametersByTag)) {
       // Temporarily override language to use site language, so that all viewers of a dashboard see parameter values
       // translated the same way.
-      content = withInstanceLocalization(() =>
-        substitute_tags(content, parametersByTag),
+      content = withInstanceLanguage(() =>
+        substitute_tags(content, parametersByTag, siteLocale()),
       );
     }
 

@@ -1,20 +1,16 @@
-import { color } from "metabase/lib/colors";
 import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 import Button from "metabase/core/components/Button";
 
-export const Container = styled.div<{ isSidebar?: boolean }>`
+export const Container = styled.div`
   display: flex;
   flex-wrap: no-wrap;
   justify-content: space-between;
   align-items: center;
-  border-top: ${({ isSidebar }) =>
-    isSidebar ? "" : `1px solid ${color("border")}`};
-  padding: ${({ isSidebar }) =>
-    isSidebar
-      ? `0 ${space(2)} 0 ${space(2)}`
-      : `${space(1)} ${space(2)} ${space(2)} ${space(2)}`};
+  border-top: 1px solid ${color("border")};
+  padding: ${space(1)} ${space(2)} ${space(2)} ${space(2)};
 `;
 
 type ToggleButtonProps = {

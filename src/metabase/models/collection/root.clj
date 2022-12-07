@@ -1,5 +1,6 @@
 (ns metabase.models.collection.root
-  (:require [metabase.models.interface :as mi]
+  (:require [metabase.models.dispatch :as models.dispatch]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
@@ -16,7 +17,17 @@
 
 (p.types/defrecord+ RootCollection [])
 
-(defn- has-perms? [collection read-or-write]
+(doto RootCollection
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
+(extend-protocol models.dispatch/Model
+  RootCollection
+  (model [_this]
+    RootCollection))
+
+(defmethod mi/perms-objects-set RootCollection
+  [collection read-or-write]
   {:pre [(map? collection)]}
   ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
   (if (and (= (u/qualified-name (:namespace collection)) "snippets")
@@ -30,14 +41,7 @@
   models/IModel
   (merge
    models/IModelDefaults
-   {:types {:type :keyword}})
-
-  mi/IObjectPermissions
-  (merge
-   mi/IObjectPermissionsDefaults
-   {:perms-objects-set has-perms?
-    :can-read?         (partial mi/current-user-has-full-permissions? :read)
-    :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
+   {:types {:type :keyword}}))
 
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."

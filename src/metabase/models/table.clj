@@ -13,6 +13,7 @@
             [metabase.models.segment :refer [retrieve-segments Segment]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.util :as serdes.util]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -36,19 +37,24 @@
 
 (models/defmodel Table :metabase_table)
 
+(doto Table
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
+
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- pre-insert [table]
   (let [defaults {:display_name        (humanization/name->human-readable-name (:name table))
-                  :field_order         (driver/default-field-order (-> table :db_id Database :engine))
+                  :field_order         (driver/default-field-order (db/select-one-field :engine Database :id (:db_id table)))
                   :initial_sync_status "incomplete"}]
     (merge defaults table)))
 
 (defn- pre-delete [{:keys [db_id schema id]}]
   (db/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
-(defn- perms-objects-set [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
+(defmethod mi/perms-objects-set Table
+  [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
   ;; To read (e.g., fetch metadata) a Table you must have either self-service data permissions for the Table, or write
   ;; permissions for the Table (detailed below). `can-read?` checks the former, while `can-write?` checks the latter;
   ;; the permission-checking function to call when reading a Table depends on the context of the request. When reading
@@ -63,7 +69,7 @@
       :read  (perms/table-read-path table)
       :write (perms/data-model-write-perms-path db-id schema table-id))})
 
-(u/strict-extend (class Table)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Table)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:table])
@@ -72,15 +78,11 @@
                                        :field_order     :keyword})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
-          :pre-delete     pre-delete})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set})
+          :pre-delete     pre-delete}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:schema :name (serdes.hash/hydrated-hash :db)])})
+(defmethod serdes.hash/identity-hash-fields Table
+  [_table]
+  [:schema :name (serdes.hash/hydrated-hash :db)])
 
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
@@ -222,7 +224,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (Database (:db_id table)))
+  (db/select-one Database :id (:db_id table)))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
@@ -251,11 +253,11 @@
         schema-name (when (= 3 (count path))
                       (-> path second :id))
         table-name  (-> path last :id)
-        db-id       (db/select-one-field :id Database :name db-name)]
-    (db/select-one-field :id Table :name table-name :db_id db-id :schema schema-name)))
+        db-id       (db/select-one-id Database :name db-name)]
+    (db/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes.base/extract-one "Table"
-  [_ _ {:keys [db_id] :as table}]
+  [_model-name _opts {:keys [db_id] :as table}]
   (-> (serdes.base/extract-one-basics "Table" table)
       (assoc :db_id (db/select-one-field :name 'Database :id db_id))))
 
@@ -263,3 +265,23 @@
   [{:keys [db_id] :as table}]
   (-> (serdes.base/load-xform-basics table)
       (assoc :db_id (db/select-one-field :id 'Database :name db_id))))
+
+(defmethod serdes.base/storage-path "Table" [table _ctx]
+  (concat (serdes.util/storage-table-path-prefix (serdes.base/serdes-path table))
+          [(:name table)]))
+
+(serdes.base/register-ingestion-path!
+  "Table"
+  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "customers"]
+  ;; ["databases" "my-db" "tables" "customers" "customers"]
+  ;; Note that the last 2 must match, they're the table's directory and its file.
+  (fn [path]
+    (when-let [{db     "databases"
+                schema "schemas"
+                table  "tables"}   (and (#{5 7} (count path))
+                                        (apply = (take-last 2 path))
+                                        (serdes.base/ingestion-matcher-pairs path [["databases" "schemas" "tables"]
+                                                                                   ["databases" "tables"]]))]
+      (filterv identity [{:model "Database" :id db}
+                         (when schema {:model "Schema" :id schema})
+                         {:model "Table" :id table}]))))

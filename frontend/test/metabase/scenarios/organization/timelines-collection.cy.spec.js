@@ -5,7 +5,13 @@ import {
   expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
+  getFullName,
+  popover,
 } from "__support__/e2e/helpers";
+
+import { USERS } from "__support__/e2e/cypress_data";
+
+const { admin } = USERS;
 
 describe("scenarios > organization > timelines > collection", () => {
   beforeEach(() => {
@@ -91,7 +97,10 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByRole("button", { name: "calendar icon" }).click();
+
+      getModal().within(() => {
+        cy.findByRole("button", { name: "calendar icon" }).click();
+      });
       cy.findByText("15").click();
       cy.findByText("Done").click();
       cy.findByText("Create").click();
@@ -127,7 +136,10 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByRole("button", { name: "calendar icon" }).click();
+
+      getModal().within(() => {
+        cy.findByRole("button", { name: "calendar icon" }).click();
+      });
       cy.findByText("15").click();
       cy.findByText("Add time").click();
       cy.findByLabelText("Hours").clear().type("10");
@@ -148,7 +160,10 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Add an event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByRole("button", { name: "calendar icon" }).click();
+
+      getModal().within(() => {
+        cy.findByRole("button", { name: "calendar icon" }).click();
+      });
       cy.findByText("15").click();
       cy.findByText("Add time").click();
       cy.findByText("Done").click();
@@ -367,7 +382,9 @@ describe("scenarios > organization > timelines > collection", () => {
       });
 
       cy.findByText("Our analytics events").should("be.visible");
-      cy.findByText("Bobby Tables's Personal Collection").should("be.visible");
+      cy.findByText(`${getFullName(admin)}'s Personal Collection`).should(
+        "be.visible",
+      );
     });
 
     it("should archive a timeline and undo", () => {
@@ -498,6 +515,45 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.wait("@updateTimeline");
       cy.findByText("Releases");
     });
+
+    it("should use custom date formatting settings", () => {
+      cy.createTimelineWithEvents({
+        events: [{ name: "RC1", timestamp: "2022-10-12T18:15:30Z" }],
+      });
+      setFormattingSettings({
+        "type/Temporal": { date_style: "YYYY/M/D" },
+      });
+      cy.visit("/collection/root/timelines");
+
+      openMenu("RC1");
+      cy.findByText("Edit event").click();
+      cy.findByDisplayValue("2022/10/12").should("be.visible");
+
+      cy.findByLabelText("Date").clear().type("2022/10/15");
+      cy.button("Update").click();
+      cy.wait("@updateEvent");
+      cy.findByText("2022/10/15").should("be.visible");
+    });
+
+    it("should use custom time formatting settings", () => {
+      cy.createTimelineWithEvents({
+        events: [{ name: "RC1", timestamp: "2022-10-12T18:15:30Z" }],
+      });
+      setFormattingSettings({
+        "type/Temporal": { time_style: "HH:mm" },
+      });
+      cy.visit("/collection/root/timelines");
+
+      openMenu("RC1");
+      cy.findByText("Edit event").click();
+      getModal().within(() => {
+        cy.findByRole("button", { name: "calendar icon" }).click();
+      });
+      popover().within(() => {
+        cy.findByText("Add time").click();
+        cy.findByText("AM").should("not.exist");
+      });
+    });
   });
 
   describe("as readonly user", () => {
@@ -569,4 +625,10 @@ const openMenu = name => {
     .parent()
     .parent()
     .within(() => cy.icon("ellipsis").click());
+};
+
+const setFormattingSettings = settings => {
+  cy.request("PUT", "api/setting/custom-formatting", {
+    value: settings,
+  });
 };

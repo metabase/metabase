@@ -52,7 +52,7 @@
   (testing "single field user-specified value"
     (let [expected (str/replace
                     (str
-                     "-- /* partner: \"metabase\", {\"dashboard_id\":null,\"chart_id\":1234,\"optional_user_id\":1000,"
+                     "-- /* partner: \"metabase\", {\"dashboard_id\":5678,\"chart_id\":1234,\"optional_user_id\":1000,"
                      "\"optional_account_id\":\"" (public-settings/site-uuid) "\","
                      "\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */"
                      " Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\n"
@@ -72,11 +72,12 @@
                  :parameters [{:type   "id"
                                :target [:dimension [:field (mt/id :users :id) nil]]
                                :value  ["1" "2" "3"]}]
-                 :info {:executed-by        1000
-                        :card-id            1234
-                        :context            :ad-hoc
-                        :query-hash         (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
-                                                         93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
+                 :info {:executed-by  1000
+                        :card-id      1234
+                        :dashboard-id 5678
+                        :context      :ad-hoc
+                        :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                   93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
             "if I run a Redshift query, does it get a remark added to it?")))))
 
 ;; the extsales table is a Redshift Spectrum linked table, provided by AWS's sample data set for Redshift.
@@ -113,47 +114,46 @@
 ;;
 (deftest test-external-table
   (mt/test-driver :redshift
-   (testing "expects spectrum schema to exist"
-     (is (= [{:description     nil
-              :table_id        (mt/id :extsales)
-              :semantic_type    nil
-              :name            "buyerid"
-              :settings        nil
-              :source          :fields
-              :field_ref       [:field (mt/id :extsales :buyerid) nil]
-              :nfc_path        nil
-              :parent_id       nil
-              :id              (mt/id :extsales :buyerid)
-              :visibility_type :normal
-              :display_name    "Buyerid"
-              :base_type       :type/Integer
-              :effective_type  :type/Integer
-              :coercion_strategy nil}
-             {:description     nil
-              :table_id        (mt/id :extsales)
-              :semantic_type    nil
-              :name            "salesid"
-              :settings        nil
-              :source          :fields
-              :field_ref       [:field (mt/id :extsales :salesid) nil]
-              :nfc_path        nil
-              :parent_id       nil
-              :id              (mt/id :extsales :salesid)
-              :visibility_type :normal
-              :display_name    "Salesid"
-              :base_type       :type/Integer
-              :effective_type  :type/Integer
-              :coercion_strategy nil}]
-            ;; in different Redshift instances, the fingerprint on these columns is different.
-            (map #(dissoc % :fingerprint)
-                 (get-in (qp/process-query (mt/mbql-query
-                                            :extsales
-                                            {:limit    1
-                                             :fields   [$buyerid $salesid]
-                                             :order-by [[:asc $buyerid]
-                                                        [:asc $salesid]]
-                                             :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
-                         [:data :cols])))))))
+    (testing "expects spectrum schema to exist"
+      (is (= [{:description     nil
+               :table_id        (mt/id :extsales)
+               :semantic_type    nil
+               :name            "buyerid"
+               :settings        nil
+               :source          :fields
+               :field_ref       [:field (mt/id :extsales :buyerid) nil]
+               :nfc_path        nil
+               :parent_id       nil
+               :id              (mt/id :extsales :buyerid)
+               :visibility_type :normal
+               :display_name    "Buyerid"
+               :base_type       :type/Integer
+               :effective_type  :type/Integer
+               :coercion_strategy nil}
+              {:description     nil
+               :table_id        (mt/id :extsales)
+               :semantic_type    nil
+               :name            "salesid"
+               :settings        nil
+               :source          :fields
+               :field_ref       [:field (mt/id :extsales :salesid) nil]
+               :nfc_path        nil
+               :parent_id       nil
+               :id              (mt/id :extsales :salesid)
+               :visibility_type :normal
+               :display_name    "Salesid"
+               :base_type       :type/Integer
+               :effective_type  :type/Integer
+               :coercion_strategy nil}]
+             ;; in different Redshift instances, the fingerprint on these columns is different.
+             (map #(dissoc % :fingerprint)
+                  (get-in (qp/process-query (mt/mbql-query extsales
+                                              {:limit    1
+                                               :fields   [$buyerid $salesid]
+                                               :order-by [[:asc $buyerid]
+                                                          [:asc $salesid]]
+                                               :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
+                          [:data :cols])))))))
 
 (deftest parameters-test
   (mt/test-driver :redshift
@@ -187,6 +187,7 @@
             view-nm      "late_binding_view"
             qual-view-nm (str redshift.test/session-schema-name "." view-nm)]
         (mt/with-temp Database [database {:engine :redshift, :details db-details}]
+         (try
           ;; create a table with a CHARACTER VARYING and a NUMERIC column, and a late bound view that selects from it
           (redshift.test/execute!
            (str "DROP TABLE IF EXISTS %1$s;%n"
@@ -204,8 +205,46 @@
             (is (= [{:name "numeric_col",   :database_type "numeric(10,2)",         :base_type :type/Decimal}
                     {:name "weird_varchar", :database_type "character varying(50)", :base_type :type/Text}]
                    (map
-                    (partial into {})
-                    (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
+                    mt/derecordize
+                    (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))
+          (finally
+            (redshift.test/execute! (str "DROP TABLE IF EXISTS %s;%n"
+                                         "DROP VIEW IF EXISTS %s;")
+                                    qual-tbl-nm
+                                    qual-view-nm))))))))
+
+(deftest redshift-lbv-sync-error-test
+  (mt/test-driver
+    :redshift
+    (testing "Late-binding view with with data types that cause a JDBC error can still be synced succesfully (#21215)"
+      (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
+            view-nm      "weird_late_binding_view"
+            qual-view-nm (str redshift.test/session-schema-name "." view-nm)]
+       (mt/with-temp Database [database {:engine :redshift, :details db-details}]
+         (try
+           (redshift.test/execute!
+            (str "CREATE OR REPLACE VIEW %1$s AS ("
+                 "WITH test_data AS (SELECT 'open' AS shop_status UNION ALL SELECT 'closed' AS shop_status) "
+                 "SELECT NULL as raw_null, "
+                 "'hello' as raw_var, "
+                 "CASE WHEN shop_status = 'open' THEN 11387.133 END AS case_when_numeric_inc_nulls "
+                 "FROM test_data) WITH NO SCHEMA BINDING;")
+            qual-view-nm)
+           (sync/sync-database! database)
+           (is (contains?
+                (db/select-field :name Table :db_id (u/the-id database)) ; the new view should have been synced without errors
+                view-nm))
+           (let [table-id (db/select-one-id Table :db_id (u/the-id database), :name view-nm)]
+             ;; and its columns' :base_type should have been identified correctly
+             (is (= [{:name "case_when_numeric_inc_nulls", :database_type "numeric", :base_type :type/Decimal}
+                     {:name "raw_null",                    :database_type "varchar", :base_type :type/Text}
+                     {:name "raw_var",                     :database_type "varchar", :base_type :type/Text}]
+                    (map
+                     mt/derecordize
+                     (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]})))))
+           (finally
+             (redshift.test/execute! (str "DROP VIEW IF EXISTS %s;")
+                                     qual-view-nm))))))))
 
 (deftest filtered-syncable-schemas-test
   (mt/test-driver :redshift

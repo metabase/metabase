@@ -17,7 +17,6 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.database :as database :refer [Database]]
-            [metabase.models.dependency :refer [Dependency]]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :refer [FieldValues]]
@@ -31,7 +30,6 @@
             [metabase.models.table :refer [Table]]
             [metabase.models.user :as user :refer [User]]
             [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]
@@ -716,7 +714,7 @@
 (defn- derive-location
   [context]
   (if-let [parent-id (:collection context)]
-    (str (-> parent-id Collection :location) parent-id "/")
+    (str (db/select-one-field :location Collection :id parent-id) parent-id "/")
     "/"))
 
 (defn- make-reload-fn [all-results]
@@ -779,38 +777,6 @@
           :when (or (= context :update)
                     (nil? (setting/get-value-of-type :string k)))]
     (setting/set-value-of-type! :string k v)))
-
-(defn- log-or-die
-  [on-error message]
-  (if (= on-error :abort)
-    (throw (Exception. (str message)))
-    (log/error message)))
-
-(defn load-dependencies
-  "Load a dump of dependencies."
-  [path context]
-  (let [fully-qualified-name->entity (comp (some-fn (comp Card :card)
-                                                    (comp Metric :metric)
-                                                    (comp Segment :segment)
-                                                    (comp Pulse :pulse))
-                                           fully-qualified-name->context)]
-    (maybe-upsert-many! context Dependency
-      (for [{:keys [model_id dependent_on_id]} (yaml/from-file (str path "/dependencies.yaml") true)]
-        (let [model        (fully-qualified-name->entity model_id)
-              dependent-on (fully-qualified-name->entity dependent_on_id)]
-          (cond
-            (and model dependent-on)
-            {:model              (name model)
-             :model_id           (u/the-id model)
-             :dependent_on_model (name dependent-on)
-             :dependent_on_id    (u/the-id dependent-on)
-             :created_at         (java.util.Date.)}
-
-            (nil? model)
-            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entity {0}" model_id))
-
-            (nil? dependent-on)
-            (log-or-die (:on-error model) (trs "Error loading dependencies: reference to an unknown entity {0}" dependent_on_id))))))))
 
 (defn compatible?
   "Is dump at path `path` compatible with the currently running version of Metabase?"

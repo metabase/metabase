@@ -1,18 +1,18 @@
 import { t } from "ttag";
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 
-import { DATE_MBQL_FILTER_MAPPING } from "metabase/parameters/constants";
-import { dateParameterValueToMBQL } from "metabase/parameters/utils/mbql";
 import { DATE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
+import { EXCLUDE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker";
+import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
+import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/parameters/constants";
 import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeInterval,
   getStartingFrom,
-} from "metabase/lib/query_time";
-import { EXCLUDE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker";
+} from "metabase-lib/queries/utils/query-time";
 
-import { UiParameter } from "../types";
+import { UiParameter } from "metabase-lib/parameters/types";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;
@@ -30,7 +30,10 @@ function getFilterValueSerializer(func: (...args: any[]) => string) {
   };
 }
 
-const serializersByOperatorName: Record<string, (...args: any[]) => string> = {
+const serializersByOperatorName: Record<
+  string,
+  (...args: any[]) => string | null
+> = {
   previous: getFilterValueSerializer((value, unit, options = {}) => {
     if (options.startingFrom) {
       const [fromValue, fromUnit] = options.startingFrom;
@@ -53,8 +56,8 @@ const serializersByOperatorName: Record<string, (...args: any[]) => string> = {
   exclude: (filter: any[]) => {
     const [_op, _field, ...values] = filter;
     const operator = getExcludeOperator(filter);
-    if (!operator) {
-      return "";
+    if (!operator || !values.length) {
+      return null;
     }
     const options = operator
       .getOptions()

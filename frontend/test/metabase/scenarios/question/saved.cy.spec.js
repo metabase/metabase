@@ -5,15 +5,11 @@ import {
   openOrdersTable,
   summarize,
   visitQuestion,
-  startNewQuestion,
-  visualize,
   openQuestionActions,
   questionInfoButton,
   rightSidebar,
   appbar,
   getCollectionIdFromSlug,
-  filter,
-  filterField,
 } from "__support__/e2e/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -102,12 +98,9 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should duplicate a saved question", () => {
-    cy.server();
-    cy.route("POST", "/api/card").as("cardCreate");
-    cy.route("POST", "/api/card/1/query").as("query");
+    cy.intercept("POST", "/api/card").as("cardCreate");
 
     visitQuestion(1);
-    cy.wait("@query");
 
     openQuestionActions();
     popover().within(() => {
@@ -153,27 +146,6 @@ describe("scenarios > question > saved", () => {
     cy.findByText(/This is a question/i).should("not.exist");
   });
 
-  it("should be able to use integer filter on a nested query based on a saved native question (metabase#15808)", () => {
-    cy.createNativeQuestion({
-      name: "15808",
-      native: { query: "select * from products" },
-    });
-    startNewQuestion();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("15808").click();
-    visualize();
-
-    filter();
-    filterField("RATING", {
-      operator: "Equal to",
-      value: "4",
-    });
-    cy.findByTestId("apply-filters").click();
-
-    cy.findByText("Synergistic Granite Chair");
-    cy.findByText("Rustic Paper Wallet").should("not.exist");
-  });
-
   it("should show table name in header with a table info popover on hover", () => {
     visitQuestion(1);
     cy.findByTestId("question-table-badges").trigger("mouseenter");
@@ -212,5 +184,39 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Orders").click();
       cy.findByText("Started from").should("not.exist");
     });
+  });
+
+  it("'read-only' user should be able to resize column width (metabase#9772)", () => {
+    cy.signIn("readonly");
+    visitQuestion(1);
+
+    cy.findByText("Tax")
+      .closest(".TableInteractive-headerCellData")
+      .as("headerCell")
+      .then($cell => {
+        const originalWidth = $cell[0].getBoundingClientRect().width;
+
+        // Retries the assertion a few times to ensure it waits for DOM changes
+        // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
+        function assertColumnResized(attempt = 0) {
+          cy.get("@headerCell").then($newCell => {
+            const newWidth = $newCell[0].getBoundingClientRect().width;
+            if (newWidth === originalWidth && attempt < 3) {
+              cy.wait(100);
+              assertColumnResized(++attempt);
+            } else {
+              expect(newWidth).to.be.gt(originalWidth);
+            }
+          });
+        }
+
+        cy.wrap($cell)
+          .find(".react-draggable")
+          .trigger("mousedown", 0, 0, { force: true })
+          .trigger("mousemove", 100, 0, { force: true })
+          .trigger("mouseup", 100, 0, { force: true });
+
+        assertColumnResized();
+      });
   });
 });

@@ -36,8 +36,8 @@ const SingleTimePicker = ({ filter, onFilterChange }) => (
 
 SingleTimePicker.horizontalLayout = true;
 
-const MultiTimePicker = ({ filter, onFilterChange, isSidebar }) => (
-  <MultiTimePickerRoot direction={isSidebar ? "column" : "row"}>
+const MultiTimePicker = ({ filter, onFilterChange }) => (
+  <MultiTimePickerRoot>
     <TimeInput
       value={getTime(filter[2])}
       onChange={time =>

@@ -1,5 +1,6 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import { handleActions, combineReducers } from "metabase/lib/redux";
+import Dashboards from "metabase/entities/dashboards";
 
 import {
   INITIALIZE,
@@ -35,6 +36,7 @@ import {
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
+  SET_PARAMETER_VALUES,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -133,6 +135,14 @@ const dashboards = handleActions(
           state,
           [payload.id, "enable_embedding"],
           payload.enable_embedding,
+        ),
+    },
+    [Dashboards.actionTypes.UPDATE]: {
+      next: (state, { payload }) =>
+        assocIn(
+          state,
+          [payload.dashboard.id, "collection_id"],
+          payload.dashboard.collection_id,
         ),
     },
   },
@@ -273,6 +283,9 @@ const parameterValues = handleActions(
     [FETCH_DASHBOARD]: {
       next: (state, { payload: { parameterValues } }) => parameterValues,
     },
+    [SET_PARAMETER_VALUES]: {
+      next: (state, { payload }) => payload,
+    },
     [RESET]: { next: state => ({}) },
   },
   {},
@@ -286,7 +299,12 @@ const parameterValuesSearchCache = handleActions(
     },
     [FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE]: {
       next: (state, { payload }) =>
-        payload ? assoc(state, payload.cacheKey, payload.results) : state,
+        payload
+          ? assoc(state, payload.cacheKey, {
+              results: payload.results,
+              has_more_values: payload.has_more_values,
+            })
+          : state,
     },
     [RESET]: { next: state => ({}) },
   },
@@ -379,8 +397,7 @@ const sidebar = handleActions(
       next: () => DEFAULT_SIDEBAR,
     },
     [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload: isEditing }) =>
-        isEditing ? state : DEFAULT_SIDEBAR,
+      next: () => DEFAULT_SIDEBAR,
     },
     [REMOVE_PARAMETER]: {
       next: () => DEFAULT_SIDEBAR,
@@ -390,6 +407,18 @@ const sidebar = handleActions(
     },
   },
   DEFAULT_SIDEBAR,
+);
+
+const missingActionParameters = handleActions(
+  {
+    [INITIALIZE]: {
+      next: (state, payload) => null,
+    },
+    [RESET]: {
+      next: (state, payload) => null,
+    },
+  },
+  null,
 );
 
 export default combineReducers({
@@ -405,4 +434,5 @@ export default combineReducers({
   isAddParameterPopoverOpen,
   sidebar,
   parameterValuesSearchCache,
+  missingActionParameters,
 });

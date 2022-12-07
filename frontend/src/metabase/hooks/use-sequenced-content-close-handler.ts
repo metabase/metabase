@@ -1,6 +1,8 @@
 import { useCallback, useRef } from "react";
 import _ from "underscore";
 
+import { isElement } from "metabase-types/guards";
+
 type PopoverData = {
   contentEl: Element;
   backdropEl?: Element;
@@ -9,10 +11,6 @@ type PopoverData = {
 };
 
 export const RENDERED_POPOVERS: PopoverData[] = [];
-
-function isElement(a: any): a is Element {
-  return a instanceof Element;
-}
 
 function isEventInsideElement(e: Event, el: Element) {
   return isElement(e.target) && el.contains(e.target);

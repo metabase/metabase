@@ -2,7 +2,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import Form from "metabase/containers/Form";
+import Form from "metabase/containers/FormikForm";
 import ModalContent from "metabase/components/ModalContent";
 
 import entityType from "./EntityType";
@@ -22,15 +22,21 @@ const EForm = ({
   onSubmit = object => (object.id ? update(object) : create(object)),
   onSaved,
   ...props
-}) => (
-  <Form
-    {...props}
-    form={form}
-    initialValues={entityObject}
-    onSubmit={onSubmit}
-    onSubmitSuccess={action => onSaved && onSaved(action.payload.object)}
-  />
-);
+}) => {
+  return (
+    <Form
+      {...props}
+      form={form}
+      initialValues={
+        typeof entityObject?.getPlainObject === "function"
+          ? entityObject.getPlainObject()
+          : entityObject
+      }
+      onSubmit={onSubmit}
+      onSubmitSuccess={action => onSaved && onSaved(action.payload.object)}
+    />
+  );
+};
 
 const Modal = ({
   children,
@@ -57,12 +63,14 @@ class EntityForm extends React.Component {
   render() {
     const { modal, ...props } = this.props;
 
-    const eForm = <EForm {...props} />;
-
     if (modal) {
-      return <Modal {...this.props}>{eForm}</Modal>;
+      return (
+        <Modal {...this.props}>
+          <EForm {...props} isModal />
+        </Modal>
+      );
     } else {
-      return eForm;
+      return <EForm {...props} />;
     }
   }
 }

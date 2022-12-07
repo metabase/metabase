@@ -11,6 +11,9 @@ const totalUsers = Object.keys(USERS).length;
 
 describeEE("issue 23689", () => {
   beforeEach(() => {
+    // TODO: remove the next line when this issue gets fixed
+    cy.skipOn(true);
+
     cy.intercept("GET", "/api/permissions/membership").as("membership");
 
     restore();

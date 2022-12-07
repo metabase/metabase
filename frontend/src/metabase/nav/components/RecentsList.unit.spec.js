@@ -1,6 +1,6 @@
 import React from "react";
-import { renderWithProviders, screen } from "__support__/ui";
 import xhrMock from "xhr-mock";
+import { renderWithProviders, screen } from "__support__/ui";
 import RecentsList from "./RecentsList";
 
 const recentsData = [

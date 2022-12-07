@@ -12,9 +12,10 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 
-import Question from "./lib/Question";
-import NativeQuery from "./lib/queries/NativeQuery";
-import StructuredQuery from "./lib/queries/StructuredQuery";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Query from "metabase-lib/queries/Query";
 
 type NativeSavedCard = SavedCard<NativeDatasetQuery>;
 type NativeUnsavedCard = UnsavedCard<NativeDatasetQuery>;
@@ -74,7 +75,7 @@ export function getCleanStructuredQuestion(
 ) {
   let question = getAdHocQuestion(card);
   if (question.query() instanceof StructuredQuery) {
-    question = question.setQuery({});
+    question = question.setQuery(new Query());
   }
   return question;
 }
@@ -123,4 +124,17 @@ export function getNativeModel(
     ...card,
     dataset: true,
   });
+}
+
+export function getComposedModel(
+  card?: Omit<Partial<StructuredSavedCard>, "dataset">,
+) {
+  const question = getStructuredModel(card).composeDataset();
+  const query = question.query() as StructuredQuery;
+
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  question._metadata.tables[query.sourceTableId()] = ORDERS;
+
+  return question;
 }

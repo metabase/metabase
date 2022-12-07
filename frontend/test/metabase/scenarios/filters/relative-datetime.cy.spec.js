@@ -1,11 +1,5 @@
-import moment from "moment";
-import _ from "underscore";
-import {
-  restore,
-  sidebar,
-  popover,
-  openOrdersTable,
-} from "__support__/e2e/helpers";
+import moment from "moment-timezone";
+import { restore, popover, openOrdersTable } from "__support__/e2e/helpers";
 
 const STARTING_FROM_UNITS = [
   "minutes",
@@ -23,21 +17,6 @@ describe("scenarios > question > relative-datetime", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-  });
-
-  describe.skip("sidebar", () => {
-    it("should go to field selection with one click", () => {
-      openOrdersTable();
-
-      cy.findByTextEnsureVisible("Filter").click();
-      sidebar().within(() => {
-        cy.contains("Created At").first().click();
-        cy.contains("Specific dates...").should("exist");
-        cy.icon("chevronleft").click();
-        cy.contains("Created At").should("exist");
-        cy.contains("Specific dates...").should("not.exist");
-      });
-    });
   });
 
   describe("starting from", () => {

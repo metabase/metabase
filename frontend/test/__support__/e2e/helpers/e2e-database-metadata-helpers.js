@@ -1,7 +1,10 @@
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 export function withDatabase(databaseId, f) {
-  cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
+  cy.request(
+    "GET",
+    `/api/database/${databaseId}/metadata?include_hidden=true`,
+  ).then(({ body }) => {
     const database = {};
     for (const table of body.tables) {
       const fields = {};

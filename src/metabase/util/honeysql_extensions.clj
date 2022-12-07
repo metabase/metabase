@@ -1,5 +1,5 @@
 (ns metabase.util.honeysql-extensions
-  (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
+  (:refer-clojure :exclude [+ - / * abs mod inc dec cast concat format second])
   (:require [clojure.pprint :as pprint]
             [clojure.string :as str]
             [honeysql.core :as hsql]
@@ -161,6 +161,14 @@
 (alter-meta! #'->TypedHoneySQLForm assoc :private true)
 (alter-meta! #'map->TypedHoneySQLForm assoc :private true)
 
+(p.types/defrecord+ AtTimeZone
+  [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (clojure.core/format "(%s AT TIME ZONE %s)"
+            (hformat/to-sql expr)
+            (hformat/to-sql (literal zone)))))
+
 (def ^:private NormalizedTypeInfo
   {(s/optional-key ::database-type) (s/constrained
                                      su/NonBlankString
@@ -208,11 +216,17 @@
 
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `database-type`?
+  Where `database-type` could be a string or a regex.
 
-    (is-of-type? expr \"datetime\") ; -> true"
+    (is-of-type? expr \"datetime\") ; -> true
+    (is-of-type? expr #\"int*\") ; -> true"
+
   [honeysql-form database-type]
-  (= (some-> honeysql-form type-info type-info->db-type str/lower-case)
-     (some-> database-type name str/lower-case)))
+  (let [form-type (some-> honeysql-form type-info type-info->db-type str/lower-case)]
+    (if (instance? java.util.regex.Pattern database-type)
+      (and (some? form-type) (some? (re-find database-type form-type)))
+      (= form-type
+         (some-> database-type name str/lower-case)))))
 
 (s/defn with-database-type-info
   "Convenience for adding only database type information to a `honeysql-form`. Wraps `honeysql-form` and returns a
@@ -299,9 +313,12 @@
 (defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (maybe-cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
+(def ^{:arglists '([& exprs])} abs     "SQL `abs` function."     (partial hsql/call :abs))
+(def ^{:arglists '([& exprs])} ceil    "SQL `ceil` function."    (partial hsql/call :ceil))
 (def ^{:arglists '([& exprs])} floor   "SQL `floor` function."   (partial hsql/call :floor))
-(def ^{:arglists '([& exprs])} hour    "SQL `hour` function."    (partial hsql/call :hour))
+(def ^{:arglists '([& exprs])} second  "SQL `second` function."  (partial hsql/call :second))
 (def ^{:arglists '([& exprs])} minute  "SQL `minute` function."  (partial hsql/call :minute))
+(def ^{:arglists '([& exprs])} hour    "SQL `hour` function."    (partial hsql/call :hour))
 (def ^{:arglists '([& exprs])} day     "SQL `day` function."     (partial hsql/call :day))
 (def ^{:arglists '([& exprs])} week    "SQL `week` function."    (partial hsql/call :week))
 (def ^{:arglists '([& exprs])} month   "SQL `month` function."   (partial hsql/call :month))
@@ -324,3 +341,9 @@
 (defmethod pprint/simple-dispatch honeysql.types.SqlCall
   [call]
   (pprint/write-out (pretty/pretty call)))
+
+(defmethod hformat/format-clause :returning [[_ fields] _]
+  (->> (flatten fields)
+       (map hformat/to-sql)
+       (hformat/comma-join)
+       (str "RETURNING ")))

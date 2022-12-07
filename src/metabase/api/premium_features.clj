@@ -5,7 +5,7 @@
 
 (api/defendpoint GET "/token/status"
   "Fetch info about the current Premium-Features premium features token including whether it is `valid`, a `trial` token, its
-  `features`, and when it is `valid_thru`."
+  `features`, when it is `valid_thru`, and the `status` of the account."
   []
   (premium-features/fetch-token-status (api/check-404 (premium-features/premium-embedding-token))))
 

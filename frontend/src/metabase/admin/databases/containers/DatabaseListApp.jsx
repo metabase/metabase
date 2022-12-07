@@ -1,14 +1,14 @@
 import { connect } from "react-redux";
 
+import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncInProgress } from "metabase/lib/syncing";
 
 import LoadingAndGenericErrorWrapper from "metabase/components/LoadingAndGenericErrorWrapper";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import DatabaseList from "../components/DatabaseList";
-
 import Database from "metabase/entities/databases";
+import DatabaseList from "../components/DatabaseList";
 
 import {
   getDeletes,
@@ -21,7 +21,6 @@ import {
   addSampleDatabase,
   closeSyncingModal,
 } from "../database";
-import _ from "underscore";
 
 const RELOAD_INTERVAL = 2000;
 

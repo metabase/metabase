@@ -19,7 +19,7 @@ export function mapColumnTo({ table, column } = {}) {
   cy.findByText("Database column this maps to")
     .closest(".Form-field")
     .findByTestId("select-button")
-    .click();
+    .click({ force: true });
 
   popover().contains(table).click();
 

@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :as field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase.sync :as sync]
@@ -25,15 +26,15 @@
                                        [:between [:field 3 nil] 5 10]]))))
 
 (deftest floor-to-test
-  (mt/are+ [x expected] (= expected
-                           (#'binning/floor-to 1.0 x))
+  (are [x expected] (= expected
+                       (#'binning/floor-to 1.0 x))
     1   1.0
     1.1 1.0
     1.8 1.0))
 
 (deftest ceil-to-test
-  (mt/are+ [precision x expected] (= expected
-                                     (#'binning/ceil-to precision x))
+  (are [precision x expected] (= expected
+                                 (#'binning/ceil-to precision x))
     1.0  1    1.0
     1.0  1.1  2.0
     1.0  1.8  2.0
@@ -42,8 +43,8 @@
     15.0 16.0 30.0))
 
 (deftest nicer-bin-width-test
-  (mt/are+ [min max num-bins expected] (= expected
-                                          (#'binning/nicer-bin-width min max num-bins))
+  (are [min max num-bins expected] (= expected
+                                      (#'binning/nicer-bin-width min max num-bins))
     27      135      8 20
     -0.0002 10000.34 8 2000))
 
@@ -51,8 +52,8 @@
   {:type {:type/Number {:min 100 :max 1000}}})
 
 (deftest extract-bounds-test
-  (mt/are+ [field-id->filters expected] (= expected
-                                           (#'binning/extract-bounds 1 test-min-max-fingerprint field-id->filters))
+  (are [field-id->filters expected] (= expected
+                                       (#'binning/extract-bounds 1 test-min-max-fingerprint field-id->filters))
     {1 [[:> [:field 1 nil] 1] [:< [:field 1 nil] 10]]}
     {:min-value 1, :max-value 10}
 
@@ -72,7 +73,7 @@
     {:min-value 600, :max-value 700}))
 
 (deftest nicer-breakout-test
-  (mt/are+ [strategy opts expected] (= expected
+  (are [strategy opts expected] (= expected
                                    (#'binning/nicer-breakout strategy opts))
     :num-bins  {:min-value 100, :max-value 1000, :num-bins 8, :bin-width 0}  {:min-value 0.0, :max-value 1000.0, :num-bins 8, :bin-width 125.0}
     :num-bins  {:min-value 200, :max-value 1600, :num-bins 8, :bin-width 0}  {:min-value 200N, :max-value 1600N, :num-bins 8, :bin-width 200}
@@ -89,7 +90,8 @@
 
 ;; Try an end-to-end test of the middleware
 (defn- test-field []
-  (field/map->FieldInstance
+  (mi/instance
+   Field
    {:database_type  "DOUBLE"
     :table_id       (mt/id :checkins)
     :semantic_type  :type/Income

@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 
 import fillMissingValuesInDatas from "metabase/visualizations/lib/fill_data";
 

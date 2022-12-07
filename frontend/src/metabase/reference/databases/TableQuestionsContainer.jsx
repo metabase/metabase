@@ -3,13 +3,13 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import TableSidebar from "./TableSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 
 import TableQuestions from "metabase/reference/databases/TableQuestions";
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 
+import Questions from "metabase/entities/questions";
 import {
   getDatabase,
   getTable,
@@ -17,7 +17,7 @@ import {
   getIsEditing,
 } from "../selectors";
 
-import Questions from "metabase/entities/questions";
+import TableSidebar from "./TableSidebar";
 
 const mapStateToProps = (state, props) => ({
   database: getDatabase(state, props),

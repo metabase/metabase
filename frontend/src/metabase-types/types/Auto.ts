@@ -1,3 +1,8 @@
+/**
+ * ⚠️
+ * @deprecated use existing types from, or add to metabase-types/api/*
+ */
+
 import { TableId, SchemaName } from "metabase-types/types/Table";
 
 export type DatabaseCandidates = SchemaCandidates[];

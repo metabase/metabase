@@ -73,6 +73,6 @@ const handleCrowdedOrdinalXTicks = (
   }
 
   return xValuesCount > 10
-    ? assocIn(settings, ["x", "tick_display"], "rotate-45")
+    ? assocIn(settings, ["x", "tick_display"], "rotate-90")
     : settings;
 };

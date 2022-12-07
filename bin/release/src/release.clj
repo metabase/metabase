@@ -10,10 +10,8 @@
              [draft-release :as draft-release]
              [elastic-beanstalk :as eb]
              [git-tags :as git-tags]
-             [heroku :as heroku]
              [set-build-options :as set-build-options]
              [uberjar :as uberjar]
-             [update-website :as update-website]
              [version-info :as version-info]]
             [release.common.slack :as slack]))
 
@@ -27,9 +25,7 @@
    :upload-uberjar                      uberjar/upload-uberjar!
    :push-docker-image                   docker/push-docker-image!
    :publish-draft-release               draft-release/create-draft-release!
-   :update-heroku-buildpack             heroku/update-heroku-buildpack!
    :publish-elastic-beanstalk-artifacts eb/publish-elastic-beanstalk-artifacts!
-   :update-docs                         update-website/update-website!
    :update-version-info                 version-info/update-version-info!))
 
 (defn- do-steps! [steps]

@@ -1,6 +1,6 @@
 (ns metabase.pulse.markdown-test
   (:require [clojure.test :refer :all]
-            [metabase.public-settings :refer [site-url]]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.markdown :as markdown]
             [metabase.test.util :as tu]))
 
@@ -80,7 +80,7 @@
     (is (= "<https://metabase.com|`Metabase`>" (slack "[`Metabase`](https://metabase.com)"))))
 
   (testing "Relative links are resolved to the current site URL"
-    (tu/with-temporary-setting-values [site-url "https://example.com"]
+    (tu/with-temporary-setting-values [public-settings/site-url "https://example.com"]
       (is (= "<https://example.com/foo|Metabase>"   (slack "[Metabase](/foo)")))))
 
   (testing "Auto-links are preserved"

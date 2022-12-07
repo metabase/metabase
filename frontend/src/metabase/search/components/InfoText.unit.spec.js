@@ -1,6 +1,6 @@
 import React from "react";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import xhrMock from "xhr-mock";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { InfoText } from "./InfoText";
 

@@ -1,4 +1,4 @@
-export type BookmarkableEntities = "card" | "collection" | "dashboard";
+export type BookmarkType = "card" | "collection" | "dashboard";
 
 export interface Bookmark {
   authority_level?: string;
@@ -7,7 +7,11 @@ export interface Bookmark {
   id: string;
   item_id: number;
   name: string;
-  type: BookmarkableEntities;
-}
+  type: BookmarkType;
 
-export type BookmarksType = Bookmark[];
+  // For questions and models
+  dataset?: boolean;
+
+  // For data app collections
+  app_id?: number;
+}

@@ -47,7 +47,6 @@ describe("scenarios > auth > search", () => {
       cy.wait("@search");
 
       cy.get("body").trigger("keydown", { key: "ArrowDown" });
-      cy.get("body").trigger("keydown", { key: "ArrowDown" });
       cy.get("body").trigger("keydown", { key: "Enter" });
 
       cy.url().should("match", /\/question\/1-orders$/);

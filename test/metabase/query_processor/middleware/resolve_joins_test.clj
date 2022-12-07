@@ -7,7 +7,7 @@
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]))
 
-(defn- resolve-joins [{{:keys [source-table]} :query, :as query}]
+(defn- resolve-joins [query]
   (mt/with-everything-store
     (resolve-joins/resolve-joins query)))
 

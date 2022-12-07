@@ -49,33 +49,50 @@
                (re-pattern (str/join "|" (map #(str "file:" % "/") roots)))
                ""))
 
-(def translation-vars
+(def ^:private translation-vars
   "Vars that are looked for for translations strings"
   #{'metabase.util.i18n/trs
     'metabase.util.i18n/tru
     'metabase.util.i18n/deferred-trs
     'metabase.util.i18n/deferred-tru
-    'metabase.shared.util.i18n/tru})
+    'metabase.util.i18n/trsn
+    'metabase.util.i18n/trun
+    'metabase.util.i18n/deferred-trsn
+    'metabase.util.i18n/deferred-trun
+    'metabase.shared.util.i18n/tru
+    'metabase.shared.util.i18n/trs})
+
+(def ^:private plural-translation-macro-names
+  #{"trsn" "trsu" "deferred-trsn" "deferred-trun"})
 
 (s/def ::translate (s/and
                      (complement vector?)
                      (s/cat :translate-symbol (fn [x]
-                                                (and (symbol? x)
-                                                     (translation-vars (g/resolve-symbol x))))
+                                               (and (symbol? x)
+                                                    (translation-vars (g/resolve-symbol x))))
                             :args (s/+ any?))))
 
-(defn- form->string-for-translation
-  "Function that turns a form into the translation string. Handles string literals and calls to `str` on string
-  literals. Returns nil if unable to recognize translation string.
+(defn- form->messages
+  "Function that turns a form into a map containing the translation string, and optional plural translation string
+  if one is present.
 
-  (form->string-for-translation (tru \"Foo {0}\")) -> \"Foo {0}\"
-  (form->string-for-translation (tru (str \"Foo {0} \" \"Bar\")) -> \"Foo {0} Bar\""
+  Handles string literals and calls to `str` on string literals. Returns nil if unable to recognize translation string.
+
+  (form->string-for-translation (tru \"Foo {0}\"))                 -> {:message \"Foo {0}\"}
+  (form->string-for-translation (tru (str \"Foo {0} \" \"Bar\"))   -> {:message \"Foo {0} Bar\"}
+  (form->string-for-translation (trun \"{0} Foo\" \"{0} Foos\" n)) -> {:message \"{0} Foo\" :message-pl \"{0} Foos\"}"
   [form]
-  (let [i18n-spot (second form)]
-    (cond (string? i18n-spot)
-          i18n-spot
-          (and (seqable? i18n-spot) (every? string? (rest i18n-spot)))
-          (apply str (rest i18n-spot)))))
+  (let [macro-name     (name (first form))
+        i18n-string    (second form)
+        pl-i18n-string (when (plural-translation-macro-names macro-name) (nth form 2))]
+    (when-let [message (cond (string? i18n-string)
+                             i18n-string
+                             ;; Concatenate (str ...) forms)
+                             (and (seqable? i18n-string) (every? string? (rest i18n-string)))
+                             (apply str (rest i18n-string)))]
+      (merge {:message message}
+             (when (string? pl-i18n-string)
+               {:message-pl i18n-string})))))
 
 (defn- analyze-translations
   "Takes roots to grasp returning a map of :file, :line, :original (the original form), and :message. If identifying the
@@ -83,10 +100,11 @@
   [roots]
   (map (fn [result]
          (let [{:keys [line _col uri]} (meta result)]
-           {:file     (strip-roots uri)
-            :line     line
-            :original result
-            :message  (form->string-for-translation result)}))
+           (merge
+            {:file     (strip-roots uri)
+             :line     line
+             :original result}
+            (form->messages result))))
        (g/grasp roots ::translate)))
 
 (defn- group-results-by-string
@@ -99,13 +117,16 @@
        (group-by :message)
        (sort-by (comp :file first val))
        (map (fn [[string originals]]
-              {:message string :files (map #(select-keys % [:file :line]) originals)}))))
+              {:message    string
+               :message-pl (->> originals (filter :message-pl) first :message-pl)
+               :files      (map #(select-keys % [:file :line]) originals)}))))
 
 (defn- usage->Message
   "Return a `Message` instance suitable for adding to a `Catalog`"
-  ^Message [{:keys [message files]}]
+  ^Message [{:keys [message message-pl files]}]
   (let [msg (Message.)]
     (.setMsgid msg message)
+    (when message-pl (.setMsgidPlural msg message-pl))
     (doseq [file files]
       (if-let [line (:line file)]
         (.addSourceReference msg (:file file) line)
@@ -186,5 +207,4 @@
   (def single-file (str u/project-root-directory "/src/metabase/util.clj"))
   (create-pot-file! single-file "pot.pot")
   (map (juxt meta identity)
-       (g/grasp single-file ::translate))
-  )
+       (g/grasp single-file ::translate)))

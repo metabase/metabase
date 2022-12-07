@@ -24,8 +24,8 @@
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
 #_(def ^:private AttributeRemappings
-  (su/with-api-error-message (s/maybe {su/NonBlankString su/NonBlankString})
-    "value must be a valid attribute remappings map (attribute name -> remapped name)"))
+   (su/with-api-error-message (s/maybe {su/NonBlankString su/NonBlankString})
+     "value must be a valid attribute remappings map (attribute name -> remapped name)"))
 
 (api/defendpoint POST "/"
   "Create a new GTAP."

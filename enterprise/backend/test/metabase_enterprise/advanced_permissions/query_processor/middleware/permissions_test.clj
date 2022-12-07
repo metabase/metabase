@@ -3,8 +3,9 @@
             [clojure.test :refer :all]
             [metabase-enterprise.advanced-permissions.models.permissions :as ee.perms]
             [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.qp.perms]
-            [metabase.api.dataset :as dataset] [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.api.dataset :as api.dataset]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.streaming-test :as streaming-test]
@@ -14,7 +15,7 @@
 
 (defn- do-with-download-perms
   [db-or-id graph f]
-  (let [all-users-group-id           (u/the-id (group/all-users))
+  (let [all-users-group-id           (u/the-id (perms-group/all-users))
         db-id                        (u/the-id db-or-id)
         current-download-perms-graph (get-in (perms/data-perms-graph)
                                              [:groups all-users-group-id db-id :download])]
@@ -47,13 +48,13 @@
    (-> {:database (mt/id)
         :type :query
         :query {:source-table (mt/id table-name)}
-        :info {:context (dataset/export-format->context :csv)}})))
+        :info {:context (api.dataset/export-format->context :csv)}})))
 
 (defn- native-download-query []
   {:database (mt/id)
    :type     :native
    :native   {:query "select * from venues"}
-   :info     {:context (dataset/export-format->context :csv)}})
+   :info     {:context (api.dataset/export-format->context :csv)}})
 
 (defn- download-limit
   [query]

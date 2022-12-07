@@ -15,7 +15,7 @@ const BORDER_RADIUS = {
 
 const BORDER_COLOR = {
   default: () => color("brand"),
-  admin: () => color("accent7"),
+  admin: () => color("filter"),
   transparent: () => "transparent",
 };
 
@@ -33,7 +33,7 @@ const getBorderColor = (colorScheme: ColorScheme, invalid?: boolean) => {
     return color("error");
   }
 
-  return colorScheme === "transparent" ? "transparent" : color("border-dark");
+  return colorScheme === "transparent" ? "transparent" : color("border");
 };
 
 export const Input = styled.input<InputProps>`

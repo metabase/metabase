@@ -99,7 +99,7 @@
     (when group-name
       (check-name-not-already-taken group-name))))
 
-(u/strict-extend (class PermissionsGroup)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PermissionsGroup)
   models/IModel (merge models/IModelDefaults
                    {:pre-delete  pre-delete
                     :pre-insert  pre-insert

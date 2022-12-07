@@ -766,14 +766,14 @@
     x))
 
 (defn- handle-expression-aggregation
-  [query-type [operator & args, :as expression] druid-query]
+  [query-type expression druid-query]
   ;; filter out constants from the args list
-  (let [expression    (add-expression-aggregation-output-names expression)
+  (let [expression  (add-expression-aggregation-output-names expression)
         ;; The QP will automatically add a generated name to the expression, if it's there, unwrap it before looking
         ;; for the aggregation
-        ags           (expression->actual-ags (unwrap-name expression))
+        ags         (expression->actual-ags (unwrap-name expression))
         druid-query (handle-aggregations query-type {:aggregation ags} druid-query)
-        post-agg      (expression-post-aggregation expression)]
+        post-agg    (expression-post-aggregation expression)]
     (-> druid-query
         (update :projections conj (keyword (:name post-agg)))
         (update-in [:query :postAggregations] concat [post-agg]))))

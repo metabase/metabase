@@ -1,13 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import moment from "moment";
-import _ from "underscore";
+import moment from "moment-timezone";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Icon from "metabase/components/Icon";
-
-import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
 import {
   computeFilterTimeRange,
   getTimeComponent,
@@ -15,10 +11,12 @@ import {
   setTimeComponent,
   TIME_SELECTOR_DEFAULT_HOUR,
   TIME_SELECTOR_DEFAULT_MINUTE,
-} from "metabase/lib/query_time";
+} from "metabase-lib/queries/utils/query-time";
+import Filter from "metabase-lib/queries/structured/Filter";
+
+import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
 
 type Props = {
-  isSidebar?: boolean;
   primaryColor?: string;
   hideTimeSelectors?: boolean;
 
@@ -39,7 +37,6 @@ const getIntervalString = (filter: Filter) => {
 
 const DatePickerFooter: React.FC<Props> = ({
   filter,
-  isSidebar,
   primaryColor,
   onFilterChange,
   hideTimeSelectors,
@@ -109,7 +106,7 @@ const DatePickerFooter: React.FC<Props> = ({
   }
 
   return (
-    <Container isSidebar={isSidebar}>
+    <Container>
       {content || <div />}
       {children}
     </Container>

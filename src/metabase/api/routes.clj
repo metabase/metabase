@@ -1,8 +1,10 @@
 (ns metabase.api.routes
   (:require [compojure.core :refer [context defroutes]]
             [compojure.route :as route]
+            [metabase.api.action :as api.action]
             [metabase.api.activity :as api.activity]
             [metabase.api.alert :as api.alert]
+            [metabase.api.app :as api.app]
             [metabase.api.automagic-dashboards :as api.magic]
             [metabase.api.bookmark :as api.bookmark]
             [metabase.api.card :as api.card]
@@ -14,9 +16,11 @@
             [metabase.api.embed :as api.embed]
             [metabase.api.field :as api.field]
             [metabase.api.geojson :as api.geojson]
+            [metabase.api.google :as api.google]
             [metabase.api.ldap :as api.ldap]
             [metabase.api.login-history :as api.login-history]
             [metabase.api.metric :as api.metric]
+            [metabase.api.model-action :as api.model-action]
             [metabase.api.native-query-snippet :as api.native-query-snippet]
             [metabase.api.notify :as api.notify]
             [metabase.api.permissions :as api.permissions]
@@ -61,8 +65,10 @@
 
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   ee-routes
+  (context "/action"              [] (+auth api.action/routes))
   (context "/activity"             [] (+auth api.activity/routes))
   (context "/alert"                [] (+auth api.alert/routes))
+  (context "/app"                  [] (+auth api.app/routes))
   (context "/automagic-dashboards" [] (+auth api.magic/routes))
   (context "/card"                 [] (+auth api.card/routes))
   (context "/bookmark"             [] (+auth api.bookmark/routes))
@@ -74,10 +80,12 @@
   (context "/embed"                [] (+message-only-exceptions api.embed/routes))
   (context "/field"                [] (+auth api.field/routes))
   (context "/geojson"              [] api.geojson/routes)
+  (context "/google"               [] (+auth api.google/routes))
   (context "/ldap"                 [] (+auth api.ldap/routes))
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/premium-features"     [] (+auth api.premium-features/routes))
   (context "/metric"               [] (+auth api.metric/routes))
+  (context "/model-action"         [] (+auth api.model-action/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
   (context "/notify"               [] (+apikey api.notify/routes))
   (context "/permissions"          [] (+auth api.permissions/routes))

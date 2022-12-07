@@ -1,5 +1,5 @@
 import { ORDERS, PRODUCTS, REVIEWS } from "__support__/sample_database_fixture";
-import Join from "metabase-lib/lib/queries/structured/Join";
+import Join from "metabase-lib/queries/structured/Join";
 
 function getOrdersJoinQuery({
   alias = "Products",
@@ -530,6 +530,16 @@ describe("Join", () => {
   });
 
   describe("setOperator", () => {
+    it("changes the operator without fields selected", () => {
+      let join = getJoin({
+        query: getOrdersJoinQuery({}),
+      });
+
+      join = join.setOperator(0, "!=");
+
+      expect(join.getConditions()).toEqual([["!=", null, null]]);
+    });
+
     it("changes the operator of a single condition join", () => {
       let join = getJoin({
         query: getOrdersJoinQuery({

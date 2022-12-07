@@ -11,6 +11,7 @@ describe("issue 23510", () => {
   it("loads metadata when it is not cached (metabase#23510)", () => {
     cy.createNativeQuestion(
       {
+        database: 1,
         name: `Q23510`,
         native: {
           query:
@@ -40,9 +41,6 @@ describe("issue 23510", () => {
       cy.findByText("PRODUCTS");
       cy.findByText("REVIEWS");
       cy.findByText("PEOPLE");
-
-      cy.findByText("Back").click();
-
       cy.findByText("Sample Database");
     });
   });

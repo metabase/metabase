@@ -31,9 +31,18 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.visit("/admin/datamodel/segments");
       cy.findByText("New segment").click();
       cy.findByText("Select a table").click();
-      popover().within(() => {
+
+      // Ugly hack to prevent failures that started after https://github.com/metabase/metabase/pull/24682 has been merged.
+      // For unknon reasons, popover doesn't open with expanded list of all Sample Database tables. Rather. it shows
+      // Sample Database (collapsed) only. We need to click on it to expand it.
+      // This conditional mechanism prevents failures even if that popover opens expanded in the future.
+      cy.get(".List-section").then($list => {
+        if ($list.length !== 5) {
+          cy.findByText("Sample Database").click();
+        }
         cy.findByText("Orders").click();
       });
+
       cy.findByText("Add filters to narrow your answer").click();
 
       cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");

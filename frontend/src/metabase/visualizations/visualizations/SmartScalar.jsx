@@ -3,13 +3,10 @@ import React from "react";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-import { isDate } from "metabase/lib/schema_metadata";
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
-
-import { formatBucketing } from "metabase/lib/query_time";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
@@ -18,6 +15,8 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import { isDate } from "metabase-lib/types/utils/isa";
+import { formatBucketing } from "metabase-lib/queries/utils/query-time";
 
 import {
   PreviousValueContainer,
@@ -56,6 +55,7 @@ export default class Smart extends React.Component {
     "scalar.switch_positive_negative": {
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
+      inline: true,
     },
     click_behavior: {},
   };
@@ -97,8 +97,8 @@ export default class Smart extends React.Component {
       rawSeries,
       gridSize,
       width,
-      height,
       totalNumGridCols,
+      fontFamily,
     } = this.props;
 
     const metricIndex = cols.findIndex(col => !isDate(col));
@@ -173,12 +173,10 @@ export default class Smart extends React.Component {
           ref={scalar => (this._scalar = scalar)}
         >
           <ScalarValue
-            isDashboard={isDashboard}
             gridSize={gridSize}
-            minGridSize={Smart.minSize}
             width={width}
-            height={height}
             totalNumGridCols={totalNumGridCols}
+            fontFamily={fontFamily}
             value={formatValue(insight["last-value"], settings.column(column))}
           />
         </span>

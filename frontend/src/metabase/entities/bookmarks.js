@@ -1,4 +1,4 @@
-import { assoc, dissoc } from "icepick";
+import { assoc, updateIn, dissoc } from "icepick";
 import _ from "underscore";
 import { createSelector } from "reselect";
 import { createEntity } from "metabase/lib/entities";
@@ -46,14 +46,39 @@ const Bookmarks = createEntity({
     getIcon,
   },
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === Questions.actionTypes.UPDATE && payload?.object?.archived) {
-      const key = "card-" + payload?.object?.id;
-      return dissoc(state, key);
+    if (type === Questions.actionTypes.UPDATE && payload?.object) {
+      const { archived, dataset, id, name } = payload.object;
+      const key = `card-${id}`;
+      if (archived) {
+        return dissoc(state, key);
+      } else {
+        return updateIn(state, [key], item => ({ ...item, dataset, name }));
+      }
     }
 
-    if (type === Dashboards.actionTypes.UPDATE && payload?.object?.archived) {
-      const key = "dashboard-" + payload?.object?.id;
-      return dissoc(state, key);
+    if (type === Dashboards.actionTypes.UPDATE && payload?.object) {
+      const { archived, id, name } = payload.object;
+      const key = `dashboard-${id}`;
+      if (archived) {
+        return dissoc(state, key);
+      } else {
+        return updateIn(state, [key], item => ({ ...item, name }));
+      }
+    }
+
+    if (type === Collections.actionTypes.UPDATE && payload?.object) {
+      const { id, authority_level, name } = payload.object;
+      const key = `collection-${id}`;
+
+      if (payload.object.archived) {
+        return dissoc(state, key);
+      } else {
+        return updateIn(state, [key], item => ({
+          ...item,
+          authority_level,
+          name,
+        }));
+      }
     }
 
     if (type === Bookmarks.actionTypes.REORDER) {
@@ -84,6 +109,14 @@ function getEntityFor(type) {
 function getIcon(bookmark) {
   const bookmarkEntity = getEntityFor(bookmark.type);
   return bookmarkEntity.objectSelectors.getIcon(bookmark);
+}
+
+export function isDataAppBookmark(bookmark) {
+  return bookmark.type === "collection" && typeof bookmark.app_id === "number";
+}
+
+export function isModelBookmark(bookmark) {
+  return bookmark.type === "card" && bookmark.dataset;
 }
 
 export const getOrderedBookmarks = createSelector(

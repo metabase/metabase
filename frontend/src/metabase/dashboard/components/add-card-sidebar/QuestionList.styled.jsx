@@ -10,3 +10,8 @@ export const QuestionListItem = styled(SelectList.Item)`
     justify-self: start;
   }
 `;
+
+export const PaginationControlsContainer = styled.div`
+  display: flex;
+  justify-content: flex-end;
+`;

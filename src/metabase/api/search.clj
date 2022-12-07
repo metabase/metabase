@@ -5,9 +5,10 @@
             [flatland.ordered.map :as ordered-map]
             [honeysql.core :as hsql]
             [honeysql.helpers :as hh]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.db :as mdb]
-            [metabase.models :refer [Database]]
+            [metabase.models :refer [App Database]]
             [metabase.models.bookmark :refer [CardBookmark CollectionBookmark DashboardBookmark]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.interface :as mi]
@@ -73,6 +74,7 @@
    :archived            :boolean
    ;; returned for Card, Dashboard, Pulse, and Collection
    :collection_id       :integer
+   :collection_app_id   :integer
    :collection_name     :text
    :collection_authority_level :text
    ;; returned for Card and Dashboard
@@ -84,6 +86,8 @@
    :dashboardcard_count :integer
    :dataset_query       :text
    :moderated_status    :text
+   ;; returned for Collection only
+   :app_id              :integer
    ;; returned for Metric and Segment
    :table_id            :integer
    :database_id         :integer
@@ -145,7 +149,7 @@
   missing from `entity-columns` but found in `all-search-columns`."
   [model :- SearchableModel]
   (let [entity-columns                (search-config/columns-for-model model)
-        column-alias->honeysql-clause (u/key-by ->column-alias entity-columns)
+        column-alias->honeysql-clause (m/index-by ->column-alias entity-columns)
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
 
@@ -182,19 +186,26 @@
   (str "%" s "%"))
 
 (defn- search-string-clause
-  [query searchable-columns]
+  [model query searchable-columns]
   (when query
     (into [:or]
           (for [column searchable-columns
                 token (scoring/tokenize (scoring/normalize query))]
-            [:like
-             (hsql/call :lower column)
-             (wildcard-match token)]))))
+            (if (and (= model "card") (= column (hsql/qualify (model->alias model) :dataset_query)))
+              [:and
+               [:= (hsql/qualify (model->alias model) :query_type) "native"]
+               [:like
+                (hsql/call :lower column)
+                (wildcard-match token)]]
+              [:like
+               (hsql/call :lower column)
+               (wildcard-match token)])))))
 
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and :=) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
   (let [archived-clause (archived-where-clause model archived?)
-        search-clause   (search-string-clause search-string
+        search-clause   (search-string-clause model
+                                              search-string
                                               (map (partial hsql/qualify (model->alias model))
                                                    (search-config/searchable-columns-for-model model)))]
     (if search-clause
@@ -224,7 +235,9 @@
     (cond-> honeysql-query
       (not= collection-id-column :collection.id)
       (hh/merge-left-join [Collection :collection]
-                          [:= collection-id-column :collection.id]))))
+                          [:= collection-id-column :collection.id]
+                          [App :collection_app]
+                          [:= :collection.id :collection_app.collection_id]))))
 
 (s/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
@@ -270,27 +283,51 @@
       (update :select (fn [columns]
                         (cons [(hx/literal "dataset") :model] (rest columns))))))
 
-(s/defmethod search-query-for-model "collection"
-  [model search-ctx :- SearchContext]
-  (-> (base-query-for-model model search-ctx)
+(defn- shared-collection-impl
+  [model search-ctx]
+  (-> (base-query-for-model "collection" search-ctx)
+      (update :where (fn [where] [:and [(if (= model "app") :<> :=) :app.id nil] where]))
       (hh/left-join [CollectionBookmark :bookmark]
                     [:and
                      [:= :bookmark.collection_id :collection.id]
-                     [:= :bookmark.user_id api/*current-user-id*]])
+                     [:= :bookmark.user_id api/*current-user-id*]]
+                    [App :app]
+                    [:= :app.collection_id :collection.id])
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
+
+(s/defmethod search-query-for-model "collection"
+  [model search-ctx :- SearchContext]
+  (shared-collection-impl model search-ctx))
+
+(s/defmethod search-query-for-model "app"
+  [model search-ctx :- SearchContext]
+  (-> (shared-collection-impl model search-ctx)
+      (update :select (fn [columns]
+                        (cons [(hx/literal model) :model] (rest columns))))))
 
 (s/defmethod search-query-for-model "database"
   [model search-ctx :- SearchContext]
   (base-query-for-model model search-ctx))
 
-(s/defmethod search-query-for-model "dashboard"
-  [model search-ctx :- SearchContext]
-  (-> (base-query-for-model model search-ctx)
+(defn- shared-dashboard-impl
+  [model search-ctx]
+  (-> (base-query-for-model "dashboard" search-ctx)
+      (update :where (fn [where] [:and [:= :dashboard.is_app_page (= model "page")] where]))
       (hh/left-join [DashboardBookmark :bookmark]
                     [:and
                      [:= :bookmark.dashboard_id :dashboard.id ]
                      [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
+
+(s/defmethod search-query-for-model "dashboard"
+  [model search-ctx :- SearchContext]
+  (shared-dashboard-impl model search-ctx))
+
+(s/defmethod search-query-for-model "page"
+  [model search-ctx :- SearchContext]
+  (-> (shared-dashboard-impl model search-ctx)
+      (update :select (fn [columns]
+                        (cons [(hx/literal model) :model] (rest columns))))))
 
 (s/defmethod search-query-for-model "pulse"
   [model search-ctx :- SearchContext]
@@ -365,15 +402,15 @@
 
 (defmethod check-permissions-for-model :metric
   [{:keys [id]}]
-  (-> id Metric mi/can-read?))
+  (-> (db/select-one Metric :id id) mi/can-read?))
 
 (defmethod check-permissions-for-model :segment
   [{:keys [id]}]
-  (-> id Segment mi/can-read?))
+  (-> (db/select-one Segment :id id) mi/can-read?))
 
 (defmethod check-permissions-for-model :database
   [{:keys [id]}]
-  (-> id Database mi/can-read?))
+  (-> (db/select-one Database :id id) mi/can-read?))
 
 (defn- query-model-set
   "Queries all models with respect to query for one result, to see if we get a result or not"
@@ -406,40 +443,36 @@
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
   [search-ctx :- SearchContext]
-  (letfn [(bit->boolean [v]
-            (if (number? v)
-              (not (zero? v))
-              v))]
-    (let [search-query      (full-search-query search-ctx)
-          _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
-          reducible-results (db/reducible-query search-query :max-rows search-config/*db-max-results*)
-          xf                (comp
-                             (filter check-permissions-for-model)
-                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
-                             (map #(update % :bookmark bit->boolean))
-                             (map #(update % :archived bit->boolean))
-                             (map (partial scoring/score-and-result (:search-string search-ctx)))
-                             (filter some?))
-          total-results     (scoring/top-results reducible-results xf)]
-      ;; We get to do this slicing and dicing with the result data because
-      ;; the pagination of search is for UI improvement, not for performance.
-      ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-      {:total            (count total-results)
-       :data             (cond->> total-results
-                           (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                           (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
-       :available_models (query-model-set search-ctx)
-       :limit            (:limit-int search-ctx)
-       :offset           (:offset-int search-ctx)
-       :table_db_id      (:table-db-id search-ctx)
-       :models           (:models search-ctx)})))
+  (let [search-query      (full-search-query search-ctx)
+        _                 (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
+        reducible-results (db/reducible-query search-query :max-rows search-config/*db-max-results*)
+        xf                (comp
+                           (filter check-permissions-for-model)
+                           ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as needed
+                           (map #(update % :bookmark api/bit->boolean))
+                           (map #(update % :archived api/bit->boolean))
+                           (map (partial scoring/score-and-result (:search-string search-ctx)))
+                           (filter #(pos? (:score %))))
+        total-results     (scoring/top-results reducible-results search-config/max-filtered-results xf)]
+    ;; We get to do this slicing and dicing with the result data because
+    ;; the pagination of search is for UI improvement, not for performance.
+    ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
+    {:total            (count total-results)
+     :data             (cond->> total-results
+                         (some?     (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                         (some?     (:limit-int search-ctx)) (take (:limit-int search-ctx)))
+     :available_models (query-model-set search-ctx)
+     :limit            (:limit-int search-ctx)
+     :offset           (:offset-int search-ctx)
+     :table_db_id      (:table-db-id search-ctx)
+     :models           (:models search-ctx)}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ; This is basically a union type. defendpoint splits the string if it only gets one
-(def ^:private models-schema (s/conditional #(vector? %) [su/NonBlankString] :else su/NonBlankString))
+(def ^:private models-schema (s/conditional vector? [su/NonBlankString] :else su/NonBlankString))
 
 (s/defn ^:private search-context :- SearchContext
   [search-string :-   (s/maybe su/NonBlankString),
@@ -466,9 +499,8 @@
   For the list of models, check `metabase.search.config/all-models.
 
   To search in archived portions of models, pass in `archived=true`.
-  If you want, while searching tables, only tables of a certain DB id,
-  pass in a DB id value to `table_db_id`.
-
+  To search for tables, cards, and models of a certain DB, pass in a DB id value
+  to `table_db_id`.
   To specify a list of models, pass in an array to `models`.
   "
   [q archived table_db_id models]

@@ -17,11 +17,6 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Bookmark from "metabase/entities/bookmarks";
 
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import {
-  DashboardHeaderButton,
-  DashboardHeaderActionDivider,
-  DashboardHeaderInfoButton,
-} from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
@@ -30,17 +25,23 @@ import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
 } from "metabase/dashboard/selectors";
+import { toggleSidebar } from "../actions";
 
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
-
-import cx from "classnames";
+import {
+  DashboardHeaderButton,
+  DashboardHeaderActionDivider,
+} from "./DashboardHeader.styled";
 
 const mapStateToProps = (state, props) => {
+  const isDataApp = false;
+  const isShowingDashboardInfoSidebar =
+    !isDataApp && getIsShowDashboardInfoSidebar(state);
   return {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
-    isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
+    isShowingDashboardInfoSidebar,
   };
 };
 
@@ -50,6 +51,7 @@ const mapDispatchToProps = {
   deleteBookmark: ({ id }) =>
     Bookmark.actions.delete({ id, type: "dashboard" }),
   onChangeLocation: push,
+  toggleSidebar,
 };
 
 class DashboardHeader extends Component {
@@ -92,6 +94,8 @@ class DashboardHeader extends Component {
 
     onChangeLocation: PropTypes.func.isRequired,
 
+    toggleSidebar: PropTypes.func.isRequired,
+    sidebar: PropTypes.string.isRequired,
     setSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
   };
@@ -110,6 +114,12 @@ class DashboardHeader extends Component {
 
   onAddTextBox() {
     this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
+  }
+
+  onAddAction() {
+    this.props.addActionDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+    });
   }
 
   onDoneEditing() {
@@ -182,16 +192,17 @@ class DashboardHeader extends Component {
       isFullscreen,
       isEditable,
       location,
-      onToggleAddQuestionSidebar,
-      showAddQuestionSidebar,
       onFullscreenChange,
       createBookmark,
       deleteBookmark,
+      sidebar,
       setSidebar,
+      toggleSidebar,
       isShowingDashboardInfoSidebar,
       closeSidebar,
     } = this.props;
 
+    const isDataAppPage = false;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
     const buttons = [];
@@ -202,19 +213,20 @@ class DashboardHeader extends Component {
     }
 
     if (isEditing) {
-      const addQuestionButtonHint = showAddQuestionSidebar
-        ? t`Close sidebar`
-        : t`Add questions`;
+      const activeSidebarName = sidebar.name;
+      const addQuestionButtonHint =
+        activeSidebarName === SIDEBAR_NAME.addQuestion
+          ? t`Close sidebar`
+          : t`Add questions`;
 
       buttons.push(
         <Tooltip tooltip={addQuestionButtonHint}>
           <DashboardHeaderButton
-            isActive={showAddQuestionSidebar}
-            onClick={onToggleAddQuestionSidebar}
+            icon="add"
+            isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
+            onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             data-metabase-event="Dashboard;Add Card Sidebar"
-          >
-            <Icon name="add" />
-          </DashboardHeaderButton>
+          />
         </Tooltip>,
       );
 
@@ -257,17 +269,12 @@ class DashboardHeader extends Component {
           >
             <div>
               <Tooltip tooltip={t`Add a filter`}>
-                <a
+                <DashboardHeaderButton
                   key="parameters"
-                  className={cx("text-brand-hover", {
-                    "text-brand": isAddParameterPopoverOpen,
-                  })}
                   onClick={showAddParameterPopover}
                 >
-                  <DashboardHeaderButton>
-                    <Icon name="filter" />
-                  </DashboardHeaderButton>
-                </a>
+                  <Icon name="filter" />
+                </DashboardHeaderButton>
               </Tooltip>
             </div>
           </TippyPopover>
@@ -285,16 +292,13 @@ class DashboardHeader extends Component {
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
-          <a
-            data-metabase-event="Dashboard;Edit"
+          <DashboardHeaderButton
             key="edit"
+            data-metabase-event="Dashboard;Edit"
+            icon="pencil"
             className="text-brand-hover cursor-pointer"
             onClick={() => this.handleEdit(dashboard)}
-          >
-            <DashboardHeaderButton>
-              <Icon name="pencil" />
-            </DashboardHeaderButton>
-          </a>
+          />
         </Tooltip>,
       );
     }
@@ -309,7 +313,7 @@ class DashboardHeader extends Component {
 
       extraButtons.push({
         title: t`Duplicate`,
-        icon: "copy",
+        icon: "clone",
         link: `${location.pathname}/copy`,
         event: "Dashboard;Copy",
       });
@@ -344,30 +348,30 @@ class DashboardHeader extends Component {
             onDeleteBookmark={deleteBookmark}
             isBookmarked={isBookmarked}
           />,
-          <DashboardHeaderInfoButton
-            key="dashboard-info-button"
-            icon="info"
-            iconSize={18}
-            onlyIcon
-            borderless
-            isShowingDashboardInfoSidebar={isShowingDashboardInfoSidebar}
-            onClick={() =>
-              isShowingDashboardInfoSidebar
-                ? closeSidebar()
-                : setSidebar({ name: SIDEBAR_NAME.info })
-            }
-          />,
+          !isDataAppPage && (
+            <Tooltip key="dashboard-info-button" tooltip={t`More info`}>
+              <DashboardHeaderButton
+                icon="info"
+                isActive={isShowingDashboardInfoSidebar}
+                onClick={() =>
+                  isShowingDashboardInfoSidebar
+                    ? closeSidebar()
+                    : setSidebar({ name: SIDEBAR_NAME.info })
+                }
+              />
+            </Tooltip>
+          ),
           <EntityMenu
             key="dashboard-action-menu-button"
             items={extraButtons}
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
           />,
-        ],
+        ].filter(Boolean),
       );
     }
 
-    return [buttons];
+    return buttons;
   }
 
   render() {
@@ -380,6 +384,7 @@ class DashboardHeader extends Component {
       setSidebar,
     } = this.props;
 
+    const isDataAppPage = false;
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
@@ -390,7 +395,9 @@ class DashboardHeader extends Component {
         dashboard={dashboard}
         isEditing={isEditing}
         isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
-        isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
+        isLastEditInfoVisible={
+          !isDataAppPage && hasLastEditInfo && isAdditionalInfoVisible
+        }
         isEditingInfo={isEditing}
         isNavBarOpen={this.props.isNavBarOpen}
         headerButtons={this.getHeaderButtons()}

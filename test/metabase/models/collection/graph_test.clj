@@ -403,12 +403,12 @@
 (defn- do-with-n-temp-users-with-personal-collections! [num-users thunk]
   (mt/with-model-cleanup [User Collection]
     ;; insert all the users
-    (let [user-ids (jdbc/execute!
-                    (db/connection)
-                    (db/honeysql->sql
-                     {:insert-into User
-                      :values      (repeatedly num-users #(assoc (tt/with-temp-defaults User) :date_joined :%now))}))
-          max-id   (:max-id (db/select-one [User [:%max.id :max-id]]))
+    (jdbc/execute!
+     (db/connection)
+     (db/honeysql->sql
+      {:insert-into User
+       :values      (repeatedly num-users #(assoc (tt/with-temp-defaults User) :date_joined :%now))}))
+    (let [max-id   (:max-id (db/select-one [User [:%max.id :max-id]]))
           ;; determine the range of IDs we inserted -- MySQL doesn't support INSERT INTO ... RETURNING like Postgres
           ;; so this is the fastest way to do this
           user-ids (range (inc (- max-id num-users)) (inc max-id))]

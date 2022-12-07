@@ -10,6 +10,7 @@ import TokenField, {
   parseStringValue,
 } from "metabase/components/TokenField";
 import ListField from "metabase/components/ListField";
+import SingleSelectListField from "metabase/components/SingleSelectListField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
@@ -96,6 +97,7 @@ class FieldValuesWidgetInner extends Component {
     style: {},
     formatOptions: {},
     maxWidth: 500,
+    disableList: false,
     disableSearch: false,
     showOptionsInPopover: false,
   };
@@ -116,7 +118,10 @@ class FieldValuesWidgetInner extends Component {
     let valuesMode = this.state.valuesMode;
     try {
       if (usesChainFilterEndpoints(this.props.dashboard)) {
-        options = await this.fetchDashboardParamValues(query);
+        const { results, has_more_values } =
+          await this.fetchDashboardParamValues(query);
+        options = results;
+        valuesMode = has_more_values ? "search" : valuesMode;
       } else {
         options = await this.fetchFieldValues(query);
         const { fields, disableSearch, disablePKRemappingForSearch } =
@@ -220,6 +225,9 @@ class FieldValuesWidgetInner extends Component {
 
   search = _.debounce(async value => {
     if (!value) {
+      this.setState({
+        loadingState: "LOADED",
+      });
       return;
     }
 
@@ -254,13 +262,32 @@ class FieldValuesWidgetInner extends Component {
       parameter,
       prefix,
       disableSearch,
+      disableList,
       disablePKRemappingForSearch,
       formatOptions,
       placeholder,
+      forceTokenField = false,
       showOptionsInPopover,
       checkedColor,
+      valueRenderer = value =>
+        renderValue(fields, formatOptions, value, {
+          autoLoad: true,
+          compact: false,
+        }),
+      optionRenderer = option =>
+        renderValue(fields, formatOptions, option[0], {
+          autoLoad: false,
+        }),
+      layoutRenderer = showOptionsInPopover
+        ? undefined
+        : layoutProps => (
+            <div>
+              {layoutProps.valuesList}
+              {renderOptions(this.state, this.props, layoutProps)}
+            </div>
+          ),
     } = this.props;
-    const { loadingState, options = [] } = this.state;
+    const { loadingState, options = [], valuesMode } = this.state;
 
     const tokenFieldPlaceholder = getTokenFieldPlaceholder({
       fields,
@@ -269,14 +296,16 @@ class FieldValuesWidgetInner extends Component {
       disablePKRemappingForSearch,
       loadingState,
       options,
+      valuesMode,
     });
 
+    const isListMode =
+      !disableList &&
+      shouldList(fields, disableSearch) &&
+      valuesMode === "list" &&
+      !forceTokenField;
     const isLoading = loadingState === "LOADING";
-    const usesListField = hasList({
-      fields,
-      disableSearch,
-      options,
-    });
+    const hasListValues = hasList({ fields, disableSearch, options });
 
     return (
       <div
@@ -286,25 +315,29 @@ class FieldValuesWidgetInner extends Component {
           maxWidth: this.props.maxWidth,
         }}
       >
-        {usesListField &&
-          (isLoading ? (
-            <LoadingState />
-          ) : (
-            <ListField
-              isDashboardFilter={parameter}
-              placeholder={tokenFieldPlaceholder}
-              value={value.filter(v => v != null)}
-              onChange={onChange}
-              options={options}
-              optionRenderer={option =>
-                renderValue(fields, formatOptions, option[0], {
-                  autoLoad: false,
-                })
-              }
-              checkedColor={checkedColor}
-            />
-          ))}
-        {!usesListField && (
+        {isListMode && isLoading ? (
+          <LoadingState />
+        ) : isListMode && hasListValues && multi ? (
+          <ListField
+            isDashboardFilter={parameter}
+            placeholder={tokenFieldPlaceholder}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={optionRenderer}
+            checkedColor={checkedColor}
+          />
+        ) : isListMode && hasListValues && !multi ? (
+          <SingleSelectListField
+            isDashboardFilter={parameter}
+            placeholder={tokenFieldPlaceholder}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={optionRenderer}
+            checkedColor={checkedColor}
+          />
+        ) : (
           <TokenField
             prefix={prefix}
             value={value.filter(v => v != null)}
@@ -323,27 +356,9 @@ class FieldValuesWidgetInner extends Component {
             // end forwarded props
             options={options}
             valueKey="0"
-            valueRenderer={value =>
-              renderValue(fields, formatOptions, value, {
-                autoLoad: true,
-                compact: false,
-              })
-            }
-            optionRenderer={option => {
-              return renderValue(fields, formatOptions, option[0], {
-                autoLoad: false,
-              });
-            }}
-            layoutRenderer={
-              showOptionsInPopover
-                ? undefined
-                : layoutProps => (
-                    <div>
-                      {layoutProps.valuesList}
-                      {renderOptions(this.state, this.props, layoutProps)}
-                    </div>
-                  )
-            }
+            valueRenderer={valueRenderer}
+            optionRenderer={optionRenderer}
+            layoutRenderer={layoutRenderer}
             filterOption={(option, filterString) => {
               const lowerCaseFilterString = filterString.toLowerCase();
               return option.some(
@@ -444,7 +459,7 @@ function getNonSearchableTokenFieldPlaceholder(firstField) {
   return t`Enter some text`;
 }
 
-function searchField(field, disablePKRemappingForSearch) {
+export function searchField(field, disablePKRemappingForSearch) {
   if (disablePKRemappingForSearch && field.isPK()) {
     return field.isSearchable() ? field : null;
   }
@@ -500,22 +515,30 @@ function isExtensionOfPreviousSearch(value, lastValue, options, maxResults) {
   );
 }
 
-function isSearchable(fields, disableSearch, disablePKRemappingForSearch) {
-  return (
-    !disableSearch &&
-    // search is available if:
-    // all fields have a valid search field
-    fields.every(field => searchField(field, disablePKRemappingForSearch)) &&
-    // at least one field is set to display as "search" or is a list field that has an incomplete value set
-    fields.some(
+export function isSearchable({
+  fields,
+  disableSearch,
+  disablePKRemappingForSearch,
+  valuesMode,
+}) {
+  function everyFieldIsSearchable() {
+    return fields.every(field =>
+      searchField(field, disablePKRemappingForSearch),
+    );
+  }
+
+  function someFieldIsConfiguredForSearch() {
+    return fields.some(
       f =>
         f.has_field_values === "search" ||
         (f.has_field_values === "list" && f.has_more_values === true),
-    ) &&
-    // and all fields are either "search" or "list"
-    fields.every(
-      f => f.has_field_values === "search" || f.has_field_values === "list",
-    )
+    );
+  }
+
+  return (
+    !disableSearch &&
+    (valuesMode === "search" ||
+      (everyFieldIsSearchable() && someFieldIsConfiguredForSearch()))
   );
 }
 
@@ -526,6 +549,7 @@ function getTokenFieldPlaceholder({
   disablePKRemappingForSearch,
   loadingState,
   options,
+  valuesMode,
 }) {
   if (placeholder) {
     return placeholder;
@@ -541,7 +565,14 @@ function getTokenFieldPlaceholder({
     })
   ) {
     return t`Search the list`;
-  } else if (isSearchable(fields, disableSearch, disablePKRemappingForSearch)) {
+  } else if (
+    isSearchable({
+      fields,
+      disableSearch,
+      disablePKRemappingForSearch,
+      valuesMode,
+    })
+  ) {
     return getSearchableTokenFieldPlaceholder(
       fields,
       firstField,
@@ -563,7 +594,7 @@ function renderOptions(
     disableSearch,
     disablePKRemappingForSearch,
   } = props;
-  const { loadingState, options } = state;
+  const { loadingState, options, valuesMode } = state;
 
   if (alwaysShowOptions || isFocused) {
     if (optionsList) {
@@ -573,13 +604,19 @@ function renderOptions(
         fields,
         disableSearch,
         options,
-      })
+      }) &&
+      valuesMode === "list"
     ) {
       if (isAllSelected) {
         return <EveryOptionState />;
       }
     } else if (
-      isSearchable(fields, disableSearch, disablePKRemappingForSearch)
+      isSearchable({
+        fields,
+        disableSearch,
+        disablePKRemappingForSearch,
+        valuesMode,
+      })
     ) {
       if (loadingState === "LOADING") {
         return <LoadingState />;
@@ -609,12 +646,23 @@ function renderValue(fields, formatOptions, value, options) {
   );
 }
 
-function getValuesMode(fields, disableSearch, disablePKRemappingForSearch) {
+export function getValuesMode(
+  fields,
+  disableSearch,
+  disablePKRemappingForSearch,
+) {
   if (fields.length === 0) {
     return "none";
   }
 
-  if (isSearchable(fields, disableSearch, disablePKRemappingForSearch)) {
+  if (
+    isSearchable({
+      fields,
+      disableSearch,
+      disablePKRemappingForSearch,
+      valuesMode: undefined,
+    })
+  ) {
     return "search";
   }
 

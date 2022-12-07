@@ -8,7 +8,7 @@ while getopts "hs:v:" opt
 do
     case "$opt" in
         h|\?)
-            echo "Usage: run-server.sh [-s plain|ssl|tls] [-v <version>]" 1>&2
+            echo "Usage: run-server.sh [-s plain|ssl|tls] [-v 4.0|5.0]" 1>&2
             exit 0
             ;;
         s)

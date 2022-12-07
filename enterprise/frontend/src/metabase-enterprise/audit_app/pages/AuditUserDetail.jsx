@@ -1,11 +1,10 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import EntityName from "metabase/entities/containers/EntityName";
 import AuditContent from "../components/AuditContent";
 import AuditDashboard from "../containers/AuditDashboard";
 import AuditTable from "../containers/AuditTable";
-
-import EntityName from "metabase/entities/containers/EntityName";
 
 import * as UserDetailCards from "../lib/cards/user_detail";
 

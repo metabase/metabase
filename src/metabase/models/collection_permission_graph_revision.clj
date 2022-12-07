@@ -6,7 +6,7 @@
 
 (models/defmodel CollectionPermissionGraphRevision :collection_permission_graph_revision)
 
-(u/strict-extend (class CollectionPermissionGraphRevision)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class CollectionPermissionGraphRevision)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:before :json

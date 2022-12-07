@@ -54,7 +54,8 @@
   "Current report timezone abbreviation"
   :visibility :public
   :setter     :none
-  :getter     (fn [] (short-timezone-name (report-timezone))))
+  :getter     (fn [] (short-timezone-name (report-timezone)))
+  :doc        false)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -363,6 +364,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+;; TODO -- I think we should rename this to `features` since `driver/driver-features` is a bit redundant.
 (def driver-features
   "Set of all features a driver can support."
   #{
@@ -433,7 +435,32 @@
     :advanced-math-expressions
 
     ;; Does the driver support percentile calculations (including median)
-    :percentile-aggregations})
+    :percentile-aggregations
+
+    ;; Does the driver support date extraction functions? (i.e get year component of a datetime column)
+    ;; DEFAULTS TO TRUE
+    :temporal-extract
+
+    ;; Does the driver support doing math with datetime? (i.e Adding 1 year to a datetime column)
+    ;; DEFAULTS TO TRUE
+    :date-arithmetics
+
+    ;; Does the driver support the :now function
+    :now
+
+    ;; Does the driver support converting timezone?
+    ;; DEFAULTS TO FALSE
+    :convert-timezone
+
+    ;; Does the driver support :datetime-diff functions
+    :datetime-diff
+
+    ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
+    :actions
+
+    ;; Does the driver support custom writeback actions using `is_write` Saved Questions. Drivers that support this must
+    ;; implement [[execute-write-query!]]
+    :actions/custom})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -441,7 +468,8 @@
 
     (supports? :postgres :set-timezone) ; -> true
 
-  deprecated — [[database-supports?]] is intended to replace this method. However, it driver authors should continue _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
+  DEPRECATED — [[database-supports?]] is intended to replace this method. However, it driver authors should continue
+  _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
   {:arglists '([driver feature]), :deprecated "0.41.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
@@ -453,6 +481,9 @@
 
 (defmethod supports? [::driver :basic-aggregations] [_ _] true)
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
+(defmethod supports? [::driver :date-arithmetics] [_ _] true)
+(defmethod supports? [::driver :temporal-extract] [_ _] true)
+(defmethod supports? [::driver :convert-timezone] [_ _] false)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -612,12 +643,26 @@
 (defmulti db-default-timezone
   "Return the *system* timezone ID name of this database, i.e. the timezone that local dates/times/datetimes are
   considered to be in by default. Ideally, this method should return a timezone ID like `America/Los_Angeles`, but an
-  offset formatted like `-08:00` is acceptable in cases where the actual ID cannot be provided."
+  offset formatted like `-08:00` is acceptable in cases where the actual ID cannot be provided.
+
+  This is currently used only when syncing the
+  Database (see [[metabase.sync.sync-metadata.sync-timezone/sync-timezone!]]) -- the result of this method is stored
+  in the `timezone` column of Database.
+
+  *In theory* this method should probably not return `nil`, since every Database presumably assumes some timezone for
+  LocalDate(Time)s types, but *in practice* implementations of this method return `nil` for some drivers. For example
+  the default implementation for `:sql-jdbc` returns `nil` unless the driver in question
+  implements [[metabase.driver.sql-jdbc.sync/db-default-timezone]]; the `:h2` driver does not for example. Why is
+  this? Who knows, but it's something you should keep in mind.
+
+  TODO FIXME (cam) -- I think we need to fix this for drivers that return `nil`."
   {:added "0.34.0", :arglists '(^java.lang.String [driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod db-default-timezone ::driver [_ _] nil)
+(defmethod db-default-timezone ::driver
+  [_driver _database]
+  nil)
 
 ;; TIMEZONE FIXME — remove this method entirely
 (defmulti current-db-time
@@ -625,7 +670,7 @@
   `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`.
 
   deprecated — the only thing this method is ultimately used for is to determine the db's system timezone.
-  `db-default-timezone` has been introduced as an intended replacement for this method; implement it instead. this
+  [[db-default-timezone]] has been introduced as an intended replacement for this method; implement it instead. this
   method will be removed in a future release."
   {:deprecated "0.34.0", :arglists '(^org.joda.time.DateTime [driver database])}
   dispatch-on-initialized-driver
@@ -647,7 +692,7 @@
   Much of the implementation for this method is shared across drivers and lives in the
   `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
   this method.`Driver-agnostic end-to-end native parameter tests live in
-  `metabase.query-processor-test.parameters-test` and other namespaces."
+  [[metabase.query-processor-test.parameters-test]] and other namespaces."
   {:arglists '([driver inner-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -670,7 +715,11 @@
 (defmulti incorporate-ssh-tunnel-details
   "A multimethod for driver-specific behavior required to incorporate details for an opened SSH tunnel into the DB
   details. In most cases, this will simply involve updating the :host and :port (to point to the tunnel entry point,
-  instead of the backing database server), but some drivers may have more specific behavior."
+  instead of the backing database server), but some drivers may have more specific behavior.
+
+  WARNING! Implementations of this method may create new SSH tunnels, which need to be cleaned up. DO NOT USE THIS
+  METHOD DIRECTLY UNLESS YOU ARE GOING TO BE CLEANING UP ANY CREATED TUNNELS! Instead, you probably want to
+  use [[metabase.util.ssh/with-ssh-tunnel]]. See #24445 for more information."
   {:added "0.39.0" :arglists '([driver db-details])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
@@ -705,3 +754,10 @@
 (defmethod superseded-by :default
   [_]
   nil)
+
+(defmulti execute-write-query!
+  "Execute a writeback query (from an `is_write` Card) e.g. one powering a custom
+  `QueryAction` (see [[metabase.models.action]]). Drivers that support `:actions/custom` must implement this method."
+  {:added "0.44.0", :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)

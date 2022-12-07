@@ -11,7 +11,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
-(defn- print-rows-rff [metadata]
+(defn- print-rows-rff [_metadata]
   (fn
     ([] 0)
 
@@ -177,7 +177,7 @@
                          {:database (mt/id)
                           :type     :query
                           :query    {:source-table (mt/id :venues)
-                                     :fields       [[:field-id (mt/id :venues :id)]]}}
+                                     :fields       [[:field (mt/id :venues :id) nil]]}}
                          additional-options)
                         rows)))]
               (is (= [[1]

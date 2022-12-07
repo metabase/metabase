@@ -1,16 +1,12 @@
 ---
 title: "Timeline event"
-summary: "/api/timeline-event endpoints."
+summary: |
+  /api/timeline-event endpoints.
 ---
 
 # Timeline event
 
 /api/timeline-event endpoints.
-
-  - [DELETE /api/timeline-event/:id](#delete-apitimeline-eventid)
-  - [GET /api/timeline-event/:id](#get-apitimeline-eventid)
-  - [POST /api/timeline-event/](#post-apitimeline-event)
-  - [PUT /api/timeline-event/:id](#put-apitimeline-eventid)
 
 ## `DELETE /api/timeline-event/:id`
 

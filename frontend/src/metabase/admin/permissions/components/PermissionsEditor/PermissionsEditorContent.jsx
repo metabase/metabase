@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import { PermissionsTable } from "../PermissionsTable";
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";
 import TextInput from "metabase/components/TextInput";
@@ -10,6 +9,7 @@ import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { PermissionsTable } from "../PermissionsTable";
 
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
 import {

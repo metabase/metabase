@@ -1,9 +1,10 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
+import EntityMenu from "metabase/components/EntityMenu";
 
 import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 
@@ -14,20 +15,19 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { State } from "metabase-types/store";
 import { color } from "metabase/lib/colors";
+
+import BookmarkToggle from "metabase/core/components/BookmarkToggle";
+import Question from "metabase-lib/Question";
+
 import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
-} from "metabase/lib/data-modeling/utils";
-
-import Question from "metabase-lib/lib/Question";
-
+} from "metabase-lib/metadata/utils/models";
 import {
   QuestionActionsDivider,
-  BookmarkButton,
-  AnimationStates,
   StrengthIndicator,
-  QuestionEntityMenu,
 } from "./QuestionActions.styled";
+import { ViewHeaderIconButtonContainer } from "./view/ViewHeader.styled";
 
 const HEADER_ICON_SIZE = 16;
 
@@ -57,6 +57,8 @@ interface Props {
     opt: { datasetEditorTab: string },
   ) => void;
   turnDatasetIntoQuestion: () => void;
+  turnQuestionIntoAction: () => void;
+  turnActionIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
   isModerator: boolean;
@@ -76,13 +78,6 @@ const QuestionActions = ({
   isModerator,
   softReloadCard,
 }: Props) => {
-  const [animation, setAnimation] = useState<AnimationStates>(null);
-
-  const handleClickBookmark = () => {
-    handleBookmark();
-    setAnimation(isBookmarked ? "shrink" : "expand");
-  };
-  const bookmarkButtonColor = isBookmarked ? color("brand") : undefined;
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
   const infoButtonColor = isShowingQuestionInfoSidebar
@@ -92,6 +87,7 @@ const QuestionActions = ({
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
+  const isNative = question.isNative();
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -185,12 +181,18 @@ const QuestionActions = ({
         action: turnDatasetIntoQuestion,
       });
     }
+  }
+
+  if (!question.query().readOnly()) {
     extraButtons.push({
       title: t`Duplicate`,
       icon: "segment",
       action: () => onOpenModal(MODAL_TYPES.CLONE),
       testId: CLONE_TESTID,
     });
+  }
+
+  if (canWrite) {
     extraButtons.push({
       title: t`Archive`,
       icon: "view_archive",
@@ -203,27 +205,25 @@ const QuestionActions = ({
     <>
       <QuestionActionsDivider />
       <Tooltip tooltip={bookmarkTooltip}>
-        <BookmarkButton
-          animation={animation}
+        <BookmarkToggle
+          onCreateBookmark={handleBookmark}
+          onDeleteBookmark={handleBookmark}
           isBookmarked={isBookmarked}
-          onlyIcon
-          icon="bookmark"
-          iconSize={HEADER_ICON_SIZE}
-          onClick={handleClickBookmark}
-          color={bookmarkButtonColor}
         />
       </Tooltip>
       <Tooltip tooltip={t`More info`}>
-        <Button
-          onlyIcon
-          icon="info"
-          iconSize={HEADER_ICON_SIZE}
-          onClick={onInfoClick}
-          color={infoButtonColor}
-          data-testId="qb-header-info-button"
-        />
+        <ViewHeaderIconButtonContainer>
+          <Button
+            onlyIcon
+            icon="info"
+            iconSize={HEADER_ICON_SIZE}
+            onClick={onInfoClick}
+            color={infoButtonColor}
+            data-testId="qb-header-info-button"
+          />
+        </ViewHeaderIconButtonContainer>
       </Tooltip>
-      <QuestionEntityMenu
+      <EntityMenu
         items={extraButtons}
         triggerIcon="ellipsis"
         tooltip={t`Move, archive, and more...`}

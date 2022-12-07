@@ -1,13 +1,14 @@
+import moment from "moment-timezone";
 import {
+  getRelativeTimeAbbreviated,
+  hoursToSeconds,
+  isValidTimeInterval,
+  msToHours,
+  msToMinutes,
+  msToSeconds,
   parseTime,
   parseTimestamp,
-  getRelativeTimeAbbreviated,
-  msToSeconds,
-  msToMinutes,
-  msToHours,
-  hoursToSeconds,
 } from "metabase/lib/time";
-import moment from "moment";
 
 describe("time", () => {
   describe("parseTimestamp", () => {
@@ -149,6 +150,20 @@ describe("time", () => {
       it(`returns ${expected} for ${value}`, () => {
         expect(hoursToSeconds(value)).toBe(expected);
       });
+    });
+  });
+
+  describe("isValidTimeInterval", () => {
+    it(`is not valid for 0 time span`, () => {
+      expect(isValidTimeInterval(0, "days")).toBeFalsy();
+    });
+
+    it(`is valid for small time spans`, () => {
+      expect(isValidTimeInterval(10, "days")).toBeTruthy();
+    });
+
+    it(`is not valid for large time spans`, () => {
+      expect(isValidTimeInterval(1000000000, "years")).toBeFalsy();
     });
   });
 });

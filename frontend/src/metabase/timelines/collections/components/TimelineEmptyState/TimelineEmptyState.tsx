@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import { Collection, Timeline } from "metabase-types/api";
@@ -54,7 +54,7 @@ const TimelineEmptyState = ({
           <EmptyStateTooltipIcon name="mail" />
           <EmptyStateTooltipBody>
             <EmptyStateTooltipTitle>{t`Launch of v2.0`}</EmptyStateTooltipTitle>
-            <EmptyStateTooltipDate value={date} unit="day" />
+            <EmptyStateTooltipDate value={date} unit="day" data-server-date />
           </EmptyStateTooltipBody>
         </EmptyStateTooltip>
         <EmptyStateThread>

@@ -7,7 +7,7 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 const DataReferenceButton = ({
   isShowingDataReference,

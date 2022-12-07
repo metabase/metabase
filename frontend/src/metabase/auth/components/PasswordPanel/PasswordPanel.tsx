@@ -1,19 +1,23 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import Users from "metabase/entities/users";
 import AuthButton from "../AuthButton";
+import LoginForm from "../LoginForm";
 import { AuthProvider, LoginData } from "../../types";
 import { ActionListItem, ActionList } from "./PasswordPanel.styled";
 
 export interface PasswordPanelProps {
   providers?: AuthProvider[];
   redirectUrl?: string;
+  isLdapEnabled: boolean;
+  hasSessionCookies: boolean;
   onLogin: (data: LoginData, redirectUrl?: string) => void;
 }
 
 const PasswordPanel = ({
   providers = [],
   redirectUrl,
+  isLdapEnabled,
+  hasSessionCookies,
   onLogin,
 }: PasswordPanelProps) => {
   const handleSubmit = useCallback(
@@ -25,10 +29,9 @@ const PasswordPanel = ({
 
   return (
     <div>
-      <Users.Form
-        form={Users.forms.login()}
-        submitTitle={t`Sign in`}
-        submitFullWidth
+      <LoginForm
+        isLdapEnabled={isLdapEnabled}
+        hasSessionCookies={hasSessionCookies}
         onSubmit={handleSubmit}
       />
       <ActionList>

@@ -1,12 +1,12 @@
+import FakeTimers from "@sinonjs/fake-timers";
+import Cookie from "js-cookie";
+import { replace } from "react-router-redux";
+import { logout, refreshSession } from "metabase/auth/actions";
 import {
   createSessionMiddleware,
   SESSION_KEY,
   COOKIE_POOLING_TIMEOUT,
 } from "./session-middleware";
-import FakeTimers from "@sinonjs/fake-timers";
-import Cookie from "js-cookie";
-import { replace } from "react-router-redux";
-import { logout, refreshSession } from "metabase/auth/actions";
 
 jest.mock("js-cookie", () => jest.fn());
 jest.mock("metabase/auth/actions", () => ({
@@ -97,7 +97,7 @@ describe("createSessionMiddleware", () => {
       clock.tick(COOKIE_POOLING_TIMEOUT);
 
       expect(dispatchMock).toHaveBeenCalled();
-      expect(logout).toHaveBeenCalledWith("/question/1?query=5#hash", true);
+      expect(logout).toHaveBeenCalledWith("/question/1?query=5#hash");
     });
   });
 

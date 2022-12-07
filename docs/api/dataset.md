@@ -1,21 +1,16 @@
 ---
 title: "Dataset"
-summary: "/api/dataset endpoints."
+summary: |
+  /api/dataset endpoints.
 ---
 
 # Dataset
 
 /api/dataset endpoints.
 
-  - [POST /api/dataset/](#post-apidataset)
-  - [POST /api/dataset/:export-format](#post-apidatasetexport-format)
-  - [POST /api/dataset/duration](#post-apidatasetduration)
-  - [POST /api/dataset/native](#post-apidatasetnative)
-  - [POST /api/dataset/pivot](#post-apidatasetpivot)
-
 ## `POST /api/dataset/`
 
-Execute a query and retrieve the results in the usual format.
+Execute a query and retrieve the results in the usual format. The query will not use the cache.
 
 ### PARAMS:
 

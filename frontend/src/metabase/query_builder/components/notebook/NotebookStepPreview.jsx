@@ -5,16 +5,16 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
+import { Motion, spring } from "react-motion";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
-import { Motion, spring } from "react-motion";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Visualization from "metabase/visualizations/components/Visualization";
 
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 import {
   PreviewButtonContainer,
   PreviewHeader,

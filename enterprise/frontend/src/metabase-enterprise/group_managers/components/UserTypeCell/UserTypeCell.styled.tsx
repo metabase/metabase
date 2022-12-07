@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 
 export const ChangeTypeButton = styled.button`
   padding: 0 0.25rem;
-  color: ${color("accent7")};
+  color: ${color("filter")};
   cursor: pointer;
   vertical-align: middle;
 `;

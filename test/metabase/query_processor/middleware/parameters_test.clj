@@ -160,8 +160,8 @@
   (testing "multiple sub-queries, referenced in template tags, are correctly substituted"
     (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
                     Card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
-      (let [card-1-id  (:id card-1)
-            card-2-id  (:id card-2)]
+      (let [card-1-id (:id card-1)
+            card-2-id (:id card-2)]
         (is (= (mt/native-query
                 {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params []})
                (substitute-params
@@ -172,8 +172,8 @@
   (testing "multiple CTE queries, referenced in template tags, are correctly substituted"
     (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
                     Card [card-2 {:dataset_query (mt/native-query {:query "SELECT 2"})}]]
-      (let [card-1-id  (:id card-1)
-            card-2-id  (:id card-2)]
+      (let [card-1-id (:id card-1)
+            card-2-id (:id card-2)]
         (is (= (mt/native-query
                 {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2", :params []})
                (substitute-params
@@ -187,8 +187,7 @@
                     Card [card-2 {:dataset_query (mt/native-query
                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
-      (let [card-1-id  (:id card-1)
-            card-2-id  (:id card-2)]
+      (let [card-2-id (:id card-2)]
         (is (= (mt/native-query
                 {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2", :params []})
                (substitute-params
@@ -201,15 +200,14 @@
                     Card [card-2 {:dataset_query (mt/native-query
                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
-      (let [card-1-id  (:id card-1)
-            card-2-id  (:id card-2)
+      (let [card-2-id       (:id card-2)
             card-1-subquery (str "SELECT "
-                                   "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
-                                   "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
-                                   "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", "
-                                   "\"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
-                                   "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
-                                   "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
+                                 "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
+                                 "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
+                                 "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", "
+                                 "\"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
+                                 "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
+                                 "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
                                  "FROM \"PUBLIC\".\"VENUES\" "
                                  "LIMIT 1048575")]
         (is (= (mt/native-query
@@ -273,7 +271,7 @@
                                                   "Filter: expensive venues" (:id where-snippet)})})}]]
     (testing "multiple snippets are correctly expanded in parent query"
       (is (= (mt/native-query
-               {:query "SELECT name, price FROM venues WHERE price > 2", :params []})
+               {:query "SELECT name, price FROM venues WHERE price > 2", :params nil})
              (substitute-params (:dataset_query card)))))
 
     (testing "multiple snippets are expanded from saved sub-query"
@@ -283,89 +281,6 @@
               (mt/native-query
                 {:query         (str "SELECT * FROM {{#" (:id card) "}} AS x")
                  :template-tags (card-template-tags [(:id card)])})))))))
-
-(deftest snippet-with-parameters-test
-  (mt/with-everything-store
-    (mt/with-temp* [NativeQuerySnippet [where-snippet  {:content       "name = {{name}} and {{price}} "
-                                                        :template_tags {"price" {:dimension    ["field" (mt/id :venues :price) nil]
-                                                                                 :display-name "Price"
-                                                                                 :id           "random-id-1"
-                                                                                 :name         "price"
-                                                                                 :type         "dimension"
-                                                                                 :widget-type  "number/="}
-                                                                        "name"  {:display-name "Name"
-                                                                                 :id           "random-id-2"
-                                                                                 :name         "name"
-                                                                                 :type         "text"}}
-                                                        :creator_id    (mt/user->id :rasta)
-                                                        :description   "Meant for use in WHERE clause"
-                                                        :name          "Filter: expensive venues"}]
-                    Card [card {:dataset_query
-                                (mt/native-query
-                                  {:query         (str "SELECT name, price "
-                                                       "FROM venues "
-                                                       "WHERE {{ Filter: expensive venues }}")
-                                   :template-tags (snippet-template-tags
-                                                    {"Filter: expensive venues" (:id where-snippet)})})}]]
-      (testing "parameters in snippet should be expanded correctly"
-        (is (= (mt/native-query
-                 {:query "SELECT name, price FROM venues WHERE name = ? and \"PUBLIC\".\"VENUES\".\"PRICE\" IN (2)"
-                  :params ["The Apple Pan"]})
-               (-> (:dataset_query card)
-                   (assoc :parameters [{:id     "random-id-1"
-                                        :type   :category
-                                        :target [:dimension [:template-tag "price"]]
-                                        :value  [2]}
-                                       {:id     "random-id-2"
-                                        :target [:variable [:template-tag "name"]]
-                                        :type   :text
-                                        :value  "The Apple Pan"}])
-                   substitute-params
-                   (dissoc :user-parameters))))))))
-
-(deftest nested-snippet-with-parameter-test
-  ;; we currently don't use this in FE, but this test is here to demonstrate that we can
-  (mt/with-everything-store
-    (mt/with-temp* [NativeQuerySnippet [child-snippet {:content       "price > {{price}}"
-                                                       :template_tags {"price"  {:display-name "Price"
-                                                                                 :id           "random-id-2"
-                                                                                 :name         "price"
-                                                                                 :type         "number"}}
-                                                       :creator_id    (mt/user->id :rasta)
-                                                       :description   "Meant for use in WHERE clause"
-                                                       :name          "Filter: expensive venues"}]
-                    NativeQuerySnippet [nested-snipet {:content       "name = {{name}} and {{Filter: Expensive Venues}}"
-                                                       :template_tags (merge
-                                                                        {"name" {:display-name "Name"
-                                                                                 :id           "random-id-2"
-                                                                                 :name         "name"
-                                                                                 :type         "text"}}
-                                                                        (snippet-template-tags {"Filter: Expensive Venues" (:id child-snippet)}))
-                                                       :creator_id    (mt/user->id :rasta)
-                                                       :description   "Meant for use in WHERE clause"
-                                                       :name          "Filter: nested snippet"}]
-                    Card [card {:dataset_query
-                                (mt/native-query
-                                  {:query         (str "SELECT name, price "
-                                                       "FROM venues "
-                                                       "WHERE {{ Filter: nested snippet }}")
-                                   :template-tags (snippet-template-tags
-                                                    {"Filter: nested snippet" (:id nested-snipet)})})}]]
-      (testing "substitute nested snippet in snippet should be expanded correctly"
-        (is (= (mt/native-query
-                 {:query "SELECT name, price FROM venues WHERE name = ? and price > 2"
-                  :params ["The Apple Pan"]})
-               (-> (:dataset_query card)
-                   (assoc :parameters [{:id     "random-id-1"
-                                        :type   :number
-                                        :target [:variable [:template-tag "price"]]
-                                        :value  2}
-                                       {:id     "random-id-2"
-                                        :target [:variable [:template-tag "name"]]
-                                        :type   :text
-                                        :value  "The Apple Pan"}])
-                   substitute-params
-                   (dissoc :user-parameters))))))))
 
 (deftest include-card-parameters-test
   (testing "Expanding a Card reference should include its parameters (#12236)"

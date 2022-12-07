@@ -29,7 +29,7 @@
 (def ^:private test-catalog-name "test-data")
 
 (defmethod tx/dbdef->connection-details :presto
-  [_ context {:keys [database-name]}]
+  [_driver _context _dbdef]
   {:host    (tx/db-test-env-var-or-throw :presto :host "localhost")
    :port    (tx/db-test-env-var-or-throw :presto :port "8080")
    :user    (tx/db-test-env-var-or-throw :presto :user "metabase")
@@ -38,9 +38,9 @@
 
 (defmethod sql.tx/qualified-name-components :presto
   ;; use the default schema from the in-memory connector
-  ([_ db-name]                       [test-catalog-name "default"])
-  ([_ db-name table-name]            [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name)])
-  ([_ db-name table-name field-name] [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name) field-name]))
+  ([_driver _db-name]                      [test-catalog-name "default"])
+  ([_driver db-name table-name]            [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name)])
+  ([_driver db-name table-name field-name] [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name) field-name]))
 
 (defn- field-base-type->dummy-value [field-type]
   ;; we need a dummy value for every base-type to make a properly typed SELECT statement
@@ -94,7 +94,7 @@
       (unprepare/unprepare :presto (cons query params)))))
 
 (defmethod tx/create-db! :presto
-  [driver {:keys [table-definitions database-name] :as dbdef} & {:keys [skip-drop-db?]}]
+  [driver {:keys [table-definitions] :as dbdef} & {:keys [skip-drop-db?]}]
   (let [details  (tx/dbdef->connection-details driver :db dbdef)
         execute! (partial #'presto/execute-query-for-sync details)]
     (doseq [tabledef table-definitions

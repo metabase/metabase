@@ -128,7 +128,7 @@
          ExceptionInfo
          perms-error-msg
          (mt/with-temp* [Database [db]
-                         Table    [table-1 {:db_id (u/the-id db)}]
+                         Table    [_       {:db_id (u/the-id db)}]
                          Table    [table-2 {:db_id (u/the-id db)}]
                          Card     [card    {:dataset_query {:database (u/the-id db), :type :query,
                                                             :query {:source-table (u/the-id table-2)}}}]]
@@ -146,7 +146,7 @@
 
   (testing "...but it should work if user has perms [template tag referenced query]"
     (mt/with-temp* [Database [db]
-                    Table    [table-1 {:db_id (u/the-id db)}]
+                    Table    [_       {:db_id (u/the-id db)}]
                     Table    [table-2 {:db_id (u/the-id db)}]
                     Card     [card    {:dataset_query {:database (u/the-id db), :type :query,
                                                        :query {:source-table (u/the-id table-2)}}}]]
@@ -223,12 +223,11 @@
                                :type                 (s/eq qp.error-type/missing-required-permissions)
                                s/Keyword             s/Any}
                     s/Keyword s/Any}
-                   (mt/suppress-output
-                     (qp/process-userland-query
-                      {:database (mt/id)
-                       :type     :query
-                       :query    {:source-table (mt/id :venues)
-                                  :limit        1}})))))))
+                   (qp/process-userland-query
+                    {:database (mt/id)
+                     :type     :query
+                     :query    {:source-table (mt/id :venues)
+                                :limit        1}}))))))
 
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"

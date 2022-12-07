@@ -125,7 +125,7 @@
   (The 'cheatsheet' above is listed first so I can easily look at it with `autocomplete-mode` in Emacs.) This macro
   does the following:
 
-  *  Expands symbols like `$field` into calls to `id`, and wraps them in `:field-id`. See the dox for `$ids` for
+  *  Expands symbols like `$field` into calls to `id`, and wraps them in `:field-id`. See the dox for [[$ids]] for
      complete details.
   *  Wraps 'inner' query with the standard `{:database (data/id), :type :query, :query {...}}` boilerplate
   *  Adds `:source-table` clause if `:source-table` or `:source-query` is not already present"
@@ -180,9 +180,9 @@
   `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
 (defn format-name
-  "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the driver's
-  implementation of `format-name`. (Most databases use the default implementation of `identity`; H2 uses
-  `clojure.string/upper-case`.) This function DOES NOT quote the identifier."
+  "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the current
+  driver's implementation of [[ddl.i/format-name]]. (Most databases use the default implementation of `identity`; H2
+  uses [[clojure.string/upper-case]].) This function DOES NOT quote the identifier."
   [a-name]
   (assert ((some-fn keyword? string? symbol?) a-name)
     (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? (Change the form to"
@@ -204,7 +204,7 @@
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
-  current DB (for `metabase.test.data` functions like `id` and `db`), and execute `body`.
+  current DB (for [[metabase.test.data]] functions like [[id]] and [[db]]), and execute `body`.
 
   `dataset` can be one of the following:
 

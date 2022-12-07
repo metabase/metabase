@@ -6,7 +6,7 @@ export const ACCENT_COUNT = 8;
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
 /* eslint-disable no-color-literals */
-export const colors: ColorPalette = {
+export const colors = {
   brand: "#509EE3",
   summarize: "#88BF4D",
   filter: "#7172AD",
@@ -35,9 +35,10 @@ export const colors: ColorPalette = {
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
   "bg-yellow": "#FFFCF2",
+  "bg-night": "#42484E",
+  "bg-error": "#ED6E6E55",
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
-  "border-dark": "#C9CED3",
 
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   "saturated-blue": "#2D86D4",
@@ -79,9 +80,19 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
   "accent7-dark": palette => shade(color(`accent7`, palette)),
 };
 
-export const color = (color: string, palette = colors) => {
-  if (color in palette) {
-    return palette[color];
+export function color(
+  colorName: keyof ColorPalette,
+  palette?: ColorPalette,
+): string;
+export function color(color: string, palette?: ColorPalette): string;
+export function color(color: any, palette: ColorPalette = colors) {
+  const fullPalette = {
+    ...colors,
+    ...palette,
+  };
+
+  if (color in fullPalette) {
+    return fullPalette[color as keyof ColorPalette];
   }
 
   if (color in aliases) {
@@ -89,7 +100,7 @@ export const color = (color: string, palette = colors) => {
   }
 
   return color;
-};
+}
 
 export const alpha = (c: string, a: number) => {
   return Color(color(c)).alpha(a).string();
@@ -123,4 +134,49 @@ export const isLight = (c: string) => {
 
 export const isDark = (c: string) => {
   return Color(color(c)).isDark();
+};
+
+const LIGHT_HSL_RANGES = [
+  [
+    [42, 105],
+    [70, 100],
+    [75, 100],
+  ],
+  [
+    [140, 185],
+    [70, 100],
+    [75, 100],
+  ],
+  [
+    [40, 120],
+    [70, 100],
+    [70, 100],
+  ],
+  [
+    [40, 110],
+    [90, 100],
+    [0, 100],
+  ],
+  [
+    [150, 185],
+    [90, 100],
+    [0, 100],
+  ],
+];
+
+// We intentionally want to return white text color more frequently
+// https://www.notion.so/Maz-notes-on-viz-settings-67aed0e4ddcc4d4a83028992c4301820?d=513f4f7fa9c143cb874c7e4525dfb1e9#277d6b3eeb464eac86088abd144fde9e
+const whiteTextColorPriorityFactor = 3;
+
+export const getTextColorForBackground = (backgroundColor: string) => {
+  const whiteTextContrast =
+    Color(color(backgroundColor)).contrast(Color(color("white"))) *
+    whiteTextColorPriorityFactor;
+  const darkTextContrast = Color(color(backgroundColor)).contrast(
+    Color(color("text-dark")),
+  );
+
+  return whiteTextContrast > darkTextContrast
+    ? color("white")
+    : color("text-dark");
 };

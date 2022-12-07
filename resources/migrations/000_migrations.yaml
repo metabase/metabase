@@ -8009,12 +8009,17 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - and:
             - dbms:
-                type: postgresql,mysql,mariadb
+                type: postgresql
+      # This has maybe never succeeded in creating the index because (at least with the current DB versions)
+      # the syntax was wrong on all requested databases (postgresql, mysql and mariadb). Since this change is
+      # not critical it's OK to ignore it.
+      validCheckSum: 8:9da2f706a7cd42b5101601e0106fa929
       changes:
         - createIndex:
             columns:
              - column:
                  name: lower(email)
+                 computed: true
                  type: varchar(254)
             tableName: core_user
             indexName: idx_lower_email
@@ -8062,6 +8067,7 @@ databaseChangeLog:
       comment: Added 0.37.0 # for H2 convert column to VARCHAR_IGNORECASE
       failOnError: false
       preConditions:
+         - onFail: MARK_RAN
          - or:
              - dbms:
                    type: h2
@@ -11792,6 +11798,8 @@ databaseChangeLog:
                   unique: true
             tableName: report_dashboardcard
 
+# Migrations v44.00-012 thru v44.00-022 have been moved to v45.00-001 thru v45.00-011
+
   - changeSet:
       id: v44.00-023
       author: qnkhuat
@@ -11822,7 +11830,6 @@ databaseChangeLog:
                   remarks: List of parameter associated to a card
                   constraints:
                     nullable: true
-
   - changeSet:
       id: v44.00-027
       author: adam-james
@@ -11841,7 +11848,6 @@ databaseChangeLog:
             tableName: core_user
             columnName: last_name
             columnDataType: varchar(254)
-
   - changeSet:
       id: v44.00-029
       author: qnkhuat
@@ -11855,6 +11861,24 @@ databaseChangeLog:
                   type: boolean
                   remarks: true if the stored values list is a subset of all possible values
                   defaultValueBoolean: false
+
+  - changeSet:
+      id: v44.00-030
+      author: snoe
+      comment: Added 0.44.0 - Add database_required to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_required
+                  type: boolean
+                  remarks: Indicates this field is required by the database for new records. Usually not null and without a default.
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+# Migrations v44.00-031 and v44.00-032 were moved to v45.00-012 and v45.00-013 respectively
 
   - changeSet:
       id: v44.00-033
@@ -11947,6 +11971,1056 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v44.00-041
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse_card
+
+  - changeSet:
+      id: v44.00-042
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to PulseCard, PulseChannel
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse_channel
+
+  - changeSet:
+      id: v44.00-044
+      author: qnkhuat
+      comment: Added 0.44.0 - drop native_query_snippet.template_tags added in v44.00-039
+      changes:
+        - dropColumn:
+            tableName: native_query_snippet
+            columnName: template_tags
+
+##
+## Metabase 45
+##
+
+# Note on rollback: migrations for v45 onwards should always include a rollback key unless they are supported
+# by Liquibase Auto Rollback. Most common changes are supported. See docs here:
+#
+#  https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
+
+  - changeSet:
+      id: v45.00-001
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-012 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-012';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-012';
+      changes:
+        - createTable:
+            tableName: action
+            remarks: An action is something you can do, such as run a readwrite query
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the action was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the action was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Type of action
+                  name: type
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v45.00-002
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-013 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-013';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-013';
+      changes:
+        - createTable:
+            tableName: query_action
+            remarks: A readwrite query type of action
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The related card
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_action_ref_card_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v45.00-003
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-014 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-014';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-014';
+      changes:
+        - addPrimaryKey:
+            tableName: query_action
+            columnNames: action_id, card_id
+            constraintName: pk_query_action
+      rollback: # will be deleted when table is deleted
+
+  # note: some migrations which only added and deleted tables within v45 were removed, hence an ID gap here
+
+  - changeSet:
+      id: v45.00-011
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-022 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-022';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-022';
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_write
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this query will perform writes to a db
+                  constraints:
+                    nullable: false
+            tableName: report_card
+
+  - changeSet:
+      id: v45.00-012
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-031 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-031';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-031';
+      changes:
+        - createTable:
+            tableName: http_action
+            remarks: An http api call type of action
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_http_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name of this action
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: An optional description for this action
+              - column:
+                  name: template
+                  type: ${text.type}
+                  remarks: A template that defines method,url,body,headers required to make an api call
+                  constraints:
+                    nullable: false
+              - column:
+                  name: response_handle
+                  type: ${text.type}
+                  remarks: A program to take an api response and transform to an appropriate response for emitters
+              - column:
+                  name: error_handle
+                  type: ${text.type}
+                  remarks: A program to take an api response to determine if an error occurred
+
+  - changeSet:
+      id: v45.00-013
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      # This migration was previously numbered v44.00-032 but ultimately was not shipped with 44.
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            # For some insane reason databasechangelog is upper-case in MySQL and MariaDB.
+            - and:
+                - dbms:
+                    type: postgresql,h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM databasechangelog WHERE id = 'v44.00-032';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM `DATABASECHANGELOG` WHERE id = 'v44.00-032';
+      changes:
+        - addPrimaryKey:
+            tableName: http_action
+            columnNames: action_id
+            constraintName: pk_http_action
+      rollback: # no rollback needed, will be deleted with table
+
+
+  # note: some migrations which only added and deleted tables within v45 were removed, hence an ID gap here
+
+  - changeSet:
+      id: v45.00-022
+      author: snoe
+      comment: Added 0.45.0 - add app container
+      changes:
+        - createTable:
+            tableName: app
+            remarks: Defines top level concerns for App
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The associated collection
+                  constraints:
+                    nullable: false
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_ref_collection_id
+                    deleteCascade: true
+                    unique: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The homepage of the app
+              - column:
+                  remarks: JSON for the navigation items of the app
+                  name: nav_items
+                  type: ${text.type}
+              - column:
+                  remarks: JSON for frontend related additions, such as styling
+                  name: options
+                  type: ${text.type}
+              - column:
+                  remarks: The timestamp of when the app was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v45.00-023
+      author: snoe
+      comment: Added 0.45.0 - add app container
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: app
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_app_ref_dashboard_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v45.00-025
+      author: metamben
+      comment: Added 0.45.0 - mark app pages
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_app_page
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this dashboard serves as a page of an app
+                  constraints:
+                    nullable: false
+            tableName: report_dashboard
+
+  - changeSet:
+      id: v45.00-026
+      author: snoe
+      comment: Added 0.45.0 - apps add action_id to report_dashboardcard
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+            tableName: report_dashboardcard
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: v45.00-027
+      author: snoe
+      comment: Added 0.45.0 - apps add fk for action_id to report_dashboardcard
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: action_id
+            referencedTableName: action
+            referencedColumnNames: id
+            constraintName: fk_report_dashboardcard_ref_action_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v45.00-028
+      author: camsaul
+      comment: Added 0.45.0 -- rename DashboardCard sizeX to size_x. See https://github.com/metabase/metabase/issues/16344
+      changes:
+        - renameColumn:
+            tableName: report_dashboardcard
+            columnDataType: int
+            oldColumnName: sizeX
+            newColumnName: size_x
+
+  - changeSet:
+      id: v45.00-029
+      author: camsaul
+      comment: Added 0.45.0 -- rename DashboardCard size_y to size_y. See https://github.com/metabase/metabase/issues/16344
+      changes:
+        - renameColumn:
+            tableName: report_dashboardcard
+            columnDataType: int
+            oldColumnName: sizeY
+            newColumnName: size_y
+
+  - changeSet:
+      id: v45.00-030
+      author: camsaul
+      comment: Added 0.45.0 -- add default value to DashboardCard size_x -- this was previously done by Toucan
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+            defaultValue: 2
+
+  - changeSet:
+      id: v45.00-031
+      author: camsaul
+      comment: Added 0.45.0 -- add default value to DashboardCard size_y -- this was previously done by Toucan
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+            defaultValue: 2
+
+  - changeSet:
+      id: v45.00-032
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard created_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: created_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+    # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
+  - changeSet:
+      id: v45.00-033
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard created_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard
+              CHANGE created_at
+              created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do, but required for sql
+
+  - changeSet:
+      id: v45.00-034
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard updated_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: updated_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v45.00-035
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for DashboardCard updated_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard
+              CHANGE updated_at
+              updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do
+
+  - changeSet:
+      id: v45.00-036
+      author: snoe
+      comment: Added 0.45.0 - add model action table
+      changes:
+        - createTable:
+            tableName: model_action
+            remarks: Ties actions to models
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: slug
+                  type: varchar(254)
+                  remarks: The referenceable name for this action
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The associated model
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_card_id
+                    deleteCascade: true
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The associated action
+                  constraints:
+                    nullable: true
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: requires_pk
+                  remarks: Indicates that the primary key(s) need to be passed in as parameters
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parameter_mappings
+                  type: ${text.type}
+                  remarks: Mappings for primary keys to action parameters
+              - column:
+                  name: visualization_settings
+                  type: ${text.type}
+                  remarks: Settings for rendering the action
+  - changeSet:
+      id: v45.00-037
+      author: snoe
+      comment: Added 0.45.0 - model action
+      changes:
+        - addUniqueConstraint:
+            tableName: model_action
+            columnNames: card_id, slug
+            constraintName: unique_model_action_card_id_slug
+      rollback: # will be deleted with table
+
+  # The next 4 values add default values for Database `created_at` and `updated_at`; previously this was handled by
+  # Toucan but it's more convenient to do this at the application database level instead -- it facilitates stuff like
+  # schema migration tests that don't use Toucan, or other manual scripting
+  - changeSet:
+      id: v45.00-038
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database created_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: metabase_database
+            columnName: created_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+    # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
+  - changeSet:
+      id: v45.00-039
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database created_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE metabase_database
+              CHANGE created_at
+              created_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do
+
+  - changeSet:
+      id: v45.00-040
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database updated_at (Postgres/H2)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql,h2
+      changes:
+        - addDefaultValue:
+            tableName: metabase_database
+            columnName: updated_at
+            columnDataType: ${timestamp_type}
+            defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v45.00-041
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database updated_at (MySQL/MariaDB)
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE metabase_database
+              CHANGE updated_at
+              updated_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do
+
+  # It was probably an oversight, but while we validated Database `details` in the API layer it was not a required/NOT
+  # NULL column in the application Database itself. No problem; let's add it now that we've noticed it.
+  #
+  # MySQL (at least 5.7) won't let us have nice things:
+  #
+  # https://dev.mysql.com/doc/refman/5.7/en/data-type-defaults.html
+  #
+  # The BLOB, TEXT, GEOMETRY, and JSON data types cannot be assigned a default value.
+  #
+  # Because of this restriction we will just have to update existing NULL values in SQL and then add a NOT NULL
+  # restriction separately; we can use Toucan `pre-insert` to set defaults values when saving things.
+  - changeSet:
+      id: v45.00-042
+      author: camsaul
+      comment: Added 0.45.0 -- add default value for Database with NULL details
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_database SET details = '{}' WHERE details IS NULL;
+      rollback: # nothing to do, since a '{}' is okay for v44
+
+  - changeSet:
+      id: v45.00-043
+      author: camsaul
+      comment: Added 0.45.0 -- make Database details NOT NULL
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${text.type}
+            tableName: metabase_database
+            columnName: details
+
+  - changeSet:
+      id: v45.00-044
+      author: metamben
+      comment: Added 0.45.0 -- create app permission graph revision table
+      changes:
+        - createTable:
+            tableName: app_permission_graph_revision
+            remarks: 'Used to keep track of changes made to app permissions.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: before
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the apps graph before the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: after
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the apps graph after the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the admin who made this set of changes.'
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_permission_graph_revision_user_id
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: 'The timestamp of when these changes were made.'
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: remark
+                  type: ${text.type}
+                  remarks: 'Optional remarks explaining why these changes were made.'
+
+  # note: some migrations which only added and deleted tables within v45 were removed, hence an ID gap here
+
+  # Add created_at to Collection
+  - changeSet:
+      id: v45.00-048
+      author: camsaul
+      comment: Added 0.45.0 -- add created_at to Collection
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of when this Collection was created.
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+
+  # Seed Collection created_at for Personal Collections with the date_joined of the User that owns them.
+  - changeSet:
+      id: v45.00-049
+      author: camsaul
+      comment: Added 0.45.0 -- set Collection.created_at to User.date_joined for Personal Collections
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE collection c
+              SET created_at = u.date_joined
+              FROM core_user u
+              WHERE c.personal_owner_id = u.id;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE collection c
+              INNER JOIN core_user u
+              ON c.personal_owner_id = u.id
+              SET c.created_at = u.date_joined;
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE collection c
+              SET created_at = (
+                SELECT u.date_joined
+                FROM core_user u
+                WHERE c.personal_owner_id = u.id
+              )
+              WHERE c.personal_owner_id IS NOT NULL;
+      rollback: # nothing to roll back, but required for sql change types
+
+  # seed Collection created_at based on the max created at of child objects
+  #
+  # At the time of this writing, the following Models can appear in a Collection:
+  #
+  # - App
+  # - Card
+  # - Dashboard
+  # - Pulse
+  # - Timeline
+  # - NativeQuerySnippet
+  - changeSet:
+      id: v45.00-050
+      author: camsaul
+      validCheckSum: ANY
+      comment: Added 0.45.0 -- seed Collection.created_at with value of oldest item for non-Personal Collections
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE collection c
+              SET created_at = created_ats.created_at
+              FROM (
+                SELECT min(created_at) AS created_at, collection_id
+                FROM (
+                  SELECT created_at, collection_id FROM app                  UNION ALL
+                  SELECT created_at, collection_id FROM report_card          UNION ALL
+                  SELECT created_at, collection_id FROM report_dashboard     UNION ALL
+                  SELECT created_at, collection_id FROM pulse                UNION ALL
+                  SELECT created_at, collection_id FROM timeline             UNION ALL
+                  SELECT created_at, collection_id FROM native_query_snippet
+                ) created_ats
+                GROUP BY collection_id
+              ) created_ats
+              WHERE c.id = created_ats.collection_id
+                AND c.personal_owner_id IS NULL;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE collection c
+              LEFT JOIN (
+                SELECT min(created_at) AS created_at, collection_id
+                FROM (
+                  SELECT created_at, collection_id FROM app                  UNION ALL
+                  SELECT created_at, collection_id FROM report_card          UNION ALL
+                  SELECT created_at, collection_id FROM report_dashboard     UNION ALL
+                  SELECT created_at, collection_id FROM pulse                UNION ALL
+                  SELECT created_at, collection_id FROM timeline             UNION ALL
+                  SELECT created_at, collection_id FROM native_query_snippet
+                ) created_ats
+                GROUP BY collection_id
+              ) created_ats
+              ON c.id = created_ats.collection_id
+              SET c.created_at = created_ats.created_at
+              WHERE c.personal_owner_id IS NULL
+                AND created_ats.created_at IS NOT NULL;
+        - sql:
+            dbms: h2
+            # I would have preferred using MERGE ... USING instead of WHERE EXISTS ... but it's broken in 1.4.197
+            # because of https://github.com/h2database/h2database/issues/1034, which is fixed in 1.4.198. So this will
+            # have to do for now, even if it's a little ugly.
+            sql: >-
+              WITH created_ats AS (
+                SELECT min(created_at) AS created_at, collection_id
+                FROM (
+                  SELECT created_at, collection_id FROM app                  UNION ALL
+                  SELECT created_at, collection_id FROM report_card          UNION ALL
+                  SELECT created_at, collection_id FROM report_dashboard     UNION ALL
+                  SELECT created_at, collection_id FROM pulse                UNION ALL
+                  SELECT created_at, collection_id FROM timeline             UNION ALL
+                  SELECT created_at, collection_id FROM native_query_snippet
+                ) created_ats
+                GROUP BY collection_id
+              )
+              UPDATE collection c
+              SET created_at = (
+                SELECT created_ats.created_at
+                FROM created_ats
+                WHERE created_ats.collection_id = c.id
+              )
+              WHERE EXISTS (
+                SELECT created_ats.collection_id
+                FROM created_ats
+                WHERE c.id = created_ats.collection_id
+                  AND c.personal_owner_id IS NULL
+              );
+      rollback: # rollback is a no-op for most seed migrations, but required for sql change type
+
+  - changeSet:
+      id: v45.00-051
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of collection_permission_graph_revision.after from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: after
+            newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: after
+            newDataType: text
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-052
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of collection_permission_graph_revision.before from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: before
+            newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: before
+            newDataType: text
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-053
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of collection_permission_graph_revision.remark from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: remark
+            newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: remark
+            newDataType: text
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-054
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of permissions_revision.after from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: after
+            newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: after
+            newDataType: text
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-055
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of permissions_revision.before from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: before
+            newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: before
+            newDataType: text
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-056
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of permissions_revision.remark from text to ${text.type}
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: remark
+            newDataType: ${text.type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: remark
+            newDataType: text
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v45.00-057
+      author: qnkhuat
+      comment: >-
+        Added 0.45.0 - modify type of secret.value from blob to longblob
+        on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: secret
+            columnName: value
+            newDataType: longblob
+      rollback:
+        - modifyDataType:
+            tableName: secret
+            columnName: value
+            newDataType: ${blob.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v46.00-027
+      author: snoe
+      comment: Added 0.46.0 -- add last_used_at to FieldValues
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: last_used_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of when these FieldValues were last used.
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
@@ -11956,6 +13030,11 @@ databaseChangeLog:
 # 1) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
+#
+#   1a) Ensure your changes are compatible with Liquibase rollback. See comments starting with
+#       0.45 migrations for more notes. Rollback to 0.44 and forwards to the latest migration is tested
+#       automatically and the migrations linter will check for the presence of rollback where required as
+#       much as possible.
 #
 # 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
 #    migration so someone else doesn't steal your ID number

@@ -1,5 +1,5 @@
 (ns metabase-enterprise.sandbox.test-util
-  "Shared test utilities for multi-tenant tests."
+  "Shared test utilities for sandbox tests."
   (:require [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.models.card :refer [Card]]
             [metabase.models.permissions :as perms]
@@ -14,6 +14,7 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [schema.core :as s]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
@@ -42,11 +43,11 @@
                            (f nil)))]
       (do-with-card
        (fn [card-id]
-         (tt/with-temp GroupTableAccessPolicy [gtap {:group_id             (u/the-id group)
-                                                     :table_id             (data/id table-kw)
-                                                     :card_id              card-id
-                                                     :attribute_remappings remappings}]
-           (perms/grant-permissions! group (perms/table-segmented-query-path (Table (data/id table-kw))))
+         (tt/with-temp GroupTableAccessPolicy [_gtap {:group_id             (u/the-id group)
+                                                      :table_id             (data/id table-kw)
+                                                      :card_id              card-id
+                                                      :attribute_remappings remappings}]
+           (perms/grant-permissions! group (perms/table-segmented-query-path (db/select-one Table :id (data/id table-kw))))
            (do-with-gtap-defs group more f)))))))
 
 (def ^:private WithGTAPsArgs

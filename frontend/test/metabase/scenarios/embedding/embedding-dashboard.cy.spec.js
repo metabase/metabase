@@ -7,13 +7,12 @@ import {
   visitIframe,
 } from "__support__/e2e/helpers";
 
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
   questionDetails,
   dashboardDetails,
   mapParameters,
 } from "./embedding-dashboard";
-
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
 
@@ -49,7 +48,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       cy.icon("share").click();
-      cy.findByText("Embed this dashboard in an application").click();
+      cy.findByText("Embed in your application").click();
 
       cy.findByRole("heading", { name: "Parameters" })
         .parent()
@@ -135,7 +134,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       cy.icon("share").click();
-      cy.findByText("Embed this dashboard in an application").click();
+      cy.findByText("Embed in your application").click();
 
       cy.findByText("Locked").click();
       popover().contains("Disabled").click();

@@ -58,9 +58,7 @@
   "A relationship such that all RHS tables in `joins` are distinct."
   [joins]
   (let [rhses (vec (l/lvars (count joins)))]
-    (dorun (map (fn [join rhs]
-                  (rhso join rhs))
-                joins rhses))
+    (dorun (map rhso joins rhses))
     (l/all
      (l/distincto rhses))))
 

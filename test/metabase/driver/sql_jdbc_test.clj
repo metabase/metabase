@@ -8,7 +8,7 @@
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.util.log :as tu.log]))
+            [toucan.db :as db]))
 
 (deftest describe-database-test
   (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]
@@ -22,35 +22,41 @@
                      :database-type     "BIGINT"
                      :base-type         :type/BigInteger
                      :pk?               true
-                     :database-position 0}
+                     :database-position 0
+                     :database-required false}
                     {:name              "NAME"
                      :database-type     "VARCHAR"
                      :base-type         :type/Text
-                     :database-position 1}
+                     :database-position 1
+                     :database-required false}
                     {:name              "CATEGORY_ID"
                      :database-type     "INTEGER"
                      :base-type         :type/Integer
-                     :database-position 2}
+                     :database-position 2
+                     :database-required false}
                     {:name              "LATITUDE"
                      :database-type     "DOUBLE"
                      :base-type         :type/Float
-                     :database-position 3}
+                     :database-position 3
+                     :database-required false}
                     {:name              "LONGITUDE"
                      :database-type     "DOUBLE"
                      :base-type         :type/Float
-                     :database-position 4}
+                     :database-position 4
+                     :database-required false}
                     {:name              "PRICE"
                      :database-type     "INTEGER"
                      :base-type         :type/Integer
-                     :database-position 5}}}
-         (driver/describe-table :h2 (mt/db) (Table (mt/id :venues))))))
+                     :database-position 5
+                     :database-required false}}}
+         (driver/describe-table :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
 
 (deftest describe-table-fks-test
   (is (= #{{:fk-column-name   "CATEGORY_ID"
             :dest-table       {:name   "CATEGORIES"
                                :schema "PUBLIC"}
             :dest-column-name "ID"}}
-         (driver/describe-table-fks :h2 (mt/db) (Table (mt/id :venues))))))
+         (driver/describe-table-fks :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
 
 (deftest table-rows-sample-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
@@ -59,8 +65,8 @@
             ["33 Taps"]
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
-           (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                  [(Field (mt/id :venues :name))]
+           (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                  [(db/select-one Field :id (mt/id :venues :name))]
                   (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
@@ -75,7 +81,7 @@
             {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
            (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
                                                                  (mt/db)
-                                                                 (Table (mt/id :venues)))))]
+                                                                 (db/select-one Table :id (mt/id :venues)))))]
              ;; different DBs use different precisions for these
              (-> (dissoc row :latitude :longitude)
                  (update :price int)
@@ -105,8 +111,7 @@
                             :tunnel-port    21212
                             :tunnel-user    "example"
                             :user           "postgres"}]
-               (tu.log/suppress-output
-                (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
+               (driver.u/can-connect-with-details? :postgres details :throw-exceptions))
              (catch Throwable e
                (loop [^Throwable e e]
                  (or (when (instance? java.net.ConnectException e)
@@ -192,12 +197,10 @@
       (mt/$ids checkins
         (testing "splicing a date"
           (is (= 3
-                 (spliced-count-of :checkins [:= $date "2014-03-05"]))))))
-
-    ;; Oracle, Redshift, and SparkSQL don't have 'Time' types
-    (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :redshift :sparksql)
-      (testing "splicing a time"
-        (is (= 2
-               (mt/dataset test-data-with-time
-                 (mt/$ids users
-                   (spliced-count-of :users [:= $last_login_time "09:30"])))))))))
+                 (spliced-count-of :checkins [:= $date "2014-03-05"])))))
+      (when (mt/supports-time-type? driver/*driver*)
+        (testing "splicing a time"
+          (mt/dataset test-data-with-time
+            (is (= 2
+                   (mt/$ids users
+                     (spliced-count-of :users [:= $last_login_time "09:30"]))))))))))

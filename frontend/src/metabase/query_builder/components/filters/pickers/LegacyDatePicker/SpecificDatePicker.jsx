@@ -3,6 +3,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import moment from "moment-timezone";
+import cx from "classnames";
 import { getDateStyleFromSettings } from "metabase/lib/time";
 import Calendar from "metabase/components/Calendar";
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -10,8 +12,7 @@ import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import HoursMinutesInput from "../DatePicker/HoursMinutesInput";
 
-import moment from "moment";
-import cx from "classnames";
+import { CalendarIcon, TimeLabel } from "./SpecificDatePicker.styled";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
@@ -93,8 +94,7 @@ export default class SpecificDatePicker extends Component {
           />
 
           {calendar && (
-            <Icon
-              className="mr1 text-purple-hover cursor-pointer"
+            <CalendarIcon
               name="calendar"
               onClick={() =>
                 this.setState({ showCalendar: !this.state.showCalendar })
@@ -118,8 +118,7 @@ export default class SpecificDatePicker extends Component {
         {!hideTimeSelectors && (
           <div className={cx({ py2: calendar }, { mb3: !calendar })}>
             {hours == null || minutes == null ? (
-              <div
-                className="text-purple-hover cursor-pointer flex align-center"
+              <TimeLabel
                 onClick={() =>
                   this.onChange(
                     date,
@@ -130,7 +129,7 @@ export default class SpecificDatePicker extends Component {
               >
                 <Icon className="mr1" name="clock" />
                 {t`Add a time`}
-              </div>
+              </TimeLabel>
             ) : (
               <HoursMinutesInput
                 onClear={() => this.onChange(date, null, null)}

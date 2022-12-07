@@ -108,7 +108,7 @@
   (testing "Implicit joins should come back with `:fk->` field refs"
     (is (= (mt/$ids venues $category_id->categories.name)
            (-> (mt/cols
-                 (mt/run-mbql-query :venues
+                 (mt/run-mbql-query venues
                    {:fields   [$category_id->categories.name]
                     :order-by [[:asc $id]]
                     :limit    1}))

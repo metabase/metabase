@@ -1,6 +1,6 @@
 import { restore, setupSMTP } from "__support__/e2e/helpers";
 
-describe("scenarios > pulse", () => {
+describe("scenarios > pulse", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

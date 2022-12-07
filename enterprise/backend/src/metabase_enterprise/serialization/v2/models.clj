@@ -5,11 +5,20 @@
   ["Card"
    "Collection"
    "Dashboard"
-   "DashboardCard"
    "Database"
-   "Dimension"
    "Field"
+   "FieldValues"
    "Metric"
    "NativeQuerySnippet"
+   "Segment"
    "Setting"
-   "Table"])
+   "Table"
+   "Timeline"])
+
+(def inlined-models
+  "An additional list of models which are inlined into parent entities for serialization.
+  These are not extracted and serialized separately, but they may need some processing done.
+  For example, the models should also have their entity_id fields populated (if they have one)."
+  ["DashboardCard"
+   "Dimension"
+   "TimelineEvent"])

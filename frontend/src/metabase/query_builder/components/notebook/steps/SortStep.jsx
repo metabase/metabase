@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import Icon from "metabase/components/Icon";
-
 import ClauseStep from "./ClauseStep";
+import { SortFieldList } from "./SortStep.styled";
 
 export default function SortStep({
   color,
@@ -21,9 +20,12 @@ export default function SortStep({
           className="flex align-center"
           onClick={e => {
             e.stopPropagation();
-            query
-              .updateSort(index, [sort[0] === "asc" ? "desc" : "asc", sort[1]])
-              .update(updateQuery);
+            updateQuery(
+              query.updateSort(index, [
+                sort[0] === "asc" ? "desc" : "asc",
+                sort[1],
+              ]),
+            );
           }}
         >
           <Icon
@@ -39,18 +41,16 @@ export default function SortStep({
           sort={sort}
           onChangeSort={newSort =>
             sort
-              ? query.updateSort(index, newSort).update(updateQuery)
-              : query.sort(newSort).update(updateQuery)
+              ? updateQuery(query.updateSort(index, newSort))
+              : updateQuery(query.sort(newSort))
           }
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={(sort, index) => query.removeSort(index).update(updateQuery)}
+      onRemove={(sort, index) => updateQuery(query.removeSort(index))}
     />
   );
 }
-
-import FieldList from "metabase/query_builder/components/FieldList";
 
 const SortPopover = ({
   sort = ["asc", null],
@@ -67,8 +67,7 @@ const SortPopover = ({
     return null;
   }
   return (
-    <FieldList
-      className="text-green"
+    <SortFieldList
       maxHeight={maxHeight}
       field={sort && sort[1]}
       fieldOptions={sortOptions || query.sortOptions(sort && sort[1])}

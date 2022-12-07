@@ -5,7 +5,19 @@ on:
     branches:
       - 'master'
       - 'release-**'
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      # frontend and E2E tests
+      - "**/frontend/test/**"
+      - "**/frontend/**.unit.*"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      # frontend and E2E tests
+      - "**/frontend/test/**"
+      - "**/frontend/**.unit.*"
 
 jobs:
 
@@ -15,7 +27,49 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Run clj-kondo
-      run: docker run -v $PWD:/work --rm cljkondo/clj-kondo:2022.04.25 clj-kondo --config /work/.clj-kondo/config.edn --config-dir /work/.clj-kondo --lint /work/src:/work/enterprise/backend/src:/work/shared/src
+      run: >-
+        docker run
+        --volume $PWD:/work
+        --rm cljkondo/clj-kondo:2022.08.03
+        clj-kondo
+        --config /work/.clj-kondo/config.edn
+        --config-dir /work/.clj-kondo
+        --parallel
+        --lint
+        /work/src
+        /work/test
+        /work/enterprise/backend/src
+        /work/enterprise/backend/test
+        /work/shared/src
+        /work/shared/test
+        /work/modules/drivers/sparksql/src
+        /work/modules/drivers/sparksql/test
+        /work/modules/drivers/vertica/src
+        /work/modules/drivers/vertica/test
+        /work/modules/drivers/presto-common/src
+        /work/modules/drivers/presto-common/test
+        /work/modules/drivers/presto/src
+        /work/modules/drivers/presto/test
+        /work/modules/drivers/mongo/src
+        /work/modules/drivers/mongo/test
+        /work/modules/drivers/oracle/src
+        /work/modules/drivers/oracle/test
+        /work/modules/drivers/sqlite/src
+        /work/modules/drivers/sqlite/test
+        /work/modules/drivers/bigquery-cloud-sdk/src
+        /work/modules/drivers/bigquery-cloud-sdk/test
+        /work/modules/drivers/redshift/src
+        /work/modules/drivers/redshift/test
+        /work/modules/drivers/snowflake/src
+        /work/modules/drivers/snowflake/test
+        /work/modules/drivers/googleanalytics/src
+        /work/modules/drivers/googleanalytics/test
+        /work/modules/drivers/druid/src
+        /work/modules/drivers/druid/test
+        /work/modules/drivers/sqlserver/src
+        /work/modules/drivers/sqlserver/test
+        /work/modules/drivers/presto-jdbc/src
+        /work/modules/drivers/presto-jdbc/test
 
   be-linter-eastwood:
     runs-on: ubuntu-20.04
@@ -29,22 +83,10 @@ jobs:
     - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
       name: Run Eastwood linter
 
-  be-linter-namespace-decls:
-    runs-on: ubuntu-20.04
-    timeout-minutes: 10
-    steps:
-    - uses: actions/checkout@v3
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'namespace-decls'
-    - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
-      name: Check ns forms
-
   be-tests:
     runs-on: ubuntu-20.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -61,25 +103,28 @@ jobs:
     - name: Build static viz frontend
       run: yarn build-static-viz
 
-    - name: Compile Java source file(s)
-      run: clojure -X:deps prep
-    - name: Compile driver AOT namespaces
-      working-directory: modules/drivers
-      run: clojure -X:deps prep
-    - name: Fetch dependencies
-      run: clojure -P -X:dev:ci:ee:ee-dev:drivers:drivers-dev
-    - name: Fetch dependencies  (./bin/build/build-mb)
-      working-directory: bin/build-mb
-      run: clojure -P -M:test
-    - name: Fetch dependencies (./bin/build/build-drivers)
-      working-directory: bin/build-drivers
-      run: clojure -P -M:test
-
     - name: Run tests
       run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+
     - name: Publish Test Report (JUnit)
-      uses: mikepenz/action-junit-report@v2
+      uses: mikepenz/action-junit-report@v3
       if: always()
       with:
         report_paths: 'target/junit/**/*_test.xml'
         check_name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+
+  # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
+  # as `:dev` dependencies). See #27009 for more context.
+  be-check:
+    runs-on: ubuntu-20.04
+    name: be-check-java-${{ matrix.java-version }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        java-version: [11, 17, 19]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare backend
+        uses: ./.github/actions/prepare-backend
+      - name: Check namespaces
+        run: clojure -M:ee:drivers:check

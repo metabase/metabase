@@ -1,11 +1,12 @@
 import { t } from "ttag";
+import React, { useMemo, useState } from "react";
 import EmptyState from "metabase/components/EmptyState";
 import Icon from "metabase/components/Icon";
 import TextInput from "metabase/components/TextInput";
 import { Tree } from "metabase/components/tree";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import React, { useMemo, useState } from "react";
+import { ITreeNodeItem } from "metabase/components/tree/types";
 import {
   EmptyStateContainer,
   FilterableTreeContainer,
@@ -15,7 +16,6 @@ import {
   AdminTreeNode,
 } from "./FilterableTree.styled";
 import { searchItems } from "./utils";
-import { ITreeNodeItem } from "metabase/components/tree/types";
 
 interface FilterableTreeProps {
   selectedId?: ITreeNodeItem["id"];

@@ -21,7 +21,8 @@
             [metabase.util.i18n :refer [deferred-tru]]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (def ^:private Show
   (su/with-api-error-message (s/maybe (s/enum "all"))
@@ -56,7 +57,7 @@
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
   [id]
-  (-> (Database id)
+  (-> (db/select-one Database :id id)
       api/read-check
       candidate-tables))
 
@@ -89,15 +90,15 @@
   (if-let [[_ card-id-str] (when (string? table-id-str)
                              (re-matches #"^card__(\d+$)" table-id-str))]
     (->entity :question card-id-str)
-    (api/read-check (Table (ensure-int table-id-str)))))
+    (api/read-check (db/select-one Table :id (ensure-int table-id-str)))))
 
 (defmethod ->entity :segment
   [_entity-type segment-id-str]
-  (api/read-check (Segment (ensure-int segment-id-str))))
+  (api/read-check (db/select-one Segment :id (ensure-int segment-id-str))))
 
 (defmethod ->entity :question
   [_entity-type card-id-str]
-  (api/read-check (Card (ensure-int card-id-str))))
+  (api/read-check (db/select-one Card :id (ensure-int card-id-str))))
 
 (defmethod ->entity :adhoc
   [_entity-type encoded-query]
@@ -105,15 +106,15 @@
 
 (defmethod ->entity :metric
   [_entity-type metric-id-str]
-  (api/read-check (Metric (ensure-int metric-id-str))))
+  (api/read-check (db/select-one Metric :id (ensure-int metric-id-str))))
 
 (defmethod ->entity :field
   [_entity-type field-id-str]
-  (api/read-check (Field (ensure-int field-id-str))))
+  (api/read-check (db/select-one Field :id (ensure-int field-id-str))))
 
 (defmethod ->entity :transform
   [_entity-type transform-name]
-  (api/read-check (Collection (tf.materialize/get-collection transform-name)))
+  (api/read-check (db/select-one Collection :id (tf.materialize/get-collection transform-name)))
   transform-name)
 
 (def ^:private Entity

@@ -60,7 +60,7 @@ const EventCard = ({
         {event.description && (
           <CardDescription>{event.description}</CardDescription>
         )}
-        <CardCreatorInfo>{creatorMessage}</CardCreatorInfo>
+        <CardCreatorInfo data-server-date>{creatorMessage}</CardCreatorInfo>
       </CardBody>
       {menuItems.length > 0 && (
         <CardAside>

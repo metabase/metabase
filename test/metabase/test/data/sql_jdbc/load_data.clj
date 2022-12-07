@@ -77,11 +77,15 @@
   (fn [rows]
     (insert! (vec (add-ids rows)))))
 
+(def ^:dynamic *chunk-size*
+  "Default chunk size for [[load-data-chunked]]."
+  200)
+
 (defn load-data-chunked
-  "Middleware function intended for use with `make-load-data-fn`. Insert rows in chunks, which default to 200 rows
-  each."
+  "Middleware function intended for use with [[make-load-data-fn]]. Insert rows in chunks, which default to 200 rows
+  each. You can use [[*chunk-size*]] to adjust this."
   ([insert!]                   (load-data-chunked map insert!))
-  ([map-fn insert!]            (load-data-chunked map-fn 200 insert!))
+  ([map-fn insert!]            (load-data-chunked map-fn *chunk-size* insert!))
   ([map-fn chunk-size insert!] (fn [rows]
                                  (dorun (map-fn insert! (partition-all chunk-size rows))))))
 
@@ -96,7 +100,7 @@
 
 (defn load-data-get-rows
   "Used by `make-load-data-fn`; get a sequence of row maps for use in a `insert!` when loading table data."
-  [driver dbdef tabledef]
+  [_driver _dbdef tabledef]
   (let [fields-for-insert (mapv (comp keyword :field-name)
                                 (:field-definitions tabledef))]
     ;; TIMEZONE FIXME
@@ -106,7 +110,7 @@
 (defn- make-insert!
   "Used by `make-load-data-fn`; creates the actual `insert!` function that gets passed to the `insert-middleware-fns`
   described above."
-  [driver conn {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
+  [driver conn {:keys [database-name], :as _dbdef} {:keys [table-name], :as _tabledef}]
   (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
                            (ddl.i/format-name driver (u/qualified-name component)))
         table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))]
@@ -136,7 +140,7 @@
   (make-load-data-fn))
 
 (def ^{:arglists '([driver dbdef tabledef])} load-data-chunked!
-  "Implementation of `load-data!`. Insert rows in chunks of 200 at a time."
+  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time."
   (make-load-data-fn load-data-chunked))
 
 (def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time!
@@ -148,7 +152,7 @@
   (make-load-data-fn load-data-add-ids))
 
 (def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids-chunked!
-  "Implementation of `load-data!`. Insert rows in chunks of 200 at a time; add IDs."
+  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time; add IDs."
   (make-load-data-fn load-data-add-ids load-data-chunked))
 
 (def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time-add-ids!
@@ -156,7 +160,7 @@
   (make-load-data-fn load-data-add-ids load-data-one-at-a-time))
 
 (def ^{:arglists '([driver dbdef tabledef])} load-data-chunked-parallel!
-  "Implementation of `load-data!`. Insert rows in chunks of 200 at a time, in parallel."
+  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time, in parallel."
   (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
 
 (def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time-parallel!
@@ -181,19 +185,19 @@
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
     ;; `set-parameters` might try to look at DB timezone; we don't want to do that while loading the data because the
     ;; DB hasn't been synced yet
-    (when-let [set-timezone-format-string (sql-jdbc.execute/set-timezone-sql driver)]
+    (when-let [set-timezone-format-string #_{:clj-kondo/ignore [:deprecated-var]} (sql-jdbc.execute/set-timezone-sql driver)]
       (let [set-timezone-sql (format set-timezone-format-string "'UTC'")]
         (log/debugf "Setting timezone to UTC before inserting data with SQL \"%s\"" set-timezone-sql)
         (jdbc/execute! spec [set-timezone-sql])))
     (mt/with-database-timezone-id nil
       (try
-        ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
+        ;; TODO - why don't we use [[execute/execute-sql!]] here like we do below?
         (doseq [sql+args statements]
           (log/tracef "[insert] %s" (pr-str sql+args))
           (jdbc/execute! spec sql+args {:set-parameters (fn [stmt params]
                                                           (sql-jdbc.execute/set-parameters! driver stmt params))}))
         (catch SQLException e
-          (println (u/format-color 'red "INSERT FAILED: \n%s\n" statements))
+          (println (u/format-color 'red "INSERT FAILED: \n%s\n" (pr-str statements)))
           (jdbc/print-sql-exception-chain e)
           (throw e))))))
 

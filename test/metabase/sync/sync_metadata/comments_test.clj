@@ -44,7 +44,7 @@
         ;; change the description in metabase while the source table comment remains the same
         (db/update-where! Field {:id (mt/id "update_desc" "updated_desc")}, :description "updated description")
         ;; now sync the DB again, this should NOT overwrite the manually updated description
-        (sync/sync-table! (Table (mt/id "update_desc")))
+        (sync/sync-table! (db/select-one Table :id (mt/id "update_desc")))
         (is (= #{{:name (mt/format-name "id"), :description nil}
                  {:name (mt/format-name "updated_desc"), :description "updated description"}}
                (db->fields (mt/db))))))))
@@ -72,7 +72,7 @@
                                   (fn [[fielddef]]
                                     [(assoc fielddef :field-comment "added comment")]))]))]
           (tx/create-db! driver/*driver* modified-dbdef))
-        (sync/sync-table! (Table (mt/id "comment_after_sync")))
+        (sync/sync-table! (db/select-one Table :id (mt/id "comment_after_sync")))
         (is (= #{{:name (mt/format-name "id"), :description nil}
                  {:name (mt/format-name "comment_after_sync"), :description "added comment"}}
                (db->fields (mt/db))))))))

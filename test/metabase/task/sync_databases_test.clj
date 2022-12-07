@@ -1,9 +1,10 @@
 (ns metabase.task.sync-databases-test
   "Tests for the logic behind scheduling the various sync operations of Databases. Most of the actual logic we're
-  testing is part of `metabase.models.database`, so there's an argument to be made that these sorts of tests could
+  testing is part of [[metabase.models.database]], so there's an argument to be made that these sorts of tests could
   just as easily belong to a `database-test` namespace."
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
+            [clojurewerkz.quartzite.conversion :as qc]
             [java-time :as t]
             [metabase.models.database :refer [Database]]
             [metabase.sync.schedules :as sync.schedules]
@@ -140,9 +141,9 @@
 ;; https://www.quartz-scheduler.org/api/2.1.7/org/quartz/JobExecutionContext.html#put(java.lang.Object,%20java.lang.Object)
 (deftype MockJobExecutionContext [job-data-map]
   org.quartz.JobExecutionContext
-  (getMergedJobDataMap [this] (org.quartz.JobDataMap. job-data-map))
+  (getMergedJobDataMap [_this] (org.quartz.JobDataMap. job-data-map))
 
-  clojurewerkz.quartzite.conversion/JobDataMapConversion
+  qc/JobDataMapConversion
   (from-job-data [this]
     (.getMergedJobDataMap this)))
 
@@ -268,7 +269,7 @@
       (mt/with-temp* [Database [db {:metadata_sync_schedule      sync-default
                                     :cache_field_values_schedule fv-default}]]
         (#'task.sync-databases/randomize-db-schedules-if-needed)
-        (let [after (Database (u/the-id db))]
+        (let [after (db/select-one Database :id (u/the-id db))]
           (is (not= sync-default (:metadata_sync_schedule after))
               "Sync schedule not randomized")
           (is (not= fv-default (:cache_field_values_schedule after))
@@ -279,7 +280,7 @@
         (mt/with-temp* [Database [db {:metadata_sync_schedule      custom-sync
                                       :cache_field_values_schedule custom-fv}]]
           (#'task.sync-databases/randomize-db-schedules-if-needed)
-          (let [after (Database (u/the-id db))]
+          (let [after (db/select-one Database :id (u/the-id db))]
             (is (= custom-sync (:metadata_sync_schedule after))
                 "Sync schedule was erroneously randomized")
             (is (= custom-fv (:cache_field_values_schedule after))
@@ -290,9 +291,9 @@
                                     :cache_field_values_schedule fv-default}]]
         (db/update! Database (u/the-id db) {:details (assoc (:details db)
                                                             :let-user-control-scheduling true)})
-        (let [before (Database (u/the-id db))]
+        (let [before (db/select-one Database :id (u/the-id db))]
           (#'task.sync-databases/randomize-db-schedules-if-needed)
-          (let [after (Database (u/the-id db))]
+          (let [after (db/select-one Database :id (u/the-id db))]
             (is (= sync-default (:metadata_sync_schedule after))
                 "Sync schedule erroneously randomized")
             (is (= fv-default (:cache_field_values_schedule after))

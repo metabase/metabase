@@ -5,10 +5,10 @@ import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";
 
+import { dissoc } from "icepick";
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
-import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
@@ -28,17 +28,18 @@ import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import * as Q from "metabase/lib/query/query";
-import Dimension from "metabase-lib/lib/Dimension";
 import { color } from "metabase/lib/colors";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+import * as Q from "metabase-lib/queries/utils/query";
+import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
 
-import { dissoc } from "icepick";
 import {
   ItemContent,
   ItemDescription,
   ListRoot,
   SidebarHeader,
   SidebarRoot,
+  XrayIcon,
 } from "./AutomaticDashboardApp.styled";
 
 const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
@@ -121,7 +122,7 @@ class AutomaticDashboardAppInner extends React.Component {
           {isHeaderVisible && (
             <div className="bg-white border-bottom py2">
               <div className="wrapper flex align-center">
-                <Icon name="bolt" className="text-gold mr2" size={24} />
+                <XrayIcon name="bolt" size={24} />
                 <div>
                   <h2 className="text-wrap mr2">
                     {dashboard && <TransientTitle dashboard={dashboard} />}
@@ -213,15 +214,22 @@ const TransientFilters = ({ filter, metadata }) => (
   </div>
 );
 
-const TransientFilter = ({ filter, metadata }) => (
-  <div className="mr3">
-    <Icon size={12} name={getIconForFilter(filter, metadata)} className="mr1" />
-    <Filter filter={filter} metadata={metadata} />
-  </div>
-);
+const TransientFilter = ({ filter, metadata }) => {
+  const dimension = getFilterDimension(filter, metadata);
 
-const getIconForFilter = (filter, metadata) => {
-  const field = Dimension.parseMBQL(filter[1], metadata).field();
+  return (
+    <div className="mr3">
+      <Icon
+        size={12}
+        name={getIconForFilter(dimension.field())}
+        className="mr1"
+      />
+      <Filter filter={filter} metadata={metadata} />
+    </div>
+  );
+};
+
+const getIconForFilter = field => {
   if (field.isDate()) {
     return "calendar";
   } else if (field.isLocation()) {

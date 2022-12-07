@@ -19,24 +19,24 @@
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.premium-features/keep-me)
 
-(defn- google-auth-configured? []
-  (boolean (setting/get :google-auth-client-id)))
+(defn- google-auth-enabled? []
+  (boolean (setting/get :google-auth-enabled)))
 
-(defn- ldap-configured? []
-  (classloader/require 'metabase.integrations.ldap)
-  ((resolve 'metabase.integrations.ldap/ldap-configured?)))
+(defn- ldap-enabled? []
+  (classloader/require 'metabase.api.ldap)
+  ((resolve 'metabase.api.ldap/ldap-enabled)))
 
 (defn- ee-sso-configured? []
   (u/ignore-exceptions
     (classloader/require 'metabase-enterprise.sso.integrations.sso-settings))
-  (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-configured?)]
+  (when-let [varr (resolve 'metabase-enterprise.sso.integrations.sso-settings/other-sso-enabled?)]
     (varr)))
 
-(defn sso-configured?
-  "Any SSO provider is configured"
+(defn sso-enabled?
+  "Any SSO provider is configured and enabled"
   []
-  (or (google-auth-configured?)
-      (ldap-configured?)
+  (or (google-auth-enabled?)
+      (ldap-enabled?)
       (ee-sso-configured?)))
 
 (defsetting check-for-updates
@@ -47,19 +47,22 @@
 (defsetting version-info
   (deferred-tru "Information about available versions of Metabase.")
   :type    :json
-  :default {})
+  :default {}
+  :doc     false)
 
 (defsetting version-info-last-checked
   (deferred-tru "Indicates when Metabase last checked for new versions.")
   :visibility :public
   :type       :timestamp
-  :default    nil)
+  :default    nil
+  :doc        false)
 
 (defsetting startup-time-millis
   (deferred-tru "The startup time in milliseconds")
   :visibility :public
   :type       :double
-  :default    0.0)
+  :default    0.0
+  :doc        false)
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of Metabase.")
@@ -88,7 +91,8 @@
   :visibility :authenticated
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
-  :type       ::uuid-nonce)
+  :type       ::uuid-nonce
+  :doc        false)
 
 (defsetting site-uuid-for-premium-features-token-checks
   "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
@@ -97,6 +101,14 @@
   in [[metabase.public-settings.premium-features/fetch-token-status]]. (`site-uuid` is used for anonymous
   analytics/stats and if we sent it along with the premium features token check API request it would no longer be
   anonymous.)"
+  :visibility :internal
+  :setter     :none
+  :type       ::uuid-nonce
+  :doc        false)
+
+(defsetting site-uuid-for-version-info-fetching
+  "A *different* site-wide UUID that we use for the version info fetching API calls. Do not use this for any other
+  applications. (See [[site-uuid-for-premium-features-token-checks]] for more reasoning.)"
   :visibility :internal
   :setter     :none
   :type       ::uuid-nonce)
@@ -160,14 +172,16 @@
 (defsetting ga-code
   (deferred-tru "Google Analytics tracking code.")
   :default    "UA-60817802-1"
-  :visibility :public)
+  :visibility :public
+  :doc        false)
 
 (defsetting ga-enabled
   (deferred-tru "Boolean indicating whether analytics data should be sent to Google Analytics on the frontend")
   :type       :boolean
   :setter     :none
   :getter     (fn [] (and config/is-prod? (anon-tracking-enabled)))
-  :visibility :public)
+  :visibility :public
+  :doc        false)
 
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
@@ -273,7 +287,8 @@
 
 (defsetting deprecation-notice-version
   (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
-  :visibility :admin)
+  :visibility :admin
+  :doc        false)
 
 (defsetting application-name
   (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
@@ -289,13 +304,6 @@
   :type       :keyword
   :default    :doing-science)
 
-(defsetting application-colors-migrated
-  "Stores whether the `application-colors` setting has been migrated to 0.44 expectations"
-  :visibility :internal
-  :type       :boolean
-  :enabled?   premium-features/enable-whitelabeling?
-  :default false)
-
 (defsetting application-colors
   (deferred-tru
    (str "These are the primary colors used in charts and throughout Metabase. "
@@ -303,19 +311,7 @@
   :visibility :public
   :type       :json
   :enabled?   premium-features/enable-whitelabeling?
-  :default    {}
-  :getter (fn []
-            (let [current-colors (setting/get-value-of-type :json :application-colors)]
-              (if (application-colors-migrated)
-                current-colors
-                (let [{:keys [accent0 brand summarize accent1 filter accent7]} current-colors
-                      new-colors (cond-> current-colors
-                                   (and brand (not accent0))     (assoc :accent0 brand)
-                                   (and accent1 (not summarize)) (assoc :summarize accent1)
-                                   (and accent7 (not filter))    (assoc :filter accent7))]
-                  (setting/set-value-of-type! :json :application-colors new-colors)
-                  (application-colors-migrated! true)
-                  new-colors)))))
+  :default    {})
 
 (defsetting application-font
   (deferred-tru "This will replace “Lato” as the font family.")
@@ -359,35 +355,19 @@
   :enabled?   premium-features/enable-whitelabeling?
   :default    "app/assets/img/favicon.ico")
 
-(defn has-custom-branding?
-  "Whether this instance has custom colors or logo set."
-  []
-  (or (not-empty (application-colors))
-      (not= (application-logo-url) "app/assets/img/logo.svg")))
-
 (defsetting show-metabot
   (deferred-tru "Enables Metabot character on the home page")
   :visibility :public
   :type       :boolean
   :enabled?   premium-features/enable-whitelabeling?
-  :getter     (fn []
-                (if-some [value (setting/get-value-of-type :boolean :show-metabot)]
-                  value
-                  (let [new-value (not (has-custom-branding?))]
-                    (setting/set-value-of-type! :boolean :show-metabot new-value)
-                    new-value))))
+  :default    true)
 
 (defsetting show-lighthouse-illustration
   (deferred-tru "Display the lighthouse illustration on the home and login pages.")
   :visibility :public
   :type       :boolean
   :enabled?   premium-features/enable-whitelabeling?
-  :getter     (fn []
-                (if-some [value (setting/get-value-of-type :boolean :show-lighthouse-illustration)]
-                  value
-                  (let [new-value (not (has-custom-branding?))]
-                    (setting/set-value-of-type! :boolean :show-lighthouse-illustration new-value)
-                    new-value))))
+  :default    true)
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
@@ -399,7 +379,7 @@
                 ;; otherwise this always returns true.
                 (let [v (setting/get-value-of-type :boolean :enable-password-login)]
                   (if (and (some? v)
-                           (sso-configured?))
+                           (sso-enabled?))
                     v
                     true))))
 
@@ -451,7 +431,8 @@
         "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
-  :visibility :authenticated)
+  :visibility :authenticated
+  :doc        false)
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
@@ -472,25 +453,29 @@
   "Available fonts"
   :visibility :public
   :setter     :none
-  :getter     u.fonts/available-fonts)
+  :getter     u.fonts/available-fonts
+  :doc        false)
 
 (defsetting available-locales
   "Available i18n locales"
   :visibility :public
   :setter     :none
-  :getter     available-locales-with-names)
+  :getter     available-locales-with-names
+  :doc        false)
 
 (defsetting available-timezones
   "Available report timezone options"
   :visibility :public
   :setter     :none
-  :getter     (comp sort t/available-zone-ids))
+  :getter     (comp sort t/available-zone-ids)
+  :doc        false)
 
 (defsetting has-sample-database?
   "Whether this instance has a Sample Database database"
   :visibility :authenticated
   :setter     :none
-  :getter     (fn [] (db/exists? 'Database, :is_sample true)))
+  :getter     (fn [] (db/exists? 'Database, :is_sample true))
+  :doc        false)
 
 (defsetting password-complexity
   "Current password complexity requirements"
@@ -508,7 +493,8 @@
   "Metabase's version info"
   :visibility :public
   :setter     :none
-  :getter     (constantly config/mb-version-info))
+  :getter     (constantly config/mb-version-info)
+  :doc        false)
 
 (defsetting token-features
   "Features registered for this instance's token"
@@ -522,7 +508,8 @@
                       :advanced_config      (premium-features/enable-advanced-config?)
                       :advanced_permissions (premium-features/enable-advanced-permissions?)
                       :content_management   (premium-features/enable-content-management?)
-                      :hosting              (premium-features/is-hosted?)}))
+                      :hosting              (premium-features/is-hosted?)})
+  :doc        false)
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")
@@ -557,7 +544,8 @@
   "Store URL for fetching the list of Cloud gateway IP addresses"
   :visibility :internal
   :setter     :none
-  :default    (str premium-features/store-url "/static/cloud_gateways.json"))
+  :default    (str premium-features/store-url "/static/cloud_gateways.json")
+  :doc        false)
 
 (def ^:private fetch-cloud-gateway-ips-fn
   (memoize/ttl

@@ -27,52 +27,6 @@ executors:
     docker:
       - image: metabase/ci:java-17-clj-1.11.0.1100.04-2022-build
 
-  postgres-9-6:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-        environment:
-          MB_DB_TYPE: postgres
-          MB_DB_PORT: 5432
-          MB_DB_HOST: localhost
-          MB_DB_DBNAME: circle_test
-          MB_DB_USER: circle_test
-          MB_POSTGRESQL_TEST_USER: circle_test
-      - image: circleci/postgres:9.6-alpine
-        environment:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
-
-  postgres-latest:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-        environment:
-          MB_DB_TYPE: postgres
-          MB_DB_PORT: 5432
-          MB_DB_HOST: localhost
-          MB_DB_DBNAME: metabase_test
-          MB_DB_USER: metabase_test
-          MB_POSTGRESQL_TEST_USER: metabase_test
-      - image: circleci/postgres:latest
-        environment:
-          POSTGRES_USER: metabase_test
-          POSTGRES_DB: metabase_test
-          POSTGRES_HOST_AUTH_METHOD: trust
-
-  mysql-5-7:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-        environment:
-          MB_DB_TYPE: mysql
-          MB_DB_HOST: localhost
-          MB_DB_PORT: 3306
-          MB_DB_DBNAME: circle_test
-          MB_DB_USER: root
-          MB_MYSQL_TEST_USER: root
-      - image: circleci/mysql:5.7.23
-
   mysql-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -86,42 +40,6 @@ executors:
           MB_MYSQL_TEST_USER: root
       - image: circleci/mysql:latest
 
-  mariadb-10-2:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-        environment:
-          MB_DB_TYPE: mysql
-          MB_DB_HOST: localhost
-          MB_DB_PORT: 3306
-          MB_DB_DBNAME: circle_test
-          MB_DB_USER: root
-          MB_MYSQL_TEST_USER: root
-      - image: circleci/mariadb:10.2.23
-
-  mariadb-latest:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-        environment:
-          MB_DB_TYPE: mysql
-          MB_DB_HOST: localhost
-          MB_DB_PORT: 3306
-          MB_DB_DBNAME: circle_test
-          MB_DB_USER: root
-          MB_MYSQL_TEST_USER: root
-      - image: circleci/mariadb:latest
-        environment:
-          # MYSQL_DATABASE: metabase_test
-          # MYSQL_USER: root
-          # MYSQL_ALLOW_EMPTY_PASSWORD: yes
-
-  mongo-4-0:
-     working_directory: /home/circleci/metabase/metabase/
-     docker:
-       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-       - image: metabase/qa-databases:mongo-sample-4.0
-
   mongo-4-0-ssl:
      working_directory: /home/circleci/metabase/metabase/
      docker:
@@ -131,12 +49,6 @@ executors:
        - image: metabase/qa-databases:mongo-sample-4.0
          command: mongod --dbpath /data/db2/ --sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt
 
-  mongo-5-0:
-     working_directory: /home/circleci/metabase/metabase/
-     docker:
-       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-       - image: metabase/qa-databases:mongo-sample-5.0
-
   mongo-5-0-ssl:
      working_directory: /home/circleci/metabase/metabase/
      docker:
@@ -145,16 +57,6 @@ executors:
            MB_TEST_MONGO_REQUIRES_SSL: true
        - image: metabase/qa-databases:mongo-sample-5.0
          command: mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
-
-  mongo-latest:
-     working_directory: /home/circleci/metabase/metabase/
-     docker:
-       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-       - image: circleci/mongo:latest
-         environment:
-           MONGO_INITDB_ROOT_USERNAME: metabase
-           MONGO_INITDB_ROOT_PASSWORD: metasample123
-
 
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
@@ -186,43 +88,11 @@ executors:
     # (see above)
     resource_class: large
 
-  sparksql:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-      - image: metabase/spark:3.2.1
-    resource_class: large
-
   vertica:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
       - image: sumitchawla/vertica
-
-  sqlserver:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-        environment:
-          MB_SQLSERVER_TEST_HOST: localhost
-          MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
-          MB_SQLSERVER_TEST_USER: SA
-      - image: mcr.microsoft.com/mssql/server:2017-latest
-        environment:
-          ACCEPT_EULA: Y
-          SA_PASSWORD: 'P@ssw0rd'
-          MSSQL_MEMORY_LIMIT_MB: 1024
-
-  druid:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-      - image: metabase/druid:0.20.2
-        environment:
-          CLUSTER_SIZE: nano-quickstart
-    # Run Docker images with 8GB or RAM instead of the default 4GB for medium instances. The Druid Docker image runs
-    # OOM all the time with the default medium size.
-    resource_class: large
 
 ########################################################################################################################
 #                                             MAP FRAGMENTS AND CACHE KEYS                                             #
@@ -254,9 +124,9 @@ cache-key-backend-deps: &CacheKeyBackendDeps
   key: v5-{{ checksum ".CACHE-PREFIX" }}-be-deps-{{ checksum "deps.edn" }}-{{ checksum ".SCRIPTS-DEPS-CHECKSUMS" }}
 
 # Key used for implementation of run-on-change -- this is the cache key that contains the .SUCCESS dummy file
-# By default the key ALWAYS includes the name of the test job itself ($CIRCLE_STAGE) so you don't need to add that yourself.
+# By default the key ALWAYS includes the name of the test job itself ($CIRCLE_JOB) so you don't need to add that yourself.
 cache-key-run-on-change: &CacheKeyRunOnChange
-  key: v5-{{ checksum ".CACHE-PREFIX" }}-run-on-change-{{ .Environment.CIRCLE_STAGE }}-<< parameters.checksum >>
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-run-on-change-{{ .Environment.CIRCLE_JOB }}-<< parameters.checksum >>
 
 ########################################################################################################################
 #                                                       COMMANDS                                                       #
@@ -495,6 +365,13 @@ jobs:
                echo '' > .CACHE-PREFIX
             fi
       - run:
+          name: 'If $CIRCLE_JOB is unset then bust the cache (see #24128 for details)'
+          command: |
+            if [ -z "$CIRCLE_JOB" ]; then
+              echo '$CIRCLE_JOB is unset. Using cache-busting prefix.'
+              echo '<< pipeline.id >>' > .CACHE-PREFIX
+            fi
+      - run:
           name: Create static visualization js bundle
           command: yarn build-static-viz
       - run:
@@ -502,7 +379,7 @@ jobs:
           command: |
             if [[ $CIRCLE_BRANCH == release* || $CIRCLE_BRANCH == master  ]]; then
               echo 'This is a release or master branch; using cache-busting prefix'
-                echo '<< pipeline.id >>' > .CACHE-PREFIX
+              echo '<< pipeline.id >>' > .CACHE-PREFIX
             fi
       - run:
           name: Make SSL certificates for Mongo available
@@ -712,26 +589,17 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              driver: ["bigquery-cloud-sdk", "googleanalytics", "sqlite"]
+              driver: ["bigquery-cloud-sdk", "googleanalytics", "redshift", "athena"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           driver: << matrix.driver >>
-
-      - test-driver:
-          matrix:
-            parameters:
-              driver: ["sqlserver", "druid"]
-          name: be-tests-<< matrix.driver >>-ee
-          requires:
-            - be-tests-java-11-ee
-          e: << matrix.driver >>
-          driver: << matrix.driver >>
+          timeout: 30m
 
       - test-driver:
           name: be-google-related-drivers-classpath-test
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           driver: googleanalytics,bigquery-cloud-sdk
           test-args: >-
             :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
@@ -740,31 +608,19 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              version: ["mongo-4-0", "mongo-5-0", "mongo-latest", "mongo-4-0-ssl", "mongo-5-0-ssl"]
+              version: ["mongo-4-0-ssl", "mongo-5-0-ssl"]
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           e: << matrix.version >>
           driver: mongo
-
-      - test-driver:
-          matrix:
-            parameters:
-              version: ["mysql-5-7", "mariadb-10-2", "mariadb-latest"]
-          name: be-tests-<< matrix.version >>-ee
-          description: "(<< matrix.version >>)"
-          requires:
-            - be-tests-java-11-ee
-          e:
-            name: << matrix.version >>
-          driver: mysql
 
       - test-driver:
           name: be-tests-mysql-latest-ee
           description: "(MySQL latest)"
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           e:
             name: mysql-latest
           driver: mysql
@@ -773,6 +629,7 @@ workflows:
           # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
           # that overrides the MB_MYSQL_TEST_* values with them
           # the MYSQL_RDS_SSL_INSTANCE vars are secret and/or changeable, so they are defined in the CircleCI settings
+          timeout: 30m
           extra-env: >-
             MB_MYSQL_SSL_TEST_HOST=$MYSQL_RDS_SSL_INSTANCE_HOST
             MB_MYSQL_SSL_TEST_SSL=true
@@ -784,7 +641,7 @@ workflows:
       - test-driver:
           name: be-tests-oracle-ee
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           before-steps:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
@@ -802,39 +659,9 @@ workflows:
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE=metabase
 
       - test-driver:
-          name: be-tests-postgres-ee
-          description: "(9.6)"
-          requires:
-            - be-tests-java-11-ee
-          e: postgres-9-6
-          driver: postgres
-
-      - test-driver:
-          name: be-tests-postgres-latest-ee
-          description: "(Latest)"
-          requires:
-            - be-tests-java-11-ee
-          e: postgres-latest
-          driver: postgres
-          extra-env: >-
-            MB_POSTGRES_SSL_TEST_SSL=true
-            MB_POSTGRES_SSL_TEST_SSL_MODE=verify-full
-            MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH=/home/circleci/metabase/metabase/test-resources/certificates/us-east-2-bundle.pem
-
-      - test-driver:
-          name: be-tests-presto-ee
-          requires:
-            - be-tests-java-11-ee
-          e: presto-186
-          before-steps:
-            - wait-for-port:
-                port: 8080
-          driver: presto
-
-      - test-driver:
           name: be-tests-presto-jdbc-ee
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
           before-steps:
             - wait-for-port:
@@ -868,33 +695,16 @@ workflows:
           driver: presto-jdbc
 
       - test-driver:
-          name: be-tests-redshift-ee
-          requires:
-            - be-tests-java-11-ee
-          driver: redshift
-          timeout: 15m
-
-      - test-driver:
           name: be-tests-snowflake-ee
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           driver: snowflake
-          timeout: 115m
-
-      - test-driver:
-          name: be-tests-sparksql-ee
-          requires:
-            - be-tests-java-11-ee
-          e: sparksql
-          before-steps:
-            - wait-for-port:
-                port: 10000
-          driver: sparksql
+          timeout: 115m # whut
 
       - test-driver:
           name: be-tests-vertica-ee
           requires:
-            - be-tests-java-11-ee
+            - be-deps
           e: vertica
           before-steps:
             - fetch-jdbc-driver:

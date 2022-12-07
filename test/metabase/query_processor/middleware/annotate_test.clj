@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.annotate-test
   (:require [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Field]]
             [metabase.query-processor :as qp]
@@ -208,25 +209,25 @@
   (testing "For fields with parents we should return them with a combined name including parent's name"
     (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
                     Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
-    (mt/with-everything-store
+     (mt/with-everything-store
         (is (= {:description     nil
-                :table_id        (mt/id :venues)
-                :semantic_type   nil
-                :effective_type  nil
-                ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
-                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
-                ;; when the info is inferred. the solution to this might be quite extensive renaming
-                :coercion_strategy nil
-                :name            "parent.child"
-                :settings        nil
-                :field_ref       [:field (u/the-id child) nil]
-                :nfc_path        nil
-                :parent_id       (u/the-id parent)
-                :id              (u/the-id child)
-                :visibility_type :normal
-                :display_name    "Child"
-                :fingerprint     nil
-                :base_type       :type/Text}
+                 :table_id        (mt/id :venues)
+                 :semantic_type   nil
+                 :effective_type  nil
+                 ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
+                 ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
+                 ;; when the info is inferred. the solution to this might be quite extensive renaming
+                 :coercion_strategy nil
+                 :name            "parent.child"
+                 :settings        nil
+                 :field_ref       [:field (u/the-id child) nil]
+                 :nfc_path        nil
+                 :parent_id       (u/the-id parent)
+                 :id              (u/the-id child)
+                 :visibility_type :normal
+                 :display_name    "Child"
+                 :fingerprint     nil
+                 :base_type       :type/Text}
                (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
 
   (testing "nested-nested fields should include grandparent name (etc)"
@@ -278,17 +279,39 @@
                 {:expressions {"double-price" [:* $price 2]}}
                 [:expression "double-price"])))))
 
-    (testing "if there is no matching expression it should give a meaningful error message"
-      (is (= {:data    {:expression-name "double-price"
-                        :tried           ["double-price" :double-price]
-                        :found           #{"one-hundred"}
-                        :type            :invalid-query}
-              :message "No expression named 'double-price'"}
-             (try
-               (mt/$ids venues
-                 (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
-               (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
+    (testing "col-info for convert-timezone should have a `converted_timezone` property"
+      (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
+              :base_type          :type/DateTime,
+              :name               "last-login-converted",
+              :display_name       "last-login-converted",
+              :expression_name    "last-login-converted",
+              :field_ref          [:expression "last-login-converted"]}
+             (mt/$ids users
+               (#'annotate/col-info-for-field-clause
+                 {:expressions {"last-login-converted" [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"]}}
+                 [:expression "last-login-converted"]))))
+      (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
+              :base_type          :type/DateTime,
+              :name               "last-login-converted",
+              :display_name       "last-login-converted",
+              :expression_name    "last-login-converted",
+              :field_ref          [:expression "last-login-converted"]}
+             (mt/$ids users
+               (#'annotate/col-info-for-field-clause
+                 {:expressions {"last-login-converted" [:datetime-add
+                                                        [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"] 2 :hour]}}
+                 [:expression "last-login-converted"])))))
 
+   (testing "if there is no matching expression it should give a meaningful error message"
+     (is (= {:data    {:expression-name "double-price"
+                       :tried           ["double-price" :double-price]
+                       :found           #{"one-hundred"}
+                       :type            :invalid-query}
+             :message "No expression named 'double-price'"}
+            (try
+              (mt/$ids venues
+                (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
+              (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    (MBQL) Col info for Aggregation clauses                                     |
@@ -507,6 +530,22 @@
       (is (= {:base_type :type/Float}
              (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]]]))))))
 
+(deftest ^:parallel datetime-arithmetics?-test
+  (is (#'annotate/datetime-arithmetics? [:+ [:field (mt/id :checkins :date) nil] [:interval -1 :month]]))
+  (is (#'annotate/datetime-arithmetics? [:field (mt/id :checkins :date) {:temporal-unit :month}]))
+  (is (not (#'annotate/datetime-arithmetics? [:+ 1 [:temporal-extract
+                                                    [:+ [:field (mt/id :checkins :date) nil] [:interval -1 :month]]
+                                                    :year]])))
+  (is (not (#'annotate/datetime-arithmetics? [:+ [:field (mt/id :checkins :date) nil] 3]))))
+
+(deftest temporal-extract-test
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :month])))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :hour])))
+  (is (= {:base_type :type/DateTime}
+         (infered-col-type [:datetime-add [:field (mt/id :users :last_login) nil] 2 :month]))))
+
 (deftest test-string-extracts
   (is (= {:base_type :type/Text}
          (infered-col-type  [:trim "foo"])))
@@ -632,7 +671,43 @@
                         {:name "ID_2",        :id %categories.id,   :field_ref &c.categories.id}
                         {:name "NAME_2",      :id %categories.name, :field_ref &c.categories.name}])
                      (map #(select-keys % [:name :id :field_ref])
-                          (:cols (add-column-info nested-query {}))))))))))))
+                          (:cols (add-column-info nested-query {})))))))))))
+
+  (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
+    (mt/dataset sample-dataset
+     (mt/with-temp* [Card [{card-id :id}
+                           {:dataset true
+                            :dataset_query
+                            (mt/$ids :products
+                                     {:type     :query
+                                      :database (mt/id)
+                                      :query    {:source-table $$products
+                                                 :aggregation
+                                                 [[:aggregation-options
+                                                   [:sum $price]
+                                                   {:name "sum"}]
+                                                  [:aggregation-options
+                                                   [:max $rating]
+                                                   {:name "max"}]]
+                                                 :breakout     $category
+                                                 :order-by     [[:asc $category]]}})}]]
+       (let [query (qp/preprocess
+                     (mt/mbql-query nil
+                                    {:source-table (str "card__" card-id)
+                                     :aggregation  [[:aggregation-options
+                                                     [:sum
+                                                      [:field
+                                                       "sum"
+                                                       {:base-type :type/Float}]]
+                                                     {:name "sum"}]
+                                                    [:aggregation-options
+                                                     [:count]
+                                                     {:name "count"}]]
+                                     :limit        1}))]
+        (is (= ["Sum of Sum of Price" "Count"]
+              (->> (add-column-info query {})
+                  :cols
+                  (map :display_name)))))))))
 
 (deftest inception-test
   (testing "Should return correct metadata for an 'inception-style' nesting of source > source > source with a join (#14745)"
@@ -640,7 +715,7 @@
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
       (letfn [(ean-metadata [result]
                 (as-> (:cols result) result
-                  (u/key-by :name result)
+                  (m/index-by :name result)
                   (get result "EAN")
                   (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
         (testing "Make sure metadata is correct for the 'EAN' column with"

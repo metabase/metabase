@@ -57,6 +57,8 @@
 
 (defmethod tx/sorts-nil-first? :oracle [_ _] false)
 
+(defmethod tx/supports-time-type? :oracle [_driver] false)
+
 (doseq [[base-type sql-type] {:type/BigInteger             "NUMBER(*,0)"
                               :type/Boolean                "NUMBER(1)"
                               :type/Date                   "DATE"
@@ -174,8 +176,7 @@
        "INSERT ALL %s SELECT * FROM dual"
        (str/join
         " "
-        (for [row  (u/one-or-many row-or-rows)
-              :let [columns (keys row)]]
+        (for [row (u/one-or-many row-or-rows)]
           (str/replace
            (hformat/to-sql
             ((get-method ddl/insert-rows-honeysql-form :sql/test-extensions) driver table-identifier row))

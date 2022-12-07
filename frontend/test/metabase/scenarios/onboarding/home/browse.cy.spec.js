@@ -11,8 +11,11 @@ describe("scenarios > browse data", () => {
     cy.findByText(/Browse data/).click();
     cy.location("pathname").should("eq", "/browse");
     cy.findByText(/^Our data$/i);
-    cy.findByText("Sample Database");
     cy.findByText("Learn about our data").click();
     cy.location("pathname").should("eq", "/reference/databases");
+    cy.go("back");
+    cy.findByText("Sample Database").click();
+    cy.findByText("Products").click();
+    cy.findByText("Rustic Paper Wallet");
   });
 });

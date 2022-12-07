@@ -15,7 +15,8 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+            [toucan.hydrate :refer [hydrate]])
+  (:import java.time.LocalDateTime))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -36,16 +37,16 @@
 (deftest create-collection-test
   (testing "test that we can create a new Collection with valid inputs"
     (mt/with-temp Collection [collection {:name "My Favorite Cards", :color "#ABCDEF"}]
-      (is (= (merge
-              (mt/object-defaults Collection)
-              {:name              "My Favorite Cards"
-               :slug              "my_favorite_cards"
-               :description       nil
-               :color             "#ABCDEF"
-               :archived          false
-               :location          "/"
-               :personal_owner_id nil})
-             (mt/derecordize (dissoc collection :id :entity_id)))))))
+      (is (partial= (merge
+                     (mt/object-defaults Collection)
+                     {:name              "My Favorite Cards"
+                      :slug              "my_favorite_cards"
+                      :description       nil
+                      :color             "#ABCDEF"
+                      :archived          false
+                      :location          "/"
+                      :personal_owner_id nil})
+                    collection)))))
 
 (deftest color-validation-test
   (testing "Collection colors should be validated when inserted into the DB"
@@ -536,39 +537,39 @@
 
 (deftest root-collection-descendants-test
   (testing "For the *Root* Collection, can we get top-level Collections?"
-    (with-collection-hierarchy [{:keys [a b c d e f g]}]
-      (= #{{:name        "A"
-            :id          true
-            :description nil
-            :location    "/"
-            :children    #{{:name        "C"
-                            :id          true
-                            :description nil
-                            :location    "/A/"
-                            :children    #{{:name        "D"
-                                            :id          true
-                                            :description nil
-                                            :location    "/A/C/"
-                                            :children    #{{:name        "E"
-                                                            :id          true
-                                                            :description nil
-                                                            :location    "/A/C/D/"
-                                                            :children    #{}}}}
-                                           {:name        "F"
-                                            :id          true
-                                            :description nil
-                                            :location    "/A/C/"
-                                            :children    #{{:name        "G"
-                                                            :id          true
-                                                            :description nil
-                                                            :location    "/A/C/F/"
-                                                            :children    #{}}}}}}
-                           {:name        "B"
-                            :id          true
-                            :description nil
-                            :location    "/A/"
-                            :children    #{}}}}}
-         (descendants collection/root-collection)))))
+    (with-collection-hierarchy [_]
+      (is (contains? (descendants collection/root-collection)
+                     {:name        "A"
+                      :id          true
+                      :description nil
+                      :location    "/"
+                      :children    #{{:name        "C"
+                                      :id          true
+                                      :description nil
+                                      :location    "/A/"
+                                      :children    #{{:name        "D"
+                                                      :id          true
+                                                      :description nil
+                                                      :location    "/A/C/"
+                                                      :children    #{{:name        "E"
+                                                                      :id          true
+                                                                      :description nil
+                                                                      :location    "/A/C/D/"
+                                                                      :children    #{}}}}
+                                                     {:name        "F"
+                                                      :id          true
+                                                      :description nil
+                                                      :location    "/A/C/"
+                                                      :children    #{{:name        "G"
+                                                                      :id          true
+                                                                      :description nil
+                                                                      :location    "/A/C/F/"
+                                                                      :children    #{}}}}}}
+                                     {:name        "B"
+                                      :id          true
+                                      :description nil
+                                      :location    "/A/"
+                                      :children    #{}}}})))))
 
 
 
@@ -823,7 +824,7 @@
                   (perms-path-ids->names collections)))))))
 
 (deftest perms-for-moving-exceptions-test
-  (with-collection-hierarchy [{:keys [a b], :as collections}]
+  (with-collection-hierarchy [{:keys [a b], :as _collections}]
     (testing "If you try to calculate permissions to move or archive the Root Collection, throw an Exception!"
       (is (thrown?
            Exception
@@ -947,7 +948,7 @@
     ;;           +-> F -> G            +-> G
     (with-collection-hierarchy [{:keys [a f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
-      (collection/move-collection! a (collection/children-location (Collection (u/the-id f))))
+      (collection/move-collection! a (collection/children-location (db/select-one Collection :id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
                         "C" {"D" {"E" {}}}}
                    "G" {}}}
@@ -1023,8 +1024,8 @@
   (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that archiving applies to %ss" (name model))
       ;; object is in E; archiving E should cause object to be archived
-      (with-collection-hierarchy [{:keys [e], :as collections} (when (= model NativeQuerySnippet)
-                                                                 {:namespace "snippets"})]
+      (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                  {:namespace "snippets"})]
         (mt/with-temp model [object {:collection_id (u/the-id e)}]
           (db/update! Collection (u/the-id e) :archived true)
           (is (= true
@@ -1032,8 +1033,8 @@
 
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
-      (with-collection-hierarchy [{:keys [c e], :as collections} (when (= model NativeQuerySnippet)
-                                                                   {:namespace "snippets"})]
+      (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                    {:namespace "snippets"})]
         (mt/with-temp model [object {:collection_id (u/the-id e)}]
           (db/update! Collection (u/the-id c) :archived true)
           (is (= true
@@ -1043,8 +1044,8 @@
   (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that unarchiving applies to %ss" (name model))
       ;; object is in E; unarchiving E should cause object to be unarchived
-      (with-collection-hierarchy [{:keys [e], :as collections} (when (= model NativeQuerySnippet)
-                                                                 {:namespace "snippets"})]
+      (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                  {:namespace "snippets"})]
         (db/update! Collection (u/the-id e) :archived true)
         (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
           (db/update! Collection (u/the-id e) :archived false)
@@ -1053,8 +1054,8 @@
 
     (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
-      (with-collection-hierarchy [{:keys [c e], :as collections} (when (= model NativeQuerySnippet)
-                                                                   {:namespace "snippets"})]
+      (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                    {:namespace "snippets"})]
         (db/update! Collection (u/the-id c) :archived true)
         (mt/with-temp model [object {:collection_id (u/the-id e), :archived true}]
           (db/update! Collection (u/the-id c) :archived false)
@@ -1063,27 +1064,27 @@
 
 (deftest archive-while-moving-test
   (testing "Test that we cannot archive a Collection at the same time we are moving it"
-    (with-collection-hierarchy [{:keys [c], :as collections}]
+    (with-collection-hierarchy [{:keys [c], :as _collections}]
       (is (thrown?
            Exception
            (db/update! Collection (u/the-id c), :archived true, :location "/")))))
 
   (testing "Test that we cannot unarchive a Collection at the same time we are moving it"
-    (with-collection-hierarchy [{:keys [c], :as collections}]
+    (with-collection-hierarchy [{:keys [c], :as _collections}]
       (db/update! Collection (u/the-id c), :archived true)
       (is (thrown?
            Exception
            (db/update! Collection (u/the-id c), :archived false, :location "/")))))
 
   (testing "Passing in a value of archived that is the same as the value in the DB shouldn't affect anything however!"
-    (with-collection-hierarchy [{:keys [c], :as collections}]
+    (with-collection-hierarchy [{:keys [c], :as _collections}]
       (db/update! Collection (u/the-id c), :archived false, :location "/")
       (is (= "/"
              (db/select-one-field :location Collection :id (u/the-id c)))))))
 
 (deftest archive-noop-shouldnt-affect-descendants-test
   (testing "Check that attempting to unarchive a Card that's not archived doesn't affect archived descendants"
-    (with-collection-hierarchy [{:keys [c e], :as collections}]
+    (with-collection-hierarchy [{:keys [c e], :as _collections}]
       (db/update! Collection (u/the-id e), :archived true)
       (db/update! Collection (u/the-id c), :archived false)
       (is (= true
@@ -1113,9 +1114,8 @@
   (testing (str "Make sure that when creating a new Collection at the Root Level, we copy the group permissions for "
                 "the Root Collection\n")
     (doseq [collection-namespace [nil "currency"]
-            :let                 [root-collection       (assoc collection/root-collection :namespace collection-namespace)
-                                  other-namespace      (if collection-namespace nil "currency")
-                                  other-root-collection (assoc collection/root-collection :namespace other-namespace)]]
+            :let                 [root-collection (assoc collection/root-collection :namespace collection-namespace)
+                                  other-namespace (if collection-namespace nil "currency")]]
       (testing (format "Collection namespace = %s\n" (pr-str collection-namespace))
         (mt/with-temp PermissionsGroup [group]
           (testing "no perms beforehand = no perms after"
@@ -1461,25 +1461,22 @@
 (deftest check-collection-namespace-test
   (testing "check-collection-namespace"
     (testing "Should succeed if namespace is allowed"
-      (mt/with-temp* [Card       [{card-id :id}]
-                      Collection [{collection-id :id}]]
+      (mt/with-temp Collection [{collection-id :id}]
         (is (= nil
                (collection/check-collection-namespace Card collection-id)))))
 
     (testing "Should throw exception if namespace is not allowed"
-      (mt/with-temp* [Card       [{card-id :id}]
-                      Collection [{collection-id :id} {:namespace "x"}]]
+      (mt/with-temp Collection [{collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\" namespace"
              (collection/check-collection-namespace Card collection-id)))))
 
     (testing "Should throw exception if Collection does not exist"
-      (mt/with-temp Card [{card-id :id}]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Collection does not exist"
-             (collection/check-collection-namespace Card Integer/MAX_VALUE)))))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Collection does not exist"
+           (collection/check-collection-namespace Card Integer/MAX_VALUE))))))
 
 (deftest delete-collection-set-children-collection-id-to-null-test
   (testing "When deleting a Collection, should change collection_id of Children to nil instead of Cascading"
@@ -1628,18 +1625,28 @@
 
 (deftest identity-hash-test
   (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
-    (mt/with-temp* [Collection [c1  {:name "top level"  :namespace "yolocorp" :location "/"}]
-                    Collection [c2  {:name "nested"     :namespace "yolocorp" :location (format "/%s/" (:id c1))}]
-                    Collection [c3  {:name "grandchild" :namespace "yolocorp" :location (format "/%s/%s/" (:id c1) (:id c2))}]]
-      (let [c1-hash (serdes.hash/identity-hash c1)
-            c2-hash (serdes.hash/identity-hash c2)]
-        (is (= "37e57249"
-               (serdes.hash/raw-hash ["top level" :yolocorp "ROOT"])
-               c1-hash)
-            "Top-level collections should use a parent hash of 'ROOT'")
-        (is (= "ce76f360"
-               (serdes.hash/raw-hash ["nested" :yolocorp c1-hash])
-               c2-hash))
-        (is (= "acb1ea3e"
-               (serdes.hash/raw-hash ["grandchild" :yolocorp c2-hash])
-               (serdes.hash/identity-hash c3)))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection [c1  {:name       "top level"
+                                       :created_at now
+                                       :namespace  "yolocorp"
+                                       :location   "/"}]
+                      Collection [c2  {:name       "nested"
+                                       :created_at now
+                                       :namespace  "yolocorp"
+                                       :location   (format "/%s/" (:id c1))}]
+                      Collection [c3  {:name       "grandchild"
+                                       :created_at now
+                                       :namespace  "yolocorp"
+                                       :location   (format "/%s/%s/" (:id c1) (:id c2))}]]
+        (let [c1-hash (serdes.hash/identity-hash c1)
+              c2-hash (serdes.hash/identity-hash c2)]
+          (is (= "f2620cc6"
+                 (serdes.hash/raw-hash ["top level" :yolocorp "ROOT" now])
+                 c1-hash)
+              "Top-level collections should use a parent hash of 'ROOT'")
+          (is (= "a27aef0f"
+                 (serdes.hash/raw-hash ["nested" :yolocorp c1-hash now])
+                 c2-hash))
+          (is (= "e816af2d"
+                 (serdes.hash/raw-hash ["grandchild" :yolocorp c2-hash now])
+                 (serdes.hash/identity-hash c3))))))))

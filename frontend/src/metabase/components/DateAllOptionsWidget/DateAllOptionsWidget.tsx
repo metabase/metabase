@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import cx from "classnames";
 
-import { dateParameterValueToMBQL } from "metabase/parameters/utils/mbql";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
 import { filterToUrlEncoded } from "metabase/parameters/utils/date-formatting";
 
@@ -11,6 +9,8 @@ import {
   WidgetRoot,
   UpdateButton,
 } from "metabase/parameters/components/widgets/Widget.styled";
+
+import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;
@@ -50,6 +50,7 @@ const DateAllOptionsWidget = ({
         hideTimeSelectors
         hideEmptinessOperators
         disableOperatorSelection={disableOperatorSelection}
+        supportsExpressions
       >
         <UpdateButton
           className={cx({

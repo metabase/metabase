@@ -1,5 +1,5 @@
 import React from "react";
-import moment from "moment";
+import moment from "moment-timezone";
 import mockDate from "mockdate";
 import { render, screen, fireEvent } from "@testing-library/react";
 

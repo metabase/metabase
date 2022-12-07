@@ -1,13 +1,12 @@
 ---
 title: "Audit app user"
-summary: "`/api/ee/audit-app/user` endpoints. These only work if you have a premium token with the `:audit-app` feature."
+summary: |
+  `/api/ee/audit-app/user` endpoints. These only work if you have a premium token with the `:audit-app` feature.
 ---
 
 # Audit app user
 
 `/api/ee/audit-app/user` endpoints. These only work if you have a premium token with the `:audit-app` feature.
-
-  - [DELETE /api/ee/audit-app/user/:id/subscriptions](#delete-apieeaudit-appuseridsubscriptions)
 
 ## `DELETE /api/ee/audit-app/user/:id/subscriptions`
 

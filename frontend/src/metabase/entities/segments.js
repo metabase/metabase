@@ -36,7 +36,7 @@ const Segments = createEntity({
         null,
         segment.id,
       ),
-    getColor: segment => color("accent7"),
+    getColor: segment => color("filter"),
     getIcon: segment => ({ name: "segment" }),
   },
 

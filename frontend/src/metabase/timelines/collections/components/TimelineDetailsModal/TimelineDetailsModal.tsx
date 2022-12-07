@@ -13,6 +13,7 @@ import { Timeline, TimelineEvent } from "metabase-types/api";
 import SearchEmptyState from "../SearchEmptyState";
 import EventList from "../EventList";
 import TimelineEmptyState from "../TimelineEmptyState";
+import { MenuItem } from "../../types";
 import {
   ModalBody,
   ModalRoot,
@@ -20,7 +21,6 @@ import {
   ModalToolbarInput,
   ModalToolbarLink,
 } from "./TimelineDetailsModal.styled";
-import { MenuItem } from "../../types";
 
 export interface TimelineDetailsModalProps {
   timeline: Timeline;

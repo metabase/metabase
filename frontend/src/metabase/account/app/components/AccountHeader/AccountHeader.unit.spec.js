@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import AccountHeader from "./AccountHeader";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import AccountHeader from "./AccountHeader";
 
 const getUser = () => ({
   id: 1,

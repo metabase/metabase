@@ -23,13 +23,13 @@
         (is (= true
                (#'login-history/first-login-ever? history-1))))
       (testing "add a history item for a *different* device -- should be the first login with this device"
-        (mt/with-temp LoginHistory [history-2 {:user_id user-id, :device_id device-2}]
+        (mt/with-temp LoginHistory [_ {:user_id user-id, :device_id device-2}]
           (is (= true
                  (#'login-history/first-login-on-this-device? history-1)))
           (is (= false
                  (#'login-history/first-login-ever? history-1)))
           (testing "add a second history item for device 1 -- should *not* be the first login with this device"
-            (mt/with-temp LoginHistory [history-2 {:user_id user-id, :device_id device-1}]
+            (mt/with-temp LoginHistory [_ {:user_id user-id, :device_id device-1}]
               (is (= false
                      (#'login-history/first-login-on-this-device? history-1)))
               (is (= false
@@ -89,7 +89,7 @@
                            @mt/inbox)))))))))))
 
   (testing "don't send email if the setting is disabled by setting MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE=FALSE"
-    (mt/with-temp User [{user-id :id, email :email, first-name :first_name}]
+    (mt/with-temp User [{user-id :id}]
       (mt/with-fake-inbox
         ;; can't use `mt/with-temporary-setting-values` here because it's a read-only setting
         (mt/with-temp-env-var-value [mb-send-email-on-first-login-from-new-device "FALSE"]

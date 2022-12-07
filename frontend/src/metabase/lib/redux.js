@@ -1,7 +1,11 @@
-import moment from "moment";
+import moment from "moment-timezone";
 import _ from "underscore";
 import { getIn } from "icepick";
+import { normalize } from "normalizr";
+import { compose } from "redux";
+import { createSelectorCreator } from "reselect";
 
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   setRequestLoading,
   setRequestLoaded,
@@ -12,9 +16,6 @@ import {
 // convienence
 export { combineReducers, compose } from "redux";
 export { handleActions, createAction } from "redux-actions";
-
-import { compose } from "redux";
-import { createSelectorCreator } from "reselect";
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
@@ -279,14 +280,19 @@ function withCachedData(
     // thunk:
     (dispatch, getState) => {
       const options = args[args.length - 1] || {};
-      const { reload, properties } = options;
+      const { useCachedForbiddenError, reload, properties } = options;
 
       const existingStatePath = getExistingStatePath(...args);
       const requestStatePath = ["requests", ...getRequestStatePath(...args)];
       const newQueryKey = getQueryKey && getQueryKey(...args);
       const existingData = getIn(getState(), existingStatePath);
-      const { loading, loaded, queryKey } =
+      const { loading, loaded, queryKey, error } =
         getIn(getState(), requestStatePath) || {};
+
+      // Avoid requesting data with permanently forbidded access
+      if (useCachedForbiddenError && error?.status === 403) {
+        throw error;
+      }
 
       const hasRequestedProperties =
         properties &&
@@ -312,8 +318,6 @@ function withCachedData(
     };
 }
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
   // thunk decorator:
   return thunkCreator =>
@@ -338,8 +342,6 @@ export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
       return thunkCreator(...args)(dispatch, getState);
     };
 }
-
-import { normalize } from "normalizr";
 
 export function withNormalize(schema) {
   return thunkCreator =>

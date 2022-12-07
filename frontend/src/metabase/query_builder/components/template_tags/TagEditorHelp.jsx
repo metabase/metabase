@@ -297,7 +297,9 @@ const TagEditorHelp = ({
 
       <p className="pt2 link">
         <ExternalLink
-          href={MetabaseSettings.docsUrl("users-guide/13-sql-parameters")}
+          href={MetabaseSettings.docsUrl(
+            "questions/native-editor/sql-parameters",
+          )}
           target="_blank"
           data-metabase-event="QueryBuilder;Template Tag Documentation Click"
         >{t`Read the full documentation`}</ExternalLink>

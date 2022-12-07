@@ -13,7 +13,8 @@
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))
@@ -82,7 +83,7 @@
   information about"
   []
   (params/map->FieldFilter
-   {:field (Field (mt/id :checkins :date))
+   {:field (db/select-one Field :id (mt/id :checkins :date))
     :value {:type  :date/single
             :value (t/offset-date-time "2019-09-20T19:52:00.000-07:00")}}))
 
@@ -165,7 +166,7 @@
           (testing operator
             (is (= expected
                    (substitute query {"param" (params/map->FieldFilter
-                                               {:field (Field (mt/id :venues field))
+                                               {:field (db/select-one Field :id (mt/id :venues field))
                                                 :value {:type  operator
                                                         :value value}})})))))))))
 
@@ -181,33 +182,11 @@
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
 
 (deftest ^:parallel substitute-native-query-snippets-test
-  (testing "Native query snippet substitution without param"
+  (testing "Native query snippet substitution"
     (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
-      (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" []]
-             (substitute query {"snippet:symbol_is_A" (params/map->ParsedQuerySnippet {:snippet-id   123
-                                                                                       :parsed-query ["symbol = 'A'"]
-                                                                                       :param->value {}})})))))
+      (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
+             (substitute query {"snippet:symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
 
-  (testing "Native query snippet substitution with param"
-    (testing "snippet contains one raw param"
-     (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
-       (is (= ["SELECT * FROM test_scores WHERE symbol = ?" ["A"]]
-              (substitute query {"snippet:symbol_is_A" (params/map->ParsedQuerySnippet {:snippet-id   123
-                                                                                        :parsed-query ["symbol = " (param "symbol")]
-                                                                                        :param->value {"symbol" "A"}})})))))
-
-    (testing "snippet contains contains multiple params"
-      (let [query                ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]
-            snippet-param->value {"symbol" "A"
-                                  "name"   (params/map->FieldFilter
-                                             {:field (Field (mt/id :categories :name))
-                                              :value {:type  :string/=
-                                                      :value ["American"]}})}
-            parsed-query-snippet {:snippet-id   123
-                                  :parsed-query ["symbol = " (param "symbol") " and " (param "name")]
-                                  :param->value snippet-param->value}]
-        (is (= ["SELECT * FROM test_scores WHERE symbol = ? and \"PUBLIC\".\"CATEGORIES\".\"NAME\" = ?" ["A" "American"]]
-               (substitute query {"snippet:symbol_is_A" (params/map->ParsedQuerySnippet parsed-query-snippet)})))))))
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 

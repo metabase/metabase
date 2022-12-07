@@ -63,10 +63,15 @@ export const DashboardBody = styled.div`
 `;
 
 export const HeaderContainer = styled.header`
-  background-color: white;
-  border-bottom: 1px solid ${color("border")};
   position: relative;
   z-index: 2;
+
+  ${({ isDataApp }) =>
+    !isDataApp &&
+    css`
+      background-color: ${color("bg-white")};
+      border-bottom: 1px solid ${color("border")};
+    `}
 
   ${({ isFullscreen }) =>
     isFullscreen &&
@@ -104,11 +109,11 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
       border-top: 1px solid ${color("border")};
     `}
 
-  ${({ isSticky }) =>
+  ${({ isSticky, topNav }) =>
     isSticky &&
     css`
       position: fixed;
-      top: ${APP_BAR_HEIGHT};
+      top: ${IFRAMED && !topNav ? "0" : APP_BAR_HEIGHT};
       left: 0;
       border-bottom: 1px solid ${color("border")};
     `}
@@ -125,7 +130,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   ${({ isSticky, isNavbarOpen }) =>
     isSticky &&
     isNavbarOpen &&
-    !IFRAMED &&
     css`
       left: ${parseInt(NAV_SIDEBAR_WIDTH) + 1 + "px"};
       width: calc(100% - ${NAV_SIDEBAR_WIDTH});

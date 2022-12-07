@@ -1,7 +1,6 @@
-import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
-
 import { assocIn } from "icepick";
-import moment from "moment";
+import moment from "moment-timezone";
+import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
 
 import UnderlyingRecordsDrill from "metabase/modes/components/drill/UnderlyingRecordsDrill";
 

@@ -120,7 +120,7 @@
 
 (defn- load-rows-from-csv!
   "Load rows from a CSV file into a Table."
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name rows], :as tabledef} filename]
+  [_driver {:keys [database-name], :as _dbdef} {:keys [table-name rows], :as _tabledef} filename]
   (let [table-identifier (sql.tx/qualify-and-quote :vertica database-name table-name)]
     (with-open [conn (jdbc/get-connection (dbspec))]
       (letfn [(execute! [sql]

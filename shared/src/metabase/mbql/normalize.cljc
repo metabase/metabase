@@ -149,6 +149,33 @@
   [[_ amount unit]]
   [:interval amount (maybe-normalize-token unit)])
 
+(defmethod normalize-mbql-clause-tokens :datetime-add
+  [[_ field amount unit]]
+  [:datetime-add (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :datetime-subtract
+  [[_ field amount unit]]
+  [:datetime-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :get-week
+  [[_ field mode]]
+  (if mode
+    [:get-week (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]
+    [:get-week (normalize-tokens field :ignore-path)]))
+
+(defmethod normalize-mbql-clause-tokens :temporal-extract
+  [[_ field unit mode]]
+  (if mode
+    [:temporal-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit) (maybe-normalize-token mode)]
+    [:temporal-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit)]))
+
+(defmethod normalize-mbql-clause-tokens :datetime-diff
+  [[_ x y unit]]
+  [:datetime-diff
+   (normalize-tokens x :ignore-path)
+   (normalize-tokens y :ignore-path)
+   (maybe-normalize-token unit)])
+
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
   ;; See https://github.com/metabase/metabase/issues/23354 for details
@@ -244,7 +271,7 @@
            (not (:widget-type tag-def)))
       (assoc :widget-type :category))))
 
-(defn normalize-template-tags
+(defn- normalize-template-tags
   "Normalize native-query template tags. Like `expressions` we want to preserve the original name rather than normalize
   it."
   [template-tags]
@@ -257,8 +284,11 @@
                  (assoc :name tag-name))])))
    template-tags))
 
-(defn- normalize-query-parameter [{:keys [type target], :as param}]
+(defn normalize-query-parameter
+  "Normalize a parameter in the query `:parameters` list."
+  [{:keys [type target id], :as param}]
   (cond-> param
+    id     (update :id mbql.u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
     type   (update :type maybe-normalize-token)
     target (update :target #(normalize-tokens % :ignore-path))))

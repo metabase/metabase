@@ -10,6 +10,7 @@ import {
   visualize,
   summarize,
   filter,
+  filterField,
   filterFieldPopover,
   setupBooleanQuery,
 } from "__support__/e2e/helpers";
@@ -120,7 +121,6 @@ describe("scenarios > question > filter", () => {
     filter();
 
     filterFieldPopover("Product ID").contains("Aerodynamic Linen Coat").click();
-    cy.findByText("Add filter").click();
 
     cy.findByTestId("apply-filters").click();
 
@@ -159,7 +159,7 @@ describe("scenarios > question > filter", () => {
     cy.findAllByText("Gizmo");
   });
 
-  it.skip("should not drop aggregated filters (metabase#11957)", () => {
+  it("should not drop aggregated filters (metabase#11957)", () => {
     const AGGREGATED_FILTER = "Count is less than or equal to 20";
 
     cy.createQuestion(
@@ -198,29 +198,6 @@ describe("scenarios > question > filter", () => {
       "**Removing or changing filters shouldn't remove aggregated filter**",
     );
     cy.findByText(AGGREGATED_FILTER);
-  });
-
-  it.skip("in a simple question should display popup for custom expression options (metabase#14341) (metabase#15244)", () => {
-    openProductsTable();
-    filter();
-    cy.findByText("Custom Expression").click();
-    enterCustomColumnDetails({ formula: "c" });
-
-    // This issue has two problematic parts. We're testing for both:
-    cy.log("Popover should display all custom expression options");
-    // Popover shows up even without explicitly clicking the contenteditable field
-    popover().within(() => {
-      cy.findAllByRole("listitem").contains(/concat/i);
-    });
-
-    cy.log("Should not display error prematurely");
-    enterCustomColumnDetails({ formula: "ontains(" });
-    cy.findByText(/Checks to see if string1 contains string2 within it./i);
-    cy.button("Done").should("not.be.disabled");
-    cy.get(".text-error").should("not.exist");
-    cy.findAllByText(/Expected one of these possible Token sequences:/i).should(
-      "not.exist",
-    );
   });
 
   it("should be able to add date filter with calendar collapsed (metabase#14327)", () => {
@@ -695,7 +672,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Tax").should("not.exist");
   });
 
-  it.skip("should work on twice summarized questions (metabase#15620)", () => {
+  it.skip("should work on twice summarized questions and preserve both summaries (metabase#15620)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -715,12 +692,15 @@ describe("scenarios > question > filter", () => {
 
     cy.get(".ScalarValue").contains("5");
     filter();
-    cy.findByTestId("sidebar-right").within(() => {
-      cy.findByText("Category").click();
+    filterField("Category").within(() => {
       cy.findByText("Gizmo").click();
     });
-    cy.button("Add filter").should("not.be.disabled").click();
-    cy.get(".dot");
+    cy.findByTestId("apply-filters").click();
+
+    cy.findByLabelText("notebook icon").click();
+    cy.findByText("Category is Gizmo").should("exist"); // filter
+    cy.findByText("Created At: Month").should("exist"); // summary 1
+    cy.findByText("Average of Count").should("exist"); // summary 2
   });
 
   it("user shouldn't need to scroll to add filter (metabase#14307)", () => {
@@ -779,7 +759,7 @@ describe("scenarios > question > filter", () => {
   describe("currency filters", () => {
     beforeEach(() => {
       // set the currency on the Orders/Discount column to Euro
-      cy.visit("/admin/datamodel/database/1/table/2");
+      cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}`);
       // this value isn't actually selected, it's just the default
       cy.findByText("US Dollar").click();
       cy.findByText("Euro").click();
@@ -891,17 +871,6 @@ describe("scenarios > question > filter", () => {
             .should("be.checked");
           cy.button("Add filter").click();
           cy.wait("@dataset");
-        });
-
-        assertOnTheResult();
-      });
-
-      it.skip("from the simple question (metabase#16386-2)", () => {
-        filter();
-
-        cy.findByTestId("sidebar-right").within(() => {
-          cy.findByText("boolean").click();
-          addBooleanFilter();
         });
 
         assertOnTheResult();

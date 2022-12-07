@@ -39,7 +39,8 @@
                        {:name              "studio"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
-                        :database-position 2}}}
+                        :database-position 2}}
+             :description nil}
    "studio" {:name   "studio"
              :schema nil
              :fields #{{:name              "studio"
@@ -50,7 +51,8 @@
                        {:name              "name"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
-                        :database-position 1}}}})
+                        :database-position 1}}
+             :description ""}})
 
 (driver/register! ::sync-test, :abstract? true)
 
@@ -226,7 +228,7 @@
                                    :semantic_type nil
                                    :has_field_values :auto-list)
                             (field:movie-title)]})
-           (table-details (Table (:id table)))))))
+           (table-details (db/select-one Table :id (:id table)))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!

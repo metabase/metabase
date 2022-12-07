@@ -1,22 +1,12 @@
 ---
 title: "User"
-summary: "/api/user endpoints."
+summary: |
+  /api/user endpoints.
 ---
 
 # User
 
 /api/user endpoints.
-
-  - [DELETE /api/user/:id](#delete-apiuserid)
-  - [GET /api/user/](#get-apiuser)
-  - [GET /api/user/:id](#get-apiuserid)
-  - [GET /api/user/current](#get-apiusercurrent)
-  - [POST /api/user/](#post-apiuser)
-  - [POST /api/user/:id/send_invite](#post-apiuseridsend_invite)
-  - [PUT /api/user/:id](#put-apiuserid)
-  - [PUT /api/user/:id/modal/:modal](#put-apiuseridmodalmodal)
-  - [PUT /api/user/:id/password](#put-apiuseridpassword)
-  - [PUT /api/user/:id/reactivate](#put-apiuseridreactivate)
 
 ## `DELETE /api/user/:id`
 
@@ -75,13 +65,16 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`first_name`** value must be a non-blank string.
+*  **`first_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`last_name`** value must be a non-blank string.
+*  **`last_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`email`** value must be a valid email address.
 
-*  **`user_group_memberships`** value may be nil, or if non-nil, value must be an array.
+*  **`user_group_memberships`** value may be nil, or if non-nil, value must be an array. Each value must be a map with schema: (
+  is_group_manager (optional) : value must be a boolean.
+  id : value must be an integer greater than zero.
+)
 
 *  **`login_attributes`** value may be nil, or if non-nil, login attribute keys must be a keyword or string
 
@@ -111,7 +104,10 @@ Update an existing, active `User`.
 
 *  **`locale`** value may be nil, or if non-nil, String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
 
-*  **`user_group_memberships`** value may be nil, or if non-nil, value must be an array.
+*  **`user_group_memberships`** value may be nil, or if non-nil, value must be an array. Each value must be a map with schema: (
+  is_group_manager (optional) : value must be a boolean.
+  id : value must be an integer greater than zero.
+)
 
 *  **`id`** 
 

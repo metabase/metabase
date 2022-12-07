@@ -5,6 +5,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models.database :as database :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.sync :as sync]
@@ -67,7 +68,7 @@
         created-task-history-ids (atom [])
         orig-log-fn              @#'metabase.sync.util/log-sync-summary
         orig-store-fn            @#'metabase.sync.util/store-sync-summary!]
-    (with-redefs [metabase.sync.util/log-sync-summary    (fn [operation database {:keys [steps] :as operation-metadata}]
+    (with-redefs [metabase.sync.util/log-sync-summary    (fn [operation database operation-metadata]
                                                            (swap! step-info-atom conj operation-metadata)
                                                            (orig-log-fn operation database operation-metadata))
                   metabase.sync.util/store-sync-summary! (fn [operation database operation-metadata]
@@ -113,7 +114,7 @@
         step-2-name  (tu/random-name)
         sync-steps   [(sync-util/create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:foo "bar"}))
                       (sync-util/create-sync-step step-2-name (fn [_] (Thread/sleep 10)))]
-        mock-db      (database/map->DatabaseInstance {:name "test", :id 1, :engine :h2})
+        mock-db      (mi/instance Database {:name "test", :id 1, :engine :h2})
         [results]    (:operation-results
                       (call-with-operation-info #(sync-util/run-sync-operation process-name mock-db sync-steps)))]
     (testing "valid operation metadata?"
@@ -151,10 +152,9 @@
                   " contains the important parts and it doesn't throw an exception")
       (let [step-log-text (tu/random-name)
             results       (#'sync-util/make-log-sync-summary-str operation
-                                                                 (database/map->DatabaseInstance {:name db-name})
+                                                                 (mi/instance Database {:name db-name})
                                                                  (create-test-sync-summary step-name
-                                                                                           (fn [step-info]
-                                                                                             step-log-text)))]
+                                                                                           (constantly step-log-text)))]
         (testing "has-operation?"
           (is (= true
                  (str/includes? results operation))))
@@ -176,7 +176,7 @@
     (testing (str "The `log-summary-fn` part of step info is optional as not all steps have it. Validate that we"
                   " properly handle that case")
       (let [results (#'sync-util/make-log-sync-summary-str operation
-                                                           (database/map->DatabaseInstance {:name db-name})
+                                                           (mi/instance Database {:name db-name})
                                                            (create-test-sync-summary step-name nil))]
         (testing "has-operation?"
           (is (= true
@@ -254,13 +254,13 @@
   (mt/dataset sample-dataset
    (testing "If `initial-sync-status` on a DB is `incomplete`, it is marked as `complete` when sync-metadata has finished"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
-            db (Database (:id (mt/db)))]
+            db (db/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
         (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))))
 
    (testing "If `initial-sync-status` on a DB is `complete`, it remains `complete` when sync is run again"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "complete")
-            db (Database (:id (mt/db)))]
+            db (db/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
         (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))))
 
@@ -268,23 +268,23 @@
             has finished"
       (let [table-id (db/select-one-field :id Table :db_id (:id (mt/db)))
             _        (db/update! Table table-id :initial_sync_status "incomplete")
-            table    (Table table-id)]
+            _table   (db/select-one Table :id table-id)]
         (sync/sync-database! (mt/db))
         (is (= "complete" (db/select-one-field :initial_sync_status Table :id table-id)))))
 
    (testing "Database and table syncs are marked as complete even if the initial scan is :schema only"
       (let [_        (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
-            db       (Database (:id (mt/db)))
+            db       (db/select-one Database :id (:id (mt/db)))
             table-id (db/select-one-field :id Table :db_id (:id (mt/db)))
             _        (db/update! Table table-id :initial_sync_status "incomplete")
-            table    (Table table-id)]
+            _table   (db/select-one Table :id table-id)]
         (sync/sync-database! db {:scan :schema})
         (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))
         (is (= "complete" (db/select-one-field :initial_sync_status Table :id table-id)))))
 
    (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
-            db (Database (:id (mt/db)))]
+            db (db/select-one Database :id (:id (mt/db)))]
         (with-redefs [sync-metadata/sync-steps [(sync-util/create-sync-step
                                                  "fake-step"
                                                  (fn [_] (throw (java.net.ConnectException.))))]]
@@ -294,6 +294,6 @@
    (testing "If `initial-sync-status` is `aborted` for a database, it is set to `complete` the next time sync finishes
            without error"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "complete")
-            db (Database (:id (mt/db)))]
+            db (db/select-one Database :id (:id (mt/db)))]
         (sync/sync-database! db)
         (is (= "complete" (db/select-one-field :initial_sync_status Database :id (:id db))))))))

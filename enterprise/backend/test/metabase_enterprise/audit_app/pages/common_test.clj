@@ -3,7 +3,6 @@
             [honeysql.core :as hsql]
             [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.db :as mdb]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
@@ -20,12 +19,11 @@
 
 (defmethod audit.i/internal-query ::legacy-format-query-fn
   [_ a1]
-  (let [h2? (= (mdb/db-type) :h2)]
-    {:metadata [[:A {:display_name "A", :base_type :type/DateTime}]
-                [:B {:display_name "B", :base_type :type/Integer}]]
-     :results  (common/query
-                {:union-all [{:select [[a1 :A] [2 :B]]}
-                             {:select [[3 :A] [4 :B]]}]})}))
+  {:metadata [[:A {:display_name "A", :base_type :type/DateTime}]
+              [:B {:display_name "B", :base_type :type/Integer}]]
+   :results  (common/query
+              {:union-all [{:select [[a1 :A] [2 :B]]}
+                           {:select [[3 :A] [4 :B]]}]})})
 
 (defmethod audit.i/internal-query ::reducible-format-query-fn
   [_ a1]

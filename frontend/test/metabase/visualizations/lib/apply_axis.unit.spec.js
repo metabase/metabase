@@ -1,8 +1,8 @@
+import moment from "moment-timezone";
 import {
   maybeRoundValueToZero,
   stretchTimeseriesDomain,
 } from "metabase/visualizations/lib/apply_axis";
-import moment from "moment";
 
 describe("visualization.lib.apply_axis", () => {
   describe("stretchTimeseriesDomain", () => {

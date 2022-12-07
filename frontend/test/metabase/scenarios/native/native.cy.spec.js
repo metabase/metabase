@@ -1,6 +1,5 @@
 import {
   restore,
-  popover,
   modal,
   openNativeEditor,
   visitQuestionAdhoc,
@@ -40,40 +39,6 @@ describe("scenarios > question > native", () => {
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains('Table "ORD" not found');
-  });
-
-  it("should show referenced cards in the template tag sidebar", () => {
-    openNativeEditor()
-      // start typing a question referenced
-      .type("select * from {{#}}", {
-        parseSpecialCharSequences: false,
-      });
-
-    cy.contains("Question #…")
-      .parent()
-      .parent()
-      .contains("Pick a question or a model")
-      .click({ force: true });
-
-    // selecting a question should update the query
-    popover().contains("Orders").click();
-
-    cy.contains("select * from {{#1}}");
-
-    // run query and see that a value from the results appears
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("37.65");
-
-    // update the text of the query to reference question 2
-    // :visible is needed because there is an unused .ace_content present in the DOM
-    cy.get(".ace_content:visible").type("{leftarrow}{leftarrow}{backspace}2");
-
-    // sidebar should show updated question title and name
-    cy.contains("Question #2").parent().parent().contains("Orders, Count");
-
-    // run query again and see new result
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("18,760");
   });
 
   it("should handle template tags", () => {
@@ -199,7 +164,7 @@ describe("scenarios > question > native", () => {
     cy.findByTestId("sidebar-left")
       .as("sidebar")
       .contains(/hidden/i)
-      .siblings(".Icon-close")
+      .siblings(".Icon-eye_outline")
       .click();
     cy.get("@editor").type("{movetoend}, 3 as added");
     cy.get("@runQuery").click();
@@ -242,24 +207,21 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it("should link correctly from the variables sidebar (metabase#16212)", () => {
-    cy.createNativeQuestion({
-      name: "test-question",
-      native: { query: 'select 1 as "a", 2 as "b"' },
-    }).then(({ body: { id: questionId } }) => {
-      openNativeEditor().type(`{{#${questionId}}}`, {
-        parseSpecialCharSequences: false,
-      });
-      cy.get(".NativeQueryEditor .Icon-play").click();
-      cy.get(".Visualization").within(() => {
-        cy.findByText("a");
-        cy.findByText("b");
-        cy.findByText("1");
-        cy.findByText("2");
-      });
-      cy.findByRole("link", { name: `Question #${questionId}` })
-        .should("have.attr", "href")
-        .and("eq", `/question/${questionId}-test-question`);
-    });
+  it("should not autorun ad-hoc native queries by default", () => {
+    visitQuestionAdhoc(
+      {
+        display: "scalar",
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "SELECT 1",
+          },
+          database: SAMPLE_DB_ID,
+        },
+      },
+      { autorun: false },
+    );
+
+    cy.findByText("Here's where your results will appear").should("be.visible");
   });
 });

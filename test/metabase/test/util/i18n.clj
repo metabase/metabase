@@ -13,8 +13,10 @@
 (defmacro with-mock-i18n-bundles
   "Mock the i18n resource bundles for the duration of `body`.
 
-    (with-mock-i18n-bundles {\"es\"    {\"Your database has been added!\" \"¡Tu base de datos ha sido añadida!\"}
-                             \"es-MX\" {\"I''m good thanks\" \"Está bien, gracias\"}}
+    (with-mock-i18n-bundles {\"es\"    {:messages {\"Your database has been added!\"
+                                                   [\"¡Tu base de datos ha sido añadida!\"]}}
+                             \"es-MX\" {:messages {\"I''m good thanks\"
+                                                   [\"Está bien, gracias\"]}}}
       (translate \"es-MX\" \"Your database has been added!\"))
     ;; -> \"¡Tu base de datos ha sido añadida!\""
   [bundles & body]

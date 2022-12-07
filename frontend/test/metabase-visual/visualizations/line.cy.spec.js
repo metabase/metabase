@@ -43,7 +43,7 @@ describe("visual tests > visualizations > line", () => {
     });
 
     ensureDcChartVisibility();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("with vertical legends", () => {
@@ -80,7 +80,7 @@ describe("visual tests > visualizations > line", () => {
     });
 
     ensureDcChartVisibility();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("with vertical legends", () => {
@@ -117,7 +117,7 @@ describe("visual tests > visualizations > line", () => {
     });
 
     ensureDcChartVisibility();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("with multiple series and different display types (metabase#11216)", () => {
@@ -157,7 +157,7 @@ describe("visual tests > visualizations > line", () => {
     });
 
     ensureDcChartVisibility();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("with missing values and duplicate x (metabase#11076)", () => {
@@ -198,6 +198,6 @@ describe("visual tests > visualizations > line", () => {
     });
 
     ensureDcChartVisibility();
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });

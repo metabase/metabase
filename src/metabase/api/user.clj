@@ -1,16 +1,15 @@
 (ns metabase.api.user
   "/api/user endpoints"
-  (:require [cemerick.friend.credentials :as creds]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
+            [metabase.api.ldap :as api.ldap]
             [metabase.email.messages :as messages]
             [metabase.integrations.google :as google]
-            [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.permissions-group :as perms-group]
@@ -20,6 +19,7 @@
             [metabase.server.middleware.offset-paging :as mw.offset-paging]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
+            [metabase.util.password :as u.password]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -126,6 +126,9 @@
   [status query group_id include_deactivated]
   (cond-> {}
         true (hh/merge-where (status-clause status include_deactivated))
+        true (hh/merge-where (when-let [segmented-user? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
+                               (when (segmented-user?)
+                                 [:= :core_user.id api/*current-user-id*])))
         (some? query) (hh/merge-where (query-clause query))
         (some? group_id) (hh/merge-right-join :permissions_group_membership
                                               [:= :core_user.id :permissions_group_membership.user_id])
@@ -275,6 +278,17 @@
     (not google_auth)
     (not ldap_auth))))
 
+(defn- valid-name-update?
+  "This predicate tests whether or not the user is allowed to update the first/last name associated with this account.
+  If the user is an SSO user, no name edits are allowed, but we accept if the new names are equal to the existing names."
+  [{:keys [google_auth ldap_auth sso_source] :as user} name-key new-name]
+  (or
+   (= (get user name-key) new-name)
+   (and
+    (not sso_source)
+    (not google_auth)
+    (not ldap_auth))))
+
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
@@ -298,6 +312,13 @@
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
     (api/check-403 (valid-email-update? user-before-update email))
+    ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
+    (when (contains? body :first_name)
+      (api/checkp (valid-name-update? user-before-update :first_name first_name)
+        "first_name" (tru "Editing first name is not allowed for SSO users.")))
+    (when (contains? body :last_name)
+      (api/checkp (valid-name-update? user-before-update :last_name last_name)
+        "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
                 "email" (tru "Email address already associated to another user."))
@@ -328,10 +349,9 @@
     ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
     ;; (see metabase#3323)
     :google_auth   (boolean (and (:google_auth existing-user)
-                                 ;; if google-auth-client-id is set it means Google Auth is enabled
-                                 (google/google-auth-client-id)))
+                                 (google/google-auth-enabled)))
     :ldap_auth     (boolean (and (:ldap_auth existing-user)
-                                 (ldap/ldap-configured?))))
+                                 (api.ldap/ldap-enabled))))
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
@@ -360,7 +380,7 @@
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
-      (api/checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user))
+      (api/checkp (u.password/bcrypt-verify (str (:password_salt user) old_password) (:password user))
         "old_password"
         (tru "Invalid password"))))
   (user/set-password! id password)
@@ -401,7 +421,7 @@
   "Resend the user invite email for a given user."
   [id]
   (api/check-superuser)
-  (when-let [user (User :id id, :is_active true)]
+  (when-let [user (db/select-one User :id id, :is_active true)]
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]

@@ -1,11 +1,10 @@
-import _ from "underscore";
 import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 import { UserApi } from "metabase/services";
 
-import { runQuestionQuery, cancelQuery } from "./querying";
+import { cancelQuery } from "./querying";
 import { updateUrl } from "./navigation";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
@@ -33,15 +32,11 @@ export const setQueryBuilderMode =
     if (queryBuilderMode === "notebook") {
       dispatch(cancelQuery());
     }
-    if (queryBuilderMode === "dataset") {
-      dispatch(runQuestionQuery());
-    }
   };
 
 export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
 export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");
-export const onAddFilter = createAction("metabase/qb/ADD_FILTER");
-export const onCloseFilter = createAction("metabase/qb/CLOSE_FILTER");
+
 export const onOpenChartSettings = createAction(
   "metabase/qb/OPEN_CHART_SETTINGS",
 );
@@ -62,11 +57,6 @@ export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
 
 export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
 export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
-
-export const setIsPreviewing = isPreviewing => ({
-  type: SET_UI_CONTROLS,
-  payload: { isPreviewing },
-});
 
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {

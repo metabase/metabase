@@ -34,6 +34,31 @@ export const calculateWaterfallEntries = (data, accessors, showTotal) => {
   return entries;
 };
 
+export const calculateWaterfallSeriesForValues = (
+  data,
+  accessors,
+  showTotal,
+) => {
+  if (!showTotal) {
+    return [
+      {
+        data,
+        type: "waterfall",
+        yAxisPosition: "left",
+      },
+    ];
+  } else {
+    const total = data.reduce((sum, datum) => sum + accessors.y(datum), 0);
+    return [
+      {
+        data: [...data, [WATERFALL_TOTAL, total]],
+        type: "waterfall",
+        yAxisPosition: "left",
+      },
+    ];
+  }
+};
+
 export const formatTimescaleWaterfallTick = (value, settings) =>
   value === WATERFALL_TOTAL ? WATERFALL_TOTAL : formatDate(value, settings?.x);
 

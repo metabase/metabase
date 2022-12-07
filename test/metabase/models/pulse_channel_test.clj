@@ -10,7 +10,8 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+            [toucan.hydrate :refer [hydrate]])
+  (:import java.time.LocalDateTime))
 
 ;; Test out our predicate functions
 
@@ -133,19 +134,21 @@
 (defn- create-channel-then-select!
   [channel]
   (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
-    (-> (PulseChannel new-channel-id)
+    (-> (db/select-one PulseChannel :id new-channel-id)
         (hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
+        (update :entity_id boolean)
         (m/dissoc-in [:details :emails])
         mt/derecordize)))
 
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
   (pulse-channel/update-pulse-channel! channel)
-  (-> (PulseChannel id)
+  (-> (db/select-one PulseChannel :id id)
       (hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
+      (update :entity_id boolean)
       (m/dissoc-in [:details :emails])
       mt/derecordize))
 
@@ -155,6 +158,7 @@
     (mt/with-model-cleanup [Pulse]
       (testing "disabled"
         (is (= {:enabled        false
+                :entity_id      true
                 :channel_type   :email
                 :schedule_type  :daily
                 :schedule_hour  18
@@ -174,6 +178,7 @@
                                  {:id (mt/user->id :crowberto)}]}))))
       (testing "email"
         (is (= {:enabled        true
+                :entity_id      true
                 :channel_type   :email
                 :schedule_type  :daily
                 :schedule_hour  18
@@ -194,6 +199,7 @@
 
       (testing "slack"
         (is (= {:enabled        true
+                :entity_id      true
                 :channel_type   :slack
                 :schedule_type  :hourly
                 :schedule_hour  nil
@@ -214,8 +220,9 @@
 (deftest update-pulse-channel!-test
   (mt/with-temp Pulse [{pulse-id :id}]
     (testing "simple starting case where we modify the schedule hour and add a recipient"
-      (mt/with-temp PulseChannel [{channel-id :id, :as channel} {:pulse_id pulse-id}]
+      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
+                :entity_id      true
                 :channel_type   :email
                 :schedule_type  :daily
                 :schedule_hour  18
@@ -231,8 +238,9 @@
                  :recipients    [{:email "foo@bar.com"}]})))))
 
     (testing "monthly schedules require a schedule_frame and can optionally omit they schedule_day"
-      (mt/with-temp PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id}]
+      (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
+                :entity_id      true
                 :channel_type  :email
                 :schedule_type :monthly
                 :schedule_hour 8
@@ -252,6 +260,7 @@
     (testing "weekly schedule should have a day in it, show that we can get full users"
       (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled        true
+                :entity_id      true
                 :channel_type   :email
                 :schedule_type  :weekly
                 :schedule_hour  8
@@ -271,6 +280,7 @@
       (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
         (pulse-channel/update-recipients! channel-id [(mt/user->id :rasta)])
         (is (= {:enabled       true
+                :entity_id     true
                 :channel_type  :email
                 :schedule_type :hourly
                 :schedule_hour nil
@@ -289,6 +299,7 @@
     (testing "custom details for channels that need it"
       (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id}]
         (is (= {:enabled       true
+                :entity_id     true
                 :channel_type  :email
                 :schedule_type :daily
                 :schedule_hour 12
@@ -444,11 +455,13 @@
 
 (deftest identity-hash-test
   (testing "Pulse channel hashes are composed of the pulse's hash, the channel type, and the details and the collection hash"
-    (mt/with-temp* [Collection   [coll  {:name "field-db" :location "/"}]
-                    Pulse        [pulse {:name "my pulse" :collection_id (:id coll)}]
-                    PulseChannel [chan  {:pulse_id     (:id pulse)
-                                         :channel_type :email
-                                         :details      {:emails ["cam@test.com"]}}]]
-      (is (= "ab5e6ff0"
-             (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) :email {:emails ["cam@test.com"]}])
-             (serdes.hash/identity-hash chan))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection   [coll  {:name "field-db" :location "/" :created_at now}]
+                      Pulse        [pulse {:name "my pulse" :collection_id (:id coll) :created_at now}]
+                      PulseChannel [chan  {:pulse_id     (:id pulse)
+                                           :channel_type :email
+                                           :details      {:emails ["cam@test.com"]}
+                                           :created_at   now}]]
+        (is (= "2f5f0269"
+               (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
+               (serdes.hash/identity-hash chan)))))))

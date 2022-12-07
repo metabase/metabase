@@ -1,8 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { useMemo } from "react";
 import { t } from "ttag";
-import moment from "moment";
-import _ from "underscore";
+import moment from "moment-timezone";
 
 import { color } from "metabase/lib/colors";
 import { getFullName } from "metabase/lib/user";

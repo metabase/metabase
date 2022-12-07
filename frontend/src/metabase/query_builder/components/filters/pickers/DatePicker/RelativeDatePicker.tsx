@@ -1,11 +1,11 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import moment from "moment";
 import { assoc } from "icepick";
 
+import { DurationInputArg2 } from "moment-timezone";
+import { isValidTimeInterval } from "metabase/lib/time";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import {
-  formatBucketing,
   formatStartingFrom,
   getRelativeDatetimeInterval,
   getStartingFrom,
@@ -13,14 +13,10 @@ import {
   setRelativeDatetimeValue,
   setStartingFrom,
   toTimeInterval,
-} from "metabase/lib/query_time";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
+} from "metabase-lib/queries/utils/query-time";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
 import {
-  CurrentButton,
-  CurrentContainer,
-  CurrentPopover,
   GridContainer,
   GridText,
   MoreButton,
@@ -30,87 +26,30 @@ import {
   NumericInput,
 } from "./RelativeDatePicker.styled";
 
-export const PastPicker = (props: Props) => (
-  <RelativeDatePicker {...props} formatter={value => value * -1} />
-);
-
-export const NextPicker = (props: Props) => (
-  <RelativeDatePicker
-    {...props}
-    offsetFormatter={value => value * -1}
-    reverseIconDirection
-  />
-);
-
-const periodPopoverText = (period: string) => {
-  const now = moment();
-  let start: string, end: string;
-  switch (period) {
-    case "day":
-      return t`Right now, this is ${now.format("ddd, MMM D")}`;
-    case "week":
-      start = now.startOf("week").format("ddd, MMM D");
-      end = now.endOf("week").format("ddd, MMM D");
-      return t`Right now, this is ${start} - ${end}`;
-    case "month":
-      start = now.startOf("month").format("ddd, MMM D");
-      end = now.endOf("month").format("ddd, MMM D");
-      return t`Right now, this is ${start} - ${end}`;
-    case "quarter":
-      start = now.startOf("quarter").format("ddd, MMM D");
-      end = now.endOf("quarter").format("ddd, MMM D");
-      return t`Right now, this is ${start} - ${end}`;
-    case "year":
-      start = now.startOf("year").format("MMM D, YYYY");
-      end = now.endOf("year").format("MMM D, YYYY");
-      return t`Right now, this is ${start} - ${end}`;
-  }
-};
-
-type CurrentPickerProps = {
+type RelativeDatePickerProps = {
   className?: string;
   filter: Filter;
+  onFilterChange: (filter: any[]) => void;
+  formatter?: (value: number) => number;
+  offsetFormatter?: (value: number) => number;
   primaryColor?: string;
-  onCommit: (filter?: any[]) => void;
+  reverseIconDirection?: boolean;
+  supportsExpressions?: boolean;
 };
 
-export function CurrentPicker(props: CurrentPickerProps) {
-  const {
-    className,
-    primaryColor,
-    onCommit,
-    filter: [operator, field, _intervals, unit],
-  } = props;
-  return (
-    <div className={className}>
-      {DATE_PERIODS.map((periods, index) => (
-        <CurrentContainer key={periods.length} first={index === 0}>
-          {periods.map(period => (
-            <TippyPopover
-              key={period}
-              placement="bottom"
-              delay={[500, null]}
-              content={
-                <CurrentPopover>{periodPopoverText(period)}</CurrentPopover>
-              }
-            >
-              <CurrentButton
-                key={period}
-                primaryColor={primaryColor}
-                selected={operator && unit === period.toLowerCase()}
-                onClick={() => {
-                  onCommit([operator, field, "current", period]);
-                }}
-              >
-                {formatBucketing(period, 1)}
-              </CurrentButton>
-            </TippyPopover>
-          ))}
-        </CurrentContainer>
-      ))}
-    </div>
-  );
-}
+type OptionsContentProps = RelativeDatePickerProps & {
+  setOptionsVisible: (shouldBeVisible: boolean) => void;
+};
+
+const CURRENT_INTERVAL_NAME = {
+  day: t`today`,
+  week: t`this week`,
+  month: t`this month`,
+  year: t`this year`,
+  quarter: t`this quarter`,
+  minute: t`this minute`,
+  hour: t`this hour`,
+};
 
 export const DATE_PERIODS = [
   ["day", "week", "month"],
@@ -121,6 +60,13 @@ const TIME_PERIODS = ["minute", "hour"];
 
 // define ALL_PERIODS in increasing order of duration
 const ALL_PERIODS = TIME_PERIODS.concat(DATE_PERIODS.flat());
+
+const SELECT_STYLE = {
+  width: 65,
+  fontSize: 14,
+  fontWeight: 700,
+  padding: 8,
+};
 
 const isSmallerUnit = (unit: string, unitToCompare: string) => {
   return ALL_PERIODS.indexOf(unit) < ALL_PERIODS.indexOf(unitToCompare);
@@ -144,16 +90,6 @@ const getStartingFromUnits = (
 const getCurrentString = (filter: Filter) =>
   t`Include ${getCurrentIntervalName(filter)}`;
 
-const CURRENT_INTERVAL_NAME = {
-  day: t`today`,
-  week: t`this week`,
-  month: t`this month`,
-  year: t`this year`,
-  quarter: t`this quarter`,
-  minute: t`this minute`,
-  hour: t`this hour`,
-};
-
 function getCurrentIntervalName(filter: Filter) {
   if (filter[0] === "time-interval") {
     return CURRENT_INTERVAL_NAME[
@@ -163,17 +99,59 @@ function getCurrentIntervalName(filter: Filter) {
   return null;
 }
 
-type Props = {
-  className?: string;
-  filter: Filter;
-  onFilterChange: (filter: any[]) => void;
-  formatter: (value: number) => number;
-  offsetFormatter: (value: number) => number;
-  primaryColor?: string;
-  reverseIconDirection?: boolean;
+const OptionsContent = ({
+  filter,
+  primaryColor,
+  onFilterChange,
+  reverseIconDirection,
+  setOptionsVisible,
+  supportsExpressions,
+}: OptionsContentProps) => {
+  const options = filter[4] || {};
+  const includeCurrent = !!options["include-current"];
+  const currentString = getCurrentString(filter);
+
+  const handleClickOnStartingFrom = () => {
+    setOptionsVisible(false);
+    onFilterChange(setStartingFrom(filter));
+  };
+
+  const handleClickOnIncludeCurrentTimeUnit = () => {
+    setOptionsVisible(false);
+    onFilterChange(
+      assoc(filter, 4, {
+        ...options,
+        "include-current": !includeCurrent,
+      }),
+    );
+  };
+
+  return (
+    <OptionsContainer>
+      {supportsExpressions && (
+        <OptionButton
+          icon="arrow_left_to_line"
+          primaryColor={primaryColor}
+          reverseIconDirection={reverseIconDirection}
+          onClick={handleClickOnStartingFrom}
+        >
+          {t`Starting from...`}
+        </OptionButton>
+      )}
+      <OptionButton
+        selected={includeCurrent}
+        primaryColor={primaryColor}
+        icon={includeCurrent ? "check" : "calendar"}
+        onClick={handleClickOnIncludeCurrentTimeUnit}
+      >
+        {/*currentString is already translated*/}
+        {currentString}
+      </OptionButton>
+    </OptionsContainer>
+  );
 };
 
-const RelativeDatePicker: React.FC<Props> = props => {
+const RelativeDatePicker = (props: RelativeDatePickerProps) => {
   const {
     filter,
     onFilterChange,
@@ -181,13 +159,10 @@ const RelativeDatePicker: React.FC<Props> = props => {
     offsetFormatter = value => value,
     className,
     primaryColor,
-    reverseIconDirection,
   } = props;
 
   const startingFrom = getStartingFrom(filter);
   const [intervals = 30, unit = "day"] = getRelativeDatetimeInterval(filter);
-  const options = filter[4] || {};
-  const includeCurrent = !!options["include-current"];
 
   const showOptions = !startingFrom;
   const numColumns = showOptions ? 3 : 4;
@@ -195,41 +170,28 @@ const RelativeDatePicker: React.FC<Props> = props => {
   const [optionsVisible, setOptionsVisible] = React.useState(false);
 
   const optionsContent = (
-    <OptionsContainer>
-      <OptionButton
-        icon="arrow_left_to_line"
-        primaryColor={primaryColor}
-        reverseIconDirection={reverseIconDirection}
-        onClick={() => {
-          setOptionsVisible(false);
-          onFilterChange(setStartingFrom(filter));
-        }}
-      >
-        {t`Starting from...`}
-      </OptionButton>
-      <OptionButton
-        selected={includeCurrent}
-        primaryColor={primaryColor}
-        icon={includeCurrent ? "check" : "calendar"}
-        onClick={() => {
-          setOptionsVisible(false);
-          onFilterChange(
-            assoc(filter, 4, {
-              ...options,
-              "include-current": !includeCurrent,
-            }),
-          );
-        }}
-      >
-        {getCurrentString(filter)}
-      </OptionButton>
-    </OptionsContainer>
+    <OptionsContent {...props} setOptionsVisible={setOptionsVisible} />
   );
+
+  const handleChangeDateNumericInput = (newIntervals: number) => {
+    const isValid = isValidTimeInterval(newIntervals, unit);
+    const valueToUse = isValid ? newIntervals : Math.abs(intervals);
+
+    onFilterChange(setRelativeDatetimeValue(filter, formatter(valueToUse)));
+  };
+
+  const handleChangeUnitInput = (newUnit: DurationInputArg2) => {
+    const isValid = isValidTimeInterval(intervals, newUnit);
+    const unitToUse = isValid ? newUnit : unit;
+
+    onFilterChange(setRelativeDatetimeUnit(filter, unitToUse));
+  };
+
   return (
     <GridContainer
       className={className}
       numColumns={numColumns}
-      data-testid="relative-datetime-filter"
+      data-testid="relative-date-picker"
     >
       {startingFrom ? (
         <GridText>{intervals < 0 ? t`Past` : t`Next`}</GridText>
@@ -241,17 +203,15 @@ const RelativeDatePicker: React.FC<Props> = props => {
         data-ui-tag="relative-date-input"
         data-testid="relative-datetime-value"
         value={typeof intervals === "number" ? Math.abs(intervals) : intervals}
-        onChange={(value: number) => {
-          onFilterChange(setRelativeDatetimeValue(filter, formatter(value)));
-        }}
+        onChange={handleChangeDateNumericInput}
         placeholder="30"
       />
       <DateUnitSelector
         value={unit}
         primaryColor={primaryColor}
-        onChange={value => {
-          onFilterChange(setRelativeDatetimeUnit(filter, value));
-        }}
+        onChange={newUnit =>
+          handleChangeUnitInput(newUnit as DurationInputArg2)
+        }
         testId="relative-datetime-unit"
         intervals={intervals}
         formatter={formatter}
@@ -325,9 +285,14 @@ const RelativeDatePicker: React.FC<Props> = props => {
   );
 };
 
-const SELECT_STYLE = {
-  width: 65,
-  fontSize: 14,
-  fontWeight: 700,
-  padding: 8,
-};
+export const PastPicker = (props: RelativeDatePickerProps) => (
+  <RelativeDatePicker {...props} formatter={value => value * -1} />
+);
+
+export const NextPicker = (props: RelativeDatePickerProps) => (
+  <RelativeDatePicker
+    {...props}
+    offsetFormatter={value => value * -1}
+    reverseIconDirection
+  />
+);

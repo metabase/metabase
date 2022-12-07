@@ -32,11 +32,11 @@
            (public-settings/site-url)))))
 
 (deftest site-url-settings-https
-  (testing "if https:// was specified it should keep it")
-  (mt/discard-setting-changes [site-url]
-    (public-settings/site-url! "https://localhost:3000")
-    (is (= "https://localhost:3000"
-           (public-settings/site-url)))))
+  (testing "if https:// was specified it should keep it"
+    (mt/discard-setting-changes [site-url]
+      (public-settings/site-url! "https://localhost:3000")
+      (is (= "https://localhost:3000"
+             (public-settings/site-url))))))
 
 (deftest site-url-settings-validate-site-url
   (testing "we should not be allowed to set an invalid `site-url` (#9850)"
@@ -56,7 +56,7 @@
       (is (= "https://&"
              (setting/get-value-of-type :string :site-url)))
       (is (= nil
-             (mt/suppress-output (public-settings/site-url)))))))
+             (public-settings/site-url))))))
 
 (deftest site-url-settings-normalize
   (testing "We should normalize `site-url` when set via env var we should still normalize it (#9764)"
@@ -70,13 +70,12 @@
 (deftest invalid-site-url-env-var-test
   (testing (str "If `site-url` is set via an env var, and it's invalid, we should return `nil` rather than having the"
                 " whole instance break")
-    (mt/suppress-output
-      (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
-        (mt/with-temporary-setting-values [site-url nil]
-          (is (= "asd_12w31%$;"
-                 (setting/get-value-of-type :string :site-url)))
-          (is (= nil
-                 (public-settings/site-url))))))))
+    (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
+      (mt/with-temporary-setting-values [site-url nil]
+        (is (= "asd_12w31%$;"
+               (setting/get-value-of-type :string :site-url)))
+        (is (= nil
+               (public-settings/site-url)))))))
 
 (deftest site-url-should-update-https-redirect-test
   (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
@@ -98,14 +97,14 @@
              (public-settings/redirect-all-requests-to-https))))))
 
 (deftest translate-public-setting
-  (mt/with-mock-i18n-bundles {"zz" {"Host" "HOST"}}
+  (mt/with-mock-i18n-bundles {"zz" {:messages {"Host" "HOST"}}}
     (mt/with-user-locale "zz"
       (is (= "HOST"
              (str (get-in (setting/user-readable-values-map :public)
                           [:engines :postgres :details-fields 0 :display-name])))))))
 
 (deftest tru-translates
-  (mt/with-mock-i18n-bundles {"zz" {"Host" "HOST"}}
+  (mt/with-mock-i18n-bundles {"zz" {:messages {"Host" "HOST"}}}
     (mt/with-user-locale "zz"
       (is (= true
              (= (i18n/locale "zz")

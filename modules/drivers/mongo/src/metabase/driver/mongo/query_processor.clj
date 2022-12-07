@@ -11,6 +11,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
@@ -19,9 +20,13 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [monger.operators :refer :all]
+            [monger.operators :refer [$add $addToSet $and $avg $cond $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
+                                      $group $gt $gte $hour $limit $lt $lte $match $max $min $minute $mod $month
+                                      $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
+                                      $sum $toLower $year]]
             [schema.core :as s])
-  (:import org.bson.types.ObjectId))
+  (:import [org.bson.types ObjectId Binary]
+           org.bson.BsonBinarySubType))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -102,7 +107,7 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
-(defmethod ->lvalue (class Field)
+(defmethod ->lvalue Field
   [field]
   (field->name field \.))
 
@@ -118,25 +123,42 @@
   [[_ expression-name]]
   (->rvalue (mbql.u/expression-with-name (:query *query*) expression-name)))
 
-(defmethod ->rvalue (class Field)
+(defmethod ->rvalue Field
   [{coercion :coercion_strategy, :as field}]
   (let [field-name (str \$ (field->name field "."))]
     (cond
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
-      {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970}}
+      {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/UNIXMilliSeconds->DateTime)
-      {:$dateFromParts {:millisecond field-name, :year 1970}}
+      {:$dateFromParts {:millisecond field-name, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/UNIXSeconds->DateTime)
-      {:$dateFromParts {:second field-name, :year 1970}}
+      {:$dateFromParts {:second field-name, :year 1970, :timezone "UTC"}}
 
       (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
       {"$dateFromString" {:dateString field-name
-                          :format "%Y%m%d%H%M%S"
-                          :onError field-name}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
 
-      :else field-name)))
+      ;; mongo only supports datetime
+      (isa? coercion :Coercion/ISO8601->DateTime)
+      {"$dateFromString" {:dateString field-name
+                          :onError    field-name}}
+
+
+      (isa? coercion :Coercion/ISO8601->Date)
+      (throw (ex-info (tru "MongoDB does not support parsing strings as dates. Try parsing to a datetime instead")
+                      {:type              qp.error-type/unsupported-feature
+                       :coercion-strategy coercion}))
+
+
+      (isa? coercion :Coercion/ISO8601->Time)
+      (throw (ex-info (tru "MongoDB does not support parsing strings as times. Try parsing to a datetime instead")
+                      {:type              qp.error-type/unsupported-feature
+                       :coercion-strategy coercion}))
+
+     :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
 ;;
@@ -181,11 +203,31 @@
                           (* 24 60 60 1000)]}]})
 
 (defn- truncate-to-resolution [column resolution]
-  (mongo-let [parts {:$dateToParts {:date column}}]
-    {:$dateFromParts (into {} (for [part (concat (take-while (partial not= resolution)
-                                                             [:year :month :day :hour :minute :second :millisecond])
-                                                 [resolution])]
-                                [part (str (name parts) \. (name part))]))}))
+  (mongo-let [parts {:$dateToParts {:timezone (qp.timezone/results-timezone-id)
+                                    :date column}}]
+    {:$dateFromParts (into {:timezone (qp.timezone/results-timezone-id)}
+                           (for [part (concat (take-while (partial not= resolution)
+                                                          [:year :month :day :hour :minute :second :millisecond])
+                                              [resolution])]
+                             [part (str (name parts) \. (name part))]))}))
+
+(declare with-rvalue-temporal-bucketing)
+
+(defn- days-till-start-of-first-full-week
+  [column]
+  (let [start-of-year                (with-rvalue-temporal-bucketing column :year)
+        day-of-week-of-start-of-year (with-rvalue-temporal-bucketing start-of-year :day-of-week)]
+    {:$subtract [8 day-of-week-of-start-of-year]}))
+
+(defn- week-of-year
+  "Full explanation of this magic is in [[metabase.driver.sql.query-processor/week-of-year]]."
+  [column mode]
+  (let [doy    (with-rvalue-temporal-bucketing column :day-of-year)
+        dtsofw (binding [driver.common/*start-of-week* (case mode
+                                                         :us :sunday
+                                                         :instance nil)]
+                 (days-till-start-of-first-full-week column))]
+    {:$toInt {:$add [1 {:$ceil {:$divide [{:$subtract [doy dtsofw]} 7]}}]}}))
 
 (defn- with-rvalue-temporal-bucketing
   [field unit]
@@ -195,25 +237,29 @@
       (letfn [(truncate [unit]
                 (truncate-to-resolution column unit))]
         (case unit
-          :default        column
-          :minute         (truncate :minute)
-          :minute-of-hour {$minute column}
-          :hour           (truncate :hour)
-          :hour-of-day    {$hour column}
-          :day            (truncate :day)
-          :day-of-week    (day-of-week column)
-          :day-of-month   {$dayOfMonth column}
-          :day-of-year    {$dayOfYear column}
-          :week           (truncate-to-resolution (week column) :day)
-          :week-of-year   {:$ceil {$divide [{$dayOfYear (week column)}
-                                            7.0]}}
-          :month          (truncate :month)
-          :month-of-year  {$month column}
+          :default          column
+          :second-of-minute {$second column}
+          :minute           (truncate :minute)
+          :minute-of-hour   {$minute column}
+          :hour             (truncate :hour)
+          :hour-of-day      {$hour column}
+          :day              (truncate :day)
+          :day-of-week      (day-of-week column)
+          :day-of-month     {$dayOfMonth column}
+          :day-of-year      {$dayOfYear column}
+          :week             (truncate-to-resolution (week column) :day)
+          :week-of-year     {:$ceil {$divide [{$dayOfYear (week column)}
+                                              7.0]}}
+          :week-of-year-iso {:$isoWeek column}
+          :week-of-year-us  (week-of-year column :us)
+          :week-of-year-instance  (week-of-year column :instance)
+          :month            (truncate :month)
+          :month-of-year    {$month column}
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
           ;; stringify it as yyyy-MM Subtracting (($dayOfYear(column) % 91) - 3) days will put you in correct month.
           ;; Trust me.
           :quarter
-          (mongo-let [parts {:$dateToParts {:date column}}]
+          (mongo-let [#_:clj-kondo/ignore parts {:$dateToParts {:date column}}]
             {:$dateFromParts {:year  :$$parts.year
                               :month {$subtract [:$$parts.month
                                                  {$mod [{$add [:$$parts.month 2]}
@@ -228,7 +274,10 @@
                       3]})
 
           :year
-          (truncate :year))))))
+          (truncate :year)
+
+          :year-of-era
+          {$year column})))))
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit]}]]
@@ -241,15 +290,32 @@
 
 (defmethod ->rvalue nil [_] nil)
 
+(defn- uuid->bsonbinary
+  [u]
+  (let [lo (.getLeastSignificantBits ^java.util.UUID u)
+        hi (.getMostSignificantBits  ^java.util.UUID u)
+        ba (-> (java.nio.ByteBuffer/allocate 16) ; UUID is 128 bits-long
+               (.putLong hi)
+               (.putLong lo)
+               (.array))]
+    (Binary. BsonBinarySubType/UUID_STANDARD ba)))
+
 (defmethod ->rvalue :value
   [[_ value {base-type :base_type}]]
-  (if (and (isa? base-type :type/MongoBSONID)
-           (some? value))
-    ;; Passing nil or "" to the ObjectId constructor throws an exception
-    ;; "invalid hexadecimal representation of an ObjectId: []" so, just treat it as nil
-    (when (not= value "")
-      (ObjectId. (str value)))
-    value))
+  (cond
+    ;; Passing nil or "" to the ObjectId or Binary constructor throws an exception
+    (or (nil? value) (= value ""))
+    value
+
+    (isa? base-type :type/MongoBSONID)
+    (ObjectId. (str value))
+
+    (isa? base-type :type/UUID)
+    (-> (str value)
+        java.util.UUID/fromString
+        uuid->bsonbinary)
+
+    :else value))
 
 (defn- $date-from-string [s]
   {:$dateFromString {:dateString (str s)}})
@@ -259,12 +325,12 @@
   (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
                                    "UTC"))
         t           (condp = (class t)
-                      java.time.LocalDate      t
-                      java.time.LocalTime      t
-                      java.time.LocalDateTime  t
-                      java.time.OffsetTime     (t/with-offset-same-instant t report-zone)
-                      java.time.OffsetDateTime (t/with-offset-same-instant t report-zone)
-                      java.time.ZonedDateTime  (t/offset-date-time (t/with-zone-same-instant t report-zone)))]
+                     java.time.LocalDate      t
+                     java.time.LocalTime      t
+                     java.time.LocalDateTime  t
+                     java.time.OffsetTime     (t/offset-time t report-zone)
+                     java.time.OffsetDateTime (t/offset-date-time t report-zone)
+                     java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
     (letfn [(extract [unit]
               (u.date/extract t unit))
             (bucket [unit]
@@ -365,6 +431,9 @@
 (defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
 (defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
 
+(defmethod ->rvalue :temporal-extract [[_ inp unit]]
+  (with-rvalue-temporal-bucketing (->rvalue inp) unit))
+
 ;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
 ;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
 ;;; Also, date arithmetic with intervals was first implemented in version 5. (Before that only
@@ -431,6 +500,23 @@
 (defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
+
+(defmethod ->rvalue :now [[_]]
+  (if (driver/database-supports? :mongo :now (qp.store/database))
+    "$$NOW"
+    (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
+                    {:database-version (get-mongo-version)}))))
+
+(defmethod ->rvalue :datetime-add        [[_ inp amount unit]] (do
+                                                                 (check-date-operations-supported)
+                                                                 {"$dateAdd" {:startDate (->rvalue inp)
+                                                                              :unit      unit
+                                                                              :amount    amount}}))
+(defmethod ->rvalue :datetime-subtract   [[_ inp amount unit]] (do
+                                                                 (check-date-operations-supported)
+                                                                 {"$dateSubtract" {:startDate (->rvalue inp)
+                                                                                   :unit      unit
+                                                                                   :amount    amount}}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
@@ -688,14 +774,6 @@
     [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}
      (when (not-empty post-ags)
        {:$addFields (into (ordered-map/ordered-map) post-ags)})]))
-
-(defn- ordered-map-assoc-in [m ks v]
-  (cond
-    (= (count ks) 1)
-    (assoc (ordered-map/ordered-map m) (first ks) v)
-
-    (pos? (count ks))
-    (update (ordered-map/ordered-map m) (first ks) ordered-map-assoc-in (rest ks) v)))
 
 (defn- projection-group-map [fields]
   (reduce

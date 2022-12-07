@@ -1,6 +1,6 @@
 import React from "react";
-import LegendVertical from "metabase/visualizations/components/LegendVertical";
 import { render, screen } from "@testing-library/react";
+import LegendVertical from "metabase/visualizations/components/LegendVertical";
 
 describe("LegendVertical", () => {
   it("should render string titles correctly", () => {

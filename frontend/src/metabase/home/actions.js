@@ -1,5 +1,5 @@
 import _ from "underscore";
-import moment from "moment";
+import moment from "moment-timezone";
 
 import { createThunkAction } from "metabase/lib/redux";
 

@@ -5,7 +5,8 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.revision :as revision :refer [Revision]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (def ^:private ^:const valid-entity-names
   #{"card" "dashboard"})
@@ -16,8 +17,8 @@
 
 (defn- model-and-instance [entity-name id]
   (case entity-name
-    "card"      [Card (Card id)]
-    "dashboard" [Dashboard (Dashboard id)]))
+    "card"      [Card (db/select-one Card :id id)]
+    "dashboard" [Dashboard (db/select-one Dashboard :id id)]))
 
 (api/defendpoint GET "/"
   "Get revisions of an object."
@@ -33,7 +34,7 @@
   {entity Entity, id s/Int, revision_id s/Int}
   (let [[model instance] (model-and-instance entity id)
         _                (api/write-check instance)
-        revision         (api/check-404 (Revision :model (:name model), :model_id id, :id revision_id))]
+        revision         (api/check-404 (db/select-one Revision :model (:name model), :model_id id, :id revision_id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
     (when (= model Card)
       (api.card/check-data-permissions-for-query (get-in revision [:object :dataset_query])))

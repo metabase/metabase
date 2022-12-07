@@ -10,7 +10,6 @@
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -65,6 +64,9 @@
 (comment moderation/keep-me)
 
 (models/defmodel Dashboard :report_dashboard)
+
+(derive Dashboard ::perms/use-parent-collection-perms)
+
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (defn- pre-delete [dashboard]
@@ -129,7 +131,7 @@
   [dashboard]
   (update-dashboard-subscription-pulses! dashboard))
 
-(u/strict-extend (class Dashboard)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true
@@ -139,36 +141,31 @@
           :pre-insert  pre-insert
           :pre-update  pre-update
           :post-update post-update
-          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
-  ;; You can read/write a Dashboard if you can read/write its parent Collection
-  mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection
-
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields Dashboard
+  [_dashboard]
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defn serialize-dashboard
-  "Serialize a Dashboard for use in a Revision."
-  [dashboard]
+(defmethod revision/serialize-instance Dashboard
+  [_model _id dashboard]
   (-> dashboard
       (select-keys [:description :name :cache_ttl])
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
-                           (-> (select-keys dashboard-card [:sizeX :sizeY :row :col :id :card_id])
+                           (-> (select-keys dashboard-card [:size_x :size_y :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
 
-(defn- revert-dashboard!
-  "Revert a Dashboard to the state defined by `serialized-dashboard`."
-  [_ dashboard-id user-id serialized-dashboard]
+(defmethod revision/revert-to-revision! Dashboard
+  [_model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
   (db/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
-        current-cards       (db/select [DashboardCard :sizeX :sizeY :row :col :id :card_id :dashboard_id]
+        current-cards       (db/select [DashboardCard :size_x :size_y :row :col :id :card_id :dashboard_id]
                                        :dashboard_id dashboard-id)
         id->current-card    (zipmap (map :id current-cards) current-cards)
         all-dashcard-ids    (concat (map :id serialized-cards)
@@ -185,14 +182,13 @@
                                                                       :dashboard_id dashboard-id
                                                                       :creator_id   user-id))
 
-          ;; If card is in both we need to change :sizeX, :sizeY, :row, and :col to match serialized-card as needed
+          ;; If card is in both we need to change :size_x, :size_y, :row, and :col to match serialized-card as needed
           :else (dashboard-card/update-dashboard-card! serialized-card)))))
 
   serialized-dashboard)
 
-(defn- diff-dashboards-str
-  "Describe the difference between two Dashboard instances."
-  [_ dashboard1 dashboard2]
+(defmethod revision/diff-str Dashboard
+  [_model dashboard1 dashboard2]
   (let [[removals changes]  (diff dashboard1 dashboard2)
         check-series-change (fn [idx card-changes]
                               (when (and (:series card-changes)
@@ -233,13 +229,6 @@
         (->> (filter identity)
              build-sentence))))
 
-(u/strict-extend (class Dashboard)
-  revision/IRevisioned
-  (merge revision/IRevisionedDefaults
-         {:serialize-instance  (fn [_ _ dashboard] (serialize-dashboard dashboard))
-          :revert-to-revision! revert-dashboard!
-          :diff-str            diff-dashboards-str}))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
@@ -248,7 +237,7 @@
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
-  (let [dash (Dashboard (u/the-id dashboard-or-id))]
+  (let [dash (db/select-one Dashboard :id (u/the-id dashboard-or-id))]
     (params/dashboard->param-field-ids (hydrate dash [:ordered_cards :card]))))
 
 
@@ -312,7 +301,7 @@
   [card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (Card (:id card)))
+    (and (integer? (:id card)) (db/select-one Card :id (:id card)))
     card
 
     ;; Don't save text cards
@@ -388,7 +377,7 @@
                                                                      {param-id ParamWithMapping})
   "Return map of Dashboard parameter key -> param with resolved `:mappings`.
 
-    (dashboard->resolved-params (Dashboard 62))
+    (dashboard->resolved-params (db/select-one Dashboard :id 62))
     ;; ->
     {\"ee876336\" {:name     \"Category Name\"
                    :slug     \"category_name\"
@@ -420,30 +409,72 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-(defmethod serdes.base/extract-query "Dashboard" [_ {:keys [user]}]
-  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
-  (serdes.base/raw-reducible-query
-    "Dashboard"
-    {:select     [:dash.*]
-     :from       [[:report_dashboard :dash]]
-     :left-join  [[:collection :coll] [:= :coll.id :dash.collection_id]]
-     :where      (if user
-                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                   [:is :coll.personal_owner_id nil])}))
+(defmethod serdes.base/extract-query "Dashboard" [_ opts]
+  (eduction (map #(hydrate % :ordered_cards))
+            (serdes.base/extract-query-collections Dashboard opts)))
 
-;; TODO Maybe nest collections -> dashboards -> dashcards?
+(defn- extract-dashcard
+  [dashcard]
+  (-> (into (sorted-map) dashcard)
+      (dissoc :id :collection_authority_level :dashboard_id :updated_at)
+      (update :card_id                serdes.util/export-fk 'Card)
+      (update :parameter_mappings     serdes.util/export-parameter-mappings)
+      (update :visualization_settings serdes.util/export-visualization-settings)))
+
 (defmethod serdes.base/extract-one "Dashboard"
-  [_ _ dash]
-  (-> (serdes.base/extract-one-basics "Dashboard" dash)
-      (update :collection_id serdes.util/export-fk 'Collection)
-      (update :creator_id    serdes.util/export-fk-keyed 'User :email)))
+  [_model-name _opts dash]
+  (let [dash (if (contains? dash :ordered_cards)
+               dash
+               (hydrate dash :ordered_cards))]
+    (-> (serdes.base/extract-one-basics "Dashboard" dash)
+        (update :ordered_cards     #(mapv extract-dashcard %))
+        (update :collection_id     serdes.util/export-fk 'Collection)
+        (update :creator_id        serdes.util/export-user)
+        (update :made_public_by_id serdes.util/export-user))))
 
 (defmethod serdes.base/load-xform "Dashboard"
   [dash]
   (-> dash
-      (update :collection_id serdes.util/import-fk 'Collection)
-      (update :creator_id    serdes.util/import-fk-keyed 'User :email)))
+      serdes.base/load-xform-basics
+      ;; Deliberately not doing anything to :ordered_cards - they get handled by load-insert! and load-update! below.
+      (update :collection_id     serdes.util/import-fk 'Collection)
+      (update :creator_id        serdes.util/import-user)
+      (update :made_public_by_id serdes.util/import-user)))
+
+(defn- dashcard-for [dashcard dashboard]
+  (assoc dashcard
+         :dashboard_id (:entity_id dashboard)
+         :serdes/meta [{:model "Dashboard"     :id (:entity_id dashboard)}
+                       {:model "DashboardCard" :id (:entity_id dashcard)}]))
+
+;; Call the default load-one! for the Dashboard, then for each DashboardCard.
+(defmethod serdes.base/load-one! "Dashboard" [ingested maybe-local]
+  (let [dashboard ((get-method serdes.base/load-one! :default) (dissoc ingested :ordered_cards) maybe-local)]
+    (doseq [dashcard (:ordered_cards ingested)]
+      (serdes.base/load-one! (dashcard-for dashcard dashboard)
+                             (db/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
+
+(defn- serdes-deps-dashcard
+  [{:keys [card_id parameter_mappings visualization_settings]}]
+  (->> (mapcat serdes.util/mbql-deps parameter_mappings)
+       (concat (serdes.util/visualization-settings-deps visualization_settings))
+       (concat (when card_id #{[{:model "Card" :id card_id}]}))
+       set))
 
 (defmethod serdes.base/serdes-dependencies "Dashboard"
-  [{:keys [collection_id]}]
-  [[{:model "Collection" :id collection_id}]])
+  [{:keys [collection_id ordered_cards]}]
+  (->> ordered_cards
+       (map serdes-deps-dashcard)
+       (reduce set/union #{[{:model "Collection" :id collection_id}]})))
+
+(defmethod serdes.base/serdes-descendants "Dashboard" [_model-name id]
+  ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
+  ;; here. So their cards, both direct and mentioned in their parameters.
+  (set (for [{:keys [card_id parameter_mappings]} (db/select ['DashboardCard :card_id :parameter_mappings]
+                                                             :dashboard_id id)
+             ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
+             card-id  (cond-> (set (keep :card_id parameter_mappings))
+                        card_id (conj card_id))]
+         ["Card" card-id])))
+
+(serdes.base/register-ingestion-path! "Dashboard" (serdes.base/ingestion-matcher-collected "collections" "Dashboard"))

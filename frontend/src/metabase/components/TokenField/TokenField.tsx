@@ -6,7 +6,6 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { TokenFieldAddon, TokenFieldItem } from "./TokenField.styled";
 
 import {
   KEYCODE_ESCAPE,
@@ -18,6 +17,13 @@ import {
   KEY_COMMA,
 } from "metabase/lib/keyboard";
 import { isObscured } from "metabase/lib/dom";
+import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
+
+import {
+  TokenInputItem,
+  TokenFieldContainer,
+  PrefixContainer,
+} from "./TokenField.styled";
 
 export type LayoutRendererArgs = {
   valuesList: React.ReactNode;
@@ -453,18 +459,12 @@ export default class TokenField extends Component<
     } else {
       onChange(valueToAdd.slice(0, 1));
     }
-    // reset the input value
-    // setTimeout(() =>
-    //   this.setInputValue("")
-    // )
   }
 
   removeValue(valueToRemove: any) {
     const { value, onChange } = this.props;
     const values = value.filter(v => !this._valueIsEqual(v, valueToRemove));
     onChange(values);
-    // reset the input value
-    // this.setInputValue("");
   }
 
   _valueIsEqual(v1: any, v2: any) {
@@ -537,7 +537,8 @@ export default class TokenField extends Component<
       selectedOptionValue,
     } = this.state;
 
-    if (!multi && isFocused) {
+    // for non-multi fields, keep the value in the input
+    if (!multi) {
       inputValue = inputValue || value[0];
       value = [];
     }
@@ -547,7 +548,8 @@ export default class TokenField extends Component<
       value.length > 0 &&
       updateOnInputChange &&
       parseFreeformValue &&
-      value[value.length - 1] === parseFreeformValue(inputValue)
+      value[value.length - 1] === parseFreeformValue(inputValue) &&
+      multi
     ) {
       if (isFocused) {
         // if focused, don't render the last value
@@ -570,25 +572,23 @@ export default class TokenField extends Component<
 
     const isControlledInput = !!this.onInputChange;
     const valuesList = (
-      <ul
-        className={cx(
-          className,
-          "pl1 pt1 pb0 pr0 flex align-center flex-wrap bg-white scroll-x scroll-y",
-        )}
-        style={{ maxHeight: 130, ...style }}
+      <TokenFieldContainer
+        style={style}
+        className={cx(className, {
+          "TokenField--focused": isFocused,
+        })}
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {!!prefix && (
-          <span className="text-medium mb1 py1 pr1" data-testid="input-prefix">
-            {prefix}
-          </span>
+          <PrefixContainer data-testid="input-prefix">{prefix}</PrefixContainer>
         )}
         {value.map((v, index) => (
-          <TokenFieldItem key={index} isValid={validateValue(v)}>
-            <span
-              style={{ ...defaultStyleValue, ...valueStyle }}
-              className={multi ? "pl1 pr0" : "px1"}
-            >
+          <TokenFieldItem
+            key={index}
+            className="TokenField-ItemWrapper"
+            isValid={validateValue(v)}
+          >
+            <span style={{ ...defaultStyleValue, ...valueStyle }}>
               {valueRenderer(v)}
             </span>
             {multi && (
@@ -597,6 +597,7 @@ export default class TokenField extends Component<
                 onClick={e => {
                   e.preventDefault();
                   this.removeValue(v);
+                  this.inputRef?.current?.blur();
                 }}
                 onMouseDown={e => e.preventDefault()}
               >
@@ -606,7 +607,7 @@ export default class TokenField extends Component<
           </TokenFieldItem>
         ))}
         {canAddItems && (
-          <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
+          <TokenInputItem className="TokenField-NewItemInputContainer">
             <input
               ref={this.inputRef}
               style={{ ...defaultStyleValue, ...valueStyle }}
@@ -622,9 +623,9 @@ export default class TokenField extends Component<
               onBlur={this.onInputBlur}
               onPaste={this.onInputPaste}
             />
-          </li>
+          </TokenInputItem>
         )}
-      </ul>
+      </TokenFieldContainer>
     );
 
     const optionsList =

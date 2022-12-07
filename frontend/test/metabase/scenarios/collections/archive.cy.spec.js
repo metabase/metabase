@@ -15,6 +15,28 @@ describe("scenarios > collections > archive", () => {
     cy.signInAsAdmin();
   });
 
+  it("should load initially hidden archived items on scroll (metabase#24213)", () => {
+    const stubbedItems = Array.from({ length: 50 }, (v, i) => ({
+      name: "Item " + i,
+      id: i + 1,
+      model: "card",
+    }));
+
+    cy.intercept("GET", "/api/search?archived=true", req => {
+      req.reply({
+        statusCode: 200,
+        body: {
+          data: stubbedItems,
+        },
+      });
+    });
+
+    cy.visit("/archive");
+
+    cy.get("main").scrollTo("bottom");
+    cy.findByText("Item 40");
+  });
+
   it("shows correct page when visiting page of question that was in archived collection (metabase##23501)", () => {
     getCollectionIdFromSlug("first_collection", collectionId => {
       const questionDetails = getQuestionDetails(collectionId);

@@ -2,11 +2,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { singularize } from "metabase/lib/formatting";
-import { isPK, isEntityName } from "metabase/lib/schema_metadata";
-import { Table } from "metabase-types/types/Table";
 
-import Question from "metabase-lib/lib/Question";
 import { DatasetData, Column } from "metabase-types/types/Dataset";
+import { isPK, isEntityName } from "metabase-lib/types/utils/isa";
+import Question from "metabase-lib/Question";
+import Table from "metabase-lib/metadata/Table";
 
 import { ObjectId } from "./types";
 

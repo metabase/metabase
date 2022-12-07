@@ -5,12 +5,10 @@
  */
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Link } from "react-router";
 import { connect } from "react-redux";
 
 import _ from "underscore";
 import { t } from "ttag";
-import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
 
 // COMPONENTS
 
@@ -23,34 +21,35 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import AdminLayout from "metabase/components/AdminLayout";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import Section, { SectionHeader } from "../components/Section";
-import SelectSeparator from "../components/SelectSeparator";
 
 import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
-import { isFK } from "metabase/lib/types";
 
-import {
-  FieldVisibilityPicker,
-  SemanticTypeAndTargetPicker,
-} from "../components/database/ColumnItem";
-import FieldRemapping from "../components/FieldRemapping";
-import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 
 // SELECTORS
 import { getMetadata } from "metabase/selectors/metadata";
 
 // ACTIONS
-import { rescanFieldValues, discardFieldValues } from "../field";
 
 // LIB
 import { has_field_values_options } from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import { isCurrency } from "metabase/lib/schema_metadata";
 
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
+import { isTypeFK, isCurrency } from "metabase-lib/types/utils/isa";
+import { rescanFieldValues, discardFieldValues } from "../field";
+import UpdateCachedFieldValues from "../components/UpdateCachedFieldValues";
+import FieldRemapping from "../components/FieldRemapping";
+import {
+  FieldVisibilityPicker,
+  SemanticTypeAndTargetPicker,
+} from "../components/database/ColumnItem";
+import SelectSeparator from "../components/SelectSeparator";
+import Section, { SectionHeader } from "../components/Section";
+import { humanizeCoercionStrategy } from "./humanizeCoercionStrategy";
+import { BackButtonLink, FieldNameInput } from "./FieldApp.styled";
 
 const mapStateToProps = (state, props) => {
   const databaseId = parseInt(props.params.databaseId);
@@ -298,7 +297,7 @@ const FieldGeneralPane = ({
       />
     </Section>
 
-    {!isFK(field.semantic_type) && is_coerceable(field.base_type) && (
+    {!isTypeFK(field.semantic_type) && is_coerceable(field.base_type) && (
       <Section>
         <SectionHeader title={t`Cast to a specific data type`} />
         <Select
@@ -353,6 +352,7 @@ const FieldGeneralPane = ({
         field={field}
         table={table}
         fields={metadata.fields}
+        metadata={metadata}
         fieldsError={fieldsError}
         updateFieldProperties={onUpdateFieldProperties}
         updateFieldValues={onUpdateFieldValues}
@@ -395,12 +395,11 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
 // TODO: Should this invoke goBack() instead?
 // not sure if it's possible to do that neatly with Link component
 export const BackButton = ({ databaseId, tableId }) => (
-  <Link
+  <BackButtonLink
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
-    className="circle text-white p2 flex align-center justify-center bg-dark bg-brand-hover"
   >
     <Icon name="arrow_left" />
-  </Link>
+  </BackButtonLink>
 );
 
 export class FieldHeader extends React.Component {
@@ -432,9 +431,9 @@ export class FieldHeader extends React.Component {
   render() {
     return (
       <div>
-        <InputBlurChange
+        <FieldNameInput
           name="display_name"
-          className="h2 AdminInput bordered rounded border-dark block mb1"
+          className="h2 AdminInput"
           value={this.props.field.display_name}
           onBlurChange={this.onNameChange}
           placeholder={this.props.field.name}

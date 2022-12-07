@@ -1,6 +1,3 @@
-import uiThrottle from "raf-schd";
-import { isCypressActive } from "metabase/env";
-
 type ResizeObserverCallback = (
   entry: ResizeObserverEntry,
   observer: ResizeObserver,
@@ -16,9 +13,7 @@ function createResizeObserver() {
     });
   }
 
-  const observer = new ResizeObserver(
-    isCypressActive ? handler : uiThrottle(handler),
-  );
+  const observer = new ResizeObserver(handler);
 
   return {
     observer,

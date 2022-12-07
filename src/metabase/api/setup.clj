@@ -68,7 +68,7 @@
                         :id      session-id
                         :user_id user-id)
                       ;; HACK -- Toucan doesn't seem to work correctly with models with string IDs
-                      (models/post-insert (Session (str session-id))))]
+                      (models/post-insert (db/select-one Session :id (str session-id))))]
       ;; return user ID, session ID, and the Session object itself
       {:session-id session-id, :user-id user-id, :session session})))
 

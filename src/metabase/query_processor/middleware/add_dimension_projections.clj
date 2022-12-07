@@ -60,9 +60,9 @@
   [fields :- [mbql.s/Field]]
   (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
     (letfn [(thunk []
-              (u/key-by :field_id (db/select [Dimension :id :field_id :name :human_readable_field_id]
-                                    :field_id [:in field-ids]
-                                    :type     "external")))]
+              (m/index-by :field_id (db/select [Dimension :id :field_id :name :human_readable_field_id]
+                                      :field_id [:in field-ids]
+                                      :type     "external")))]
       (if (qp.store/initialized?)
         (qp.store/cached [::fetch-dimensions field-ids]
           (thunk))
@@ -258,8 +258,7 @@
 (s/defn ^:private merge-metadata-for-internal-remaps :- [su/Map]
   [columns :- [su/Map] {:keys [internal-only-dims]} :- (s/maybe InternalColumnsInfo)]
   (reduce
-   (fn [columns internal-dimension-info]
-     (merge-metadata-for-internally-remapped-column columns internal-dimension-info))
+   merge-metadata-for-internally-remapped-column
    columns
    internal-only-dims))
 
@@ -339,8 +338,7 @@
 (s/defn ^:private merge-metadata-for-external-remaps :- [su/Map]
   [columns :- [su/Map] remapping-dimensions :- (s/maybe [ExternalRemappingDimension])]
   (reduce
-   (fn [columns dimension]
-     (merge-metadata-for-externally-remapped-column columns dimension))
+   merge-metadata-for-externally-remapped-column
    columns
    remapping-dimensions))
 

@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import { PRODUCTS } from "__support__/sample_database_fixture";
-import Table from "metabase-lib/lib/metadata/Table";
+import Table from "metabase-lib/metadata/Table";
 
 import { TableInfo } from "./TableInfo";
 
@@ -30,7 +30,7 @@ const tableWithoutDescription = new Table({
 const fetchForeignKeys = jest.fn();
 const fetchMetadata = jest.fn();
 
-function setup({ id, table }: { table: Table | undefined; id: number }) {
+function setup({ id, table }: { table: Table | undefined; id: Table["id"] }) {
   fetchForeignKeys.mockReset();
   fetchMetadata.mockReset();
 

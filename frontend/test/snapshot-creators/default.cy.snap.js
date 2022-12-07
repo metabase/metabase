@@ -13,6 +13,10 @@ const {
   STATIC_PRODUCTS_ID,
   STATIC_REVIEWS_ID,
   STATIC_PEOPLE_ID,
+  STATIC_ACCOUNTS_ID,
+  STATIC_ANALYTIC_EVENTS_ID,
+  STATIC_FEEDBACK_ID,
+  STATIC_INVOICES_ID,
 } = SAMPLE_DB_TABLES;
 
 const {
@@ -35,6 +39,7 @@ describe("snapshots", () => {
       createCollections();
       withSampleDatabase(SAMPLE_DATABASE => {
         ensureTableIdsAreCorrect(SAMPLE_DATABASE);
+        hideNewSampleTables(SAMPLE_DATABASE);
         createQuestionsAndDashboards(SAMPLE_DATABASE);
         cy.writeFile(
           "frontend/test/__support__/e2e/cypress_sample_database.json",
@@ -177,8 +182,8 @@ describe("snapshots", () => {
               card_id,
               row: 0,
               col: 0,
-              sizeX: 12,
-              sizeY: 8,
+              size_x: 12,
+              size_y: 8,
             },
           ],
         });
@@ -208,11 +213,30 @@ describe("snapshots", () => {
     PRODUCTS_ID,
     REVIEWS_ID,
     PEOPLE_ID,
+    ACCOUNTS_ID,
+    ANALYTIC_EVENTS_ID,
+    FEEDBACK_ID,
+    INVOICES_ID,
   }) {
     expect(ORDERS_ID).to.eq(STATIC_ORDERS_ID);
     expect(PEOPLE_ID).to.eq(STATIC_PEOPLE_ID);
     expect(REVIEWS_ID).to.eq(STATIC_REVIEWS_ID);
     expect(PRODUCTS_ID).to.eq(STATIC_PRODUCTS_ID);
+    expect(ACCOUNTS_ID).to.eq(STATIC_ACCOUNTS_ID);
+    expect(ANALYTIC_EVENTS_ID).to.eq(STATIC_ANALYTIC_EVENTS_ID);
+    expect(FEEDBACK_ID).to.eq(STATIC_FEEDBACK_ID);
+    expect(INVOICES_ID).to.eq(STATIC_INVOICES_ID);
+  }
+
+  function hideNewSampleTables({
+    ACCOUNTS_ID,
+    ANALYTIC_EVENTS_ID,
+    FEEDBACK_ID,
+    INVOICES_ID,
+  }) {
+    [ACCOUNTS_ID, ANALYTIC_EVENTS_ID, FEEDBACK_ID, INVOICES_ID].forEach(id => {
+      cy.request("PUT", `/api/table/${id}`, { visibility_type: "hidden" });
+    });
   }
 
   // TODO: It'd be nice to have one file per snapshot.

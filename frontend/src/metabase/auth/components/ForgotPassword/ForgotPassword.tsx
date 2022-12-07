@@ -1,12 +1,9 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import Users from "metabase/entities/users";
+import Button from "metabase/core/components/Button";
 import AuthLayout from "../../containers/AuthLayout";
-import { ForgotPasswordData } from "../../types";
+import ForgotPasswordForm from "../ForgotPasswordForm";
 import {
-  FormFooter,
-  FormLink,
-  FormTitle,
   InfoBody,
   InfoIcon,
   InfoIconContainer,
@@ -53,43 +50,6 @@ const ForgotPassword = ({
   );
 };
 
-interface ForgotPasswordFormProps {
-  initialEmail?: string;
-  onSubmit: (email: string) => void;
-}
-
-const ForgotPasswordForm = ({
-  initialEmail,
-  onSubmit,
-}: ForgotPasswordFormProps): JSX.Element => {
-  const initialValues = useMemo(() => {
-    return { email: initialEmail };
-  }, [initialEmail]);
-
-  const handleSubmit = useCallback(
-    async ({ email }: ForgotPasswordData) => {
-      await onSubmit(email);
-    },
-    [onSubmit],
-  );
-
-  return (
-    <div>
-      <FormTitle>{t`Forgot password`}</FormTitle>
-      <Users.Form
-        form={Users.forms.password_forgot}
-        initialValues={initialValues}
-        submitTitle={t`Send password reset email`}
-        submitFullWidth
-        onSubmit={handleSubmit}
-      />
-      <FormFooter>
-        <FormLink to="/auth/login">{t`Back to sign in`}</FormLink>
-      </FormFooter>
-    </div>
-  );
-};
-
 const ForgotPasswordSuccess = (): JSX.Element => {
   return (
     <InfoBody>
@@ -99,10 +59,7 @@ const ForgotPasswordSuccess = (): JSX.Element => {
       <InfoMessage>
         {t`Check your email for instructions on how to reset your password.`}
       </InfoMessage>
-      <InfoLink
-        className="Button Button--primary"
-        to="/auth/login"
-      >{t`Back to sign in`}</InfoLink>
+      <Button primary as="a" href="/auth/login">{t`Back to sign in`}</Button>
     </InfoBody>
   );
 };

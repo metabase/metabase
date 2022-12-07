@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { space } from "metabase/styled-components/theme";
+import { inputPadding } from "metabase/core/style/input";
 interface SelectButtonRootProps {
   hasValue: boolean;
   fullWidth: boolean;
@@ -17,14 +18,14 @@ const getColor = ({ hasValue, highlighted }: SelectButtonRootProps) => {
 };
 
 export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
+  ${inputPadding}
   cursor: pointer;
   display: flex;
   width: ${props => (props.fullWidth ? "100%" : "unset")};
   align-items: center;
-  padding: 0.6em;
   border: 1px solid
     ${({ hasValue, highlighted }) =>
-      hasValue && highlighted ? color("brand") : color("border-dark")};
+      hasValue && highlighted ? color("brand") : color("border")};
   background-color: ${({ hasValue, highlighted }) =>
     hasValue && highlighted ? color("brand") : color("white")};
   border-radius: ${space(1)};

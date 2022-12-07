@@ -35,6 +35,7 @@
       :is_active        true
       :last_login       false
       :ldap_auth        false
+      :sso_source       nil
       :login_attributes nil
       :updated_at       true
       :locale           nil})))
@@ -254,7 +255,7 @@
       (mt/with-temp* [LoginHistory [_ {:user_id   (mt/user->id :rasta)
                                        :device_id (str (java.util.UUID/randomUUID))
                                        :timestamp #t "2021-03-18T19:52:41.808482Z"}]
-                      Card [card1 {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+                      Card [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -272,8 +273,8 @@
                    mt/boolean-ids-and-timestamps
                    (dissoc :is_qbnewb :last_login))))))
     (testing "check that `has_question_and_dashboard` is `true`."
-      (mt/with-temp* [Dashboard [dash1 {:name "dash1" :creator_id (mt/user->id :rasta)}]
-                      Card      [card1 {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+      (mt/with-temp* [Dashboard [_ {:name "dash1" :creator_id (mt/user->id :rasta)}]
+                      Card      [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -411,7 +412,7 @@
                                  :user_group_memberships (group-or-ids->user-group-memberships
                                                           [(perms-group/all-users) group-1 group-2])})
           (is (= #{"All Users" "Group 1" "Group 2"}
-                 (user-test/user-group-names (User :email email)))))))
+                 (user-test/user-group-names (db/select-one User :email email)))))))
 
     (testing (str "If you forget the All Users group it should fail, because you cannot have a User that's not in the "
                   "All Users group. The whole API call should fail and no user should be created, even though the "
@@ -499,7 +500,7 @@
                                            :last_name    "Era"
                                            :email        "cam.era@metabase.com"
                                            :is_superuser true}]
-                      Collection [coll]]
+                      Collection [_]]
         (letfn [(user [] (into {} (-> (db/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
                                       (hydrate :personal_collection_id :personal_collection_name)
                                       (dissoc :id :personal_collection_id :common_name))))]
@@ -640,6 +641,26 @@
                     :personal_collection_name "Blue's Personal Collection"}
                    (change-user-via-api! {:first_name "Blue"
                                           :last_name  nil})))))))))
+
+(deftest update-sso-user-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that we do not update a user's first and last names if they are an SSO user."
+      (mt/with-temp User [{user-id :id} {:first_name   "SSO"
+                                         :last_name    "User"
+                                         :email        "sso-user@metabase.com"
+                                         :sso_source   "jwt"
+                                         :is_superuser true}]
+        (letfn [(change-user-via-api! [expected-status m]
+                  (mt/user-http-request :crowberto :put expected-status (str "user/" user-id) m))]
+          (testing "`:first_name` changes are rejected"
+            (is (= {:errors {:first_name "Editing first name is not allowed for SSO users."}}
+                   (change-user-via-api! 400 {:first_name "NOT-SSO"}))))
+          (testing "`:last_name` changes are rejected"
+            (is (= {:errors {:last_name "Editing last name is not allowed for SSO users."}}
+                   (change-user-via-api! 400 {:last_name "USER"}))))
+          (testing "New names that are the same as existing names succeed because there is no change."
+            (is (partial= {:first_name "SSO" :last_name  "User"}
+                          (change-user-via-api! 200 {:first_name "SSO" :last_name  "User"})))))))))
 
 (deftest update-email-check-if-already-used-test
   (testing "PUT /api/user/:id"
@@ -886,11 +907,12 @@
 
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")
-      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
+      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                         google-auth-enabled    true]
         (mt/with-temp User [user {:google_auth true}]
           (db/update! User (u/the-id user)
             :is_active false)
-          (mt/with-temporary-setting-values [google-auth-client-id nil]
+          (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :google_auth false}
                    (mt/derecordize (db/select-one [User :is_active :google_auth] :id (u/the-id user)))))))))))
@@ -986,7 +1008,7 @@
       (testing "shouldn't be allowed to set someone else's status"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403
-                                     (format "user/%d/modal/endpoint"
+                                     (format "user/%d/modal/%s"
                                              (mt/user->id :trashbird)
                                              endpoint))))))))
 

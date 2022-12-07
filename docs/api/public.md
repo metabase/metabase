@@ -1,28 +1,12 @@
 ---
 title: "Public"
-summary: "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
+summary: |
+  Metabase API endpoints for viewing publicly-accessible Cards and Dashboards.
 ---
 
 # Public
 
 Metabase API endpoints for viewing publicly-accessible Cards and Dashboards.
-
-  - [GET /api/public/card/:uuid](#get-apipubliccarduuid)
-  - [GET /api/public/card/:uuid/field/:field-id/remapping/:remapped-id](#get-apipubliccarduuidfieldfield-idremappingremapped-id)
-  - [GET /api/public/card/:uuid/field/:field-id/search/:search-field-id](#get-apipubliccarduuidfieldfield-idsearchsearch-field-id)
-  - [GET /api/public/card/:uuid/field/:field-id/values](#get-apipubliccarduuidfieldfield-idvalues)
-  - [GET /api/public/card/:uuid/query](#get-apipubliccarduuidquery)
-  - [GET /api/public/card/:uuid/query/:export-format](#get-apipubliccarduuidqueryexport-format)
-  - [GET /api/public/dashboard/:uuid](#get-apipublicdashboarduuid)
-  - [GET /api/public/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id](#get-apipublicdashboarduuiddashcarddashcard-idcardcard-id)
-  - [GET /api/public/dashboard/:uuid/field/:field-id/remapping/:remapped-id](#get-apipublicdashboarduuidfieldfield-idremappingremapped-id)
-  - [GET /api/public/dashboard/:uuid/field/:field-id/search/:search-field-id](#get-apipublicdashboarduuidfieldfield-idsearchsearch-field-id)
-  - [GET /api/public/dashboard/:uuid/field/:field-id/values](#get-apipublicdashboarduuidfieldfield-idvalues)
-  - [GET /api/public/dashboard/:uuid/params/:param-key/search/:query](#get-apipublicdashboarduuidparamsparam-keysearchquery)
-  - [GET /api/public/dashboard/:uuid/params/:param-key/values](#get-apipublicdashboarduuidparamsparam-keyvalues)
-  - [GET /api/public/oembed](#get-apipublicoembed)
-  - [GET /api/public/pivot/card/:uuid/query](#get-apipublicpivotcarduuidquery)
-  - [GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id](#get-apipublicpivotdashboarduuiddashcarddashcard-idcardcard-id)
 
 ## `GET /api/public/card/:uuid`
 

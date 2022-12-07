@@ -7,10 +7,10 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 
-import Question from "metabase-lib/lib/Question";
 import { Card } from "metabase-types/types/Card";
 
 import EditableText from "metabase/core/components/EditableText";
+import Question from "metabase-lib/Question";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";
 import { Root, ContentSection, Header } from "./QuestionInfoSidebar.styled";
@@ -25,6 +25,7 @@ export const QuestionInfoSidebar = ({
   onSave,
 }: QuestionInfoSidebarProps) => {
   const description = question.description();
+  const canWrite = question.canWrite();
   const isDataset = question.isDataset();
   const isPersisted = isDataset && question.isPersisted();
   const isCachingAvailable =
@@ -50,9 +51,12 @@ export const QuestionInfoSidebar = ({
         <Header>{t`About`}</Header>
         <EditableText
           initialValue={description}
-          placeholder={t`Add description`}
+          placeholder={
+            !description && !canWrite ? t`No description` : t`Add description`
+          }
           isOptional
           isMultiline
+          isDisabled={!canWrite}
           onChange={handleSave}
         />
         <PLUGIN_MODERATION.QuestionModerationSection question={question} />

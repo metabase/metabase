@@ -43,6 +43,7 @@ describe("DataSelector", () => {
     fields: {},
     metrics: {},
     segments: {},
+    questions: {},
   };
 
   it("should allow selecting db, schema, and table", () => {

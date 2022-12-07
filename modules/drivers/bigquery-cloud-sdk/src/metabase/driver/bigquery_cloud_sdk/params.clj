@@ -7,7 +7,7 @@
 (defn- param ^QueryParameterValue [type-name v]
   (.build (doto (QueryParameterValue/newBuilder)
             (.setType (StandardSQLTypeName/valueOf type-name))
-            (.setValue (if (some? v) (str v))))))
+            (.setValue (some-> v str)))))
 
 (defmulti ^:private ->QueryParameterValue
   {:arglists '(^QueryParameterValue [v])}

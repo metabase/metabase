@@ -3,8 +3,6 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
-import Icon from "metabase/components/Icon";
 import MetabaseSettings from "metabase/lib/settings";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
@@ -12,6 +10,7 @@ import Tooltip from "metabase/components/Tooltip";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
 
 import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
+import DashboardSharingEmbeddingModal from "../containers/DashboardSharingEmbeddingModal.jsx";
 
 export const getDashboardActions = (
   self,
@@ -33,6 +32,10 @@ export const getDashboardActions = (
     hasNightModeToggle,
   },
 ) => {
+  if (dashboard?.is_app_page) {
+    return [];
+  }
+
   const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
   const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
 
@@ -54,15 +57,12 @@ export const getDashboardActions = (
     if (canCreateSubscription && !isFullscreen) {
       buttons.push(
         <Tooltip tooltip={t`Subscriptions`} key="dashboard-subscriptions">
-          <span>
-            <DashboardHeaderButton
-              disabled={!canManageSubscriptions}
-              onClick={onSharingClick}
-              data-metabase-event="Dashboard;Subscriptions"
-            >
-              <Icon size={18} name="subscription" />
-            </DashboardHeaderButton>
-          </span>
+          <DashboardHeaderButton
+            icon="subscription"
+            disabled={!canManageSubscriptions}
+            onClick={onSharingClick}
+            data-metabase-event="Dashboard;Subscriptions"
+          />
         </Tooltip>,
       );
     }
@@ -89,15 +89,13 @@ export const getDashboardActions = (
                   : t`Add data to share this dashboard`
               }
             >
-              <DashboardHeaderButton>
-                <Icon
-                  name="share"
-                  className={cx({
-                    "text-brand-hover": canShareDashboard,
-                    "text-light": !canShareDashboard,
-                  })}
-                />
-              </DashboardHeaderButton>
+              <DashboardHeaderButton
+                icon="share"
+                className={cx({
+                  "text-brand-hover": canShareDashboard,
+                  "text-light": !canShareDashboard,
+                })}
+              />
             </Tooltip>
           }
         />,
@@ -125,13 +123,15 @@ export const getDashboardActions = (
         tooltip={isNightMode ? t`Daytime mode` : t`Nighttime mode`}
       >
         <span data-metabase-event={"Dashboard;Night Mode;" + !isNightMode}>
-          <DashboardHeaderButton>
-            <NightModeIcon
-              className="text-brand-hover cursor-pointer"
-              isNightMode={isNightMode}
-              onClick={() => onNightModeChange(!isNightMode)}
-            />
-          </DashboardHeaderButton>
+          <DashboardHeaderButton
+            icon={
+              <NightModeIcon
+                className="text-brand-hover cursor-pointer"
+                isNightMode={isNightMode}
+                onClick={() => onNightModeChange(!isNightMode)}
+              />
+            }
+          />
         </span>
       </Tooltip>,
     );
@@ -148,13 +148,14 @@ export const getDashboardActions = (
           data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
         >
           <DashboardHeaderButton
+            icon={
+              <FullscreenIcon
+                className="text-brand-hover"
+                isFullscreen={isFullscreen}
+              />
+            }
             onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
-          >
-            <FullscreenIcon
-              className="text-brand-hover"
-              isFullscreen={isFullscreen}
-            />
-          </DashboardHeaderButton>
+          />
         </span>
       </Tooltip>,
     );

@@ -174,7 +174,7 @@
 
 (defn- all-keywords [m]
   (let [all-kws (atom #{})]
-    (walk/postwalk (fn [v] (if (keyword? v) (swap! all-kws #(conj % v)))) m)
+    (walk/postwalk (fn [v] (when (keyword? v) (swap! all-kws #(conj % v)))) m)
     @all-kws))
 
 (t/deftest comprehensive-click-actions-test

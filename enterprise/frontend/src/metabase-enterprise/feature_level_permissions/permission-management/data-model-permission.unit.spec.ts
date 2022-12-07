@@ -167,5 +167,21 @@ describe("buildDataModelPermission", () => {
       );
       expect(downgradePermissionConfirmation?.message).toBeUndefined();
     });
+
+    it("does not warn when group permissions is blocking", () => {
+      const permissionModel = buildDataModelPermission(
+        { databaseId },
+        groupId,
+        isNotAdmin,
+        getPermissionGraph("block"),
+        defaultGroup,
+        "schemas",
+      );
+
+      const [downgradePermissionConfirmation] =
+        permissionModel.confirmations("all");
+
+      expect(permissionModel.warning).toBe(null);
+    });
   });
 });

@@ -11,7 +11,7 @@ These articles will help you understand how sandboxing works:
 - [Data Sandboxing: setting row-level permissions][row-permissions].
 - [Advanced data sandboxing: limiting access to columns][column-permissions].
 
-If you can't see tables at all, check out [I can't see my tables][cant-see-tables].
+If you have a different data access issue, see [related problems](#do-you-have-a-different-problem).
 
 ## People can't see **rows** in a table they _should_ be able to see
 
@@ -158,18 +158,24 @@ Someone is supposed to be able to view some of the values in a table in their qu
 
 The administrator can [create a new group][groups] to capture precisely who's allowed access to what.
 
-[authenticating-with-saml]: ../enterprise-guide/authenticating-with-saml.html
-[locked-parameters]: /learn/embedding/embedding-charts-and-dashboards.html#hide-or-lock-parameters-to-restrict-what-data-is-shown
-[column-permissions]: /learn/permissions/data-sandboxing-column-permissions.html
-[data-model]: ../administration-guide/03-metadata-editing.html
-[data-permissions]: /learn/permissions/data-permissions.html
-[groups]: ../administration-guide/04-managing-users.html#groups
-[jwt-auth]: ../enterprise-guide/authenticating-with-jwt.html
-[permissions]: /learn/permissions/data-permissions.html
-[public-sharing]: ../administration-guide/12-public-links.html
-[row-permissions]: /learn/permissions/data-sandboxing-row-permissions.html
-[sandboxing-your-data]: ../enterprise-guide/data-sandboxes.html
-[signed-embedding]: /learn/embedding/embedding-charts-and-dashboards.html#enable-embedding-in-other-applications
-[cant-see-tables]: cant-see-tables.html
+## Do you have a different problem?
+
+- [I have a different permissions issue][troubleshooting-permissions].
+- [I can't see my tables][cant-see-tables].
+
+[authenticating-with-saml]: ../people-and-groups/authenticating-with-saml.md
+[cant-see-tables]: cant-see-tables.md
+[column-permissions]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions
+[data-model]: ../data-modeling/metadata-editing.md
+[data-permissions]: https://www.metabase.com/learn/permissions/data-permissions
+[groups]: ../people-and-groups/managing.md#groups
+[jwt-auth]: ../people-and-groups/authenticating-with-jwt.md
+[locked-parameters]: https://www.metabase.com/learn/customer-facing-analytics/embedding-charts-and-dashboards#hide-or-lock-parameters-to-restrict-what-data-is-shown
+[permissions]: https://www.metabase.com/learn/permissions/data-permissions
+[public-sharing]: ../questions/sharing/public-links.md
+[row-permissions]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions
+[sandboxing-your-data]: ../permissions/data-sandboxes.md
+[signed-embedding]: https://www.metabase.com/learn/customer-facing-analytics/embedding-charts-and-dashboards#enable-embedding-in-other-applications
 [sandbox-limitations]: ../enterprise-guide/data-sandboxes.html#current-limitations
-[unsupported-databases]: ../enterprise-guide/data-sandboxes.html#data-sandboxes-do-not-support-non-sql-databases
+[troubleshooting-permissions]: ./permissions.md
+[unsupported-databases]: ../permissions/data-sandboxes.md#data-sandboxes-do-not-support-non-sql-databases

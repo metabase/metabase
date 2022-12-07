@@ -4,7 +4,8 @@
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet Segment Table]]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]))
 
 (deftest safe-name-test
   (are [s expected] (= (names/safe-name {:name s}) expected)
@@ -23,18 +24,18 @@
 
 (deftest roundtrip-test
   (ts/with-world
-    (doseq [object [(Card card-id-root)
-                    (Card card-id)
-                    (Card card-id-nested)
-                    (Table table-id)
-                    (Field category-field-id)
-                    (Metric metric-id)
-                    (Segment segment-id)
-                    (Collection collection-id)
-                    (Collection collection-id-nested)
-                    (Dashboard dashboard-id)
-                    (Database db-id)
-                    (NativeQuerySnippet snippet-id)]]
+    (doseq [object [(db/select-one Card :id card-id-root)
+                    (db/select-one Card :id card-id)
+                    (db/select-one Card :id card-id-nested)
+                    (db/select-one Table :id table-id)
+                    (db/select-one Field :id category-field-id)
+                    (db/select-one Metric :id metric-id)
+                    (db/select-one Segment :id segment-id)
+                    (db/select-one Collection :id collection-id)
+                    (db/select-one Collection :id collection-id-nested)
+                    (db/select-one Dashboard :id dashboard-id)
+                    (db/select-one Database :id db-id)
+                    (db/select-one NativeQuerySnippet :id snippet-id)]]
       (testing (class object)
         (let [context (names/fully-qualified-name->context (names/fully-qualified-name object))
               id-fn   (some-fn :snippet :field :metric :segment :card :dashboard :collection :table :database)]
@@ -50,10 +51,10 @@
                                                    :collection_id collection-id}]
                       Collection [{sub-collection-id :id :as coll2} {:name "Sub Collection"
                                                                      :location (format "/%d/" collection-id)}]
-                      Collection [{deep-collection-id :id :as coll3} {:name "Deep Collection"
-                                                                      :location (format "/%d/%d/"
-                                                                                        collection-id
-                                                                                        sub-collection-id)}]]
+                      Collection [coll3 {:name "Deep Collection"
+                                         :location (format "/%d/%d/"
+                                                           collection-id
+                                                           sub-collection-id)}]]
         (let [card1-name "/collections/root/cards/Root Card"
               card2-name "/collections/root/collections/A Collection/cards/Collection Card"
               coll-name  "/collections/root/collections/A Collection"
@@ -86,7 +87,7 @@
       ; these drivers keep table names lowercased, causing "users" table to clash with our entity name "users"
       (mt/test-drivers #{:postgres :mysql}
         (ts/with-world
-          (let [users-pk-field (Field users-pk-field-id)
+          (let [users-pk-field (db/select-one Field :id users-pk-field-id)
                 fq-name        (names/fully-qualified-name users-pk-field)
                 ctx            (names/fully-qualified-name->context fq-name)]
             ;; MySQL doesn't have schemas, so either one of these could be acceptable

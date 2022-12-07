@@ -1,8 +1,10 @@
 // normalizr schema for use in actions/reducers
 
 import { schema } from "normalizr";
-import { generateSchemaId, entityTypeForObject } from "metabase/lib/schema";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
+import { entityTypeForObject } from "metabase/lib/schema";
+import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
+import { getUniqueFieldId } from "metabase-lib/metadata/utils/fields";
 
 export const QuestionSchema = new schema.Entity("questions");
 export const BookmarkSchema = new schema.Entity("bookmarks");
@@ -11,6 +13,7 @@ export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
 
 export const DatabaseSchema = new schema.Entity("databases");
+export const DataAppSchema = new schema.Entity("dataApps");
 export const SchemaSchema = new schema.Entity("schemas");
 export const TableSchema = new schema.Entity(
   "tables",
@@ -42,7 +45,20 @@ export const TableSchema = new schema.Entity(
     },
   },
 );
-export const FieldSchema = new schema.Entity("fields");
+
+export const FieldSchema = new schema.Entity("fields", undefined, {
+  processStrategy(field) {
+    const uniqueId = getUniqueFieldId(field);
+    return {
+      ...field,
+      uniqueId,
+    };
+  },
+  idAttribute: field => {
+    return getUniqueFieldId(field);
+  },
+});
+
 export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
 export const PersistedModelSchema = new schema.Entity("persistedModels");
@@ -91,9 +107,14 @@ TimelineSchema.define({
   events: [TimelineEventSchema],
 });
 
+DataAppSchema.define({
+  collection: CollectionSchema,
+});
+
 export const ENTITIES_SCHEMA_MAP = {
   questions: QuestionSchema,
   bookmarks: BookmarkSchema,
+  dataApps: DataAppSchema,
   dashboards: DashboardSchema,
   pulses: PulseSchema,
   collections: CollectionSchema,

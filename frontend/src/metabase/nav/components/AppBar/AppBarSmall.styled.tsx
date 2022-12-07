@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { APP_BAR_HEIGHT } from "metabase/nav/constants";
+import { APP_BAR_HEIGHT, APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 
 export const AppBarRoot = styled.div`
   background-color: ${color("bg-white")};
@@ -23,6 +23,7 @@ interface AppBarSubheaderProps {
 }
 
 export const AppBarSubheader = styled.div<AppBarSubheaderProps>`
+  height: ${APP_SUBHEADER_HEIGHT};
   padding: 1rem 1rem 1rem 1.25rem;
   transition: border-bottom-color 200ms ease;
   border-bottom: 1px solid

@@ -1,12 +1,12 @@
 (ns metabase-enterprise.advanced-permissions.api.application-test
   (:require [clojure.test :refer :all]
             [metabase.models :refer [PermissionsGroup]]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]))
 
 (deftest application-permissions-test
-  (mt/with-temp* [PermissionsGroup [{group-id :id}]]
+  (mt/with-temp PermissionsGroup [_]
     (testing "GET /api/ee/advanced-permissions/application/graph"
       (premium-features-test/with-premium-features #{}
         (testing "Should require a token with `:advanced-permissions`"
@@ -22,11 +22,11 @@
           (let [graph  (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/application/graph")
                 groups (:groups graph)]
             (is (int? (:revision graph)))
-            (is (partial= {(:id (group/admin))
+            (is (partial= {(:id (perms-group/admin))
                            {:monitoring   "yes"
                             :setting      "yes"
                             :subscription "yes"}
-                           (:id (group/all-users))
+                           (:id (perms-group/all-users))
                            {:monitoring   "no"
                             :setting      "no"
                             :subscription "yes"}}
@@ -54,7 +54,7 @@
                                          (assoc new-graph :revision (inc (:revision new-graph)))))))
 
           (testing "successfully update application permissions"
-            (is (partial= {(:id (group/admin))
+            (is (partial= {(:id (perms-group/admin))
                            {:monitoring   "yes"
                             :setting      "yes"
                             :subscription "yes"}

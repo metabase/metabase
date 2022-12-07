@@ -1,0 +1,2 @@
+{:lint-as
+ {humane-are.core/are+ clojure.test/are}}

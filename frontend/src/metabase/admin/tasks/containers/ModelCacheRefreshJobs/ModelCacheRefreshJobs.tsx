@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import moment from "moment";
+import moment from "moment-timezone";
 import { connect } from "react-redux";
 
 import Link from "metabase/core/components/Link";
@@ -11,7 +11,6 @@ import Tooltip from "metabase/components/Tooltip";
 import PaginationControls from "metabase/components/PaginationControls";
 
 import PersistedModels from "metabase/entities/persisted-models";
-import { checkCanRefreshModelCache } from "metabase/lib/data-modeling/utils";
 import { capitalize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 
@@ -21,6 +20,7 @@ import { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import NoResults from "assets/img/no_results.svg";
 
+import { checkCanRefreshModelCache } from "metabase-lib/metadata/utils/models";
 import {
   ErrorBox,
   IconButtonContainer,

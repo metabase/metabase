@@ -4,13 +4,13 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import cx from "classnames";
 
+import _ from "underscore";
 import { IFRAMED } from "metabase/lib/dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
 import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
-import EmbedFrame from "../components/EmbedFrame";
 import title from "metabase/hoc/Title";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
@@ -33,8 +33,7 @@ import {
   setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
 } from "metabase/services";
-
-import _ from "underscore";
+import EmbedFrame from "../components/EmbedFrame";
 
 const mapStateToProps = (state, props) => {
   return {

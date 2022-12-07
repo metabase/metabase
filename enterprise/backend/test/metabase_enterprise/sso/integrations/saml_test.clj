@@ -5,7 +5,6 @@
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase.config :as config]
             [metabase.http-client :as client]
-            [metabase.integrations.ldap :refer [ldap-enabled]]
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.user :refer [User]]
@@ -96,9 +95,18 @@
              (client :get 403 "/auth/sso"))))))
 
 (deftest require-saml-enabled-test
-  (testing "SSO requests fail if SAML hasn't been enabled"
+  (testing "SSO requests fail if SAML hasn't been configured or enabled"
     (with-valid-premium-features-token
-      (mt/with-temporary-setting-values [saml-enabled false]
+      (mt/with-temporary-setting-values [saml-enabled                       false
+                                         saml-identity-provider-uri         nil
+                                         saml-identity-provider-certificate nil]
+        (is (some? (client :get 400 "/auth/sso"))))))
+
+  (testing "SSO requests fail if SAML has been configured but not enabled"
+    (with-valid-premium-features-token
+      (mt/with-temporary-setting-values [saml-enabled                       false
+                                         saml-identity-provider-uri         default-idp-uri
+                                         saml-identity-provider-certificate default-idp-cert]
         (is (some? (client :get 400 "/auth/sso"))))))
 
   (testing "SSO requests fail if SAML is enabled but hasn't been configured"
@@ -128,7 +136,7 @@
     (f)
     (finally
       (u/ignore-exceptions (do (db/update-where! User {} :login_attributes nil)
-                               (db/update-where! User {:email "rasta@metabase.com"} :first_name "Rasta" :last_name "Toucan"))))))
+                               (db/update-where! User {:email "rasta@metabase.com"} :first_name "Rasta" :last_name "Toucan" :sso_source nil))))))
 
 (defmacro ^:private with-saml-default-setup [& body]
   `(with-valid-premium-features-token

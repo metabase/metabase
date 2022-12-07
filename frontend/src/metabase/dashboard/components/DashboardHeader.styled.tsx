@@ -2,9 +2,8 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import Button from "metabase/core/components/Button";
 
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
@@ -35,8 +34,8 @@ export const HeaderRoot = styled(
   ${breakpointMaxSmall} {
     flex-direction: column;
     align-items: baseline;
-    padding-left: 0px;
-    padding-right: 0px;
+    padding-left: 0;
+    padding-right: 0;
   }
 `;
 
@@ -75,6 +74,7 @@ export const HeaderLastEditInfoLabel = styled(LastEditInfoLabel)`
 
 interface HeaderContentProps {
   showSubHeader: boolean;
+  hasSubHeader: boolean;
 }
 
 export const HeaderContent = styled.div<HeaderContentProps>`
@@ -87,15 +87,19 @@ export const HeaderContent = styled.div<HeaderContentProps>`
     opacity: ${props => (props.showSubHeader ? "1x" : "0")};
   }
 
-  &:hover,
-  &:focus-within {
-    ${HeaderCaptionContainer} {
-      top: 0px;
-    }
-    ${HeaderLastEditInfoLabel} {
-      opacity: 1;
-    }
-  }
+  ${({ hasSubHeader }) =>
+    hasSubHeader &&
+    css`
+      &:hover,
+      &:focus-within {
+        ${HeaderCaptionContainer} {
+          top: 0;
+        }
+        ${HeaderLastEditInfoLabel} {
+          opacity: 1;
+        }
+      }
+    `}
 
   ${breakpointMaxSmall} {
     padding-top: 0;
@@ -103,7 +107,7 @@ export const HeaderContent = styled.div<HeaderContentProps>`
     padding-right: 1rem;
 
     ${HeaderCaptionContainer} {
-      top: 0px;
+      top: 0;
     }
     ${HeaderLastEditInfoLabel} {
       opacity: 1;
@@ -111,22 +115,11 @@ export const HeaderContent = styled.div<HeaderContentProps>`
   }
 `;
 
-export const HeaderBadgesDivider = styled.span`
-  color: ${color("text-light")};
-  font-size: 0.8em;
-
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
-
-  ${breakpointMaxSmall} {
-    display: none;
-  }
-`;
-
 export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
   color: ${color("text-dark")};
+  margin-right: -1rem;
 
   ${breakpointMinSmall} {
     margin-left: auto;
@@ -149,18 +142,12 @@ export const HeaderButtonsContainer = styled.div<TypeForItemsThatRespondToNavBar
     padding-right: 1rem;
     border-top: 1px solid ${color("border")};
   }
-
-  ${Button.Root} {
-    padding: 0.5rem 0.75rem;
-    &:hover {
-      color: ${color("brand")};
-    }
-  }
 `;
 
 export const HeaderButtonSection = styled.div<TypeForItemsThatRespondToNavBarOpen>`
   display: flex;
   align-items: center;
+  gap: 0.5rem;
 
   ${breakpointMaxMedium} {
     ${props =>

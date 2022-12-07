@@ -8,6 +8,7 @@
               [metabase.mbql.schema :as mbql.s]
               [metabase.mbql.schema.helpers :as schema.helpers]
               [metabase.mbql.util.match :as mbql.match]
+              [metabase.models.dispatch :as models.dispatch]
               [metabase.shared.util.i18n :as i18n]
               metabase.util.i18n
               [potemkin :as p]
@@ -249,6 +250,34 @@
                              [:relative-datetime :current]
                              [:relative-datetime 0 temporal-unit])))))
 
+(def temporal-extract-ops->unit
+  "Mapping from the sugar syntax to extract datetime to the unit."
+  {[:get-year        nil]       :year-of-era
+   [:get-quarter     nil]       :quarter-of-year
+   [:get-month       nil]       :month-of-year
+   ;; default get-week mode is iso
+   [:get-week        nil]       :week-of-year-iso
+   [:get-week        :iso]      :week-of-year-iso
+   [:get-week        :us]       :week-of-year-us
+   [:get-week        :instance] :week-of-year-instance
+   [:get-day         nil]       :day-of-month
+   [:get-day-of-week nil]       :day-of-week
+   [:get-hour        nil]       :hour-of-day
+   [:get-minute      nil]       :minute-of-hour
+   [:get-second      nil]       :second-of-minute})
+
+(def ^:private temporal-extract-ops
+  (->> (keys temporal-extract-ops->unit)
+       (map first)
+       set))
+
+(defn desugar-temporal-extract
+  "Replace datetime extractions clauses like `[:get-year field]` with `[:temporal-extract field :year]`."
+  [m]
+  (mbql.match/replace m
+    [(op :guard temporal-extract-ops) field & args]
+    [:temporal-extract field (temporal-extract-ops->unit [op (first args)])]))
+
 (s/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
@@ -263,7 +292,8 @@
       desugar-is-null-and-not-null
       desugar-is-empty-and-not-empty
       desugar-inside
-      simplify-compound-filter))
+      simplify-compound-filter
+      desugar-temporal-extract))
 
 (defmulti ^:private negate* first)
 
@@ -344,9 +374,15 @@
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
   ([x]
-   (if (mbql-clause? x)
-     (first x)
-     (type x)))
+   #?(:clj
+      (if (mbql-clause? x)
+        (first x)
+        (or (metabase.models.dispatch/model x)
+            (type x)))
+      :cljs
+      (if (mbql-clause? x)
+        (first x)
+        (type x))))
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
@@ -421,17 +457,6 @@
   [field]
   (and (temporal-field? field)
        (not (time-field? field))))
-
-(defn datetime-arithmetics?
-  "Is a given artihmetics clause operating on datetimes?"
-  [clause]
-  (mbql.match/match-one clause
-    #{:interval :relative-datetime}
-    true
-
-    [:field _ (_ :guard :temporal-unit)]
-    true))
-
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 

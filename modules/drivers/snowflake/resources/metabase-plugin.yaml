@@ -14,9 +14,11 @@ driver:
       placeholder: xxxxxxxx.us-east-2.aws
       required: true
     - user
-    - merge:
-        - password
-        - required: true
+    - password
+    - name: private-key
+      display-name: RSA private key (PEM)
+      type: secret
+      secret-kind: pem-cert
     - name: warehouse
       display-name: Warehouse
       helper-text: If your user doesn't have a default warehouse, enter the warehouse to connect to.

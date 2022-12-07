@@ -3,14 +3,7 @@
   (:require [clojure.test :refer :all]
             [metabase.query-processor.util :as qp.util]))
 
-(deftest mbql-query?-test
-  (are [x expected] (= expected
-                       (qp.util/mbql-query? x))
-    {}               false
-    {:type "native"} false
-    {:type "query"}  true))
-
-(deftest query-without-aggregations-or-limits?-test
+(deftest ^:parallel query-without-aggregations-or-limits?-test
   (are [x expected] (= expected
                        (qp.util/query-without-aggregations-or-limits? x))
     {:query {:aggregation [[:count]]}} false
@@ -27,7 +20,7 @@
    (and (byte-array= a b)
         (apply byte-array= b more))))
 
-(deftest query-hash-test
+(deftest ^:parallel query-hash-test
   (testing "qp.util/query-hash"
     (testing "should always hash something the same way, every time"
       (is (byte-array=

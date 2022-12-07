@@ -5,10 +5,10 @@ import {
   setupBooleanQuery,
   filter,
   filterField,
+  filterFieldPopover,
 } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
-import { filterFieldPopover } from "../../../__support__/e2e/helpers/e2e-bi-basics-helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -98,10 +98,11 @@ describe("scenarios > filters > bulk filtering", () => {
     visitQuestionAdhoc(rawQuestionDetails);
     filter();
 
-    filterFieldPopover("Quantity", { value: "20" });
+    filterField("Quantity", { operator: "equal to" });
+    filterFieldPopover("Quantity").within(() => {
+      cy.findByText("20").click();
+    });
 
-    cy.findByLabelText("20").click();
-    cy.button("Add filter").click();
     applyFilters();
 
     cy.findByText("Quantity is equal to 20").should("be.visible");
@@ -147,15 +148,7 @@ describe("scenarios > filters > bulk filtering", () => {
     visitQuestionAdhoc(filteredQuestionDetails);
     filter();
 
-    modal().within(() => {
-      cy.findByText("30").click();
-    });
-
-    popover().within(() => {
-      cy.findByRole("textbox").click().type("30").clear().type("25");
-
-      cy.button("Update filter").click();
-    });
+    filterField("Quantity", { order: 1, value: "{backspace}{backspace}25" });
 
     applyFilters();
 
@@ -168,11 +161,8 @@ describe("scenarios > filters > bulk filtering", () => {
     visitQuestionAdhoc(filteredQuestionDetails);
     filter();
 
-    modal().within(() => {
-      cy.findByText("30")
-        .parent()
-        .within(() => cy.icon("close").click());
-    });
+    filterField("Quantity", { order: 1, value: "{backspace}{backspace}" });
+
     applyFilters();
 
     cy.findByText("Quantity is greater than 20").should("be.visible");
@@ -409,16 +399,10 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Showing 506 rows").should("be.visible");
     });
 
-    it("should not show inline category picker for state", () => {
-      modal().within(() => {
-        cy.findByLabelText("State").click();
-      });
-
-      popover().within(() => {
+    it("should show value picker for state", () => {
+      filterFieldPopover("State").within(() => {
         cy.findByText("AZ").click();
-        cy.button("Add filter").click();
       });
-
       applyFilters();
 
       cy.findByText("State is AZ").should("be.visible");
@@ -463,6 +447,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("adds a contains text filter", () => {
       filterField("City", {
+        operator: "contains",
         value: "Indian",
       });
 

@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import PropTypes from "prop-types";
-import moment from "moment";
+import moment from "moment-timezone";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
@@ -115,7 +115,7 @@ export function BaseTableItem({
           />
         </ItemCell>
         <ItemCell data-testid={`${testId}-name`}>
-          <ItemLink {...linkProps} to={item.getUrl()}>
+          <ItemLink {...linkProps} to={item.getUrl({ isModelDetail: true })}>
             <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
@@ -133,7 +133,7 @@ export function BaseTableItem({
         <ItemCell data-testid={`${testId}-last-edited-by`}>
           <Ellipsified>{lastEditedBy}</Ellipsified>
         </ItemCell>
-        <ItemCell data-testid={`${testId}-last-edited-at`}>
+        <ItemCell data-testid={`${testId}-last-edited-at`} data-server-date>
           {lastEditInfo && (
             <Tooltip tooltip={<DateTime value={lastEditInfo.timestamp} />}>
               <TableItemSecondaryField>{lastEditedAt}</TableItemSecondaryField>

@@ -1,16 +1,20 @@
+import { merge } from "icepick";
+import { formatNumber as appFormatNumber } from "metabase/lib/formatting/numbers";
+
 export type NumberFormatOptions = {
-  number_style?: string;
+  number_style?: "currency" | "decimal" | "scientific" | "percentage";
   currency?: string;
-  currency_style?: string;
+  currency_style?: "symbol" | "code" | "name";
   number_separators?: ".,";
   decimals?: number;
   scale?: number;
   prefix?: string;
   suffix?: string;
+  compact?: boolean;
 };
 
 const DEFAULT_OPTIONS = {
-  number_style: "decimal",
+  number_style: "decimal" as NumberFormatOptions["number_style"],
   currency: undefined,
   currency_style: "symbol",
   number_separators: ".,",
@@ -21,33 +25,13 @@ const DEFAULT_OPTIONS = {
 };
 
 export const formatNumber = (number: number, options?: NumberFormatOptions) => {
-  const {
-    number_style,
-    currency,
-    currency_style,
-    number_separators: [decimal_separator, grouping_separator],
-    decimals,
-    scale,
-    prefix,
-    suffix,
-  } = { ...DEFAULT_OPTIONS, ...options };
+  const optionsWithDefault = {
+    ...DEFAULT_OPTIONS,
+    ...options,
+  };
+  const { prefix, suffix } = optionsWithDefault;
 
-  const format = new Intl.NumberFormat("en", {
-    style: number_style !== "scientific" ? number_style : "decimal",
-    notation: number_style !== "scientific" ? "standard" : "scientific",
-    currency: currency,
-    currencyDisplay: currency_style,
-    useGrouping: true,
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals != null ? decimals : 2,
-  });
-
-  const formattedNumber = format
-    .format(number * scale)
-    .replace(/\./g, decimal_separator)
-    .replace(/,/g, grouping_separator ?? "");
-
-  return `${prefix}${formattedNumber}${suffix}`;
+  return `${prefix}${appFormatNumber(number, optionsWithDefault)}${suffix}`;
 };
 
 export const formatPercent = (percent: number) =>

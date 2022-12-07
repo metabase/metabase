@@ -3,14 +3,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt, ngettext, msgid } from "ttag";
 
-import PulseEditName from "./PulseEditName";
-import PulseEditCollection from "./PulseEditCollection";
-import PulseEditCards from "./PulseEditCards";
-import PulseEditChannels from "./PulseEditChannels";
-import PulseEditSkip from "./PulseEditSkip";
-import WhatsAPulse from "./WhatsAPulse";
-
+import cx from "classnames";
 import ActionButton from "metabase/components/ActionButton";
+
 import Button from "metabase/core/components/Button";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import Icon from "metabase/components/Icon";
@@ -26,8 +21,13 @@ import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
 import * as Urls from "metabase/lib/urls";
 
 import Collections from "metabase/entities/collections";
+import WhatsAPulse from "./WhatsAPulse";
+import PulseEditSkip from "./PulseEditSkip";
+import PulseEditChannels from "./PulseEditChannels";
+import PulseEditCards from "./PulseEditCards";
+import PulseEditCollection from "./PulseEditCollection";
+import PulseEditName from "./PulseEditName";
 
-import cx from "classnames";
 import { PulseHeader, PulseHeaderContent } from "./PulseEdit.styled";
 
 class PulseEdit extends Component {
@@ -141,7 +141,7 @@ class PulseEdit extends Component {
     const link = (
       <a
         className="link"
-        href={MetabaseSettings.docsUrl("users-guide/dashboard-subscriptions")}
+        href={MetabaseSettings.docsUrl("dashboards/subscriptions")}
       >{t`dashboard subscriptions`}</a>
     );
     return (

@@ -19,7 +19,7 @@
       (mt/with-db database
         (mt/with-everything-store
           (let [qp (qp.resolve-database-and-driver/resolve-database-and-driver
-                    (fn [query _rff _context]
+                    (fn [_query _rff _context]
                       (is (= {:resolve-db-test-database-only-setting {:number-of-cans 2}}
                              setting/*database-local-values*))
                       (resolve-db-test-database-only-setting)))]

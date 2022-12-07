@@ -19,16 +19,3 @@ export const formatValueForTooltip = ({
     type: "tooltip",
     majorWidth: 0,
   });
-
-export const getEventTarget = (event: MouseEvent) => {
-  let target = document.getElementById("popover-event-target");
-  if (!target) {
-    target = document.createElement("div");
-    target.id = "popover-event-target";
-    document.body.appendChild(target);
-  }
-  target.style.left = event.clientX - 3 + "px";
-  target.style.top = event.clientY - 3 + "px";
-
-  return target;
-};

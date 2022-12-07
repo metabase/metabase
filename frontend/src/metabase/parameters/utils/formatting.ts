@@ -1,10 +1,13 @@
 import { ngettext, msgid } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
+import {
+  isFieldFilterParameter,
+  getParameterType,
+} from "metabase-lib/parameters/utils/parameter-type";
 
-import { getParameterType, isFieldFilterParameter } from "./parameter-type";
+import { UiParameter } from "metabase-lib/parameters/types";
 import { formatDateValue } from "./date-formatting";
-import { UiParameter } from "../types";
 
 function inferValueType(parameter: UiParameter) {
   const type = getParameterType(parameter);
@@ -26,7 +29,10 @@ function formatWithInferredType(value: any, parameter: UiParameter) {
   });
 }
 
-export function formatParameterValue(value: unknown, parameter: UiParameter) {
+export function formatParameterValue(
+  value: string | number | number[],
+  parameter: UiParameter,
+) {
   if (Array.isArray(value) && value.length > 1) {
     return renderNumberOfSelections(value.length);
   }
@@ -51,7 +57,7 @@ export function formatParameterValue(value: unknown, parameter: UiParameter) {
       // which parameter the value is associated with, meaning we
       // are unable to remap the value to the correct field
       const remap = parameter.fields.length === 1;
-      return formatValue(value, {
+      return formatValue(value as string, {
         column: firstField,
         maximumFractionDigits: 20,
         remap,

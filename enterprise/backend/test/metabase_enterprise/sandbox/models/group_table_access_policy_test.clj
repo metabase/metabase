@@ -44,7 +44,7 @@
                      (fn [query]
                        (mt/with-temp* [Card                   [card {:dataset_query   query
                                                                      :result_metadata (qp/query->expected-cols query)}]
-                                       GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
+                                       GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))
                                                                      :card_id  (:id card)}]]
                          :ok))
@@ -60,9 +60,9 @@
 
                      "Update query for Card associated with an existing GTAP"
                      (fn [query]
-                       (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query :venues)
-                                                                     :result_metadata (qp/query->expected-cols (mt/mbql-query :venues))}]
-                                       GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
+                       (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
+                                                                     :result_metadata (qp/query->expected-cols (mt/mbql-query venues))}]
+                                       GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))
                                                                      :card_id  (:id card)}]]
                          (db/update! Card (:id card) :dataset_query query)
@@ -84,16 +84,16 @@
   (testing "Don't allow saving a Sandboxing query that changes the type of a column vs. the type in the Table it replaces (#13715)"
     (doseq [[msg f] {"Create a new GTAP"
                      (fn [metadata]
-                       (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query :venues)
+                       (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
                                                                      :result_metadata metadata}]
-                                       GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
+                                       GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))
                                                                      :card_id  (:id card)}]]
                          :ok))
 
                      "Update an existing GTAP"
                      (fn [metadata]
-                       (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query :venues)
+                       (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
                                                                      :result_metadata metadata}]
                                        GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))}]]
@@ -102,9 +102,9 @@
 
                      "Update query for Card associated with an existing GTAP"
                      (fn [metadata]
-                       (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query :venues)
-                                                                     :result_metadata (qp/query->expected-cols (mt/mbql-query :venues))}]
-                                       GroupTableAccessPolicy [gtap {:table_id (mt/id :venues)
+                       (mt/with-temp* [Card                   [card {:dataset_query   (mt/mbql-query venues)
+                                                                     :result_metadata (qp/query->expected-cols (mt/mbql-query venues))}]
+                                       GroupTableAccessPolicy [_    {:table_id (mt/id :venues)
                                                                      :group_id (u/the-id (perms-group/all-users))
                                                                      :card_id  (:id card)}]]
                          (db/update! Card (:id card) :result_metadata metadata)

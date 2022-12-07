@@ -1,4 +1,7 @@
 import { t } from "ttag";
+import _ from "underscore";
+import { createSelector } from "reselect";
+import { updateIn } from "icepick";
 import { createEntity, notify } from "metabase/lib/entities";
 import {
   createThunkAction,
@@ -7,12 +10,9 @@ import {
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/lib/redux";
-import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-
-import { createSelector } from "reselect";
 
 import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
@@ -23,12 +23,11 @@ import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 
 import { GET, PUT } from "metabase/lib/api";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
-} from "metabase/lib/saved-questions";
-
-import { getMetadata } from "metabase/selectors/metadata";
+} from "metabase-lib/metadata/utils/saved-questions";
 
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>
@@ -143,7 +142,7 @@ const Tables = createEntity({
   },
 
   reducer: (state = {}, { type, payload, error }) => {
-    if (type === Questions.actionTypes.CREATE) {
+    if (type === Questions.actionTypes.CREATE && !error) {
       const card = payload.question;
       const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);
 
@@ -157,7 +156,7 @@ const Tables = createEntity({
       };
     }
 
-    if (type === Questions.actionTypes.UPDATE) {
+    if (type === Questions.actionTypes.UPDATE && !error) {
       const card = payload.question;
       const virtualQuestionId = getQuestionVirtualTableId(card);
 
@@ -167,6 +166,20 @@ const Tables = createEntity({
       }
 
       if (state[virtualQuestionId]) {
+        const virtualQuestion = state[virtualQuestionId];
+        if (
+          virtualQuestion.display_name !== card.name ||
+          virtualQuestion.moderated_status !== card.moderated_status ||
+          virtualQuestion.description !== card.description
+        ) {
+          state = updateIn(state, [virtualQuestionId], table => ({
+            ...table,
+            display_name: card.name,
+            moderated_status: card.moderated_status,
+            description: card.description,
+          }));
+        }
+
         return state;
       }
 
@@ -187,7 +200,7 @@ const Tables = createEntity({
       }
     }
 
-    if (type === Metrics.actionTypes.CREATE) {
+    if (type === Metrics.actionTypes.CREATE && !error) {
       const { table_id: tableId, id: metricId } = payload.metric;
       const table = state[tableId];
       if (table) {
@@ -198,7 +211,7 @@ const Tables = createEntity({
       }
     }
 
-    if (type === Segments.actionTypes.UPDATE) {
+    if (type === Segments.actionTypes.UPDATE && !error) {
       const { table_id: tableId, archived, id: segmentId } = payload.segment;
       const table = state[tableId];
       if (archived && table && table.segments) {

@@ -5,6 +5,7 @@ import {
   popover,
   summarize,
 } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -17,7 +18,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
   it("should correctly show remapped column value", () => {
     // go directly to Data Model page for Sample Database
-    cy.visit("/admin/datamodel/database/1");
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     // edit "Product ID" column in "Orders" table
     cy.findByText("Orders").click();
     cy.findByDisplayValue("Product ID").parent().find(".Icon-gear").click();
@@ -48,7 +49,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     };
 
     // go directly to Data Model page for Sample Database
-    cy.visit("/admin/datamodel/database/1");
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     // edit "Rating" values in "Reviews" table
     cy.findByText("Reviews").click();
     cy.findByDisplayValue("Rating").parent().find(".Icon-gear").click();
@@ -119,7 +120,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
   it("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
     cy.visit(
-      `/admin/datamodel/database/1/table/${REVIEWS_ID}/${REVIEWS.RATING}/general`,
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${REVIEWS_ID}/${REVIEWS.RATING}/general`,
     );
 
     openOptionsForSection("Filtering on this field");

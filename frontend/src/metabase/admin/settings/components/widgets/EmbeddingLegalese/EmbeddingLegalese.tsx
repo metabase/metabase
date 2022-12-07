@@ -1,6 +1,6 @@
 import React from "react";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { t } from "ttag";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Tooltip from "metabase/components/Tooltip";
 import Button from "metabase/core/components/Button";

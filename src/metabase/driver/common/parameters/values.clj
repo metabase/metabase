@@ -11,13 +11,14 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters.parse :as params.parse]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+            [metabase.models.persisted-info :refer [PersistedInfo]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util.persisted-cache :as qp.persistence]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -26,8 +27,7 @@
   (:import clojure.lang.ExceptionInfo
            java.text.NumberFormat
            java.util.UUID
-           [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter
-            MultipleValues ParsedQuerySnippet ReferencedCardQuery]))
+           [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues ReferencedCardQuery ReferencedQuerySnippet]))
 
 (defmulti ^:private parse-tag
   "Parse a tag by its `:type`, returning an appropriate record type such as
@@ -141,15 +141,20 @@
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
-  (let [query (or (db/select-one-field :dataset_query Card :id card-id)
-                  (throw (ex-info (tru "Card {0} not found." card-id)
-                                  {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
+  (let [card           (db/select-one Card :id card-id)
+        persisted-info (when (:dataset card)
+                         (db/select-one PersistedInfo :card_id card-id))
+        query          (or (:dataset_query card)
+                           (throw (ex-info (tru "Card {0} not found." card-id)
+                                           {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
     (try
       (params/map->ReferencedCardQuery
        (let [query (assoc query :info {:card-id card-id})]
          (log/tracef "Compiling referenced query for Card %d\n%s" card-id (u/pprint-to-str query))
          (merge {:card-id card-id}
-                (qp/compile query))))
+                (or (when (qp.persistence/can-substitute? card persisted-info)
+                      {:query (qp.persistence/persisted-info-native-query persisted-info)})
+                    (qp/compile query)))))
       (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
@@ -160,25 +165,21 @@
                  :type              qp.error-type/invalid-parameter}
                 e))))))
 
-(declare query->params-map)
-
-(s/defmethod parse-tag :snippet :- ParsedQuerySnippet
-  [{:keys [snippet-name snippet-id], :as tag} :- mbql.s/TemplateTag, params]
+(s/defmethod parse-tag :snippet :- ReferencedQuerySnippet
+  [{:keys [snippet-name snippet-id], :as tag} :- mbql.s/TemplateTag, _]
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
-        snippet    (or (NativeQuerySnippet snippet-id)
+        snippet    (or (db/select-one NativeQuerySnippet :id snippet-id)
                        (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
                                        {:snippet-id   snippet-id
                                         :snippet-name snippet-name
                                         :tag          tag
                                         :type         qp.error-type/invalid-parameter})))]
-    (params/map->ParsedQuerySnippet
-      {:snippet-id   (:id snippet)
-       ;; parse the content of snippet so that we could substitute template-tags inside snippet
-       :parsed-query (params.parse/parse (:content snippet))
-       :param->value (query->params-map  {:template-tags (:template_tags snippet)
-                                          :parameters    params})})))
+    (params/map->ReferencedQuerySnippet
+     {:snippet-id (:id snippet)
+      :content    (:content snippet)})))
+
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 

@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment from "moment-timezone";
 
 import {
   parseFieldBucketing,
@@ -6,7 +6,7 @@ import {
   computeFilterTimeRange,
   absolute,
   generateTimeFilterValuesDescriptions,
-} from "metabase/lib/query_time";
+} from "metabase-lib/queries/utils/query-time";
 
 describe("query_time", () => {
   describe("parseFieldBucketing()", () => {

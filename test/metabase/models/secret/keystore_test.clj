@@ -4,7 +4,8 @@
             [metabase.api.common :as api]
             [metabase.models :refer [Database Secret]]
             [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures])
+            [metabase.test.fixtures :as fixtures]
+            [toucan.db :as db])
   (:import [java.io ByteArrayOutputStream File]
            java.nio.charset.StandardCharsets
            [java.security KeyStore KeyStore$PasswordProtection KeyStore$SecretKeyEntry]
@@ -56,23 +57,23 @@
   (testing "A secret with :type :keystore can be saved and loaded properly"
     (binding [api/*current-user-id* (mt/user->id :crowberto)]
       (with-open [baos (ByteArrayOutputStream.)]
-        (let [key-alias  "my-secret-key"
-              key-value  "cromulent"
-              ks-pw      "embiggen"
-              ks         (create-test-jks-instance ks-pw {key-alias key-value})]
+        (let [key-alias "my-secret-key"
+              key-value "cromulent"
+              ks-pw     "embiggen"
+              ks        (create-test-jks-instance ks-pw {key-alias key-value})]
           (.store ks baos (.toCharArray ks-pw))
-          (mt/with-temp Database [{:keys [id details] :as database} {:engine  :secret-test-driver
-                                                                     :name    "Test DB with keystore"
-                                                                     :details {:host "localhost"
-                                                                               :keystore-value (.toByteArray baos)
-                                                                               :keystore-password-value ks-pw}}]
-             (is (some? database))
-             (is (not (contains? details :keystore-value)) "keystore-value was removed from details")
-             (is (contains? details :keystore-id) "keystore-id was added to details")
-             (is (not (contains? details :keystore-password-value)) ":keystore-password-value was removed from details")
-             (is (contains? details :keystore-password-id) ":keystore-password-id was added to details")
-             (let [{ks-pw-bytes :value} (Secret (:keystore-password-id details))
-                   ks-pw-str            (String. ks-pw-bytes StandardCharsets/UTF_8)
-                   {:keys [value]}      (Secret (:keystore-id details))
-                   ks              (bytes->keystore value (.toCharArray ks-pw-str))]
-               (assert-entries ks-pw-str ks {key-alias key-value}))))))))
+          (mt/with-temp Database [{:keys [details] :as database} {:engine  :secret-test-driver
+                                                                  :name    "Test DB with keystore"
+                                                                  :details {:host                    "localhost"
+                                                                            :keystore-value          (.toByteArray baos)
+                                                                            :keystore-password-value ks-pw}}]
+            (is (some? database))
+            (is (not (contains? details :keystore-value)) "keystore-value was removed from details")
+            (is (contains? details :keystore-id) "keystore-id was added to details")
+            (is (not (contains? details :keystore-password-value)) ":keystore-password-value was removed from details")
+            (is (contains? details :keystore-password-id) ":keystore-password-id was added to details")
+            (let [{ks-pw-bytes :value} (db/select-one Secret :id (:keystore-password-id details))
+                  ks-pw-str            (String. ks-pw-bytes StandardCharsets/UTF_8)
+                  {:keys [value]}      (db/select-one Secret :id (:keystore-id details))
+                  ks                   (bytes->keystore value (.toCharArray ks-pw-str))]
+              (assert-entries ks-pw-str ks {key-alias key-value}))))))))

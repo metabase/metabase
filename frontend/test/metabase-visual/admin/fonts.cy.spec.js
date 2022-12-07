@@ -21,7 +21,7 @@ describeEE("visual tests > admin > fonts", () => {
     cy.findByText("Roboto Mono").click();
     waitForFont("Roboto Mono");
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 
   it("should set a custom font", () => {
@@ -32,7 +32,7 @@ describeEE("visual tests > admin > fonts", () => {
     typeAndBlurUsingLabel("Regular", CUSTOM_FONT_URL);
     waitForFont("Custom");
 
-    cy.percySnapshot();
+    cy.createPercySnapshot();
   });
 });
 

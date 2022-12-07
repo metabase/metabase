@@ -2,78 +2,82 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Card Collection Dimension]]
+            [metabase.models :refer [Card Collection Dimension Field]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
             [metabase.query-processor.util :as qp.util]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.test :as mt]
-            [metabase.test.mock.util :as mock.util]
-            [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(use-fixtures :each (fn [thunk]
-                      (mt/suppress-output (thunk))))
-
 (defn- card-metadata [card]
   (db/select-one-field :result_metadata Card :id (u/the-id card)))
 
 (defn- round-to-2-decimals
-  "Defaults `mt/round-all-decimals` to 2 digits"
+  "Defaults [[mt/round-all-decimals]] to 2 digits"
   [data]
   (mt/round-all-decimals 2 data))
 
-(def ^:private default-card-results
-  [{:name         "ID"
-    :display_name "ID"
-    :base_type    :type/BigInteger
-    :effective_type :type/BigInteger
-    :semantic_type :type/PK
-    :fingerprint  (:id mock.util/venue-fingerprints)
-    :field_ref    [:field "ID" {:base-type :type/BigInteger}]}
-   {:name         "NAME"
-    :display_name "Name"
-    :base_type    :type/Text
-    :effective_type :type/Text
-    :semantic_type :type/Name
-    :fingerprint  (:name mock.util/venue-fingerprints)
-    :field_ref    [:field "NAME" {:base-type :type/Text}]}
-   {:name         "PRICE"
-    :display_name "Price"
-    :base_type    :type/Integer
-    :effective_type :type/Integer
-    :semantic_type nil
-    :fingerprint  (:price mock.util/venue-fingerprints)
-    :field_ref    [:field "PRICE" {:base-type :type/Integer}]}
-   {:name         "CATEGORY_ID"
-    :display_name "Category ID"
-    :base_type    :type/Integer
-    :effective_type :type/Integer
-    :semantic_type nil
-    :fingerprint  (:category_id mock.util/venue-fingerprints)
-    :field_ref    [:field "CATEGORY_ID" {:base-type :type/Integer}]}
-   {:name         "LATITUDE"
-    :display_name "Latitude"
-    :base_type    :type/Float
-    :effective_type :type/Float
-    :semantic_type :type/Latitude
-    :fingerprint  (:latitude mock.util/venue-fingerprints)
-    :field_ref    [:field "LATITUDE" {:base-type :type/Float}]}
-   {:name         "LONGITUDE"
-    :display_name "Longitude"
-    :base_type    :type/Float
-    :effective_type :type/Float
-    :semantic_type :type/Longitude
-    :fingerprint  (:longitude mock.util/venue-fingerprints)
-    :field_ref    [:field "LONGITUDE" {:base-type :type/Float}]}])
+(defn- default-card-results []
+  (let [id->fingerprint   (db/select-id->field :fingerprint Field :table_id (mt/id :venues))
+        name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
+    [{:name           "ID"
+      :display_name   "ID"
+      :base_type      :type/BigInteger
+      :effective_type :type/BigInteger
+      :semantic_type  :type/PK
+      :fingerprint    (name->fingerprint :id)
+      :field_ref      [:field "ID" {:base-type :type/BigInteger}]}
+     {:name           "NAME"
+      :display_name   "Name"
+      :base_type      :type/Text
+      :effective_type :type/Text
+      :semantic_type  :type/Name
+      :fingerprint    (name->fingerprint :name)
+      :field_ref      [:field "NAME" {:base-type :type/Text}]}
+     {:name           "PRICE"
+      :display_name   "Price"
+      :base_type      :type/Integer
+      :effective_type :type/Integer
+      :semantic_type  nil
+      :fingerprint    (name->fingerprint :price)
+      :field_ref      [:field "PRICE" {:base-type :type/Integer}]}
+     {:name           "CATEGORY_ID"
+      :display_name   "Category ID"
+      :base_type      :type/Integer
+      :effective_type :type/Integer
+      :semantic_type  nil
+      :fingerprint    (name->fingerprint :category_id)
+      :field_ref      [:field "CATEGORY_ID" {:base-type :type/Integer}]}
+     {:name           "LATITUDE"
+      :display_name   "Latitude"
+      :base_type      :type/Float
+      :effective_type :type/Float
+      :semantic_type  :type/Latitude
+      :fingerprint    (name->fingerprint :latitude)
+      :field_ref      [:field "LATITUDE" {:base-type :type/Float}]}
+     {:name           "LONGITUDE"
+      :display_name   "Longitude"
+      :base_type      :type/Float
+      :effective_type :type/Float
+      :semantic_type  :type/Longitude
+      :fingerprint    (name->fingerprint :longitude)
+      :field_ref      [:field "LONGITUDE" {:base-type :type/Float}]}]))
 
-(def ^:private default-card-results-native
-  (for [column (-> default-card-results
-                   (update-in [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06}}))]
+(defn- default-card-results-native
+  "These are rounded to two decimal places."
+  []
+  (for [column (-> (default-card-results)
+                   (update-in [3 :fingerprint] assoc :type {:type/Number {:min 2.0
+                                                                          :max 74.0
+                                                                          :avg 29.98
+                                                                          :q1  6.9
+                                                                          :q3  49.24
+                                                                          :sd  23.06}}))]
     (assoc column :display_name (:name column))))
 
 (deftest save-result-metadata-test
@@ -85,8 +89,8 @@
                                   :query-hash (qp.util/query-hash {})}))]
         (when-not (= :completed (:status result))
           (throw (ex-info "Query failed." result))))
-      (is (= default-card-results-native
-             (-> card card-metadata round-to-2-decimals tu/round-fingerprint-cols)))))
+      (is (= (round-to-2-decimals (default-card-results-native))
+             (-> card card-metadata round-to-2-decimals)))))
 
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
     (mt/with-temp Card [card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
@@ -113,15 +117,14 @@
 
 (deftest metadata-in-results-test
   (testing "make sure that queries come back with metadata"
-    (is (= {:columns  (for [col default-card-results-native]
+    (is (= {:columns  (for [col (round-to-2-decimals (default-card-results-native))]
                         (-> col (update :semantic_type keyword) (update :base_type keyword)))}
            (-> (qp/process-userland-query
                 {:database (mt/id)
                  :type     :native
                  :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
                (get-in [:data :results_metadata])
-               round-to-2-decimals
-               (->> (tu/round-fingerprint-cols [:columns]))))))
+               round-to-2-decimals))))
   (testing "datasets"
     (testing "metadata from datasets can be preserved"
       (letfn [(choose [col] (select-keys col [:name :description :display_name :semantic_type]))
@@ -140,9 +143,9 @@
                                                :base_type)
                                               cols)))]
         (testing "native"
-          (let [fields (str/join ", " (map :name default-card-results-native))
+          (let [fields (str/join ", " (map :name (default-card-results-native)))
                 native-query (str "SELECT " fields " FROM VENUES")
-                existing-metadata (add-preserved default-card-results-native)
+                existing-metadata (add-preserved (default-card-results-native))
                 results (qp/process-userland-query
                          {:database (mt/id)
                           :type :native
@@ -178,6 +181,7 @@
                    :query-hash (qp.util/query-hash {})}})
       (is (= [{:base_type    :type/DateTime
                :effective_type    :type/DateTime
+               :visibility_type :normal
                :coercion_strategy nil
                :display_name "Date"
                :name         "DATE"
@@ -197,12 +201,11 @@
                :semantic_type :type/Quantity
                :fingerprint  {:global {:distinct-count 3
                                        :nil%           0.0},
-                              :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}
+                              :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.25, :sd 143.5}}}
                :field_ref    [:aggregation 0]}]
              (-> card
                  card-metadata
-                 round-to-2-decimals
-                 tu/round-fingerprint-cols))))))
+                 round-to-2-decimals))))))
 
 (defn- results-metadata [query]
   (-> (qp/process-query query) :data :results_metadata :columns))

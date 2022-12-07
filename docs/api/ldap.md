@@ -1,17 +1,16 @@
 ---
 title: "LDAP"
-summary: "/api/ldap endpoints."
+summary: |
+  /api/ldap endpoints.
 ---
 
 # LDAP
 
 /api/ldap endpoints.
 
-  - [PUT /api/ldap/settings](#put-apildapsettings)
-
 ## `PUT /api/ldap/settings`
 
-Update LDAP related settings. You must be a superuser to do this.
+Update LDAP related settings. You must be a superuser or have `setting` permission to do this.
 
 ### PARAMS:
 

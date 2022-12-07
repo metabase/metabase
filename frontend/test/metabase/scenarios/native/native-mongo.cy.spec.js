@@ -2,7 +2,7 @@ import { restore, modal } from "__support__/e2e/helpers";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
-describe("scenarios > question > native > mongo", () => {
+describe("scenarios > question > native > mongo", { tags: "@external" }, () => {
   before(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -21,9 +21,11 @@ describe("scenarios > question > native > mongo", () => {
   });
 
   it("can save a native MongoDB query", () => {
-    cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
-      parseSpecialCharSequences: false,
-    });
+    cy.get(".ace_content")
+      .should("be.visible")
+      .type(`[ { $count: "Total" } ]`, {
+        parseSpecialCharSequences: false,
+      });
     cy.get(".NativeQueryEditor .Icon-play").click();
 
     cy.wait("@dataset");
@@ -32,7 +34,7 @@ describe("scenarios > question > native > mongo", () => {
 
     cy.findByText("Save").click();
 
-    cy.findByTextEnsureVisible("Save question");
+    cy.findByTextEnsureVisible("Save new question");
 
     modal().within(() => {
       cy.findByLabelText("Name").clear().should("be.empty").type("mongo count");

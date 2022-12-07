@@ -8,7 +8,7 @@ import Swapper from "metabase/core/components/Swapper";
 import CheckBox from "metabase/core/components/CheckBox";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
-import { isItemPinned } from "metabase/collections/utils";
+import { isFullyParametrized, isItemPinned } from "metabase/collections/utils";
 
 import {
   EntityIconWrapper,
@@ -95,6 +95,7 @@ function EntityItemMenu({
   analyticsContext,
 }) {
   const isPinned = isItemPinned(item);
+  const isParametrized = isFullyParametrized(item);
 
   const actions = useMemo(
     () =>
@@ -111,8 +112,12 @@ function EntityItemMenu({
             : t`Show visualization`,
           icon: isPreviewShown ? "eye_crossed_out" : "eye",
           action: onTogglePreview,
-          event: `${analyticsContext};Entity Item;Preview Item;${item.model}`,
+          tooltip:
+            !isPreviewAvailable && !isParametrized
+              ? t`Open this question and fill in its variables to see it.`
+              : undefined,
           disabled: !isPreviewAvailable,
+          event: `${analyticsContext};Entity Item;Preview Item;${item.model}`,
         },
         onMove && {
           title: t`Move`,
@@ -142,6 +147,7 @@ function EntityItemMenu({
     [
       item.model,
       isPinned,
+      isParametrized,
       isBookmarked,
       isPreviewShown,
       isPreviewAvailable,

@@ -26,8 +26,8 @@
   (is (some? (rules/get-rules ["table" "GenericTable" "ByCountry"]))))
 
 (deftest dimension-form?-test
-  (are [x expected] (is (= expected
-                           (rules/dimension-form? x)))
+  (are [x expected] (= expected
+                       (rules/dimension-form? x))
     [:dimension "Foo"]  true
     ["dimension" "Foo"] true
     ["DIMENSION" "Foo"] true

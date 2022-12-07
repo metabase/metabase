@@ -87,7 +87,7 @@ export const ResultLink = styled(Link)`
   h3 {
     font-size: ${props => (props.compact ? "14px" : "16px")};
     line-height: 1.2em;
-    word-wrap: break-word;
+    overflow-wrap: anywhere;
     margin-bottom: 0;
     color: ${props => (props.active && props.isSelected ? color("brand") : "")};
   }

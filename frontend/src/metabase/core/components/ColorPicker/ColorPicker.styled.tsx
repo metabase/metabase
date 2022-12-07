@@ -3,6 +3,7 @@ import { color } from "metabase/lib/colors";
 
 export const TriggerContainer = styled.div`
   display: flex;
+  align-items: center;
   gap: 1rem;
 `;
 

@@ -13,7 +13,7 @@ const {
   admin: { first_name, last_name },
 } = USERS;
 
-describe("issue 18344", () => {
+describe("issue 18344", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

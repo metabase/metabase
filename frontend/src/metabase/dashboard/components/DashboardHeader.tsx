@@ -32,7 +32,7 @@ interface DashboardHeaderProps {
   editingSubtitle: string;
   editingButtons: JSX.Element[];
   editWarning: string;
-  headerButtons: React.ReactNode[][];
+  headerButtons: React.ReactNode[];
   headerClassName: string;
   headerModalMessage: string;
   isEditing: boolean;
@@ -85,20 +85,14 @@ const DashboardHeader = ({
   }, [isModalOpened]);
 
   const _headerButtons = useMemo(
-    () =>
-      headerButtons.map((section, sectionIndex) => {
-        return (
-          section.length > 0 && (
-            <HeaderButtonSection
-              key={sectionIndex}
-              className="Header-buttonSection"
-              isNavBarOpen={isNavBarOpen}
-            >
-              {section}
-            </HeaderButtonSection>
-          )
-        );
-      }),
+    () => (
+      <HeaderButtonSection
+        className="Header-buttonSection"
+        isNavBarOpen={isNavBarOpen}
+      >
+        {headerButtons}
+      </HeaderButtonSection>
+    ),
     [headerButtons, isNavBarOpen],
   );
 
@@ -118,6 +112,8 @@ const DashboardHeader = ({
     }, 4000);
     return () => clearTimeout(timerId);
   });
+
+  const isDataApp = false;
 
   return (
     <div>
@@ -141,7 +137,7 @@ const DashboardHeader = ({
         className={cx("QueryBuilder-section", headerClassName)}
         ref={header}
       >
-        <HeaderContent showSubHeader={showSubHeader}>
+        <HeaderContent hasSubHeader={!isDataApp} showSubHeader={showSubHeader}>
           <HeaderCaptionContainer>
             <HeaderCaption
               key={dashboard.name}

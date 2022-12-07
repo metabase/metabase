@@ -13,8 +13,10 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s])
   (:import [java.sql Connection ResultSet Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
@@ -28,7 +30,8 @@
                               :regex                                  false
                               :percentile-aggregations                false
                               :advanced-math-expressions              false
-                              :standard-deviation-aggregations        false}]
+                              :standard-deviation-aggregations        false
+                              :now                                    true}]
   (defmethod driver/supports? [:sqlite feature] [_ _] supported?))
 
 ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
@@ -128,6 +131,10 @@
   [driver _ expr]
   (->datetime (strftime "%Y-%m-%d %H:%M:%S" (sql.qp/->honeysql driver expr))))
 
+(defmethod sql.qp/date [:sqlite :second-of-minute]
+  [driver _ expr]
+  (hx/->integer (strftime "%S" (sql.qp/->honeysql driver expr))))
+
 (defmethod sql.qp/date [:sqlite :minute]
   [driver _ expr]
   (->datetime (strftime "%Y-%m-%d %H:%M" (sql.qp/->honeysql driver expr))))
@@ -170,6 +177,14 @@
                                   (hx/literal "weekday 0")))]
     (sql.qp/adjust-start-of-week :sqlite week-extract-fn expr)))
 
+(defmethod sql.qp/date [:sqlite :week-of-year-iso]
+  [driver _ expr]
+  ;; Maybe we can follow the algorithm here https://en.wikipedia.org/wiki/ISO_week_date#Algorithms
+  (throw (ex-info (tru "Sqlite doesn't support extract isoweek")
+                  {:driver driver
+                   :form   expr
+                   :type   qp.error-type/invalid-query})))
+
 (defmethod sql.qp/date [:sqlite :month]
   [driver _ expr]
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of month")))
@@ -206,8 +221,12 @@
   [driver _ expr]
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
 
+(defmethod sql.qp/date [:sqlite :year-of-era]
+  [driver _ expr]
+  (hx/->integer (strftime "%Y" (sql.qp/->honeysql driver expr))))
+
 (defmethod sql.qp/add-interval-honeysql-form :sqlite
-  [driver hsql-form amount unit]
+  [_driver hsql-form amount unit]
   (let [[multiplier sqlite-unit] (case unit
                                    :second  [1 "seconds"]
                                    :minute  [1 "minutes"]
@@ -268,13 +287,16 @@
    (mapv (partial sql.qp/->honeysql driver) args)))
 
 (defmethod sql.qp/->honeysql [:sqlite :floor]
-  [driver [_ arg]]
+  [_driver [_ arg]]
   (hsql/call :round (hsql/call :- arg 0.5)))
 
 (defmethod sql.qp/->honeysql [:sqlite :ceil]
-  [driver [_ arg]]
-  (hsql/call :round (hsql/call :+ arg 0.5)))
-
+  [_driver [_ arg]]
+  (hsql/call :case
+    ;; if we're ceiling a whole number, just cast it to an integer
+    ;; [:ceil 1.0] should returns 1
+    (hsql/call := (hsql/call :round arg) arg) (hx/->integer arg)
+    :else                                     (hsql/call :round (hsql/call :+ arg 0.5))))
 
 ;; See https://sqlite.org/lang_datefunc.html
 
@@ -338,9 +360,11 @@
   [_]
   (hsql/call :datetime (hx/literal :now)))
 
-;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them
+;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them. So skip that
+;; step. SQLite doesn't have a notion of session timezones so don't do that either. The only thing we're doing here from
+;; the default impl is setting the transaction isolation level
 (defmethod sql-jdbc.execute/connection-with-timezone :sqlite
-  [driver database ^String timezone-id]
+  [driver database _timezone-id]
   (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
     (try
       (sql-jdbc.execute/set-best-transaction-level! driver conn)

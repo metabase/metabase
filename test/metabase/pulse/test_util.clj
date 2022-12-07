@@ -145,7 +145,7 @@
    [{:name "State",
      :slug "state",
      :id "63e719d0",
-     :default ["CA", "NY"],
+     :default ["CA", "NY", "NJ"],
      :type "string/=",
      :sectionId "location"}
     {:name "Quarter and Year",

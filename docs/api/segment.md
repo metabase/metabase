@@ -1,20 +1,12 @@
 ---
 title: "Segment"
-summary: "/api/segment endpoints."
+summary: |
+  /api/segment endpoints.
 ---
 
 # Segment
 
 /api/segment endpoints.
-
-  - [DELETE /api/segment/:id](#delete-apisegmentid)
-  - [GET /api/segment/](#get-apisegment)
-  - [GET /api/segment/:id](#get-apisegmentid)
-  - [GET /api/segment/:id/related](#get-apisegmentidrelated)
-  - [GET /api/segment/:id/revisions](#get-apisegmentidrevisions)
-  - [POST /api/segment/](#post-apisegment)
-  - [POST /api/segment/:id/revert](#post-apisegmentidrevert)
-  - [PUT /api/segment/:id](#put-apisegmentid)
 
 ## `DELETE /api/segment/:id`
 

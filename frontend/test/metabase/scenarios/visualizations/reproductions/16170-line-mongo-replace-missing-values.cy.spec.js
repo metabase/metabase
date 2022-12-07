@@ -1,8 +1,13 @@
-import { restore, withDatabase, popover } from "__support__/e2e/helpers";
+import {
+  restore,
+  withDatabase,
+  popover,
+  openSeriesSettings,
+} from "__support__/e2e/helpers";
 
 const externalDatabaseId = 2;
 
-describe("issue 16170", () => {
+describe("issue 16170", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();
@@ -27,15 +32,19 @@ describe("issue 16170", () => {
     it(`replace missing values with "${replacementValue}" should work on Mongo (metabase#16170)`, () => {
       cy.findByTestId("viz-settings-button").click();
 
+      openSeriesSettings("Count");
+
       replaceMissingValuesWith(replacementValue);
+
+      cy.findByText("Done").click();
 
       assertOnTheYAxis();
 
       cy.get(".dot").eq(-2).trigger("mousemove", { force: true });
 
       popover().within(() => {
-        testPairedTooltipValues("Created At", "2018");
-        testPairedTooltipValues("Count", "6,578");
+        testPairedTooltipValues("Created At", "2019");
+        testPairedTooltipValues("Count", "6,524");
       });
     });
   });

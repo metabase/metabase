@@ -6,12 +6,10 @@ import React, {
   useState,
 } from "react";
 import { t } from "ttag";
-import { color } from "metabase/lib/colors";
-import { IconWrapper } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { BookmarkIcon } from "./BookmarkToggle.styled";
+import { BookmarkIcon, BookmarkButton } from "./BookmarkToggle.styled";
 
-export interface BookmarkToggleProps extends HTMLAttributes<HTMLDivElement> {
+export interface BookmarkToggleProps extends HTMLAttributes<HTMLButtonElement> {
   isBookmarked: boolean;
   onCreateBookmark: () => void;
   onDeleteBookmark: () => void;
@@ -24,7 +22,7 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
     onDeleteBookmark,
     ...props
   }: BookmarkToggleProps,
-  ref: Ref<HTMLDivElement>,
+  ref: Ref<HTMLButtonElement>,
 ) {
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -44,20 +42,20 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
 
   return (
     <Tooltip tooltip={isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}>
-      <IconWrapper
+      <BookmarkButton
         {...props}
         ref={ref}
-        hover={{ color: isBookmarked ? color("brand") : color("text-dark") }}
+        isBookmarked={isBookmarked}
         onClick={handleClick}
       >
         <BookmarkIcon
           name="bookmark"
-          size={20}
+          size={16}
           isBookmarked={isBookmarked}
           isAnimating={isAnimating}
           onAnimationEnd={handleAnimationEnd}
         />
-      </IconWrapper>
+      </BookmarkButton>
     </Tooltip>
   );
 });

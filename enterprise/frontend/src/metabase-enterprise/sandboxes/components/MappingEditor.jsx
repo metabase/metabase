@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Button from "metabase/core/components/Button";
-
 import _ from "underscore";
+import Button from "metabase/core/components/Button";
 
 const DefaultRenderInput = ({ value, onChange, placeholder }) => (
   <input

@@ -66,7 +66,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  describe("with email set up", () => {
+  describe("with email set up", { tags: "@external" }, () => {
     beforeEach(() => {
       setupSMTP();
     });
@@ -193,8 +193,8 @@ describe("scenarios > dashboard > subscriptions", () => {
                     card_id: QUESTION_ID,
                     row: 0,
                     col: 0,
-                    sizeX: 12,
-                    sizeY: 10,
+                    size_x: 12,
+                    size_y: 10,
                     parameter_mappings: [
                       {
                         parameter_id: "930e4001",
@@ -267,7 +267,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  describe("OSS email subscriptions", { tags: "@OSS" }, () => {
+  describe("OSS email subscriptions", { tags: ["@OSS", "external"] }, () => {
     beforeEach(() => {
       cy.onlyOn(isOSS);
       cy.visit(`/dashboard/1`);
@@ -289,7 +289,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  describeEE("EE email subscriptions", () => {
+  describeEE("EE email subscriptions", { tags: "@external" }, () => {
     beforeEach(() => {
       cy.visit(`/dashboard/1`);
       setupSMTP();

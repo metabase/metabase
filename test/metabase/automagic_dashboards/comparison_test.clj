@@ -1,16 +1,17 @@
 (ns metabase.automagic-dashboards.comparison-test
   (:require [clojure.test :refer :all]
-            [metabase.automagic-dashboards.comparison :as c :refer :all]
+            [metabase.automagic-dashboards.comparison :as c]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models :refer [Card Segment Table]]
             [metabase.models.query :as query]
             [metabase.test :as mt]
-            [metabase.test.automagic-dashboards :refer :all]))
+            [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
+            [toucan.db :as db]))
 
 (def ^:private segment
   (delay
-   {:table_id   (mt/id :venues)
-    :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}))
+    {:table_id   (mt/id :venues)
+     :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}))
 
 (defn- test-comparison
   [left right]
@@ -27,8 +28,8 @@
   (mt/with-temp Segment [{segment-id :id} @segment]
     (mt/with-test-user :rasta
       (with-dashboard-cleanup
-        (is (some? (test-comparison (Table (mt/id :venues)) (Segment segment-id))))
-        (is (some? (test-comparison (Segment segment-id) (Table (mt/id :venues)))))))))
+        (is (some? (test-comparison (db/select-one Table :id (mt/id :venues)) (db/select-one Segment :id segment-id))))
+        (is (some? (test-comparison (db/select-one Segment :id segment-id) (db/select-one Table :id (mt/id :venues)))))))))
 
 (deftest test-2
   (mt/with-temp* [Segment [{segment1-id :id} @segment]
@@ -36,7 +37,7 @@
                                               :definition {:filter [:< [:field (mt/id :venues :price) nil] 4]}}]]
     (mt/with-test-user :rasta
       (with-dashboard-cleanup
-        (is (some? (test-comparison (Segment segment1-id) (Segment segment2-id))))))))
+        (is (some? (test-comparison (db/select-one Segment :id segment1-id) (db/select-one Segment :id segment2-id))))))))
 
 (deftest test-3
   (mt/with-test-user :rasta
@@ -45,7 +46,7 @@
                                              :source-table (mt/id :venues)}
                                   :type     :query
                                   :database (mt/id)})]
-        (is (some? (test-comparison (Table (mt/id :venues)) q)))))))
+        (is (some? (test-comparison (db/select-one Table :id (mt/id :venues)) q)))))))
 
 (deftest test-4
   (mt/with-temp Card [{card-id :id} {:table_id      (mt/id :venues)
@@ -55,4 +56,4 @@
                                                      :database (mt/id)}}]
     (mt/with-test-user :rasta
       (with-dashboard-cleanup
-        (is (some? (test-comparison (Table (mt/id :venues)) (Card card-id))))))))
+        (is (some? (test-comparison (db/select-one Table :id (mt/id :venues)) (db/select-one Card :id card-id))))))))

@@ -6,9 +6,9 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.domain-entities :refer :all]
+            [metabase.test.domain-entities :refer [with-test-domain-entity-specs]]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.transforms :refer :all]))
+            [metabase.test.transforms :refer [with-test-transform-specs]]))
 
 (use-fixtures :once (fixtures/initialize :db))
 

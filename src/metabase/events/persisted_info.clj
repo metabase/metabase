@@ -7,7 +7,7 @@
             [metabase.public-settings :as public-settings]
             [toucan.db :as db]))
 
-(def ^:private ^:const persisted-info-topics
+(def ^:private persisted-info-topics
   "The `Set` of event topics which are subscribed to add persisted-info to new models."
   #{:card-create
     :card-update})
@@ -31,7 +31,7 @@
     ;; is only supposed to be that initial edge when the dataset is being changed.
     (when (and (:dataset card)
                (public-settings/persisted-models-enabled)
-               (get-in (Database (:database_id card)) [:options :persist-models-enabled])
+               (get-in (db/select-one Database :id (:database_id card)) [:options :persist-models-enabled])
                (nil? (db/select-one-field :id PersistedInfo :card_id (:id card))))
       (persisted-info/turn-on-model! (:actor_id card) card))
     (catch Throwable e

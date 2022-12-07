@@ -105,7 +105,7 @@ const DownloadButton = ({
     >
       {params && extractQueryParams(params).map(getInput)}
       <FormButton
-        className="text-white-hover bg-brand-hover rounded cursor-pointer full hover-parent hover--inherit"
+        className="hover-parent hover--inherit"
         onClick={e => {
           if (window.OSX) {
             // prevent form from being submitted normally

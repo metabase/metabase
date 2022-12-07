@@ -3,6 +3,10 @@ import React from "react";
 
 import { t, ngettext, msgid } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
+import {
+  ReadPermissionLabel,
+  WritePermissionLabel,
+} from "./PermissionsConfirm.styled";
 
 const GroupName = ({ group }) => (
   <span className="text-brand">{group.name}</span>
@@ -75,9 +79,9 @@ const PermissionsConfirm = ({ diff }) => (
                 ? t` will no longer be able to `
                 : t` will now be able to `}
               {database.native === "read" ? (
-                <span className="text-gold">{t`read`}</span>
+                <ReadPermissionLabel>{t`read`}</ReadPermissionLabel>
               ) : database.native === "write" ? (
-                <span className="text-success">{t`write`}</span>
+                <WritePermissionLabel>{t`write`}</WritePermissionLabel>
               ) : (
                 <span>{t`read or write`}</span>
               )}

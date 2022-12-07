@@ -1,11 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.api.subscription-test
   "Permisisons tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
   (:require [clojure.test :refer :all]
-            [metabase.api.alert :as api-alert]
+            [metabase.api.alert :as api.alert]
             [metabase.api.alert-test :as alert-test]
             [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.pulse :as pulse]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.pulse-test :as pulse-test]
@@ -18,10 +18,10 @@
   Use it when we need to isolate a user's permissions during tests."
   [& body]
   `(try
-    (perms/revoke-application-permissions! (group/all-users) :subscription)
+    (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
     ~@body
     (finally
-     (perms/grant-application-permissions! (group/all-users) :subscription))))
+     (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
 
 (deftest pulse-permissions-test
   (testing "/api/pulse/*"
@@ -86,7 +86,7 @@
                        {:card    card-id
                         :channel :email}]
                       (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
-                            channel     (api-alert/email-channel the-pulse)
+                            channel     (api.alert/email-channel the-pulse)
                             new-channel (assoc channel :recipients (conj (:recipients channel) (mt/fetch-user :lucky)))
                             new-pulse   (assoc the-pulse :channels [new-channel])]
                         (testing (format "- add pulse's recipients with %s user" (mt/user-descriptor req-user))
@@ -103,7 +103,7 @@
                                                               (db/select-one-id
                                                                PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
                         (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
-                              channel     (api-alert/email-channel the-pulse)
+                              channel     (api.alert/email-channel the-pulse)
                               new-channel (update channel :recipients rest)
                               new-pulse   (assoc the-pulse :channels [new-channel])]
                           (testing (format "- remove pulse's recipients with %s user" (mt/user-descriptor req-user))
@@ -140,7 +140,7 @@
          user  [group]]
         (mt/with-temp*
           [Card       [card {:creator_id (:id user)}]
-           Collection [collection]]
+           Collection [_collection]]
           (let [alert-default {:card             {:id                (:id card)
                                                   :include_csv       true
                                                   :include_xls       false
@@ -189,7 +189,7 @@
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
-        (mt/with-temp* [Card [{card-id :id}]]
+        (mt/with-temp Card [_]
           (letfn [(add-alert-recipient [req-user status]
                     (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
                                     Card                  [card]

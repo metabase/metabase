@@ -36,16 +36,17 @@ function fillMissingValues(rows, xValues, fillValue, getKey = v => v) {
       }
     }
 
-    const newRows = xValues.map(value => {
-      const key = getKey(value);
+    const newRows = xValues.map(xValue => {
+      const key = getKey(xValue);
       const row = map.get(key);
       if (row) {
         map.delete(key);
-        const newRow = [value, ...row.slice(1)];
+        const yValues = row.slice(1).map(yValue => yValue ?? fillValue);
+        const newRow = [xValue, ...yValues];
         newRow._origin = row._origin;
         return newRow;
       } else {
-        return [value, ...fillValues];
+        return [xValue, ...fillValues];
       }
     });
     if (map.size > 0) {

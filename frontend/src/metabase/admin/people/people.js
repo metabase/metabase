@@ -1,3 +1,5 @@
+import _ from "underscore";
+import { assoc, dissoc } from "icepick";
 import {
   createAction,
   handleActions,
@@ -7,9 +9,6 @@ import {
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { PermissionsApi } from "metabase/services";
-
-import _ from "underscore";
-import { assoc, dissoc } from "icepick";
 
 import Users from "metabase/entities/users";
 

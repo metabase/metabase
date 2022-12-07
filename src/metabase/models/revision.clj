@@ -1,10 +1,10 @@
 (ns metabase.models.revision
   (:require [clojure.data :as data]
+            [metabase.models.interface :as mi]
             [metabase.models.revision.diff :refer [diff-string]]
             [metabase.models.user :refer [User]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
-            [potemkin.types :as p.types]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
@@ -14,50 +14,43 @@
   will be deleted."
   15)
 
-;;; # IRevisioned Protocl
+(defmulti serialize-instance
+  "Prepare an instance for serialization in a Revision."
+  {:arglists '([model id instance])}
+  mi/dispatch-on-model)
 
-(p.types/defprotocol+ IRevisioned
-  "Methods an entity may optionally implement to control how revisions of an instance are saved and reverted to.
-   All of these methods except for `serialize-instance` have a default implementation in `IRevisionedDefaults`."
-  (serialize-instance [this id instance]
-    "Prepare an instance for serialization in a Revision.")
-  (revert-to-revision! [this id user-id serialized-instance]
-    "Return an object to the state recorded by `serialized-INSTANCE`.")
-  (diff-map [this object-1 object-2]
-    "Return a map describing the difference between `object-1` and `object-2`.")
-  (diff-str [this object-1 object-2]
-    "Return a string describing the difference between `object-1` and `object-2`."))
+;;; no default implementation for [[serialize-instance]]; models need to implement this themselves.
 
+(defmulti revert-to-revision!
+  "Return an object to the state recorded by `serialized-instance`."
+  {:arglists '([model id user-id serialized-instance])}
+  mi/dispatch-on-model)
 
-;;; # Reusable Base Implementations for IRevisioned functions
+(defmethod revert-to-revision! :default
+  [model id _user-id serialized-instance]
+  (db/update! model id, serialized-instance))
 
-;; NOTE that we do not provide a base implementation for `serialize-instance`, that should be done per entity.
+(defmulti diff-map
+  "Return a map describing the difference between `object-1` and `object-2`."
+  {:arglists '([model object-1 object-2])}
+  mi/dispatch-on-model)
 
-(defn default-revert-to-revision!
-  "Default implementation of `revert-to-revision!` which simply does an update using the values from `serialized-instance`."
-  [entity id _user-id serialized-instance]
-  (db/update! entity id, serialized-instance))
-
-(defn default-diff-map
-  "Default implementation of `diff-map` which simply uses clojures `data/diff` function and sets the keys `:before` and `:after`."
-  [_ o1 o2]
+(defmethod diff-map :default
+  [_model o1 o2]
   (when o1
     (let [[before after] (data/diff o1 o2)]
       {:before before
        :after  after})))
 
-(defn default-diff-str
-  "Default implementation of `diff-str` which simply uses clojures `data/diff` function and passes that on to `diff-string`."
-  [entity o1 o2]
+(defmulti diff-str
+  "Return a string describing the difference between `object-1` and `object-2`."
+  {:arglists '([model object-1 object-2])}
+  mi/dispatch-on-model)
+
+(defmethod diff-str :default
+  [model o1 o2]
   (when-let [[before after] (data/diff o1 o2)]
-    (diff-string (:name entity) before after)))
-
-(def IRevisionedDefaults
-  "Default implementations for `IRevisioned`."
-  {:revert-to-revision! default-revert-to-revision!
-   :diff-map            default-diff-map
-   :diff-str            default-diff-str})
-
+    (diff-string (:name model) before after)))
 
 ;;; # Revision Entity
 
@@ -77,7 +70,7 @@
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
 
-(u/strict-extend (class Revision)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Revision)
   models/IModel
   (merge models/IModelDefaults
          {:types       (constantly {:object :json})
@@ -90,10 +83,10 @@
 
 (defn add-revision-details
   "Add enriched revision data such as `:diff` and `:description` as well as filter out some unnecessary props."
-  [entity revision prev-revision]
+  [model revision prev-revision]
   (-> revision
-      (assoc :diff        (diff-map entity (:object prev-revision) (:object revision))
-             :description (diff-str entity (:object prev-revision) (:object revision)))
+      (assoc :diff        (diff-map model (:object prev-revision) (:object revision))
+             :description (diff-str model (:object prev-revision) (:object revision)))
       ;; add revision user details
       (hydrate :user)
       (update :user select-keys [:id :first_name :last_name :common_name])
@@ -101,34 +94,34 @@
       (dissoc :model :model_id :user_id :object)))
 
 (defn revisions
-  "Get the revisions for `entity` with `id` in reverse chronological order."
-  [entity id]
-  {:pre [(models/model? entity) (integer? id)]}
-  (db/select Revision, :model (:name entity), :model_id id, {:order-by [[:id :desc]]}))
+  "Get the revisions for `model` with `id` in reverse chronological order."
+  [model id]
+  {:pre [(models/model? model) (integer? id)]}
+  (db/select Revision, :model (:name model), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
-  "Fetch `revisions` for `entity` with `id` and add details."
-  [entity id]
-  (when-let [revisions (revisions entity id)]
+  "Fetch `revisions` for `model` with `id` and add details."
+  [model id]
+  (when-let [revisions (revisions model id)]
     (loop [acc [], [r1 r2 & more] revisions]
       (if-not r2
-        (conj acc (add-revision-details entity r1 nil))
-        (recur (conj acc (add-revision-details entity r1 r2))
+        (conj acc (add-revision-details model r1 nil))
+        (recur (conj acc (add-revision-details model r1 r2))
                (conj more r2))))))
 
 (defn- delete-old-revisions!
-  "Delete old revisions of `entity` with `id` when there are more than `max-revisions` in the DB."
-  [entity id]
-  {:pre [(models/model? entity) (integer? id)]}
+  "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
+  [model id]
+  {:pre [(models/model? model) (integer? id)]}
   (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id]
-                                                               :model    (:name entity)
+                                                               :model    (:name model)
                                                                :model_id id
                                                                {:order-by [[:timestamp :desc]]}))))]
     (db/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!
   "Record a new Revision for `entity` with `id`. Returns `object`."
-  {:arglists '([& {:keys [object entity id user-id is-creation? message]}]), :style/indent 0}
+  {:arglists '([& {:keys [object entity id user-id is-creation? message]}])}
   [& {object :object,
       :keys [entity id user-id is-creation? message],
       :or {id (:id object), is-creation? false}}]
@@ -155,7 +148,6 @@
 
 (defn revert!
   "Revert `entity` with `id` to a given Revision."
-  {:style/indent 0}
   [& {:keys [entity id user-id revision-id]}]
   {:pre [(models/model? entity)
          (integer? id)
@@ -168,7 +160,7 @@
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (Revision :model (:name entity), :model_id id, {:order-by [[:id :desc]]})
+      (let [last-revision (db/select-one Revision :model (:name entity), :model_id id, {:order-by [[:id :desc]]})
             new-revision  (db/insert! Revision
                             :model        (:name entity)
                             :model_id     id

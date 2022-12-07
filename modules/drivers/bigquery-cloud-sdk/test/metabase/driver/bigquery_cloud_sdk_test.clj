@@ -45,9 +45,9 @@
               [3 "The Apple Pan"]
               [4 "Wurstküche"]
               [5 "Brite Spot Family Restaurant"]]
-             (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                    [(Field (mt/id :venues :id))
-                     (Field (mt/id :venues :name))]
+             (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                    [(db/select-one Field :id (mt/id :venues :id))
+                     (db/select-one Field :id (mt/id :venues :name))]
                     (constantly conj))
                   (sort-by first)
                   (take 5)))))
@@ -60,9 +60,9 @@
            page-callback   (fn [] (swap! pages-retrieved inc))]
        (with-bindings {#'bigquery/*page-size*             25
                        #'bigquery/*page-callback*         page-callback}
-         (let [actual (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                             [(Field (mt/id :venues :id))
-                              (Field (mt/id :venues :name))]
+         (let [actual (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                             [(db/select-one Field :id (mt/id :venues :id))
+                              (db/select-one Field :id (mt/id :venues :name))]
                              (constantly conj))
                            (sort-by first)
                            (take 5))]
@@ -148,10 +148,10 @@
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              (calculate-bird-scarcity [:* 1 $count]))))))
 
-(deftest db-timezone-id-test
+(deftest db-default-timezone-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= "UTC"
-           (tu/db-timezone-id)))))
+           (driver/db-default-timezone :bigquery-cloud-sdk (mt/db))))))
 
 (defn- do-with-temp-obj [name-fmt-str create-args-fn drop-args-fn f]
   (driver/with-driver :bigquery-cloud-sdk
@@ -394,22 +394,21 @@
 (deftest global-max-rows-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "The limit middleware prevents us from fetching more pages than are necessary to fulfill query max-rows"
-      (mt/with-open-channels [canceled-chan (a/promise-chan)]
-        (let [page-size          100
-              max-rows           1000
-              num-page-callbacks (atom 0)]
-          (binding [bigquery/*page-size*     page-size
-                    bigquery/*page-callback* (fn []
-                                               (swap! num-page-callbacks inc))]
-            (mt/dataset sample-dataset
-              (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
-                (is (= max-rows (count rows)))
-                (is (= (/ max-rows page-size) @num-page-callbacks))))))))))
+      (let [page-size          100
+            max-rows           1000
+            num-page-callbacks (atom 0)]
+        (binding [bigquery/*page-size*     page-size
+                  bigquery/*page-callback* (fn []
+                                             (swap! num-page-callbacks inc))]
+          (mt/dataset sample-dataset
+            (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
+              (is (= max-rows (count rows)))
+              (is (= (/ max-rows page-size) @num-page-callbacks)))))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
-    (doseq [table (Table :db_id (u/the-id db-filtered))]
+    (doseq [table (db/select-one Table :db_id (u/the-id db-filtered))]
       (assert-table-fn table))))
 
 (deftest dataset-filtering-test
@@ -455,7 +454,7 @@
                                                                   (orig-fn database dataset-id))]
             ;; fetch the Database from app DB a few more times to ensure the normalization changes are only called once
             (doseq [_ (range 5)]
-              (is (nil? (get-in (Database db-id) [:details :dataset-id]))))
+              (is (nil? (get-in (db/select-one Database :id db-id) [:details :dataset-id]))))
             ;; the convert-dataset-id-to-filters! fn should have only been called *once* (as a result of the select
             ;; that runs at the end of creating the temp object, above ^
             ;; it should have persisted the change that removes the dataset-id to the app DB, so the next time someone
@@ -465,7 +464,7 @@
           ;; now, so we need to manually update the temp DB again here, to force the "old" structure
           (let [updated? (db/update! Database db-id :details {:dataset-id "my-dataset"})]
             (is updated?)
-            (let [updated (Database db-id)]
+            (let [updated (db/select-one Database :id db-id)]
               (is (nil? (get-in updated [:details :dataset-id])))
               ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
               (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))

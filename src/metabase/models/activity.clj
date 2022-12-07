@@ -52,16 +52,19 @@
                   :details   {}}]
     (merge defaults activity)))
 
-(u/strict-extend (class Activity)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Activity)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:details :json, :topic :keyword})
-          :pre-insert pre-insert})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:can-read?  (partial can-? mi/can-read?)
-          ;; TODO - when do people *write* activities?
-          :can-write? (partial can-? mi/can-write?)}))
+          :pre-insert pre-insert}))
+
+(defmethod mi/can-read? Activity
+  [& args]
+  (apply can-? mi/can-read? args))
+
+(defmethod mi/can-write? Activity
+  [& args]
+  (apply can-? mi/can-write? args))
 
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------

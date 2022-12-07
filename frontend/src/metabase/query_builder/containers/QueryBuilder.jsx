@@ -16,8 +16,7 @@ import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 
-import { closeNavbar } from "metabase/redux/app";
-import { MetabaseApi } from "metabase/services";
+import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   getUser,
@@ -41,6 +40,7 @@ import View from "../components/view/View";
 import {
   getCard,
   getDatabasesList,
+  getDataReferenceStack,
   getOriginalCard,
   getLastRunCard,
   getFirstQueryResult,
@@ -66,14 +66,11 @@ import {
   getQuery,
   getQuestion,
   getOriginalQuestion,
-  getSettings,
   getQueryStartTime,
   getRawSeries,
   getQuestionAlerts,
   getVisualizationSettings,
   getIsNativeEditorOpen,
-  getIsPreviewing,
-  getIsPreviewable,
   getIsVisualized,
   getIsLiveResizable,
   getNativeEditorCursorOffset,
@@ -92,21 +89,10 @@ import {
   getIsHeaderVisible,
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
+  getAutocompleteResultsFn,
+  getCardAutocompleteResultsFn,
 } from "../selectors";
 import * as actions from "../actions";
-
-function autocompleteResults(card, prefix) {
-  const databaseId = card && card.dataset_query && card.dataset_query.database;
-  if (!databaseId) {
-    return [];
-  }
-
-  const apiCall = MetabaseApi.db_autocomplete_suggestions({
-    dbId: databaseId,
-    prefix: prefix,
-  });
-  return apiCall;
-}
 
 const timelineProps = {
   query: { include: "events" },
@@ -152,18 +138,16 @@ const mapStateToProps = (state, props) => {
     rawSeries: getRawSeries(state),
 
     uiControls: getUiControls(state),
-    // includes isShowingDataReference, isEditing, isRunning, etc
-    // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
+    dataReferenceStack: getDataReferenceStack(state),
     isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
-    isPreviewing: getIsPreviewing(state),
-    isPreviewable: getIsPreviewable(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
+    isNavBarOpen: getIsNavbarOpen(state),
     isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
@@ -181,8 +165,8 @@ const mapStateToProps = (state, props) => {
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
 
-    autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
-    instanceSettings: getSettings(state),
+    autocompleteResultsFn: getAutocompleteResultsFn(state),
+    cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
 
     initialCollectionId: Collections.selectors.getInitialCollectionId(
       state,
@@ -221,7 +205,6 @@ function QueryBuilder(props) {
     initializeQB,
     apiCreateQuestion,
     apiUpdateQuestion,
-    updateQuestion,
     updateUrl,
     locationChanged,
     onChangeLocation,
@@ -283,8 +266,14 @@ function QueryBuilder(props) {
 
   const handleCreate = useCallback(
     async card => {
-      const questionWithUpdatedCard = question.setCard(card);
+      const shouldBePinned = Boolean(card.dataset);
+
+      const questionWithUpdatedCard = question
+        .setCard(card)
+        .setPinned(shouldBePinned);
+
       await apiCreateQuestion(questionWithUpdatedCard);
+
       setRecentlySaved("created");
     },
     [question, apiCreateQuestion, setRecentlySaved],
@@ -371,12 +360,6 @@ function QueryBuilder(props) {
       locationChanged(previousLocation, location, params);
     }
   }, [location, params, previousLocation, locationChanged]);
-
-  useEffect(() => {
-    if (question) {
-      question._update = updateQuestion;
-    }
-  });
 
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 

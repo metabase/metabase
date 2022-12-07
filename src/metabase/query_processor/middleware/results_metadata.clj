@@ -49,7 +49,7 @@
      (merge
       (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
                               :settings :field_ref :name :base_type :effective_type
-                              :coercion_strategy :semantic_type])
+                              :coercion_strategy :visibility_type])
       insights-col
       (when (= our-base-type :type/*)
         {:base_type final-base-type})))

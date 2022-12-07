@@ -1,7 +1,7 @@
 import Cookies from "js-cookie";
 import { replace } from "react-router-redux";
 import { logout, refreshSession } from "metabase/auth/actions";
-import { isSameOrigin } from "metabase/lib/dom";
+import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 
 export const SESSION_KEY = "metabase.TIMEOUT";
 export const COOKIE_POOLING_TIMEOUT = 3000;
@@ -11,7 +11,7 @@ const getRedirectUrl = () => {
   const params = new URLSearchParams(window.location.search);
   const redirectUrlParam = params.get("redirect");
 
-  return redirectUrlParam != null && isSameOrigin(redirectUrlParam)
+  return redirectUrlParam != null && isSameOrSiteUrlOrigin(redirectUrlParam)
     ? redirectUrlParam
     : null;
 };
@@ -35,15 +35,16 @@ export const createSessionMiddleware = (
           wasLoggedIn = isLoggedIn;
 
           if (isLoggedIn) {
-            await store.dispatch(refreshSession());
+            // get the redirect url before refreshing the session because after the refresh the url will be reset
             const redirectUrl = getRedirectUrl();
+            await store.dispatch(refreshSession());
 
             if (redirectUrl !== null) {
               store.dispatch(replace(redirectUrl));
             }
           } else {
             const url = location.pathname + location.search + location.hash;
-            store.dispatch(logout(url, true));
+            store.dispatch(logout(url));
           }
         }
       }, COOKIE_POOLING_TIMEOUT);

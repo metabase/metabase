@@ -1,18 +1,12 @@
 ---
 title: "Alert"
-summary: "/api/alert endpoints."
+summary: |
+  /api/alert endpoints.
 ---
 
 # Alert
 
 /api/alert endpoints.
-
-  - [DELETE /api/alert/:id/subscription](#delete-apialertidsubscription)
-  - [GET /api/alert/](#get-apialert)
-  - [GET /api/alert/:id](#get-apialertid)
-  - [GET /api/alert/question/:id](#get-apialertquestionid)
-  - [POST /api/alert/](#post-apialert)
-  - [PUT /api/alert/:id](#put-apialertid)
 
 ## `DELETE /api/alert/:id/subscription`
 

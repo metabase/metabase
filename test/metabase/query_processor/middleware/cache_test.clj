@@ -278,8 +278,7 @@
         (testing "Cached results should exist"
           (is (= true
                  (i/cached-results cache/*backend* query-hash 100
-                   (fn respond [input-stream]
-                     (some? input-stream))))))
+                   some?))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
@@ -363,7 +362,7 @@
   (testing "Insights should work on cahced results (#12556)"
     (with-mock-cache [save-chan]
       (let [query (-> checkins
-                      (mt/mbql-query {:breakout    [[:datetime-field (mt/id :checkins :date) :month]]
+                      (mt/mbql-query {:breakout    [!month.date]
                                       :aggregation [[:count]]})
                       (assoc :cache-ttl 100))]
         (qp/process-query query)

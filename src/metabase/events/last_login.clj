@@ -5,7 +5,7 @@
             [metabase.models.user :refer [User]]
             [toucan.db :as db]))
 
-(def ^:const last-login-topics
+(def ^:private last-login-topics
   "The `Set` of event topics which are subscribed to for use in last login tracking."
   #{:user-login})
 

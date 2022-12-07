@@ -5,7 +5,7 @@
             [clojure.test :refer :all]
             [metabase.db.data-migrations :as migrations]
             [metabase.models :refer [Card Dashboard DashboardCard Setting]]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -360,7 +360,7 @@
 ;; because they require all settings are defined.
 ;; That's why we use a set of helper functions that get setting directly from DB during tests
 (deftest migrate-remove-admin-from-group-mapping-if-needed-test
-  (let [admin-group-id        (u/the-id (group/admin))
+  (let [admin-group-id        (u/the-id (perms-group/admin))
         sso-group-mappings    {"group-mapping-a" [admin-group-id (+ 1 admin-group-id)]
                                "group-mapping-b" [admin-group-id (+ 1 admin-group-id) (+ 2 admin-group-id)]}
         ldap-group-mappings   {"dc=metabase,dc=com" [admin-group-id (+ 1 admin-group-id)]}

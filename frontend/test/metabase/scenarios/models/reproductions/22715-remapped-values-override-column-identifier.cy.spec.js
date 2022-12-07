@@ -5,7 +5,7 @@ import {
   filter,
 } from "__support__/e2e/helpers";
 
-describe.skip("filtering based on the remapped column name should result in a correct query (metabase#22715)", () => {
+describe("filtering based on the remapped column name should result in a correct query (metabase#22715)", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/card/*").as("updateModel");
@@ -26,15 +26,19 @@ describe.skip("filtering based on the remapped column name should result in a co
 
       // Let's go straight to the model metadata editor
       cy.visit(`/model/${id}/metadata`);
-      // Without this Cypress fails to remap the column because an element becomes detached from the DOM
-      cy.findByText(
-        "Use the tab key to navigate through settings and columns.",
-      );
+      // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
+      // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
+      cy.findByText("Database column this maps to");
+      cy.wait(5000);
 
       // The first column `ID` is automatically selected
       mapColumnTo({ table: "Orders", column: "ID" });
 
       cy.findByText("ALIAS_CREATED_AT").click();
+
+      // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
+      // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
+      cy.wait(5000);
       mapColumnTo({ table: "Orders", column: "Created At" });
 
       // Make sure the column name updated before saving
@@ -62,9 +66,9 @@ describe.skip("filtering based on the remapped column name should result in a co
   it("when done through the filter trigger (metabase#22715-2)", () => {
     filter();
 
-    cy.findByTestId("sidebar-right").within(() => {
-      cy.findByText("Created At").click();
+    cy.get(".Modal").within(() => {
       cy.findByText("Today").click();
+      cy.findByText("Apply Filters").click();
     });
 
     cy.wait("@dataset");

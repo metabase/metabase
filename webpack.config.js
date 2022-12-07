@@ -12,6 +12,7 @@ const WebpackNotifierPlugin = require("webpack-notifier");
 const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 
 const fs = require("fs");
+const os = require("os");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
@@ -215,13 +216,17 @@ const config = (module.exports = {
 });
 
 if (WEBPACK_BUNDLE === "hot") {
+
+  const localIpAddress = getLocalIpAddress("IPv4") || getLocalIpAddress("IPv6") || "0.0.0.0";
+
+  const webpackPort = 8080;
+  const webpackHost = `http://${localIpAddress}:${webpackPort}`
   config.target = "web";
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js?[contenthash]";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
-  config.output.publicPath =
-    "http://localhost:8080/" + config.output.publicPath;
+  config.output.publicPath = webpackHost + "/" + config.output.publicPath;
 
   config.module.rules.unshift({
     test: /\.(tsx?|jsx?)$/,
@@ -238,8 +243,14 @@ if (WEBPACK_BUNDLE === "hot") {
   });
 
   config.devServer = {
+    host: "local-ip",
+    port: webpackPort,
+    allowedHosts: "auto",
     hot: true,
-    client: { overlay: false },
+    client: {
+      progress: true,
+      overlay: false
+    },
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
@@ -310,4 +321,16 @@ if (WEBPACK_BUNDLE !== "production") {
   );
 
   config.devtool = "source-map";
+}
+
+function getLocalIpAddress(ipFamily) {
+  const networkInterfaces = os.networkInterfaces();
+  const interfaces = Object.keys(networkInterfaces)
+    .map(iface => networkInterfaces[iface])
+    .reduce((interfaces, iface) => interfaces.concat(iface));
+
+  const externalInterfaces = interfaces.filter(iface => !iface.internal)
+
+  const { address } = externalInterfaces.filter(({ family }) => family === ipFamily).shift();
+  return address;
 }

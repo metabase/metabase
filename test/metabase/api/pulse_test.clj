@@ -12,7 +12,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.pulse-channel :as pulse-channel]
             [metabase.models.pulse-test :as pulse-test]
-            [metabase.pulse.render.png :as png]
+            [metabase.pulse.render.style :as style]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
@@ -141,7 +141,9 @@
 
 (defn- remove-extra-channels-fields [channels]
   (for [channel channels]
-    (dissoc channel :id :pulse_id :created_at :updated_at)))
+    (-> channel
+        (dissoc :id :pulse_id :created_at :updated_at)
+        (update :entity_id boolean))))
 
 (def ^:private pulse-defaults
   {:collection_id       nil
@@ -167,7 +169,7 @@
     (testing "legacy pulse"
       (mt/with-temp* [Card [card-1]
                       Card [card-2]
-                      Dashboard [{dashboard-id :id} {:name "Birdcage KPIs"}]
+                      Dashboard [_ {:name "Birdcage KPIs"}]
                       Collection [collection]]
         (api.card-test/with-cards-in-readable-collection [card-1 card-2]
           (mt/with-model-cleanup [Pulse]
@@ -487,7 +489,7 @@
 
 (deftest change-collection-test
   (testing "Can we change the Collection a Pulse is in (assuming we have the permissions to do so)?"
-    (pulse-test/with-pulse-in-collection [db collection pulse]
+    (pulse-test/with-pulse-in-collection [_db collection pulse]
       (mt/with-temp Collection [new-collection]
         ;; grant Permissions for both new and old collections
         (doseq [coll [collection new-collection]]
@@ -499,7 +501,7 @@
                (u/the-id new-collection)))))
 
     (testing "...but if we don't have the Permissions for the old collection, we should get an Exception"
-      (pulse-test/with-pulse-in-collection [db collection pulse]
+      (pulse-test/with-pulse-in-collection [_db _collection pulse]
         (mt/with-temp Collection [new-collection]
           ;; grant Permissions for only the *new* collection
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
@@ -508,7 +510,7 @@
                  (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))
 
     (testing "...and if we don't have the Permissions for the new collection, we should get an Exception"
-      (pulse-test/with-pulse-in-collection [db collection pulse]
+      (pulse-test/with-pulse-in-collection [_db collection pulse]
         (mt/with-temp Collection [new-collection]
           ;; grant Permissions for only the *old* collection
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -536,7 +538,7 @@
                (db/select-one-field :collection_position Pulse :id (u/the-id pulse))))))
 
     (testing "...we shouldn't be able to if we don't have permissions for the Collection"
-      (pulse-test/with-pulse-in-collection [_ collection pulse]
+      (pulse-test/with-pulse-in-collection [_db _collection pulse]
         (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
                               {:collection_position 1})
         (is (= nil
@@ -574,7 +576,7 @@
                       Pulse                 [pulse {:collection_id (u/the-id collection)}]
                       PulseChannel          [pc    {:pulse_id (u/the-id pulse)}]
                       PulseChannelRecipient [pcr   {:pulse_channel_id (u/the-id pc), :user_id (mt/user->id :rasta)}]
-                      Card                  [card]]
+                      Card                  [_]]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:archived true})
@@ -781,17 +783,17 @@
     (testing "can fetch dashboard subscriptions by user ID -- should return subscriptions created by the user,
            or subscriptions for which the user is a known recipient. Should exclude pulses."
       (mt/with-temp* [Dashboard             [{dashboard-id :id}]
-                      Pulse                 [creator-pulse   {:name "LuckyCreator",
-                                                              :creator_id (mt/user->id :lucky)
+                      Pulse                 [_creator-pulse  {:name         "LuckyCreator"
+                                                              :creator_id   (mt/user->id :lucky)
                                                               :dashboard_id dashboard-id}]
-                      Pulse                 [recipient-pulse {:name "LuckyRecipient",
+                      Pulse                 [recipient-pulse {:name         "LuckyRecipient"
                                                               :dashboard_id dashboard-id}]
-                      Pulse                 [other-pulse     {:name "Other",
+                      Pulse                 [_other-pulse    {:name         "Other"
                                                               :dashboard_id dashboard-id}]
-                      Pulse                 [excluded-pulse  {:name "Excluded"}]
+                      Pulse                 [_excluded-pulse {:name "Excluded"}]
                       PulseChannel          [pulse-channel   {:pulse_id (u/the-id recipient-pulse)}]
-                      PulseChannelRecipient [_               {:pulse_channel_id (u/the-id pulse-channel),
-                                                              :user_id (mt/user->id :lucky)}]]
+                      PulseChannelRecipient [_               {:pulse_channel_id (u/the-id pulse-channel)
+                                                              :user_id          (mt/user->id :lucky)}]]
         (is (= #{"LuckyCreator" "LuckyRecipient"}
                (set (map :name (mt/user-http-request :rasta :get 200 (str "pulse?user_id=" (mt/user->id :lucky)))))))
         (is (= #{"LuckyRecipient" "Other"}
@@ -1015,8 +1017,8 @@
 
 (deftest preview-pulse-test
   (testing "GET /api/pulse/preview_card/:id"
-    (mt/with-temp* [Collection [collection]
-                    Card       [card  {:dataset_query (mt/mbql-query checkins {:limit 5})}]]
+    (mt/with-temp* [Collection [_]
+                    Card       [card {:dataset_query (mt/mbql-query checkins {:limit 5})}]]
       (letfn [(preview [expected-status-code]
                 (client/client-full-response (mt/user->credentials :rasta)
                                              :get expected-status-code (format "pulse/preview_card_png/%d" (u/the-id card))))]
@@ -1027,11 +1029,11 @@
             (is (some? body))))
 
         (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
-          (with-redefs [png/register-fonts-if-needed! (fn []
+          (with-redefs [style/register-fonts-if-needed! (fn []
                                                         (throw (ex-info "Can't register fonts!"
                                                                         {}
                                                                         (NullPointerException.))))]
-            (let [{{:strs [Content-Type]} :headers, :keys [body]} (mt/suppress-output (preview 500))]
+            (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
               (is (= "application/json;charset=utf-8"
                      Content-Type))
               (is (schema= {:message  (s/eq "Can't register fonts!")
@@ -1049,11 +1051,11 @@
                                                     :details       {:other  "stuff"
                                                                     :emails ["foo@bar.com"]}}]]
       (testing "Should be able to delete your own subscription"
-        (mt/with-temp PulseChannelRecipient [pcr {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (mt/with-temp PulseChannelRecipient [_ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= nil
                  (mt/user-http-request :rasta :delete 204 (str "pulse/" pulse-id "/subscription"))))))
 
       (testing "Users can't delete someone else's pulse subscription"
-        (mt/with-temp PulseChannelRecipient [pcr {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
+        (mt/with-temp PulseChannelRecipient [_ {:pulse_channel_id channel-id :user_id (mt/user->id :rasta)}]
           (is (= "Not found."
                  (mt/user-http-request :lucky :delete 404 (str "pulse/" pulse-id "/subscription")))))))))

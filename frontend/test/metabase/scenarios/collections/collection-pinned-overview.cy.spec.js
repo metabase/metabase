@@ -138,7 +138,9 @@ describe("scenarios > collection pinned items overview", () => {
     openPinnedItemMenu(DASHBOARD_NAME);
     popover().findByText("Duplicate").click();
 
-    cy.findByText(`Duplicate "${DASHBOARD_NAME}"`).should("be.visible");
+    cy.findByText(`Duplicate "${DASHBOARD_NAME}" and its questions`).should(
+      "be.visible",
+    );
   });
 
   it("should be able to archive a pinned dashboard", () => {

@@ -53,7 +53,7 @@
       (db/update! 'User user_id
         :is_superuser true))))
 
-(u/strict-extend (class PermissionsGroupMembership)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PermissionsGroupMembership)
   models/IModel
   (merge models/IModelDefaults
          {:pre-delete  pre-delete

@@ -2,6 +2,7 @@
   "Public API for sending Pulses."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.api.common :as api]
             [metabase.config :as config]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
@@ -10,6 +11,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
@@ -49,7 +51,8 @@
   [owner-id dashboard dashcard card-or-id parameters]
   (try
     (let [card-id (u/the-id card-or-id)
-          card    (Card :id card-id)
+          card    (db/select-one Card :id card-id)
+          _       (api/check-is-readonly card)
           result  (mw.session/with-current-user owner-id
                     (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)
@@ -57,7 +60,7 @@
                      :dashcard-id   (u/the-id dashcard)
                      :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
                      :export-format :api
-                     :parameters    (merge-default-values parameters)
+                     :parameters    parameters
                      :middleware    {:process-viz-settings? true
                                      :js-int-to-string?     false}
                      :run           (fn [query info]
@@ -83,12 +86,15 @@
   [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
   (let [dashboard-id      (u/the-id dashboard)
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
-        ordered-dashcards (sort dashcard-comparator dashcards)]
+        ordered-dashcards (sort dashcard-comparator dashcards)
+        parameters        (merge-default-values (params/parameters pulse dashboard))]
     (for [dashcard ordered-dashcards]
       (if-let [card-id (:card_id dashcard)]
-        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id (params/parameters pulse dashboard))
-        ;; For virtual cards, return the viz settings map directly
-        (-> dashcard :visualization_settings)))))
+        (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id parameters)
+        ;; For virtual cards, return just the viz settings map, with any parameter values substituted appropriately
+        (-> dashcard
+            (params/process-virtual-dashcard parameters)
+            :visualization_settings)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -97,7 +103,7 @@
 (s/defn defaulted-timezone :- s/Str
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card :- CardInstance]
-  (or (some-> card database-id Database qp.timezone/results-timezone-id)
+  (or (some->> card database-id (db/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 
 (defn- first-question-name [pulse]
@@ -109,16 +115,16 @@
     :below (trs "gone below its goal")
     :rows  (trs "results")))
 
-(def ^:private ^:dynamic *slack-mrkdwn-length-limit*
-  3000)
+(def ^:private block-text-length-limit 3000)
+(def ^:private attachment-text-length-limit 2000)
 
 (defn- truncate-mrkdwn
   "If a mrkdwn string is greater than Slack's length limit, truncates it to fit the limit and
   adds an ellipsis character to the end."
-  [mrkdwn]
-  (if (> (count mrkdwn) *slack-mrkdwn-length-limit*)
+  [mrkdwn limit]
+  (if (> (count mrkdwn) limit)
     (-> mrkdwn
-        (subs 0 (dec *slack-mrkdwn-length-limit*))
+        (subs 0 (dec limit))
         (str "…"))
     mrkdwn))
 
@@ -140,7 +146,7 @@
                  (when (not (str/blank? mrkdwn))
                    {:blocks [{:type "section"
                               :text {:type "mrkdwn"
-                                     :text (truncate-mrkdwn mrkdwn)}}]})))))
+                                     :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))))
          (remove nil?))))
 
 (defn- subject
@@ -149,6 +155,12 @@
           (some :dashboard_id cards))
     name
     (trs "Pulse: {0}" name)))
+
+(defn- filter-text
+  [filter]
+  (truncate-mrkdwn
+   (format "*%s*\n%s" (:name filter) (params/value-string filter))
+   attachment-text-length-limit))
 
 (defn- slack-dashboard-header
   "Returns a block element that includes a dashboard's name, creator, and filters, for inclusion in a
@@ -164,7 +176,7 @@
         filters         (params/parameters pulse dashboard)
         filter-fields   (for [filter filters]
                           {:type "mrkdwn"
-                           :text (str "*" (:name filter) "*\n" (params/value-string filter))})
+                           :text (filter-text filter)})
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]
@@ -290,7 +302,7 @@
   (let [email-recipients (filterv u/email? (map :email recipients))
         query-results    (filter :card results)
         timezone         (-> query-results first :card defaulted-timezone)
-        dashboard        (Dashboard :id dashboard-id)]
+        dashboard        (db/select-one Dashboard :id dashboard-id)]
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
@@ -302,7 +314,7 @@
    {{channel-id :channel} :details}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
                                         pulse-id (pr-str pulse-name) (count results))))
-  (let [dashboard (Dashboard :id dashboard-id)]
+  (let [dashboard (db/select-one Dashboard :id dashboard-id)]
     {:channel-id  channel-id
      :attachments (remove nil?
                           (flatten [(slack-dashboard-header pulse dashboard)
@@ -415,7 +427,7 @@
   :default 2.0
   :on-change reconfigure-retrying)
 
-(defsetting notification-retry-randomizaion-factor
+(defsetting notification-retry-randomization-factor
   (deferred-tru "The randomization factor of the retry delay when delivering notifications.")
   :type :double
   :default 0.1
@@ -431,7 +443,7 @@
   (cond-> {:max-attempts (notification-retry-max-attempts)
            :initial-interval-millis (notification-retry-initial-interval)
            :multiplier (notification-retry-multiplier)
-           :randomization-factor (notification-retry-randomizaion-factor)
+           :randomization-factor (notification-retry-randomization-factor)
            :max-interval-millis (notification-retry-max-interval-millis)}
     (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
 
@@ -486,9 +498,8 @@
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
   [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
-  (let [dashboard (Dashboard :id dashboard_id)
-        pulse     (-> pulse
-                      pulse/map->PulseInstance
+  (let [dashboard (db/select-one Dashboard :id dashboard_id)
+        pulse     (-> (mi/instance Pulse pulse)
                       ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                       ;; to fetch the Pulse.
                       pulse/hydrate-notification

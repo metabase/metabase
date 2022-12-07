@@ -1,8 +1,5 @@
-import { DimensionOption } from "metabase-lib/lib/queries/StructuredQuery";
-
-import { isDate } from "metabase/lib/schema_metadata";
-
-const LONG_TEXT_MIN = 80;
+import { isDate } from "metabase-lib/types/utils/isa";
+import { DimensionOption } from "metabase-lib/queries/StructuredQuery";
 
 type PriorityMap = { [key: string]: number | undefined };
 
@@ -42,12 +39,8 @@ const fieldSortPriorities: PriorityMap = {
 const getSortValue = (dimensionOption: DimensionOption): number => {
   const field = dimensionOption.dimension.field();
 
-  const isLongText =
-    field?.fingerprint?.type?.["type/Text"]?.["average-length"] >=
-    LONG_TEXT_MIN;
-
   return (
-    (isLongText ? fieldSortPriorities["type/LongText"] : undefined) ??
+    (field.isLongText() ? fieldSortPriorities["type/LongText"] : undefined) ??
     fieldSortPriorities[field.semantic_type ?? ""] ??
     (isDate(field) ? fieldSortPriorities["type/Date"] : undefined) ??
     fieldSortPriorities[field.base_type ?? ""] ??
@@ -57,3 +50,6 @@ const getSortValue = (dimensionOption: DimensionOption): number => {
 
 export const sortDimensions = (a: DimensionOption, b: DimensionOption) =>
   getSortValue(a) - getSortValue(b);
+
+export const isDimensionValid = (dimensionOption: DimensionOption) =>
+  dimensionOption.dimension.field().base_type !== "type/Structured";

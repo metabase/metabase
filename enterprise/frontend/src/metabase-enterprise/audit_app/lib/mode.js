@@ -88,5 +88,5 @@ const AuditDrill = ({ question, clicked }) => {
 
 export const AuditMode = {
   name: "audit",
-  drills: () => [AuditDrill],
+  drills: [AuditDrill],
 };

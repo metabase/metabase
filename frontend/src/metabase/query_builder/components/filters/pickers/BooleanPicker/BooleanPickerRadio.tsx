@@ -2,7 +2,7 @@ import React, { Key } from "react";
 import _ from "underscore";
 
 import { useToggle } from "metabase/hooks/use-toggle";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 import { RadioContainer, Toggle, FilterRadio } from "./BooleanPicker.styled";
 

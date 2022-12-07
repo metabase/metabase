@@ -17,17 +17,14 @@ export interface QueryBuilderUIControls {
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isShowingNewbModal: boolean;
-  isEditing: boolean;
   isRunning: boolean;
   isQueryComplete: boolean;
   isShowingSummarySidebar: boolean;
-  isShowingFilterSidebar: boolean;
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;
   isShowingTimelineSidebar: boolean;
   initialChartSetting: null;
-  isPreviewing: boolean;
   isShowingRawTable: boolean;
   queryBuilderMode: QueryBuilderMode;
   previousQueryBuilderMode: boolean;

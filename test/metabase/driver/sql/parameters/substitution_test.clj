@@ -5,7 +5,8 @@
             [metabase.driver.common.parameters :as params]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.models :refer [Field]]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [toucan.db :as db]))
 
 (deftest honeysql->replacement-snippet-info-test
   (testing "make sure we handle quotes inside names correctly!"
@@ -20,7 +21,7 @@
               :prepared-statement-args ["Doohickey"]}
              (#'sql.params.substitution/field-filter->replacement-snippet-info
               :h2
-              {:field (Field (mt/id :venues :name))
+              {:field (db/select-one Field :id (mt/id :venues :name))
                :value {:type  :string/=
                        :value ["Doohickey"]}}))))))
 

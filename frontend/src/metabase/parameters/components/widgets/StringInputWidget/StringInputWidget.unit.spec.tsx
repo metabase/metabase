@@ -17,8 +17,7 @@ describe("StringInputWidget", () => {
 
       const textbox = screen.getByRole("textbox");
       expect(textbox).toBeInTheDocument();
-      const values = screen.getAllByRole("list")[0];
-      expect(values.textContent).toEqual("foo");
+      expect(screen.getByDisplayValue("foo")).toBeInTheDocument();
     });
 
     it("should render an empty input", () => {

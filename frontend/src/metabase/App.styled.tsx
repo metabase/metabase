@@ -1,8 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-
 export const AppContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -10,7 +8,6 @@ export const AppContainer = styled.div`
 
 export const AppContentContainer = styled.div<{
   isAdminApp: boolean;
-  isAppBarVisible: boolean;
 }>`
   flex-grow: 1;
   display: flex;

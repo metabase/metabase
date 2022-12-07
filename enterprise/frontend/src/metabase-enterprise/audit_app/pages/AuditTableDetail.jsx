@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import EntityName from "metabase/entities/containers/EntityName";
 import AuditContent from "../components/AuditContent";
 import AuditTable from "../containers/AuditTable";
-
-import EntityName from "metabase/entities/containers/EntityName";
 
 import * as TableDetailCards from "../lib/cards/table_detail";
 

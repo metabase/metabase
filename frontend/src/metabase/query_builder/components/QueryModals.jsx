@@ -54,9 +54,21 @@ class QueryModals extends React.Component {
     }
   };
 
+  onQueryChange = query => {
+    const question = query.question();
+    this.props.updateQuestion(question, { run: true });
+  };
+
   render() {
-    const { modal, modalContext, question, onCloseModal, onOpenModal } =
-      this.props;
+    const {
+      modal,
+      modalContext,
+      question,
+      initialCollectionId,
+      onCloseModal,
+      onOpenModal,
+      setQueryBuilderMode,
+    } = this.props;
 
     return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>
@@ -72,7 +84,12 @@ class QueryModals extends React.Component {
           }}
           onCreate={async card => {
             await this.props.onCreate(card);
-            onOpenModal(MODAL_TYPES.SAVED);
+            if (question.isDataset()) {
+              onCloseModal();
+              setQueryBuilderMode("view");
+            } else {
+              onOpenModal(MODAL_TYPES.SAVED);
+            }
           }}
           onClose={onCloseModal}
         />
@@ -160,7 +177,11 @@ class QueryModals extends React.Component {
       </Modal>
     ) : modal === MODAL_TYPES.FILTERS ? (
       <Modal fit onClose={onCloseModal}>
-        <BulkFilterModal question={question} onClose={onCloseModal} />
+        <BulkFilterModal
+          question={question}
+          onQueryChange={this.onQueryChange}
+          onClose={onCloseModal}
+        />
       </Modal>
     ) : modal === MODAL_TYPES.HISTORY ? (
       <Modal onClose={onCloseModal}>
@@ -211,13 +232,17 @@ class QueryModals extends React.Component {
       <Modal onClose={onCloseModal}>
         <EntityCopyModal
           entityType="questions"
-          entityObject={this.props.card}
+          entityObject={{
+            ...question.card(),
+            collection_id: question.canWrite()
+              ? question.collectionId()
+              : initialCollectionId,
+          }}
           copy={async formValues => {
             const object = await this.props.onCreate({
-              ...this.props.card,
+              ...question.card(),
               ...formValues,
               description: formValues.description || null,
-              collection_position: null,
             });
             return { payload: { object } };
           }}

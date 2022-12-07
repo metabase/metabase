@@ -7,15 +7,15 @@ import moment from "moment-timezone";
 
 import { t } from "ttag";
 
-import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 
+import { hasEventAxis } from "metabase/visualizations/lib/timelines";
+import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { computeTimeseriesTicksInterval } from "./timeseries";
 import timeseriesScale from "./timeseriesScale";
 import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
-import { hasEventAxis } from "metabase/visualizations/lib/timelines";
 
 // label offset (doesn't increase padding)
 const X_LABEL_PADDING = 10;
@@ -116,9 +116,10 @@ export function applyChartTimeseriesXAxis(
       chart.settings["graph.x_axis.gridLine_enabled"],
     );
 
-    if (dimensionColumn.unit == null) {
+    if (dimensionColumn.unit == null && dataInterval.interval !== "ms") {
       dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
     }
+
     const waterfallTotalX =
       firstSeries.card.display === "waterfall" &&
       chart.settings["waterfall.show_total"]

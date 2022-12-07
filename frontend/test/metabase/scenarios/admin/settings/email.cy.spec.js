@@ -47,17 +47,21 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findAllByText("Wrong host or port").should("have.length", 2);
   });
 
-  it("should send a test email for a valid SMTP configuration", () => {
-    setupSMTP();
+  it(
+    "should send a test email for a valid SMTP configuration",
+    { tags: "@external" },
+    () => {
+      setupSMTP();
 
-    cy.visit("/admin/settings/email");
-    cy.findByText("Send test email").click();
-    cy.findByText("Sent!");
-    cy.request("GET", "http://localhost:80/email").then(({ body }) => {
-      const emailBody = body[0].text;
-      expect(emailBody).to.include("Your Metabase emails are working");
-    });
-  });
+      cy.visit("/admin/settings/email");
+      cy.findByText("Send test email").click();
+      cy.findByText("Sent!");
+      cy.request("GET", "http://localhost:80/email").then(({ body }) => {
+        const emailBody = body[0].text;
+        expect(emailBody).to.include("Your Metabase emails are working");
+      });
+    },
+  );
 
   it("should be able to clear email settings", () => {
     cy.visit("/admin/settings/email");
@@ -69,15 +73,19 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByLabelText("Reply-To Address").should("have.value", "");
   });
 
-  it("should not offer to save email changes when there aren't any (metabase#14749)", () => {
-    // Make sure some settings are already there
-    setupSMTP();
+  it(
+    "should not offer to save email changes when there aren't any (metabase#14749)",
+    { tags: "@external" },
+    () => {
+      // Make sure some settings are already there
+      setupSMTP();
 
-    cy.visit("/admin/settings/email");
-    cy.findByText("Send test email").scrollIntoView();
-    // Needed to scroll the page down first to be able to use findByRole() - it fails otherwise
-    cy.button("Save changes").should("be.disabled");
-  });
+      cy.visit("/admin/settings/email");
+      cy.findByText("Send test email").scrollIntoView();
+      // Needed to scroll the page down first to be able to use findByRole() - it fails otherwise
+      cy.button("Save changes").should("be.disabled");
+    },
+  );
 
   it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
     cy.intercept("PUT", "/api/email").as("updateSettings");

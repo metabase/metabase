@@ -1,4 +1,7 @@
 (ns metabase.util.ssh
+  "SSH tunnel support for JDBC-based DWs. TODO -- it seems like this code is JDBC-specific, or at least big parts of
+  this all. We should consider moving some or all of this code to a new namespace like
+  `metabase.driver.sql-jdbc.connection.ssh-tunnel` or something like that."
   (:require [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.public-settings :as public-settings]
@@ -45,9 +48,9 @@
           keypair           (GenericUtils/head ids)]
       (.addPublicKeyIdentity session keypair))))
 
-(defn start-ssh-tunnel!
+(defn- start-ssh-tunnel!
   "Opens a new ssh tunnel and returns the connection along with the dynamically assigned tunnel entrance port. It's the
-  callers responsibility to call `close-tunnel` on the returned connection object."
+  callers responsibility to call [[close-tunnel!]] on the returned connection object."
   [{:keys [^String tunnel-host ^Integer tunnel-port ^String tunnel-user tunnel-pass tunnel-private-key
            tunnel-private-key-passphrase host port]}]
   {:pre [(integer? port)]}
@@ -102,8 +105,9 @@
       details-with-tunnel)
     details))
 
+;; TODO Seems like this definitely belongs in [[metabase.driver.sql-jdbc.connection]] or something like that.
 (defmethod driver/incorporate-ssh-tunnel-details :sql-jdbc
-  [_ db-details]
+  [_driver db-details]
   (cond (not (use-ssh-tunnel? db-details))
         ;; no ssh tunnel in use
         db-details
@@ -118,6 +122,7 @@
   "Close a running tunnel session"
   [details]
   (when (and (use-ssh-tunnel? details) (ssh-tunnel-open? details))
+    (log/tracef "Closing SSH tunnel: %s" (:tunnel-session details))
     (.close ^ClientSession (:tunnel-session details))))
 
 (defn do-with-ssh-tunnel
@@ -133,10 +138,12 @@
           (log/trace (u/format-color 'cyan "<< CLOSED SSH TUNNEL >>")))))
     (f details)))
 
+;;; TODO -- I think `with-ssh-tunnel-details` or something like that would be a better name for this. Since it doesn't
+;;; actually give you a tunnel. It just gives you connection details that include a tunnel in there.
 (defmacro with-ssh-tunnel
   "Starts an ssh tunnel, and binds the supplied name to a database
   details map with it's values adjusted to use the tunnel"
-  [[name details] & body]
+  [[details-binding details] & body]
   `(do-with-ssh-tunnel ~details
-     (fn [~name]
-       ~@body)))
+                       (fn [~details-binding]
+                         ~@body)))

@@ -1,7 +1,6 @@
+import mock, { once } from "xhr-mock";
 import api, { GET, POST, PUT } from "metabase/lib/api";
 api.basename = "";
-
-import mock, { once } from "xhr-mock";
 
 describe("api", () => {
   beforeEach(() => mock.setup());

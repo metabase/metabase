@@ -18,7 +18,7 @@
   "Update the `login_attributes` for a User."
   [id :as {{:keys [login_attributes]} :body}]
   {login_attributes UserAttributes}
-  (api/check-404 (User id))
+  (api/check-404 (db/select-one User :id id))
   (db/update! User id :login_attributes login_attributes))
 
 (api/defendpoint GET "/attributes"

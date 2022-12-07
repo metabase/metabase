@@ -1,6 +1,7 @@
 import { Location } from "history";
 import { createSelector } from "reselect";
-import { getUser } from "metabase/selectors/user";
+import { t } from "ttag";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import {
   getIsEditing as getIsEditingDashboard,
   getDashboard,
@@ -18,7 +19,12 @@ export interface RouterProps {
 }
 
 const HOMEPAGE_PATH = /^\/$/;
-const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
+const PATHS_WITHOUT_NAVBAR = [
+  /\/model\/.*\/query/,
+  /\/model\/.*\/metadata/,
+  /\/model\/query/,
+  /\/model\/metadata/,
+];
 const EMBEDDED_PATHS_WITH_NAVBAR = [
   HOMEPAGE_PATH,
   /^\/collection\/.*/,

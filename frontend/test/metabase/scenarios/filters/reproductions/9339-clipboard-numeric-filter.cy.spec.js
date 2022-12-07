@@ -15,7 +15,7 @@ describe("issue 9339", () => {
     cy.findByText("Greater than").click();
 
     paste(cy.findByPlaceholderText("Enter a number"), "9339,1234");
-    cy.findByText("9,339").should("be.visible");
+    cy.findByDisplayValue("9339").should("be.visible");
     cy.findByText("1,234").should("not.exist");
     cy.button("Add filter").should("be.enabled");
   });

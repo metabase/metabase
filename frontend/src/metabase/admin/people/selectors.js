@@ -1,5 +1,4 @@
 import { createSelector } from "reselect";
-import _ from "underscore";
 
 export const getMemberships = state => state.admin.people.memberships;
 

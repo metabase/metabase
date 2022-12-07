@@ -240,30 +240,26 @@ function assertLinkMatchesUrl(text, url) {
 
 function ensureEmbeddingIsDisabled() {
   // This is implicit assertion - it would've failed if embedding was enabled
-  cy.findByText(/Embed this (question|dashboard) in an application/).closest(
-    ".disabled",
-  );
+  cy.findByText(/Embed in your application/).closest(".disabled");
 
   // Let's make sure embedding stays disabled after we enable public sharing
   enableSharing();
 
-  cy.findByText(/Embed this (question|dashboard) in an application/).closest(
-    ".disabled",
-  );
+  cy.findByText(/Embed in your application/).closest(".disabled");
 }
 
 function visitAndEnableSharing(object) {
   if (object === "question") {
     visitQuestion("1");
     cy.icon("share").click();
-    cy.findByText(/Embed this (question|dashboard) in an application/).click();
+    cy.findByText(/Embed in your application/).click();
   }
 
   if (object === "dashboard") {
     visitDashboard(1);
 
     cy.icon("share").click();
-    cy.findByText(/Embed this (question|dashboard) in an application/).click();
+    cy.findByText(/Embed in your application/).click();
   }
 }
 

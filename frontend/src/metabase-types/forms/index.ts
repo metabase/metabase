@@ -1,12 +1,42 @@
+/**
+ * @deprecated
+ */
 export type FieldName = string;
+
+/**
+ * @deprecated
+ */
 export type DefaultFieldValue = unknown;
 
+/**
+ * @deprecated
+ */
 export type FieldValues = Record<FieldName, DefaultFieldValue>;
 
-type FieldValidateResultOK = undefined;
+/**
+ * @deprecated
+ */
+export type BaseFieldValues = {
+  [field: string]: any;
+};
+
+type FieldValidateResultOK = undefined | null | false;
 type FieldValidateResultError = string;
 
-export type BaseFieldDefinition = {
+/**
+ * @deprecated
+ */
+export type Validator = (
+  value: string,
+) => FieldValidateResultOK | FieldValidateResultError;
+
+// Extending Record type here as field definition's props
+// will be just spread to the final field widget
+// (e.g. autoFocus, placeholder)
+/**
+ * @deprecated
+ */
+export type BaseFieldDefinition = Record<string, unknown> & {
   name: string;
   type?: string;
   title?: string;
@@ -23,34 +53,43 @@ export type BaseFieldDefinition = {
   descriptionPosition?: "top" | "bottom";
   visibleIf?: Record<FieldName, unknown>;
 
-  initial?: (value: unknown) => DefaultFieldValue;
-  validate?: (
-    value: DefaultFieldValue,
-  ) => FieldValidateResultOK | FieldValidateResultError;
-  normalize?: (value: unknown) => DefaultFieldValue;
+  initial?: () => DefaultFieldValue;
+  validate?: Validator;
+  normalize?: (value: any) => DefaultFieldValue;
 };
 
+/**
+ * @deprecated
+ */
 export type StandardFormFieldDefinition = BaseFieldDefinition & {
-  type: string;
+  // If not is not provided, we're going to use default text input
+  type?: string | (() => JSX.Element);
 };
 
+/**
+ * @deprecated
+ */
 export type CustomFormFieldDefinition = BaseFieldDefinition & {
   widget: () => JSX.Element;
 };
 
+/**
+ * @deprecated
+ */
 export type FormFieldDefinition =
   | StandardFormFieldDefinition
   | CustomFormFieldDefinition;
 
-export type FormField<Value = DefaultFieldValue> = {
-  name: FieldName;
+/**
+ * @deprecated
+ */
+export type FormField<Values, Value = DefaultFieldValue> = {
+  name: keyof Values;
   value: Value;
   error?: string;
   initialValue: Value;
 
   active: boolean;
-  autofilled: boolean;
-  checked: boolean;
   dirty: boolean;
   invalid: boolean;
   pristine: boolean;
@@ -58,22 +97,27 @@ export type FormField<Value = DefaultFieldValue> = {
   valid: boolean;
   visited: boolean;
 
-  autofill: () => void;
-
   onBlur: () => void;
-  onChange: () => void;
-  onDragStart: () => void;
-  onDrop: () => void;
   onFocus: () => void;
-  onUpdate: () => void;
+  onChange: (value: Value) => void;
 };
 
-export type FormObject = {
-  fields: (values: FieldValues) => FormFieldDefinition[];
-  fieldNames: (values: FieldValues) => FieldName[];
+/**
+ * @deprecated
+ */
+export type FormObject<Values> = {
+  fields: FormFieldDefinition[] | ((values?: Values) => FormFieldDefinition[]);
+};
+
+/**
+ * @deprecated
+ */
+export type PopulatedFormObject<Values extends BaseFieldValues> = {
+  fields: (values?: Values) => FormFieldDefinition[];
+  fieldNames: (values?: Partial<Values>) => (keyof Values)[];
   hidden: (obj: unknown) => void;
-  initial: (obj: unknown) => void;
-  normalize: (obj: unknown) => void;
-  validate: (obj: unknown) => void;
+  initial: (values?: Partial<Values>) => Values;
+  normalize: (values: Values) => Values;
+  validate: (obj: unknown, opts: { values: Values }) => void;
   disablePristineSubmit?: boolean;
 };

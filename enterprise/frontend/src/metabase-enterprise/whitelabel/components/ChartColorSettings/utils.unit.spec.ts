@@ -42,12 +42,14 @@ describe("getAutoChartColors", () => {
     const values = {
       brand: "blue",
       accent2: "green",
+      "accent2-light": "red",
     };
 
     const newValues = getAutoChartColors(values, groups, palette);
 
     expect(newValues).toEqual({
-      brand: "blue",
+      brand: "blue", // unchanged
+      "accent2-light": "red", // unchanged
       accent1: Color.rgb(138, 230, 230).hex(), // generated
       accent2: Color.rgb(0, 128, 0).hex(), // green, unchanged
       accent3: Color.rgb(138, 161, 230).hex(), // generated

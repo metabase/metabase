@@ -15,7 +15,7 @@
             [metabase.config :as config]
             [metabase.shared.util :as shared.u]
             [metabase.util.i18n :refer [trs tru]]
-            [nano-id.core :refer [nano-id]]
+            [nano-id.core :as nano-id]
             [potemkin :as p]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
@@ -32,13 +32,22 @@
  [shared.u
   qualified-name])
 
-(defn add-period
-  "Fixes strings that don't terminate in a period."
+(defn screaming-snake-case
+  "Turns `strings-that-look-like-deafening-vipers` into `STRINGS_THAT_LOOK_LIKE_DEAFENING_VIPERS`."
   [s]
-  (if (or (str/blank? s)
-          (#{\. \? \!} (last s)))
-    s
-    (str s ".")))
+  (str/upper-case (str/replace s "-" "_")))
+
+(defn add-period
+  "Fixes strings that don't terminate in a period; also accounts for strings
+  that end in `:`. Used for formatting docs."
+  [s]
+  (let [text (str s)]
+    (if (or (str/blank? text)
+            (#{\. \? \!} (last text)))
+      text
+      (if (str/ends-with? text ":")
+        (str (subs text 0 (- (count text) 1)) ".")
+        (str text ".")))))
 
 (defn capitalize-first-char
   "Like string/capitalize, only it ignores the rest of the string
@@ -109,7 +118,7 @@
 
 (defn state?
   "Is `s` a state string?"
-  ^Boolean [^String s]
+  ^Boolean [s]
   (boolean
     (when (string? s)
       (contains? #{"alabama" "alaska" "arizona" "arkansas" "california" "colorado" "connecticut" "delaware"
@@ -178,6 +187,7 @@
       (.isReachable host-addr host-up-timeout))
     (catch Throwable _ false)))
 
+;; TODO -- maybe renaming this to `adoto` or `doto<>` or something would be a little clearer.
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
   `first-form`.
@@ -373,7 +383,7 @@
   Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and
   to `extend-protocol`/ `extend-type` going forward."
   ;; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
-  {:style/indent 1}
+  {:style/indent :defn}
   [atype protocol method-map & more]
   (check-protocol-impl-method-map protocol method-map)
   (extend atype protocol method-map)
@@ -381,7 +391,7 @@
     (apply strict-extend atype more)))
 
 (defn remove-diacritical-marks
-  "Return a version of S with diacritical marks removed."
+  "Return a version of `s` with diacritical marks removed."
   ^String [^String s]
   (when (seq s)
     (str/replace
@@ -402,25 +412,36 @@
     \_})
 
 ;; unfortunately it seems that this doesn't fully-support Emoji :(, they get encoded as "??"
-(defn- slugify-char [^Character c]
-  (cond
-    (> (int c) 128)                   (codec/url-encode c) ; for non-ASCII characters, URL-encode them
-    (contains? slugify-valid-chars c) c                    ; for ASCII characters, if they're in the allowed set of characters, keep them
-    :else                             \_))                 ; otherwise replace them with underscores
+(defn- slugify-char [^Character c url-encode?]
+  (if (< (int c) 128)
+    ;; ASCII characters must be in the valid list, or they get replaced with underscores.
+    (if (contains? slugify-valid-chars c)
+      c
+      \_)
+    ;; Non-ASCII characters are URL-encoded or preserved, based on the option.
+    (if url-encode?
+      (codec/url-encode c)
+      c)))
 
 (defn slugify
   "Return a version of String `s` appropriate for use as a URL slug.
-   Downcase the name, remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores;
-   URL-encode non-ASCII characters. (Non-ASCII characters are encoded rather than replaced with underscores in order
-   to support languages that don't use the Latin alphabet; see metabase#3818).
+  Downcase the name and remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores.
 
-   Optionally specify `max-length` which will truncate the slug after that many characters."
+  If `unicode?` is falsy (the default), URL-encode non-ASCII characters. With `unicode?` truthy, non-ASCII characters
+  are preserved.
+  (Even when we want full ASCII output for eg. URL slugs, non-ASCII characters should be encoded rather than
+  replaced with underscores in order to support languages that don't use the Latin alphabet; see metabase#3818).
+
+  Optionally specify `:max-length` which will truncate the slug after that many characters."
   (^String [^String s]
+   (slugify s {}))
+  (^String [s {:keys [max-length unicode?]}]
    (when (seq s)
-     (str/join (for [c (remove-diacritical-marks (str/lower-case s))]
-                 (slugify-char c)))))
-  (^String [s max-length]
-   (str/join (take max-length (slugify s)))))
+     (let [slug (str/join (for [c (remove-diacritical-marks (str/lower-case s))]
+                            (slugify-char c (not unicode?))))]
+       (if max-length
+         (str/join (take max-length slug))
+         slug)))))
 
 (defn full-exception-chain
   "Gather the full exception chain into a sequence."
@@ -479,17 +500,6 @@
   [num-retries & body]
   `(do-with-auto-retries ~num-retries
      (fn [] ~@body)))
-
-(defn key-by
-  "Convert a sequential `coll` to a map of `(f item)` -> `item`.
-  This is similar to `group-by`, but the resultant map's values are single items from `coll` rather than sequences of
-  items. (Because only a single item is kept for each value of `f`, items producing duplicate values will be
-  discarded).
-
-     (key-by :id [{:id 1, :name :a} {:id 2, :name :b}]) -> {1 {:id 1, :name :a}, 2 {:id 2, :name :b}}"
-  {:style/indent 1}
-  [f coll]
-  (into {} (map (juxt f identity)) coll))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
@@ -909,9 +919,9 @@
 
 (defn ip-address?
   "Whether string `s` is a valid IP (v4 or v6) address."
-  [^String s]
+  [s]
   (and (string? s)
-       (.isValid (org.apache.commons.validator.routines.InetAddressValidator/getInstance) s)))
+       (.isValid (org.apache.commons.validator.routines.InetAddressValidator/getInstance) ^String s)))
 
 (defn sorted-take
   "A reducing function that maintains a queue of the largest items as determined by `kompare`. The queue is bounded
@@ -961,9 +971,21 @@
   (= (email->domain email-address) domain))
 
 (defn generate-nano-id
-  "Generates a random NanoID string. Usually these are used for the entity_id field of various models."
-  []
-  (nano-id))
+  "Generates a random NanoID string. Usually these are used for the entity_id field of various models.
+  If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
+  producing the same value every time."
+  ([] (nano-id/nano-id))
+  ([seed-str]
+   (let [seed (Long/parseLong seed-str 16)
+         rnd  (java.util.Random. seed)
+         gen  (nano-id/custom
+                "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                21
+                (fn [len]
+                  (let [ba (byte-array len)]
+                    (.nextBytes rnd ba)
+                    ba)))]
+     (gen))))
 
 (defn pick-first
   "Returns a pair [match others] where match is the first element of `coll` for which `pred` returns

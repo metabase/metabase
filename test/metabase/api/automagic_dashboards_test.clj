@@ -6,7 +6,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.automagic-dashboards :refer :all]
+            [metabase.test.automagic-dashboards :refer [with-dashboard-cleanup]]
             [metabase.test.domain-entities :as test.de]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.transforms :as transforms.test]
@@ -59,7 +59,7 @@
 
 (deftest segment-xray-test
   (tt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
-                                           :definition {:filter [:> [:field-id (mt/id :venues :price)] 10]}}]
+                                           :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
     (testing "GET /api/automagic-dashboards/segment/:id"
       (is (some? (api-call "segment/%s" [segment-id]))))
 
@@ -77,7 +77,7 @@
 
 (deftest card-xray-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [cell-query (#'magic/encode-base64-json [:> [:field-id (mt/id :venues :price)] 5])]
+    (let [cell-query (#'magic/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
       (doseq [test-fn
               [(fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id"
@@ -107,7 +107,7 @@
                (mt/mbql-query venues
                  {:filter [:> $price 10]}))
         cell-query (#'magic/encode-base64-json
-                    [:> [:field-id (mt/id :venues :price)] 5])]
+                    [:> [:field (mt/id :venues :price) nil] 5])]
     (testing "GET /api/automagic-dashboards/adhoc/:query"
       (is (some? (api-call "adhoc/%s" [query]))))
 
@@ -123,7 +123,7 @@
 (def ^:private segment
   (delay
     {:table_id   (mt/id :venues)
-     :definition {:filter [:> [:field-id (mt/id :venues :price)] 10]}}))
+     :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}))
 
 (deftest comparisons-test
   (tt/with-temp Segment [{segment-id :id} @segment]
@@ -143,7 +143,7 @@
                      [(->> (mt/mbql-query venues
                              {:filter [:> $price 10]})
                            (#'magic/encode-base64-json))
-                      (->> [:= [:field-id (mt/id :venues :price)] 15]
+                      (->> [:= [:field (mt/id :venues :price) nil] 15]
                            (#'magic/encode-base64-json))
                       segment-id]))))))
 

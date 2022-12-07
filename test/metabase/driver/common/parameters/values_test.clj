@@ -1,25 +1,28 @@
 (ns metabase.driver.common.parameters.values-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters.parse :as params.parse]
             [metabase.driver.common.parameters.values :as params.values]
+            [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models :refer [Card Collection NativeQuerySnippet]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [schema.core :as s])
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo
            java.util.UUID
            metabase.driver.common.parameters.ReferencedCardQuery))
 
 (def ^:private test-uuid (str (UUID/randomUUID)))
-(def ^:private ^{:arglists '([field-name])} param (var-get #'params.parse/param))
 
 (deftest variable-value-test
   (mt/with-everything-store
@@ -280,6 +283,8 @@
              clojure.lang.ExceptionInfo
              (query->params-map query)))))))
 
+
+
 (deftest card-query-test
   (testing "Card query template tag gets card's native query"
     (let [test-query "SELECT 1"]
@@ -318,6 +323,56 @@
                      :type         :card
                      :card-id      (:id card)}
                     []))))))))
+
+  (testing "Persisted Models are substituted"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (mt/with-persistence-enabled [persist-models!]
+          (let [mbql-query (mt/mbql-query categories)]
+            (mt/with-temp* [Card [model {:name "model"
+                                         :dataset true
+                                         :dataset_query mbql-query
+                                         :database_id (mt/id)}]]
+              (persist-models!)
+              (testing "tag uses persisted table"
+                (let [pi (db/select-one 'PersistedInfo :card_id (u/the-id model))]
+                  (is (= "persisted" (:state pi)))
+                  (is (re-matches #"select \"id\", \"name\" from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
+                                  (:query
+                                   (value-for-tag
+                                    {:name         "card-template-tag-test"
+                                     :display-name "Card template tag test"
+                                     :type         :card
+                                     :card-id      (:id model)}
+                                    []))))
+                  (testing "query hits persisted table"
+                    (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
+                                                              (public-settings/site-uuid))
+                          update-query     (format "update %s.%s set name = name || ' from cached table'"
+                                                   persisted-schema (:table_name pi))
+                          model-query (format "select c_orig.name, c_cached.name
+                                               from categories c_orig
+                                               left join {{#%d}} c_cached
+                                               on c_orig.id = c_cached.id
+                                               order by c_orig.id desc limit 3"
+                                              (u/the-id model))
+                          tag-name    (format "#%d" (u/the-id model))]
+                      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                                     [update-query])
+                      (is (= [["Winery" "Winery from cached table"]
+                              ["Wine Bar" "Wine Bar from cached table"]
+                              ["Vegetarian / Vegan" "Vegetarian / Vegan from cached table"]]
+                             (mt/rows (qp/process-query
+                                       {:database (mt/id)
+                                        :type :native
+                                        :native {:query model-query
+                                                 :template-tags
+                                                 {(keyword tag-name)
+                                                  {:id "c6558da4-95b0-d829-edb6-45be1ee10d3c"
+                                                   :name tag-name
+                                                   :display-name tag-name
+                                                   :type "card"
+                                                   :card-id (u/the-id model)}}}}))))))))))))))
 
   (testing "Card query template tag wraps error in tag details"
     (mt/with-temp Card [param-card {:dataset_query
@@ -363,9 +418,9 @@
       (mt/with-temp-copy-of-db
         (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
         (mt/with-temp* [Collection [collection]
-                        Card       [{card-1-id :id, :as card-1} {:collection_id (u/the-id collection)
-                                                                 :dataset_query (mt/mbql-query venues
-                                                                                  {:order-by [[:asc $id]], :limit 2})}]
+                        Card       [{card-1-id :id} {:collection_id (u/the-id collection)
+                                                     :dataset_query (mt/mbql-query venues
+                                                                      {:order-by [[:asc $id]], :limit 2})}]
                         Card       [card-2 {:collection_id (u/the-id collection)
                                             :dataset_query (mt/native-query
                                                              {:query         "SELECT * FROM {{card}}"
@@ -379,7 +434,7 @@
               (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
                       [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
                      (mt/rows
-                       (qp/process-query (:dataset_query card-2))))))))))))
+                      (qp/process-query (:dataset_query card-2))))))))))))
 
 (deftest card-query-errors-test
   (testing "error conditions for :card parameters"
@@ -394,76 +449,35 @@
              (query->params-map query)))))))
 
 (deftest snippet-test
-  (letfn [(query-with-snippet [parameters & {:as snippet-properties}]
+  (letfn [(query-with-snippet [& {:as snippet-properties}]
             (assoc (mt/native-query "SELECT * FROM {{expensive-venues}}")
                    :template-tags {"expensive-venues" (merge
                                                        {:type         :snippet
                                                         :name         "expensive-venues"
                                                         :display-name "Expensive Venues"
                                                         :snippet-name "expensive-venues"}
-                                                       snippet-properties)}
-                   :parameters   parameters))]
+                                                       snippet-properties)}))]
     (testing "`:snippet-id` should be required"
       (is (thrown?
            clojure.lang.ExceptionInfo
-           (query->params-map (query-with-snippet [])))))
+           (query->params-map (query-with-snippet)))))
 
     (testing "If no such Snippet exists, it should throw an Exception"
       (is (thrown?
            clojure.lang.ExceptionInfo
-           (query->params-map (query-with-snippet [] :snippet-id Integer/MAX_VALUE)))))
+           (query->params-map (query-with-snippet :snippet-id Integer/MAX_VALUE)))))
 
     (testing "Snippet parsing should work correctly for a valid Snippet"
-      (testing "snippet without param"
-        (mt/with-temp NativeQuerySnippet [{snippet-id :id} {:name    "expensive-venues"
-                                                            :content "venues WHERE price = 4"}]
-          (let [expected {"expensive-venues" (params/map->ParsedQuerySnippet {:snippet-id   snippet-id
-                                                                              :parsed-query ["venues WHERE price = 4"]
-                                                                              :param->value {}})}]
+      (mt/with-temp NativeQuerySnippet [{snippet-id :id} {:name    "expensive-venues"
+                                                          :content "venues WHERE price = 4"}]
+        (let [expected {"expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id snippet-id
+                                                                                :content    "venues WHERE price = 4"})}]
+          (is (= expected
+                 (query->params-map (query-with-snippet :snippet-id snippet-id))))
+
+          (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
             (is (= expected
-                   (query->params-map (query-with-snippet [] :snippet-id snippet-id))))
-
-            (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
-              (is (= expected
-                     (query->params-map (query-with-snippet [] :snippet-id snippet-id, :snippet-name "Old Name"))))))))
-
-      (testing "snippet with params"
-        (mt/with-temp NativeQuerySnippet [{snippet-id :id}
-                                          {:name          "expensive-venues"
-                                           :content       "venues WHERE name = {{name}} and {{price}}"
-                                           :template_tags {"price" {:dimension    ["field" (mt/id :venues :price) nil]
-                                                                    :display-name "Price"
-                                                                    :id           "random-id-1"
-                                                                    :name         "price"
-                                                                    :type         "dimension"
-                                                                    :widget-type  "number/="}
-                                                           "name"  {:display-name "Name"
-                                                                    :id           "random-id-2"
-                                                                    :name         "name"
-                                                                    :type         "text"}}}]
-          (let [params         [{:id     "ramdom-id-1",
-                                 :target [:variable [:template-tag "name"]],
-                                 :type   :text,
-                                 :value  "The Apple Pan"}
-                                {:id     "random-id-2",
-                                 :target [:dimension [:template-tag "price"]],
-                                 :type   :string/=,
-                                 :value  [3]}]
-                result         (query->params-map (query-with-snippet params :snippet-id snippet-id))
-                parsed-snippet (get result "expensive-venues")]
-            (is (= snippet-id (:snippet-id parsed-snippet)))
-            (is (= ["venues WHERE name = " (param "name") " and " (param "price")]
-                   (:parsed-query parsed-snippet)))
-            (testing "FieldFilter parameter should have a field and value keys"
-              (is (= (mt/id :venues :price)
-                     (get-in parsed-snippet [:param->value "price" :field :id])))
-              (is (= {:id    "random-id-2"
-                      :type  :string/=
-                      :value [3]}
-                     (get-in parsed-snippet [:param->value "price" :value]))))
-            (testing "variable parameter should have value is the value of parameter"
-              (is (= "The Apple Pan"
-                     (get-in parsed-snippet [:param->value "name"]))))))))))
+                   (query->params-map (query-with-snippet :snippet-id snippet-id, :snippet-name "Old Name"))))))))))
 
 (deftest invalid-param-test
   (testing "Should throw an Exception if we try to pass with a `:type` we don't understand"

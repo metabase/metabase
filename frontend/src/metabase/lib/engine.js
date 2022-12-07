@@ -1,6 +1,11 @@
 import Settings from "metabase/lib/settings";
 import { formatSQL } from "metabase/lib/formatting";
 
+export function getDefaultEngine() {
+  const engines = Object.keys(Settings.get("engines"));
+  return engines.includes("postgres") ? "postgres" : engines[0];
+}
+
 export function getEngineNativeType(engine) {
   switch (engine) {
     case "mongo":
@@ -10,6 +15,10 @@ export function getEngineNativeType(engine) {
     default:
       return "sql";
   }
+}
+
+export function getNativeQueryLanguage(engine) {
+  return getEngineNativeType(engine).toUpperCase();
 }
 
 export function getEngineNativeAceMode(engine) {
@@ -67,10 +76,6 @@ export function getElevatedEngines() {
     "bigquery-cloud-sdk",
     "snowflake",
   ];
-}
-
-export function getEngineNativeRequiresTable(engine) {
-  return engine === "mongo";
 }
 
 export function getEngineSupportsFirewall(engine) {

@@ -1,7 +1,22 @@
 import React from "react";
 import { t } from "ttag";
-import moment from "moment";
 import _ from "underscore";
+
+import { color } from "metabase/lib/colors";
+import { EXCLUDE_OPTIONS } from "metabase-lib/queries/utils/query-time";
+import Filter from "metabase-lib/queries/structured/Filter";
+import {
+  getInitialDayOfWeekFilter,
+  getInitialMonthOfYearFilter,
+  getInitialQuarterOfYearFilter,
+  getInitialHourOfDayFilter,
+  isDayOfWeekDateFilter,
+  isMonthOfYearDateFilter,
+  isQuarterofYearDateFilter,
+  isHourOfDayDateFilter,
+  getNotNullDateFilter,
+  getIsNullDateFilter,
+} from "metabase-lib/queries/utils/date-filters";
 
 import {
   ExcludeCheckBox,
@@ -11,22 +26,6 @@ import {
   OptionButton,
   Separator,
 } from "./ExcludeDatePicker.styled";
-
-import { FieldDimension } from "metabase-lib/lib/Dimension";
-import { Field } from "metabase-types/types/Field";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { color } from "metabase/lib/colors";
-import { EXCLUDE_OPTIONS } from "metabase/lib/query_time";
-
-function getDateTimeField(field: Field, bucketing?: string) {
-  const dimension =
-    FieldDimension.parseMBQLOrWarn(field) ?? new FieldDimension(null);
-  if (bucketing) {
-    return dimension.withTemporalUnit(bucketing).mbql();
-  } else {
-    return dimension.withoutTemporalBucketing().mbql();
-  }
-}
 
 type Option = {
   displayName: string;
@@ -43,41 +42,33 @@ type Group = {
   getOptions: () => Option[][];
 };
 
-const testTemporalUnit = (unit: string) => (filter: Filter) => {
-  const dimension = FieldDimension.parseMBQLOrWarn(filter[1]);
-  if (dimension) {
-    return dimension.temporalUnit() === unit;
-  }
-  return filter[1]?.[2]?.["temporal-unit"] === unit;
-};
-
 export const EXCLUDE_OPERATORS: Group[] = [
   {
     name: "days",
     displayName: t`Days of the week...`,
-    test: testTemporalUnit("day-of-week"),
-    init: filter => ["!=", getDateTimeField(filter[1], "day-of-week")],
+    test: filter => isDayOfWeekDateFilter(filter),
+    init: filter => getInitialDayOfWeekFilter(filter),
     getOptions: EXCLUDE_OPTIONS["day-of-week"],
   },
   {
     name: "months",
     displayName: t`Months of the year...`,
-    test: testTemporalUnit("month-of-year"),
-    init: filter => ["!=", getDateTimeField(filter[1], "month-of-year")],
+    test: filter => isMonthOfYearDateFilter(filter),
+    init: filter => getInitialMonthOfYearFilter(filter),
     getOptions: EXCLUDE_OPTIONS["month-of-year"],
   },
   {
     name: "quarters",
     displayName: t`Quarters of the year...`,
-    test: testTemporalUnit("quarter-of-year"),
-    init: filter => ["!=", getDateTimeField(filter[1], "quarter-of-year")],
+    test: filter => isQuarterofYearDateFilter(filter),
+    init: filter => getInitialQuarterOfYearFilter(filter),
     getOptions: EXCLUDE_OPTIONS["quarter-of-year"],
   },
   {
     name: "hours",
     displayName: t`Hours of the day...`,
-    test: testTemporalUnit("hour-of-day"),
-    init: filter => ["!=", getDateTimeField(filter[1], "hour-of-day")],
+    test: filter => isHourOfDayDateFilter(filter),
+    init: filter => getInitialHourOfDayFilter(filter),
     getOptions: EXCLUDE_OPTIONS["hour-of-day"],
   },
 ];
@@ -112,7 +103,7 @@ export default function ExcludeDatePicker({
 
   if (!temporalUnit || operator === "is-null" || operator === "not-null") {
     return (
-      <div className={className}>
+      <div className={className} data-testid="exclude-date-picker">
         {EXCLUDE_OPERATORS.map(({ displayName, init }) => (
           <OptionButton
             key={displayName}
@@ -131,7 +122,7 @@ export default function ExcludeDatePicker({
               selected={operator === "not-null"}
               primaryColor={primaryColor}
               onClick={() => {
-                onCommit(["not-null", getDateTimeField(filter[1])]);
+                onCommit(getNotNullDateFilter(filter));
               }}
             >
               {t`Is empty`}
@@ -140,7 +131,7 @@ export default function ExcludeDatePicker({
               selected={operator === "is-null"}
               primaryColor={primaryColor}
               onClick={() => {
-                onCommit(["is-null", getDateTimeField(filter[1])]);
+                onCommit(getIsNullDateFilter(filter));
               }}
             >
               {t`Is not empty`}

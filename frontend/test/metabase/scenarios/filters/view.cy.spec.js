@@ -1,8 +1,6 @@
 import {
   restore,
-  openOrdersTable,
   popover,
-  filter,
   visitQuestion,
   visitDashboard,
 } from "__support__/e2e/helpers";
@@ -14,29 +12,6 @@ describe("scenarios > question > view", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
-
-  describe.skip("filter sidebar", () => {
-    it("should filter a table", () => {
-      openOrdersTable();
-      filter();
-      cy.contains("Vendor").click({ force: true });
-      cy.findByPlaceholderText("Search the list").clear().type("A");
-      cy.findByText("Alfreda Konopelski II Group").click();
-
-      cy.contains("Add filter").click();
-      cy.contains("Showing 91 rows");
-    });
-
-    // flaky test (#19454)
-    it.skip("should show info popover for dimension in the filter list", () => {
-      openOrdersTable();
-      filter();
-
-      cy.contains("Name").trigger("mouseenter");
-      popover().contains("Name");
-      popover().contains("2,499 distinct values");
-    });
   });
 
   describe("apply filters without data permissions", () => {

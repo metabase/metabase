@@ -2,18 +2,16 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
+import _ from "underscore";
+import Color from "color";
+import cx from "classnames";
 import { formatValue } from "metabase/lib/formatting";
-import { isNumeric } from "metabase/lib/schema_metadata";
 import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import { color } from "metabase/lib/colors";
 
-import _ from "underscore";
-
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-
-import Color from "color";
-import cx from "classnames";
+import { isNumeric } from "metabase-lib/types/utils/isa";
 
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
@@ -160,7 +158,7 @@ export default class Progress extends Component {
       barMessage = t`Goal exceeded`;
     }
 
-    const clicked = { value, column };
+    const clicked = { value, column, settings };
     const isClickable = visualizationIsClickable(clicked);
 
     return (
@@ -201,6 +199,7 @@ export default class Progress extends Component {
               borderRadius: BORDER_RADIUS,
               overflow: "hidden",
             }}
+            data-testid="progress-bar"
             onClick={
               isClickable &&
               (e => onVisualizationClick({ ...clicked, event: e.nativeEvent }))

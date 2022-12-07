@@ -290,16 +290,16 @@
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder "E.x. public,auth*"
-      :description (trs "Comma separated names of {0} that <strong>should</strong> appear in Metabase" (str/lower-case disp-name))
+      :description (trs "Comma separated names of {0} that should appear in Metabase" (str/lower-case disp-name))
       :visible-if  {(keyword type-prop-nm) "inclusion"}
-      :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
+      :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (str/lower-case disp-name))
       :required true}
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder "E.x. public,auth*"
-      :description (trs "Comma separated names of {0} that <strong>should NOT</strong> appear in Metabase" (str/lower-case disp-name))
+      :description (trs "Comma separated names of {0} that should NOT appear in Metabase" (str/lower-case disp-name))
       :visible-if  {(keyword type-prop-nm) "exclusion"}
-      :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
+      :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (str/lower-case disp-name))
       :required true}]))
 
 
@@ -431,7 +431,23 @@
 
 (def official-drivers
   "The set of all official drivers"
-  #{"bigquery-cloud-sdk" "druid" "googleanalytics" "h2" "mongo" "mysql" "oracle" "postgres" "presto" "presto-jdbc" "redshift" "snowflake" "sparksql" "sqlite" "sqlserver" "vertica"})
+  #{"athena"
+    "bigquery-cloud-sdk"
+    "druid"
+    "googleanalytics"
+    "h2"
+    "mongo"
+    "mysql"
+    "oracle"
+    "postgres"
+    "presto"
+    "presto-jdbc"
+    "redshift"
+    "snowflake"
+    "sparksql"
+    "sqlite"
+    "sqlserver"
+    "vertica"})
 
 (def partner-drivers
   "The set of other drivers in the partnership program"
@@ -468,7 +484,8 @@
   "Available database engines"
   :visibility :public
   :setter     :none
-  :getter     available-drivers-info)
+  :getter     available-drivers-info
+  :doc        false)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             TLS Helpers                                                        |
@@ -548,10 +565,10 @@
 
 (defn ssl-socket-factory
   "Generates an `SocketFactory` with the custom certificates added"
-  ^SocketFactory [& {:keys [private-key password own-cert trust-cert]}]
+  ^SocketFactory [& {:keys [private-key own-cert trust-cert]}]
   (let [ssl-context (SSLContext/getInstance "TLS")]
     (.init ssl-context
-           (when (and private-key password own-cert) (key-managers private-key password own-cert))
+           (when (and private-key own-cert) (key-managers private-key (str (random-uuid)) own-cert))
            (when trust-cert (trust-managers trust-cert))
            nil)
     (.getSocketFactory ssl-context)))

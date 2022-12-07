@@ -1,31 +1,25 @@
 import React from "react";
 import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
 import { color } from "metabase/lib/colors";
+import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+import { getHelpDocsUrl } from "metabase-lib/expressions/helper-text-strings";
+import { HelpText } from "metabase-lib/expressions/types";
 
-type Arg = {
-  name: string;
-  description: string;
-};
-
-type HelpText = {
-  args: Arg[];
-  description: string;
-  example: string;
-  structure: string;
-};
-
-interface HelpTextProps {
+interface ExpressionEditorHelpTextProps {
   helpText: HelpText;
   width: number;
   target: Element;
 }
 
-const HelpText = ({ helpText, width, target }: HelpTextProps) => {
+const ExpressionEditorHelpText = ({
+  helpText,
+  width,
+  target,
+}: ExpressionEditorHelpTextProps) => {
   if (!helpText) {
     return null;
   }
@@ -60,7 +54,7 @@ const HelpText = ({ helpText, width, target }: HelpTextProps) => {
               <ExternalLink
                 className="link text-bold block my1"
                 target="_blank"
-                href={MetabaseSettings.docsUrl("users-guide/expressions")}
+                href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
               >
                 <Icon name="reference" size={12} className="mr1" />
                 {t`Learn more`}
@@ -69,8 +63,8 @@ const HelpText = ({ helpText, width, target }: HelpTextProps) => {
           </div>
         </>
       }
-    ></TippyPopover>
+    />
   );
 };
 
-export default HelpText;
+export default ExpressionEditorHelpText;

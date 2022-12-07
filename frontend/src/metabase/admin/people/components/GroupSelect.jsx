@@ -6,8 +6,6 @@ import Icon from "metabase/components/Icon";
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-import GroupSummary from "./GroupSummary";
-
 import {
   isDefaultGroup,
   isAdminGroup,
@@ -15,6 +13,7 @@ import {
   getGroupColor,
   getGroupNameLocalized,
 } from "metabase/lib/groups";
+import GroupSummary from "./GroupSummary";
 
 export const GroupSelect = ({
   groups,
@@ -61,7 +60,7 @@ export const GroupSelect = ({
       }
       optionValueFn={group => group.id}
       optionNameFn={getGroupNameLocalized}
-      optionClassNameFn={getGroupColor}
+      optionStylesFn={group => ({ color: getGroupColor(group) })}
       value={selectedGroupIds}
       sections={
         topGroups.length > 0
