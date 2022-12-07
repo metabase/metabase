@@ -688,6 +688,14 @@
                  field-id          (param-key->field-ids dashboard param-key)]
              [field-id value])))
 
+(defn param-values-for
+  [{:params parameters :as dashboard} param-key query-params]
+  (condp = (:sourceType params)
+    "static-list" (println "TODO: Not implemented!!!!")
+    "card"        (println "TODO: coming soon")
+    ;; "all-values" or the default:
+    (chain-filter dashboard param-key query-params)))
+
 (s/defn chain-filter
   "C H A I N filters!
 
@@ -738,14 +746,14 @@
             (throw e))))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
-  "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
-  parameters like `other-parameter=value` e.g.
+  "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
+  restrict these values by passing query parameters like `other-parameter=value` e.g.
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
   [id param-key :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
-    (chain-filter dashboard param-key query-params)))
+    (param-values-for dashboard param-key query-params)))
 
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
