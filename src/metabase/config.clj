@@ -1,12 +1,16 @@
 (ns metabase.config
-  (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [environ.core :as env]
-            [metabase.plugins.classloader :as classloader])
-  (:import clojure.lang.Keyword
-           java.util.UUID))
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [environ.core :as env]
+   [metabase.models.setting.interface :as setting.i]
+   [metabase.models.setting.macros :refer [defsetting]]
+   [metabase.plugins.classloader :as classloader])
+  (:import
+   (clojure.lang Keyword)
+   (java.util UUID)))
 
 ;; this existed long before 0.39.0, but that's when it was made public
 (def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
@@ -16,65 +20,133 @@
     (catch Throwable _
       false)))
 
-(def ^Boolean is-windows?
-  "Are we running on a Windows machine?"
-  (str/includes? (str/lower-case (System/getProperty "os.name")) "win"))
+(defsetting run-mode
+  "Whether we're running in `:prod`, `:dev`, or `:test` mode."
+  :visibility :internal
+  :setter :none
+  :type :keyword
+  :default :prod)
 
-(def ^:private app-defaults
-  "Global application defaults"
-  {:mb-run-mode            "prod"
-   ;; DB Settings
-   :mb-db-type             "h2"
-   :mb-db-file             "metabase.db"
-   :mb-db-automigrate      "true"
-   :mb-db-logging          "true"
-   ;; Jetty Settings. Full list of options is available here: https://github.com/ring-clojure/ring/blob/master/ring-jetty-adapter/src/ring/adapter/jetty.clj
-   :mb-jetty-port          "3000"
-   :mb-jetty-join          "true"
-   ;; other application settings
-   :mb-password-complexity "normal"
-   :mb-version-info-url    "http://static.metabase.com/version-info.json"
-   :mb-version-info-ee-url "http://static.metabase.com/version-info-ee.json"
-   :mb-ns-trace            ""                                             ; comma-separated namespaces to trace
-   :max-session-age        "20160"                                        ; session length in minutes (14 days)
-   :mb-colorize-logs       (str (not is-windows?))                        ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
-   :mb-emoji-in-logs       (str (not is-windows?))                        ; disable them by default when running on Windows. Otherwise they're enabled
-   :mb-qp-cache-backend    "db"})
+(defsetting db-type
+  "Application database type for broken-out database details."
+  :visibility :internal
+  :setter :none
+  :type :keyword
+  :default :h2)
 
-;; separate map for EE stuff so merge conflicts aren't annoying.
-(def ^:private ee-app-defaults
-  {:embed-max-session-age      "1440"   ; how long a FULL APP EMBED session is valid for. One day, by default
-   :mb-session-cookie-samesite "lax"})
+(defsetting db-file
+  "H2 application database file name, excluding the `.mv.db` extension."
+  :visibility :internal
+  :setter :none
+  :type :string
+  :default "metabase.db")
 
-(alter-var-root #'app-defaults merge ee-app-defaults)
+(defsetting db-automigrate
+  "Whether to automatically migrate the application database on launch."
+  :visibility :internal
+  :setter :none
+  :type :boolean
+  :default true)
 
-(defn config-str
-  "Retrieve value for a single configuration key.  Accepts either a keyword or a string.
+(defsetting jetty-port
+  "Port to use for the Jetty web server."
+  :visibility :internal
+  :setter :none
+  :type :integer
+  :default 3000)
 
-   We resolve properties from these places:
+(defsetting jetty-join
+  "Whether the Jetty web server should block the main thread on launch. If `false`, Metabase will shut down after the
+  Jetty web server is instantiated. The main reason you'd want to do this is to profile launch times."
+  :visibility :internal
+  :setter :none
+  :type :boolean
+  :default true)
 
-   1.  environment variables (ex: MB_DB_TYPE -> :mb-db-type)
-   2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
-   3.  hard coded `app-defaults`"
-  [k]
-  (let [k       (keyword k)
-        env-val (k env/env)]
-    (or (when-not (str/blank? env-val) env-val)
-        (k app-defaults))))
+(defsetting password-complexity
+  "Password complexity requirement to use when setting new User passwords."
+  :visibility :internal
+  :setter :none
+  :type :keyword
+  :default :normal)
 
+(defsetting version-info-url
+  "URL to fetch the list of new OSS versions of Metabase from. Used to display 'there is a new version available' in the
+  GUI."
+  :visibility :internal
+  :setter :none
+  :type :string
+  :default "https://static.metabase.com/version-info.json")
 
-;; These are convenience functions for accessing config values that ensures a specific return type
-;;
-;; TODO - These names are bad. They should be something like `int`, `boolean`, and `keyword`, respectively. See
-;; https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names
-;; for discussion
-(defn config-int  "Fetch a configuration key and parse it as an integer." ^Integer [k] (some-> k config-str Integer/parseInt))
-(defn config-bool "Fetch a configuration key and parse it as a boolean."  ^Boolean [k] (some-> k config-str Boolean/parseBoolean))
-(defn config-kw   "Fetch a configuration key and parse it as a keyword."  ^Keyword [k] (some-> k config-str keyword))
+(defsetting version-info-ee-url
+  "URL to fetch the list of new EE versions of Metabase from. Used to display 'there is a new version available' in the
+  GUI."
+  :visibility :internal
+  :setter :none
+  :type :string
+  :default "https://static.metabase.com/version-info-ee.json")
 
-(def ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `clojure -M:run`)?" (= :dev  (config-kw :mb-run-mode)))
-(def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                       (= :prod (config-kw :mb-run-mode)))
-(def ^Boolean is-test? "Are we running in `test` mode (i.e. via `clojure -X:test`)?"            (= :test (config-kw :mb-run-mode)))
+(defsetting ns-trace
+  "Comma-separated list of namespaces to trace."
+  :visibility :internal
+  :setter :none
+  :type :string
+  :default nil)
+
+(defsetting max-session-age
+  "Session length in minutes (by default, 14 days). For historic reasons, this can be set with the legacy env var
+  `MAX_SESSION_AGE` in addition to `MB_MAX_SESSION_AGE`."
+  :visibility :internal
+  :setter :none
+  :type :integer
+  :default 20160
+  :getter (fn []
+            (or (some-> (get env/env :max-session-age) Integer/parseUnsignedInt)
+                (setting.i/get-value-of-type :integer :max-session-age))))
+
+(defsetting colorize-logs
+  "Whether to include colors in log messages."
+  :visibility :internal
+  :setter :none
+  :type :boolean
+  :default false)
+
+(defsetting emoji-in-logs
+  "Whether to include emoji in log messages."
+  :visibility :internal
+  :setter :none
+  :type :boolean
+  :default false)
+
+(defsetting qp-cache-backend
+  "Backend to use for cached Query Processor results. Currently, only the `:db` backend exists.
+  See [[metabase.query-processor.middleware.cache]] for more information."
+  :visibility :internal
+  :setter :none
+  :type :keyword
+  :default :db)
+
+(defsetting embed-max-session-age
+  "EE-only. How long a FULL APP EMBED session is valid for. One day, by default. For historic reasons, you can use the
+  legacy env var `EMBED_MAX_SESSION_AGE` instead of `MB_EMBED_MAX_SESSION_AGE`."
+  :visibility :internal
+  :setter :none
+  :type :integer
+  :default 1440
+  :getter (fn []
+            (or (some-> (get env/env :embed-max-session-age) Integer/parseUnsignedInt)
+                (setting.i/get-value-of-type :integer :embed-max-session-age))))
+
+(defsetting session-cookie-samesite
+  "Session cookie `Same-Site` policy. See [[metabase.server.middleware.session]]."
+  :visibility :internal
+  :setter :none
+  :type :keyword
+  :default :lax)
+
+(def ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `clojure -M:run`)?" (= (run-mode) :dev))
+(def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                       (= (run-mode) :prod))
+(def ^Boolean is-test? "Are we running in `test` mode (i.e. via `clojure -X:test`)?"            (= (run-mode) :test))
 
 ;;; Version stuff
 
