@@ -1,16 +1,5 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-
-export const CodeCopyButton = styled(IconButtonWrapper)`
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 1rem;
-  height: 1rem;
-  color: ${color("brand")};
-  cursor: pointer;
-`;
 
 export const CodeContainer = styled.pre`
   display: flex;
@@ -38,15 +27,4 @@ export const CodeRoot = styled.div`
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  position: relative;
-
-  ${CodeCopyButton} {
-    display: none;
-  }
-
-  &:hover {
-    ${CodeCopyButton} {
-      display: block;
-    }
-  }
 `;

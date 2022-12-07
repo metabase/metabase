@@ -15,7 +15,7 @@ export const ModalRoot = styled.div`
 export const ModalHeader = styled.div`
   display: flex;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 `;
 
 export const ModalBody = styled.div`
