@@ -1,12 +1,11 @@
 import { t } from "ttag";
 import React, { useMemo, useState } from "react";
 import EmptyState from "metabase/components/EmptyState";
-import Icon from "metabase/components/Icon";
-import TextInput from "metabase/components/TextInput";
 import { Tree } from "metabase/components/tree";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { ITreeNodeItem } from "metabase/components/tree/types";
+import Input, { InputProps } from "metabase/core/components/Input";
 import {
   EmptyStateContainer,
   FilterableTreeContainer,
@@ -48,17 +47,21 @@ export const FilterableTree = ({
     return searchItems(itemGroups.flat(), trimmedFilter);
   }, [itemGroups, debouncedFilter]);
 
+  const handleFilterChange: InputProps["onChange"] = e =>
+    setFilter(e.target.value);
+
   return (
     <FilterableTreeRoot>
       <FilterInputContainer>
-        <TextInput
-          hasClearButton
-          colorScheme="admin"
+        <Input
+          fullWidth
           placeholder={placeholder}
-          onChange={setFilter}
           value={filter}
-          padding="sm"
-          icon={<Icon name="search" size={16} />}
+          size="small"
+          leftIcon="search"
+          colorScheme="filter"
+          onChange={handleFilterChange}
+          onResetClick={() => setFilter("")}
         />
       </FilterInputContainer>
       <FilterableTreeContainer>
