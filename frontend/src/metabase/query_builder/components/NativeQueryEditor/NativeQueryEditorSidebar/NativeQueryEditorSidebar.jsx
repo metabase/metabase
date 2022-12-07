@@ -15,6 +15,7 @@ import {
 } from "./NativeQueryEditorSidebar.styled";
 
 const propTypes = {
+  query: PropTypes.object,
   cancelQuery: PropTypes.func,
   isResultDirty: PropTypes.bool,
   isRunnable: PropTypes.bool,
@@ -29,6 +30,7 @@ const ICON_SIZE = 18;
 
 const NativeQueryEditorSidebar = props => {
   const {
+    query,
     cancelQuery,
     isResultDirty,
     isRunnable,
@@ -58,6 +60,7 @@ const NativeQueryEditorSidebar = props => {
   };
 
   const canRunQuery = runQuery && cancelQuery;
+  const showPreviewButton = canRunQuery && query.hasVariableTemplateTags();
 
   return (
     <Container>
@@ -66,7 +69,7 @@ const NativeQueryEditorSidebar = props => {
       {showSnippetSidebarButton && (
         <SnippetSidebarButton {...props} size={ICON_SIZE} className="mt3" />
       )}
-      {isRunnable && <QueryPreviewButton {...props} />}
+      {showPreviewButton && <QueryPreviewButton {...props} />}
       {!!canRunQuery && (
         <RunButtonWithTooltipStyled
           disabled={!isRunnable}
