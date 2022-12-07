@@ -23,7 +23,7 @@ jobs:
         stat ./metabase.jar
         date | tee timestamp
     - name: Verify that this is a valid JAR file
-      run: file ./metabase.jar | grep "Zip archive data"
+      run: file --mime-type ./metabase.jar | grep "application/zip"
     - name: Reveal its version.properties
       run: jar xf metabase.jar version.properties && cat version.properties
     - name: Calculate SHA256 checksum
