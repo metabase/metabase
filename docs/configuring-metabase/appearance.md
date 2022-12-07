@@ -13,7 +13,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Custom appearance" %}
 
-Appearance setttings give you the option to white label Metabase to match your company’s branding.
+Appearance settings give you the option to white label Metabase to match your company’s branding.
 
 ## Changing Metabase's appearance
 

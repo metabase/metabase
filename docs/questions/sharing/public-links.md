@@ -8,7 +8,7 @@ redirect_from:
 
 # Public sharing
 
-Sometimes you'll want to share a dashboard or question with someone who isn't a part of your organization or company. To share your work with people who don't need access to your full Metabase instance, you can create public links and [public embeds](#public-embed).
+Sometimes you'll want to share a dashboard or question with someone who isn't a part of your organization or company. To share your work with people who don't need access to your full Metabase instance, you can create public links and public embeds.
 
 ## Enable public sharing in Metabase
 
@@ -70,26 +70,26 @@ If you'd like to create a secure embed that prevents people from changing filter
 
 To toggle appearance settings, add _hash_ parameters to the end of the public link in your iframe's `src` attribute.
 
-For example, to embed a dashboard with a border, title, and night (dark) theme:
+For example, to embed a dashboard with a dark theme, original title, and no border:
 
 ```
-/dashboard/42#bordered=true&titled=true&theme=night
+/dashboard/42#theme=night&titled=true&bordered=false
 ```
-
-For more info about `hide_parameters`, see the next section on [Filter parameters](#filter-parameters).
 
 | Parameter name          | Possible values                                  |
 | ----------------------- | ------------------------------------------------ |
 | bordered                | true, false                                      |
 | titled                  | true, false                                      |
 | theme                   | null, transparent, night                         |
-| hide_parameters         | true, false                                      |
+| hide_parameters         | true, false                                      |      
 | font¹                   | [font name](../../configuring-metabase/fonts.md) |
 | hide_download_button²   | true, false                                      |
 
 ¹ Available on [paid plans](https://www.metabase.com/pricing).
 
 ² Available on [paid plans](https://www.metabase.com/pricing) and hides the download button on questions only (not dashboards).
+
+For more info about `hide_parameters`, see the next section on [Filter parameters](#filter-parameters).
 
 ### Filter parameters
 
@@ -107,7 +107,7 @@ For example, say that we have a dashboard with an "ID" filter. We can give this 
 /dashboard/42?id=7
 ```
 
-To set the ID filter to a value of 7 _and_ hide the ID filter from the public embed:
+To set the "ID" filter to a value of 7 _and_ hide the "ID" filter widget from the public embed:
 
 ```
 /dashboard/42?id=7#hide_parameters=id
@@ -119,7 +119,7 @@ To specify multiple values for filters, separate the values with ampersands (&),
 /dashboard/42?id=7&name=janet
 ```
 
-You can hide multiple filters by separating them with commas, like this:
+You can hide multiple filter widgets by separating the filter names with commas, like this:
 
 ```
 /dashboard/42#hide_parameters=id,customer_name
