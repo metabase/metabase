@@ -6,22 +6,22 @@ title: Amazon Athena
 
 Connecting Metabase to Athena depends on where Metabase is running.
 
-## Connecting to Athena from a Metabase Cloud instance
+## Connecting to Athena 
 
-If you're running Metabase Cloud, you'll need to upload your IAM credentials:
+To connect Metabase to Athena, you'll need to input your IAM credentials:
 
 - Access key
 - Secret Key
 
 Metabase will encrypt these credentials.
 
-If you use other AWS services, we recommend that you create a special AWS Service Account that only has the permissions required to run Athena, and use the IAM credentials from that account to connect Metabase to Athena.
+If you use other AWS services, we recommend that you create a special AWS Service Account that only has the permissions required to run Athena, and input the IAM credentials from that account to connect Metabase to Athena.
 
 See [Identity and access management in Athena](https://docs.aws.amazon.com/athena/latest/ug/security-iam-athena.html).
 
-## Connecting from Metabase running in AWS
+## Connecting using AWS Default Credentials Chain
 
-If you want to use [AWS Default Credentials Chain](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html#credentials-default), leave the Access and Secret keys blank.
+If you're running Metabase on AWS and want to use [AWS Default Credentials Chain](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html#credentials-default), leave the Access and Secret keys blank.
 
 - For EC2, you can use [instance profiles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2_instance-profiles.html).
 - For ECS, you can use [IAM roles for tasks](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
@@ -61,7 +61,6 @@ UseResultsetStreaming=0;LogLevel=6.
 ```
 
 For more connection options, see Simba Athena JDBC Driver with SQL Connector's [Installation and Configuration Guide](https://s3.amazonaws.com/athena-downloads/drivers/JDBC/SimbaAthenaJDBC_2.0.13/docs/Simba+Athena+JDBC+Driver+Install+and+Configuration+Guide.pdf).
-For
 
 ### Rerun queries for simple explorations
 
