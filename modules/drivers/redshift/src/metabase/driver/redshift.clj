@@ -197,6 +197,8 @@
   (hsql/call :extract (format "'%s'" (name unit)) temporal))
 
 (defmethod sql.qp/->honeysql [:redshift :datetime-diff]
+  ;; postgres uses `extract` around a call to `age` to calculate datediffs. 
+  ;; redshift doesn't have `age`, so we have to use `extract` instead.
   [driver [_ x y unit]]
   (let [x (hx/->timestamp (sql.qp/->honeysql driver x))
         y (hx/->timestamp (sql.qp/->honeysql driver y))]
