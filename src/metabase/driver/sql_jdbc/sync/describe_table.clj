@@ -193,7 +193,6 @@
 (defn add-table-pks
   "Using `conn`, find any primary keys for `table` (or more, see: [[get-table-pks]]) and finally assoc `:pk?` to true for those columns."
   [driver ^Connection conn db-name-or-nil table]
-  (def in [driver conn db-name-or-nil table])
   (let [pks (get-table-pks driver conn db-name-or-nil table)]
     (update table :fields (fn [fields]
                             (set (for [field fields]
