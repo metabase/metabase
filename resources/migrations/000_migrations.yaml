@@ -13031,8 +13031,11 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: dimension
             constraintName: unique_dimension_field_id_name
-      rollback: # we can no-op here because the unique constraint on only field_id added below will work fine on old
-                # versions -- that's effectively how they worked anyway, it just wasn't enforced.
+      rollback:
+        - addUniqueConstraint:
+            tableName: dimension
+            constraintName: unique_dimension_field_id_name
+            columnNames: field_id, name
 
   - changeSet:
       id: v46.00-030
@@ -13068,6 +13071,7 @@ databaseChangeLog:
             tableName: dimension
             columnNames: field_id
             constraintName: unique_dimension_field_id
+        # this change can roll back automatically.
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
