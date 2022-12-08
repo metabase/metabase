@@ -9,6 +9,7 @@ export const SqlButton = styled(IconButtonWrapper)`
 
   &:hover {
     color: ${color("brand")};
+    background-color: ${color("bg-medium")};
   }
 `;
 

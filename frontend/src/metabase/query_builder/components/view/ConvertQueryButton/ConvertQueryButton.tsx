@@ -28,7 +28,7 @@ const ConvertQueryButton = ({
   }, [onOpenModal]);
 
   return (
-    <Tooltip tooltip={ENGINE_TOOLTIP[engineType]}>
+    <Tooltip tooltip={ENGINE_TOOLTIP[engineType]} placement="bottom">
       <SqlButton
         onClick={handleClick}
         data-metabase-event="Notebook Mode; Convert to SQL Click"
