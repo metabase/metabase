@@ -97,26 +97,28 @@
 
 (deftest approx-test
   (testing "#approx"
-    (is (=? #approx 1.5
+    (is (=? #approx [1.5 0.1]
             1.51))
     (testing "Nested inside a collection"
-      (is (=? {:a 1, :b #approx 1.5}
+      (is (=? {:a 1, :b #approx [1.5 0.1]}
               {:a 1, :b 1.51})))
+    ;; failures below render stuff to strings so we can see it the way it will look in test failures with it's nice
+    ;; comment and what not
     (testing "failures"
-      (is (= '(not (approx= 1.5 1.6))
-             (approximately-equal/=?-diff #approx 1.5 1.6)))
+      (is (= "(not (approx= 1.5 1.6 #_epsilon 0.1))"
+             (pr-str (approximately-equal/=?-diff #approx [1.5 0.1] 1.6))))
       (testing "Inside a collection"
-        (is (= '{:b (not (approx= 1.5 1.6))}
-               (approximately-equal/=?-diff {:a 1, :b #approx 1.5}
-                                            {:a 1, :b 1.6})))))
-    (testing "Change the epsilon"
-      (binding [approximately-equal/*approx-epsilon* 10.0]
-        (is (=? #approx 1
-                9.0))
-        (is (= '(not (approx= 1 20.0))
-               (approximately-equal/=?-diff #approx 1 20.0)))))
+        (is (= "{:b (not (approx= 1.5 1.6 #_epsilon 0.1))}"
+               (pr-str (approximately-equal/=?-diff {:a 1, :b #approx [1.5 0.1]}
+                                                    {:a 1, :b 1.6}))))))
+    (testing "Eval the args"
+      (is (=? #approx [(+ 1.0 0.5) (- 1.0 0.9)]
+              1.51)))
+    (testing "A large epsilon"
+      (is (=? #approx [1 10.0]
+              9.0))
+      (is (= "(not (approx= 1 20.0 #_epsilon 10.0))"
+             (pr-str (approximately-equal/=?-diff #approx [1 10.0] 20.0)))))
     (testing "nil should not match the #approx method -- fall back to the :default"
-      ;; this is a string to avoid any confusion about whether this is returning an instance of Approx or the symbol
-      ;; `#approx` or whatever. The printed output is what's important here anyway
-      (is (= "(not= #approx 1 nil)"
-             (pr-str (approximately-equal/=?-diff #approx 1 nil)))))))
+      (is (= "(not= #approx [1 0.1] nil)"
+             (pr-str (approximately-equal/=?-diff #approx [1 0.1] nil)))))))

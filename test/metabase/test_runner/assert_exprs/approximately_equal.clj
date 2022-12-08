@@ -79,22 +79,19 @@
 
   `#approx` compares whether two numbers are approximately equal:
 
-    (is (=? #approx 1.5
+    ;; is the difference between actual and 1.5 less than ±0.1?
+    (is (=? #approx [1.5 0.1]
             1.51))
     => true
 
-    (is (=? #approx 1.5
+    (is (=? #approx [1.5 0.1]
             1.6))
     =>
-    expected: #approx 1.5
+    expected: #approx [1.5 0.1]
 
       actual: 1.6
-        diff: - (not (approx= 1.5 1.6))
-              + nil
-
-  By default this uses an epsilon of `0.1`, which means that if absolute value of the difference between the expected
-  and actual numbers is less than `0.1`, they will be considered equal. This seemed close enough for most usages (such
-  as QP results), but if you need a different epsilon you can bind [[*approx-epsilon*]]."
+        diff: - (not (approx= 1.5 1.6 #_epsilon 0.1))
+              + nil"
   (:require
    [clojure.algo.generic.math-functions :as algo.generic.math]
    [clojure.pprint :as pprint]
@@ -239,12 +236,17 @@
   [^Schema this actual]
   (s/check (.schema this) actual))
 
-(deftype Approx [expected])
+(deftype Approx [expected epsilon])
 
 (defn read-approx
   "Data reader for `#approx`."
-  [expected-form]
-  (->Approx (eval expected-form)))
+  [form]
+  (let [form (eval form)
+        _ (assert (sequential? form) "Expected #approx [expected epsilon]")
+        [expected epsilon] form]
+    (assert (number? expected))
+    (assert (number? epsilon))
+    (->Approx expected epsilon)))
 
 (defmethod print-method Approx
   [this writer]
@@ -252,21 +254,17 @@
 
 (defmethod print-dup Approx
   [^Approx this ^java.io.Writer writer]
-  (.write writer (format "#approx %s" (pr-str (.expected this)))))
+  (.write writer (format "#approx %s" (pr-str [(.expected this) (.epsilon this)]))))
 
 (defmethod pprint/simple-dispatch Approx
   [^Approx this]
   (pprint/pprint-logical-block
    :prefix "#approx " :suffix nil
-   (pprint/write-out (.expected this))))
-
-(def ^:dynamic *approx-epsilon*
-  "[[algo.generic.math/approx=]] returns truthy if the difference between `expected` and `actual` is less than this
-  number."
-  0.1)
+   (pprint/write-out [(.expected this) (.epsilon this)])))
 
 (methodical/defmethod =?-diff [Approx Number]
   [^Approx this actual]
-  (let [expected (.expected this)]
-    (when-not (algo.generic.math/approx= expected actual *approx-epsilon*)
-      (list 'not (list 'approx= expected actual)))))
+  (let [expected (.expected this)
+        epsilon  (.epsilon this)]
+    (when-not (algo.generic.math/approx= expected actual epsilon)
+      (list 'not (list 'approx= expected actual (symbol "#_epsilon") epsilon)))))
