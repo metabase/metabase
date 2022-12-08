@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 import Input from "metabase/core/components/Input";
 import {
-  inputFocusOutline,
   inputPadding,
   inputTypography,
   numericInputReset,
@@ -14,7 +13,6 @@ export const ChartSettingNumericInput = styled(Input)`
     width: 100%;
     ${inputPadding};
     ${inputTypography};
-    ${inputFocusOutline};
     ${numericInputReset};
   }
 `;

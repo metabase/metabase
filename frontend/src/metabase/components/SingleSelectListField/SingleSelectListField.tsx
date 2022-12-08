@@ -5,12 +5,13 @@ import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import EmptyState from "metabase/components/EmptyState";
 
+import Input, { InputProps } from "metabase/core/components/Input";
 import {
   OptionContainer,
   OptionsList,
   EmptyStateContainer,
-  FilterInput,
   OptionItem,
+  FilterInputContainer,
 } from "./SingleSelectListField.styled";
 import { SingleSelectListFieldProps, Option } from "./types";
 import { isValidOptionItem } from "./utils";
@@ -28,7 +29,7 @@ const SingleSelectListField = ({
   value,
   options,
   optionRenderer,
-  placeholder,
+  placeholder = t`Find...`,
   isDashboardFilter,
   checkedColor,
 }: SingleSelectListFieldProps) => {
@@ -102,20 +103,23 @@ const SingleSelectListField = ({
     }
   };
 
+  const handleFilterChange: InputProps["onChange"] = e =>
+    setFilter(e.target.value);
+
   return (
     <>
-      <FilterInput
-        isDashboardFilter={isDashboardFilter}
-        padding={isDashboardFilter ? "md" : "sm"}
-        borderRadius={isDashboardFilter ? "md" : "sm"}
-        colorScheme={isDashboardFilter ? "transparent" : "admin"}
-        placeholder={placeholder}
-        value={filter}
-        onChange={setFilter}
-        onKeyDown={handleKeyDown}
-        hasClearButton
-        autoFocus
-      />
+      <FilterInputContainer isDashboardFilter={isDashboardFilter}>
+        <Input
+          fullWidth
+          autoFocus
+          size="small"
+          placeholder={placeholder}
+          value={filter}
+          onChange={handleFilterChange}
+          onKeyDown={handleKeyDown}
+          onResetClick={() => setFilter("")}
+        />
+      </FilterInputContainer>
 
       {shouldShowEmptyState && (
         <EmptyStateContainer>

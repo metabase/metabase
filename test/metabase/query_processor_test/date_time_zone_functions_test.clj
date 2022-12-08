@@ -744,18 +744,19 @@
     (mt/dataset times-mixed
       (testing "Can compare across dates, datetimes, and with timezones from a table"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
-        (is (= [25200 -8349 33549]
-               (->> (mt/run-mbql-query times
-                      {:fields [[:expression "tz,dt"]
-                                [:expression "tz,d"]
-                                [:expression "d,dt"]]
-                       :limit 1
-                       :expressions
-                       {"tz,dt" [:datetime-diff $dt_tz $dt :second]
-                        "tz,d"  [:datetime-diff $dt_tz $d :second]
-                        "d,dt"  [:datetime-diff $d $dt :second]}})
-                    (mt/formatted-rows [int int int])
-                    first)))))))
+        (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
+          (is (= [25200 -8349 33549]
+                 (->> (mt/run-mbql-query times
+                        {:fields [[:expression "tz,dt"]
+                                  [:expression "tz,d"]
+                                  [:expression "d,dt"]]
+                         :limit 1
+                         :expressions
+                         {"tz,dt" [:datetime-diff $dt_tz $dt :second]
+                          "tz,d"  [:datetime-diff $dt_tz $d :second]
+                          "d,dt"  [:datetime-diff $d $dt :second]}})
+                      (mt/formatted-rows [int int int])
+                      first))))))))
 
 (mt/defdataset diff-time-zone-cases
   [["times"
