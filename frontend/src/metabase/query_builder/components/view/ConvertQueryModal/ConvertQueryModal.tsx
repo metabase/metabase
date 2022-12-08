@@ -5,12 +5,12 @@ import Button from "metabase/core/components/Button";
 import Question from "metabase-lib/Question";
 import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
 
-const ENGINE_TITLE = {
+const MODAL_TITLE = {
   sql: t`SQL for this question`,
   json: t`Native query for this question`,
 };
 
-const ENGINE_BUTTON = {
+const BUTTON_TITLE = {
   sql: t`Convert this question to SQL`,
   json: t`Convert this question to a native query`,
 };
@@ -50,7 +50,7 @@ const ConvertQueryModal = ({
 
   return (
     <NativeQueryModal
-      title={ENGINE_TITLE[engineType]}
+      title={MODAL_TITLE[engineType]}
       query={query}
       error={error}
       isLoading={isLoading}
@@ -58,7 +58,7 @@ const ConvertQueryModal = ({
     >
       {query && (
         <Button primary onClick={handleConvertClick}>
-          {ENGINE_BUTTON[engineType]}
+          {BUTTON_TITLE[engineType]}
         </Button>
       )}
     </NativeQueryModal>

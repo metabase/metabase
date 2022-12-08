@@ -6,7 +6,7 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 import Question from "metabase-lib/Question";
 import { SqlButton, SqlIcon } from "./ConvertQueryButton.styled";
 
-const ENGINE_TOOLTIP = {
+const BUTTON_TOOLTIP = {
   sql: t`View the SQL`,
   json: t`View the native query`,
 };
@@ -27,7 +27,7 @@ const ConvertQueryButton = ({
   }, [onOpenModal]);
 
   return (
-    <Tooltip tooltip={ENGINE_TOOLTIP[engineType]} placement="bottom">
+    <Tooltip tooltip={BUTTON_TOOLTIP[engineType]} placement="bottom">
       <SqlButton
         onClick={handleClick}
         data-metabase-event="Notebook Mode; Convert to SQL Click"
