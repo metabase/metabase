@@ -133,7 +133,7 @@ describe("scenarios > visualizations > line chart", () => {
       testPairedTooltipValues("Product → Rating", "2.7");
       testPairedTooltipValues("Count", "191");
       testPairedTooltipValues("Sum of Total", "14,747.05");
-      testPairedTooltipValues("Average of Quantity", "4");
+      testPairedTooltipValues("Average of Quantity", "4.3");
     });
   });
 
