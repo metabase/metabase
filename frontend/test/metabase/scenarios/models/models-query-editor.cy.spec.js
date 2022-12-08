@@ -193,7 +193,7 @@ describe("scenarios > models query editor", () => {
           dataset: true,
           native: {
             // Let's use API to type the most of the query, but stil make it invalid
-            query: "SELEC",
+            query: "SELECT 1 FROM",
           },
         },
         { visitQuestion: true },
@@ -211,7 +211,9 @@ describe("scenarios > models query editor", () => {
 
       cy.findByText(/Syntax error in SQL/).should("be.visible");
 
-      cy.get(".ace_content").type("T 1");
+      cy.get(".ace_content").type(
+        "{backspace}{backspace}{backspace}{backspace}{backspace}",
+      );
       runNativeQuery();
 
       cy.get(".cellData").contains(1);
