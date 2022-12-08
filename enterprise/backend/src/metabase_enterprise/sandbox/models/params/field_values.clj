@@ -38,9 +38,11 @@
 (defn- field->gtap-attributes-for-current-user
   "Returns the gtap attributes for current user that applied to `field`.
 
-  The gtap-attributes is a list with 2 elements:
+  The gtap-attributes is a list with 3 elements:
   1. card-id - for GTAP that use a saved question
-  2. a map:
+  2. card.updated_at -- for GTAP that use a saved question, this is to make sure
+     when update the card we recompute the FieldValues
+  3. a map:
     if query is mbql query:
       - with key is the user-attribute that applied to the table that `field` is in
       - value is the user-attribute of current user corresponding to the key
@@ -60,6 +62,7 @@
           attribute_remappings (:attribute_remappings gtap)
           field-ids            (db/select-field :id Field :table_id table_id)]
       [(:card_id gtap)
+       (get-in gtap [:card :updated_at])
        (if (= :native (get-in gtap [:card :query_type]))
          ;; For sandbox that uses native query, we can't narrow down to the exact attribute
          ;; that affect the current table. So we just hash the whole login-attributes of users.
