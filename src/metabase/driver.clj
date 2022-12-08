@@ -386,7 +386,9 @@
     ;; DEFAULTS TO TRUE.
     :basic-aggregations
 
-    ;; Does this driver support standard deviation and variance aggregations?
+    ;; Does this driver support standard deviation and variance aggregations? Note that if variance is not supported
+    ;; directly, you can calculate it manually by taking the square of the standard deviation. See the MongoDB driver
+    ;; for example.
     :standard-deviation-aggregations
 
     ;; Does this driver support expressions (e.g. adding the values of 2 columns together)?
@@ -759,5 +761,19 @@
   "Execute a writeback query (from an `is_write` Card) e.g. one powering a custom
   `QueryAction` (see [[metabase.models.action]]). Drivers that support `:actions/custom` must implement this method."
   {:added "0.44.0", :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti table-rows-sample
+  "Processes a sample of rows produced by `driver`, from the `table`'s `fields`
+  using the query result processing function `rff`.
+  The default implementation defined in [[metabase.db.metadata-queries]] runs a
+  row sampling MBQL query using the regular query processor to produce the
+  sample rows. This is good enough in most cases so this multimethod should not
+  be implemented unless really necessary.
+  `opts` is a map that may contain additional parameters:
+  `:truncation-size`: size to truncate text fields to if the driver supports
+  expressions."
+  {:arglists '([driver table fields rff opts]), :added "0.46.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
