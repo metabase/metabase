@@ -444,14 +444,10 @@
 ;;; version of the database and throw a nice exception if it's less than 5.
 
 (defn- get-mongo-version []
-  (:version (driver/describe-database :mongo (qp.store/database))))
-
-(defn- get-major-version [version]
-  (some-> version (str/split #"\.") first parse-long))
+  (driver/dbms-version :mongo (qp.store/database)))
 
 (defn- check-date-operations-supported []
-  (let [mongo-version (get-mongo-version)
-        major-version (get-major-version mongo-version)]
+  (let [{mongo-version :version, [major-version] :semantic-version} (get-mongo-version)]
     (when (and major-version (< major-version 5))
       (throw (ex-info "Date arithmetic not supported in versions before 5"
                       {:database-version mongo-version})))))
@@ -506,7 +502,7 @@
   (if (driver/database-supports? :mongo :now (qp.store/database))
     "$$NOW"
     (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
-                    {:database-version (get-mongo-version)}))))
+                    {:database-version (:version (get-mongo-version))}))))
 
 (defmethod ->rvalue :datetime-add [[_ inp amount unit]]
   (check-date-operations-supported)

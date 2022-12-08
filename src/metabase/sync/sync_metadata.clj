@@ -8,6 +8,7 @@
    4.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
   (:require [metabase.sync.fetch-metadata :as fetch-metadata]
             [metabase.sync.interface :as i]
+            [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
             [metabase.sync.sync-metadata.fields :as sync-fields]
             [metabase.sync.sync-metadata.fks :as sync-fks]
             [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
@@ -17,6 +18,11 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
+
+(defn- sync-dbms-version-summary [{:keys [version] :as _step-info}]
+  (if version
+    (trs "Found DBMS version {0}" version)
+    (trs "Could not determine DBMS version")))
 
 (defn- sync-fields-summary [{:keys [total-fields updated-fields] :as _step-info}]
   (trs "Total number of fields sync''d {0}, number of fields updated {1}"
@@ -34,7 +40,8 @@
        total-fks updated-fks total-failed))
 
 (defn- make-sync-steps [db-metadata]
-  [(sync-util/create-sync-step "sync-timezone" sync-tz/sync-timezone! sync-timezone-summary)
+  [(sync-util/create-sync-step "sync-dbms-version" sync-dbms-ver/sync-dbms-version! sync-dbms-version-summary)
+   (sync-util/create-sync-step "sync-timezone" sync-tz/sync-timezone! sync-timezone-summary)
    ;; Make sure the relevant table models are up-to-date
    (sync-util/create-sync-step "sync-tables" #(sync-tables/sync-tables-and-database! % db-metadata) sync-tables-summary)
    ;; Now for each table, sync the fields

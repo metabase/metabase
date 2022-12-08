@@ -254,6 +254,19 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti dbms-version
+  "Return a map containing information that describes the version of the DBMS. This typically includes a
+  `:version` containing the (semantic) version of the DBMS as a string and potentially a `:flavor`
+  specifying the flavor like `MySQL` or `MariaDB`."
+  {:arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+;; Some drivers like BigQuery or Snowflake cannot provide a meaningful stable version.
+(defmethod dbms-version :default
+  [_ _]
+  nil)
+
 (defmulti describe-database
   "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
   model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
