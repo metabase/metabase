@@ -229,12 +229,24 @@
 
 (defmethod sql.qp/->honeysql [:snowflake :datetime-diff]
   [driver [_ x y unit]]
-  (let [x (hsql/call :convert_timezone
-                     (qp.timezone/results-timezone-id)
-                     (sql.qp/->honeysql driver x))
-        y (hsql/call :convert_timezone
-                     (qp.timezone/results-timezone-id)
-                     (sql.qp/->honeysql driver y))]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [v]
+                            (some-> v
+                                    hx/type-info
+                                    hx/type-info->db-type
+                                    name
+                                    str/lower-case
+                                    #{"time" "timetz"}))
+                          [x y])
+        _ (when (seq disallowed-types)
+            (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                                 (pr-str disallowed-types))
+                            {:found disallowed-types
+                             :type  qp.error-type/invalid-query})))
+        x (hsql/call :convert_timezone (qp.timezone/results-timezone-id) x)
+        y (hsql/call :convert_timezone (qp.timezone/results-timezone-id) y)]
     (case unit
       :year
       (let [positive-diff (fn [a b] ; precondition: a <= b
