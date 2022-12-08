@@ -14,13 +14,26 @@
     (mt/with-log-level :warn
       (let [before (count (mb.logger/messages))]
         (log/warn "testing in-memory logger")
-        (testing "isAdditive should be false to prevent logs to be printed out to console (pull/26468)"
+        (testing "isAdditive should be false to prevent logs to be printed out to console (#26468)"
           (is (false? (.isAdditive (log.impl/get-logger log/*logger-factory* *ns*)))))
         (let [after (count (mb.logger/messages))]
           ;; it either increases (could have many logs from other tests) or it is the max capacity of the ring buffer
           (is (or (> after before)
                   (= before (var-get #'mb.logger/max-log-entries)))
-              "In memory ring buffer did not receive log message"))))))
+              "In memory ring buffer did not receive log message")))))
+
+  (testing "set isAdditive = false if parent logger root to prevent logging to console (#26468)"
+    (testing "make sure it's true to starts with"
+     (is (true? (.isAdditive (log.impl/get-logger log/*logger-factory* 'metabase)))))
+
+    (testing "set to false if parent logger is root"
+     (mt/with-log-level :warn
+       (is (false? (.isAdditive (log.impl/get-logger log/*logger-factory* 'metabase))))))
+
+    (testing "still true if the parent logger is not root"
+     (mt/with-log-level [metabase.logger :warn]
+       (is (true? (.isAdditive (log.impl/get-logger log/*logger-factory* 'metabase.logger))))))))
+
 
 (deftest logger-test
   (testing "Using log4j2 logger"

@@ -115,16 +115,19 @@
   (ensure-unique-logger! a-namespace)
   (let [original-log-level (ns-log-level a-namespace)
         logger             (exact-ns-logger a-namespace)
-        is-additive        (.isAdditive logger)]
+        is-additive        (.isAdditive logger)
+        parent-is-root?    (= "" (-> logger .getParent .getName))]
     (try
-      ;; prevent events to be passed to the parent logger's appenders
+      ;; prevent events to be passed to the root logger's appenders which will log to the Console
       ;; https://logging.apache.org/log4j/2.x/manual/configuration.html#Additivity
-      (.setAdditive logger false)
+      (when parent-is-root?
+       (.setAdditive logger false))
       (set-ns-log-level! a-namespace level)
       (thunk)
       (finally
-        (.setAdditive logger is-additive)
-        (set-ns-log-level! a-namespace original-log-level)))))
+       (when parent-is-root?
+        (.setAdditive logger is-additive))
+       (set-ns-log-level! a-namespace original-log-level)))))
 
 (defmacro with-log-level
   "Sets the log level (e.g. `:debug` or `:trace`) while executing `body`. Not thread safe! But good for debugging from
@@ -202,8 +205,6 @@
         logger        (exact-ns-logger a-namespace)]
     (try
       (.addAppender logger appender (->Level level) nil)
-      ;; prevent events to be passed to the parent logger's appenders
-      ;; https://logging.apache.org/log4j/2.x/manual/configuration.html#Additivity
       (f (fn [] (appender-logs appender)))
       (finally
        (.removeAppender logger appender-name)))))
