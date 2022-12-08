@@ -6,6 +6,9 @@
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "react-markdown": "<rootDir>/node_modules/react-markdown/react-markdown.min.js"
   },
+  "transformIgnorePatterns": [
+    "<rootDir>/node_modules/(?!rehype-external-links/)"
+  ],
   "testMatch": ["<rootDir>/frontend/test/**/*.tz.unit.spec.{js,ts,jsx,tsx}"],
   "modulePaths": ["<rootDir>/frontend/test", "<rootDir>/frontend/src"],
   "setupFiles": [
