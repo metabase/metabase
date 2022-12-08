@@ -143,7 +143,7 @@ describe("scenarios > visualizations > line chart", () => {
         type: "native",
         native: {
           query:
-            "SELECT '2020-03-01'::date as date, 'cat1' as category, 23 as value\nUNION ALL\nSELECT '2020-03-01'::date, '', 44\nUNION ALL\nSELECT  '2020-03-01'::date, 'cat3', 58\n\nUNION ALL\n\nSELECT '2020-03-02'::date as date, 'cat1' as category, 20 as value\nUNION ALL\nSELECT '2020-03-02'::date, '', 50\nUNION ALL\nSELECT  '2020-03-02'::date, 'cat3', 58",
+            "SELECT '2020-03-01'::date as date, 'cat1' as category, 23 as \"value\"\nUNION ALL\nSELECT '2020-03-01'::date, '', 44\nUNION ALL\nSELECT  '2020-03-01'::date, 'cat3', 58\n\nUNION ALL\n\nSELECT '2020-03-02'::date as date, 'cat1' as category, 20 as \"value\"\nUNION ALL\nSELECT '2020-03-02'::date, '', 50\nUNION ALL\nSELECT  '2020-03-02'::date, 'cat3', 58",
           "template-tags": {},
         },
         database: SAMPLE_DB_ID,
