@@ -92,4 +92,31 @@
              (read-string (pr-str (approximately-equal/=?-diff #schema {:a s/Int} {:a 1.0})))))
       (testing "Inside a collection"
         (is (= '{:b {:c (not (integer? 2.0))}}
-               (read-string (pr-str (approximately-equal/=?-diff {:a 1, :b #schema {:c s/Int}} {:a 1, :b {:c 2.0}})))))))))
+               (read-string (pr-str (approximately-equal/=?-diff {:a 1, :b #schema {:c s/Int}}
+                                                                 {:a 1, :b {:c 2.0}})))))))))
+
+(deftest approx-test
+  (testing "#approx"
+    (is (=? #approx 1.5
+            1.51))
+    (testing "Nested inside a collection"
+      (is (=? {:a 1, :b #approx 1.5}
+              {:a 1, :b 1.51})))
+    (testing "failures"
+      (is (= '(not (approx= 1.5 1.6))
+             (approximately-equal/=?-diff #approx 1.5 1.6)))
+      (testing "Inside a collection"
+        (is (= '{:b (not (approx= 1.5 1.6))}
+               (approximately-equal/=?-diff {:a 1, :b #approx 1.5}
+                                            {:a 1, :b 1.6})))))
+    (testing "Change the epsilon"
+      (binding [approximately-equal/*approx-epsilon* 10.0]
+        (is (=? #approx 1
+                9.0))
+        (is (= '(not (approx= 1 20.0))
+               (approximately-equal/=?-diff #approx 1 20.0)))))
+    (testing "nil should not match the #approx method -- fall back to the :default"
+      ;; this is a string to avoid any confusion about whether this is returning an instance of Approx or the symbol
+      ;; `#approx` or whatever. The printed output is what's important here anyway
+      (is (= "(not= #approx 1 nil)"
+             (pr-str (approximately-equal/=?-diff #approx 1 nil)))))))

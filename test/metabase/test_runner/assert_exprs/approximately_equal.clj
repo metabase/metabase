@@ -75,11 +75,33 @@
 
       actual: {:a 1, :b {:c 2.0}}
         diff: - {:b {:c (not (integer? 2.0))}}
-              + nil"
+              + nil
+
+  `#approx` compares whether two numbers are approximately equal:
+
+    (is (=? #approx 1.5
+            1.51))
+    => true
+
+    (is (=? #approx 1.5
+            1.6))
+    =>
+    expected: #approx 1.5
+
+      actual: 1.6
+        diff: - (not (approx= 1.5 1.6))
+              + nil
+
+  By default this uses an epsilon of `0.1`, which means that if absolute value of the difference between the expected
+  and actual numbers is less than `0.1`, they will be considered equal. This seemed close enough for most usages (such
+  as QP results), but if you need a different epsilon you can bind [[*approx-epsilon*]]."
   (:require
+   [clojure.algo.generic.math-functions :as algo.generic.math]
    [clojure.pprint :as pprint]
    [methodical.core :as methodical]
    [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmulti ^:dynamic =?-diff
   "Multimethod to use to diff two things with `=?`. Despite not having earmuffs, this is dynamic so it can be rebound at
@@ -165,7 +187,7 @@
                             :when        diff]
                         [k diff]))))
 
-(defrecord Exactly [expected])
+(deftype Exactly [expected])
 
 (defn read-exactly
   "Data reader for `#exactly`."
@@ -177,23 +199,22 @@
   ((get-method print-dup Exactly) this writer))
 
 (defmethod print-dup Exactly
-  [this ^java.io.Writer writer]
-  (.write writer (format "#exactly %s" (pr-str (:expected this)))))
+  [^Exactly this ^java.io.Writer writer]
+  (.write writer (format "#exactly %s" (pr-str (.expected this)))))
 
 (defmethod pprint/simple-dispatch Exactly
-  [this]
+  [^Exactly this]
   (pprint/pprint-logical-block
    :prefix "#exactly " :suffix nil
-   (pprint/write-out (:expected this))))
+   (pprint/write-out (.expected this))))
 
-;;; this is an `:around` method so it always intercepts anything else that might try to handle this, e.g. comparing an
-;;; `Exactly` and an `IPersistentMap`
-(methodical/defmethod =?-diff :around [Exactly :default]
-  [{:keys [expected]} actual]
-  (when-not (= expected actual)
-    (list 'not (list '= (symbol "#exactly") expected actual))))
+(methodical/defmethod =?-diff [Exactly :default]
+  [^Exactly this actual]
+  (let [expected (.expected this)]
+    (when-not (= expected actual)
+      (list 'not (list '= (symbol "#exactly") expected actual)))))
 
-(defrecord Schema [schema])
+(deftype Schema [schema])
 
 (defn read-schema
   "Data reader for `#schema`."
@@ -205,17 +226,47 @@
   ((get-method print-dup Schema) this writer))
 
 (defmethod print-dup Schema
-  [this ^java.io.Writer writer]
-  (.write writer (format "#schema %s" (pr-str (:schema this)))))
+  [^Schema this ^java.io.Writer writer]
+  (.write writer (format "#schema %s" (pr-str (.schema this)))))
 
 (defmethod pprint/simple-dispatch Schema
-  [this]
+  [^Schema this]
   (pprint/pprint-logical-block
    :prefix "#schema " :suffix nil
-   (pprint/write-out (:schema this))))
+   (pprint/write-out (.schema this))))
 
-;;; this is an `:around` method so it always intercepts anything else that might try to handle this, e.g. comparing an
-;;; `Schema` and an `IPersistentMap`
-(methodical/defmethod =?-diff :around [Schema :default]
-  [{:keys [schema]} actual]
-  (s/check schema actual))
+(methodical/defmethod =?-diff [Schema :default]
+  [^Schema this actual]
+  (s/check (.schema this) actual))
+
+(deftype Approx [expected])
+
+(defn read-approx
+  "Data reader for `#approx`."
+  [expected-form]
+  (->Approx (eval expected-form)))
+
+(defmethod print-method Approx
+  [this writer]
+  ((get-method print-dup Approx) this writer))
+
+(defmethod print-dup Approx
+  [^Approx this ^java.io.Writer writer]
+  (.write writer (format "#approx %s" (pr-str (.expected this)))))
+
+(defmethod pprint/simple-dispatch Approx
+  [^Approx this]
+  (pprint/pprint-logical-block
+   :prefix "#approx " :suffix nil
+   (pprint/write-out (.expected this))))
+
+(def ^:dynamic *approx-epsilon*
+  "[[algo.generic.math/approx=]] returns truthy if the difference between `expected` and `actual` is less than this
+  number."
+  0.1)
+
+(methodical/defmethod =?-diff [Approx Number]
+  [^Approx this actual]
+  (let [expected (.expected this)]
+    (when-not (algo.generic.math/approx= expected actual *approx-epsilon*)
+      (list 'not (list 'approx= expected actual)))))
