@@ -22,7 +22,7 @@
                   (= before (var-get #'mb.logger/max-log-entries)))
               "In memory ring buffer did not receive log message")))))
 
-  (testing "set isAdditive = false if parent logger root to prevent logging to console (#26468)"
+  (testing "set isAdditive = false if parent logger is root to prevent logging to console (#26468)"
     (testing "make sure it's true to starts with"
      (is (true? (.isAdditive (log.impl/get-logger log/*logger-factory* 'metabase)))))
 
@@ -33,7 +33,6 @@
     (testing "still true if the parent logger is not root"
      (mt/with-log-level [metabase.logger :warn]
        (is (true? (.isAdditive (log.impl/get-logger log/*logger-factory* 'metabase.logger))))))))
-
 
 (deftest logger-test
   (testing "Using log4j2 logger"
