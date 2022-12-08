@@ -6,7 +6,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { NativeQueryForm } from "metabase-types/api";
 import Question from "metabase-lib/Question";
-import QueryPreviewCode from "../QueryPreviewCode";
+import NativeCodePanel from "../NativeCodePanel";
 import {
   ModalBody,
   ModalCloseButton,
@@ -18,17 +18,17 @@ import {
   ModalRoot,
   ModalTitle,
   ModalWarningIcon,
-} from "./QueryPreviewModal.styled";
+} from "./PreviewQueryModal.styled";
 
-interface QueryPreviewModalProps {
+interface PreviewQueryModalProps {
   question: Question;
   onClose?: () => void;
 }
 
-const QueryPreviewModal = ({
+const PreviewQueryModal = ({
   question,
   onClose,
-}: QueryPreviewModalProps): JSX.Element => {
+}: PreviewQueryModalProps): JSX.Element => {
   const { data, error, isLoading } = useNativeQuery(question);
 
   const queryText = useMemo(() => {
@@ -56,9 +56,9 @@ const QueryPreviewModal = ({
         {isLoading ? (
           <ModalLoadingSpinner />
         ) : errorText ? (
-          <QueryPreviewCode value={errorText} isHighlighted />
+          <NativeCodePanel value={errorText} isHighlighted />
         ) : queryText ? (
-          <QueryPreviewCode value={queryText} isCopyEnabled />
+          <NativeCodePanel value={queryText} isCopyEnabled />
         ) : undefined}
       </ModalBody>
       {error && (
@@ -97,4 +97,4 @@ const getErrorMessage = (error: unknown): string | undefined => {
   return getIn(error, ["data", "message"]);
 };
 
-export default QueryPreviewModal;
+export default PreviewQueryModal;

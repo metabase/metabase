@@ -7,19 +7,19 @@ import {
   CodeCopyButton,
   CodeRoot,
   CodeText,
-} from "./QueryPreviewCode.styled";
+} from "./NativeCodePanel.styled";
 
-export interface QueryPreviewCodeProps {
+interface NativeCodePanelProps {
   value: string;
   isHighlighted?: boolean;
   isCopyEnabled?: boolean;
 }
 
-const QueryPreviewCode = ({
+const NativeCodePanel = ({
   value,
   isHighlighted,
   isCopyEnabled,
-}: QueryPreviewCodeProps): JSX.Element => {
+}: NativeCodePanelProps): JSX.Element => {
   const { isCopied, handleCopy } = useCopyButton(value);
 
   return (
@@ -56,4 +56,4 @@ const useCopyButton = (value: string) => {
   return { isCopied, handleCopy };
 };
 
-export default QueryPreviewCode;
+export default NativeCodePanel;
