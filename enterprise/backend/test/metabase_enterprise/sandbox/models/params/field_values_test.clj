@@ -75,15 +75,15 @@
               (is (= (hash-for-user-id user-id-1 {"State" "CA"} (mt/id :categories :name))
                      (hash-for-user-id user-id-2 {"State" "CA"} (mt/id :categories :name)))))
 
-           (testing "same users but the login_attributes change should have different hash"
-             (is (not= (hash-for-user-id user-id-1 {"State" "CA"} (mt/id :categories :name))
-                       (hash-for-user-id user-id-1 {"State" "NY"} (mt/id :categories :name)))))
+            (testing "same users but the login_attributes change should have different hash"
+              (is (not= (hash-for-user-id user-id-1 {"State" "CA"} (mt/id :categories :name))
+                        (hash-for-user-id user-id-1 {"State" "NY"} (mt/id :categories :name)))))
 
-           (testing "2 users with different login_attributes should have different hash"
-             (is (not= (hash-for-user-id user-id-1 {"State" "CA"} (mt/id :categories :name))
-                       (hash-for-user-id user-id-2 {"State" "NY"} (mt/id :categories :name))))
-             (is (not= (hash-for-user-id user-id-1 {} (mt/id :categories :name))
-                       (hash-for-user-id user-id-2 {"State" "NY"} (mt/id :categories :name)))))))))
+            (testing "2 users with different login_attributes should have different hash"
+              (is (not= (hash-for-user-id user-id-1 {"State" "CA"} (mt/id :categories :name))
+                        (hash-for-user-id user-id-2 {"State" "NY"} (mt/id :categories :name))))
+              (is (not= (hash-for-user-id user-id-1 {} (mt/id :categories :name))
+                        (hash-for-user-id user-id-2 {"State" "NY"} (mt/id :categories :name)))))))))
 
     (testing "gtap with card and remappings"
       ;; hack so that we don't have to setup all the sandbox permissions the table
@@ -115,69 +115,69 @@
                 (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
                           (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :id)))))
 
-             (testing "with different attributes, the hash should be the different"
-               (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
-                         (hash-for-user-id-with-attributes user-id-2 {"State" "NY"} (mt/id :categories :name)))))))
+              (testing "with different attributes, the hash should be the different"
+                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                          (hash-for-user-id-with-attributes user-id-2 {"State" "NY"} (mt/id :categories :name)))))))
 
           (testing "gtap with native question"
-           (mt/with-temp*
-             [Card                       [{card-id :id} {:query_type :native
-                                                         :name "A native query"
-                                                         :dataset_query
-                                                         {:type :native
-                                                          :database (mt/id)
-                                                          :native
-                                                          {:query "SELECT * FROM People WHERE state = {{STATE}}"
-                                                           :template-tags
-                                                           {"STATE" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
-                                                                     :name "STATE"
-                                                                     :display-name "STATE"
-                                                                     :type "text"}}}}}]
-              PermissionsGroup           [{group-id :id}]
-              User                       [{user-id :id}]
-              PermissionsGroupMembership [_ {:group_id group-id
-                                             :user_id user-id}]
-              GroupTableAccessPolicy     [_ {:card_id card-id
-                                             :group_id group-id
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:variable [:template-tag "STATE"]]}}]]
-             (testing "same users but if the login_attributes change, they should have different hash (#24966)"
-               (is (not= (hash-for-user-id-with-attributes user-id {"State" "CA"} (mt/id :categories :name))
-                         (hash-for-user-id-with-attributes user-id {"State" "NY"} (mt/id :categories :name)))))))
+            (mt/with-temp*
+              [Card                       [{card-id :id} {:query_type :native
+                                                          :name "A native query"
+                                                          :dataset_query
+                                                          {:type :native
+                                                           :database (mt/id)
+                                                           :native
+                                                           {:query "SELECT * FROM People WHERE state = {{STATE}}"
+                                                            :template-tags
+                                                            {"STATE" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
+                                                                      :name "STATE"
+                                                                      :display-name "STATE"
+                                                                      :type "text"}}}}}]
+               PermissionsGroup           [{group-id :id}]
+               User                       [{user-id :id}]
+               PermissionsGroupMembership [_ {:group_id group-id
+                                              :user_id user-id}]
+               GroupTableAccessPolicy     [_ {:card_id card-id
+                                              :group_id group-id
+                                              :table_id (mt/id :categories)
+                                              :attribute_remappings {"State" [:variable [:template-tag "STATE"]]}}]]
+              (testing "same users but if the login_attributes change, they should have different hash (#24966)"
+                (is (not= (hash-for-user-id-with-attributes user-id {"State" "CA"} (mt/id :categories :name))
+                          (hash-for-user-id-with-attributes user-id {"State" "NY"} (mt/id :categories :name)))))))
 
           (testing "2 users in different groups but gtaps use the same card"
-           (mt/with-temp*
-             [Card                       [{card-id :id}]
+            (mt/with-temp*
+              [Card                       [{card-id :id}]
 
-              ;; user 1 in group 1
-              User                       [{user-id-1 :id}]
-              PermissionsGroup           [{group-id-1 :id}]
-              PermissionsGroupMembership [_ {:group_id group-id-1
-                                             :user_id user-id-1}]
-              GroupTableAccessPolicy     [_ {:card_id card-id
-                                             :group_id group-id-1
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
-              ;; user 2 in group 2 with gtap using the same card
-              User                       [{user-id-2 :id}]
-              PermissionsGroup           [{group-id-2 :id}]
-              PermissionsGroupMembership [_ {:group_id group-id-2
-                                             :user_id user-id-2}]
-              GroupTableAccessPolicy     [_ {:card_id card-id
-                                             :group_id group-id-2
-                                             :table_id (mt/id :categories)
-                                             :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]]
-             (testing "with the same attributes, the hash should be the same"
-               (is (= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
-                      (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :name)))))
+               ;; user 1 in group 1
+               User                       [{user-id-1 :id}]
+               PermissionsGroup           [{group-id-1 :id}]
+               PermissionsGroupMembership [_ {:group_id group-id-1
+                                              :user_id user-id-1}]
+               GroupTableAccessPolicy     [_ {:card_id card-id
+                                              :group_id group-id-1
+                                              :table_id (mt/id :categories)
+                                              :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]
+               ;; user 2 in group 2 with gtap using the same card
+               User                       [{user-id-2 :id}]
+               PermissionsGroup           [{group-id-2 :id}]
+               PermissionsGroupMembership [_ {:group_id group-id-2
+                                              :user_id user-id-2}]
+               GroupTableAccessPolicy     [_ {:card_id card-id
+                                              :group_id group-id-2
+                                              :table_id (mt/id :categories)
+                                              :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]]
+              (testing "with the same attributes, the hash should be the same"
+                (is (= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                       (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :name)))))
 
-             (testing "with same attributes, the hash should different for different fields"
-               (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
-                         (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :id)))))
+              (testing "with same attributes, the hash should different for different fields"
+                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                          (hash-for-user-id-with-attributes user-id-2 {"State" "CA"} (mt/id :categories :id)))))
 
-            (testing "with different attributes, the hash should be the different"
-              (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
-                        (hash-for-user-id-with-attributes user-id-2 {"State" "NY"} (mt/id :categories :name)))))))
+              (testing "with different attributes, the hash should be the different"
+                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
+                          (hash-for-user-id-with-attributes user-id-2 {"State" "NY"} (mt/id :categories :name)))))))
 
           (testing "2 users in different groups and gtaps use 2 different cards"
             (mt/with-temp*
@@ -219,16 +219,21 @@
                                              :attribute_remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}]]
              (let [current-user-hash (fn []
                                        (mw.session/with-current-user user-id
-                                        (ee-params.field-values/hash-key-for-sandbox (mt/id :categories :name))))]
+                                         (ee-params.field-values/hash-key-for-sandbox (mt/id :categories :name))))]
 
                (testing "update dataset_query should change the hash"
                  (let [old-hash (current-user-hash)
-                       _        (db/update! Card card-id {:dataset_query (mt/mbql-query categories)})
+                       ;; have to hard code the tests because updated_at in mysql has second precisions
+                       ;; and the hash use updated_at to check if the card is changed
+                       ;; so if the tests run to fast, this test will be flaky
+                       _        (db/update! Card card-id {:dataset_query (mt/mbql-query categories)
+                                                          :updated_at    #t "2022-01-01 03:04:05"})
                        new-hash (current-user-hash)]
-                  (is (not= old-hash new-hash))))
+                   (is (not= old-hash new-hash))))
 
                (testing "update collection_id should change the hash"
                  (let [old-hash (current-user-hash)
-                       _        (db/update! Card card-id {:collection_id (db/select-one-id Collection)})
-                       new-hash (current-user-hash)]
-                  (is (not= old-hash new-hash))))))))))))
+                       _        (db/update! Card card-id {:dataset_query (mt/mbql-query categories)
+                                                          :updated_at    #t "2022-01-01 03:04:06"})
+                                new-hash (current-user-hash)]
+                      (is (not= old-hash new-hash))))))))))))
