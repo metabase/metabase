@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { getEngineNativeType } from "metabase/lib/engine";
 import Button from "metabase/core/components/Button";
@@ -15,18 +15,38 @@ const ENGINE_BUTTON = {
   json: t`Convert this question to a native query`,
 };
 
+interface UpdateQuestionOpts {
+  shouldUpdateUrl?: boolean;
+}
+
 interface ConvertQueryModalProps {
   question: Question;
-  onUpdateQuestion?: () => void;
+  onUpdateQuestion?: (question: Question, opts?: UpdateQuestionOpts) => void;
   onClose?: () => void;
 }
 
 const ConvertQueryModal = ({
   question,
+  onUpdateQuestion,
   onClose,
 }: ConvertQueryModalProps): JSX.Element => {
   const engineType = getEngineNativeType(question.database()?.engine);
   const { query, error, isLoading } = useNativeQuery(question);
+
+  const handleConvertClick = useCallback(() => {
+    if (!query) {
+      return;
+    }
+
+    const newQuestion = question.setDatasetQuery({
+      type: "native",
+      native: { query, "template-tags": {} },
+      database: question.datasetQuery().database,
+    });
+
+    onUpdateQuestion?.(newQuestion, { shouldUpdateUrl: true });
+    onClose?.();
+  }, [question, query, onUpdateQuestion, onClose]);
 
   return (
     <NativeQueryModal
@@ -36,7 +56,11 @@ const ConvertQueryModal = ({
       isLoading={isLoading}
       onClose={onClose}
     >
-      {query && <Button primary>{ENGINE_BUTTON[engineType]}</Button>}
+      {query && (
+        <Button primary onClick={handleConvertClick}>
+          {ENGINE_BUTTON[engineType]}
+        </Button>
+      )}
     </NativeQueryModal>
   );
 };
