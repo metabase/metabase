@@ -931,7 +931,8 @@
                       first))))))))
 
 (deftest datetime-diff-type-test
-  (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-with-feature :datetime-diff))
+  (mt/test-drivers (->> (disj (mt/normal-drivers-with-feature :datetime-diff) :snowflake)
+                        (filter mt/supports-time-type?))
     (testing "Cannot datetime-diff against time column"
       (mt/dataset attempted-murders
         (is (thrown-with-msg?
