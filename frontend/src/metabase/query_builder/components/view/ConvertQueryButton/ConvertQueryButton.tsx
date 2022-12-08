@@ -20,8 +20,7 @@ const ConvertQueryButton = ({
   question,
   onOpenModal,
 }: ConvertQueryButtonProps): JSX.Element => {
-  const engine = question.database()?.engine;
-  const engineType = getEngineNativeType(engine);
+  const engineType = getEngineNativeType(question.database()?.engine);
 
   const handleClick = useCallback(() => {
     onOpenModal?.(MODAL_TYPES.CONVERT_QUERY);
