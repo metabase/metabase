@@ -46,19 +46,31 @@
 
     (not (re-find #\"\\d+cans\" \"toucans\")))
 
-  This is printed in the correct place by humanized test output and other things that can print diffs."
+  This is printed in the correct place by humanized test output and other things that can print diffs.
+
+  Reader tags:
+
+  `#exactly` means results have to be exactly equal as if by `=`. Use this to get around the normal way `=?` would
+  compare things. This works inside collections as well.
+
+    (is (=? {:m #exactly {:a 1}}
+            {:m {:a 1, :b 2}}))
+    ;; =>
+    expected: {:m #exactly {:a 1}}
+
+      actual: {:m {:a 1, :b 2}}
+        diff: - {:m (not (= #exactly {:a 1} {:a 1, :b 2}))}
+              + nil"
   (:require
+   [clojure.pprint :as pprint]
    [methodical.core :as methodical]))
 
-(methodical/defmulti =?-diff
+(methodical/defmulti ^:dynamic =?-diff
+  "Multimethod to use to diff two things with `=?`. Despite not having earmuffs, this is dynamic so it can be rebound at
+  runtime."
   {:arglists '([expected actual])}
   (fn [expected actual]
     [(type expected) (type actual)]))
-
-(def ^:dynamic ^:private *impl*
-  "Multifn that [[=?]] should use. Normally [[=?-diff]] but this will be rebound when using the 3-arity version of the test
-  assertion. (Methodical allows you to create new multifns programatically and add new methods non-destructively.)"
-  =?-diff)
 
 (defn- add-primary-methods
   "Add primary methods in map `m` of dispatch value -> method fn to [[*impl*]]. Return a new multifn with those methods
@@ -67,26 +79,26 @@
   (reduce
    (fn [multifn [dispatch-value f]]
      (methodical/add-primary-method multifn dispatch-value f))
-   *impl*
+   =?-diff
    m))
 
 (def ^:dynamic *debug*
   "Whether to enable Methodical method tracing for debug purposes."
   false)
 
-(defn =?
+(defn =?-diff*
   "Are `expected` and `actual` 'approximately' equal to one another?"
   ([expected actual]
-   (=? *impl* expected actual))
+   (=?-diff* =?-diff expected actual))
 
-  ([=?-multifn expected actual]
-   (let [=?-multifn (if (map? =?-multifn)
-                     (add-primary-methods =?-multifn)
-                     =?-multifn)]
-     (binding [*impl* =?-multifn]
+  ([diff-fn expected actual]
+   (let [diff-fn (if (map? diff-fn)
+                   (add-primary-methods diff-fn)
+                   diff-fn)]
+     (binding [=?-diff diff-fn]
        (if *debug*
-         (methodical/trace =?-multifn expected actual)
-         (=?-multifn expected actual))))))
+         (methodical/trace diff-fn expected actual)
+         (diff-fn expected actual))))))
 
 ;;;; Default method impls
 
@@ -121,8 +133,8 @@
   (loop [acc                        []
          [expected & more-expected] expected-seq
          [actual & more-actual]     actual-seq]
-    (let [result (=? expected actual)
-          acc    (conj acc result)]
+    (let [diff (=?-diff expected actual)
+          acc    (conj acc diff)]
       (if (or (seq more-expected)
               (seq more-actual))
         (recur acc more-expected more-actual)
@@ -132,7 +144,30 @@
 (methodical/defmethod =?-diff [clojure.lang.IPersistentMap clojure.lang.IPersistentMap]
   [expected-map actual-map]
   (not-empty (into {} (for [[k expected] expected-map
-                            :let         [actual       (get actual-map k (symbol "nil #_\"key is not present.\""))
-                                          =?-result (=? expected actual)]
-                            :when        =?-result]
-                        [k =?-result]))))
+                            :let         [actual (get actual-map k (symbol "nil #_\"key is not present.\""))
+                                          diff   (=?-diff expected actual)]
+                            :when        diff]
+                        [k diff]))))
+
+(defrecord Exactly [expected])
+
+(defmethod print-method Exactly
+  [this writer]
+  ((get-method print-dup Exactly) this writer))
+
+(defmethod print-dup Exactly
+  [this ^java.io.Writer writer]
+  (.write writer (format "#exactly %s" (pr-str (:expected this)))))
+
+(defmethod pprint/simple-dispatch Exactly
+  [this]
+  (pprint/pprint-logical-block
+   :prefix "#exactly " :suffix nil
+   (pprint/write-out (:expected this))))
+
+;;; this is an `:around` method so it always intercepts anything else that might try to handle this, e.g. comparing an
+;;; `Exactly` and an `IPersistentMap` -- this should do the work
+(methodical/defmethod =?-diff :around [Exactly :default]
+  [{:keys [expected]} actual]
+  (when-not (= expected actual)
+    (list 'not (list '= (symbol "#exactly") expected actual))))

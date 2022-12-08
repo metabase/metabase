@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
+   [metabase.test-runner.assert-exprs.approximately-equal :as approximately-equal]
    [metabase.util.date-2 :as u.date]))
 
 (comment test-runner.assert-exprs/keep-me)
@@ -48,3 +49,23 @@
                (list 'not (list 'zero? (list '.compareToIgnoreCase expected actual)))))}
           {:a "AbC"}
           {:a "abc", :b 100})))
+
+(deftest exactly-test
+  (testing "#exactly"
+    (is (=? {:a 1}
+            {:a 1, :b 2}))
+    (testing "Fail when things are not exactly the same, as if by `=`"
+      ;; convert to a string because otherwise two regexes aren't equal and I didn't want to use `?=` to test itself.
+      (is (= `(~'not (~'= ~(symbol "#exactly") {:a 1} {:a 1, :b 2}))
+             (approximately-equal/=?-diff #exactly {:a 1} {:a 1, :b 2})))
+      (testing "Inside a map"
+        (is (= `{:b (~'not (~'= ~(symbol "#exactly") {:a 1} {:a 1, :b 2}))}
+               (approximately-equal/=?-diff {:a 1, :b #exactly {:a 1}}
+                                            {:a 1, :b {:a 1, :b 2}})))))
+    (testing "Should pass when things are exactly the same as if by `=`"
+      (is (nil? (approximately-equal/=?-diff #exactly 2 2)))
+      (is (=? #exactly 2
+              2))
+      (testing "Inside a map"
+        (is (=? {:a 1, :b #exactly 2}
+                {:a 1, :b 2}))))))

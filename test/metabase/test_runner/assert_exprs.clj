@@ -152,14 +152,14 @@
 
 (defn =?-report
   [message multifn expected actual]
-  (let [error (if multifn
-                (approximately-equal/=? multifn expected actual)
-                (approximately-equal/=? expected actual))]
-    {:type     (if (not error) :pass :fail)
+  (let [diff (if multifn
+               (approximately-equal/=?-diff* multifn expected actual)
+               (approximately-equal/=?-diff* expected actual))]
+    {:type     (if (not diff) :pass :fail)
      :message  message
      :expected expected
      :actual   actual
-     :diffs    [[actual [error nil]]]}))
+     :diffs    [[actual [diff nil]]]}))
 
 (defmethod t/assert-expr '=?
   [message [_ & form]]
