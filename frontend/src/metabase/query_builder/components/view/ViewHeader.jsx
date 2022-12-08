@@ -463,9 +463,7 @@ function ViewTitleHeaderRightSide(props) {
         </ViewHeaderIconButtonContainer>
       )}
       {ConvertQueryButton.shouldRender(props) && (
-        <ViewHeaderIconButtonContainer>
-          <ConvertQueryButton question={question} onOpenModal={onOpenModal} />
-        </ViewHeaderIconButtonContainer>
+        <ConvertQueryButton question={question} onOpenModal={onOpenModal} />
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
