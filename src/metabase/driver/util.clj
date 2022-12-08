@@ -290,16 +290,16 @@
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder "E.x. public,auth*"
-      :description (trs "Comma separated names of {0} that <strong>should</strong> appear in Metabase" (str/lower-case disp-name))
+      :description (trs "Comma separated names of {0} that should appear in Metabase" (str/lower-case disp-name))
       :visible-if  {(keyword type-prop-nm) "inclusion"}
-      :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
+      :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (str/lower-case disp-name))
       :required true}
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder "E.x. public,auth*"
-      :description (trs "Comma separated names of {0} that <strong>should NOT</strong> appear in Metabase" (str/lower-case disp-name))
+      :description (trs "Comma separated names of {0} that should NOT appear in Metabase" (str/lower-case disp-name))
       :visible-if  {(keyword type-prop-nm) "exclusion"}
-      :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
+      :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (str/lower-case disp-name))
       :required true}]))
 
 

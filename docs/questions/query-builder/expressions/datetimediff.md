@@ -6,36 +6,54 @@ title: DatetimeDiff
 
 `datetimeDiff` gets the amount of time between two datetime values, using the specified unit of time. Note that the difference is calculated in _whole_ units (see the example below).
 
-| Syntax                                                                                                    | Example                                                       |
-|-----------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
-| `datetimeDiff(datetime1, datetime2, unit)`                                                                | `datetimeDiff("2022-02-01", "2022-03-01", "month")` |
-| Gets the difference between two datetimes (datetime2 minus datetime 1) using the specified unit of time.  | `1`                                                           |
+| Syntax                                                                                                   | Example                                             |
+| -------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `datetimeDiff(datetime1, datetime2, unit)`                                                               | `datetimeDiff("2022-02-01", "2022-03-01", "month")` |
+| Gets the difference between two datetimes (datetime2 minus datetime 1) using the specified unit of time. | `1`                                                 |
 
 ## Parameters
 
 `datetime1` and `datetime2` can be:
+
 - The name of a timestamp column,
 - a custom expression that returns a [datetime](#accepted-data-types), or
 - a string in the format `"YYYY-MM-DD"` or `"YYYY-MM-DDTHH:MM:SS"` (as shown in the example above).
 
 `unit` can be any of:
+
 - "year"
-- "quarter" 
 - "month"
 - "day"
 - "hour"
 - "second"
 - "millisecond"
 
+## Limitations
+
+`datetimeDiff` is currently unavailable for the following databases:
+
+- Amazon Athena
+- Druid
+- Google Analytics
+- H2
+- MongoDB
+- Oracle
+- Presto
+- Redshift
+- SparkSQL
+- SQLite
+- SQL Server
+- Vertica
+
 ## Calculating age
 
 Let's say you're a cheesemaker, and you want to keep track of your ripening process:
 
-| Cheese            | Aging Start      | Aging End        |  Mature Age (Months)  |
-|-------------------|------------------|------------------|-----------------------|
-| Provolone         | January 19, 2022 | March 17, 2022   | 1                     |
-| Feta              | January 25, 2022 | May 3, 2022      | 3                     |
-| Monterey Jack     | January 27, 2022 | October 11, 2022 | 8                     |
+| Cheese        | Aging Start      | Aging End        | Mature Age (Months) |
+| ------------- | ---------------- | ---------------- | ------------------- |
+| Provolone     | January 19, 2022 | March 17, 2022   | 1                   |
+| Feta          | January 25, 2022 | May 3, 2022      | 3                   |
+| Monterey Jack | January 27, 2022 | October 11, 2022 | 8                   |
 
 **Mature Age (Months)** is a custom column with the expression:
 
@@ -54,11 +72,11 @@ Metabase doesn't currently support datetime functions like `today`. To calculate
 
 The result should give you a **Today** column that's non-empty if today's date is on or after the **Aging Start** date.
 
-| Cheese            | Aging Start      | Aging End        |  Mature Age (Months)  |  Today             |  Current Age (Months) |
-|-------------------|------------------|------------------|-----------------------|--------------------|-----------------------|
-| Provolone         | January 19, 2022 | March 17, 2022   | 1                     | September 19, 2022 |  8                    |
-| Feta              | January 25, 2022 | May 3, 2022      | 3                     | September 19, 2022 |  7                    |
-| Monterey Jack     | January 27, 2022 | October 11, 2022 | 8                     | September 19, 2022 |  7                    |
+| Cheese        | Aging Start      | Aging End        | Mature Age (Months) | Today              | Current Age (Months) |
+| ------------- | ---------------- | ---------------- | ------------------- | ------------------ | -------------------- |
+| Provolone     | January 19, 2022 | March 17, 2022   | 1                   | September 19, 2022 | 8                    |
+| Feta          | January 25, 2022 | May 3, 2022      | 3                   | September 19, 2022 | 7                    |
+| Monterey Jack | January 27, 2022 | October 11, 2022 | 8                   | September 19, 2022 | 7                    |
 
 Then, you can calculate **Current Age (Months)** like this:
 
@@ -68,13 +86,13 @@ datetimeDiff([Aging Start], [Today], "month")
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeDiff`  |
-| ----------------------- | -------------------- |
-| String                  | ❌                   |
-| Number                  | ❌                   |
-| Timestamp               | ✅                   |
-| Boolean                 | ❌                   |
-| JSON                    | ❌                   |
+| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeDiff` |
+| ------------------------------------------------------------------------------------------------ | ------------------------- |
+| String                                                                                           | ❌                        |
+| Number                                                                                           | ❌                        |
+| Timestamp                                                                                        | ✅                        |
+| Boolean                                                                                          | ❌                        |
+| JSON                                                                                             | ❌                        |
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase.
 

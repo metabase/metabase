@@ -6,8 +6,9 @@
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
             [metabase-enterprise.serialization.v2.load :as serdes.load]
             [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues Metric
-                                     Segment Table Timeline TimelineEvent User]]
+                                     NativeQuerySnippet Segment Table Timeline TimelineEvent User]]
             [metabase.models.serialization.base :as serdes.base]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.time.OffsetDateTime))
@@ -884,3 +885,43 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Failed to read file"
                                   (serdes.load/load-metabase ingestion)))))))))
+
+(deftest card-with-snippet-test
+  (let [db1s       (atom nil)
+        table1s    (atom nil)
+        snippet1s  (atom nil)
+        card1s     (atom nil)
+        extracted  (atom nil)]
+    (testing "snippets referenced by native cards must be deserialized"
+      (ts/with-empty-h2-app-db
+        (reset! db1s      (ts/create! Database :name "my-db"))
+        (reset! table1s   (ts/create! Table :name "CUSTOMERS" :db_id (:id @db1s)))
+        (reset! snippet1s (ts/create! NativeQuerySnippet :name "some snippet"))
+        (reset! card1s    (ts/create! Card
+                                      :name "the query"
+                                      :dataset_query {:database (:id @db1s)
+                                                      :native {:template-tags {"snippet: things"
+                                                                               {:id "e2d15f07-37b3-01fc-3944-2ff860a5eb46",
+                                                                                :name "snippet: filtered data",
+                                                                                :display-name "Snippet: Filtered Data",
+                                                                                :type :snippet,
+                                                                                :snippet-name "filtered data",
+                                                                                :snippet-id (:id @snippet1s)}}}}))
+        (ts/create! User :first_name "Geddy" :last_name "Lee"     :email "glee@rush.yyz")
+
+        (testing "on extraction"
+          (reset! extracted (serdes.base/extract-one "Card" {} @card1s))
+          (is (= (:entity_id @snippet1s)
+                 (-> @extracted :dataset_query :native :template-tags (get "snippet: things") :snippet-id))))
+
+        (testing "when loading"
+          (let [new-eid   (u/generate-nano-id)
+                ingestion (ingestion-in-memory [(assoc @extracted :entity_id new-eid)])]
+            (is (some? (serdes.load/load-metabase ingestion)))
+            (is (= (:id @snippet1s)
+                   (-> (db/select-one Card :entity_id new-eid)
+                       :dataset_query
+                       :native
+                       :template-tags
+                       (get "snippet: things")
+                       :snippet-id)))))))))

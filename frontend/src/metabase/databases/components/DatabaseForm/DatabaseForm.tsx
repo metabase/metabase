@@ -8,8 +8,7 @@ import FormFooter from "metabase/core/components/FormFooter";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { Engine } from "metabase-types/api";
-import { DatabaseValues } from "../../types";
+import { DatabaseData, Engine } from "metabase-types/api";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {
   getSubmitValues,
@@ -24,11 +23,11 @@ import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 
 export interface DatabaseFormProps {
   engines: Record<string, Engine>;
-  initialValues?: DatabaseValues;
+  initialValues?: DatabaseData;
   isHosted?: boolean;
   isAdvanced?: boolean;
   isCachingEnabled?: boolean;
-  onSubmit?: (values: DatabaseValues) => void;
+  onSubmit?: (values: DatabaseData) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
 }
@@ -59,7 +58,7 @@ const DatabaseForm = ({
   }, [initialData, engineKey, validationSchema]);
 
   const handleSubmit = useCallback(
-    (values: DatabaseValues) => {
+    (values: DatabaseData) => {
       return onSubmit?.(getSubmitValues(engine, values, isAdvanced));
     },
     [engine, isAdvanced, onSubmit],
@@ -115,7 +114,7 @@ const DatabaseFormBody = ({
   onEngineChange,
   onCancel,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values } = useFormikContext<DatabaseValues>();
+  const { values } = useFormikContext<DatabaseData>();
 
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];
@@ -154,7 +153,7 @@ const DatabaseFormFooter = ({
   isAdvanced,
   onCancel,
 }: DatabaseFormFooterProps) => {
-  const { values } = useFormikContext<DatabaseValues>();
+  const { values } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
 
   if (isAdvanced) {
@@ -189,7 +188,7 @@ const getEngine = (engines: Record<string, Engine>, engineKey?: string) => {
 
 const getEngineKey = (
   engines: Record<string, Engine>,
-  values?: DatabaseValues,
+  values?: DatabaseData,
   isAdvanced?: boolean,
 ) => {
   if (values?.engine) {
