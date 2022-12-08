@@ -9,9 +9,7 @@
 
 ;; comment is required for strict change set spec
 (s/def ::comment
-  (s/and
-   string?
-   (partial re-find #"Added [\d.x]+")))
+  string?)
 
 (s/def ::changes
   (s/or
