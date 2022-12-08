@@ -137,7 +137,7 @@ describe("actions > containers > ActionParametersInputForm > utils", () => {
     });
 
     it("formats datetimes", () => {
-      const result = formatValue("2020-05-01T05:00:00Z", "datetime-local");
+      const result = formatValue("2020-05-01T05:00:00Z", "datetime");
       expect(result).toEqual("2020-05-01T05:00:00");
     });
   });

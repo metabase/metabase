@@ -1,4 +1,3 @@
-import type { Validator, FormFieldDefinition } from "metabase-types/forms";
 import type Field from "metabase-lib/metadata/Field";
 import type { ParameterId } from "./parameters";
 
@@ -7,7 +6,7 @@ export type FieldType = "string" | "number" | "date" | "category";
 
 export type DateInputType = "date" | "time" | "datetime";
 
-export type InputType =
+export type InputSettingType =
   | DateInputType
   | "string"
   | "text"
@@ -15,6 +14,18 @@ export type InputType =
   | "select"
   | "radio"
   | "boolean"
+  | "category";
+
+export type InputComponentType =
+  | "text"
+  | "textarea"
+  | "number"
+  | "boolean"
+  | "select"
+  | "radio"
+  | "date"
+  | "time"
+  | "datetime-local"
   | "category";
 
 export type Size = "small" | "medium" | "large";
@@ -30,7 +41,7 @@ export interface FieldSettings {
   description?: string | null;
   placeholder?: string;
   fieldType: FieldType;
-  inputType: InputType;
+  inputType: InputSettingType;
   required: boolean;
   defaultValue?: string | number;
   hidden: boolean;
@@ -60,9 +71,19 @@ export type ActionFormOption = {
   value: string | number;
 };
 
-export type ActionFormFieldProps = FormFieldDefinition & {
+export type Validator = (value: string) => undefined | string;
+
+export type ActionFormFieldProps = {
+  name: string;
+  title: string;
+  description?: string;
+  placeholder?: string;
+  type: InputComponentType;
+  required?: boolean;
+  validate?: Validator;
   validator?: Validator;
   fieldInstance?: Field;
+  options?: ActionFormOption[];
 };
 
 export type ActionFormProps = {

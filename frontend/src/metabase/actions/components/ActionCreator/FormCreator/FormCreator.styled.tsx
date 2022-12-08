@@ -22,9 +22,13 @@ export const FormItemWrapper = styled.div`
   background-color: ${color("bg-white")};
 `;
 
-export const FormSettings = styled.div`
+export const FieldSettingsButtons = styled.div`
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: ${space(0)};
   display: flex;
-  gap: ${space(2)};
+  gap: ${space(1)};
   align-items: center;
   justify-content: space-between;
 `;

@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import Icon from "metabase/components/Icon";
 
 export const SettingsPopoverBody = styled.div`
   padding: ${space(3)};
@@ -25,4 +26,18 @@ export const ToggleContainer = styled.div`
   justify-content: space-between;
   padding-left: ${space(0)};
   margin-bottom: ${space(1)};
+`;
+
+export const SettingsTriggerIcon = styled(Icon)`
+  color: ${color("brand")};
+  &:hover {
+    color: ${lighten("brand", 0.1)};
+  }
+`;
+
+export const PopoverContainer = styled.div`
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: ${space(0)};
 `;

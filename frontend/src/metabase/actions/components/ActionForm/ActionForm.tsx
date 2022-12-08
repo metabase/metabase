@@ -1,0 +1,172 @@
+import React, { useMemo } from "react";
+import { t } from "ttag";
+import _ from "underscore";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+
+import type {
+  DraggableProvided,
+  OnDragEndResponder,
+  DroppableProvided,
+} from "react-beautiful-dnd";
+
+import Button from "metabase/core/components/Button";
+import Form from "metabase/core/components/Form";
+import FormProvider from "metabase/core/components/FormProvider";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+
+import type {
+  ActionFormProps,
+  ActionFormSettings,
+  FieldSettings,
+  WritebackParameter,
+} from "metabase-types/api";
+
+import type { Parameter } from "metabase-types/types/Parameter";
+
+import { reorderFields } from "metabase/actions/components/ActionCreator/FormCreator";
+import Icon from "metabase/components/Icon";
+import { FieldSettingsButton } from "../ActionCreator/FormCreator/FieldSettingsButton";
+import { FormFieldWidget } from "./ActionFormFieldWidget";
+import {
+  ActionFormButtonContainer,
+  FormFieldContainer,
+  SettingsContainer,
+  InputContainer,
+} from "./ActionForm.styled";
+
+import { getForm } from "./utils";
+
+export interface ActionFormComponentProps {
+  parameters: WritebackParameter[] | Parameter[];
+  initialValues?: any;
+  onClose?: () => void;
+  onSubmit: (params: any, actions: any) => void;
+  submitTitle?: string;
+  submitButtonColor?: string;
+  formSettings?: ActionFormSettings;
+  setFormSettings?: (formSettings: ActionFormSettings) => void;
+}
+
+export const ActionForm = ({
+  parameters,
+  initialValues = {},
+  onClose,
+  onSubmit,
+  submitTitle,
+  submitButtonColor,
+  formSettings,
+  setFormSettings,
+}: ActionFormComponentProps): JSX.Element => {
+  // allow us to change the color of the submit button
+  const submitButtonVariant = { [submitButtonColor ?? "primary"]: true };
+
+  const isSettings = !!(formSettings && setFormSettings);
+
+  const form = useMemo(
+    () => getForm(parameters, formSettings?.fields),
+    [parameters, formSettings?.fields],
+  );
+
+  const handleDragEnd: OnDragEndResponder = ({ source, destination }) => {
+    if (!isSettings) {
+      return;
+    }
+
+    const oldOrder = source.index;
+    const newOrder = destination?.index ?? source.index;
+
+    const reorderedFields = reorderFields(
+      formSettings.fields,
+      oldOrder,
+      newOrder,
+    );
+    setFormSettings({
+      ...formSettings,
+      fields: reorderedFields,
+    });
+  };
+
+  const handleChangeFieldSettings = (newFieldSettings: FieldSettings) => {
+    if (!isSettings || !newFieldSettings?.id) {
+      return;
+    }
+
+    setFormSettings({
+      ...formSettings,
+      fields: {
+        ...formSettings.fields,
+        [newFieldSettings.id]: newFieldSettings,
+      },
+    });
+  };
+
+  if (isSettings) {
+    return (
+      <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
+        <Form role="form" data-testid="action-form-editor">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="action-form-droppable">
+              {(provided: DroppableProvided) => (
+                <div {...provided.droppableProps} ref={provided.innerRef}>
+                  {form.fields.map((field, index) => (
+                    <Draggable
+                      key={`draggable-${field.name}`}
+                      draggableId={field.name}
+                      index={index}
+                    >
+                      {(provided: DraggableProvided) => (
+                        <FormFieldContainer
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          isSettings={isSettings}
+                        >
+                          <SettingsContainer>
+                            <Icon name="grabber2" size={14} />
+                          </SettingsContainer>
+
+                          <InputContainer>
+                            <FormFieldWidget
+                              key={field.name}
+                              formField={field}
+                            />
+                          </InputContainer>
+
+                          <FieldSettingsButton
+                            fieldSettings={formSettings.fields[field.name]}
+                            onChange={handleChangeFieldSettings}
+                          />
+                        </FormFieldContainer>
+                      )}
+                    </Draggable>
+                  ))}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </Form>
+      </FormProvider>
+    );
+  }
+
+  return (
+    <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
+      <Form role="form" data-testid="action-form">
+        {form.fields.map(field => (
+          <FormFieldWidget key={field.name} formField={field} />
+        ))}
+
+        <ActionFormButtonContainer>
+          {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
+          <FormSubmitButton
+            title={submitTitle ?? t`Save`}
+            {...submitButtonVariant}
+          />
+        </ActionFormButtonContainer>
+
+        <FormErrorMessage />
+      </Form>
+    </FormProvider>
+  );
+};
