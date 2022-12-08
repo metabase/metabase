@@ -70,7 +70,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get(".value-labels").contains("30%");
+    cy.get(".value-labels").contains("39.75%");
   });
 
   it("should display an error message when there are more series than the chart supports", () => {
