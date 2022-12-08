@@ -8,7 +8,7 @@ export const ModalRoot = styled.div`
   display: flex;
   flex-direction: column;
   padding: 2rem;
-  min-width: 65vw;
+  min-width: 40rem;
   max-width: 85vw;
   min-height: 20rem;
   max-height: 90vh;
