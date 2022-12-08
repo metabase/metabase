@@ -13021,6 +13021,55 @@ databaseChangeLog:
                     nullable: false
                   defaultValueComputed: current_timestamp
 
+  # Make Dimension <=> Field a 1t1 relationship. Replace unique field_id + name with unique field_id.
+  # See issue #27054.
+  - changeSet:
+      id: v46.00-029
+      author: camsaul
+      comment: Make Dimension <=> Field a 1t1 relationship. Drop unique constraint on field_id + name. (1/3)
+      changes:
+        - dropUniqueConstraint:
+            tableName: dimension
+            constraintName: unique_dimension_field_id_name
+      rollback: # we can no-op here because the unique constraint on only field_id added below will work fine on old
+                # versions -- that's effectively how they worked anyway, it just wasn't enforced.
+
+  - changeSet:
+      id: v46.00-030
+      author: camsaul
+      comment: Make Dimension <=> Field a 1t1 relationship. Delete duplicate entries. (2/3)
+      changes:
+        - sql:
+            # Which rows to keep is not 100% clear. I decided to keep newer entries, by ID. I considered keeping new
+            # entries by `updated_at` but the SQL for doing that across the three databases was such a hairball and
+            # having duplicates in the first place was such an edge case I decided this approach is fine for now. The
+            # `row_number()` window function would have made this easier to do but we haven't merged H2 v2 yet.
+            sql: >-
+              DELETE FROM dimension
+              WHERE field_id IN (
+                SELECT field_id
+                FROM dimension
+                GROUP BY field_id
+                HAVING COUNT(*) > 1
+              )
+              AND id NOT IN (
+                SELECT max(id) AS id
+                FROM dimension
+                GROUP BY field_id
+              );
+      rollback: # don't need to roll back anything, deleting duplicate entries doesn't need to be reversed.
+
+  - changeSet:
+      id: v46.00-031
+      author: camsaul
+      comment: Make Dimension <=> Field a 1t1 relationship. Add unique constraint on field_id. (3/3)
+      changes:
+        - addUniqueConstraint:
+            tableName: dimension
+            columnNames: field_id
+            constraintName: unique_dimension_field_id
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
