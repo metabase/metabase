@@ -13,6 +13,7 @@ import type { State } from "metabase-types/store";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
 
+import { isImplicitAction } from "metabase/actions/utils";
 import { ActionCreator } from "metabase/actions/components/ActionCreator";
 
 import {
@@ -92,7 +93,7 @@ function ModelActionPicker({
                 <ActionName onClick={() => onClick(action)}>
                   {action.name}
                 </ActionName>
-                {!!action.id && (
+                {!isImplicitAction(action) && (
                   <EditButton
                     icon="pencil"
                     onlyIcon
