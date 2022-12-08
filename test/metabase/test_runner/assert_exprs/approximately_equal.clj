@@ -38,13 +38,13 @@
 
     (methodical/defmethod =?-diff [java.util.regex.Pattern String]
       [expected-regex s]
-      (when-not (re-find expected-regex s)
-        (list 'not (list 're-find expected-regex s))))
+      (when-not (re-matches expected-regex s)
+        (list 'not (list 're-matches expected-regex s))))
 
   Methods are expected to return `nil` if things are approximately equal, or a form explaining why they aren't if they
   aren't. In this case, it returns something like
 
-    (not (re-find #\"\\d+cans\" \"toucans\")))
+    (not (re-matches #\"\\d+cans\" \"toucans\")))
 
   This is printed in the correct place by humanized test output and other things that can print diffs.
 
@@ -149,8 +149,8 @@
 
 (methodical/defmethod =?-diff [java.util.regex.Pattern String]
   [expected-regex s]
-  (when-not (re-find expected-regex s)
-    (list 'not (list 're-find expected-regex s))))
+  (when-not (re-matches expected-regex s)
+    (list 'not (list 're-matches expected-regex s))))
 
 ;;; two regexes should be treated as equal if they're the same pattern.
 (methodical/defmethod =?-diff [java.util.regex.Pattern java.util.regex.Pattern]
@@ -164,17 +164,27 @@
     (list 'not (list pred actual))))
 
 (methodical/defmethod =?-diff [clojure.lang.Sequential clojure.lang.Sequential]
-  [expected-seq actual-seq]
-  (loop [acc                        []
-         [expected & more-expected] expected-seq
-         [actual & more-actual]     actual-seq]
-    (let [diff (=?-diff expected actual)
-          acc    (conj acc diff)]
-      (if (or (seq more-expected)
-              (seq more-actual))
-        (recur acc more-expected more-actual)
-        (when (some some? acc)
-          acc)))))
+  [expected actual]
+  (let [same-size? (= (count expected)
+                      (count actual))]
+    ;; diff items at each index, e.g. (=?-diff (first expected) (first actual)) then (=?-diff (second expected) (second
+    ;; actual)) and so forth. Keep diffing until BOTH sequences are empty.
+    (loop [diffs    []
+           expected expected
+           actual   actual]
+      (if (and (empty? expected)
+               (empty? actual))
+        ;; If there are no more items then return the vector the diffs, if there were any
+        ;; non-nil diffs, OR if the sequences were of different sizes. The diff between [1 2 nil] and [1 2]
+        ;; in [[clojure.data/diff]] is [nil nil nil]; that's what we'll return in this situation too.
+        (when (or (some some? diffs)
+                  (not same-size?))
+          diffs)
+        ;; when there is at least element left in either `expected` or `actual`, diff the first item in each. If one of
+        ;; these is empty, it will diff against `nil`, but that's ok, because we will still fail because `same-size?`
+        ;; above will be false
+        (let [this-diff (=?-diff (first expected) (first actual))]
+          (recur (conj diffs this-diff) (rest expected) (rest actual)))))))
 
 (methodical/defmethod =?-diff [clojure.lang.IPersistentMap clojure.lang.IPersistentMap]
   [expected-map actual-map]
