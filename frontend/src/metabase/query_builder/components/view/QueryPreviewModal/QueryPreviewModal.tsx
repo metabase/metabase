@@ -28,7 +28,7 @@ const QueryPreviewModal = ({
   question,
   onClose,
 }: QueryPreviewModalProps): JSX.Element => {
-  const { data, error, loading } = useNativeQuery(question);
+  const { data, error, isLoading } = useNativeQuery(question);
 
   const queryText = useMemo(() => {
     const engine = question.database()?.engine;
@@ -51,10 +51,10 @@ const QueryPreviewModal = ({
         </ModalCloseButton>
       </ModalHeader>
       <ModalBody>
-        {loading ? (
+        {isLoading ? (
           <ModalLoadingSpinner />
         ) : errorText ? (
-          <QueryPreviewCode value={errorText} />
+          <QueryPreviewCode value={errorText} isHighlighted />
         ) : queryText ? (
           <QueryPreviewCode value={queryText} />
         ) : undefined}
@@ -75,17 +75,17 @@ const QueryPreviewModal = ({
 interface UseNativeQuery {
   data?: NativeQueryData;
   error?: unknown;
-  loading: boolean;
+  isLoading: boolean;
 }
 
 const useNativeQuery = (question: Question) => {
-  const [state, setState] = useState<UseNativeQuery>({ loading: true });
+  const [state, setState] = useState<UseNativeQuery>({ isLoading: true });
 
   useEffect(() => {
     question
       .apiGetNativeQuery()
-      .then(data => setState({ data, loading: false }))
-      .catch(error => setState({ loading: false, error }));
+      .then(data => setState({ data, isLoading: false }))
+      .catch(error => setState({ isLoading: false, error }));
   }, [question]);
 
   return state;
