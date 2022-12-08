@@ -466,8 +466,8 @@
                                    first)
                 results-timezone (mt/with-everything-store (qp.timezone/results-timezone-id))
                 now              (t/local-date-time (t/zone-id results-timezone))]
-            (is (true? (close-minute? minute (.getMinute now)))
-            (is (true? (close-hour? hour (.getHour now)))))))))))
+            (is (true? (close-minute? minute (.getMinute now))))
+            (is (true? (close-hour? hour (.getHour now))))))))))
 
 (deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
