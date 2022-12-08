@@ -22,6 +22,7 @@ title: DatetimeDiff
 `unit` can be any of:
 
 - "year"
+- "quarter"
 - "month"
 - "day"
 - "hour"
