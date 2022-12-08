@@ -25,7 +25,7 @@
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
   Specify the env var `METASTORE_DEV_SERVER_URL`."
   (or
-   ;; only enable the changing the store url during dev because we don't want people switching it out in production!
+   ;; only enable the changing the token check url during dev because we don't want people switching it out in production!
    (when config/is-dev?
      (some-> (env :metastore-dev-server-url)
              ;; remove trailing slashes
