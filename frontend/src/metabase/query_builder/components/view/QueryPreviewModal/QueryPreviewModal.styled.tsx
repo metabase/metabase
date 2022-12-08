@@ -61,3 +61,8 @@ export const ModalCloseIcon = styled(Icon)`
 export const ModalLoadingSpinner = styled(LoadingSpinner)`
   color: ${color("brand")};
 `;
+
+export const ModalDivider = styled.div`
+  border-top: 1px solid ${color("border")};
+  margin-bottom: 1.5rem;
+`;

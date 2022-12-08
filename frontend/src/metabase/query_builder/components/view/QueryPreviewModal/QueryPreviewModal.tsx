@@ -11,6 +11,7 @@ import {
   ModalBody,
   ModalCloseButton,
   ModalCloseIcon,
+  ModalDivider,
   ModalFooter,
   ModalHeader,
   ModalLoadingSpinner,
@@ -50,6 +51,7 @@ const QueryPreviewModal = ({
           <ModalCloseIcon name="close" onClick={onClose} />
         </ModalCloseButton>
       </ModalHeader>
+      {error && <ModalDivider />}
       <ModalBody>
         {isLoading ? (
           <ModalLoadingSpinner />
