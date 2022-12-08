@@ -95,7 +95,7 @@ defaultFilterValues.forEach(value => {
       });
     });
 
-    it.skip(`DASHBOARD: locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#25031)`, () => {
+    it(`DASHBOARD: locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#25031)`, () => {
       cy.get("@dashboardId").then(dashboardId => {
         visitDashboard(dashboardId);
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
