@@ -21,15 +21,9 @@ on:
       - "**/frontend/**.unit.*"
 
 jobs:
-  draft-check:
-    if: github.event.pull_request.draft == false
-    runs-on: ubuntu-20.04
-    timeout-minutes: 5
-    steps:
-      - run: echo "PR is not in a draft mode. Continue with the rest of the jobs."
 
   be-tests-druid-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 30
     env:
@@ -50,7 +44,7 @@ jobs:
         junit-name: 'be-tests-druid-ee'
 
   be-tests-mariadb-10-2-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -75,7 +69,7 @@ jobs:
         junit-name: 'be-tests-mariadb-10-2-ee'
 
   be-tests-mariadb-latest-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -100,7 +94,7 @@ jobs:
         junit-name: 'be-tests-mariadb-latest-ee'
 
   be-tests-mongo-4-0-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -119,7 +113,7 @@ jobs:
         junit-name: 'be-tests-mongo-4-0-ee'
 
   be-tests-mongo-5-0-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -138,7 +132,7 @@ jobs:
         junit-name: 'be-tests-mongo-5-0-ee'
 
   be-tests-mongo-latest-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -160,7 +154,7 @@ jobs:
         junit-name: 'be-tests-mongo-latest-ee'
 
   be-tests-mysql-5-7-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -185,7 +179,7 @@ jobs:
         junit-name: 'be-tests-mysql-5-7-ee'
 
   be-tests-postgres-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -213,7 +207,7 @@ jobs:
         junit-name: 'be-tests-postgres-ee'
 
   be-tests-postgres-latest-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -245,7 +239,7 @@ jobs:
         junit-name: 'be-tests-postgres-latest-ee'
 
   be-tests-presto-186-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -266,7 +260,7 @@ jobs:
         junit-name: 'be-tests-presto-186-ee'
 
   be-tests-sparksql-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 30
     env:
@@ -285,7 +279,7 @@ jobs:
         junit-name: 'be-tests-sparksql-ee'
 
   be-tests-sqlite-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
@@ -299,7 +293,7 @@ jobs:
         junit-name: 'be-tests-sqlite-ee'
 
   be-tests-sqlserver-ee:
-    needs: draft-check
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     env:
