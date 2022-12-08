@@ -1,13 +1,15 @@
 (ns metabase.db.update-h2
   "Functions for updating an H2 v1.x database to v2.x"
-  (:require    [clj-http.client :as http]
-               [clojure.java.io :as io]
-               [clojure.java.jdbc :as jdbc]
-               [clojure.java.shell :as sh]
-               [clojure.string :as str]
-               [clojure.tools.logging :as log]
-               [metabase.util.i18n :refer [trs]])
-  (:import [java.nio.file Files Paths]))
+  (:require
+   [clj-http.client :as http]
+   [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.java.shell :as sh]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [metabase.util.i18n :refer [trs]])
+  (:import
+   (java.nio.file Files Paths)))
 
 ;;; Generic utils
 
