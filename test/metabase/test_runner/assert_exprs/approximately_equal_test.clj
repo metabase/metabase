@@ -102,8 +102,8 @@
     (testing "Nested inside a collection"
       (is (=? {:a 1, :b #approx [1.5 0.1]}
               {:a 1, :b 1.51})))
-    ;; failures below render stuff to strings so we can see it the way it will look in test failures with it's nice
-    ;; comment and what not
+    ;; failures below render stuff to strings so we can see it the way it will look in test failures with its nice
+    ;; comment and whatnot
     (testing "failures"
       (is (= "(not (approx= 1.5 1.6 #_epsilon 0.1))"
              (pr-str (approximately-equal/=?-diff #approx [1.5 0.1] 1.6))))
