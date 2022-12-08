@@ -17,6 +17,7 @@ export const MODAL_TYPES = {
   NEW_EVENT: "new-event",
   EDIT_EVENT: "edit-event",
   MOVE_EVENT: "move-event",
+  CONVERT_QUERY: "convert-query",
   PREVIEW_QUERY: "preview-query",
 };
 
