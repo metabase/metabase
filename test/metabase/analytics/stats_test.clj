@@ -8,7 +8,6 @@
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.pulse-channel :refer [PulseChannel]]
             [metabase.models.query-execution :refer [QueryExecution]]
-            [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -69,7 +68,9 @@
     "10000+"     100000))
 
 (def DBMSVersionStats
-  {sync-dbms-ver/DBMSVersion su/NonNegativeInt})
+  {{:engine                   s/Keyword
+    (s/optional-key :version) (s/maybe su/NonBlankString)
+    s/Keyword                 s/Any}                      su/NonNegativeInt})
 
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)
