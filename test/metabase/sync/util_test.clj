@@ -37,8 +37,8 @@
 
 (deftest concurrent-sync-test
   (testing "only one sync process be going on at a time"
-    ;; describe-database gets called twice during a single sync process, once for syncing tables and a second time for
-    ;; syncing the _metabase_metadata table
+    ;; describe-database gets called once during a single sync process, and the results are used for syncing tables
+    ;; and syncing the _metabase_metadata table.
     (tt/with-temp* [Database [db {:engine ::concurrent-sync-test}]]
       (reset! calls-to-describe-database 0)
       ;; start a sync processes in the background. It should take 1000 ms to finish
@@ -54,9 +54,7 @@
         ;; make sure both of the futures have finished
         (deref f1)
         (deref f2)
-        ;; Check the number of syncs that took place. Should be 2 (just the first)
-        (is (= 2
-               @calls-to-describe-database))))))
+        (is (= 1 @calls-to-describe-database))))))
 
 (defn- call-with-operation-info
   "Call `f` with `log-sync-summary` and `store-sync-summary!` redef'd. For `log-sync-summary`, it intercepts the step
@@ -285,9 +283,10 @@
    (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (db/update! Database (:id (mt/db)) :initial_sync_status "incomplete")
             db (db/select-one Database :id (:id (mt/db)))]
-        (with-redefs [sync-metadata/sync-steps [(sync-util/create-sync-step
-                                                 "fake-step"
-                                                 (fn [_] (throw (java.net.ConnectException.))))]]
+        (with-redefs [sync-metadata/make-sync-steps (fn [_]
+                                                      [(sync-util/create-sync-step
+                                                        "fake-step"
+                                                        (fn [_] (throw (java.net.ConnectException.))))])]
           (sync/sync-database! db)
           (is (= "aborted" (db/select-one-field :initial_sync_status Database :id (:id db)))))))
 

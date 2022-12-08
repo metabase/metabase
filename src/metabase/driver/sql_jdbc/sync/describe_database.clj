@@ -6,7 +6,7 @@
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sync :as driver.s]
@@ -24,7 +24,7 @@
   "Get a *reducible* sequence of all string schema names for the current database from its JDBC database metadata."
   [^DatabaseMetaData metadata]
   {:added "0.39.0", :pre [(instance? DatabaseMetaData metadata)]}
-  (sql-jdbc.common/reducible-results
+  (sql-jdbc.sync.common/reducible-results
    #(.getSchemas metadata)
    (fn [^ResultSet rs]
      #(.getString rs "TABLE_SCHEM"))))
@@ -59,7 +59,7 @@
   every Table on every sync."
   [driver ^Connection conn [sql & params]]
   {:pre [(string? sql)]}
-  (with-open [stmt (sql-jdbc.common/prepare-statement driver conn sql params)]
+  (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)]
     ;; attempting to execute the SQL statement will throw an Exception if we don't have permissions; otherwise it will
     ;; truthy wheter or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
     ;; this point.
@@ -87,7 +87,7 @@
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
   schema. Returns a reducible sequence of results."
   [driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
-  (sql-jdbc.common/reducible-results
+  (sql-jdbc.sync.common/reducible-results
    #(.getTables metadata db-name-or-nil (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"
                 (into-array String ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"
                                     "EXTERNAL TABLE"]))
