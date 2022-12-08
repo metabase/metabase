@@ -38,6 +38,6 @@ export interface Dataset {
   running_time: number;
 }
 
-export interface NativeQueryData {
+export interface NativeQueryForm {
   query: string;
 }

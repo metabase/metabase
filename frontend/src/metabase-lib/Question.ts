@@ -46,7 +46,7 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId, DatasetNativeForm } from "metabase-types/api";
+import { CollectionId, NativeQueryForm } from "metabase-types/api";
 
 import {
   getParameterValuesBySlug,
@@ -1121,7 +1121,7 @@ class QuestionInner {
     }
   }
 
-  apiGetNativeQuery(): Promise<DatasetNativeForm> {
+  apiGetNativeQueryForm(): Promise<NativeQueryForm> {
     const query = this.datasetQuery();
     const parameters = normalizeParameters(this.parameters());
 

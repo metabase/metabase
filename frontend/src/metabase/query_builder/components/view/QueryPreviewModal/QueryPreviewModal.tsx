@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { formatNativeQuery } from "metabase/lib/engine";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { NativeQueryData } from "metabase-types/api";
+import { NativeQueryForm } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import QueryPreviewCode from "../QueryPreviewCode";
 import {
@@ -75,7 +75,7 @@ const QueryPreviewModal = ({
 };
 
 interface UseNativeQuery {
-  data?: NativeQueryData;
+  data?: NativeQueryForm;
   error?: unknown;
   isLoading: boolean;
 }
@@ -85,7 +85,7 @@ const useNativeQuery = (question: Question) => {
 
   useEffect(() => {
     question
-      .apiGetNativeQuery()
+      .apiGetNativeQueryForm()
       .then(data => setState({ data, isLoading: false }))
       .catch(error => setState({ isLoading: false, error }));
   }, [question]);
