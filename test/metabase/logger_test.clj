@@ -14,8 +14,6 @@
     (mt/with-log-level :warn
       (let [before (count (mb.logger/messages))]
         (log/warn "testing in-memory logger")
-        (testing "isAdditive should be false to prevent logs to be printed out to console (#26468)"
-          (is (false? (.isAdditive (log.impl/get-logger log/*logger-factory* *ns*)))))
         (let [after (count (mb.logger/messages))]
           ;; it either increases (could have many logs from other tests) or it is the max capacity of the ring buffer
           (is (or (> after before)
