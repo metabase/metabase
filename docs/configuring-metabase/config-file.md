@@ -97,4 +97,29 @@ config:
       details: ...
 ```
 
+## Users and Admins
+
+A user will be Admin of the instance if it's the first user created. Otherwise you can specify a user as an admin by using the `is_superuser` key.
+
+In the following example:
+```
+version: 1
+config:
+  users:
+    - first_name: a
+      last_name: b
+      password: metabot1
+      email: a@b.com
+    - first_name: b
+      last_name: a
+      password: metabot1
+      email: b@a.com
+    - first_name: c
+      last_name: a
+      password: metabot1
+      is_superuser: true
+      email: c@a.com
+```
+both users a@b.com and c@a.com will be admins, a@b.com one because it's the first one on the list in an empty instance and c@a.com because it has the is_superuser flag.
+
  
