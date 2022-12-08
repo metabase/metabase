@@ -4,6 +4,15 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.46.0
+
+- `metabase.driver/table-rows-sample` has been added. This method is used in situations where Metabase needs
+  a limited sample from a table, like when fingerprinting. The default implementation defined in the
+  `metabase.db.metadata-queries` namespace runs an MBQL query using the regular query processor to produce the
+  sample rows. This is good enough in most cases, so this multimethod should not be implemented unless really
+  necessary. Currently, the only case when a special implementation is used is for BigQuery, which does not
+  respect limit clauses.
+
 ## Metabase 0.45.0
 
 - `metabase.driver.sql-jdbc.connection/details->connection-spec-for-testing-connection` has been removed in Metabase
