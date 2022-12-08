@@ -60,10 +60,26 @@
 
       actual: {:m {:a 1, :b 2}}
         diff: - {:m (not (= #exactly {:a 1} {:a 1, :b 2}))}
+              + nil
+
+  `#schema` compares things to a [[schema.core]] Schema:
+
+    (is (=? {:a 1, :b #schema {s/Keyword s/Int}}
+            {:a 1, :b {:c 2}}))
+    => ok
+
+    (is (=? {:a 1, :b #schema {s/Keyword s/Int}}
+            {:a 1, :b {:c 2.0}}))
+    =>
+    expected: {:a 1, :b #schema {(pred keyword?) (pred integer?)}}
+
+      actual: {:a 1, :b {:c 2.0}}
+        diff: - {:b {:c (not (integer? 2.0))}}
               + nil"
   (:require
    [clojure.pprint :as pprint]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [schema.core :as s]))
 
 (methodical/defmulti ^:dynamic =?-diff
   "Multimethod to use to diff two things with `=?`. Despite not having earmuffs, this is dynamic so it can be rebound at
@@ -151,6 +167,11 @@
 
 (defrecord Exactly [expected])
 
+(defn read-exactly
+  "Data reader for `#exactly`."
+  [expected-form]
+  (->Exactly (eval expected-form)))
+
 (defmethod print-method Exactly
   [this writer]
   ((get-method print-dup Exactly) this writer))
@@ -166,8 +187,35 @@
    (pprint/write-out (:expected this))))
 
 ;;; this is an `:around` method so it always intercepts anything else that might try to handle this, e.g. comparing an
-;;; `Exactly` and an `IPersistentMap` -- this should do the work
+;;; `Exactly` and an `IPersistentMap`
 (methodical/defmethod =?-diff :around [Exactly :default]
   [{:keys [expected]} actual]
   (when-not (= expected actual)
     (list 'not (list '= (symbol "#exactly") expected actual))))
+
+(defrecord Schema [schema])
+
+(defn read-schema
+  "Data reader for `#schema`."
+  [schema-form]
+  (->Schema (eval schema-form)))
+
+(defmethod print-method Schema
+  [this writer]
+  ((get-method print-dup Schema) this writer))
+
+(defmethod print-dup Schema
+  [this ^java.io.Writer writer]
+  (.write writer (format "#schema %s" (pr-str (:schema this)))))
+
+(defmethod pprint/simple-dispatch Schema
+  [this]
+  (pprint/pprint-logical-block
+   :prefix "#schema " :suffix nil
+   (pprint/write-out (:schema this))))
+
+;;; this is an `:around` method so it always intercepts anything else that might try to handle this, e.g. comparing an
+;;; `Schema` and an `IPersistentMap`
+(methodical/defmethod =?-diff :around [Schema :default]
+  [{:keys [schema]} actual]
+  (s/check schema actual))

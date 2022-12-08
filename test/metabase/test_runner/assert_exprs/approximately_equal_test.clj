@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test-runner.assert-exprs.approximately-equal :as approximately-equal]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [schema.core :as s]))
 
 (comment test-runner.assert-exprs/keep-me)
 
@@ -66,6 +67,29 @@
       (is (nil? (approximately-equal/=?-diff #exactly 2 2)))
       (is (=? #exactly 2
               2))
+      (testing "should evaluate args"
+        (is (=? #exactly (+ 1 1)
+                2)))
       (testing "Inside a map"
         (is (=? {:a 1, :b #exactly 2}
                 {:a 1, :b 2}))))))
+
+(deftest schema-test
+  (testing "#schema"
+    (is (=? #schema {:a s/Int}
+            {:a 1}))
+    (testing "Nested inside a collection"
+      (is (=? {:a 1, :b #schema {s/Keyword s/Int}}
+              {:a 1, :b {}}))
+      (is (=? {:a 1, :b #schema {s/Keyword s/Int}}
+              {:a 1, :b {:c 2}}))
+      (is (=? {:a 1, :b #schema {s/Keyword s/Int}}
+              {:a 1, :b {:c 2, :d 3}})))
+    (testing "failures"
+      ;; serialize these to strings and read them back out because Schema actually returns weird classes like
+      ;; ValidationError or whatever that aren't equal to their printed output
+      (is (= '{:a (not (integer? 1.0))}
+             (read-string (pr-str (approximately-equal/=?-diff #schema {:a s/Int} {:a 1.0})))))
+      (testing "Inside a collection"
+        (is (= '{:b {:c (not (integer? 2.0))}}
+               (read-string (pr-str (approximately-equal/=?-diff {:a 1, :b #schema {:c s/Int}} {:a 1, :b {:c 2.0}})))))))))
