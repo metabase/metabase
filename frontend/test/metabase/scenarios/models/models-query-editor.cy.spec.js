@@ -193,7 +193,7 @@ describe("scenarios > models query editor", () => {
           dataset: true,
           native: {
             // Let's use API to type the most of the query, but stil make it invalid
-            query: "SELECT ",
+            query: "SELECT ORDER BY",
           },
         },
         { visitQuestion: true },
