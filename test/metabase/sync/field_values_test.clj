@@ -13,17 +13,25 @@
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan.db :as db]))
 
-(defn- venues-price-field-values []
-  (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price), :type :full))
-
 (defn- sync-database!' [step database]
   (let [{:keys [step-info task-history]} (sync.util-test/sync-database! step database)]
     [(sync.util-test/only-step-keys step-info)
      (:task_details task-history)]))
 
+(defn- venues-price-field-values []
+  (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price), :type :full))
+
+(defn- ensure-venue-price-field-values
+  "Some tests assume a starting point of the field having field values. If sync hasn't run yet (or some other test has
+  deleted them) this assumption can be violated"
+  []
+  (or (venues-price-field-values)
+      (sync-database!' "update-field-values" (data/db))))
+
 (deftest sync-recreate-field-values-test
   (testing "Test that when we delete FieldValues syncing the Table again will cause them to be re-created"
     (testing "Check that we have expected field values to start with"
+      (ensure-venue-price-field-values)
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Delete the Field values, make sure they're gone"
@@ -32,15 +40,14 @@
              (venues-price-field-values))))
     (testing "After the delete, a field values should be created, the rest updated"
       (is (= (repeat 2 {:errors 0, :created 1, :updated 0, :deleted 0})
-             (sync-database!' "update-field-values" (data/db)))))
-    (testing "Now re-sync the table and make sure they're back"
-      (sync/sync-table! (db/select-one Table :id (mt/id :venues)))
+             (sync-database!' "update-field-values" (data/db))))
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
 
 (deftest sync-should-update-test
   (testing "Test that syncing will cause FieldValues to be updated"
     (testing "Check that we have expected field values to start with"
+      (ensure-venue-price-field-values)
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Update the FieldValues, remove one of the values that should be there"
