@@ -1,7 +1,6 @@
 import React from "react";
 import xhrMock from "xhr-mock";
 import { render, screen } from "@testing-library/react";
-import { createMockCard } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 import PreviewQueryModal from "./PreviewQueryModal";
 
@@ -18,7 +17,7 @@ describe("PreviewQueryModal", () => {
   });
 
   it("should show a fully parameterized native query", async () => {
-    const question = new Question(createMockCard());
+    const question = Question.create({ databaseId: 1 });
     mockNativeQuery();
 
     render(<PreviewQueryModal question={question} />);
@@ -27,7 +26,7 @@ describe("PreviewQueryModal", () => {
   });
 
   it("should show a native query error", async () => {
-    const question = new Question(createMockCard());
+    const question = Question.create({ databaseId: 1 });
     mockNativeQueryError();
 
     render(<PreviewQueryModal question={question} />);

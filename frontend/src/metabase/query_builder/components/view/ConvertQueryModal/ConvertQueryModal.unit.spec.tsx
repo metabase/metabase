@@ -3,7 +3,7 @@ import xhrMock from "xhr-mock";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Question from "metabase-lib/Question";
-import ConvertQueryModal, { ConvertQueryModalProps } from "./ConvertQueryModal";
+import ConvertQueryModal from "./ConvertQueryModal";
 
 const SQL_QUERY = "SELECT 1";
 
