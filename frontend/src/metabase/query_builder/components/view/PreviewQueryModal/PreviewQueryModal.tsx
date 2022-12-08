@@ -1,9 +1,9 @@
 import React from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import Question from "metabase-lib/Question";
 import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
+import { ModalExternalLink } from "./PreviewQueryModal.styled";
 
 interface PreviewQueryModalProps {
   question: Question;
@@ -26,9 +26,9 @@ const PreviewQueryModal = ({
       onClose={onClose}
     >
       {error && (
-        <ExternalLink href={learnUrl}>
+        <ModalExternalLink href={learnUrl}>
           {t`Learn how to debug SQL errors`}
-        </ExternalLink>
+        </ModalExternalLink>
       )}
     </NativeQueryModal>
   );
