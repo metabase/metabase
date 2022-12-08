@@ -386,7 +386,9 @@
     ;; DEFAULTS TO TRUE.
     :basic-aggregations
 
-    ;; Does this driver support standard deviation and variance aggregations?
+    ;; Does this driver support standard deviation and variance aggregations? Note that if variance is not supported
+    ;; directly, you can calculate it manually by taking the square of the standard deviation. See the MongoDB driver
+    ;; for example.
     :standard-deviation-aggregations
 
     ;; Does this driver support expressions (e.g. adding the values of 2 columns together)?

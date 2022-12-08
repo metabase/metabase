@@ -218,8 +218,9 @@
 
 (doseq [feature [:basic-aggregations
                  :nested-fields
-                 :native-parameters]]
-  (defmethod driver/supports? [:mongo feature] [_ _] true))
+                 :native-parameters
+                 :standard-deviation-aggregations]]
+  (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 
 (defn- db-version [db]
   (get-in db [:details :version]))
