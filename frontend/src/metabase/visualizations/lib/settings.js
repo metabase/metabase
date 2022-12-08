@@ -128,9 +128,13 @@ function getSettingWidget(
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
     }
+    for (const settingId of settingDef.eraseDependencies || []) {
+      newSettings[settingId] = null;
+    }
     onChangeSettings(newSettings);
   };
   if (settingDef.useRawSeries && object._raw) {
+    extra.transformedSeries = object;
     object = object._raw;
   }
   return {

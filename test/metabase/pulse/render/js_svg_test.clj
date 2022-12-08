@@ -91,143 +91,161 @@
   (and (vector? x) (= (first x) "#text")))
 
 (defn- combo-chart-string
-  [series settings]
+  [series-seqs settings]
   (let [s (.asString (js/execute-fn-name context
                                          "combo_chart"
-                                         (json/generate-string series)
+                                         (json/generate-string series-seqs)
                                          (json/generate-string settings)
                                          (json/generate-string (:colors settings))))]
     s))
 
 (defn- combo-chart-hiccup
-  [series settings]
+  [series-seqs settings]
   (let [s (.asString (js/execute-fn-name context
                                          "combo_chart"
-                                         (json/generate-string series)
+                                         (json/generate-string series-seqs)
                                          (json/generate-string settings)
                                          (json/generate-string (:colors settings))))]
     (-> s parse-svg document-tag-hiccup)))
 
 (deftest timelineseries-line-test
-  (let [rows       [[#t "2020" 2]
-                    [#t "2021" 3]]
-        series     [{:type          :line
-                     :color         "#999AC4"
-                     :data          rows
-                     :yAxisPosition "left"}]
-        settings   {:colors {:brand "#5E81AC", :filter "#A3BE8C", :summarize "#B48EAD"},
-                    :x      {:type   "timeseries"
-                             :format {:date_style "YYYY/MM/DD"}}
-                    :y      {:type   "linear"
-                             :format {:prefix   "prefix"
-                                      :decimals 2}}
-                    :labels {:bottom "" :left "" :right ""}}
-        svg-string (combo-chart-string series settings)]
+  (let [rows        [[#t "2020" 2]
+                     [#t "2021" 3]]
+        series-seqs [[{:type          :line
+                       :data          rows
+                       :yAxisPosition "left"
+                       :column        {:name "count"}}]]
+        settings    {:colors                 {:brand     "#5E81AC"
+                                              :filter    "#A3BE8C"
+                                              :summarize "#B48EAD"},
+                     :x                      {:type   "timeseries"
+                                              :format {:date_style "YYYY/MM/DD"}}
+                     :y                      {:type   "linear"
+                                              :format {:prefix   "prefix"
+                                                       :decimals 2}}
+                     :labels                 {:bottom ""
+                                              :left   ""
+                                              :right  ""}
+                     :visualization_settings {}}
+        svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series settings)]
+      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-hiccup (combo-chart-hiccup series settings)]
-       (testing "it returns a valid svg string with no html"
+    (let [svg-hiccup (combo-chart-hiccup series-seqs settings)]
+      (testing "it returns a valid svg string with no html"
         (validate-svg-string :timelineseries-line svg-string))
       (testing "The svg string has formatted axes"
         (let [spec       (s/cat :y-axis-labels (s/+ (s/tuple
-                                                      #{"#text"}
-                                                      #(and (string? %)
+                                                     #{"#text"}
+                                                     #(and (string? %)
                                                             ;; ["#text" "prefix0.00"]
-                                                            (re-matches #"prefix\d+\.\d{2}" %))))
+                                                           (re-matches #"prefix\d+\.\d{2}" %))))
                                 :x-axis-labels (s/+ (s/tuple
-                                                      #{"#text"}
-                                                      #(and (string? %)
+                                                     #{"#text"}
+                                                     #(and (string? %)
                                                             ;; ["#text" "2020/01/02"]
-                                                            (re-matches #"\d{4}/\d{2}/\d{2}" %)))))
+                                                           (re-matches #"\d{4}/\d{2}/\d{2}" %)))))
               text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
           (is (= true (s/valid? spec text-nodes))
               text-nodes))))))
 
 (deftest timelineseries-bar-test
-  (let [rows       [[#t "2020" 2]
-                    [#t "2021" 3]]
-        series     [{:type          :bar
-                     :color         "#999AC4"
-                     :data          rows
-                     :yAxisPosition "left"}]
-        settings   {:colors {:brand "#5E81AC", :filter "#A3BE8C", :summarize "#B48EAD"},
-                    :x      {:type   "timeseries"
-                             :format {:date_style "YYYY/MM/DD"}}
-                    :y      {:type   "linear"
-                             :format {:prefix   "prefix"
-                                      :decimals 4}}
-                    :labels {:bottom "" :left "" :right ""}}
-        svg-string (combo-chart-string series settings)]
+  (let [rows        [[#t "2020" 2]
+                     [#t "2021" 3]]
+        series-seqs [[{:type          :bar
+                       :data          rows
+                       :yAxisPosition "left"
+                       :column        {:name "count"}}]]
+        settings    {:colors                 {:brand     "#5E81AC"
+                                              :filter    "#A3BE8C"
+                                              :summarize "#B48EAD"},
+                     :x                      {:type   "timeseries"
+                                              :format {:date_style "YYYY/MM/DD"}}
+                     :y                      {:type   "linear"
+                                              :format {:prefix   "prefix"
+                                                       :decimals 4}}
+                     :labels                 {:bottom ""
+                                              :left   ""
+                                              :right  ""}
+                     :visualization_settings {}}
+        svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series settings)]
+      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-hiccup (combo-chart-hiccup series settings)]
-       (testing "it returns a valid svg string with no html"
+    (let [svg-hiccup (combo-chart-hiccup series-seqs settings)]
+      (testing "it returns a valid svg string with no html"
         (validate-svg-string :timelineseries-bar svg-string))
       (testing "The svg string has formatted axes"
         (let [spec       (s/cat :y-axis-labels (s/+ (s/tuple
-                                                      #{"#text"}
-                                                      #(and (string? %)
+                                                     #{"#text"}
+                                                     #(and (string? %)
                                                             ;; ["#text" "prefix0.0000"]
-                                                            (re-matches #"prefix\d+\.\d{4}" %))))
+                                                           (re-matches #"prefix\d+\.\d{4}" %))))
                                 :x-axis-labels (s/+ (s/tuple
-                                                      #{"#text"}
-                                                      #(and (string? %)
+                                                     #{"#text"}
+                                                     #(and (string? %)
                                                             ;; ["#text" "2020/01/02"]
-                                                            (re-matches #"\d{4}/\d{2}/\d{2}" %)))))
+                                                           (re-matches #"\d{4}/\d{2}/\d{2}" %)))))
               text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
           (is (= true (s/valid? spec text-nodes))
               text-nodes))))))
 
 (deftest area-test
-  (let [rows       [["bob" 2]
-                    ["dobbs" 3]]
-        series     [{:type          :area
-                     :color         "#999AC4"
-                     :data          rows
-                     :yAxisPosition "left"}]
-        settings   {:colors {:brand "#5E81AC", :filter "#A3BE8C", :summarize "#B48EAD"},
-                    :x      {:type   "ordinal"}
-                    :y      {:type   "linear"
-                             :format {:prefix   "prefix"
-                                      :decimals 4}}
-                    :labels {:bottom "" :left "" :right ""}}
-        svg-string (combo-chart-string series settings)]
+  (let [rows        [["bob" 2]
+                     ["dobbs" 3]]
+        series-seqs [[{:type          :area
+                       :data          rows
+                       :yAxisPosition "left"
+                       :column        {:name "count"}}]]
+        settings    {:colors                 {:brand     "#5E81AC"
+                                              :filter    "#A3BE8C"
+                                              :summarize "#B48EAD"},
+                     :x                      {:type "ordinal"}
+                     :y                      {:type   "linear"
+                                              :format {:prefix   "prefix"
+                                                       :decimals 4}}
+                     :labels                 {:bottom ""
+                                              :left   ""
+                                              :right  ""}
+                     :visualization_settings {}}
+        svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series settings)]
+      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-hiccup (combo-chart-hiccup series settings)]
-       (testing "it returns a valid svg string with no html"
+    (let [svg-hiccup (combo-chart-hiccup series-seqs settings)]
+      (testing "it returns a valid svg string with no html"
         (validate-svg-string :categorical-area svg-string))
       (testing "The svg string has formatted axes"
         (let [spec       (s/cat :y-axis-labels (s/+ (s/tuple
-                                                      #{"#text"}
-                                                      #(and (string? %)
+                                                     #{"#text"}
+                                                     #(and (string? %)
                                                             ;; ["#text" "prefix0.0000"]
-                                                            (re-matches #"prefix\d+\.\d{4}" %))))
+                                                           (re-matches #"prefix\d+\.\d{4}" %))))
                                 :x-axis-labels (s/+ (s/tuple
-                                                      #{"#text"}
-                                                      string?)))
+                                                     #{"#text"}
+                                                     string?)))
               text-nodes (->> svg-hiccup (tree-seq vector? rest) (filter text-node?))]
           (is (= true (s/valid? spec text-nodes))
               text-nodes))))))
 
 (deftest goal-line-test
   (let [goal-label      "ASDF"
-        series          [{:color         "#999AC4"
-                          :type          :line
-                          :data          [["A" 1] ["B" 20] ["C" -4] ["D" 100]]
-                          :yAxisPosition "left"}]
-        settings        {:x      {:type "ordinal"}
-                         :y      {:type "linear"}
-                         :labels {:bottom "" :left "" :right ""}}
-        non-goal-hiccup (combo-chart-hiccup series settings)
+        series-seqs     [[{:type          :line
+                           :data          [["A" 1] ["B" 20] ["C" -4] ["D" 100]]
+                           :yAxisPosition "left"
+                           :column        {:name "count"}}]]
+        settings        {:x                      {:type "ordinal"}
+                         :y                      {:type "linear"}
+                         :labels                 {:bottom ""
+                                                  :left   ""
+                                                  :right  ""}
+                         :visualization_settings {}}
+        non-goal-hiccup (combo-chart-hiccup series-seqs settings)
         non-goal-node   (->> non-goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
     (testing "No goal line exists when there are no goal settings."
       (is (= nil (second non-goal-node))))
-    (let [goal-hiccup     (combo-chart-hiccup series (merge settings {:goal {:value 0 :label goal-label}}))
-          goal-node       (->> goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
+    (let [goal-hiccup (combo-chart-hiccup series-seqs (merge settings {:goal {:value 0 :label goal-label}}))
+          goal-node   (->> goal-hiccup (tree-seq vector? rest) (filter #(= goal-label (second %))) first)]
       (testing "A goal line does exist when goal settings are present in the viz-settings"
         (is (= goal-label (second goal-node)))))))
 
@@ -263,33 +281,37 @@
           (validate-svg-string :categorical-waterfall svg-string))))))
 
 (deftest combo-test
-  (let [rows1    [[#t "1998-03-01T00:00:00Z" 2]
-                  [#t "1999-03-01T00:00:00Z" 3]]
-        rows2    [[#t "2000-03-01T00:00:00Z" 3]
-                  [#t "2002-03-01T00:00:00Z" 4]]
+  (let [rows1       [[#t "1998-03-01T00:00:00Z" 2]
+                     [#t "1999-03-01T00:00:00Z" 3]]
+        rows2       [[#t "2000-03-01T00:00:00Z" 3]
+                     [#t "2002-03-01T00:00:00Z" 4]]
         ;; this one needs more stuff because of stricter ts types
-        series   [{:name          "bob"
-                   :color         "#cccccc"
-                   :type          "area"
-                   :data          rows1
-                   :yAxisPosition "left"}
-                  {:name          "bob2"
-                   :color         "#cccccc"
-                   :type          "line"
-                   :data          rows2
-                   :yAxisPosition "right"}]
-        labels   {:left "count" :bottom "year" :right "something"}
-        settings {:x {:type "timeseries"
-                      :format {:date_style "YYYY"}}
-                  :y {:type "linear"
-                      :format {:number_style "decimal" :decimals 4}}
-                  :colors {}
-                  :labels labels}]
+        series-seqs [[{:cardName      "bob"
+                       :type          "area"
+                       :data          rows1
+                       :yAxisPosition "left"
+                       :column        {:name "count" :display_name "Count"}}
+                      {:cardName      "bob"
+                       :type          "line"
+                       :data          rows2
+                       :yAxisPosition "right"
+                       :column        {:name "count2" :display_name "Count 2"}}]]
+        labels      {:left   "count"
+                     :bottom "year"
+                     :right  "something"}
+        settings    {:x                      {:type   "timeseries"
+                                              :format {:date_style "YYYY"}}
+                     :y                      {:type   "linear"
+                                              :format {:number_style "decimal"
+                                                       :decimals     4}}
+                     :colors                 {}
+                     :labels                 labels
+                     :visualization_settings {}}]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series settings)]
+      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
         (is (bytes? svg-bytes))))
     (let [svg-string (.asString (js/execute-fn-name context "combo_chart"
-                                                    (json/generate-string series)
+                                                    (json/generate-string series-seqs)
                                                     (json/generate-string settings)
                                                     (json/generate-string {})))]
       (testing "it returns a valid svg string (no html in it)"
@@ -318,5 +340,6 @@
                                   context
                                   "progress"
                                   (json/generate-string {:value value :goal goal})
-                                  (json/generate-string settings)))]
+                                  (json/generate-string settings)
+                                  (json/generate-string {})))]
       (validate-svg-string :progress svg-string))))

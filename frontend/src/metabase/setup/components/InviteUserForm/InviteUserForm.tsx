@@ -5,22 +5,17 @@ import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import * as Errors from "metabase/core/utils/errors";
 import { InviteInfo, UserInfo } from "metabase-types/store";
 import { UserFieldGroup } from "./InviteUserForm.styled";
 
 const INVITE_USER_SCHEMA = Yup.object({
-  first_name: Yup.string()
-    .nullable()
-    .default(null)
-    .max(100, ({ max }) => t`must be ${max} characters or less`),
-  last_name: Yup.string()
-    .nullable()
-    .default(null)
-    .max(100, ({ max }) => t`must be ${max} characters or less`),
+  first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
+  last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
   email: Yup.string()
     .default("")
-    .required(t`required`)
-    .email(t`must be a valid email address`)
+    .required(Errors.required)
+    .email(Errors.email)
     .notOneOf(
       [Yup.ref("$email")],
       t`must be different from the email address you used in setup`,

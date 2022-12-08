@@ -34,7 +34,7 @@ const FormCheckBox = forwardRef(function FormCheckBox(
         {...props}
         id={id}
         name={name}
-        checked={value}
+        checked={value ?? false}
         onChange={onChange}
         onBlur={onBlur}
       />

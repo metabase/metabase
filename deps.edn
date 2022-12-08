@@ -96,8 +96,8 @@
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.2"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.9.1"}              ; ssh tunneling and test server
-  org.apache.xmlgraphics/batik-all          {:mvn/version "1.14"}               ; SVG -> image
+  org.apache.sshd/sshd-core                 {:mvn/version "2.9.2"}              ; ssh tunneling and test server
+  org.apache.xmlgraphics/batik-all          {:mvn/version "1.16"}               ; SVG -> image
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.70"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk15on           {:mvn/version "1.70"}
@@ -108,12 +108,14 @@
   org.clojure/core.match                    {:mvn/version "1.0.0"}
   org.clojure/core.memoize                  {:mvn/version "1.0.257"}            ; useful FIFO, LRU, etc. caching mechanisms
   org.clojure/data.csv                      {:mvn/version "1.0.1"}              ; CSV parsing / generation
+  org.clojure/data.xml                      {:mvn/version "0.0.8"}              ; XML parsing / generation
   org.clojure/java.classpath                {:mvn/version "1.0.0"}              ; examine the Java classpath from Clojure programs
   org.clojure/java.jdbc                     {:mvn/version "0.7.12"}             ; basic JDBC access from Clojure
   org.clojure/java.jmx                      {:mvn/version "1.0.0"}              ; JMX bean library, for exporting diagnostic info
   org.clojure/math.combinatorics            {:mvn/version "0.1.6"}              ; combinatorics functions
   org.clojure/math.numeric-tower            {:mvn/version "0.0.5"}              ; math functions like `ceil`
   org.clojure/tools.logging                 {:mvn/version "1.2.4"}              ; logging framework
+  org.clojure/tools.macro                   {:mvn/version "0.1.5"}              ; local macros
   org.clojure/tools.namespace               {:mvn/version "1.3.0"}
   org.clojure/tools.reader                  {:mvn/version "1.3.6"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
@@ -158,6 +160,20 @@
 
  :paths
  ["src" "shared/src" "resources"]
+
+ ;; These are needed for the Athena and Redshift drivers if you are developing against them locally. If those drivers'
+ ;; dependencies are not included (i.e., if we don't have the `:drivers` profile), these repos are effectively
+ ;; ignored.
+ ;;
+ ;; 1. Maven repos from subprojects do not get copied over -- see
+ ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
+ ;;
+ ;; 2. You cannot include `:mvn/repos` inside of an alias -- see
+ ;; https://ask.clojure.org/index.php/12367/support-mvn-repos-inside-an-alias -- if we could, this could go in the
+ ;; `:drivers` alias instead.
+ :mvn/repos
+ {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
+  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
 
  :aliases
  {
@@ -272,7 +288,7 @@
   ;;    clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test (for EE)
   :drivers-dev
   {:extra-paths
-   ["modules/drivers/bigquery/test"
+   ["modules/drivers/athena/test"
     "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/druid/test"
     "modules/drivers/googleanalytics/test"
@@ -290,11 +306,33 @@
 
 ;;; Linters
 
-  ;; clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check
+  ;; clojure -M:ee:drivers:check
+  ;;
+  ;; checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't
+  ;; ship (such as `:dev` dependencies). See #27009 for more context.
   :check
   {:extra-deps {athos/clj-check {:git/url "https://github.com/athos/clj-check.git"
                                  :sha     "518d5a1cbfcd7c952f548e6dbfcb9a4a5faf9062"}}
-   :main-opts  ["-m" "clj-check.check"]}
+   :main-opts  ["-m" "clj-check.check"
+                "src"
+                "shared/src"
+                "enterprise/backend/src"
+                "modules/drivers/athena/src"
+                "modules/drivers/bigquery-cloud-sdk/src"
+                "modules/drivers/druid/src"
+                "modules/drivers/googleanalytics/src"
+                "modules/drivers/mongo/src"
+                "modules/drivers/oracle/src"
+                "modules/drivers/presto/src"
+                "modules/drivers/presto-common/src"
+                "modules/drivers/presto-jdbc/src"
+                "modules/drivers/redshift/src"
+                "modules/drivers/snowflake/src"
+                "modules/drivers/sparksql/src"
+                "modules/drivers/sqlite/src"
+                "modules/drivers/sqlserver/src"
+                "modules/drivers/vertica/src"]
+   :jvm-opts   ["-Dclojure.main.report=stderr"]}
 
   ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
   :eastwood
@@ -304,7 +342,7 @@
                :source-paths    ["src"
                                  "shared/src"
                                  "enterprise/backend/src"
-                                 "modules/drivers/bigquery/src"
+                                 "modules/drivers/athena/src"
                                  "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/druid/src"
                                  "modules/drivers/googleanalytics/src"

@@ -1,6 +1,9 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.data.xml :as xml]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.helpers :as hh]
             [java-time :as t]
@@ -13,6 +16,7 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.interface :as qp.i]
@@ -29,6 +33,11 @@
 ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
+(defmethod driver/supports? [:sqlserver :now] [_ _] true)
+
+(defmethod driver/database-supports? [:sqlserver :convert-timezone]
+  [_driver _feature _database]
+  true)
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]
@@ -168,15 +177,20 @@
   [_ _ expr]
   (date-part :dayofyear expr))
 
-;; Subtract the number of days needed to bring us to the first day of the week, then convert to date
-;; The equivalent SQL looks like:
-;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
+;; Subtract the number of days needed to bring us to the first day of the week, then convert to back to orignal type
+(defn- trunc-week
+  [expr]
+  (let [original-type (if (= "datetimeoffset" (hx/type-info->db-type (hx/type-info expr)))
+                        "datetimeoffset"
+                        "datetime")]
+    (hx/cast original-type
+      (date-add :day
+                (hx/- 1 (date-part :weekday expr))
+                (hx/->date expr)))))
+
 (defmethod sql.qp/date [:sqlserver :week]
-  [_ _ expr]
-  (hx/->datetime
-   (date-add :day
-             (hx/- 1 (date-part :weekday expr) (driver.common/start-of-week-offset :sqlserver))
-             (hx/->date expr))))
+  [driver _ expr]
+  (sql.qp/adjust-start-of-week driver trunc-week expr))
 
 (defmethod sql.qp/date [:sqlserver :week-of-year-iso]
   [_ _ expr]
@@ -225,6 +239,37 @@
   ;; integer overflow errors (especially for millisecond timestamps).
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
+
+(defonce
+  ^{:private true
+    :doc     "A map of all zone-id to the corresponding window-zone.
+             I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
+  zone-id->windows-zone
+  (let [data (-> (io/resource "timezones/windowsZones.xml")
+                 io/reader
+                 xml/parse
+                 :content
+                 second
+                 :content
+                 first
+                 :content)]
+    (->> (for [mapZone data
+               :let [attrs       (:attrs mapZone)
+                     window-zone (:other attrs)
+                     zone-ids    (str/split (:type attrs) #" ")]]
+           (zipmap zone-ids (repeat window-zone)))
+         (apply merge {"UTC" "UTC"}))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr            (sql.qp/->honeysql driver arg)
+        datetimeoffset? (hx/is-of-type? expr "datetimeoffset")]
+    (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
+    (-> (if datetimeoffset?
+          expr
+          (hx/->AtTimeZone expr (zone-id->windows-zone source-timezone)))
+        (hx/->AtTimeZone (zone-id->windows-zone target-timezone))
+        hx/->datetime)))
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
@@ -398,7 +443,9 @@
   [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod sql.qp/current-datetime-honeysql-form :sqlserver [_] :%getdate)
+(defmethod sql.qp/current-datetime-honeysql-form :sqlserver
+  [_]
+  (hx/with-database-type-info :%getdate "datetime"))
 
 (defmethod sql-jdbc.sync/excluded-schemas :sqlserver
   [_]

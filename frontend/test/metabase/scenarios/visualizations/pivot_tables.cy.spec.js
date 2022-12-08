@@ -323,7 +323,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     assertOnPivotSettings();
     openColumnSettings(/Count/);
 
-    cy.findByText(/Sort order/).should("not.exist");
+    cy.findByText(/Sort order/).should("not.be.visible");
   });
 
   it("should allow sorting fields", () => {

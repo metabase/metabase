@@ -237,9 +237,10 @@ class PivotTable extends Component {
 
   static columnSettings = {
     [COLUMN_SORT_ORDER]: {
-      title: t`Sort Order`,
+      title: t`Sort order`,
       widget: ChartSettingIconRadio,
       inline: true,
+      borderBottom: true,
       props: {
         options: [
           {
@@ -275,7 +276,6 @@ class PivotTable extends Component {
       title: t`Column title`,
       widget: "input",
       getDefault: column => formatColumn(column),
-      variant: "form-field",
     },
   };
 

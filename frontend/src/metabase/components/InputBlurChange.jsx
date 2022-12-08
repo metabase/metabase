@@ -33,7 +33,9 @@ export default class InputBlurChange extends Component {
   };
 
   UNSAFE_componentWillReceiveProps(newProps) {
-    this.setState({ value: newProps.value });
+    if (newProps.value !== this.state.value) {
+      this.setState({ value: newProps.value });
+    }
   }
 
   onChange(event) {

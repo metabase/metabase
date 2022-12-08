@@ -325,12 +325,12 @@
   (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
                                    "UTC"))
         t           (condp = (class t)
-                      java.time.LocalDate      t
-                      java.time.LocalTime      t
-                      java.time.LocalDateTime  t
-                      java.time.OffsetTime     (t/with-offset-same-instant t report-zone)
-                      java.time.OffsetDateTime (t/with-offset-same-instant t report-zone)
-                      java.time.ZonedDateTime  (t/offset-date-time (t/with-zone-same-instant t report-zone)))]
+                     java.time.LocalDate      t
+                     java.time.LocalTime      t
+                     java.time.LocalDateTime  t
+                     java.time.OffsetTime     (t/offset-time t report-zone)
+                     java.time.OffsetDateTime (t/offset-date-time t report-zone)
+                     java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
     (letfn [(extract [unit]
               (u.date/extract t unit))
             (bucket [unit]
@@ -500,6 +500,12 @@
 (defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
+
+(defmethod ->rvalue :now [[_]]
+  (if (driver/database-supports? :mongo :now (qp.store/database))
+    "$$NOW"
+    (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
+                    {:database-version (get-mongo-version)}))))
 
 (defmethod ->rvalue :datetime-add        [[_ inp amount unit]] (do
                                                                  (check-date-operations-supported)

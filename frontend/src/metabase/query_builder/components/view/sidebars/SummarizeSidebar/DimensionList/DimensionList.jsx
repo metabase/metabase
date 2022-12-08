@@ -2,11 +2,10 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import TextInput from "metabase/components/TextInput";
-import Icon from "metabase/components/Icon";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
+import Input from "metabase/core/components/Input";
 import { DimensionListItem } from "./DimensionListItem";
 import {
   DimensionListTableName,
@@ -85,17 +84,19 @@ export const DimensionList = ({
     onChangeDimension(getDimension(dimension));
   };
 
+  const handleFilterChange = e => setFilter(e.target.value);
+
   return (
     <>
       <DimensionListFilterContainer>
-        <TextInput
-          hasClearButton
+        <Input
+          fullWidth
           placeholder={t`Find...`}
-          onChange={setFilter}
           value={filter}
-          padding="sm"
-          borderRadius="md"
-          icon={<Icon name="search" size={16} />}
+          size="small"
+          leftIcon="search"
+          onResetClick={() => setFilter("")}
+          onChange={handleFilterChange}
         />
       </DimensionListFilterContainer>
       {!hasFilter && (

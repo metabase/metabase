@@ -1264,6 +1264,10 @@ export class ExpressionDimension extends Dimension {
           base_type = "type/Boolean";
           break;
 
+        case MONOTYPE.DateTime:
+          base_type = "type/DateTime";
+          break;
+
         // fallback
         default:
           base_type = "type/Float";

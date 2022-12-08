@@ -384,13 +384,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    clickLineDot({ index: 0 });
+    hoverLineDot({ index: 0 });
     popover().within(() => {
       cy.findByText("January 1, 2020");
       cy.findByText("10");
     });
 
-    clickLineDot({ index: 1 });
+    hoverLineDot({ index: 1 });
     popover().within(() => {
       cy.findByText("January 2, 2020");
       cy.findByText("5");
@@ -627,6 +627,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 });
 
-function clickLineDot({ index } = {}) {
-  cy.get(".Visualization .dot").eq(index).click({ force: true });
+function hoverLineDot({ index } = {}) {
+  cy.get(".Visualization .dot").eq(index).realHover();
 }

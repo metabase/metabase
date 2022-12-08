@@ -57,6 +57,8 @@
 
 (defmethod tx/sorts-nil-first? :oracle [_ _] false)
 
+(defmethod tx/supports-time-type? :oracle [_driver] false)
+
 (doseq [[base-type sql-type] {:type/BigInteger             "NUMBER(*,0)"
                               :type/Boolean                "NUMBER(1)"
                               :type/Date                   "DATE"

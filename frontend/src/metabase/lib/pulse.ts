@@ -9,7 +9,7 @@ import {
   Pulse,
   PulseParameter,
 } from "metabase-types/api";
-import { isNotNull } from "metabase/core/utils/array";
+import { isNotNull } from "metabase/core/utils/types";
 import {
   hasDefaultParameterValue,
   hasParameterValue,

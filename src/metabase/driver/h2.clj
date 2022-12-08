@@ -38,7 +38,8 @@
                               :regex                   false
                               :percentile-aggregations false
                               :actions                 true
-                              :actions/custom          true}]
+                              :actions/custom          true
+                              :now                     true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -204,6 +205,10 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod sql.qp/current-datetime-honeysql-form :h2
+  [_]
+  (hx/with-database-type-info :%now :TIMESTAMP))
+
 (defn- add-to-1970 [expr unit-str]
   (hsql/call :timestampadd
     (hx/literal unit-str)
@@ -234,22 +239,24 @@
 (defn- format-datetime   [format-str expr] (hsql/call :formatdatetime expr (hx/literal format-str)))
 (defn- parse-datetime    [format-str expr] (hsql/call :parsedatetime expr  (hx/literal format-str)))
 (defn- trunc-with-format [format-str expr] (parse-datetime format-str (format-datetime format-str expr)))
+(defn- extract           [unit expr]       (hsql/call :extract unit (hx/cast :timestamp expr)))
 
 (defmethod sql.qp/date [:h2 :minute]          [_ _ expr] (trunc-with-format "yyyyMMddHHmm" expr))
 (defmethod sql.qp/date [:h2 :minute-of-hour]  [_ _ expr] (hx/minute expr))
 (defmethod sql.qp/date [:h2 :hour]            [_ _ expr] (trunc-with-format "yyyyMMddHH" expr))
-(defmethod sql.qp/date [:h2 :hour-of-day]     [_ _ expr] (hx/hour expr))
+(defmethod sql.qp/date [:h2 :hour-of-day]     [_ _ expr] (extract :hour expr))
 (defmethod sql.qp/date [:h2 :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:h2 :day-of-month]    [_ _ expr] (hsql/call :day_of_month expr))
-(defmethod sql.qp/date [:h2 :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
+(defmethod sql.qp/date [:h2 :day-of-month]    [_ _ expr] (extract :day expr))
+(defmethod sql.qp/date [:h2 :day-of-year]     [_ _ expr] (extract :day_of_year expr))
 (defmethod sql.qp/date [:h2 :month]           [_ _ expr] (trunc-with-format "yyyyMM" expr))
-(defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (hx/month expr))
-(defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (hx/year expr)))
+(defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (extract :month expr))
+(defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (extract :quarter expr))
+(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (extract :year expr)))
+(defmethod sql.qp/date [:h2 :year-of-era]     [_ _ expr] (extract :year expr))
 
 (defmethod sql.qp/date [:h2 :day-of-week]
   [_ _ expr]
-  (sql.qp/adjust-day-of-week :h2 (hsql/call :iso_day_of_week expr)))
+  (sql.qp/adjust-day-of-week :h2 (extract :iso_day_of_week expr)))
 
 (defmethod sql.qp/date [:h2 :week]
   [_ _ expr]
@@ -257,7 +264,7 @@
                                      (hx/- 1 (sql.qp/date :h2 :day-of-week expr))
                                      :day))
 
-(defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (hsql/call :iso_week expr))
+(defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;

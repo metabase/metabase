@@ -6,10 +6,12 @@ import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 
 import * as Urls from "metabase/lib/urls";
+
+import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
+
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
 
 function mapStateToProps(state) {
@@ -44,7 +46,7 @@ class AddToDashSelectDashModal extends Component {
       return (
         <CreateDashboardModal
           collectionId={this.props.card.collection_id}
-          onSaved={this.navigateToDashboard}
+          onCreate={this.navigateToDashboard}
           onClose={() => this.setState({ shouldCreateDashboard: false })}
         />
       );

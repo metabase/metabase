@@ -8,6 +8,7 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import * as Errors from "metabase/core/utils/errors";
 import { LocaleData, User } from "metabase-types/api";
 import { UserProfileData } from "../../types";
 
@@ -16,18 +17,9 @@ const SSO_PROFILE_SCHEMA = Yup.object({
 });
 
 const LOCAL_PROFILE_SCHEMA = SSO_PROFILE_SCHEMA.shape({
-  first_name: Yup.string()
-    .nullable()
-    .default(null)
-    .max(100, ({ max }) => t`must be ${max} characters or less`),
-  last_name: Yup.string()
-    .nullable()
-    .default(null)
-    .max(100, ({ max }) => t`must be ${max} characters or less`),
-  email: Yup.string()
-    .ensure()
-    .required(t`required`)
-    .email(t`must be a valid email address`),
+  first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
+  last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
+  email: Yup.string().ensure().required(Errors.required).email(Errors.email),
 });
 
 export interface UserProfileFormProps {

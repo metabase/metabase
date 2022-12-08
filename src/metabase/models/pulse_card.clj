@@ -76,6 +76,6 @@
 (defmethod serdes.base/serdes-dependencies "PulseCard" [{:keys [card_id dashboard_card_id pulse_id]}]
   (let [base [[{:model "Card" :id card_id}]
               [{:model "Pulse" :id pulse_id}]]]
-    (if-let [[dash-id dc-id] dashboard_card_id]
-      (conj base [{:model "Dashboard" :id dash-id} {:model "DashboardCard" :id dc-id}])
+    (if-let [[dash-id _] dashboard_card_id]
+      (conj base [{:model "Dashboard" :id dash-id} ])
       base)))

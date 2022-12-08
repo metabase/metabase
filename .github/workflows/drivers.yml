@@ -5,13 +5,20 @@ on:
     branches:
       - 'master'
       - 'release-**'
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      # frontend and E2E tests
+      - "**/frontend/test/**"
+      - "**/frontend/**.unit.*"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - "docs/**"
       - "**.md"
-      - "frontend/test/**"
-      - "enterprise/frontend/test/**"
+      # frontend and E2E tests
+      - "**/frontend/test/**"
+      - "**/frontend/**.unit.*"
 
 jobs:
 

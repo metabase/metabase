@@ -289,10 +289,11 @@
   - there are some date overrides done from lib/formatting.js
   - chop off and underscore the nasty keys in our map
   - backfill currency to the default of USD if not present"
-  [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
+  [x-col y-col {::mb.viz/keys [column-settings] :as viz-settings}]
   (let [x-col-settings (settings-from-column x-col column-settings)
         y-col-settings (settings-from-column y-col column-settings)]
-    (cond-> {:colors (public-settings/application-colors)}
+    (cond-> {:colors (public-settings/application-colors)
+             :visualization_settings (or viz-settings {})}
       x-col-settings
       (assoc :x x-col-settings)
       y-col-settings
@@ -325,14 +326,14 @@
                          "timeseries"
                          "ordinal")]
     (merge
-     {:colors      (public-settings/application-colors)
-      :stacking    (if (:stackable.stack_type viz-settings) "stack" "none")
-      :show_values (boolean (:graph.show_values viz-settings))
-      :x           {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
-                    :format x-format}
-      :y           {:type   (or (:graph.y_axis.scale viz-settings) "linear")
-                    :format y-format}
-      :labels      labels}
+     {:colors                 (public-settings/application-colors)
+      :stacking               (if (:stackable.stack_type viz-settings) "stack" "none")
+      :x                      {:type   (or (:graph.x_axis.scale viz-settings) default-x-type)
+                               :format x-format}
+      :y                      {:type   (or (:graph.y_axis.scale viz-settings) "linear")
+                               :format y-format}
+      :labels                 labels
+      :visualization_settings (or viz-settings {})}
      (when (:graph.show_goal viz-settings)
        {:goal {:value (:graph.goal_value viz-settings)
                :label (or (:graph.goal_label viz-settings) (tru "Goal"))}}))))
@@ -460,7 +461,7 @@
         {:keys [rows percentages]}  (donut-info slice-threshold rows)
         legend-colors               (merge (zipmap (map first rows) (cycle colors))
                                            (update-keys (:pie.colors viz-settings) name))
-        settings                    {:show_values (:pie.show_data_labels viz-settings)}
+        settings                    {:percent_visibility (:pie.percent_visibility viz-settings)}
         image-bundle                (image-bundle/make-image-bundle
                                      render-type
                                      (js-svg/categorical-donut rows legend-colors settings))
@@ -493,8 +494,7 @@
   (let [viz-settings (merge viz-settings (:visualization_settings dashcard))
         value        (ffirst rows)
         goal         (:progress.goal viz-settings)
-        ;; See issue #19248 on GH for why it's the second color
-        color        (or (:progress.color viz-settings) (second colors))
+        color        (:progress.color viz-settings)
         settings     (assoc
                       (->js-viz (first cols) (first cols) viz-settings)
                       :color color)
@@ -512,29 +512,87 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- overlap
+  "calculate the overlap, a value between 0 and 1, of the ranges of 2 columns.
+  This overlap value can be checked against `axis-group-threshold` to determine when columns can reasonably share a y-axis.
+  Consider two ranges, with min and max values:
+
+   min-a = 0                                 max-a = 43
+     *-----------------------------------------*
+                                                      min-b = 52             max-b = 75
+                                                        *----------------------*
+  The overlap above is 0. The mirror case where col-b is entirely less than col-a also has 0 overlap.
+  Otherwise, overlap is calculated as follows:
+
+     min-a = 0                                 max-a = 43
+     *-----------------------------------------*
+     |     min-b = 8                           |             max-b = 59
+     |       *---------------------------------|---------------*
+     |       |                                 |               |
+     |       |- overlap-width = (- 43 8) = 35 -|               |
+     |                                                         |
+     |--------- max-width = (- 59 0) = 59 ---------------------|
+
+  overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59
+
+  Another scenario, with a similar result may look as follows:
+
+     min-a = 0                                                 max-a = 59
+     *---------------------------------------------------------*
+     |     min-b = 8                         max-b = 43        |
+     |       *---------------------------------*               |
+     |       |                                 |               |
+     |       |- overlap-width = (- 43 8) = 35 -|               |
+     |                                                         |
+     |--------- max-width = (- 59 0) = 59 ---------------------|
+
+  overlap = (/ overlap-width max-width) = (/ 35 59) = 0.59"
+  [col-a col-b]
+  (let [[min-a min-b]    (map #(get-in % [:fingerprint :type :type/Number :min]) [col-a col-b])
+        [max-a max-b]    (map #(get-in % [:fingerprint :type :type/Number :max]) [col-a col-b])
+        valid-ranges?    (and min-a min-b max-a max-b)
+        overlapping-and-valid? (and valid-ranges?
+                                    (or (<= min-a min-b max-a)
+                                        (<= min-a max-b max-a)))]
+    (if
+    overlapping-and-valid?
+      (let [[a b c d]     (sort [min-a min-b max-a max-b])
+            max-width     (- d a)
+            overlap-width (- c b)]
+        (/ overlap-width max-width))
+      0)))
+
+(defn- group-axes
+  [cols-meta group-threshold]
+  (when-let [groupable-cols (->> cols-meta
+                                 (filter #(isa? (:base_type %) :type/Number)) ;; for now we only try grouping number cols
+                                 (remove (comp nil? :fingerprint)) ;; we can't group if there is no fingerprint
+                                 seq)]
+    (let [cols-by-type  (group-by (juxt :base_type :effective_type :semantic_type) groupable-cols)
+          some-grouped? (> (last (sort (map #(count (second %)) cols-by-type))) 1)]
+      (when some-grouped?
+        (let [first-axis       (first groupable-cols)
+              grouped-num-cols (-> (group-by #(> (overlap first-axis %) group-threshold) groupable-cols)
+                                   (update-keys {true :left false :right}))]
+          (merge grouped-num-cols {:bottom-or-not-displayed (remove (set groupable-cols) cols-meta)}))))))
+
 (defn default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
   You kind of hope there's only two but here's for the eventuality"
-  [viz-settings]
+  [{viz-settings :viz-settings metadata :results_metadata} group-threshold]
   (if (:stackable.stack_type viz-settings)
     (repeat "left")
-    (conj (repeat "right")
-          "left")))
+    (let [grouped-axes (-> (group-axes (:columns metadata) group-threshold)
+                           (update-vals count))]
+      (if (seq grouped-axes)
+        (mapcat (fn [k] (repeat (get grouped-axes k 1) (name k))) [:left :right])
+        (conj (repeat "right")
+              "left")))))
 
 (def default-combo-chart-types
   "Default chart type seq of combo graphs (not multiple graphs)."
   (conj (repeat "bar")
         "line"))
-
-(defn- join-series
-  [names colors types row-seqs y-axis-positions]
-  (vec (for [[card-name card-color card-type rows y-axis-position]
-             (map vector names colors types row-seqs y-axis-positions)]
-         {:name          card-name
-          :color         card-color
-          :type          card-type
-          :data          rows
-          :yAxisPosition y-axis-position})))
 
 (defn- attach-image-bundle
   [image-bundle]
@@ -548,41 +606,14 @@
                                 :width   :100%})
            :src   (:image-src image-bundle)}]]})
 
-(defn- render-multiple-lab-chart
-  "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
-  [render-type card dashcard {:keys [viz-settings] :as data}]
-  (let [viz-settings  (merge viz-settings (:visualization_settings dashcard))
-        multi-res     (pu/execute-multi-card card dashcard)
-        ;; multi-res gets the other results from the set of multis.
-        ;; we shove cards and data here all together below for uniformity's sake
-        viz-settings  (set-default-stacked viz-settings card)
-        cards         (cons card (map :card multi-res))
-        multi-data    (cons data (map #(get-in % [:result :data]) multi-res))
-        rowfns        (mapv common/graphing-column-row-fns cards multi-data)
-        row-seqs      (for [[row-seq [x-rowfn y-rowfn]] (map vector (map :rows multi-data) rowfns)]
-                        (map (juxt x-rowfn y-rowfn)
-                             (common/row-preprocess x-rowfn y-rowfn row-seq)))
-        col-seqs      (map :cols multi-data)
-        first-rowfns  (first rowfns)
-        [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-seqs))
-        labels        (x-and-y-axis-label-info x-col y-col viz-settings)
-        names         (map :name cards)
-        colors        (take (count multi-data) colors)
-        types         (replace {:scalar :bar} (map :display cards))
-        settings      (->ts-viz x-col y-col labels viz-settings)
-        y-pos         (take (count names) (default-y-pos viz-settings))
-        series        (join-series names colors types row-seqs y-pos)]
-    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
-
 (defn- multiple-scalar-series
   [joined-rows _x-cols _y-cols _viz-settings]
-  ;; TODO: Extra vars could be used for color settings
-  (for [[idx row-val] (map-indexed vector joined-rows)]
-    {:name  (first row-val)
-     :color (nth colors idx)
-     :type  :bar
-     :data [row-val]
-     :yAxisPosition "left"}))
+  [(for [[row-val] (map vector joined-rows)]
+     {:cardName      (first row-val)
+      :type          :bar
+      :data          [row-val]
+      :yAxisPosition "left"
+      :column        nil})])
 
 (defn- render-multiple-scalars
   "When multiple scalar cards are combined, they render as a bar chart"
@@ -596,43 +627,33 @@
         x-cols       [{:base_type :type/Text
                        :effective_type :type/Text}]
         y-cols       (select-keys (first (:cols data)) [:base_type :effective_type])
-        series       (multiple-scalar-series (mapv vector x-rows (flatten y-rows)) x-cols y-cols viz-settings)
+        series-seqs  (multiple-scalar-series (mapv vector x-rows (flatten y-rows)) x-cols y-cols viz-settings)
         labels       (combo-label-info x-cols y-cols viz-settings)
         settings     (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
-    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series settings)))))
-
-(s/defmethod render :multiple
-  [_ render-type _timezone-id card dashcard data]
-  ((if (= :scalar (:display card))
-     render-multiple-scalars
-     render-multiple-lab-chart)
-   render-type card dashcard data))
+    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series-seqs settings)))))
 
 (defn- series-setting [viz-settings outer-key inner-key]
   (get-in viz-settings [:series_settings (keyword outer-key) inner-key]))
 
+(def ^:private axis-group-threshold 0.33)
+
 (defn- single-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
-  [chart-type joined-rows _x-cols y-cols viz-settings]
+  [chart-type joined-rows _x-cols y-cols {:keys [viz-settings] :as data} card-name]
   (for [[idx y-col] (map-indexed vector y-cols)]
     (let [y-col-key     (keyword (:name y-col))
-          card-name     (or (series-setting viz-settings y-col-key :name)
-                            (series-setting viz-settings y-col-key :title)
-                            (:display_name y-col))
-          card-color    (or (series-setting viz-settings y-col-key :color)
-                            (nth colors idx))
           card-type     (or (series-setting viz-settings y-col-key :display)
                             chart-type
                             (nth default-combo-chart-types idx))
           selected-rows (mapv #(vector (ffirst %) (nth (second %) idx)) joined-rows)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
-                            (nth (default-y-pos viz-settings) idx))]
-      {:name          card-name
-       :color         card-color
+                            (nth (default-y-pos data axis-group-threshold) idx))]
+      {:cardName      card-name
        :type          card-type
        :data          selected-rows
-       :yAxisPosition y-axis-pos})))
+       :yAxisPosition y-axis-pos
+       :column        y-col})))
 
 (defn- double-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
@@ -640,27 +661,63 @@
 
   This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
-  [chart-type joined-rows _x-cols _y-cols viz-settings]
+  [chart-type joined-rows x-cols _y-cols {:keys [viz-settings] :as data} card-name]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)
         groups       (keys grouped-rows)]
     (for [[idx group-key] (map-indexed vector groups)]
       (let [row-group          (get grouped-rows group-key)
             selected-row-group (mapv #(vector (ffirst %) (first (second %))) row-group)
-            card-name          (or (series-setting viz-settings group-key :name)
-                                   (series-setting viz-settings group-key :title)
-                                   group-key)
-            card-color         (or (series-setting viz-settings group-key :color)
-                                   (nth colors idx))
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
                                    (nth default-combo-chart-types idx))
             y-axis-pos         (or (series-setting viz-settings group-key :axis)
-                                   (nth (default-y-pos viz-settings) idx))]
-        {:name          card-name
-         :color         card-color
+                                   (nth (default-y-pos data axis-group-threshold) idx))]
+        {:cardName      card-name
          :type          card-type
          :data          selected-row-group
-         :yAxisPosition y-axis-pos}))))
+         :yAxisPosition y-axis-pos
+         :column        (second x-cols)
+         :breakoutValue group-key}))))
+
+(defn- axis-row-fns
+  [card data]
+  [(or (ui-logic/mult-x-axis-rowfn card data) #(vector (first %)))
+   (or (ui-logic/mult-y-axis-rowfn card data) #(vector (second %)))])
+
+(defn- card-result->series
+  "Helper function for `render-multiple-lab-chart` that turns a card query result into a series-settings map in the shape expected by `js-svg/combo chart` (and the combo-chart js code)."
+  [idx result]
+  (let [card            (:card result)
+        data            (get-in result [:result :data])
+        display         (:display card)
+        [x-fn y-fn]     (axis-row-fns card data)
+        enforced-type   (if (= display :scalar) :bar display)
+        card-name       (:name card)
+        viz-settings    (:visualization_settings card)
+        joined-rows     (map (juxt x-fn y-fn)
+                             (common/row-preprocess x-fn y-fn (:rows data)))
+        [x-cols y-cols] ((juxt x-fn y-fn) (get-in result [:result :data :cols]))
+        y-axis-position (nth (default-y-pos data axis-group-threshold) idx)]
+    (map #(assoc % :yAxisPosition y-axis-position)
+         ((if (= (count x-cols) 1) single-x-axis-combo-series double-x-axis-combo-series) enforced-type joined-rows x-cols y-cols viz-settings card-name))))
+
+(defn- render-multiple-lab-chart
+  "When multiple non-scalar cards are combined, render them as a line, area, or bar chart"
+  [render-type card dashcard {:keys [viz-settings]
+                              :as   data}]
+  (let [viz-settings      (merge viz-settings (:visualization_settings dashcard))
+        multi-res         (pu/execute-multi-card card dashcard)
+        ;; multi-res gets the other results from the set of multis.
+        ;; we shove cards and data here all together below for uniformity's sake
+        viz-settings      (set-default-stacked viz-settings card)
+        multi-data        (cons data (map #(get-in % [:result :data]) multi-res))
+        col-seqs          (map :cols multi-data)
+        [x-fn y-fn]       (axis-row-fns card data)
+        [[x-col] [y-col]] ((juxt x-fn y-fn) (first col-seqs))
+        labels            (x-and-y-axis-label-info x-col y-col viz-settings)
+        settings          (->ts-viz x-col y-col labels viz-settings)
+        series-seqs       (map-indexed card-result->series (cons {:card card :result {:data data}} multi-res))]
+    (attach-image-bundle (image-bundle/make-image-bundle render-type (js-svg/combo-chart series-seqs settings)))))
 
 (defn- lab-image-bundle
   "Generate an image-bundle for a Line Area Bar chart (LAB)
@@ -679,16 +736,24 @@
         enforced-type   (if (= chart-type :combo)
                           nil
                           chart-type)
+        card-name       (:name card)
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
-        series          (if (= (count x-cols) 1)
-                          (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings)
-                          (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings))
+        series-seqs     [(if (= (count x-cols) 1)
+                           (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name)
+                           (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols data card-name))]
 
         labels          (combo-label-info x-cols y-cols viz-settings)
         settings        (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
     (image-bundle/make-image-bundle
      render-type
-     (js-svg/combo-chart series settings))))
+     (js-svg/combo-chart series-seqs settings))))
+
+(s/defmethod render :multiple
+  [_ render-type _timezone-id card dashcard data]
+  ((if (= :scalar (:display card))
+     render-multiple-scalars
+     render-multiple-lab-chart)
+   render-type card dashcard data))
 
 (s/defmethod render :line :- common/RenderedPulseCard
   [_ render-type timezone-id card dashcard data]

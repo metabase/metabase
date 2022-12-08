@@ -5,12 +5,19 @@ on:
     branches:
       - 'master'
       - 'release-**'
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      # frontend and E2E tests
+      - "**/frontend/test/**"
+      - "**/frontend/**.unit.*"
   pull_request:
     paths-ignore:
       - "docs/**"
       - "**.md"
-      - "frontend/test/**"
-      - "enterprise/frontend/test/**"
+      # frontend and E2E tests
+      - "**/frontend/test/**"
+      - "**/frontend/**.unit.*"
 
 jobs:
 
@@ -96,25 +103,28 @@ jobs:
     - name: Build static viz frontend
       run: yarn build-static-viz
 
-    - name: Compile Java source file(s)
-      run: clojure -X:deps prep
-    - name: Compile driver AOT namespaces
-      working-directory: modules/drivers
-      run: clojure -X:deps prep
-    - name: Fetch dependencies
-      run: clojure -P -X:dev:ci:ee:ee-dev:drivers:drivers-dev
-    - name: Fetch dependencies  (./bin/build/build-mb)
-      working-directory: bin/build-mb
-      run: clojure -P -M:test
-    - name: Fetch dependencies (./bin/build/build-drivers)
-      working-directory: bin/build-drivers
-      run: clojure -P -M:test
-
     - name: Run tests
       run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+
     - name: Publish Test Report (JUnit)
       uses: mikepenz/action-junit-report@v3
       if: always()
       with:
         report_paths: 'target/junit/**/*_test.xml'
         check_name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+
+  # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
+  # as `:dev` dependencies). See #27009 for more context.
+  be-check:
+    runs-on: ubuntu-20.04
+    name: be-check-java-${{ matrix.java-version }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        java-version: [11, 17, 19]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare backend
+        uses: ./.github/actions/prepare-backend
+      - name: Check namespaces
+        run: clojure -M:ee:drivers:check

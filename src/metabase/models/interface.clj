@@ -8,6 +8,7 @@
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.dispatch :as models.dispatch]
+            [metabase.models.json-migration :as jm]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.cron :as u.cron]
@@ -157,9 +158,31 @@
       ;; the word "expression" but it is not MBQL (metabase#15882)
       (get viz-settings "graph.metrics")   (assoc :graph.metrics (get viz-settings "graph.metrics")))))
 
+(jm/def-json-migration migrate-viz-settings*)
+
+(def ^:private viz-settings-current-version 2)
+
+(defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
+  (let [{percent? :pie.show_legend_perecent ;; [sic]
+         legend?  :pie.show_legend} viz-settings]
+    (if-let [new-value (cond
+                         legend?  "inside"
+                         percent? "legend")]
+      (assoc viz-settings :pie.percent_visibility new-value)
+      viz-settings))) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+
+(defn- migrate-viz-settings
+  [viz-settings]
+  (let [new-viz-settings (migrate-viz-settings* viz-settings viz-settings-current-version)]
+    (cond-> new-viz-settings
+      (not= new-viz-settings viz-settings) (jm/update-version viz-settings-current-version))))
+
+;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
+;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
+
 (models/add-type! :visualization-settings
-  :in  json-in
-  :out (comp normalize-visualization-settings json-out-without-keywordization))
+  :in  (comp json-in migrate-viz-settings)
+  :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization))
 
 ;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
 ;; permissions set

@@ -1,8 +1,8 @@
-import DashboardClickDrill from "metabase/modes/components/drill/DashboardClickDrill";
+import DashboardClickDrill from "../drill/DashboardClickDrill";
 
 const PublicMode = {
   name: "public",
-  drills: () => [DashboardClickDrill],
+  drills: [DashboardClickDrill],
 };
 
 export default PublicMode;

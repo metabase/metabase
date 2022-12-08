@@ -1,0 +1,8 @@
+{:paths
+ ["src" "resources"]
+
+ :mvn/repos
+ {"athena" {:url "https://s3.amazonaws.com/maven-athena"}}
+
+ :deps
+ {com.metabase/athena-jdbc {:mvn/version "2.0.33"}}}

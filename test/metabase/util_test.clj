@@ -132,6 +132,25 @@
           (is (= expected
                  (u/slugify s))))))))
 
+(deftest ^:parallel slugify-unicode-test
+  (doseq [[group s->expected]
+          {nil
+           {"ToucanFest 2017"               "toucanfest_2017"
+            "Cam's awesome toucan emporium" "cam_s_awesome_toucan_emporium"
+            "Frequently-Used Cards"         "frequently_used_cards"}
+
+           "check that diactrics get removed"
+           {"Cam Saul's Toucannery"      "cam_saul_s_toucannery"
+            "toucans dislike piñatas :(" "toucans_dislike_pinatas___" }
+
+           "check that non-ASCII characters are preserved"
+           {"勇士" "勇士"}}]
+    (testing group
+      (doseq [[s expected] s->expected]
+        (testing (list 'u/slugify s {:unicode? true})
+          (is (= expected
+                 (u/slugify s {:unicode? true}))))))))
+
 (deftest ^:parallel full-exception-chain-test
   (testing "Not an Exception"
     (is (= nil

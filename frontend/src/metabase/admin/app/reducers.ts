@@ -9,7 +9,7 @@ import {
 } from "metabase/plugins";
 import { REFRESH_CURRENT_USER } from "metabase/redux/user";
 import { AdminPath, AdminPathKey } from "metabase-types/store";
-import { isNotNull } from "metabase/core/utils/array";
+import { isNotNull } from "metabase/core/utils/types";
 import { DISABLE_ADMIN_PATH, DISABLE_NOTICE } from "./actions";
 
 const getAdminPaths: () => AdminPath[] = () => {

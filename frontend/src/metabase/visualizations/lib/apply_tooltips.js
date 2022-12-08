@@ -5,8 +5,9 @@ import moment from "moment-timezone";
 import { getIn } from "icepick";
 
 import { formatValue } from "metabase/lib/formatting";
+import { formatNullable } from "metabase/lib/formatting/nullable";
 
-import { isNormalized, isStacked, formatNull } from "./renderer_utils";
+import { isNormalized, isStacked } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
 
@@ -176,7 +177,7 @@ export function getClickHoverObject(
         }
         return {
           key: getColumnDisplayName(col, colVizSettingsKeys[i]),
-          value: formatNull(aggregatedRow[i]),
+          value: formatNullable(aggregatedRow[i]),
           col: col,
         };
       });

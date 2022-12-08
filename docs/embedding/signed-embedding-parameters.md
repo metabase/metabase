@@ -101,25 +101,27 @@ your_embedding_url?breakfast=Scrambled_eggs#hide_parameters=breakfast
 
 ## Customizing the appearance of a signed embed
 
-You can change the appearance of an embedded item by adding parameters with the following values:
+You can change the appearance of an embedded item by adding hash parameters to the end of the URL in your iframe's `src` attribute.
+
+For example, the following embedding URL will display an embedded item in dark mode, without a border, and with its original title:
+
+```
+your_embedding_url#theme=night&bordered=false&titled=true
+```
+
+You can preview appearance settings from your question or dashboard's [embedded appearance settings](./signed-embedding.md#customizing-the-appearance-of-signed-embeds).
 
 | Parameter name         | Possible values                               |
 | ---------------------- | --------------------------------------------- |
 | bordered               | true, false                                   |
 | titled                 | true, false                                   |
 | theme                  | null, transparent, night                      |
-| font\*                 | [font name](../configuring-metabase/fonts.md) |
-| hide_download_button\* | true, false                                   |
+| font¹                  | [font name](../configuring-metabase/fonts.md) |
+| hide_download_button²  | true, false                                   |
 
-\* Available on paid plans.
+¹ Available on [paid plans](https://www.metabase.com/pricing).
 
-You can preview the changes from your question or dashboard's [embedded appearance settings](./signed-embedding.md#customizing-the-appearance-of-signed-embeds).
-
-For example, the following embedding URL will display an embedded item in dark mode, with its original title, and without a border:
-
-```
-your_embedding_url#theme=night&titled=true&bordered=false
-```
+² Available on [paid plans](https://www.metabase.com/pricing) and works on questions only (not dashboards).
 
 ## Further reading
 

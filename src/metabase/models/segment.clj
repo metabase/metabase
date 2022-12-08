@@ -76,12 +76,6 @@
 
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
-
-(defmethod serdes.base/serdes-generate-path "Segment"
-  [_ segment]
-  [(assoc (serdes.base/infer-self-path "Segment" segment)
-          :label (:name segment))])
-
 (defmethod serdes.base/extract-one "Segment"
   [_model-name _opts segment]
   (-> (serdes.base/extract-one-basics "Segment" segment)
@@ -99,6 +93,16 @@
 (defmethod serdes.base/serdes-dependencies "Segment" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes.util/table->path table_id)}
                       (serdes.util/mbql-deps definition))))
+
+(defmethod serdes.base/storage-path "Segment" [segment _ctx]
+  (let [{:keys [id label]} (-> segment serdes.base/serdes-path last)]
+    (-> segment
+        :table_id
+        serdes.util/table->path
+        serdes.util/storage-table-path-prefix
+        (concat ["segments" (serdes.base/storage-leaf-file-name id label)]))))
+
+(serdes.base/register-ingestion-path! "Segment" (serdes.base/ingestion-matcher-collected "databases" "Segment"))
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 

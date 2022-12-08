@@ -1,5 +1,5 @@
 import React from "react";
-import { ComponentStory } from "@storybook/react";
+import type { ComponentStory } from "@storybook/react";
 import { field_semantic_types } from "metabase/lib/core";
 import Select from "./Select";
 

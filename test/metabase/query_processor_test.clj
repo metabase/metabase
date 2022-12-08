@@ -320,7 +320,11 @@
                       (try
                         (f v)
                         (catch Throwable e
-                          (throw (ex-info (format "format-rows-by failed (f = %s, value = %s %s): %s" f (.getName (class v)) v (.getMessage e))
+                          (throw (ex-info (format "format-rows-by failed (f = %s, value = %s %s): %s"
+                                                  (pr-str f)
+                                                  (.getName (class v))
+                                                  (pr-str v)
+                                                  (.getMessage e))
                                    {:f f, :v v, :format-nil-values? format-nil-values?}
                                    e)))))))))
 

@@ -18,6 +18,8 @@
   (:import java.sql.Time
            [java.time OffsetDateTime ZonedDateTime]))
 
+(defmethod driver/database-supports? [:presto-common :now] [_driver _feat _db] true)
+
 (driver/register! :presto-common, :abstract? true, :parent :sql)
 
 ;;; Presto API helpers
@@ -47,6 +49,9 @@
      [#"(?i)map"                        :type/Dictionary]
      [#"(?i)row.*"                      :type/*] ; TODO - again, but this time we supposedly have a schema
      [#".*"                             :type/*]]))
+
+(defmethod sql-jdbc.sync/database-type->base-type :presto-common [_driver database-type]
+  (presto-type->base-type database-type))
 
 (defmethod sql.qp/add-interval-honeysql-form :presto-common
   [_ hsql-form amount unit]
@@ -162,6 +167,10 @@
             (hh/where [:> :__rownum__ offset])
             (hh/limit items))))))
 
+(defmethod sql.qp/current-datetime-honeysql-form :presto-common
+  [_]
+  (hx/with-database-type-info :%now "timestamp with time zone"))
+
 (defmethod sql.qp/date [:presto-common :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:presto-common :minute]          [_ _ expr] (hsql/call :date_trunc (hx/literal :minute) expr))
 (defmethod sql.qp/date [:presto-common :minute-of-hour]  [_ _ expr] (hsql/call :minute expr))
@@ -208,5 +217,6 @@
                               :native-parameters               true
                               :expression-aggregations         true
                               :binning                         true
-                              :foreign-keys                    true}]
+                              :foreign-keys                    true
+                              :now                             true}]
   (defmethod driver/supports? [:presto-common feature] [_ _] supported?))

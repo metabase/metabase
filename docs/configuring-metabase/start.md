@@ -20,7 +20,23 @@ Set up email for [Alerts](../questions/sharing/alerts.md) and [Dashboard subscri
 
 Set up Slack for Alerts and Dashboard subscriptions.
 
-## [Localization](./localization.md)
+## [Environment variables](./environment-variables.md)
+
+Configure Metabase on launch via environment variables.
+
+## [Configuration file](./config-file.md)
+
+On self-hosted paid plans, you can configure Metabase via a configuration file.
+
+## [Metabase logs configuration](./log-configuration.md)
+
+Tell Metabase what to log.
+
+## [Timezones](./timezones.md)
+
+Guidance on timezone settings.
+
+## [Languages and localization](./localization.md)
 
 Set language, datetime, and currency settings.
 
@@ -28,10 +44,14 @@ Set language, datetime, and currency settings.
 
 Customize colors, fonts, and other visual elements.
 
-## [Caching](./caching.md)
+## [Caching query results](./caching.md)
 
 Cache query results for faster loading times.
 
-## [Metabase logs configuration](./log-configuration.md)
+## [Custom maps](./custom-maps.md)
 
-Tell Metabase what to log.
+Upload custom maps to your Metabase.
+
+## [Customizing the Metabase Jetty webserver](./customizing-jetty-webserver.md)
+
+Set SSL and port settings for the Jetty webserver.

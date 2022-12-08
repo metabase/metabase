@@ -2,12 +2,22 @@ name: Build + Docker Uberjar
 
 on:
   push:
+    branches:
+      - "master"
     paths-ignore:
-    - 'docs/**'
-    - 'frontend/test/**'
-    - 'enterprise/frontend/test/**'
-    - ".**"
-    - "test*"
+      # config files
+      - ".**"
+      # documentation
+      - 'docs/**'
+      - "**.md"
+      # this covers both BE and FE unit tests, as well as E2E tests
+      - '**test/**'
+      - "**_test.clj"
+      - "**/frontend/**.unit.*"
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Optional full-length commit SHA-1 hash'
 
 jobs:
   build:
@@ -23,6 +33,8 @@ jobs:
     steps:
     - name: Check out the code
       uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.commit }}
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
@@ -77,6 +89,8 @@ jobs:
       id: extract_branch
     - name: Check out the code (Dockerfile needed)
       uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.commit }}
     - name: Download uploaded artifacts to insert into container
       uses: actions/download-artifact@v3
       with:
@@ -105,34 +119,34 @@ jobs:
       run: docker ps
     - name: Wait for Metabase to start and reach 100% health
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-      timeout-minutes: 1
+      timeout-minutes: 3
     - name: Login to Docker Hub
       uses: docker/login-action@v1
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Retag and push images if master or main (ee)
-      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'ee' }}
+    - name: Retag and push images if master (ee)
+      if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee metabase/metabase-enterprise-head:latest && docker push metabase/metabase-enterprise-head:latest
 
-    - name: Retag and push images if master or main (oss)
-      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'oss' }}
+    - name: Retag and push images if master (oss)
+      if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss metabase/metabase-head:latest && docker push metabase/metabase-head:latest
 
-    - name: Retag and push images if branch
-      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'main') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+    - name: Retag and push images if dev branch
+      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
 
-    - name: Run Trivy vulnerability scanner if master or main (ee)
-      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'ee' }}
+    - name: Run Trivy vulnerability scanner if master (ee)
+      if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: docker.io/metabase/metabase-enterprise-head:latest
         format: sarif
         output: trivy-results.sarif
 
-    - name: Run Trivy vulnerability scanner if master or main (oss)
-      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'oss' }}
+    - name: Run Trivy vulnerability scanner if master (oss)
+      if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: docker.io/metabase/metabase-head:latest
@@ -140,27 +154,27 @@ jobs:
         output: trivy-results.sarif
 
     - name: Run Trivy vulnerability scanner if dev branch
-      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'main') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: docker.io/metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
         format: sarif
         output: trivy-results.sarif
 
-    - name: Upload Trivy scan results to GitHub Security tab if master or main (ee)
-      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'ee' }}
+    - name: Upload Trivy scan results to GitHub Security tab if master (ee)
+      if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: 'trivy-results.sarif'
 
-    - name: Upload Trivy scan results to GitHub Security tab if master or main (oss)
-      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'oss' }}
+    - name: Upload Trivy scan results to GitHub Security tab if master (oss)
+      if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: 'trivy-results.sarif'
 
-    - name: Upload Trivy scan results to GitHub Security tab  if dev branch
-      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'main') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
+    - name: Upload Trivy scan results to GitHub Security tab if dev branch
+      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: 'trivy-results.sarif'

@@ -6,7 +6,7 @@ describe("admin > database > add > Presto", () => {
     cy.signInAsAdmin();
 
     cy.visit("/admin/databases/create");
-    cy.contains("Database type").closest(".Form-field").find("a").click();
+    cy.findByLabelText("Database type").click();
   });
 
   it("should render correctly and allow switching between the new and the old drivers (metabase#18351)", () => {
@@ -44,13 +44,13 @@ describe("admin > database > add > Presto", () => {
     cy.findByLabelText("Choose when syncs and scans happen").should(
       "have.attr",
       "aria-checked",
-      "",
+      "false",
     );
 
     cy.findByLabelText("Periodically refingerprint tables").should(
       "have.attr",
       "aria-checked",
-      "",
+      "false",
     );
 
     // This should be disabled but we'll not add that assertion until we mark all the required fields in the form
@@ -69,9 +69,6 @@ describe("admin > database > add > Presto", () => {
 
     cy.findAllByTestId("select-button").contains("Presto (Deprecated Driver)");
 
-    // It should have persisted the previously set database name
-    cy.findByDisplayValue("Foo");
-
     cy.findByLabelText("Host");
     cy.findByLabelText("Port");
     cy.findByLabelText("Catalog");
@@ -79,6 +76,7 @@ describe("admin > database > add > Presto", () => {
     cy.findByLabelText("Schema (optional)").should("not.exist");
     cy.findByLabelText("Username");
     cy.findByLabelText("Password");
+    cy.findByText("Show advanced options").click();
 
     // Reproduces metabase#18351
     cy.findByLabelText("Additional JDBC options").should("not.exist");
@@ -95,13 +93,13 @@ describe("admin > database > add > Presto", () => {
     cy.findByLabelText("Choose when syncs and scans happen").should(
       "have.attr",
       "aria-checked",
-      "",
+      "false",
     );
 
     cy.findByLabelText("Periodically refingerprint tables").should(
       "have.attr",
       "aria-checked",
-      "",
+      "false",
     );
 
     cy.contains("This driver will be removed in a future release. ");

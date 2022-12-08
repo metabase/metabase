@@ -11,7 +11,7 @@ import type {
   ActionParameterValue,
 } from "metabase-types/api";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
-import { isNotNull } from "metabase/core/utils/array";
+import { isNotNull } from "metabase/core/utils/types";
 
 function formatParameterValue(value: ParameterValueOrArray) {
   return Array.isArray(value) ? value[0] : value;

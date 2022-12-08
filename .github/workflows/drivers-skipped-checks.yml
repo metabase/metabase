@@ -4,12 +4,23 @@
 name: Driver Tests
 
 on:
+  push:
+    branches:
+    - 'master'
+    - 'release-**'
+    paths:
+      - "docs/**"
+      - "**.md"
+      # frontend and E2E tests
+      - "**/frontend/test/**"
+      - "**/frontend/**.unit.*"
   pull_request:
     paths:
       - "docs/**"
       - "**.md"
-      - "frontend/test/**"
-      - "enterprise/frontend/test/**"
+      # frontend and E2E tests
+      - "**/frontend/test/**"
+      - "**/frontend/**.unit.*"
 
 jobs:
 

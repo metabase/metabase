@@ -113,10 +113,14 @@
                        (run-count-query query))))))]
     (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
       (testing "temporal field filters"
-        ;; TIMEZONE FIXME — The excluded drivers below don't have TIME types, so the `attempted-murders` dataset doesn't
+        ;; TIMEZONE FIXME — The excluded drivers don't have TIME types, so the `attempted-murders` dataset doesn't
         ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
         ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
-        (when-not (#{:oracle :presto :redshift :sparksql :snowflake} driver/*driver*)
+        (when (and (mt/supports-time-type? driver/*driver*)
+                   ;; TIMEZONE FIXME -- Presto and Snowflake do support TIME types, but this fails for Presto because it
+                   ;; doesn't support TIME WITH TIME ZONE... we should just use TIME instead so we can run this test.
+                   ;; Not sure why it's failing for Snowflake, we'll have to investigate.
+                   (not (#{:presto :snowflake} driver/*driver*)))
           (mt/dataset attempted-murders
             (doseq [field
                     [:datetime

@@ -5,12 +5,12 @@ import { connect } from "react-redux";
 import Banner from "metabase/components/Banner";
 import ExternalLink from "metabase/core/components/Link";
 import MetabaseSettings from "metabase/lib/settings";
-import { getTokenStatusStatus } from "metabase/selectors/app";
+import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 const mapStateToProps = state => ({
   isAdmin: getUserIsAdmin(state),
-  tokenStatusStatus: getTokenStatusStatus(state),
+  tokenStatusStatus: getSetting(state, "token-status")?.status,
 });
 
 const AppBanner = ({ isAdmin, tokenStatusStatus }) => {

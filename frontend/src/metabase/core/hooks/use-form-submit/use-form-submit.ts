@@ -42,11 +42,23 @@ const isFormError = <T>(error: unknown): error is FormError<T> => {
 };
 
 const getFormErrors = (error: unknown) => {
-  return isFormError(error) ? error.data?.errors ?? error.errors ?? {} : {};
+  if (isFormError(error)) {
+    if (typeof error.data !== "string") {
+      return error.data?.errors ?? error.errors ?? {};
+    }
+  }
+
+  return {};
 };
 
 const getFormMessage = (error: unknown) => {
-  return isFormError(error) ? error.data?.message ?? error.message : undefined;
+  if (isFormError(error)) {
+    if (typeof error.data !== "string") {
+      return error.data?.message ?? error.message;
+    } else {
+      return error.data;
+    }
+  }
 };
 
 export default useFormSubmit;

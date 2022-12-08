@@ -1,24 +1,21 @@
 import styled from "@emotion/styled";
-import TextInput from "metabase/components/TextInput";
 import { color } from "metabase/lib/colors";
 
 export const EmptyStateContainer = styled.div`
   padding: 2rem 2rem 0 2rem;
 `;
 
+interface OptionListProps {
+  isDashboardFilter?: boolean;
+}
+
 interface FilterInputProps {
   isDashboardFilter?: boolean;
 }
 
-export const FilterInput = styled(TextInput)<FilterInputProps>`
+export const FilterInputContainer = styled.div<FilterInputProps>`
   margin-bottom: ${props => (props.isDashboardFilter ? "0" : "0.5rem")};
-  border: ${props =>
-    props.isDashboardFilter ? `1px solid ${color("border")}` : "none"};
-` as any;
-
-interface OptionListProps {
-  isDashboardFilter?: boolean;
-}
+`;
 
 export const OptionsList = styled.ul<OptionListProps>`
   overflow: auto;

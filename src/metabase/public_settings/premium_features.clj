@@ -32,7 +32,6 @@
              (str/replace  #"/$" "")))
    "https://store.metabase.com"))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                TOKEN VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -106,7 +105,7 @@
     ;; if token isn't valid throw an Exception with the `:status` message
     (when-not valid
       (throw (ex-info status
-               {:status-code 400, :error-details error-details})))
+                      {:status-code 400, :error-details error-details})))
     ;; otherwise return the features this token supports
     (set features)))
 
@@ -118,7 +117,7 @@
   "Check whether `token` is valid. Throws an Exception if not. Returns a set of supported features if it is."
   ;; this is just `valid-token->features*` with some light caching
   (memoize/ttl valid-token->features*
-    :ttl/threshold valid-token-recheck-interval-ms))
+               :ttl/threshold valid-token-recheck-interval-ms))
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
@@ -140,7 +139,7 @@
       (when (seq new-value)
         (when (schema/check ValidToken new-value)
           (throw (ex-info (tru "Token format is invalid.")
-                   {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
+                          {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
         (log/info (trs "Token is valid.")))
       (setting/set-value-of-type! :string :premium-embedding-token new-value)
@@ -246,7 +245,8 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean ((token-features) "hosting"))))
+  :getter     (fn [] (boolean ((token-features) "hosting")))
+  :doc        false)
 
 ;; `enhancements` are not currently a specific "feature" that EE tokens can have or not have. Instead, it's a
 ;; catch-all term for various bits of EE functionality that we assume all EE licenses include. (This may change in the
@@ -261,7 +261,6 @@
   "Should we various other enhancements, e.g. NativeQuerySnippet collection permissions?"
   nil
   :getter #(and config/ee-available? (has-any-features?)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Defenterprise Macro                                                |

@@ -133,7 +133,7 @@
 
        ;; for maps of a schema, write out what keys and values
        ;; this keeps track of indentation because the message is very difficult to read without it.
-       (when (instance? clojure.lang.PersistentArrayMap schema)
+       (when (map? schema)
          (let [spaces (str/join (repeat indent-depth "  "))]
            (str (deferred-tru "value must be a map with schema: (\n{0}{1}{2}{3}{4}{5}"
                   spaces

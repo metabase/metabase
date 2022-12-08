@@ -19,14 +19,16 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs]])
+            [metabase.util.i18n :refer [deferred-tru trs tru]])
   (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
@@ -52,6 +54,15 @@
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
+(defmethod driver/database-supports? [:mysql :convert-timezone]
+  [_driver _feature _db]
+  true)
+
+(defmethod driver/database-supports? [:mysql :datetime-diff]
+  [_driver _feature _db]
+  true)
+
+(defmethod driver/database-supports? [:mysql :now] [_ _ _] true)
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 
@@ -133,7 +144,7 @@
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
   [_]
-  (hsql/call :now 6))
+  (hx/with-database-type-info (hsql/call :now 6) "timestamp"))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
@@ -348,6 +359,44 @@
                                 2)
                           (hx/literal "-01"))))
 
+(defmethod sql.qp/->honeysql [:mysql :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr       (sql.qp/->honeysql driver arg)
+        timestamp? (hx/is-of-type? expr "timestamp")]
+    (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
+    (hx/with-database-type-info
+      (hsql/call :convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
+      "datetime")))
+
+(defmethod sql.qp/->honeysql [:mysql :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [v]
+                            (when-let [db-type (some-> v hx/type-info hx/type-info->db-type str/upper-case keyword)]
+                              (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
+                                (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
+                                  (name db-type)))))
+                          [x y])]
+    (when (seq disallowed-types)
+      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                           (pr-str disallowed-types))
+                      {:found disallowed-types
+                       :type  qp.error-type/invalid-query})))
+    (case unit
+      (:year :month)
+      (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))
+
+      :week
+      (let [positive-diff (fn [a b] (hx/floor (hx// (hsql/call :datediff b a) 7)))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :day
+      (hsql/call :datediff y x)
+
+      (:hour :minute :second)
+      (hsql/call :timestampdiff (hsql/raw (name unit)) x y))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

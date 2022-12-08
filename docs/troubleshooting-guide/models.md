@@ -24,12 +24,16 @@ If your changes to a model's metadata or underlying question aren't showing up:
 
 ## Model performance is poor
 
-1. Optimize the underlying saved question or SQL query.
+1. Use model persistence.
+    
+    - Metabase can [write back to your data warehouse][model-caching]. If you enable model caching, Metabase will read a pre-computed and materialized version of the model directly from the database instead of running the query from scratch. Please consider this option is only available in some supported data warehouses.
+
+2. Optimize the underlying saved question or SQL query.
 
     - [Ask for less data][limit-data-learn].
     - For models that use SQL questions, [look for bottlenecks using SQL EXPLAIN][sql-explain-learn].
 
-2. Optimize your database schemas.
+3. Optimize your database schemas.
 
     - [Aggregate data ahead of time with summary tables][summary-tables-learn].
     - [Index frequently queried columns][indexes-learn].
@@ -37,7 +41,7 @@ If your changes to a model's metadata or underlying question aren't showing up:
     - [Materialize views][materialize-views-learn].
     - [Pull data out of JSON and slot its keys into columns][flatten-json-learn].
 
-3. Optimize your data warehouse(s) or database(s).
+4. Optimize your data warehouse(s) or database(s).
 
     - [Replicate your database][replicate-database-learn].
     - [Consider a database optimized for analytics][analytics-database-learn].
@@ -71,3 +75,4 @@ If you can’t solve your problem using the troubleshooting guides:
 [sql-explain-learn]: https://www.metabase.com/learn/sql-questions/sql-best-practices.html#explain
 [summary-tables-learn]: https://www.metabase.com/learn/administration/making-dashboards-faster.html#aggregate-data-ahead-of-time-with-summary-tables
 [troubleshooting-sandboxing]: ./sandboxing.md
+[model-caching]: https://www.metabase.com/docs/latest/data-modeling/models#model-caching

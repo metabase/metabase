@@ -88,6 +88,7 @@ export default class Text extends Component {
       section: t`Display`,
       title: t`Show background`,
       dashboard: true,
+      inline: true,
       widget: "toggle",
       default: true,
     },

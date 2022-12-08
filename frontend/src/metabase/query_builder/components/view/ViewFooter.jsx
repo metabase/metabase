@@ -83,7 +83,9 @@ const ViewFooter = ({
               result={result}
               active={isShowingChartTypeSidebar}
               onClick={
-                isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
+                isShowingChartTypeSidebar
+                  ? () => onCloseChartType()
+                  : () => onOpenChartType()
               }
             />
           ),
@@ -95,8 +97,8 @@ const ViewFooter = ({
               active={isShowingChartSettingsSidebar}
               onClick={
                 isShowingChartSettingsSidebar
-                  ? onCloseChartSettings
-                  : onOpenChartSettings
+                  ? () => onCloseChartSettings()
+                  : () => onOpenChartSettings()
               }
             />
           ),

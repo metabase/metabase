@@ -38,6 +38,7 @@ export default class WaterfallChart extends LineAreaBarChart {
       title: t`Show total`,
       widget: "toggle",
       default: true,
+      inline: true,
     },
     "waterfall.total_color": {
       section: t`Display`,

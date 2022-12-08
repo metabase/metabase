@@ -19,6 +19,7 @@ export interface BaseUser {
 
 export interface User extends BaseUser {
   google_auth: boolean;
+  login_attributes: string[] | null;
   is_installer: boolean;
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;

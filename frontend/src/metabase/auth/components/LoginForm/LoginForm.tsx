@@ -7,16 +7,17 @@ import FormCheckBox from "metabase/core/components/FormCheckBox";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import * as Errors from "metabase/core/utils/errors";
 import { LoginData } from "../../types";
 
 const LOGIN_SCHEMA = Yup.object().shape({
   username: Yup.string()
-    .required(t`required`)
+    .required(Errors.required)
     .when("$isLdapEnabled", {
       is: false,
-      then: schema => schema.email(t`must be a valid email address`),
+      then: schema => schema.email(Errors.email),
     }),
-  password: Yup.string().required(t`required`),
+  password: Yup.string().required(Errors.required),
   remember: Yup.boolean(),
 });
 

@@ -401,6 +401,7 @@
   metabase.integrations.ldap/with-ldap-connection                                      clojure.core/fn
   metabase.mbql.schema.macros/defclause                                                clj-kondo.lint-as/def-catch-all
   metabase.models.collection-test/with-collection-in-location                          clojure.core/let
+  metabase.models.json-migration/def-json-migration                                    clj-kondo.lint-as/def-catch-all
   metabase.models.setting.multi-setting/define-multi-setting                           clojure.core/def
   metabase.models.setting/defsetting                                                   clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/defenterprise                              clj-kondo.lint-as/def-catch-all
@@ -572,7 +573,7 @@
    metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache                                                            hooks.common/with-two-bindings
-   metabase.sample-database-test/with-temp-sample-database-db                                                                hooks.common/with-one-binding
+   metabase.sample-data-test/with-temp-sample-database-db                                                                    hooks.common/with-one-binding
    metabase.test.data.datasets/test-drivers                                                                                  hooks.common/do*
    metabase.test.data.users/with-group                                                                                       hooks.common/let-one-with-optional-value
    metabase.test.data/$ids                                                                                                   hooks.metabase.test.data/$ids

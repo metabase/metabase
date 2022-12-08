@@ -96,7 +96,8 @@
   :visibility :public
   :setter     :none
   :getter     (fn [] (boolean (and (ldap-host)
-                                   (ldap-user-base)))))
+                                   (ldap-user-base))))
+  :doc        false)
 
 (def mb-settings->ldap-details
   "Mappings from Metabase setting names to keys to use for LDAP connections"

@@ -7,6 +7,7 @@
             [medley.core :as m]
             [metabase.actions.execution :as actions.execution]
             [metabase.analytics.snowplow :as snowplow]
+            [metabase.api.card :as api.card]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as api.dataset]
@@ -216,14 +217,106 @@
       hide-unreadable-cards
       add-query-average-durations))
 
+(defn- cards-to-copy
+  "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to
+  card. The `:discard` key is a vector of cards which were not copied due to permissions."
+  [ordered-cards]
+  (letfn [(split-cards [{:keys [card series] :as db-card}]
+
+            (cond
+              (nil? (:card_id db-card)) ;; text card
+              []
+
+              ;; cards without permissions are just a map with an :id from [[hide-unreadable-card]]
+              (not (mi/model card))
+              [nil (into [card] series)]
+
+              (mi/can-read? card)
+              (let [{writable true unwritable false} (group-by (comp boolean mi/can-read?)
+                                                               series)]
+                [(into [card] writable) unwritable])
+              ;; if you can't write the base, we don't have anywhere to put the series
+              :else
+              [[] (into [card] series)]))]
+    (reduce (fn [acc db-card]
+              (let [[retain discard] (split-cards db-card)]
+                (-> acc
+                    (update :copy merge (m/index-by :id retain))
+                    (update :discard concat discard))))
+            {:copy {}
+             :discard []}
+            ordered-cards)))
+
+(defn- duplicate-cards
+  "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries. Returns a map of
+  {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly."
+  [dashboard dest-coll-id]
+  (let [same-collection? (= (:collection_id dashboard) dest-coll-id)
+        {:keys [copy discard]} (cards-to-copy (:ordered_cards dashboard))]
+    (reduce (fn [m [id card]]
+              (assoc-in m
+                        [:copied id]
+                        (if (:dataset card)
+                          card
+                          (api.card/create-card!
+                           (cond-> (assoc card :collection_id dest-coll-id)
+                             same-collection?
+                             (update :name #(str % " -- " (tru "Duplicate"))))
+                           ;; creating cards from a transaction. wait until tx complete to signal event
+                           true))))
+            {:copied {}
+             :uncopied discard}
+            copy)))
+
+(defn update-cards-for-copy
+  "Update ordered-cards in a dashboard for copying. If shallow copy, returns the cards. If deep copy, replaces ids with
+  id from the newly-copied cards. If there is no new id, it means user lacked curate permissions for the cards
+  collections and it is omitted. Dashboard-id is only needed for useful errors."
+  [dashboard-id ordered-cards deep? id->new-card]
+  (when (and deep? (nil? id->new-card))
+    (throw (ex-info (tru "No copied card information found")
+                    {:user-id api/*current-user-id*
+                     :dashboard-id dashboard-id})))
+  (if-not deep?
+    ordered-cards
+    (keep (fn [dashboard-card]
+            (cond
+              ;; text cards need no manipulation
+              (nil? (:card_id dashboard-card))
+              dashboard-card
+
+              ;; if we didn't duplicate, it doesn't go in the dashboard
+              (not (id->new-card (:card_id dashboard-card)))
+              nil
+
+              :else
+              (let [new-id (fn [id]
+                             (-> id id->new-card :id))]
+                (-> dashboard-card
+                    (update :card_id new-id)
+                    (assoc :card (-> dashboard-card :card_id id->new-card))
+                    (m/update-existing :parameter_mappings
+                                       (fn [pms]
+                                         (keep (fn [pm]
+                                                 (m/update-existing pm :card_id new-id))
+                                               pms)))
+                    (m/update-existing :series
+                                       (fn [series]
+                                         (keep (fn [card]
+                                                 (when-let [id' (new-id (:id card))]
+                                                   (assoc card :id id')))
+                                               series)))))))
+          ordered-cards)))
 
 (api/defendpoint POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
-  [from-dashboard-id :as {{:keys [name description collection_id collection_position], :as _dashboard} :body}]
-  {name                (s/maybe su/NonBlankString)
-   description         (s/maybe s/Str)
-   collection_id       (s/maybe su/IntGreaterThanZero)
-   collection_position (s/maybe su/IntGreaterThanZero)}
+  [from-dashboard-id :as {{:keys [name description collection_id collection_position
+                                  is_deep_copy], :as _dashboard} :body}]
+  {name                   (s/maybe su/NonBlankString)
+   description            (s/maybe s/Str)
+   collection_id          (s/maybe su/IntGreaterThanZero)
+   collection_position    (s/maybe su/IntGreaterThanZero)
+   is_deep_copy           (s/maybe s/Bool)}
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [existing-dashboard (get-dashboard from-dashboard-id)
@@ -234,16 +327,30 @@
                         :collection_id       collection_id
                         :collection_position collection_position
                         :is_app_page         (:is_app_page existing-dashboard)}
+        new-cards      (atom nil)
         dashboard      (db/transaction
-                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                         ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
-                         ;; Ok, now save the Dashboard
-                         (u/prog1 (db/insert! Dashboard dashboard-data)
-                           ;; Get cards from existing dashboard and associate to copied dashboard
-                           (doseq [card (:ordered_cards existing-dashboard)]
-                             (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card)))))]
+                        ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                        ;; collection to change position, check that and fix up if needed
+                        (api/maybe-reconcile-collection-position! dashboard-data)
+                        ;; Ok, now save the Dashboard
+                        (let [dash (db/insert! Dashboard dashboard-data)
+                              {id->new-card :copied uncopied :uncopied}
+                              (when is_deep_copy
+                                (duplicate-cards existing-dashboard collection_id))]
+                          (reset! new-cards (vals id->new-card))
+                          (doseq [card (update-cards-for-copy from-dashboard-id
+                                                              (:ordered_cards existing-dashboard)
+                                                              is_deep_copy
+                                                              id->new-card)]
+                            (api/check-500 (dashboard/add-dashcard! dash (:card_id card) card)))
+                          (cond-> dash
+                            (seq uncopied)
+                            (assoc :uncopied uncopied))))]
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
+    ;; must signal event outside of tx so cards are visible from other threads
+    (when-let [newly-created-cards (seq @new-cards)]
+      (doseq [card newly-created-cards]
+        (events/publish-event! :card-create card)))
     (events/publish-event! :dashboard-create dashboard)))
 
 

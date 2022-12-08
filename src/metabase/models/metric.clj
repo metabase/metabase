@@ -76,12 +76,6 @@
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
-
-(defmethod serdes.base/serdes-generate-path "Metric"
-  [_ metric]
-  (let [base (serdes.base/infer-self-path "Metric" metric)]
-    [(assoc base :label (:name metric))]))
-
 (defmethod serdes.base/extract-one "Metric"
   [_model-name _opts metric]
   (-> (serdes.base/extract-one-basics "Metric" metric)
@@ -99,6 +93,16 @@
 (defmethod serdes.base/serdes-dependencies "Metric" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes.util/table->path table_id)}
                       (serdes.util/mbql-deps definition))))
+
+(defmethod serdes.base/storage-path "Metric" [metric _ctx]
+  (let [{:keys [id label]} (-> metric serdes.base/serdes-path last)]
+    (-> metric
+        :table_id
+        serdes.util/table->path
+        serdes.util/storage-table-path-prefix
+        (concat ["metrics" (serdes.base/storage-leaf-file-name id label)]))))
+
+(serdes.base/register-ingestion-path! "Metric" (serdes.base/ingestion-matcher-collected "databases" "Metric"))
 
 ;;; ----------------------------------------------------- OTHER ------------------------------------------------------
 

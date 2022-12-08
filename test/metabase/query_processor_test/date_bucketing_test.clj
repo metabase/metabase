@@ -273,7 +273,7 @@
   ;; timezone
   ;;
   ;; TIMEZONE FIXME
-  (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo})
+  (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :athena})
     (testing "Change JVM timezone from UTC to Pacific"
       (is (= (cond
                (= :sqlite driver/*driver*)
@@ -525,7 +525,7 @@
     ;; timezone
     ;;
     ;; TIMEZONE FIXME
-    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :vertica})
+    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :vertica :athena})
       (is (= (cond
                (= :sqlite driver/*driver*)
                (results-by-day u.date/parse date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
@@ -724,6 +724,47 @@
     (is (= [[22 46] [23 47] [24 40] [25 60] [26 7]]
            (sad-toucan-incidents-with-bucketing :week-of-year :utc)))))
 
+
+(defn- fmt-str-or-int
+  [x]
+  (if (string? x)
+    (str x)
+    (int x)))
+
+(deftest week-of-year-and-week-count-should-be-consistent-test
+  (testing "consistent break out between weeks and week-of-year #4910"
+    (mt/test-drivers (mt/normal-drivers)
+      ;; 2019-01-01 is Tuesday, so set start-of-week to tuesday so
+      ;; breakout by week-of-year will have first row is the 1st week of year
+      (mt/with-temporary-setting-values [start-of-week :tuesday]
+        (mt/dataset sample-dataset
+          (letfn [(test-break-out [unit]
+                    (->> (mt/mbql-query orders
+                           {:filter      [:between $created_at "2019-01-01" "2019-12-31"]
+                            :breakout    [:field $created_at {:temporal-unit unit}]
+                            :aggregation [[:count]]})
+                         mt/process-query
+                         (mt/formatted-rows [fmt-str-or-int int])))]
+            (testing "count result should be the same between week and week-of-year"
+              (is (= (map second (test-break-out :week))
+                     (map second (test-break-out :week-of-year))))
+              (is (= [127 124 136]
+                     (->> (test-break-out :week)
+                          (map second)
+                          (take 3)))))
+            (testing "make sure all drivers returns the same week column"
+              (is (= (case driver/*driver*
+                       :sqlite ["2019-01-01 00:00:00" "2019-01-08 00:00:00" "2019-01-15 00:00:00"]
+                       ["2019-01-01T00:00:00Z" "2019-01-08T00:00:00Z" "2019-01-15T00:00:00Z"])
+                     (->> (test-break-out :week)
+                          (map first)
+                          (take 3)))))
+            (testing "make sure all drivers returns the same week-of-year column"
+              (is (= [1 2 3]
+                     (->> (test-break-out :week-of-year)
+                          (map first)
+                          (take 3)))))))))))
+
 ;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
 ;; difference is how the beginning of hte month is represented, since we always return times with our dates
 (deftest group-by-month-test
@@ -912,21 +953,22 @@
         (or (some-> results mt/first-row first int)
             results)))))
 
-;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests
-;;        are ran and loading data into these DBs is mind-bogglingly slow.
+;; HACK - Don't run these tests against Snowflake/etc. because the databases need to be loaded every time the tests are
+;;        ran and loading data into these DBs is mind-bogglingly slow. This also applies to Athena for now, because
+;;        deleting data is not easy.
 ;;
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
 ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
 ;; machine isn't as slow as the CircleCI ones)
 (deftest count-of-grouping-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
           (is (= 4
                  (apply count-of-grouping checkins:4-per-minute :minute args))
               (format "filter by minute = %s" (into [:relative-datetime] args)))))))
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per hour dataset"
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
@@ -945,7 +987,7 @@
             "filter by week = [:relative-datetime :current]")))))
 
 (deftest time-interval-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
         (is (= 1
@@ -977,7 +1019,7 @@
      :unit (-> results :data :cols first :unit)}))
 
 (deftest date-bucketing-when-you-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (is (= {:rows 1, :unit :day}
            (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day")))
     (is (= {:rows 7, :unit :day}
@@ -1005,7 +1047,7 @@
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
 ;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
 (deftest default-bucketing-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
              (mt/formatted-rows [int]
@@ -1032,7 +1074,7 @@
                                   [:= [:field $timestamp nil] "2019-01-16"]
                                   [:= [:field $id nil] 6]]})))))))
 
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake})
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
         (is (=

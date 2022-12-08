@@ -10,18 +10,15 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import * as Errors from "metabase/core/utils/errors";
 import { TimelineData } from "metabase-types/api";
 import FormArchiveButton from "../FormArchiveButton";
 import { TimelineFormFooter } from "./TimelineForm.styled";
 
 const TIMELINE_SCHEMA = Yup.object({
-  name: Yup.string()
-    .required(t`required`)
-    .max(255, ({ max }) => t`must be ${max} characters or less`),
-  description: Yup.string()
-    .nullable()
-    .max(255, ({ max }) => t`must be ${max} characters or less`),
-  icon: Yup.string().required(t`required`),
+  name: Yup.string().required(Errors.required).max(255, Errors.maxLength),
+  description: Yup.string().nullable().max(255, Errors.maxLength),
+  icon: Yup.string().required(Errors.required),
 });
 
 export interface TimelineFormProps {

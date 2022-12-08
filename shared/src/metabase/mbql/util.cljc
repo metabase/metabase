@@ -458,7 +458,6 @@
   (and (temporal-field? field)
        (not (time-field? field))))
 
-
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
 (defn unique-name-generator
