@@ -6,19 +6,21 @@ title: DatetimeAdd
 
 `datetimeAdd` takes a datetime value and adds some unit of time to it. This function is useful when you're working with time series data that's marked by a "start" and an "end", such as sessions or subscriptions data.
 
-| Syntax                                                                              | Example                                |
-|-------------------------------------------------------------------------------------|----------------------------------------|
-| `datetimeAdd(column, amount, unit)`                                                 | `datetimeAdd("2021-03-25", 1, "month")`|
-| Takes a timestamp or date value and adds the specified number of time units to it.  | `2021-04-25`                           |
+| Syntax                                                                             | Example                                 |
+| ---------------------------------------------------------------------------------- | --------------------------------------- |
+| `datetimeAdd(column, amount, unit)`                                                | `datetimeAdd("2021-03-25", 1, "month")` |
+| Takes a timestamp or date value and adds the specified number of time units to it. | `2021-04-25`                            |
 
 ## Parameters
 
 `column` can be any of:
+
 - The name of a timestamp column,
 - a custom expression that returns a [datetime](#accepted-data-types), or
 - a string in the format `"YYYY-MM-DD"` or `"YYYY-MM-DDTHH:MM:SS"`(as shown in the example above).
 
 `unit` can be any of:
+
 - "year"
 - "quarter"
 - "month"
@@ -28,6 +30,7 @@ title: DatetimeAdd
 - "millisecond"
 
 `amount`:
+
 - A whole number or a decimal number.
 - May be a negative number: `datetimeAdd("2021-03-25", -1, "month")` will return `2021-04-25`.
 
@@ -36,7 +39,7 @@ title: DatetimeAdd
 Let's say you're a coffee connoisseur, and you want to keep track of the freshness of your beans:
 
 | Coffee                 | Opened On         | Finish By         |
-|------------------------|-------------------|-------------------|
+| ---------------------- | ----------------- | ----------------- |
 | DAK Honey Dude         | October 31, 2022  | November 14, 2022 |
 | NO6 Full City Espresso | November 7, 2022  | November 21, 2022 |
 | Ghost Roaster Giakanja | November 27, 2022 | December 11, 2022 |
@@ -60,21 +63,21 @@ Unfortunately, Metabase doesn't currently support functions like `today`. If you
 
 The result should give you a **Today** column that's non-empty if today's date falls inside the coffee freshness window:
 
-| Coffee                 | Opened On         | Finish By         | Today             | 
-|------------------------|-------------------|-------------------|-------------------|
+| Coffee                 | Opened On         | Finish By         | Today             |
+| ---------------------- | ----------------- | ----------------- | ----------------- |
 | DAK Honey Dude         | October 31, 2022  | November 14, 2022 | November 11, 2022 |
 | NO6 Full City Espresso | November 7, 2022  | November 21, 2022 | November 11, 2022 |
 | Ghost Roaster Giakanja | November 27, 2022 | December 11, 2022 |                   |
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeAdd`  |
-| ----------------------- | -------------------- |
-| String                  | ❌                   |
-| Number                  | ❌                   |
-| Timestamp               | ✅                   |
-| Boolean                 | ❌                   |
-| JSON                    | ❌                   |
+| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeAdd` |
+| ------------------------------------------------------------------------------------------------ | ------------------------ |
+| String                                                                                           | ❌                       |
+| Number                                                                                           | ❌                       |
+| Timestamp                                                                                        | ✅                       |
+| Boolean                                                                                          | ❌                       |
+| JSON                                                                                             | ❌                       |
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase.
 

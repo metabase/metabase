@@ -40,7 +40,6 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Dataset](api/dataset.md)
 - [Email](api/email.md)
 - [Embed](api/embed.md)
-- [Emitter](api/emitter.md)
 - [Field](api/field.md)
 - [GeoJSON](api/geojson.md)
 - [Google](api/google.md)

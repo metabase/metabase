@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import Link from "metabase/core/components/Link/Link";
 import FormField from "metabase/core/components/FormField";
-import { DatabaseValues } from "metabase/databases/types";
+import { DatabaseData } from "metabase-types/api";
 import DatabaseCacheTimeInput from "../DatabaseCacheTimeInput";
 
 const FIELD = "cache_ttl";
@@ -13,7 +13,7 @@ const SECTION = "advanced-options";
 const DatabaseCacheTimeField = () => {
   const id = useUniqueId();
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(FIELD);
-  const { values } = useFormikContext<DatabaseValues>();
+  const { values } = useFormikContext<DatabaseData>();
 
   const handleChange = useCallback(
     (value?: number) => setValue(value != null ? value : null),

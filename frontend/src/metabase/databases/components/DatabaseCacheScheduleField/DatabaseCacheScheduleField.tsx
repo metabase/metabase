@@ -3,8 +3,11 @@ import { useField, useFormikContext } from "formik";
 import { t } from "ttag";
 import FormField from "metabase/core/components/FormField";
 import SchedulePicker from "metabase/components/SchedulePicker";
-import { ScheduleSettings, ScheduleType } from "metabase-types/api";
-import { DatabaseValues } from "../../types";
+import {
+  DatabaseData,
+  ScheduleSettings,
+  ScheduleType,
+} from "metabase-types/api";
 import {
   ScheduleOptionList,
   ScheduleOptionBody,
@@ -36,7 +39,7 @@ const DatabaseCacheScheduleField = ({
   title,
   description,
 }: DatabaseCacheScheduleFieldProps): JSX.Element => {
-  const { values, setFieldValue } = useFormikContext<DatabaseValues>();
+  const { values, setFieldValue } = useFormikContext<DatabaseData>();
   const [{ value }, , { setValue }] = useField(name);
 
   const handleScheduleChange = useCallback(

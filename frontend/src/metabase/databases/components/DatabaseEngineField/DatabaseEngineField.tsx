@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import { useFormikContext } from "formik";
-import { Engine } from "metabase-types/api";
-import { DatabaseValues } from "../../types";
+import { DatabaseData, Engine } from "metabase-types/api";
 import { getEngineOptions } from "../../utils/engine";
 import DatabaseEngineSelect from "./DatabaseEngineSelect";
 import DatabaseEngineWidget from "./DatabaseEngineWidget";
@@ -21,7 +20,7 @@ const DatabaseEngineField = ({
   isAdvanced,
   onChange,
 }: DatabaseEngineFieldProps): JSX.Element => {
-  const { values } = useFormikContext<DatabaseValues>();
+  const { values } = useFormikContext<DatabaseData>();
 
   const options = useMemo(() => {
     return getEngineOptions(engines, engineKey, isAdvanced);

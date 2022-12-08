@@ -19,6 +19,7 @@ export interface Collection {
   name: string;
   description: string | null;
   can_write: boolean;
+  color?: string;
   archived: boolean;
   children?: Collection[];
   authority_level?: "official" | null;

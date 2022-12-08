@@ -73,4 +73,6 @@ const FormTextArea = forwardRef(function FormTextArea(
   );
 });
 
-export default FormTextArea;
+export default Object.assign(FormTextArea, {
+  Root: TextArea.Root,
+});

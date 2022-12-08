@@ -124,12 +124,13 @@ export const QuestionList = React.memo(function QuestionList({
     <>
       <SearchContainer>
         <SearchInput
+          fullWidth
           value={searchText}
           colorScheme="transparent"
           icon={<Icon name="search" size={16} pt="0.25rem" />}
           placeholder={t`Search for a question`}
           onFocus={handleSearchFocus}
-          onChange={value => setSearchText(value)}
+          onChange={e => setSearchText(e.target.value)}
         />
       </SearchContainer>
       <QuestionListWrapper

@@ -13,6 +13,7 @@
 (tx/add-test-extensions! :mongo)
 
 (defmethod tx/supports-time-type? :mongo [_driver] false)
+(defmethod tx/supports-timestamptz-type? :mongo [_driver] false)
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
@@ -35,11 +36,15 @@
     (ssl-required?) (merge (ssl-params))))
 
 (defmethod tx/dbdef->connection-details :mongo
-  [_ _ dbdef]
-  (conn-details {:dbname (tx/escaped-database-name dbdef)
-                 :user   "metabase"
-                 :pass   "metasample123"
-                 :host   "localhost"}))
+  [_driver _connection-type dbdef]
+  (conn-details (merge
+                 {:dbname (tx/escaped-database-name dbdef)
+                  :host   (tx/db-test-env-var :mongo :host "localhost")
+                  :post   (Integer/parseUnsignedInt (tx/db-test-env-var :mongo :post "27017"))}
+                 (when-let [user (tx/db-test-env-var :mongo :user)]
+                   {:user user})
+                 (when-let [password (tx/db-test-env-var :mongo :password)]
+                   {:pass password}))))
 
 (defn- destroy-db! [driver dbdef]
   (with-mongo-connection [mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
