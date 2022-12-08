@@ -24,6 +24,8 @@
 (deftest sync-recreate-field-values-test
   (testing "Test that when we delete FieldValues syncing the Table again will cause them to be re-created"
     (testing "Check that we have expected field values to start with"
+      ;; sync to make sure the field values are filled
+      (sync-database!' "update-field-values" (data/db))
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Delete the Field values, make sure they're gone"
@@ -41,6 +43,8 @@
 (deftest sync-should-update-test
   (testing "Test that syncing will cause FieldValues to be updated"
     (testing "Check that we have expected field values to start with"
+      ;; sync to make sure the field values are filled
+      (sync-database!' "update-field-values" (data/db))
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Update the FieldValues, remove one of the values that should be there"
