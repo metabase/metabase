@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase-enterprise.sandbox.models.params.field-values :as ee-params.field-values]
-            [metabase.models :refer [Card Collection Field FieldValues PermissionsGroup PermissionsGroupMembership User]]
+            [metabase.models :refer [Card Field FieldValues PermissionsGroup PermissionsGroupMembership User]]
             [metabase.models.field-values :as field-values]
             [metabase.models.params.field-values :as params.field-values]
             [metabase.public-settings.premium-features-test :as premium-features-test]
