@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 interface CodeContainerProps {
   isHighlighted?: boolean;
@@ -29,9 +30,32 @@ export const CodeText = styled.code`
   word-break: break-all;
 `;
 
+interface CodeCopyButtonProps {
+  isHighlighted?: boolean;
+}
+
+export const CodeCopyButton = styled(IconButtonWrapper)<CodeCopyButtonProps>`
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 1rem;
+  height: 1rem;
+  color: ${color("brand")};
+  background-color: ${props =>
+    color(props.isHighlighted ? "brand-light" : "bg-light")};
+  visibility: hidden;
+`;
+
 export const CodeRoot = styled.div`
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
+  position: relative;
+
+  &:hover {
+    ${CodeCopyButton} {
+      visibility: visible;
+    }
+  }
 `;

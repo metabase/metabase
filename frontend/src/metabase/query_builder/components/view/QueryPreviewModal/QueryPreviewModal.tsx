@@ -58,7 +58,7 @@ const QueryPreviewModal = ({
         ) : errorText ? (
           <QueryPreviewCode value={errorText} isHighlighted />
         ) : queryText ? (
-          <QueryPreviewCode value={queryText} />
+          <QueryPreviewCode value={queryText} isCopyEnabled />
         ) : undefined}
       </ModalBody>
       {error && (
