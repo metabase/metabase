@@ -173,7 +173,7 @@ jobs:
 
   be-tests-mysql-latest-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     env:
       CI: 'true'
       DRIVERS: mysql
