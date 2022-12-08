@@ -52,6 +52,7 @@
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
+   [metabase.test.util :as tu]
    [metabase.test.util.log :as tu.log]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -889,15 +890,24 @@
                                      remap)
                              remap)]
             (fn []
-              (tt/with-temp* [Dimension   [_ {:field_id (:id original)
-                                              :name     (format "%s [internal remap]" (:display_name original))
-                                              :type     :internal}]
-                              FieldValues [_ {:field_id              (:id original)
-                                              :values                (keys values-map)
-                                              :human_readable_values (vals values-map)}]]
-                (testing (format "With human readable values remapping %s -> %s\n"
-                                 (describe-field original) (pr-str values-map))
-                  (thunk)))))))))
+              (let [preexisting-id (db/select-one-id FieldValues
+                                                     :field_id (:id original)
+                                                     :type :full)
+                    testing-thunk (fn []
+                                    (testing (format "With human readable values remapping %s -> %s\n"
+                                                     (describe-field original) (pr-str values-map))
+                                      (thunk)))]
+                (tt/with-temp* [Dimension   [_ {:field_id (:id original)
+                                                :name     (format "%s [internal remap]" (:display_name original))
+                                                :type     :internal}]]
+                  (if preexisting-id
+                    (tu/with-temp-vals-in-db FieldValues preexisting-id {:values (keys values-map)
+                                                                         :human_readable_values (vals values-map)}
+                      (testing-thunk))
+                    (tt/with-temp* [FieldValues [_ {:field_id              (:id original)
+                                                    :values                (keys values-map)
+                                                    :human_readable_values (vals values-map)}]]
+                      (testing-thunk)))))))))))
    orig->remapped))
 
 (defn- col-remappings-arg [x]

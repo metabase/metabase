@@ -8,3 +8,7 @@ export interface ListCellItemProps {
 export const ListCellItem = styled.div<ListCellItemProps>`
   border-color: ${props => props.isClickable && alpha("accent2", 0.2)};
 `;
+
+export const FilterContainer = styled.div`
+  padding: 0.5rem;
+`;
