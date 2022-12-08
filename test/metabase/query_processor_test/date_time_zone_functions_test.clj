@@ -466,8 +466,8 @@
                                    first)
                 results-timezone (mt/with-everything-store (qp.timezone/results-timezone-id))
                 now              (t/local-date-time (t/zone-id results-timezone))]
-            (is (true? (close-minute? minute (.getMinute now)))
-            (is (true? (close-hour? hour (.getHour now)))))))))))
+            (is (true? (close-minute? minute (.getMinute now))))
+            (is (true? (close-hour? hour (.getHour now))))))))))
 
 (deftest datetime-math-with-extract-test
   (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
@@ -826,7 +826,9 @@
                                  "2022-10-03T00:00:00Z")))))      ; 2022-10-03T00:00:00Z
         (testing "hour under a day"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:second 82800 :minute 1380 :hour 23 :day 1}
+            (is (partial= (if (driver/supports? driver/*driver* :set-timezone)
+                            {:second 82800 :minute 1380 :hour 23 :day 1}
+                            {:second 82800 :minute 1380 :hour 23 :day 0})
                           (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                                  "2022-10-03T00:00:00+01:00")))) ; 2022-10-02T22:00:00-01:00
           (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
@@ -835,7 +837,9 @@
                                  "2022-10-03T00:00:00+01:00"))))) ; 2022-10-02T23:00:00Z
         (testing "hour under a week"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:hour 167 :day 7 :week 1}
+            (is (partial= (if (driver/supports? driver/*driver* :set-timezone)
+                            {:hour 167 :day 7 :week 1}
+                            {:hour 167 :day 6 :week 0})
                           (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                                  "2022-10-09T00:00:00+01:00")))) ; 2022-10-08T22:00:00-01:00
           (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
@@ -853,7 +857,9 @@
                                  "2022-10-09T00:00:00Z")))))      ; 2022-10-09T00:00:00Z
         (testing "hour under a month"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:hour 743 :day 31 :week 4 :month 1}
+            (is (partial= (if (driver/supports? driver/*driver* :set-timezone)
+                            {:hour 743 :day 31 :week 4 :month 1}
+                            {:hour 743 :day 30 :week 4 :month 0})
                           (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                                  "2022-11-02T00:00:00+01:00")))) ; 2022-11-01T22:00:00-01:00
           (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
@@ -880,7 +886,9 @@
                                  "2023-10-02T00:00:00Z")))))      ; 2023-10-02T00:00:00Z
         (testing "hour under a year"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:day 365 :month 12 :year 1}
+            (is (partial= (if (driver/supports? driver/*driver* :set-timezone)
+                            {:day 365 :month 12 :year 1}
+                            {:day 364 :month 11 :year 0})
                           (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                                  "2023-10-02T00:00:00+01:00")))) ; 2023-10-01T22:00:00-01:00
           (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
@@ -923,9 +931,8 @@
                       first))))))))
 
 (deftest datetime-diff-type-test
-  ;; FIXME — The excluded drivers below don't have TIME types. These shouldn't be hard-coded with #26807
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :datetime-diff)
-                         :oracle :presto :redshift :sparksql :snowflake)
+  (mt/test-drivers (->> (disj (mt/normal-drivers-with-feature :datetime-diff) :snowflake)
+                        (filter mt/supports-time-type?))
     (testing "Cannot datetime-diff against time column"
       (mt/dataset attempted-murders
         (is (thrown-with-msg?
