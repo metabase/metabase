@@ -103,19 +103,18 @@
     (tu.async/with-chans [input-chan]
       (with-response [{:keys [os output-chan os-closed-chan]} input-chan]
         (a/close! input-chan)
-        (testing "output-channel should get closed"
-          ;; output-chan may or may not get the InterruptedException written to it -- it's a race condition -- we're just
-          ;; want to make sure it closes
-          (is (not= ::tu.async/timed-out (tu.async/wait-for-result output-chan)))
-          (testing "...as should the output stream"
-            (is (= true
-                   (wait-for-close os-closed-chan)))))
+        (testing "output stream should have gotten closed"
+          (is (= true
+                 (wait-for-close os-closed-chan))))
         (testing "An error should be written to the output stream"
           (is (schema= {:message (s/eq "Input channel unexpectedly closed.")
                         :_status (s/eq 500)
                         :trace   s/Any
                         s/Any    s/Any}
-                       (os->response os))))))))
+                       (os->response os))))
+        (testing "output-channel should be closed now as well"
+          (is (= nil
+                 (tu.async/wait-for-result output-chan))))))))
 
 
 ;;; ------------------------------ Output-chan closed early (i.e. API request canceled) ------------------------------
