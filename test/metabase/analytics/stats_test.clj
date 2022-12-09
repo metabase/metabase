@@ -11,6 +11,7 @@
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -66,6 +67,11 @@
     "10000+"     10001
     "10000+"     100000))
 
+(def DBMSVersionStats
+  {{:engine                   s/Keyword
+    (s/optional-key :version) (s/maybe su/NonBlankString)
+    s/Keyword                 s/Any}                      su/NonNegativeInt})
+
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
@@ -82,7 +88,9 @@
                        :slack_configured    false
                        :sso_configured      false
                        :has_sample_data     false}
-                      stats))))))
+                      stats))
+        (is (schema= DBMSVersionStats
+                     (-> stats :stats :database :dbms_versions)))))))
 
 (deftest conversion-test
   (is (= #{true}

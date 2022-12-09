@@ -13006,6 +13006,19 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
+      id: v46.00-026
+      author: metamben
+      comment: Added 0.46.0 -- add field for tracking DBMS versions
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: dbms_version
+                  type: ${text.type}
+                  remarks: 'A JSON object describing the flavor and version of the DBMS.'
+
+  - changeSet:
       id: v46.00-027
       author: snoe
       comment: Added 0.46.0 -- add last_used_at to FieldValues
