@@ -554,7 +554,6 @@
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
    metabase.test.data/mbql-query                                                                                             hooks.metabase.test.data/mbql-query
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
-   metabase.test.util.async/with-chans                                                                                       hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
    metabase.test.util.log/with-log-messages-for-level                                                                        hooks.common/with-ignored-first-arg

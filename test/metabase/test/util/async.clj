@@ -32,23 +32,6 @@
        (finally
          (a/close! chan#)))))
 
-(defmacro with-chans
-  "Create core.async channels and bind them; execute body, closing out the channels in a `finally` block. Useful for
-  writing tests where you don't want to accidentally leave things open if something goes wrong.
-
-    ;; Specifying definition is optional; defaults to `(a/chan 1)`
-    (with-chans [my-chan]
-
-    ;; specify multiple chans
-    (with-chans [chan-1 (a/chan 1)
-                 chan-2 (a/chan 100)]
-      ...) "
-  [[chan-binding chan & more] & body]
-  `(with-open-channels [~chan-binding ~(or chan `(a/chan 1))]
-     ~(if (seq more)
-        `(with-chans ~more ~@body)
-        `(do ~@body))))
-
 (defn wait-for-result
   "Wait up to `timeout-ms` (default 200) for a result from `chan`, or return a `::timed-out` message. Closes the channel
   when finished. Be careful when using this with non-promise channels, since it will consume the results!"
