@@ -38,7 +38,7 @@ const ConvertQueryModal = ({
   onLoadQuery,
   onUpdateQuestion,
   onClose,
-}: ConvertQueryModalProps): JSX.Element | null => {
+}: ConvertQueryModalProps): JSX.Element => {
   const engineType = getEngineNativeType(question.database()?.engine);
   const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
 
