@@ -120,6 +120,6 @@ config:
       is_superuser: true
       email: c@a.com
 ```
-both users a@b.com and c@a.com will be admins, a@b.com one because it's the first one on the list in an empty instance and c@a.com because it has the is_superuser flag.
+both users a@b.com and c@a.com will be admins: a@b.com because it's the first one on the list (if the instance is not yet configured) and c@a.com because it has the is_superuser flag. If an instance has already been configured, then a@b.com will be loaded as a normal user.
 
  
