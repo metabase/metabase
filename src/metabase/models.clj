@@ -1,5 +1,7 @@
 (ns metabase.models
-  (:require [metabase.models.activity :as activity]
+  (:require [metabase.models.action :as action]
+            [metabase.models.activity :as activity]
+            [metabase.models.app :as app]
             [metabase.models.application-permissions-revision :as a-perm-revision]
             [metabase.models.bookmark :as bookmark]
             [metabase.models.card :as card]
@@ -42,7 +44,9 @@
             [potemkin :as p]))
 
 ;; Fool the linter
-(comment activity/keep-me
+(comment action/keep-me
+         activity/keep-me
+         app/keep-me
          card/keep-me
          bookmark/keep-me
          collection/keep-me
@@ -84,7 +88,9 @@
          view-log/keep-me)
 
 (p/import-vars
+ [action Action HTTPAction ModelAction QueryAction]
  [activity Activity]
+ [app App]
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]

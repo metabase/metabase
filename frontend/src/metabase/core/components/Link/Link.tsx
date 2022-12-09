@@ -1,7 +1,7 @@
 import React, { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import Tooltip from "metabase/components/Tooltip";
-import { LinkRoot } from "./Link.styled";
 import { TooltipProps } from "metabase/components/Tooltip/Tooltip";
+import { LinkRoot } from "./Link.styled";
 
 export interface LinkProps extends HTMLAttributes<HTMLAnchorElement> {
   to: string;

@@ -274,7 +274,7 @@
     (find-joins my-database-id <airport> <country>)
     ;; ->
     ;; 3 joins needed: airport -> municipality; municipality -> region; region -> country
-    [{:lhs {:table <airport>, :field <airport.municipality-id>}
+    [{:lhs {:table <airport>, :field <airport.municipality_id>}
       :rhs {:table <municipality>, :field <municipality.id>}}
      {:lhs {:table <municipality>, :field <region.id>}
       :rhs {:table <region>, :field <country.id>}}
@@ -547,8 +547,8 @@
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values has_more_values]} (if (empty? constraints)
-                                           (params.field-values/get-or-create-field-values-for-current-user! (Field field-id))
-                                           (params.field-values/get-or-create-linked-filter-field-values! (Field field-id) constraints))]
+                                           (params.field-values/get-or-create-field-values-for-current-user! (db/select-one Field :id field-id))
+                                           (params.field-values/get-or-create-linked-filter-field-values! (db/select-one Field :id field-id) constraints))]
     {:values          (cond->> (map first values)
                         limit (take limit))
      :has_more_values (or (when limit

@@ -3,23 +3,21 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
+import { push, goBack } from "react-router-redux";
 import title from "metabase/hoc/Title";
-
-import PulseEdit from "../components/PulseEdit";
 
 import Collections from "metabase/entities/collections";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
 
-import { push, goBack } from "react-router-redux";
-
+import { getUser } from "metabase/selectors/user";
 import {
   getPulseId,
   getEditingPulse,
   getPulseCardPreviews,
   getPulseFormInput,
 } from "../selectors";
-import { getUser } from "metabase/selectors/user";
+import PulseEdit from "../components/PulseEdit";
 
 import {
   setEditingPulse,

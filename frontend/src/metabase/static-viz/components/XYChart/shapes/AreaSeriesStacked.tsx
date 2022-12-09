@@ -4,33 +4,33 @@ import { PositionScale } from "@visx/shape/lib/types";
 import { LineArea } from "metabase/static-viz/components/XYChart/shapes/LineArea";
 import {
   HydratedSeries,
-  SeriesDatum,
+  StackedDatumAccessor,
 } from "metabase/static-viz/components/XYChart/types";
 import { getY, getY1 } from "metabase/static-viz/components/XYChart/utils";
 
 interface AreaSeriesProps {
   series: HydratedSeries[];
   yScale: PositionScale;
-  xAccessor: (datum: SeriesDatum) => number;
+  xAccessor: StackedDatumAccessor;
 }
 
 export const AreaSeriesStacked = ({
-  series,
+  series: multipleSeries,
   yScale,
   xAccessor,
 }: AreaSeriesProps) => {
   return (
     <Group>
-      {series.map(s => {
+      {multipleSeries.map((series, seriesIndex) => {
         return (
           <LineArea
-            key={s.name}
+            key={series.name}
             yScale={yScale}
-            color={s.color}
-            data={s.stackedData}
-            x={xAccessor as any}
-            y={d => yScale(getY(d)) ?? 0}
-            y1={d => yScale(getY1(d)) ?? 0}
+            color={series.color}
+            data={series.stackedData}
+            x={xAccessor}
+            y={datum => yScale(getY(datum)) ?? 0}
+            y1={datum => yScale(getY1(datum)) ?? 0}
           />
         );
       })}

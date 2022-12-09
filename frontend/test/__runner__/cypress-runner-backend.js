@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 const fs = require("fs");
+const { spawn } = require("child_process");
 const os = require("os");
 const path = require("path");
-const { spawn } = require("child_process");
 
-const fetch = require("isomorphic-fetch");
+const http = require("http");
 
 const CypressBackend = {
   createServer(port = 4000) {
@@ -38,7 +38,7 @@ const CypressBackend = {
         MB_ENABLE_TEST_ENDPOINTS: "true",
         MB_PREMIUM_EMBEDDING_TOKEN:
           (process.env["MB_EDITION"] === "ee" &&
-            process.env["ENTERPRISE_TOKEN"]) ||
+            process.env["MB_PREMIUM_EMBEDDING_TOKEN"]) ||
           undefined,
       };
 
@@ -107,9 +107,30 @@ const CypressBackend = {
     }
 
     async function isReady(host) {
+      // This is needed until we can use NodeJS native `fetch`.
+      function request(url) {
+        return new Promise((resolve, reject) => {
+          const req = http.get(url, res => {
+            let body = "";
+
+            res.on("data", chunk => {
+              body += chunk;
+            });
+
+            res.on("end", () => {
+              resolve(JSON.parse(body));
+            });
+          });
+
+          req.on("error", e => {
+            reject(e);
+          });
+        });
+      }
+
       try {
-        const { status } = await fetch(`${host}/api/health`);
-        if (status === 200) {
+        const { status } = await request(`${host}/api/health`);
+        if (status === "ok") {
           return true;
         }
       } catch (e) {}

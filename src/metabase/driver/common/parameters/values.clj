@@ -14,9 +14,11 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+            [metabase.models.persisted-info :refer [PersistedInfo]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util.persisted-cache :as qp.persistence]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -139,15 +141,20 @@
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
-  (let [query (or (db/select-one-field :dataset_query Card :id card-id)
-                  (throw (ex-info (tru "Card {0} not found." card-id)
-                                  {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
+  (let [card           (db/select-one Card :id card-id)
+        persisted-info (when (:dataset card)
+                         (db/select-one PersistedInfo :card_id card-id))
+        query          (or (:dataset_query card)
+                           (throw (ex-info (tru "Card {0} not found." card-id)
+                                           {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
     (try
       (params/map->ReferencedCardQuery
        (let [query (assoc query :info {:card-id card-id})]
          (log/tracef "Compiling referenced query for Card %d\n%s" card-id (u/pprint-to-str query))
          (merge {:card-id card-id}
-                (qp/compile query))))
+                (or (when (qp.persistence/can-substitute? card persisted-info)
+                      {:query (qp.persistence/persisted-info-native-query persisted-info)})
+                    (qp/compile query)))))
       (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
@@ -163,7 +170,7 @@
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
-        snippet    (or (NativeQuerySnippet snippet-id)
+        snippet    (or (db/select-one NativeQuerySnippet :id snippet-id)
                        (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
                                        {:snippet-id   snippet-id
                                         :snippet-name snippet-name

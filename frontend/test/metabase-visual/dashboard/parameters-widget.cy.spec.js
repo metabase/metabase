@@ -35,8 +35,8 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         });
 
         const updatedSize = {
-          sizeX: 12,
-          sizeY: 32,
+          size_x: 12,
+          size_y: 32,
         };
 
         cy.editDashboardCard(card, updatedSize);
@@ -132,8 +132,8 @@ describe(`visual tests > dashboard > parameters widget`, () => {
         });
 
         const updatedSize = {
-          sizeX: 12,
-          sizeY: 32,
+          size_x: 12,
+          size_y: 32,
         };
 
         cy.editDashboardCard(card, updatedSize);

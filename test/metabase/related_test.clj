@@ -6,12 +6,13 @@
             [metabase.related :as related]
             [metabase.sync :as sync]
             [metabase.test :as mt]
-            [metabase.test.data.one-off-dbs :as one-off-dbs]))
+            [metabase.test.data.one-off-dbs :as one-off-dbs]
+            [toucan.db :as db]))
 
 (deftest collect-context-bearing-forms-test
   (is (= #{[:field 1 nil] [:metric 1] [:field 2 nil] [:segment 1]}
          (#'related/collect-context-bearing-forms [[:> [:field 1 nil] 3]
-                                                   ["and" [:= ["FIELD-ID" 2] 2]
+                                                   ["and" [:= ["field" 2 nil] 2]
                                                     ["segment" 1]]
                                                    [:metric 1]]))))
 
@@ -37,7 +38,7 @@
                                                      [1 1] 1.0}]
         (testing (format "Similarity between Card #%d and Card #%d" card-x card-y)
           (is (= expected-similarity
-                 (double (#'related/similarity (Card (get cards card-x)) (Card (get cards card-y)))))))))))
+                 (double (#'related/similarity (db/select-one Card :id (get cards card-x)) (db/select-one Card :id (get cards card-y)))))))))))
 
 (def ^:private ^:dynamic *world*)
 

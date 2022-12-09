@@ -45,7 +45,8 @@
    ["Broen Olujimi"       #t "2014-10-03T13:45" "f9b65c74-9f91-4cfd-9248-94a53af82866"]   ; 14
    ["Rüstem Hebel"        #t "2014-08-01T12:45" "02ad6b15-54b0-4491-bf0f-d781b0a2c4f5"]]] ; 15
  ["categories" [{:field-name "name"
-                 :base-type  :type/Text}]
+                 :base-type  :type/Text
+                 :not-null?  true}]
   [["African"]              ; 1
    ["American"]             ; 2
    ["Artisan"]              ; 3

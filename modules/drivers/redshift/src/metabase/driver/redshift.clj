@@ -4,6 +4,7 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -11,6 +12,7 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
             [metabase.public-settings :as public-settings]
@@ -83,8 +85,6 @@
   [_]
   :sunday)
 
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -103,7 +103,9 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
-  (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp hsql-form)))
+  (let [hsql-form (hx/->timestamp hsql-form)]
+    (-> (hsql/call :dateadd (hx/literal unit) amount hsql-form)
+        (hx/with-type-info (hx/type-info hsql-form)))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
@@ -191,6 +193,59 @@
        (map (partial sql.qp/->honeysql driver))
        (reduce (partial hsql/call :concat))))
 
+(defn- extract [unit temporal]
+  (hsql/call :extract (format "'%s'" (name unit)) temporal))
+
+(defmethod sql.qp/->honeysql [:redshift :datetime-diff]
+  ;; postgres uses `extract` around a call to `age` to calculate datediffs. 
+  ;; redshift doesn't have `age`, so we have to use `extract` instead.
+  [driver [_ x y unit]]
+  (let [x (hx/->timestamp (sql.qp/->honeysql driver x))
+        y (hx/->timestamp (sql.qp/->honeysql driver y))]
+    (case unit
+      :year
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             (hx/- (extract :year b) (extract :year a))
+                             ;; decrement if a is later than b in the year calendar
+                             (hx/cast
+                              :integer
+                              (hsql/call
+                               :or
+                               (hsql/call :> (extract :month a) (extract :month b))
+                               (hsql/call
+                                :and
+                                (hsql/call := (extract :month a) (extract :month b))
+                                (hsql/call :> (extract :day a) (extract :day b)))))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :month
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             (hsql/call :datediff (hsql/raw (name unit)) a b)
+                             (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :week
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (hsql/call :datediff (hsql/raw "day") a b) 7))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :day
+      (hsql/call :datediff (hsql/raw (name unit)) x y)
+
+      (:hour :minute :second)
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (hx/cast :float (hsql/call :datediff (hsql/raw "millisecond") a b)) ; datediff returns integer, so cast to float
+                                    (case unit :hour 3600000 :minute 60000 :second 1000)))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x)))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -237,9 +292,9 @@
         user-parameters))
 
 (defmethod qp.util/query->remark :redshift
-  [_ {{:keys [executed-by card-id]} :info, :as query}]
+  [_ {{:keys [executed-by card-id dashboard-id]} :info, :as query}]
   (str "/* partner: \"metabase\", "
-       (json/generate-string {:dashboard_id        nil ;; requires metabase/metabase#11909
+       (json/generate-string {:dashboard_id        dashboard-id
                               :chart_id            card-id
                               :optional_user_id    executed-by
                               :optional_account_id (public-settings/site-uuid)
@@ -278,3 +333,19 @@
                                                                   metadata
                                                                   schema-inclusion-patterns
                                                                   schema-exclusion-patterns))))
+
+(defmethod sql-jdbc.describe-table/describe-table-fields :redshift
+  [driver conn {schema :schema, table-name :name :as table} db-name-or-nil]
+  (let [parent-method (get-method sql-jdbc.describe-table/describe-table-fields :sql-jdbc)]
+    (try (parent-method driver conn table db-name-or-nil)
+         (catch Exception e
+           (log/error e (trs "Error fetching field metadata for table {0}" table-name))
+           ;; Use the fallback method (a SELECT * query) if the JDBC driver throws an exception (#21215)
+           (into
+            #{}
+            (sql-jdbc.describe-table/describe-table-fields-xf driver table)
+            (sql-jdbc.describe-table/fallback-fields-metadata-from-select-query driver conn schema table-name))))))
+
+(defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))

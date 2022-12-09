@@ -5,7 +5,7 @@
 
 (models/defmodel QueryCache :query_cache)
 
-(u/strict-extend (class QueryCache)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class QueryCache)
   models/IModel
   (merge models/IModelDefaults
          {:properties (constantly {:updated-at-timestamped? true})}))

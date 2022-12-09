@@ -1,6 +1,7 @@
 import _ from "underscore";
-
+import { push } from "react-router-redux";
 import { open } from "metabase/lib/dom";
+import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions";
 
 export function performAction(action, { dispatch, onChangeCardAndRun }) {
   let didPerform = false;
@@ -15,7 +16,13 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
     const url = action.url();
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
-      open(url, { ignoreSiteUrl });
+      open(url, {
+        openInSameOrigin: (url, location) => {
+          dispatch(push(location));
+          dispatch(setParameterValuesFromQueryParams(location.query));
+        },
+        ignoreSiteUrl,
+      });
       didPerform = true;
     }
   }

@@ -27,11 +27,11 @@ export const PublicLinkHeader = styled(OptionHeader)`
 `;
 
 export const PublicEmbedHeader = styled(OptionHeader)`
-  color: ${color("summarize")};
+  color: ${color("brand")};
 `;
 
 export const EmbedWidgetHeader = styled(OptionHeader)`
-  color: ${color("filter")};
+  color: ${color("brand")};
 `;
 
 interface DescriptionProps {

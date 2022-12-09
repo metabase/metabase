@@ -1,10 +1,5 @@
-import {
-  isDimension,
-  isMetric,
-  isNumeric,
-  isAny,
-} from "metabase/lib/schema_metadata";
 import { t } from "ttag";
+import _ from "underscore";
 import {
   columnsAreValid,
   getFriendlyName,
@@ -12,15 +7,28 @@ import {
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 
-import { seriesSetting } from "metabase/visualizations/lib/settings/series";
+import {
+  seriesSetting,
+  keyForSingleSeries,
+} from "metabase/visualizations/lib/settings/series";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 
-import _ from "underscore";
-import { getMaxMetricsSupported } from "metabase/visualizations";
+import {
+  getMaxMetricsSupported,
+  getMaxDimensionsSupported,
+} from "metabase/visualizations";
+
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import {
+  isDimension,
+  isMetric,
+  isNumeric,
+  isAny,
+} from "metabase-lib/types/utils/isa";
 
 // NOTE: currently we don't consider any date extracts to be histgrams
 const HISTOGRAM_DATE_EXTRACTS = new Set([
@@ -62,19 +70,24 @@ function getDefaultScatterColumns([
 }
 
 function getDefaultLineAreaBarColumns(series) {
-  return getDefaultDimensionsAndMetrics(series);
+  const [
+    {
+      card: { display },
+    },
+  ] = series;
+  return getDefaultDimensionsAndMetrics(
+    series,
+    getMaxDimensionsSupported(display),
+  );
 }
 
 export const GRAPH_DATA_SETTINGS = {
   ...columnSettings({
-    getColumns: (
-      [
-        {
-          data: { cols },
-        },
-      ],
-      settings,
-    ) => cols,
+    getColumns: ([
+      {
+        data: { cols },
+      },
+    ]) => cols,
     hidden: true,
   }),
   "graph._dimension_filter": {
@@ -91,6 +104,10 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`X-axis`,
     widget: "fields",
+    getMarginBottom: (series, vizSettings) =>
+      vizSettings["graph.dimensions"]?.length === 2 && series.length <= 20
+        ? "0.5rem"
+        : "1rem",
     isValid: (series, vizSettings) =>
       series.some(
         ({ card, data }) =>
@@ -112,26 +129,102 @@ export const GRAPH_DATA_SETTINGS = {
       ),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
-      const value = vizSettings["graph.dimensions"];
+      const addedDimensions = vizSettings["graph.dimensions"];
+      const maxDimensionsSupported = getMaxDimensionsSupported(card.display);
       const options = data.cols
         .filter(vizSettings["graph._dimension_filter"])
         .map(getOptionFromColumn);
       return {
         options,
         addAnother:
-          options.length > value.length &&
-          value.length < 2 &&
+          options.length > addedDimensions.length &&
+          addedDimensions.length < maxDimensionsSupported &&
+          addedDimensions.every(
+            dimension => dimension !== undefined && dimension !== null,
+          ) &&
           vizSettings["graph.metrics"].length < 2
-            ? t`Add a series breakout...`
+            ? t`Add series breakout`
             : null,
         columns: data.cols,
-        showColumnSetting: true,
+        // When this prop is passed it will only show the
+        // column settings for any index that is included in the array
+        showColumnSettingForIndicies: [0],
       };
     },
     readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
     writeDependencies: ["graph.metrics"],
+    eraseDependencies: ["graph.series_order_dimension", "graph.series_order"],
     dashboard: false,
     useRawSeries: true,
+  },
+  "graph.series_order_dimension": {
+    getValue: (_series, settings) => settings["graph.dimensions"][1],
+    // This read dependency is set so that "graph.series_order" is computed *before* this value, ensuring that
+    // that it uses the stored value if one exists. This is needed to check if the dimension has actually changed
+    readDependencies: ["graph.series_order"],
+  },
+  "graph.series_order": {
+    section: t`Data`,
+    widget: ChartSettingOrderedSimple,
+    marginBottom: "1rem",
+
+    getValue: (series, settings) => {
+      const seriesKeys = series.map(s => keyForSingleSeries(s));
+      const seriesSettings = settings["series_settings"];
+      const seriesColors = settings["series_settings.colors"] || {};
+      const seriesOrder = settings["graph.series_order"];
+      // Because this setting is a read dependency of graph.series_order_dimension, this should
+      // Always be the stored setting, not calculated.
+      const seriesOrderDimension = settings["graph.series_order_dimension"];
+      const currentDimension = settings["graph.dimensions"][1];
+
+      if (currentDimension === undefined) {
+        return [];
+      }
+
+      const generateDefault = keys => {
+        return keys.map(key => ({
+          key,
+          color: seriesColors[key],
+          enabled: true,
+          name: seriesSettings[key]?.title || key,
+        }));
+      };
+
+      const removeMissingOrder = (keys, order) =>
+        order.filter(o => keys.includes(o.key));
+      const newKeys = (keys, order) =>
+        keys.filter(key => !order.find(o => o.key === key));
+
+      if (
+        !seriesOrder ||
+        !_.isArray(seriesOrder) ||
+        !seriesOrder.every(
+          order =>
+            order.key !== undefined &&
+            order.name !== undefined &&
+            order.color !== undefined,
+        ) ||
+        seriesOrderDimension !== currentDimension
+      ) {
+        return generateDefault(seriesKeys);
+      }
+
+      return [
+        ...removeMissingOrder(seriesKeys, seriesOrder),
+        ...generateDefault(newKeys(seriesKeys, seriesOrder)),
+      ].map(item => ({
+        ...item,
+        name: seriesSettings[item.key]?.title || item.key,
+        color: seriesColors[item.key],
+      }));
+    },
+    getHidden: (series, settings) => {
+      return settings["graph.dimensions"]?.length < 2 || series.length > 20;
+    },
+    dashboard: false,
+    readDependencies: ["series_settings.colors", "series_settings"],
+    writeDependencies: ["graph.series_order_dimension"],
   },
   "graph.metrics": {
     section: t`Data`,
@@ -151,31 +244,40 @@ export const GRAPH_DATA_SETTINGS = {
             vizSettings["graph._metric_filter"],
           ),
       ),
-    getDefault: (series, vizSettings) => getDefaultColumns(series).metrics,
+    getDefault: series => getDefaultColumns(series).metrics,
     persistDefault: true,
-    getProps: ([{ card, data }], vizSettings) => {
+    getProps: ([{ card, data }], vizSettings, _onChange, extra) => {
       const options = data.cols
         .filter(vizSettings["graph._metric_filter"])
         .map(getOptionFromColumn);
 
+      const addedMetrics = vizSettings["graph.metrics"];
       const hasBreakout = vizSettings["graph.dimensions"].length > 1;
-      const addedMetricsCount = vizSettings["graph.metrics"].length;
+      const addedMetricsCount = addedMetrics.length;
       const maxMetricsSupportedCount = getMaxMetricsSupported(card.display);
 
       const hasMetricsToAdd = options.length > addedMetricsCount;
       const canAddAnother =
         addedMetricsCount < maxMetricsSupportedCount &&
         hasMetricsToAdd &&
-        !hasBreakout;
+        !hasBreakout &&
+        addedMetrics.every(metric => metric != null);
 
       return {
         options,
-        addAnother: canAddAnother ? t`Add another series...` : null,
+        addAnother: canAddAnother ? t`Add another series` : null,
         columns: data.cols,
         showColumnSetting: true,
+        showColorPicker: !hasBreakout,
+        colors: vizSettings["series_settings.colors"],
+        series: extra.transformedSeries,
       };
     },
-    readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
+    readDependencies: [
+      "graph._dimension_filter",
+      "graph._metric_filter",
+      "series_settings.colors",
+    ],
     writeDependencies: ["graph.dimensions"],
     dashboard: false,
     useRawSeries: true,
@@ -240,10 +342,10 @@ export const STACKABLE_SETTINGS = {
     isValid: (series, settings) => {
       if (settings["stackable.stack_type"] != null) {
         const displays = series.map(single => settings.series(single).display);
-        const hasStackable = _.any(displays, display =>
+        const stackableDisplays = displays.filter(display =>
           STACKABLE_DISPLAY_TYPES.has(display),
         );
-        return hasStackable;
+        return stackableDisplays.length > 1;
       }
       return true;
     },
@@ -255,7 +357,10 @@ export const STACKABLE_SETTINGS = {
         : null,
     getHidden: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
-      return !_.any(displays, display => STACKABLE_DISPLAY_TYPES.has(display));
+      const stackableDisplays = displays.filter(display =>
+        STACKABLE_DISPLAY_TYPES.has(display),
+      );
+      return stackableDisplays.length <= 1;
     },
     readDependencies: ["graph.metrics", "series"],
   },
@@ -287,29 +392,7 @@ export const STACKABLE_SETTINGS = {
   },
 };
 
-export const GRAPH_GOAL_SETTINGS = {
-  "graph.show_goal": {
-    section: t`Display`,
-    title: t`Goal line`,
-    widget: "toggle",
-    default: false,
-  },
-  "graph.goal_value": {
-    section: t`Display`,
-    title: t`Goal value`,
-    widget: "number",
-    default: 0,
-    getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
-    readDependencies: ["graph.show_goal"],
-  },
-  "graph.goal_label": {
-    section: t`Display`,
-    title: t`Goal label`,
-    widget: "input",
-    default: t`Goal`,
-    getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
-    readDependencies: ["graph.show_goal"],
-  },
+export const GRAPH_TREND_SETTINGS = {
   "graph.show_trendline": {
     section: t`Display`,
     title: t`Trend line`,
@@ -320,6 +403,8 @@ export const GRAPH_GOAL_SETTINGS = {
       return !insights || insights.length === 0;
     },
     useRawSeries: true,
+    inline: true,
+    marginBottom: "1rem",
   },
 };
 
@@ -331,17 +416,19 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     getHidden: (series, vizSettings) =>
       vizSettings["stackable.stack_type"] === "normalized",
     default: false,
+    inline: true,
+    marginBottom: "1rem",
   },
   "graph.label_value_frequency": {
     section: t`Display`,
     title: t`Values to show`,
-    widget: "radio",
+    widget: "segmentedControl",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
     props: {
       options: [
-        { name: t`As many as can fit nicely`, value: "fit" },
+        { name: t`Some`, value: "fit" },
         { name: t`All`, value: "all" },
       ],
     },
@@ -350,8 +437,8 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
   },
   "graph.label_value_formatting": {
     section: t`Display`,
-    title: t`Value formatting`,
-    widget: "radio",
+    title: t`Auto formatting`,
+    widget: "segmentedControl",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.show_values"] !== true ||
       vizSettings["stackable.stack_type"] === "normalized",
@@ -412,7 +499,9 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.x_axis.scale": {
     section: t`Axes`,
-    title: t`X-axis scale`,
+    group: t`X-axis`,
+    title: t`Scale`,
+    index: 4,
     widget: "select",
     readDependencies: [
       "graph.x_axis._is_timeseries",
@@ -446,7 +535,9 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.y_axis.scale": {
     section: t`Axes`,
-    title: t`Y-axis scale`,
+    title: t`Scale`,
+    index: 7,
+    group: t`Y-axis`,
     widget: "select",
     default: "linear",
     getProps: (series, vizSettings) => ({
@@ -459,7 +550,9 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.x_axis.axis_enabled": {
     section: t`Axes`,
-    title: t`Show x-axis line and marks`,
+    group: t`X-axis`,
+    title: t`Show lines and marks`,
+    index: 3,
     widget: "select",
     props: {
       options: [
@@ -474,7 +567,9 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.y_axis.axis_enabled": {
     section: t`Axes`,
-    title: t`Show y-axis line and marks`,
+    title: t`Show lines and marks`,
+    index: 8,
+    group: t`Y-axis`,
     widget: "select",
     props: {
       options: [
@@ -486,12 +581,17 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.y_axis.auto_range": {
     section: t`Axes`,
+    group: t`Y-axis`,
+    index: 4,
     title: t`Auto y-axis range`,
+    inline: true,
     widget: "toggle",
     default: true,
   },
   "graph.y_axis.min": {
     section: t`Axes`,
+    group: t`Y-axis`,
+    index: 5,
     title: t`Min`,
     widget: "number",
     default: 0,
@@ -500,65 +600,62 @@ export const GRAPH_AXIS_SETTINGS = {
   },
   "graph.y_axis.max": {
     section: t`Axes`,
+    group: t`Y-axis`,
+    index: 6,
     title: t`Max`,
     widget: "number",
     default: 100,
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.auto_range"] !== false,
   },
-  /*
-  "graph.y_axis_right.auto_range": {
-      section: t`Axes`,
-      title: t`Auto right-hand y-axis range`,
-      widget: "toggle",
-      default: true
-  },
-  "graph.y_axis_right.min": {
-      section: t`Axes`,
-      title: t`Min`,
-      widget: "number",
-      default: 0,
-      getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
-  },
-  "graph.y_axis_right.max": {
-      section: t`Axes`,
-      title: t`Max`,
-      widget: "number",
-      default: 100,
-      getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
-  },
-*/
   "graph.y_axis.auto_split": {
     section: t`Axes`,
-    title: t`Use a split y-axis when necessary`,
+    group: t`Y-axis`,
+    index: 3,
+    title: t`Split y-axis when necessary`,
     widget: "toggle",
+    inline: true,
     default: true,
     getHidden: series => series.length < 2,
   },
   "graph.x_axis.labels_enabled": {
-    section: t`Labels`,
-    title: t`Show label on x-axis`,
+    section: t`Axes`,
+    group: t`X-axis`,
+    index: 1,
+    title: t`Show label`,
+    inline: true,
     widget: "toggle",
     default: true,
   },
   "graph.x_axis.title_text": {
-    section: t`Labels`,
-    title: t`X-axis label`,
+    section: t`Axes`,
+    title: t`Label`,
+    index: 2,
+    group: t`X-axis`,
     widget: "input",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.x_axis.labels_enabled"] === false,
     getDefault: (series, vizSettings) =>
-      series.length === 1 ? getFriendlyName(series[0].data.cols[0]) : null,
+      series.length > 1 ? getFriendlyName(series[0].data.cols[0]) : null,
+    getProps: series => ({
+      placeholder:
+        series.length > 1 ? getFriendlyName(series[0].data.cols[0]) : null,
+    }),
   },
   "graph.y_axis.labels_enabled": {
-    section: t`Labels`,
-    title: t`Show label on y-axis`,
+    section: t`Axes`,
+    title: t`Show label`,
+    index: 1,
+    group: t`Y-axis`,
     widget: "toggle",
+    inline: true,
     default: true,
   },
   "graph.y_axis.title_text": {
-    section: t`Labels`,
-    title: t`Y-axis label`,
+    section: t`Axes`,
+    title: t`Label`,
+    index: 2,
+    group: t`Y-axis`,
     widget: "input",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,

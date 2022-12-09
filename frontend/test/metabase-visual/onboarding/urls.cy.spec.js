@@ -1,4 +1,5 @@
 import { restore } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("visual tests > onboarding > URLs", () => {
   beforeEach(() => {
@@ -52,7 +53,7 @@ describe("visual tests > onboarding > URLs", () => {
   });
 
   it("browse/1 (Sample Database)", () => {
-    cy.intercept("GET", `api/database/1/schemas`).as("schemas");
+    cy.intercept("GET", `api/database/${SAMPLE_DB_ID}/schemas`).as("schemas");
     cy.visit("/browse/1");
 
     cy.wait("@schemas");

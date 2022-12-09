@@ -72,7 +72,7 @@
             [_ db-nm]  (re-matches (re-pattern (format "^db-%d-%s-(.*)$" (u/the-id db) (name driver/*driver*)))
                                    (get props "dataSourceName"))]
         (is (some? db-nm))
-        ;; ensure that, for any sql-jdbc drier anyway, we found *some* DB name to use in this String
+        ;; ensure that, for any sql-jdbc driver anyway, we found *some* DB name to use in this String
         (is (not= db-nm "null"))))))
 
 (deftest same-connection-details-result-in-equal-specs-test
@@ -155,17 +155,18 @@
             ;; restore the original test DB details, no matter what just happened
             (db/update! Database (mt/id) :details (:details db)))))))
   (testing "postgres secrets are stable (#23034)"
-    (mt/with-temp* [Secret [secret {:name   "file based secret"
-                                    :kind   :perm-cert
-                                    :source nil
-                                    :value  (.getBytes "super secret")}]]
-      (let [db {:engine :postgres
-                :details {:ssl true
-                          :ssl-mode "verify-ca"
-                          :ssl-root-cert-options "uploaded"
+    (mt/with-temp* [Secret [secret {:name       "file based secret"
+                                    :kind       :perm-cert
+                                    :source     nil
+                                    :value      (.getBytes "super secret")
+                                    :creator_id (mt/user->id :crowberto)}]]
+      (let [db {:engine  :postgres
+                :details {:ssl                      true
+                          :ssl-mode                 "verify-ca"
+                          :ssl-root-cert-options    "uploaded"
                           :ssl-root-cert-creator-id (mt/user->id :crowberto)
-                          :ssl-root-cert-source nil
-                          :ssl-root-cert-id (:id secret)
+                          :ssl-root-cert-source     nil
+                          :ssl-root-cert-id         (:id secret)
                           :ssl-root-cert-created-at "2022-07-25T15:57:51.556-05:00"}}]
         (is (instance? java.io.File
                        (:sslrootcert (#'sql-jdbc.conn/connection-details->spec :postgres

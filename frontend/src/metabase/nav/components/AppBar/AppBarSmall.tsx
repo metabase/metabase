@@ -1,11 +1,11 @@
 import React, { useCallback, useState } from "react";
-import { CollectionId, User } from "metabase-types/api";
-import AppBarLogo from "./AppBarLogo";
-import AppBarToggle from "./AppBarToggle";
+import { User } from "metabase-types/api";
 import SearchBar from "../SearchBar";
 import ProfileLink from "../ProfileLink";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
+import AppBarToggle from "./AppBarToggle";
+import AppBarLogo from "./AppBarLogo";
 import {
   AppBarHeader,
   AppBarLogoContainer,
@@ -19,9 +19,8 @@ import {
 
 export interface AppBarSmallProps {
   currentUser: User;
-  collectionId?: CollectionId;
   isNavBarOpen?: boolean;
-  isNavBarVisible?: boolean;
+  isNavBarEnabled?: boolean;
   isSearchVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
@@ -33,9 +32,8 @@ export interface AppBarSmallProps {
 
 const AppBarSmall = ({
   currentUser,
-  collectionId,
   isNavBarOpen,
-  isNavBarVisible,
+  isNavBarEnabled,
   isSearchVisible,
   isProfileLinkVisible,
   isCollectionPathVisible,
@@ -44,9 +42,11 @@ const AppBarSmall = ({
   onCloseNavbar,
   onLogout,
 }: AppBarSmallProps): JSX.Element => {
+  const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+
   const [isSearchActive, setSearchActive] = useState(false);
   const isInfoVisible = isQuestionLineageVisible || isCollectionPathVisible;
-  const isSubheaderVisible = !isNavBarOpen && isInfoVisible;
+  const isSubheaderVisible = !isNavBarVisible && isInfoVisible;
 
   const handleLogoClick = useCallback(() => {
     onCloseNavbar();
@@ -66,9 +66,9 @@ const AppBarSmall = ({
       <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
         <AppBarMainContainer>
           <AppBarToggleContainer>
-            {isNavBarVisible && (
+            {isNavBarEnabled && (
               <AppBarToggle
-                isNavBarOpen={isNavBarOpen}
+                isNavBarOpen={isNavBarVisible}
                 onToggleClick={onToggleNavbar}
               />
             )}
@@ -92,11 +92,11 @@ const AppBarSmall = ({
         </AppBarLogoContainer>
       </AppBarHeader>
       {isSubheaderVisible && (
-        <AppBarSubheader isNavBarOpen={isNavBarOpen}>
+        <AppBarSubheader isNavBarOpen={isNavBarVisible}>
           {isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs collectionId={collectionId} />
+            <CollectionBreadcrumbs />
           ) : null}
         </AppBarSubheader>
       )}

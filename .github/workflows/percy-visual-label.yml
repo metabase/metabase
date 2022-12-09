@@ -14,7 +14,7 @@ jobs:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       MB_EDITION: ee
-      ENTERPRISE_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
     steps:
       - uses: actions/checkout@v3
       - name: Prepare front-end environment

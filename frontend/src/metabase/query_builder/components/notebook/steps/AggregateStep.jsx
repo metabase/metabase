@@ -2,9 +2,8 @@
 import React from "react";
 import { t } from "ttag";
 
-import ClauseStep from "./ClauseStep";
-
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
+import ClauseStep from "./ClauseStep";
 
 const aggTetherOptions = {
   attachment: "top left",
@@ -37,13 +36,13 @@ export default function AggregateStep({
           aggregation={aggregation}
           onChangeAggregation={newAggregation =>
             aggregation
-              ? aggregation.replace(newAggregation).update(updateQuery)
-              : query.aggregate(newAggregation).update(updateQuery)
+              ? updateQuery(aggregation.replace(newAggregation))
+              : updateQuery(query.aggregate(newAggregation))
           }
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={aggregation => aggregation.remove().update(updateQuery)}
+      onRemove={aggregation => updateQuery(aggregation.remove())}
       canRemove={aggregation => aggregation.canRemove()}
     />
   );

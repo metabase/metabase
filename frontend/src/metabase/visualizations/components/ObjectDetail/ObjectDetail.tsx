@@ -2,15 +2,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import Question from "metabase-lib/lib/Question";
-import { isPK } from "metabase/lib/schema_metadata";
-import { Table } from "metabase-types/types/Table";
-
-import { ForeignKey } from "metabase-types/api";
+import { State } from "metabase-types/store";
+import type { ForeignKey, ConcreteTableId } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
-import { ObjectId, OnVisualizationClickType } from "./types";
 
-import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -35,7 +30,11 @@ import {
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { State } from "metabase-types/store";
+import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
+import { isPK } from "metabase-lib/types/utils/isa";
+import Table from "metabase-lib/metadata/Table";
+import Question from "metabase-lib/Question";
+import { ObjectId, OnVisualizationClickType } from "./types";
 
 import {
   getObjectName,
@@ -46,6 +45,8 @@ import {
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
+  CenteredLayout,
+  RootModal,
   ObjectDetailModal,
   ObjectDetailBodyWrapper,
   ObjectIdLabel,
@@ -105,6 +106,9 @@ export interface ObjectDetailProps {
   canZoom: boolean;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
+  isDataApp?: boolean;
+  showActions?: boolean;
+  showRelations?: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
   fetchTableFks: (id: number) => void;
@@ -127,6 +131,9 @@ export function ObjectDetailFn({
   canZoom,
   canZoomPreviousRow,
   canZoomNextRow,
+  isDataApp = false,
+  showActions = true,
+  showRelations = true,
   onVisualizationClick,
   visualizationIsClickable,
   fetchTableFks,
@@ -154,8 +161,8 @@ export function ObjectDetailFn({
       return;
     }
 
-    if (table && table.fks == null) {
-      fetchTableFks(table.id);
+    if (table && table.fks == null && !isVirtualCardId(table.id)) {
+      fetchTableFks(table.id as ConcreteTableId);
     }
     // load up FK references
     if (tableForeignKeys) {
@@ -232,36 +239,31 @@ export function ObjectDetailFn({
 
   const displayId = getDisplayId({ cols: data.cols, zoomedRow });
   const hasPk = !!data.cols.find(isPK);
-  const hasRelationships = !!(
-    tableForeignKeys &&
-    !!tableForeignKeys.length &&
-    hasPk
-  );
+  const hasRelationships =
+    showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
 
   return (
-    <Modal
-      isOpen
-      full={false}
-      onClose={closeObjectDetail}
-      className={""} // need an empty className to override the Modal default width
-    >
-      <ObjectDetailModal wide={hasRelationships}>
-        {hasNotFoundError ? (
-          <ErrorWrapper>
-            <NotFound />
-          </ErrorWrapper>
-        ) : (
-          <div className="ObjectDetail" data-testid="object-detail">
+    <ObjectDetailModal wide={hasRelationships}>
+      {hasNotFoundError ? (
+        <ErrorWrapper>
+          <NotFound />
+        </ErrorWrapper>
+      ) : (
+        <div className="ObjectDetail" data-testid="object-detail">
+          {!isDataApp && (
             <ObjectDetailHeader
               canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
               objectName={objectName}
               objectId={displayId}
               canZoomPreviousRow={canZoomPreviousRow}
               canZoomNextRow={canZoomNextRow}
+              showActions={showActions}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
               viewNextObjectDetail={viewNextObjectDetail}
               closeObjectDetail={closeObjectDetail}
             />
+          )}
+          <ObjectDetailBodyWrapper>
             <ObjectDetailBody
               data={data}
               objectName={objectName}
@@ -274,18 +276,65 @@ export function ObjectDetailFn({
               tableForeignKeyReferences={tableForeignKeyReferences}
               followForeignKey={onFollowForeignKey}
             />
-          </div>
-        )}
-      </ObjectDetailModal>
-    </Modal>
+          </ObjectDetailBodyWrapper>
+        </div>
+      )}
+    </ObjectDetailModal>
   );
 }
+
+function ObjectDetailWrapper({
+  question,
+  isDataApp,
+  data,
+  closeObjectDetail,
+  ...props
+}: ObjectDetailProps & { isDataApp?: boolean }) {
+  if (isDataApp || question.display() === "object") {
+    if (data.rows.length > 1) {
+      return (
+        <CenteredLayout>
+          <h3>{t`Too many rows for a detail view`}</h3>
+        </CenteredLayout>
+      );
+    }
+
+    return (
+      <ObjectDetailFn
+        {...props}
+        data={data}
+        question={question}
+        showActions={false}
+        showRelations={false}
+        closeObjectDetail={closeObjectDetail}
+        isDataApp={isDataApp}
+      />
+    );
+  }
+  return (
+    <RootModal
+      isOpen
+      full={false}
+      onClose={closeObjectDetail}
+      className={""} // need an empty className to override the Modal default width
+    >
+      <ObjectDetailFn
+        {...props}
+        data={data}
+        question={question}
+        closeObjectDetail={closeObjectDetail}
+      />
+    </RootModal>
+  );
+}
+
 export interface ObjectDetailHeaderProps {
   canZoom: boolean;
   objectName: string;
   objectId: ObjectId | null | unknown;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
+  showActions?: boolean;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
@@ -297,6 +346,7 @@ export function ObjectDetailHeader({
   objectId,
   canZoomPreviousRow,
   canZoomNextRow,
+  showActions = true,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
@@ -309,43 +359,45 @@ export function ObjectDetailHeader({
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
         </h2>
       </div>
-      <div className="flex align-center">
-        <div className="flex p2">
-          {!!canZoom && (
-            <>
+      {showActions && (
+        <div className="flex align-center">
+          <div className="flex p2">
+            {!!canZoom && (
+              <>
+                <Button
+                  data-testid="view-previous-object-detail"
+                  onlyIcon
+                  borderless
+                  className="mr1"
+                  disabled={!canZoomPreviousRow}
+                  onClick={viewPreviousObjectDetail}
+                  icon="chevronup"
+                  iconSize={20}
+                />
+                <Button
+                  data-testid="view-next-object-detail"
+                  onlyIcon
+                  borderless
+                  disabled={!canZoomNextRow}
+                  onClick={viewNextObjectDetail}
+                  icon="chevrondown"
+                  iconSize={20}
+                />
+              </>
+            )}
+            <CloseButton>
               <Button
-                data-testid="view-previous-object-detail"
+                data-testId="object-detail-close-button"
                 onlyIcon
                 borderless
-                className="mr1"
-                disabled={!canZoomPreviousRow}
-                onClick={viewPreviousObjectDetail}
-                icon="chevronup"
+                onClick={closeObjectDetail}
+                icon="close"
                 iconSize={20}
               />
-              <Button
-                data-testid="view-next-object-detail"
-                onlyIcon
-                borderless
-                disabled={!canZoomNextRow}
-                onClick={viewNextObjectDetail}
-                icon="chevrondown"
-                iconSize={20}
-              />
-            </>
-          )}
-          <CloseButton>
-            <Button
-              data-testId="object-detail-close-button"
-              onlyIcon
-              borderless
-              onClick={closeObjectDetail}
-              icon="close"
-              iconSize={20}
-            />
-          </CloseButton>
+            </CloseButton>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -378,7 +430,7 @@ export function ObjectDetailBody({
   followForeignKey,
 }: ObjectDetailBodyProps): JSX.Element {
   return (
-    <ObjectDetailBodyWrapper>
+    <>
       <DetailsTable
         data={data}
         zoomedRow={zoomedRow}
@@ -394,7 +446,7 @@ export function ObjectDetailBody({
           foreignKeyClicked={followForeignKey}
         />
       )}
-    </ObjectDetailBodyWrapper>
+    </>
   );
 }
 
@@ -410,10 +462,11 @@ export const ObjectDetailProperties = {
     // @ts-ignore
     ...columnSettings({ hidden: true }),
   },
+  isSensible: () => true,
 };
 
 const ObjectDetail = Object.assign(
-  connect(mapStateToProps, mapDispatchToProps)(ObjectDetailFn),
+  connect(mapStateToProps, mapDispatchToProps)(ObjectDetailWrapper),
   ObjectDetailProperties,
 );
 

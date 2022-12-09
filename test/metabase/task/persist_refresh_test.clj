@@ -3,9 +3,13 @@
             [clojurewerkz.quartzite.conversion :as qc]
             [java-time :as t]
             [medley.core :as m]
+            [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.task.persist-refresh :as pr]
+            [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.test :as mt]
             [metabase.util :as u]
             [potemkin.types :as p]
@@ -24,48 +28,48 @@
 (deftest cron-schedule-test
   (testing "creates schedule per hour when less than 24 hours"
     (is (= "0 0 0/8 * * ? *"
-           (schedule-string (#'pr/cron-schedule "0 0 0/8 * * ? *"))))
+           (schedule-string (#'task.persist-refresh/cron-schedule "0 0 0/8 * * ? *"))))
     (testing "when anchored"
       (is (= "0 30 1/8 * * ? *"
-             (schedule-string (#'pr/cron-schedule "0 30 1/8 * * ? *"))))))
+             (schedule-string (#'task.persist-refresh/cron-schedule "0 30 1/8 * * ? *"))))))
   (testing "creates schedule string per day when 24 hours"
     (is (= "0 0 0 * * ? *"
-           (schedule-string (#'pr/cron-schedule "0 0 0 * * ? *"))))
+           (schedule-string (#'task.persist-refresh/cron-schedule "0 0 0 * * ? *"))))
     (testing "when anchored"
       (is (= "0 30 1 * * ? *"
-             (schedule-string (#'pr/cron-schedule "0 30 1 * * ? *")))))))
+             (schedule-string (#'task.persist-refresh/cron-schedule "0 30 1 * * ? *")))))))
 
 (deftest trigger-job-info-test
   (testing "Database refresh trigger"
-    (let [tggr (#'pr/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+    (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
       (is (= {"db-id" 1 "type" "database"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "0 0 0/5 * * ? *"
              (schedule-string tggr)))
       (is (= "metabase.task.PersistenceRefresh.database.trigger.1"
              (.. tggr getKey getName))))
-    (let [tggr (#'pr/database-trigger {:id 1} "0 0 0 * * ? *")]
+    (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0 * * ? *")]
       (is (= {"db-id" 1 "type" "database"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "0 0 0 * * ? *"
              (schedule-string tggr))))
     (testing "in report timezone UTC"
       (mt/with-temporary-setting-values [report-timezone "UTC"]
-        (let [tggr (#'pr/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+        (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= "UTC"
                  (.. tggr getTimeZone getID))))))
     (testing "in report timezone LA"
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-        (let [tggr (#'pr/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+        (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= "America/Los_Angeles"
                  (.. tggr getTimeZone getID))))))
     (testing "in system timezone"
       (mt/with-temporary-setting-values [report-timezone nil]
-        (let [tggr (#'pr/database-trigger {:id 1} "0 0 0/5 * * ? *")]
+        (let [tggr (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/5 * * ? *")]
           (is (= (qp.timezone/system-timezone-id)
                  (.. tggr getTimeZone getID)))))))
   (testing "Individual refresh trigger"
-    (let [tggr (#'pr/individual-trigger {:card_id 5 :id 1})]
+    (let [tggr (#'task.persist-refresh/individual-trigger {:card_id 5 :id 1})]
       (is (= {"persisted-id" 1 "type" "individual"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "metabase.task.PersistenceRefresh.individual.trigger.1"
@@ -75,16 +79,16 @@
   [& dbs]
   (let [ids  (into #{} (map u/the-id dbs))]
     (m/map-vals
-      #(select-keys % [:data :schedule :key])
-      (select-keys (pr/job-info-by-db-id) ids))))
+     #(select-keys % [:data :schedule :key])
+     (select-keys (task.persist-refresh/job-info-by-db-id) ids))))
 
 (deftest reschedule-refresh-test
   (mt/with-temp-scheduler
     (mt/with-temp* [Database [db-1 {:options {:persist-models-enabled true}}]
                     Database [db-2 {:options {:persist-models-enabled true}}]]
-      (#'pr/job-init!)
+      (#'task.persist-refresh/job-init!)
       (mt/with-temporary-setting-values [persisted-model-refresh-cron-schedule "0 0 0/4 * * ? *"]
-        (pr/reschedule-refresh!)
+        (task.persist-refresh/reschedule-refresh!)
         (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
                                  :schedule "0 0 0/4 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-1))}
@@ -93,7 +97,7 @@
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2))))
       (mt/with-temporary-setting-values [persisted-model-refresh-cron-schedule "0 0 0/8 * * ? *"]
-        (pr/reschedule-refresh!)
+        (task.persist-refresh/reschedule-refresh!)
         (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
                                  :schedule "0 0 0/8 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-1))}
@@ -102,7 +106,7 @@
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2))))
       (mt/with-temporary-setting-values [persisted-model-refresh-cron-schedule "0 30 1/8 * * ? *"]
-        (pr/reschedule-refresh!)
+        (task.persist-refresh/reschedule-refresh!)
         (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
                                  :schedule "0 30 1/8 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-1))}
@@ -125,12 +129,12 @@
                     PersistedInfo [_punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}]]
       (testing "Calls refresh on each persisted-info row"
         (let [card-ids (atom #{})
-              test-refresher (reify pr/Refresher
+              test-refresher (reify task.persist-refresh/Refresher
                                (refresh! [_ _database _definition card]
                                  (swap! card-ids conj (:id card))
                                  {:state :success})
                                (unpersist! [_ _database _persisted-info]))]
-          (#'pr/refresh-tables! (u/the-id db) test-refresher)
+          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
           (testing "Does not refresh archived cards or cards no longer models."
             (is (= #{(u/the-id model1) (u/the-id model2)} @card-ids)))
           (is (partial= {:task "persist-refresh"
@@ -141,7 +145,7 @@
                                        {:order-by [[:id :desc]]})))))
       (testing "Handles errors and continues"
         (let [call-count (atom 0)
-              test-refresher (reify pr/Refresher
+              test-refresher (reify task.persist-refresh/Refresher
                                (refresh! [_ _database _definition _card]
                                  (swap! call-count inc)
                                  ;; throw on first persist
@@ -149,7 +153,7 @@
                                    (throw (ex-info "DBs are risky" {:ka :boom})))
                                  {:state :success})
                                (unpersist! [_ _database _persisted-info]))]
-          (#'pr/refresh-tables! (u/the-id db) test-refresher)
+          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
           (is (= 2 @call-count))
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 1 :error 1}}
@@ -169,17 +173,17 @@
                                                 ;; need an "old enough" state change
                                                 :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]]
         (let [called-on (atom #{})
-              test-refresher (reify pr/Refresher
+              test-refresher (reify task.persist-refresh/Refresher
                                (refresh! [_ _ _ _]
                                  (is false "refresh! called on a model that should not be refreshed"))
                                (unpersist! [_ _database persisted-info]
                                  (swap! called-on conj (u/the-id persisted-info))))]
           (testing "Query finds deletabable, archived, and unmodeled persisted infos"
-            (let [queued-for-deletion (into #{} (map :id) (#'pr/deletable-models))]
+            (let [queued-for-deletion (into #{} (map :id) (#'task.persist-refresh/deletable-models))]
               (doseq [deletable-persisted [deletable punmodeled parchived]]
                 (is (contains? queued-for-deletion (u/the-id deletable-persisted))))))
           ;; we manually pass in the deleteable ones to not catch others in a running instance
-          (#'pr/prune-deletables! test-refresher [deletable parchived punmodeled])
+          (#'task.persist-refresh/prune-deletables! test-refresher [deletable parchived punmodeled])
           ;; don't assert equality if there are any deletable in the app db
           (doseq [deletable-persisted [deletable punmodeled parchived]]
             (is (contains? @called-on (u/the-id deletable-persisted))))
@@ -189,6 +193,39 @@
                                        :task "unpersist-tables"
                                        {:order-by [[:id :desc]]}))))))))
 
-(comment
-  (run-tests)
-  )
+(deftest persisted-models-max-rows-test
+  (testing "Persisted models should have the full number of rows of the underlying query,
+            not limited by `absolute-max-results` (#24793)"
+    (with-redefs [qp.i/absolute-max-results 3]
+      (mt/dataset daily-bird-counts
+        (mt/test-driver :postgres
+          (mt/with-persistence-enabled [persist-models!]
+            (mt/with-temp* [Card [model {:dataset       true
+                                         :database_id   (mt/id)
+                                         :query_type    :query
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :query
+                                                         :query    {:source-table (mt/id :bird-count)}}}]]
+              (let [ ;; Get the number of rows before the model is persisted
+                    query-on-top       {:database (mt/id)
+                                        :type     :query
+                                        :query    {:aggregation  [[:count]]
+                                                   :source-table (str "card__" (:id model))}}
+                    [[num-rows-query]] (mt/rows (qp/process-query query-on-top))]
+                ;; Persist the model
+                (persist-models!)
+                ;; Check the number of rows is the same after persisting
+                (let [query-on-top {:database (mt/id)
+                                    :type     :query
+                                    :query    {:aggregation [[:count]]
+                                               :source-table (str "card__" (:id model))}}]
+                  (is (= [[num-rows-query]] (mt/rows (qp/process-query query-on-top)))))))))))))
+
+(deftest can-persist-test
+  (testing "Can each database that allows for persistence actually persist"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (testing (str driver/*driver* " can persist")
+        (mt/dataset test-data
+          (let [[success? error] (ddl.i/check-can-persist (mt/db))]
+            (is success? (str "Not able to persist on " driver/*driver*))
+            (is (= :persist.check/valid error))))))))

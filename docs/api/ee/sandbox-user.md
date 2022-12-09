@@ -8,9 +8,6 @@ summary: |
 
 Endpoint(s)for setting user attributes.
 
-  - [GET /api/mt/user/attributes](#get-apimtuserattributes)
-  - [PUT /api/mt/user/:id/attributes](#put-apimtuseridattributes)
-
 ## `GET /api/mt/user/attributes`
 
 Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for

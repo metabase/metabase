@@ -1,37 +1,16 @@
 // Migrated from frontend/test/metabase/user/UserSettings.integ.spec.js
-import { restore, popover } from "__support__/e2e/helpers";
+import { restore, popover, getFullName } from "__support__/e2e/helpers";
 import { USERS } from "__support__/e2e/cypress_data";
 
-const { first_name, last_name, email, password } = USERS.normal;
+const { normal } = USERS;
 
-const CURRENT_USER = {
-  email: "normal@metabase.test",
-  ldap_auth: false,
-  first_name: "Robert",
-  locale: null,
-  last_login: "2021-02-08T15:09:33.918",
-  is_active: true,
-  is_qbnewb: false,
-  updated_at: "2021-02-08T15:09:33.918",
-  user_group_memberships: [
-    { id: 1, is_group_manager: false },
-    { id: 4, is_group_manager: false },
-    { id: 5, is_group_manager: false },
-  ],
-  is_superuser: false,
-  login_attributes: null,
-  id: 2,
-  last_name: "Tableton",
-  date_joined: "2021-02-08T15:04:16.251",
-  personal_collection_id: 5,
-  common_name: "Robert Tableton",
-  google_auth: false,
-};
+const { first_name, last_name, email, password } = normal;
 
 const requestsCount = alias =>
   cy.state("requests").filter(a => a.alias === alias);
+
 describe("user > settings", () => {
-  const fullName = `${first_name} ${last_name}`;
+  const fullName = getFullName(normal);
 
   beforeEach(() => {
     restore();
@@ -169,13 +148,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via ldap", () => {
     beforeEach(() => {
-      cy.intercept(
-        "GET",
-        "/api/user/current",
-        Object.assign({}, CURRENT_USER, {
-          ldap_auth: true,
-        }),
-      ).as("getUser");
+      stubCurrentUser({ ldap_auth: true });
 
       cy.visit("/account/profile");
       cy.wait("@getUser");
@@ -188,13 +161,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via google", () => {
     beforeEach(() => {
-      cy.intercept(
-        "GET",
-        "/api/user/current",
-        Object.assign({}, CURRENT_USER, {
-          google_auth: true,
-        }),
-      ).as("getUser");
+      stubCurrentUser({ google_auth: true });
 
       cy.visit("/account/profile");
       cy.wait("@getUser");
@@ -213,13 +180,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via JWT", () => {
     beforeEach(() => {
-      cy.intercept(
-        "GET",
-        "/api/user/current",
-        Object.assign({}, CURRENT_USER, {
-          sso_source: "jwt",
-        }),
-      ).as("getUser");
+      stubCurrentUser({ sso_source: "jwt" });
 
       cy.visit("/account/profile");
       cy.wait("@getUser");
@@ -238,14 +199,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via SAML", () => {
     beforeEach(() => {
-      cy.intercept(
-        "GET",
-        "/api/user/current",
-        Object.assign({}, CURRENT_USER, {
-          sso_source: "saml",
-        }),
-      ).as("getUser");
-
+      stubCurrentUser({ sso_source: "saml" });
       cy.visit("/account/profile");
       cy.wait("@getUser");
     });
@@ -261,3 +215,18 @@ describe("user > settings", () => {
     });
   });
 });
+
+/**
+ * Stub the current user authentication method
+ *
+ * @param {Object} authenticationMethod
+ */
+function stubCurrentUser(authenticationMethod) {
+  cy.request("GET", "/api/user/current").then(({ body: user }) => {
+    cy.intercept(
+      "GET",
+      "/api/user/current",
+      Object.assign({}, user, authenticationMethod),
+    ).as("getUser");
+  });
+}

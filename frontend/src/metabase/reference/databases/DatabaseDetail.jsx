@@ -12,6 +12,8 @@ import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Detail from "metabase/reference/components/Detail";
 
+import * as metadataActions from "metabase/redux/metadata";
+import * as actions from "metabase/reference/reference";
 import {
   getDatabase,
   getTable,
@@ -23,9 +25,6 @@ import {
   getIsFormulaExpanded,
   getForeignKeys,
 } from "../selectors";
-
-import * as metadataActions from "metabase/redux/metadata";
-import * as actions from "metabase/reference/reference";
 
 const mapStateToProps = (state, props) => {
   const entity = getDatabase(state, props) || {};

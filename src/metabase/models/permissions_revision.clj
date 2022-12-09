@@ -6,7 +6,7 @@
 
 (models/defmodel PermissionsRevision :permissions_revision)
 
-(u/strict-extend (class PermissionsRevision)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PermissionsRevision)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:before :json

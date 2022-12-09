@@ -3,23 +3,22 @@ import { restore, popover, visitAlias } from "__support__/e2e/helpers";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const SAMPLE_DB_URL = "/admin/datamodel/database/1";
+const SAMPLE_DB_URL = `/admin/datamodel/database/${SAMPLE_DB_ID}`;
 
 // [quarantine] flaky
 describe.skip("scenarios > admin > datamodel > editor", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.server();
-    cy.route("PUT", "/api/table/*").as("tableUpdate");
-    cy.route("PUT", "/api/field/*").as("fieldUpdate");
+    cy.intercept("PUT", "/api/table/*").as("tableUpdate");
+    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.wrap(`${SAMPLE_DB_URL}/table/${ORDERS_ID}`).as(`ORDERS_URL`);
   });
 
   it("should allow editing of the name and description", () => {
-    cy.route(
+    cy.intercept(
       "GET",
       "/api/table/2/query_metadata?include_sensitive_fields=true",
     ).as("tableMetadataFetch");
@@ -115,7 +114,10 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
 
     // click over to products and back so we refresh the columns
     cy.contains("Products").click();
-    cy.url().should("include", "/admin/datamodel/database/1/table/1");
+    cy.url().should(
+      "include",
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${PRODUCTS_ID}`,
+    );
     cy.contains("Orders").click();
 
     // created at should still be there
@@ -138,7 +140,7 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
   });
 
   it("should allow sorting columns", () => {
-    cy.route("PUT", "/api/table/2/fields/order").as("fieldReorder");
+    cy.intercept("PUT", "/api/table/2/fields/order").as("fieldReorder");
 
     visitAlias("@ORDERS_URL");
     cy.icon("sort_arrows").click();

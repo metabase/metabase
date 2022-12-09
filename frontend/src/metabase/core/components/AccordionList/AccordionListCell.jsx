@@ -1,15 +1,15 @@
 /* eslint-disable react/prop-types */
 
 import React from "react";
+import { t } from "ttag";
 
 import cx from "classnames";
-import _ from "underscore";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListSearchField from "metabase/components/ListSearchField";
-import { ListCellItem } from "./AccordionListCell.styled";
+import { ListCellItem, FilterContainer } from "./AccordionListCell.styled";
 
 export const AccordionListCell = ({
   style,
@@ -31,7 +31,7 @@ export const AccordionListCell = ({
   renderItemWrapper,
   searchText,
   onChangeSearchText,
-  searchPlaceholder,
+  searchPlaceholder = t`Find...`,
   showItemArrows,
   itemTestId,
   getItemClassName,
@@ -52,7 +52,7 @@ export const AccordionListCell = ({
         </div>
       );
     } else {
-      const icon = renderSectionIcon(section, sectionIndex);
+      const icon = renderSectionIcon(section);
       const extra = renderSectionExtra(section, sectionIndex);
       const name = section.name;
       content = (
@@ -99,22 +99,24 @@ export const AccordionListCell = ({
     );
   } else if (type === "search") {
     content = (
-      <ListSearchField
-        autoFocus
-        hasClearButton
-        className="bg-white m1"
-        onChange={onChangeSearchText}
-        value={searchText}
-        placeholder={searchPlaceholder}
-        {...searchInputProps}
-      />
+      <FilterContainer>
+        <ListSearchField
+          fullWidth
+          autoFocus
+          onChange={e => onChangeSearchText(e.target.value)}
+          onResetClick={() => onChangeSearchText("")}
+          value={searchText}
+          placeholder={searchPlaceholder}
+          {...searchInputProps}
+        />
+      </FilterContainer>
     );
   } else if (type === "item") {
     const isSelected = itemIsSelected(item, itemIndex);
     const isClickable = itemIsClickable(item, itemIndex);
-    const icon = renderItemIcon(item, itemIndex, isSelected);
-    const name = renderItemName(item, itemIndex, isSelected);
-    const description = renderItemDescription(item, itemIndex, isSelected);
+    const icon = renderItemIcon(item);
+    const name = renderItemName(item);
+    const description = renderItemDescription(item);
     content = (
       <ListCellItem
         data-testid={itemTestId}

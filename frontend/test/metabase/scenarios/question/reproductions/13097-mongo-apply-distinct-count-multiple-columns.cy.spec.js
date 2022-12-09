@@ -8,7 +8,7 @@ import {
 
 const MONGO_DB_ID = 2;
 
-describe("issue 13097", () => {
+describe("issue 13097", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();

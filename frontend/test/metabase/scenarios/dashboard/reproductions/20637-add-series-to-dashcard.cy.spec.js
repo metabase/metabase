@@ -80,8 +80,8 @@ function createQuestionsAndDashboard() {
                 card_id,
                 row: 0,
                 col: 0,
-                sizeX: 12,
-                sizeY: 10,
+                size_x: 12,
+                size_y: 10,
               },
             ],
           });

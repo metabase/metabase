@@ -27,7 +27,7 @@
    question_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
   ;; deliberately not using api/check-404 so we can have a useful error message.
-  (let [timeline (Timeline timeline_id)]
+  (let [timeline (db/select-one Timeline :id timeline_id)]
     (when-not timeline
       (throw (ex-info (tru "Timeline with id {0} not found" timeline_id)
                       {:status-code 404})))
@@ -75,7 +75,7 @@
       (u/select-keys-when timeline-event-updates
         :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
         :non-nil #{:name}))
-    (TimelineEvent id)))
+    (db/select-one TimelineEvent :id id)))
 
 (api/defendpoint DELETE "/:id"
   "Delete a [[TimelineEvent]]."

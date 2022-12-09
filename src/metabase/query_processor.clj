@@ -105,6 +105,7 @@
    #'resolve-joined-fields/resolve-joined-fields
    #'fix-bad-refs/fix-bad-references
    #'escape-join-aliases/escape-join-aliases
+   ;; yes, this is called a second time, because we need to handle any joins that got added
    (resolve 'ee.sandbox.rows/apply-sandboxing)
    #'qp.cumulative-aggregations/rewrite-cumulative-aggregations
    #'qp.pre-alias-aggregations/pre-alias-aggregations
@@ -178,7 +179,7 @@
    rff
    post-processing-middleware))
 
-(def ^:private around-middleware
+(def around-middleware
   "Middleware that goes AROUND *all* the other middleware (even for pre-processing only or compilation only). Has the
   form
 

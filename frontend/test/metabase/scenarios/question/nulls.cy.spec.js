@@ -91,8 +91,8 @@ describe("scenarios > question > null", () => {
                   card_id: questionId,
                   row: 0,
                   col: 0,
-                  sizeX: 8,
-                  sizeY: 6,
+                  size_x: 8,
+                  size_y: 6,
                   parameter_mappings: [
                     {
                       parameter_id: "1f97c149",
@@ -150,8 +150,8 @@ describe("scenarios > question > null", () => {
                     card_id: questionId,
                     row: 0,
                     col: index === 0 ? 0 : CARD_SIZE_X, // making sure the second card doesn't overlap the first one
-                    sizeX: CARD_SIZE_X,
-                    sizeY: 4,
+                    size_x: CARD_SIZE_X,
+                    size_y: 4,
                     parameter_mappings: [],
                   },
                 ],

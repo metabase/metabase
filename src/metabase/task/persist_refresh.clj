@@ -17,6 +17,7 @@
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.public-settings :as public-settings]
+            [metabase.query-processor.middleware.limit :as limit]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.task :as task]
             [metabase.util :as u]
@@ -53,7 +54,8 @@
   (reify Refresher
     (refresh! [_ database definition card]
       (binding [persisted-info/*allow-persisted-substitution* false]
-        (ddl.i/refresh! (:engine database) database definition (:dataset_query card))))
+        (let [query (limit/disable-max-results (:dataset_query card))]
+          (ddl.i/refresh! (:engine database) database definition query))))
     (unpersist! [_ database persisted-info]
      (ddl.i/unpersist! (:engine database) database persisted-info))))
 
@@ -61,7 +63,7 @@
   ;; Since this could be long running, double check state just before refreshing
   (when (contains? refreshable-states (db/select-one-field :state PersistedInfo :id (:id persisted-info)))
     (log/info (trs "Attempting to refresh persisted model {0}." (:card_id persisted-info)))
-    (let [card (Card (:card_id persisted-info))
+    (let [card (db/select-one Card :id (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
           _ (db/update! PersistedInfo (u/the-id persisted-info)
@@ -192,7 +194,7 @@
   [database-id refresher]
   (log/info (trs "Starting persisted model refresh task for Database {0}." database-id))
   (persisted-info/ready-unpersisted-models! database-id)
-  (let [database  (Database database-id)
+  (let [database  (db/select-one Database :id database-id)
         persisted (refreshable-models database-id)
         thunk     (fn []
                     (reduce (partial refresh-with-stats! refresher database)
@@ -205,9 +207,9 @@
 (defn- refresh-individual!
   "Refresh an individual model based on [[PersistedInfo]]."
   [persisted-info-id refresher]
-  (let [persisted-info (PersistedInfo persisted-info-id)
+  (let [persisted-info (db/select-one PersistedInfo :id persisted-info-id)
         database       (when persisted-info
-                         (Database (:database_id persisted-info)))]
+                         (db/select-one Database :id (:database_id persisted-info)))]
     (if (and persisted-info database)
       (do
         (save-task-history! "persist-refresh" (u/the-id database)
@@ -410,7 +412,7 @@
   "Reschedule refresh for all enabled databases. Removes all existing triggers, and schedules refresh for databases with
   `:persist-models-enabled` in the options at interval [[public-settings/persisted-model-refresh-cron-schedule]]."
   []
-  (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (Database))
+  (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (db/select Database))
         cron-schedule        (public-settings/persisted-model-refresh-cron-schedule)]
     (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]

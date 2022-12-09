@@ -80,6 +80,26 @@
 
 ;; this is the primary way to override behavior for a specific clause or object class.
 
+(defmulti ->integer
+  "Cast to integer"
+  {:arglists '([driver value])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod ->integer :sql
+  [_ value]
+  (hx/->integer value))
+
+(defmulti ->float
+  "Cast to float"
+  {:arglists '([driver value])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod ->float :sql
+  [_ value]
+  (hx/cast :float value))
+
 (defmulti ->honeysql
   "Return an appropriate HoneySQL form for an object. Dispatches off both driver and either clause name or object class
   making this easy to override in any places needed for a given driver."
@@ -99,6 +119,10 @@
   [_driver]
   :%now)
 
+(defmethod ->honeysql [:sql :now]
+  [driver _clause]
+  (current-datetime-honeysql-form driver))
+
 ;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
 (defmulti date
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
@@ -109,12 +133,86 @@
 
 ;; default implementation for `:default` bucketing returns expression as-is
 (defmethod date [:sql :default] [_ _ expr] expr)
-
 ;; We have to roll our own to account for arbitrary start of week
+
+(defmethod date [:sql :second-of-minute] [_driver _ expr] (hx/second expr))
+(defmethod date [:sql :minute-of-hour]   [_driver _ expr] (hx/minute expr))
+(defmethod date [:sql :hour-of-day]      [_driver _ expr] (hx/hour expr))
+
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
   ;; Some DBs truncate when doing integer division, therefore force float arithmetics
   (->honeysql driver [:ceil (hx// (date driver :day-of-year (date driver :week expr)) 7.0)]))
+
+(defmethod date [:sql :month-of-year]    [_driver _ expr] (hx/month expr))
+(defmethod date [:sql :quarter-of-year]  [_driver _ expr] (hx/quarter expr))
+(defmethod date [:sql :year-of-era]      [_driver _ expr] (hx/year expr))
+(defmethod date [:sql :week-of-year-iso] [_driver _ expr] (hx/week expr))
+
+(defn- days-till-start-of-first-full-week
+  "Takes a datetime expession, return a HoneySQL form
+  that calculate how many days from the Jan 1st till the start of `first full week`.
+
+  A full week is a week that contains 7 days in the same year.
+
+  Example:
+  Assume start-of-week setting is :monday
+
+    (days-till-start-of-first-full-week driver '2000-04-05')
+    -> 2
+
+  Because '2000-01-01' is Saturday, and 1st full week starts on Monday(2000-01-03)
+  => 2 days"
+  [driver expr]
+  (let [start-of-year                (date driver :year expr)
+        day-of-week-of-start-of-year (date driver :day-of-week start-of-year)]
+    (hx/- 8 day-of-week-of-start-of-year)))
+
+(defn- week-of-year
+  "Calculate the week of year for us or instance mode.
+
+  The idea for both modes are quite similar:
+  - 1st Jan is always in the 1st week
+  - the 2nd weeks start on the first `start-of-week` setting.
+
+  The algorithm:
+  week-of-year = 1 partial-week + `n` full-weeks
+  Where:
+  - partial-week: is the week that starts from 1st Jan, until the next `start-of-week`
+  - full-weeks: are weeks that has all week-days are in the same year.
+
+  Now, all we need to do is to find `full-weeks`, and it could be computed by this formula:
+    full-weeks = ceil((doy - days-till-start-of-first-full-week) / 7)
+  Where:
+  - doy: is the day of year of the input date
+  - days-till-start-of-first-full-week: is how many days from 1st Jan to the first start-of-week."
+  [driver expr mode]
+  (let [days-till-start-of-first-full-week (binding [driver.common/*start-of-week*
+                                                     (case mode
+                                                       :us :sunday
+                                                       :instance nil)]
+                                                   (days-till-start-of-first-full-week driver expr))
+        total-full-week-days               (hx/- (date driver :day-of-year expr) days-till-start-of-first-full-week)
+        total-full-weeks                   (->honeysql driver [:ceil (hx// total-full-week-days 7.0)])]
+    (->integer driver (hx/+ 1 total-full-weeks))))
+
+;; ISO8501 consider the first week of the year is the week that contains the 1st Thursday and week starts on Monday.
+;; - If 1st Jan is Friday, then 1st Jan is the last week of previous year.
+;; - If 1st Jan is Wednesday, then 1st Jan is in the 1st week.
+(defmethod date
+  [:sql :week-of-year-iso]
+  [_driver _ expr]
+  (hx/week expr))
+
+;; US consider the first week begins on 1st Jan, and 2nd week starts on the 1st Sunday
+(defmethod date [:sql :week-of-year-us]
+  [driver _ expr]
+  (week-of-year driver expr :us))
+
+;; First week begins on 1st Jan, the 2nd week will begins on the 1st [[metabase.public-settings/start-of-week]]
+(defmethod date [:sql :week-of-year-instance]
+  [driver _ expr]
+  (week-of-year driver expr :instance))
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
@@ -414,11 +512,11 @@
   (hsql/call :power (->honeysql driver field) (->honeysql driver power)))
 
 (defn- interval? [expr]
-  (and (vector? expr) (= (first expr) :interval)))
+  (mbql.u/is-clause? :interval expr))
 
 (defmethod ->honeysql [:sql :+]
   [driver [_ & args]]
-  (if (mbql.u/datetime-arithmetics? args)
+  (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
       (reduce (fn [hsql-form [_ amount unit]]
                 (add-interval-honeysql-form driver hsql-form amount unit))
@@ -435,16 +533,6 @@
 ;;
 ;; also, we want to gracefully handle situations where the column is ZERO and just swap it out with NULL instead, so
 ;; we don't get divide by zero errors. SQL DBs always return NULL when dividing by NULL (AFAIK)
-
-(defmulti ->float
-  "Cast to float"
-  {:arglists '([driver value])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod ->float :sql
-  [_ value]
-  (hx/cast :float value))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & args]]
@@ -568,6 +656,18 @@
   (date driver unit (if (zero? amount)
                       (current-datetime-honeysql-form driver)
                       (add-interval-honeysql-form driver (current-datetime-honeysql-form driver) amount unit))))
+
+(defmethod ->honeysql [:sql :temporal-extract]
+  [driver [_ arg unit]]
+  (date driver unit (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :datetime-add]
+  [driver [_ arg amount unit]]
+  (add-interval-honeysql-form driver (->honeysql driver arg) amount unit))
+
+(defmethod ->honeysql [:sql :datetime-subtract]
+  [driver [_ arg amount unit]]
+  (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -842,11 +942,11 @@
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :limit]
-  [_ _ honeysql-form {value :limit}]
+  [_driver _top-level-clause honeysql-form {value :limit}]
   (hh/limit honeysql-form value))
 
 (defmethod apply-top-level-clause [:sql :page]
-  [_ _ honeysql-form {{:keys [items page]} :page}]
+  [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
   (-> honeysql-form
       (hh/limit items)
       (hh/offset (* items (dec page)))))
@@ -854,7 +954,7 @@
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
-(defmethod ->honeysql [:sql (class Table)]
+(defmethod ->honeysql [:sql Table]
   [driver table]
   (let [{table-name :name, schema :schema} table]
     (->honeysql driver (hx/identifier :table schema table-name))))
@@ -893,16 +993,17 @@
   (try
     (binding [hformat/*subquery?* false]
       (hsql/format honeysql-form
-        :quoting             (quote-style driver)
-        :allow-dashed-names? true))
+                   :quoting             (quote-style driver)
+                   :allow-dashed-names? true))
     (catch Throwable e
       (try
-        (log/error (u/format-color 'red
-                       (str (deferred-tru "Invalid HoneySQL form:")
-                            "\n"
-                            (u/pprint-to-str honeysql-form))))
+        (log/error e
+                   (u/format-color 'red
+                                   (str (deferred-tru "Invalid HoneySQL form: {0}" (ex-message e))
+                                        "\n"
+                                        (u/pprint-to-str honeysql-form))))
         (finally
-          (throw (ex-info (tru "Error compiling HoneySQL form")
+          (throw (ex-info (tru "Error compiling HoneySQL form: {0}" (ex-message e))
                           {:driver driver
                            :form   honeysql-form
                            :type   qp.error-type/driver}
@@ -1003,7 +1104,7 @@
   prefix-field-alias])
 
 ;; deprecated, but we'll keep it here for now for backwards compatibility.
-(defmethod ->honeysql [:sql (type Field)]
+(defmethod ->honeysql [:sql Field]
   [driver field]
   (deprecated/log-deprecation-warning driver "->honeysql [:sql (class Field)]" "0.42.0")
   (->honeysql driver [:field (:id field) nil]))

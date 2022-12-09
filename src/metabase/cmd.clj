@@ -31,7 +31,7 @@
   (System/exit return-code))
 
 (defn ^:command migrate
-  "Run database migrations. Valid options for `direction` are `up`, `force`, `down-one`, `print`, or `release-locks`."
+  "Run database migrations. Valid options for `direction` are `up`, `force`, `down`, `print`, or `release-locks`."
   [direction]
   (classloader/require 'metabase.cmd.migrate)
   ((resolve 'metabase.cmd.migrate/migrate!) direction))
@@ -109,6 +109,12 @@
   (classloader/require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
+(defn ^:command environment-variables-documentation
+  "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase."
+  []
+  (classloader/require 'metabase.cmd.env-var-dox)
+  ((resolve 'metabase.cmd.env-var-dox/generate-dox!)))
+
 (defn ^:command driver-methods
   "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."
   ([]
@@ -153,6 +159,15 @@
   ([path & args]
    (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)]
      (cmd path (cmd-args->map args)))))
+
+(defn ^:command seed-entity-ids
+  "Add entity IDs for instances of serializable models that don't already have them."
+  [& options]
+  (let [cmd     (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/seed-entity-ids)
+        options (cmd-args->map options)]
+    (system-exit! (if (cmd options)
+                    0
+                    1))))
 
 (defn ^:command rotate-encryption-key
   "Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to

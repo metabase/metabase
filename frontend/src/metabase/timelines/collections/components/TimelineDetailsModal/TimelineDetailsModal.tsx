@@ -6,13 +6,14 @@ import { getTimelineName } from "metabase/lib/timelines";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import * as Urls from "metabase/lib/urls";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import Icon from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import { Timeline, TimelineEvent } from "metabase-types/api";
+import { InputProps } from "metabase/core/components/Input";
 import SearchEmptyState from "../SearchEmptyState";
 import EventList from "../EventList";
 import TimelineEmptyState from "../TimelineEmptyState";
+import { MenuItem } from "../../types";
 import {
   ModalBody,
   ModalRoot,
@@ -20,7 +21,6 @@ import {
   ModalToolbarInput,
   ModalToolbarLink,
 } from "./TimelineDetailsModal.styled";
-import { MenuItem } from "../../types";
 
 export interface TimelineDetailsModalProps {
   timeline: Timeline;
@@ -66,6 +66,9 @@ const TimelineDetailsModal = ({
   const canWrite = timeline.collection?.can_write;
   const canGoBack = isArchive || !isOnlyTimeline;
 
+  const handleSearchChange: InputProps["onChange"] = e =>
+    setInputText(e.target.value);
+
   return (
     <ModalRoot>
       <ModalHeader
@@ -80,10 +83,11 @@ const TimelineDetailsModal = ({
       {(isNotEmpty || isSearching) && (
         <ModalToolbar>
           <ModalToolbarInput
+            fullWidth
             value={inputText}
             placeholder={t`Search for an event`}
-            icon={<Icon name="search" />}
-            onChange={setInputText}
+            leftIcon="search"
+            onChange={handleSearchChange}
           />
           {canWrite && !isArchive && (
             <ModalToolbarLink

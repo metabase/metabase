@@ -8,6 +8,14 @@ import {
 
 export const getX = (d: SeriesDatum | StackedDatum) => d[0];
 export const getY = (d: SeriesDatum | StackedDatum) => d[1];
+export const setY = <T extends SeriesDatum | StackedDatum>(
+  d: T,
+  value: number,
+): T => {
+  const newDatum = [...d];
+  newDatum[1] = value;
+  return newDatum as T;
+};
 
 export const getY1 = (d: StackedDatum) => d[2];
 
@@ -42,16 +50,36 @@ export const sortSeries = (series: Series[], type: XAxisType) => {
   });
 };
 
-export const calculateStackedItems = (series: Series[]) => {
+export const calculateStackedItems = (multipleSeries: Series[]) => {
+  const dimensionSeriesIndexMap: Record<
+    string,
+    Record<number, SeriesDatum>
+  > = {};
+
+  multipleSeries.forEach((series, seriesIndex) => {
+    series.data.forEach(datum => {
+      const dimension = getX(datum);
+      if (!dimensionSeriesIndexMap[dimension]) {
+        dimensionSeriesIndexMap[dimension] = {};
+      }
+      dimensionSeriesIndexMap[dimension][seriesIndex] = datum;
+    });
+    return dimensionSeriesIndexMap;
+  });
+
   // Stacked charts work only for a single dataset with one dimension
-  return series.map((s, seriesIndex) => {
-    const stackedData = s.data.map((datum, datumIndex) => {
+  return multipleSeries.map((series, seriesIndex) => {
+    const stackedData = series.data.map(datum => {
       const [x, y] = datum;
 
       let y1 = 0;
 
       for (let i = 0; i < seriesIndex; i++) {
-        const currentY = getY(series[i].data[datumIndex]);
+        const currentDatum = dimensionSeriesIndexMap[x][i];
+        if (!currentDatum) {
+          continue;
+        }
+        const currentY = getY(currentDatum);
 
         const hasSameSign = (y > 0 && currentY > 0) || (y < 0 && currentY < 0);
         if (hasSameSign) {
@@ -64,7 +92,7 @@ export const calculateStackedItems = (series: Series[]) => {
     });
 
     return {
-      ...s,
+      ...series,
       stackedData,
     };
   });

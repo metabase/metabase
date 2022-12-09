@@ -9,11 +9,11 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
+import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
 import {
   DASHBOARD_SQL_TEXT_FILTERS,
   questionDetails,
 } from "./dashboard-filters-sql-text-category";
-import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 describe("scenarios > dashboard > filters > SQL > text/category", () => {
   beforeEach(() => {

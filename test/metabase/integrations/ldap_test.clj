@@ -65,8 +65,8 @@
              (ldap/verify-password "cn=Fred Taylor,ou=People,dc=metabase,dc=com", "pa$$word"))))))
 
 (deftest find-test
-  ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`
-  (with-redefs [premium-features/enable-enhancements? (constantly false)]
+  ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
+  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly false)]
     (ldap.test/with-ldap-server
       (testing "find by username"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
@@ -120,8 +120,8 @@
                (ldap/find-user "sbrown20")))))))
 
 (deftest fetch-or-create-user-test
-  ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`
-  (with-redefs [premium-features/enable-enhancements? (constantly false)]
+  ;; there are EE-specific versions of this test in [[metabase-enterprise.enhancements.integrations.ldap-test]]
+  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly false)]
     (ldap.test/with-ldap-server
       (testing "a new user is created when they don't already exist"
         (try

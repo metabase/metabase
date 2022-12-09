@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import _ from "underscore";
 import cx from "classnames";
 
+import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import {
@@ -14,7 +15,6 @@ import {
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
-import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import ModalContent from "metabase/components/ModalContent";

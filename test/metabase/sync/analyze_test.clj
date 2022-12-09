@@ -3,6 +3,7 @@
             [metabase.analytics.snowplow-test :as snowplow-test]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
             [metabase.sync.analyze :as analyze]
             [metabase.sync.analyze.classifiers.category :as classifiers.category]
@@ -31,7 +32,7 @@
       ;; the type of the value that comes back may differ a bit between different application DBs
       (let [analysis-date (db/select-one-field :last_analyzed Field :table_id (data/id :venues))]
         ;; ok, NOW run the analysis process
-        (analyze/analyze-table! (Table (data/id :venues)))
+        (analyze/analyze-table! (db/select-one Table :id (data/id :venues)))
         ;; check and make sure all the Fields don't have semantic types and their last_analyzed date didn't change
         ;; PK is ok because it gets marked as part of metadata sync
         (is (= (zipmap ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
@@ -97,7 +98,7 @@
     (sync-survives-crash? classifiers.name/infer-entity-type)))
 
 (defn- classified-semantic-type [values]
-  (let [field (field/map->FieldInstance {:base_type :type/Text})]
+  (let [field (mi/instance Field {:base_type :type/Text})]
     (:semantic_type (classifiers.text-fingerprint/infer-semantic-type
                      field
                      (transduce identity (fingerprinters/fingerprinter field) values)))))
@@ -162,14 +163,14 @@
   "Change the `visibility-type` of `table` via an API call. (This is done via the API so we can see which, if any, side
   effects (e.g. analysis) get triggered.)"
   [table visibility-type]
-  ((mt/user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
-                                                                          :visibility_type visibility-type
-                                                                          :description     "What a nice table!"}))
+  (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
+                                                                             :visibility_type visibility-type
+                                                                             :description     "What a nice table!"}))
 
 (defn- api-sync!
   "Trigger a sync of `table` via the API."
   [table]
-  ((mt/user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table))))
+  (mt/user-http-request :crowberto :post 200 (format "database/%d/sync" (:db_id table))))
 
 ;; use these functions to create fake Tables & Fields that are actually backed by something real in the database.
 ;; Otherwise when we go to resync them the logic will figure out Table/Field doesn't exist and mark it as inactive
@@ -184,7 +185,7 @@
 (defn- analyze-table! [table]
   ;; we're calling `analyze-db!` instead of `analyze-table!` because the latter doesn't care if you try to sync a
   ;; hidden table and will allow that. TODO - Does that behavior make sense?
-  (analyze/analyze-db! (Database (:db_id table))))
+  (analyze/analyze-db! (db/select-one Database :id (:db_id table))))
 
 (deftest dont-analyze-hidden-tables-test
   (testing "expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing"

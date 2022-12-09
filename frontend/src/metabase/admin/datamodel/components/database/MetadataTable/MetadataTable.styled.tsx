@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import { css } from "@emotion/react";
+import { focusOutlineStyle } from "metabase/core/style/input";
 
 interface VisibilityTypeProps {
   isSelected: boolean;
@@ -31,13 +32,7 @@ const headerInputsStyles = css`
     z-index: 2;
   }
 
-  &:focus {
-    border-color: ${color("brand")};
-  }
-
-  &:focus:not(:focus-visible) {
-    outline: none;
-  }
+  ${focusOutlineStyle("brand")};
 `;
 
 export const TableNameInput = styled(InputBlurChange)`

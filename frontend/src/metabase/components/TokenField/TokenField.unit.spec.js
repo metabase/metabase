@@ -5,14 +5,13 @@ import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import TokenField from "./TokenField";
-
 import {
   KEYCODE_DOWN,
   KEYCODE_TAB,
   KEYCODE_ENTER,
   KEY_COMMA,
 } from "metabase/lib/keyboard";
+import TokenField from "./TokenField";
 
 const DEFAULT_OPTIONS = ["Doohickey", "Gadget", "Gizmo", "Widget"];
 

@@ -4,6 +4,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
+import { connect } from "react-redux";
 import NewPulseSidebar from "metabase/sharing/components/NewPulseSidebar";
 import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
 import {
@@ -14,8 +15,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
-
-import { connect } from "react-redux";
 
 import {
   cleanPulse,

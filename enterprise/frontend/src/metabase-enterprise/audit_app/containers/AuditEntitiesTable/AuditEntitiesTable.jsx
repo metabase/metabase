@@ -2,8 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
-import AuditTableWithSearch from "../AuditTableWithSearch";
 import { usePrevious } from "metabase/hooks/use-previous";
+import AuditTableWithSearch from "../AuditTableWithSearch";
 
 const propTypes = {
   entities: PropTypes.array,

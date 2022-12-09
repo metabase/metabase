@@ -16,7 +16,16 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-const { PRODUCTS_ID, ORDERS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
+const {
+  PRODUCTS_ID,
+  ORDERS_ID,
+  PEOPLE_ID,
+  REVIEWS_ID,
+  ACCOUNTS_ID,
+  ANALYTIC_EVENTS_ID,
+  FEEDBACK_ID,
+  INVOICES_ID,
+} = SAMPLE_DATABASE;
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DOWNLOAD_PERMISSION_INDEX = 2;
@@ -259,6 +268,10 @@ function setDownloadPermissionsForProductsTable(permission) {
               [ORDERS_ID]: "full",
               [PEOPLE_ID]: "full",
               [REVIEWS_ID]: "full",
+              [ACCOUNTS_ID]: "full",
+              [ANALYTIC_EVENTS_ID]: "full",
+              [FEEDBACK_ID]: "full",
+              [INVOICES_ID]: "full",
             },
           },
         },

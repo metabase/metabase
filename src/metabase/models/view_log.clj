@@ -6,16 +6,16 @@
 
 (models/defmodel ViewLog :view_log)
 
+(doto ViewLog
+  (derive ::mi/read-policy.always-allow)
+  (derive ::mi/write-policy.always-allow))
+
 (defn- pre-insert [log-entry]
   (let [defaults {:timestamp :%now}]
     (merge defaults log-entry)))
 
-(u/strict-extend (class ViewLog)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class ViewLog)
   models/IModel
   (merge models/IModelDefaults
          {:pre-insert pre-insert
-          :types      (constantly {:metadata :json})})
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:can-read?  (constantly true)
-          :can-write? (constantly true)}))
+          :types      (constantly {:metadata :json})}))

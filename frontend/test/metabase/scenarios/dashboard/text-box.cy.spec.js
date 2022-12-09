@@ -57,7 +57,6 @@ describe("scenarios > dashboard > text-box", () => {
 
   describe("when text-box is the only element on the dashboard", () => {
     beforeEach(() => {
-      cy.server();
       cy.createDashboard().then(({ body: { id } }) => {
         cy.intercept("PUT", `/api/dashboard/${id}`).as("dashboardUpdated");
 

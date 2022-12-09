@@ -36,7 +36,7 @@ const rawTestCases = [
   },
 ];
 
-describe("scenarios > alert > types", () => {
+describe("scenarios > alert > types", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/alert").as("savedAlert");
 
@@ -69,6 +69,7 @@ describe("scenarios > alert > types", () => {
 
       cy.findByText("Settings").click();
       cy.findByText("Line options");
+      cy.findByText("Display").click();
 
       setGoal("7000");
 

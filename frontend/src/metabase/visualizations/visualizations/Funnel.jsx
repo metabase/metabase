@@ -2,6 +2,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
 import {
   MinRowsError,
   ChartSettingsError,
@@ -17,15 +19,13 @@ import {
   dimensionSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 
+import ChartCaption from "metabase/visualizations/components/ChartCaption";
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
 import LegendHeader from "../components/LegendHeader";
-
-import _ from "underscore";
-import cx from "classnames";
-
-import ChartCaption from "metabase/visualizations/components/ChartCaption";
 
 const propTypes = {
   headerIcon: PropTypes.shape(iconPropTypes),
@@ -76,7 +76,7 @@ export default class Funnel extends Component {
     ["Tiers Page", 700],
     ["Trial Form", 200],
     ["Trial Confirmation", 40],
-  ].map(row => ({
+  ].map((row, index) => ({
     card: {
       display: "funnel",
       visualization_settings: {
@@ -84,6 +84,7 @@ export default class Funnel extends Component {
         "funnel.dimension": "Total Sessions",
       },
       dataset_query: { type: "null" },
+      originalIndex: index,
     },
     data: {
       rows: [row],
@@ -104,11 +105,60 @@ export default class Funnel extends Component {
     ...columnSettings({ hidden: true }),
     ...dimensionSetting("funnel.dimension", {
       section: t`Data`,
-      title: t`Step`,
+      title: t`Column with steps`,
       dashboard: false,
       useRawSeries: true,
       showColumnSetting: true,
+      marginBottom: "0.625rem",
     }),
+    "funnel.order_dimension": {
+      getValue: (_series, settings) => settings["funnel.dimension"],
+      readDependencies: ["funnel.rows"],
+    },
+    "funnel.rows": {
+      section: t`Data`,
+      widget: ChartSettingOrderedSimple,
+
+      getValue: (series, settings) => {
+        const seriesOrder = settings["funnel.rows"];
+        const seriesKeys = series.map(s => keyForSingleSeries(s));
+        const orderDimension = settings["funnel.order_dimension"];
+        const dimension = settings["funnel.dimension"];
+
+        const getDefault = keys =>
+          keys.map(key => ({
+            key,
+            name: key,
+            enabled: true,
+          }));
+        if (
+          !seriesOrder ||
+          !_.isArray(seriesOrder) ||
+          !seriesOrder.every(setting => setting.key !== undefined) ||
+          orderDimension !== dimension
+        ) {
+          return getDefault(seriesKeys);
+        }
+
+        const removeMissingOrder = (keys, order) =>
+          order.filter(o => keys.includes(o.key));
+        const newKeys = (keys, order) =>
+          keys.filter(key => !order.find(o => o.key === key));
+
+        return [
+          ...removeMissingOrder(seriesKeys, seriesOrder),
+          ...getDefault(newKeys(seriesKeys, seriesOrder)),
+        ];
+      },
+      props: {
+        hasEditSettings: false,
+      },
+      getHidden: (series, settings) =>
+        settings["funnel.dimension"] === null ||
+        settings["funnel.metric"] === null,
+      writeDependencies: ["funnel.order_dimension"],
+      dataTestId: "funnel-row-sort",
+    },
     ...metricSetting("funnel.metric", {
       section: t`Data`,
       title: t`Measure`,
@@ -158,12 +208,13 @@ export default class Funnel extends Component {
       dimensionIndex >= 0 &&
       metricIndex >= 0
     ) {
-      return rows.map(row => ({
+      return rows.map((row, index) => ({
         card: {
           ...card,
           name: formatValue(row[dimensionIndex], {
             column: cols[dimensionIndex],
           }),
+          originalIndex: index,
           _transformed: true,
         },
         data: {

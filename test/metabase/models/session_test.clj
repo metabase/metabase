@@ -13,7 +13,7 @@
 (defn- new-session []
   (try
     (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
-    (-> (Session (str test-uuid)) models/post-insert (dissoc :created_at))
+    (-> (db/select-one Session :id (str test-uuid)) models/post-insert (dissoc :created_at))
     (finally
       (db/delete! Session :id (str test-uuid)))))
 

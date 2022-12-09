@@ -10,7 +10,7 @@ redirect_from:
 
 Have you ever found yourself in a situation where it seems like you need to create nearly identical copies of the same dashboard, with just one different variable? Maybe you have an Earnings dashboard, but you want to see the data for each city your business is in, or maybe you have a KPI dashboard that you want to see broken out by month.
 
-Instead of creating duplicate dashboards, you can use dashboard filters to create simple toggles to change a variable for cards on a dashboard.
+Instead of creating duplicate dashboards, you can add filter widgets to let people change variables for cards on a dashboard.
 
 ## Adding a new filter
 
@@ -57,7 +57,7 @@ The ID filter provides a simple input box where you can type the ID of a user, o
 
 The Other Categories filter is a flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards.
 
-**Note:** If you're trying to filter Native/SQL questions, you'll need to [add a bit of additional markup to your query](../users-guide/13-sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters.html).
+**Note:** If you're trying to filter Native/SQL questions, you'll need to [add a bit of additional markup to your query](../questions/native-editor/sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
 
 ## Example filter
 
@@ -94,9 +94,9 @@ Once you’ve added a filter to your dashboard, just click on the filter to sele
 
 You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).
 
-## Choosing between a dropdown or autocomplete for your filter
+## Default filter types
 
-If the column you're using for a filter has more than 100 unique values, you'll now automatically see a search box with autocomplete suggestions:
+If the column you're using for a filter has more than 100 unique values, you'll automatically see a search box with autocomplete suggestions.
 
 ![Autocomplete](./images/autocomplete.png)
 
@@ -108,9 +108,9 @@ In both cases, you can pick one or multiple selections for your filter.
 
 ![Multi-select](./images/multi-select.png)
 
-If Metabase somehow picked the wrong behavior for your field, admins can go to the [Data Model](../administration-guide/03-metadata-editing.md) section of the admin panel and click on the **gear** icon by the field in question to specify a list, search box, or plain input box.
+## Creating a dropdown filter
 
-![Search options](./images/search-options.png)
+To override the default text box or search box filter widget, ask your Metabase admin to help you [update the column's settings](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) on the Data Model page.
 
 ## Linking filters
 
@@ -124,7 +124,7 @@ To link filters, you'll need to set up this parent-child relationship. And you s
 
 Here you can limit the current filter's choices. If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for this filter. In this case, we toggle on the state filter (the parent), to limit the choices for the city filter. When states are selected, the city filter will limit its choices to cities in those states. Click **Done**, then **Save** to save the dashboard.
 
-To learn more, check out [Linking filters in dashboards](https://www.metabase.com/learn/dashboards/linking-filters.html).
+To learn more, check out [Linking filters in dashboards](https://www.metabase.com/learn/dashboards/linking-filters).
 
 ## Best practices
 
@@ -140,4 +140,4 @@ Here are a few tips to get the most out of dashboard filters:
 - [Interactive dashboards](./interactive.md)
 - [Dashboard subscriptions](./subscriptions.md)
 - [Charts with multiple series](./multiple-series.md)
-- [Learn dashboards](/learn/dashboards)
+- [Learn dashboards](https://www.metabase.com/learn/dashboards)

@@ -100,3 +100,13 @@ export function cleanObject(object) {
   });
   return result;
 }
+
+export function isNestedFieldName(name) {
+  return name.includes(".");
+}
+
+export function getMaybeNestedValue(obj, fieldName) {
+  return isNestedFieldName(fieldName)
+    ? getIn(obj, fieldName.split("."))
+    : obj[fieldName];
+}

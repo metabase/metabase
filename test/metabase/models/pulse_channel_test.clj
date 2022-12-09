@@ -10,7 +10,8 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+            [toucan.hydrate :refer [hydrate]])
+  (:import java.time.LocalDateTime))
 
 ;; Test out our predicate functions
 
@@ -133,7 +134,7 @@
 (defn- create-channel-then-select!
   [channel]
   (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
-    (-> (PulseChannel new-channel-id)
+    (-> (db/select-one PulseChannel :id new-channel-id)
         (hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
@@ -144,7 +145,7 @@
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
   (pulse-channel/update-pulse-channel! channel)
-  (-> (PulseChannel id)
+  (-> (db/select-one PulseChannel :id id)
       (hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
@@ -454,11 +455,13 @@
 
 (deftest identity-hash-test
   (testing "Pulse channel hashes are composed of the pulse's hash, the channel type, and the details and the collection hash"
-    (mt/with-temp* [Collection   [coll  {:name "field-db" :location "/"}]
-                    Pulse        [pulse {:name "my pulse" :collection_id (:id coll)}]
-                    PulseChannel [chan  {:pulse_id     (:id pulse)
-                                         :channel_type :email
-                                         :details      {:emails ["cam@test.com"]}}]]
-      (is (= "ab5e6ff0"
-             (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) :email {:emails ["cam@test.com"]}])
-             (serdes.hash/identity-hash chan))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection   [coll  {:name "field-db" :location "/" :created_at now}]
+                      Pulse        [pulse {:name "my pulse" :collection_id (:id coll) :created_at now}]
+                      PulseChannel [chan  {:pulse_id     (:id pulse)
+                                           :channel_type :email
+                                           :details      {:emails ["cam@test.com"]}
+                                           :created_at   now}]]
+        (is (= "2f5f0269"
+               (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
+               (serdes.hash/identity-hash chan)))))))

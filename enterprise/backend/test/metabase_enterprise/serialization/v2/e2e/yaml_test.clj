@@ -1,308 +1,347 @@
 (ns metabase-enterprise.serialization.v2.e2e.yaml-test
   (:require [clojure.java.io :as io]
             [clojure.test :refer :all]
-            [java-time :as t]
+            [medley.core :as m]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as extract]
-            [metabase-enterprise.serialization.v2.ingest :as ingest]
             [metabase-enterprise.serialization.v2.ingest.yaml :as ingest.yaml]
+            [metabase-enterprise.serialization.v2.load :as serdes.load]
             [metabase-enterprise.serialization.v2.storage.yaml :as storage.yaml]
-            [metabase-enterprise.serialization.v2.utils.yaml :as u.yaml]
             [metabase.models.serialization.base :as serdes.base]
             [metabase.test.generate :as test-gen]
-            [metabase.util.date-2 :as u.date]
             [reifyhealth.specmonstah.core :as rs]
-            [yaml.core :as yaml])
-  (:import java.time.ZoneId))
+            [toucan.db :as db]
+            [yaml.core :as yaml]))
 
-(defn- dir->file-set [dir]
+(defn- dir->contents-set [p dir]
   (->> dir
        .listFiles
-       (filter #(.isFile %))
+       (filter p)
        (map #(.getName %))
        set))
+
+(defn- dir->file-set [dir]
+  (dir->contents-set #(.isFile %) dir))
+
+(defn- dir->dir-set [dir]
+  (dir->contents-set #(.isDirectory %) dir))
 
 (defn- subdirs [dir]
   (->> dir
        .listFiles
        (remove #(.isFile %))))
 
-(defn- strip-labels [path]
-  (mapv #(dissoc % :label) path))
+(defn- collections [dir]
+  (for [coll-dir (subdirs dir)
+        :when (->> ["cards" "dashboards" "timelines"]
+                   (map #(io/file coll-dir %))
+                   (filter #(= % coll-dir))
+                   empty?)]
+    coll-dir))
+
+(defn- file-set [dir]
+  (let [base (.toPath dir)]
+    (set (for [file (file-seq dir)
+               :when (.isFile file)
+               :let [rel (.relativize base (.toPath file))]]
+           (mapv str rel)))))
 
 (defn- random-keyword
   ([prefix n] (random-keyword prefix n 0))
-  ([prefix n floor] (keyword (str prefix (+ floor (rand-int n))))))
+  ([prefix n floor] (keyword (str (name prefix) (+ floor (rand-int n))))))
+
+(defn- random-fks
+  "Generates a specmonstah query with the :refs populated with the randomized bindings.
+  `(random-fks {:spec-gen {:foo :bar}}
+               {:creator_id [:u 10]
+                :db_id      [:db 20 15]})`
+  this will return a query like:
+  `{:spec-gen {:foo :bar}
+    :refs {:creator_id :u6  :db_id 17}}`
+
+  The bindings map has the same keys as `:refs`, but the values are `[base-keyword width]` pairs or
+  `[base-keyword width floor]` triples. These are passed to [[random-keyword]]."
+  [base bindings]
+  (update base :refs merge (m/map-vals #(apply random-keyword %) bindings)))
+
+(defn- many-random-fks [n base bindings]
+  (vec (repeatedly n #(vector 1 (random-fks base bindings)))))
+
+(defn- table->db [{:keys [table_id] :as refs}]
+  (let [table-number (-> table_id
+                         name
+                         (subs 1)
+                         (Integer/parseInt))]
+    (assoc refs :database_id (keyword (str "db" (quot table-number 10))))))
+
+(defn- clean-entity
+ "Removes any comparison-confounding fields, like `:created_at`."
+ [entity]
+ (dissoc entity :created_at))
 
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (ts/with-empty-h2-app-db
-      ;; TODO Generating some nested collections would make these tests more robust.
-      (test-gen/insert!
-        {:collection              [[100 {:refs {:personal_owner_id ::rs/omit}}]
-                                   [10  {:refs     {:personal_owner_id ::rs/omit}
-                                         :spec-gen {:namespace :snippets}}]]
-         :database                [[10]]
-         :table                   (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
-                                             [10 {:refs {:db_id db}}]))
-         :field                   (into [] (for [n     (range 100)
-                                                 :let [table (keyword (str "t" n))]]
-                                             [10 {:refs {:table_id table}}]))
-         :core-user               [[10]]
-         :card                    [[100 {:refs (let [db (rand-int 10)
-                                                     t  (rand-int 10)]
-                                                 {:database_id   (keyword (str "db" db))
-                                                  :table_id      (keyword (str "t" (+ t (* 10 db))))
-                                                  :collection_id (random-keyword "coll" 100)
-                                                  :creator_id    (random-keyword "u" 10)})}]]
-         :dashboard               [[100 {:refs {:collection_id   (random-keyword "coll" 100)
-                                                :creator_id      (random-keyword "u" 10)}}]]
-         :dashboard-card          [[300 {:refs {:card_id      (random-keyword "c" 100)
-                                                :dashboard_id (random-keyword "d" 100)}}]]
-         :dimension               [;; 20 with both IDs set
-                                   [20 {:refs {:field_id                (random-keyword "field" 1000)
-                                               :human_readable_field_id (random-keyword "field" 1000)}}]
-                                   ;; 20 with just :field_id
-                                   [20 {:refs {:field_id                (random-keyword "field" 1000)
-                                               :human_readable_field_id ::rs/omit}}]]
-         :metric                  [[30 {:refs {:table_id   (random-keyword "t" 100)
-                                               :creator_id (random-keyword "u" 10)}}]]
-         :segment                 [[30 {:refs {:table_id   (random-keyword "t" 100)
-                                               :creator_id (random-keyword "u" 10)}}]]
-         :native-query-snippet    [[10 {:refs {:creator_id    (random-keyword "u" 10)
-                                               :collection_id (random-keyword "coll" 10 100)}}]]
-         :timeline                [[10 {:refs {:creator_id    (random-keyword "u" 10)
-                                               :collection_id (random-keyword "coll" 100)}}]]
-         :timeline-event          [[90 {:refs {:timeline_id   (random-keyword "timeline" 10)}}]]
-         :pulse                   [[10 {:refs {:collection_id (random-keyword "coll" 100)}}]
-                                   [10 {:refs {:collection_id ::rs/omit}}]
-                                   [10 {:refs {:collection_id ::rs/omit
-                                               :dashboard_id  (random-keyword "d" 100)}}]]
-         :pulse-card              [[60 {:refs {:card_id       (random-keyword "c" 100)
-                                               :pulse_id      (random-keyword "pulse" 10)}}]
-                                   [60 {:refs {:card_id       (random-keyword "c" 100)
-                                               :pulse_id      (random-keyword "pulse" 10 20)
-                                               :dashboard_card_id (random-keyword "dc" 300)}}]]
-         :pulse-channel           [[15 {:refs {:pulse_id      (random-keyword "pulse" 10)}}]
-                                   [15 {:refs {:pulse_id      (random-keyword "pulse" 10 20)}}]]
-         :pulse-channel-recipient [[40 {:refs {:pulse_channel_id (random-keyword "pulse-channel" 30)
-                                               :user_id          (random-keyword "u" 10)}}]]})
-      (let [extraction (into [] (extract/extract-metabase {}))
-            entities   (reduce (fn [m entity]
-                                 (update m (-> entity :serdes/meta last :model)
-                                         (fnil conj []) entity))
-                               {} extraction)]
-        (is (= 110 (-> entities (get "Collection") count)))
+    (let [extraction (atom nil)
+          entities   (atom nil)]
+      (ts/with-source-and-dest-dbs
+        ;; TODO Generating some nested collections would make these tests more robust, but that's difficult.
+        ;; There are handwritten tests for storage and ingestion that check out the nesting, at least.
+        (ts/with-source-db
+          (testing "insert"
+            (test-gen/insert!
+              {:collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
+                                         [10  {:refs     {:personal_owner_id ::rs/omit}
+                                               :spec-gen {:namespace :snippets}}]]
+               :database                [[10]]
+               ;; Tables are special - we define table 0-9 under db0, 10-19 under db1, etc. The :card spec below
+               ;; depends on this relationship.
+               :table                   (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
+                                                   [10 {:refs {:db_id db}}]))
+               :field                   (many-random-fks 1000 {} {:table_id [:t 100]})
+               :core-user               [[100]]
+               :card                    (mapv #(update-in % [1 :refs] table->db)
+                                              (many-random-fks
+                                                100
+                                                {:spec-gen {:dataset_query {:database 1
+                                                                            :query {:source-table 3
+                                                                                    :aggregation [[:count]]
+                                                                                    :breakout [[:field 16 nil]]}
+                                                                            :type :query}}}
+                                                {:table_id      [:t    100]
+                                                 :collection_id [:coll 100]
+                                                 :creator_id    [:u    10]}))
+               :dashboard               (many-random-fks 100 {} {:collection_id [:coll 100]
+                                                                 :creator_id    [:u    10]})
+               :dashboard-card          (many-random-fks 300 {} {:card_id      [:c 100]
+                                                                 :dashboard_id [:d 100]})
+               :dimension               (vec (concat
+                                               ;; 20 with both IDs set
+                                               (many-random-fks 20 {}
+                                                                {:field_id                [:field 1000]
+                                                                 :human_readable_field_id [:field 1000]})
+                                               ;; 20 with just :field_id
+                                               (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
+                                                                {:field_id [:field 1000]})))
+               :metric                  (many-random-fks 30 {:spec-gen {:definition {:aggregation  [[:count]]
+                                                                                     :source-table 9}}}
+                                                         {:table_id   [:t 100]
+                                                          :creator_id [:u 10]})
+               :segment                 (many-random-fks 30 {:spec-gen {:definition {:filter [:!= [:field 60 nil] 50],
+                                                                                     :source-table 4}}}
+                                                         {:table_id   [:t 100]
+                                                          :creator_id [:u 10]})
+               :native-query-snippet    (many-random-fks 10 {} {:creator_id    [:u 10]
+                                                                :collection_id [:coll 10 100]})
+               :timeline                (many-random-fks 10 {} {:creator_id    [:u 10]
+                                                                :collection_id [:coll 100]})
+               :timeline-event          (many-random-fks 90 {} {:timeline_id   [:timeline 10]})
+               :pulse                   (vec (concat
+                                               ;; 10 classic pulses, from collections
+                                               (many-random-fks 10 {} {:collection_id [:coll 100]})
+                                               ;; 10 classic pulses, no collection
+                                               (many-random-fks 10 {:refs {:collection_id ::rs/omit}} {})
+                                               ;; 10 dashboard subs
+                                               (many-random-fks 10 {:refs {:collection_id ::rs/omit}}
+                                                                {:dashboard_id  [:d 100]})))
+               :pulse-card              (vec (concat
+                                               ;; 60 pulse cards for the classic pulses
+                                               (many-random-fks 60 {} {:card_id       [:c 100]
+                                                                       :pulse_id      [:pulse 10]})
+                                               ;; 60 pulse cards connected to dashcards for the dashboard subs
+                                               (many-random-fks 60 {} {:card_id           [:c 100]
+                                                                       :pulse_id          [:pulse 10 20]
+                                                                       :dashboard_card_id [:dc 300]})))
+               :pulse-channel           (vec (concat
+                                               ;; 15 channels for the classic pulses
+                                               (many-random-fks 15 {} {:pulse_id  [:pulse 10]})
+                                               ;; 15 channels for the dashboard subs
+                                               (many-random-fks 15 {} {:pulse_id  [:pulse 10 20]})))
+               :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
+                                                                :user_id          [:u 100]})}))
 
-        (testing "storage"
-          (storage.yaml/store! (seq extraction) dump-dir)
-          (testing "for Collections"
-            (is (= 110 (count (dir->file-set (io/file dump-dir "Collection")))))
-            (doseq [{:keys [entity_id slug] :as coll} (get entities "Collection")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id slug)]]
-              (is (= (dissoc coll :serdes/meta)
-                     (yaml/from-file (io/file dump-dir "Collection" filename))))))
+          (is (= 100 (count (db/select-field :email 'User))))
 
-          (testing "for Databases"
-            (is (= 10 (count (dir->file-set (io/file dump-dir "Database")))))
-            (doseq [{:keys [name] :as coll} (get entities "Database")
-                    :let [filename (#'u.yaml/leaf-file-name name)]]
-              (is (= (-> coll
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Database" filename))))))
+          (testing "extraction"
+            (reset! extraction (into [] (extract/extract-metabase {})))
+            (reset! entities   (reduce (fn [m entity]
+                                         (update m (-> entity :serdes/meta last :model)
+                                                 (fnil conj []) entity))
+                                       {} @extraction))
+            (is (= 110 (-> @entities (get "Collection") count))))
 
-          (testing "for Tables"
-            (is (= 100
-                   (reduce + (for [db    (get entities "Database")
-                                   :let [tables (dir->file-set (io/file dump-dir "Database" (:name db) "Table"))]]
-                               (count tables))))
-                "Tables are scattered, so the directories are harder to count")
+          (testing "storage"
+            (storage.yaml/store! (seq @extraction) dump-dir)
 
-            (doseq [{:keys [db_id name] :as coll} (get entities "Table")]
-              (is (= (-> coll
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Database" db_id "Table" (str name ".yaml")))))))
+            (testing "for Collections"
+              (is (= 110 (count (for [f (file-set (io/file dump-dir))
+                                      :when (and (= (first f) "collections")
+                                                 (let [[a b] (take-last 2 f)]
+                                                   (= b (str a ".yaml"))))]
+                                  f)))
+                  "which all go in collections/, even the snippets ones"))
 
-          (testing "for Fields"
-            (is (= 1000
-                   (reduce + (for [db    (get entities "Database")
-                                   table (subdirs (io/file dump-dir "Database" (:name db) "Table"))]
-                               (->> (io/file table "Field")
-                                    dir->file-set
-                                    count))))
-                "Fields are scattered, so the directories are harder to count")
+            (testing "for Databases"
+              (is (= 10 (count (dir->dir-set (io/file dump-dir "databases"))))))
 
-            (doseq [{[db schema table] :table_id name :name :as coll} (get entities "Field")]
-              (is (nil? schema))
-              (is (= (-> coll
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Database" db "Table" table "Field" (str name ".yaml")))))))
+            (testing "for Tables"
+              (is (= 100
+                     (reduce + (for [db    (get @entities "Database")
+                                     :let [tables (dir->dir-set (io/file dump-dir "databases" (:name db) "tables"))]]
+                                 (count tables))))
+                  "Tables are scattered, so the directories are harder to count"))
 
-          (testing "for cards"
-            (is (= 100 (count (dir->file-set (io/file dump-dir "Card")))))
-            (doseq [{:keys [entity_id] :as card} (get entities "Card")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
-              (is (= (-> card
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Card" filename))))))
+            (testing "for Fields"
+              (is (= 1000
+                     (reduce + (for [db    (get @entities "Database")
+                                     table (subdirs (io/file dump-dir "databases" (:name db) "tables"))]
+                                 (->> (io/file table "fields")
+                                      dir->file-set
+                                      count))))
+                  "Fields are scattered, so the directories are harder to count"))
 
-          (testing "for dashboards"
-            (is (= 100 (count (dir->file-set (io/file dump-dir "Dashboard")))))
-            (doseq [{:keys [entity_id] :as dash} (get entities "Dashboard")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
-              (is (= (-> dash
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Dashboard" filename))))))
+            (testing "for cards"
+              (is (= 100 (->> (io/file dump-dir "collections")
+                              collections
+                              (map (comp count dir->file-set #(io/file % "cards")))
+                              (reduce +)))))
 
-          (testing "for dashboard cards"
-            (is (= 300
-                   (reduce + (for [dash (get entities "Dashboard")
-                                   :let [card-dir (io/file dump-dir "Dashboard" (:entity_id dash) "DashboardCard")]]
-                               (if (.exists card-dir)
-                                 (count (dir->file-set card-dir))
-                                 0)))))
+            (testing "for dashboards"
+              (is (= 100 (->> (io/file dump-dir "collections")
+                              collections
+                              (map (comp count dir->file-set #(io/file % "dashboards")))
+                              (reduce +)))))
 
-            (doseq [{:keys [dashboard_id entity_id]
-                     :as   dashcard}                (get entities "DashboardCard")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
-              (is (= (-> dashcard
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Dashboard" dashboard_id "DashboardCard" filename))))))
+            (testing "for timelines"
+              (is (= 10 (->> (io/file dump-dir "collections")
+                             collections
+                             (map (comp count dir->file-set #(io/file % "timelines")))
+                             (reduce +)))))
 
-          (testing "for dimensions"
-            (is (= 40 (count (dir->file-set (io/file dump-dir "Dimension")))))
-            (doseq [{:keys [entity_id] :as dim} (get entities "Dimension")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
-              (is (= (-> dim
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Dimension" filename))))))
+            (testing "for metrics"
+              (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
+                                        table (dir->dir-set (io/file dump-dir "databases" db "tables"))
+                                        :let [metrics-dir (io/file dump-dir "databases" db "tables" table "metrics")]
+                                        :when (.exists metrics-dir)]
+                                    (count (dir->file-set metrics-dir)))))))
 
-          (testing "for metrics"
-            (is (= 30 (count (dir->file-set (io/file dump-dir "Metric")))))
-            (doseq [{:keys [entity_id name] :as metric} (get entities "Metric")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id name)]]
-              (is (= (-> metric
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Metric" filename))))))
+            (testing "for segments"
+              (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
+                                        table (dir->dir-set (io/file dump-dir "databases" db "tables"))
+                                        :let [segments-dir (io/file dump-dir "databases" db "tables" table "segments")]
+                                        :when (.exists segments-dir)]
+                                    (count (dir->file-set segments-dir)))))))
 
-          (testing "for segments"
-            (is (= 30 (count (dir->file-set (io/file dump-dir "Segment")))))
-            (doseq [{:keys [entity_id name] :as segment} (get entities "Segment")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id name)]]
-              (is (= (-> segment
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Segment" filename))))))
+            (testing "for native query snippets"
+              (is (= 10 (->> (io/file dump-dir "snippets")
+                             collections
+                             (map (comp count dir->file-set))
+                             (reduce +)))))
 
-          (testing "for pulses"
-            (is (= 30 (count (dir->file-set (io/file dump-dir "Pulse")))))
-            (doseq [{:keys [entity_id] :as pulse} (get entities "Pulse")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
-              (is (= (-> pulse
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Pulse" filename))))))
+            (testing "for settings"
+              (is (.exists (io/file dump-dir "settings.yaml"))))))
 
-          (testing "for pulse cards"
-            (is (= 120 (reduce + (for [pulse (get entities "Pulse")]
-                                   (->> (io/file dump-dir "Pulse" (:entity_id pulse) "PulseCard")
-                                        dir->file-set
-                                        count)))))
-            (doseq [{:keys [entity_id pulse_id] :as card} (get entities "PulseCard")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
-              (is (= (-> card
-                         (dissoc :serdes/meta))
-                     (yaml/from-file (io/file dump-dir "Pulse" pulse_id "PulseCard" filename))))))
+          (testing "ingest and load"
+            (ts/with-dest-db
+              (testing "ingested set matches extracted set"
+                (let [extracted-set (set (map (comp #'ingest.yaml/strip-labels serdes.base/serdes-path) @extraction))]
+                  (is (= (count extracted-set)
+                         (count @extraction)))
+                  (is (= extracted-set
+                       (set (keys (#'ingest.yaml/ingest-all (io/file dump-dir))))))))
 
-          (testing "for pulse channels"
-            (is (= 30 (reduce + (for [pulse (get entities "Pulse")]
-                                  (->> (io/file dump-dir "Pulse" (:entity_id pulse) "PulseChannel")
-                                       dir->file-set
-                                       count)))))
-            (is (= 40 (reduce + (for [{:keys [recipients]} (get entities "PulseChannel")]
-                                  (count recipients)))))
-            (doseq [{:keys [entity_id pulse_id] :as channel} (get entities "PulseChannel")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
-              (is (= (-> channel
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Pulse" pulse_id "PulseChannel" filename))))))
+              (testing "doing ingestion"
+                (is (serdes.load/load-metabase (ingest.yaml/ingest-yaml dump-dir))
+                    "successful"))
 
-          (testing "for native query snippets"
-            (is (= 10 (count (dir->file-set (io/file dump-dir "NativeQuerySnippet")))))
-            (doseq [{:keys [entity_id name] :as snippet} (get entities "NativeQuerySnippet")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id name)]]
-              (is (= (-> snippet
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "NativeQuerySnippet" filename))))))
+              (testing "for Collections"
+                (doseq [{:keys [entity_id] :as coll} (get @entities "Collection")]
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one 'Collection :entity_id entity_id)
+                              (serdes.base/extract-one "Collection" {})
+                              clean-entity)))))
 
-          (testing "for timelines and events"
-            (is (= 10 (count (dir->file-set (io/file dump-dir "Timeline")))))
-            (doseq [{:keys [entity_id] :as timeline} (get entities "Timeline")
-                    :let [filename (#'u.yaml/leaf-file-name entity_id)]]
-              (is (= (-> timeline
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Timeline" filename)))))
+              (testing "for Databases"
+                (doseq [{:keys [name] :as coll} (get @entities "Database")]
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one 'Database :name name)
+                              (serdes.base/extract-one "Database" {})
+                              clean-entity)))))
 
-            (is (= 90 (reduce + (for [timeline (get entities "Timeline")]
-                                  (->> (io/file dump-dir "Timeline" (:entity_id timeline) "TimelineEvent")
-                                       dir->file-set
-                                       count)))))
-            (doseq [{:keys [name timeline_id timestamp] :as event} (get entities "TimelineEvent")
-                    :let [filename (#'u.yaml/leaf-file-name timestamp name)]]
-              (is (= (-> event
-                         (dissoc :serdes/meta)
-                         (update :created_at u.date/format)
-                         (update :updated_at u.date/format))
-                     (yaml/from-file (io/file dump-dir "Timeline" timeline_id "TimelineEvent" filename))))))
+              (testing "for Tables"
+                (doseq [{:keys [db_id name] :as coll} (get @entities "Table")]
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one-field :id 'Database :name db_id)
+                              (db/select-one 'Table :name name :db_id)
+                              (serdes.base/extract-one "Table" {})
+                              clean-entity)))))
 
-          (testing "for settings"
-            (is (= (into {} (for [{:keys [key value]} (get entities "Setting")]
-                              [key value]))
-                   (yaml/from-file (io/file dump-dir "settings.yaml"))))))
+              (testing "for Fields"
+                (doseq [{[db schema table] :table_id name :name :as coll} (get @entities "Field")]
+                  (is (nil? schema))
+                  (is (= (clean-entity coll)
+                         (->> (db/select-one-field :id 'Database :name db)
+                              (db/select-one-field :id 'Table :schema schema :name table :db_id)
+                              (db/select-one 'Field :name name :table_id)
+                              (serdes.base/extract-one "Field" {})
+                              clean-entity)))))
 
-        (testing "ingestion"
-          (let [ingestable (ingest.yaml/ingest-yaml dump-dir)]
-            (testing "ingest-list is accurate"
-              (is (= (into #{} (comp cat
-                                     (map (fn [entity]
-                                            (mapv #(cond-> %
-                                                     (:label %) (update :label #'u.yaml/truncate-label))
-                                                  (serdes.base/serdes-path entity)))))
-                           (vals entities))
-                     (into #{} (ingest/ingest-list ingestable)))))
+              (testing "for cards"
+                (doseq [{:keys [entity_id] :as card} (get @entities "Card")]
+                  (is (= (clean-entity card)
+                         (->> (db/select-one 'Card :entity_id entity_id)
+                              (serdes.base/extract-one "Card" {})
+                              clean-entity)))))
 
+              (testing "for dashboards"
+                (doseq [{:keys [entity_id] :as dash} (get @entities "Dashboard")]
+                  (is (= (clean-entity dash)
+                         (->> (db/select-one 'Dashboard :entity_id entity_id)
+                              (serdes.base/extract-one "Dashboard" {})
+                              clean-entity)))))
 
-            (testing "each entity matches its in-memory original"
-              (doseq [entity extraction]
-                (let [->utc   #(t/zoned-date-time % (ZoneId/of "UTC"))]
-                  (is (= (cond-> entity
-                           true                                       (update :serdes/meta strip-labels)
-                           ;; TIMESTAMP WITH TIME ZONE columns come out of the database as OffsetDateTime, but read back
-                           ;; from YAML as ZonedDateTimes; coerce the expected value to match.
-                           (t/offset-date-time? (:created_at entity)) (update :created_at ->utc)
-                           (t/offset-date-time? (:updated_at entity)) (update :updated_at ->utc))
-                         (ingest/ingest-one ingestable (serdes.base/serdes-path entity)))))))))))))
+              (testing "for dashboard cards"
+                (doseq [{:keys [entity_id] :as dashcard} (get @entities "DashboardCard")]
+                  (is (= (clean-entity dashcard)
+                         (->> (db/select-one 'DashboardCard :entity_id entity_id)
+                              (serdes.base/extract-one "DashboardCard" {})
+                              clean-entity)))))
+
+              (testing "for dimensions"
+                (doseq [{:keys [entity_id] :as dim} (get @entities "Dimension")]
+                  (is (= (clean-entity dim)
+                         (->> (db/select-one 'Dimension :entity_id entity_id)
+                              (serdes.base/extract-one "Dimension" {})
+                              clean-entity)))))
+
+              (testing "for metrics"
+                (doseq [{:keys [entity_id] :as metric} (get @entities "Metric")]
+                  (is (= (clean-entity metric)
+                         (->> (db/select-one 'Metric :entity_id entity_id)
+                              (serdes.base/extract-one "Metric" {})
+                              clean-entity)))))
+
+              (testing "for segments"
+                (doseq [{:keys [entity_id] :as segment} (get @entities "Segment")]
+                  (is (= (clean-entity segment)
+                         (->> (db/select-one 'Segment :entity_id entity_id)
+                              (serdes.base/extract-one "Segment" {})
+                              clean-entity)))))
+
+              (testing "for native query snippets"
+                (doseq [{:keys [entity_id] :as snippet} (get @entities "NativeQuerySnippet")]
+                  (is (= (clean-entity snippet)
+                         (->> (db/select-one 'NativeQuerySnippet :entity_id entity_id)
+                              (serdes.base/extract-one "NativeQuerySnippet" {})
+                              clean-entity)))))
+
+              (testing "for timelines and events"
+                (doseq [{:keys [entity_id] :as timeline} (get @entities "Timeline")]
+                  (is (= (clean-entity timeline)
+                         (->> (db/select-one 'Timeline :entity_id entity_id)
+                              (serdes.base/extract-one "Timeline" {})
+                              clean-entity)))))
+
+              (testing "for settings"
+                (is (= (into {} (for [{:keys [key value]} (get @entities "Setting")]
+                                  [key value]))
+                       (yaml/from-file (io/file dump-dir "settings.yaml")))))))))))

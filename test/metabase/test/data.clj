@@ -180,9 +180,9 @@
   `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
 (defn format-name
-  "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the driver's
-  implementation of `format-name`. (Most databases use the default implementation of `identity`; H2 uses
-  `clojure.string/upper-case`.) This function DOES NOT quote the identifier."
+  "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the current
+  driver's implementation of [[ddl.i/format-name]]. (Most databases use the default implementation of `identity`; H2
+  uses [[clojure.string/upper-case]].) This function DOES NOT quote the identifier."
   [a-name]
   (assert ((some-fn keyword? string? symbol?) a-name)
     (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? (Change the form to"

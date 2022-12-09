@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import Modal from "metabase/components/Modal";
 import { breakpointMinMedium } from "metabase/styled-components/theme/media-queries";
 import { color } from "metabase/lib/colors";
 
@@ -6,26 +7,21 @@ interface ObjectDetailModalProps {
   wide: boolean;
 }
 
+export const CenteredLayout = styled.div`
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+`;
+
 export const ObjectDetailModal = styled.div<ObjectDetailModalProps>`
-  border: 1px solid ${color("border")};
-  border-radius: 0.5rem;
-  overflow: hidden;
-  ${breakpointMinMedium} {
-    width: ${({ wide }) => (wide ? "64rem" : "48rem")};
-    max-width: 95vw;
-  }
-  max-height: 95vh;
-  width: 95vw;
+  overflow-y: scroll;
+  height: 100%;
 `;
 
 export const ObjectDetailBodyWrapper = styled.div`
   font-size: 1rem;
   overflow-y: auto;
-  ${breakpointMinMedium} {
-    display: flex;
-    height: calc(80vh - 4rem);
-  }
-  height: calc(100vh - 8rem);
 `;
 
 export const ObjectIdLabel = styled.span`
@@ -37,9 +33,6 @@ export const ObjectDetailsTable = styled.div`
   overflow-y: auto;
   flex: 1;
   padding: 2rem;
-  ${breakpointMinMedium} {
-    max-height: calc(80vh - 4rem);
-  }
 `;
 
 export const ObjectRelationships = styled.div`
@@ -47,10 +40,6 @@ export const ObjectRelationships = styled.div`
   flex: 0 0 100%;
   padding: 2rem;
   background-color: ${color("bg-light")};
-  ${breakpointMinMedium} {
-    flex: 0 0 33.3333%;
-    max-height: calc(80vh - 4rem);
-  }
 `;
 
 export const CloseButton = styled.div`
@@ -82,6 +71,42 @@ export interface GridItemProps {
 export const GridCell = styled.div<GridItemProps>`
   grid-column: span ${props => props.colSpan || 1} / span
     ${props => props.colSpan || 1};
+`;
+
+export const RootModal = styled(Modal)`
+  ${ObjectDetailModal} {
+    overflow: hidden;
+    ${breakpointMinMedium} {
+      width: ${({ wide }) => (wide ? "64rem" : "48rem")};
+      max-width: 95vw;
+    }
+    max-height: 95vh;
+    width: 95vw;
+
+    border: 1px solid ${color("border")};
+    border-radius: 0.5rem;
+  }
+
+  ${ObjectDetailBodyWrapper} {
+    ${breakpointMinMedium} {
+      display: flex;
+      height: calc(80vh - 4rem);
+    }
+    height: calc(100vh - 8rem);
+  }
+
+  ${ObjectDetailsTable} {
+    ${breakpointMinMedium} {
+      max-height: calc(80vh - 4rem);
+    }
+  }
+
+  ${ObjectRelationships} {
+    ${breakpointMinMedium} {
+      flex: 0 0 33.3333%;
+      max-height: calc(80vh - 4rem);
+    }
+  }
 `;
 
 export interface ObjectRelationshipContentProps {

@@ -7,6 +7,7 @@ export interface OptionsType {
   date_format?: string;
   date_separator?: string;
   date_style?: string;
+  decimals?: number;
   isExclude?: boolean;
   jsx?: boolean;
   link_text?: string;
@@ -16,6 +17,8 @@ export interface OptionsType {
   markdown_template?: any;
   maximumFractionDigits?: number;
   noRange?: boolean;
+  number_separators?: string;
+  number_style?: string;
   prefix?: string;
   remap?: any;
   rich?: boolean;

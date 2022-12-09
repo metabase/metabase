@@ -2,14 +2,17 @@ import { updateIn } from "icepick";
 import { createEntity } from "metabase/lib/entities";
 
 import { GET } from "metabase/lib/api";
-import {
-  getCollectionVirtualSchemaId,
-  getQuestionVirtualTableId,
-} from "metabase/lib/saved-questions";
-import { generateSchemaId, parseSchemaId } from "metabase/lib/schema";
 
 import { SchemaSchema } from "metabase/schema";
 import Questions from "metabase/entities/questions";
+import {
+  generateSchemaId,
+  parseSchemaId,
+} from "metabase-lib/metadata/utils/schema";
+import {
+  getCollectionVirtualSchemaId,
+  getQuestionVirtualTableId,
+} from "metabase-lib/metadata/utils/saved-questions";
 
 // This is a weird entity because we don't have actual schema objects
 
@@ -54,7 +57,9 @@ export default createEntity({
     if (type === Questions.actionTypes.CREATE && !error) {
       const { question, status, data } = payload;
       if (question) {
-        const schema = getCollectionVirtualSchemaId(question.collection);
+        const schema = getCollectionVirtualSchemaId(question.collection, {
+          isDatasets: question.dataset,
+        });
         if (!state[schema]) {
           return state;
         }
@@ -73,7 +78,9 @@ export default createEntity({
 
     if (type === Questions.actionTypes.UPDATE && !error) {
       const { question } = payload;
-      const schemaId = getCollectionVirtualSchemaId(question.collection);
+      const schemaId = getCollectionVirtualSchemaId(question.collection, {
+        isDatasets: question.dataset,
+      });
 
       const virtualQuestionId = getQuestionVirtualTableId(question);
       const previousSchemaContainingTheQuestion =

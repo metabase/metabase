@@ -5,6 +5,7 @@
             [clojure.tools.logging :as log]
             [metabase.models.database :refer [Database]]
             [metabase.models.humanization :as humanization]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.table :as table :refer [Table]]
@@ -98,7 +99,7 @@
   [database :- i/DatabaseInstance, new-tables :- #{i/DatabaseMetadataTable}]
   (log/info (trs "Found new tables:")
             (for [table new-tables]
-              (sync-util/name-for-logging (table/map->TableInstance table))))
+              (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, :as table} new-tables]
     (if-let [existing-id (db/select-one-id Table
                            :db_id  (u/the-id database)
@@ -109,14 +110,16 @@
       (db/update! Table existing-id
         :active true)
       ;; otherwise create a new Table
-      (db/insert! Table
-        :db_id           (u/the-id database)
-        :schema          schema
-        :name            table-name
-        :display_name    (humanization/name->human-readable-name table-name)
-        :active          true
-        :visibility_type (when (is-crufty-table? table)
-                           :cruft)))))
+      (let [is-crufty? (is-crufty-table? table)]
+       (db/insert! Table
+         :db_id               (u/the-id database)
+         :schema              schema
+         :name                table-name
+         :display_name        (humanization/name->human-readable-name table-name)
+         :active              true
+         :visibility_type     (when is-crufty? :cruft)
+         ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
+         :initial_sync_status (if is-crufty? "complete" "incomplete"))))))
 
 
 (s/defn ^:private retire-tables!
@@ -124,7 +127,7 @@
   [database :- i/DatabaseInstance, old-tables :- #{i/DatabaseMetadataTable}]
   (log/info (trs "Marking tables as inactive:")
             (for [table old-tables]
-              (sync-util/name-for-logging (table/map->TableInstance table))))
+              (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, :as _table} old-tables]
     (db/update-where! Table {:db_id  (u/the-id database)
                              :schema schema
@@ -138,7 +141,7 @@
   [database :- i/DatabaseInstance, changed-tables :- #{i/DatabaseMetadataTable}]
   (log/info (trs "Updating description for tables:")
             (for [table changed-tables]
-              (sync-util/name-for-logging (table/map->TableInstance table))))
+              (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, description :description} changed-tables]
     (when-not (str/blank? description)
       (db/update-where! Table {:db_id       (u/the-id database)

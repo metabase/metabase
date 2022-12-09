@@ -104,7 +104,7 @@ export default function SearchResult({
       isSelected={isSelected}
       active={active}
       compact={compact}
-      to={!onClick ? result.getUrl() : ""}
+      to={!onClick ? result.getUrl({ isModelDetail: true }) : ""}
       onClick={onClick ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >

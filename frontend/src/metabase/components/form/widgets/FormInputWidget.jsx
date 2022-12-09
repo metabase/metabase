@@ -14,6 +14,7 @@ const propTypes = {
   autoFocus: PropTypes.bool,
   helperText: PropTypes.node,
   tabIndex: PropTypes.string,
+  subtitle: PropTypes.string,
 };
 
 const FormInputWidget = forwardRef(function FormInputWidget(
@@ -25,6 +26,7 @@ const FormInputWidget = forwardRef(function FormInputWidget(
     autoFocus,
     helperText,
     tabIndex,
+    subtitle,
   },
   ref,
 ) {
@@ -41,6 +43,7 @@ const FormInputWidget = forwardRef(function FormInputWidget(
       rightIconTooltip={helperText}
       tabIndex={tabIndex}
       fullWidth
+      subtitle={subtitle}
       ref={ref}
     />
   );

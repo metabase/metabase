@@ -1,27 +1,31 @@
-import _ from "underscore";
 import { createAction } from "redux-actions";
 
+import _ from "underscore";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard } from "metabase/lib/card";
-import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 import Utils from "metabase/lib/utils";
 import { createThunkAction } from "metabase/lib/redux";
 
-import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
-
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
 import { openUrl } from "metabase/redux/app";
-import { setRequestUnloaded } from "metabase/redux/requests";
 
 import Questions from "metabase/entities/questions";
+import Databases from "metabase/entities/databases";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import {
+  cardIsEquivalent,
+  cardQueryIsEquivalent,
+} from "metabase-lib/queries/utils/card";
+import Query from "metabase-lib/queries/Query";
 
+import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import { trackNewQuestionSaved } from "../../analytics";
 import {
   getCard,
+  getIsResultDirty,
   getOriginalQuestion,
   getQuestion,
   getResultsMetadata,
@@ -96,7 +100,7 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage
-        await loadCard(card.original_card_id)
+        await loadCard(card.original_card_id, { dispatch, getState })
       : // Otherwise, use a current card as the original card if the card has been saved
       // This is needed for checking whether the card is in dirty state or not
       card.id
@@ -131,7 +135,9 @@ export const navigateToNewCardInsideQB = createThunkAction(
         // Do not reload questions with breakouts when clicked on a legend item
       } else if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
-        dispatch(setCardAndRun(await loadCard(nextCard.id)));
+        dispatch(
+          setCardAndRun(await loadCard(nextCard.id, { dispatch, getState })),
+        );
       } else {
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
         const url = Urls.serializedQuestion(card);
@@ -158,6 +164,10 @@ export const navigateToNewCardInsideQB = createThunkAction(
 // DEPRECATED, still used in a couple places
 export const setDatasetQuery =
   (datasetQuery, options) => (dispatch, getState) => {
+    if (datasetQuery instanceof Query) {
+      datasetQuery = datasetQuery.datasetQuery();
+    }
+
     const question = getQuestion(getState());
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
   };
@@ -172,15 +182,18 @@ export const apiCreateQuestion = question => {
       : question;
 
     const resultsMetadata = getResultsMetadata(getState());
-    const createdQuestion = await questionWithVizSettings
+    const questionToCreate = questionWithVizSettings
       .setQuery(question.query().clean())
-      .setResultsMetadata(resultsMetadata)
-      .reduxCreate(dispatch);
+      .setResultsMetadata(resultsMetadata);
+    const createdQuestion = await reduxCreateQuestion(
+      questionToCreate,
+      dispatch,
+    );
 
-    // remove the databases in the store that are used to populate the QB databases list.
-    // This is done when saving a Card because the newly saved card will be eligible for use as a source query
-    // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(setRequestUnloaded(["entities", "databases"]));
+    const databases = Databases.selectors.getList(getState());
+    if (databases && !databases.some(d => d.is_saved_questions)) {
+      dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
+    }
 
     dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackStructEvent(
@@ -203,10 +216,12 @@ export const apiCreateQuestion = question => {
 };
 
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
-export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
+export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
+
+    rerunQuery = rerunQuery || getIsResultDirty(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -215,24 +230,27 @@ export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
       : question;
 
     const resultsMetadata = getResultsMetadata(getState());
-    const updatedQuestion = await questionWithVizSettings
-      .setQuery(question.query().clean())
-      .setResultsMetadata(resultsMetadata)
-      // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
-      // (it's necessary for datasets to behave like tables opened in simple mode)
-      // When doing updates like changing name, description, etc., we need to omit the dataset_query in the request body
-      .reduxUpdate(dispatch, {
+    const questionToUpdate = questionWithVizSettings
+      // Before we clean the query, we make sure question is not treated as a dataset
+      // as calling table() method down the line would bring unwanted consequences
+      // such as dropping joins (as joins are treated differently between pure questions and datasets)
+      .setQuery(question.setDataset(false).query().clean())
+      .setResultsMetadata(resultsMetadata);
+
+    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+    // (it's necessary for datasets to behave like tables opened in simple mode)
+    // When doing updates like changing name, description, etc., we need to omit the dataset_query in the request body
+    const updatedQuestion = await reduxUpdateQuestion(
+      questionToUpdate,
+      dispatch,
+      {
         excludeDatasetQuery: isAdHocModelQuestion(question, originalQuestion),
-      });
+      },
+    );
 
     // reload the question alerts for the current question
     // (some of the old alerts might be removed during update)
     await dispatch(fetchAlertsForQuestion(updatedQuestion.id()));
-
-    // remove the databases in the store that are used to populate the QB databases list.
-    // This is done when saving a Card because the newly saved card will be eligible for use as a source query
-    // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(setRequestUnloaded(["entities", "databases"]));
 
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
@@ -268,3 +286,23 @@ export const revertToRevision = createThunkAction(
     };
   },
 );
+
+async function reduxCreateQuestion(question, dispatch) {
+  const action = await dispatch(Questions.actions.create(question.card()));
+  return question.setCard(Questions.HACK_getObjectFromAction(action));
+}
+
+async function reduxUpdateQuestion(
+  question,
+  dispatch,
+  { excludeDatasetQuery = false },
+) {
+  const fullCard = question.card();
+  const card = excludeDatasetQuery
+    ? _.omit(fullCard, "dataset_query")
+    : fullCard;
+  const action = await dispatch(
+    Questions.actions.update({ id: question.id() }, card),
+  );
+  return question.setCard(Questions.HACK_getObjectFromAction(action));
+}

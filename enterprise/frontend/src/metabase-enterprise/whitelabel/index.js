@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import {
   PLUGIN_APP_INIT_FUCTIONS,
   PLUGIN_LANDING_PAGE,
@@ -5,8 +6,6 @@ import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_SELECTORS,
 } from "metabase/plugins";
-
-import { t } from "ttag";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {

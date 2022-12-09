@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import cx from "classnames";
 import NotebookStep from "./NotebookStep";
 
-import cx from "classnames";
 import { getQuestionSteps } from "./lib/steps";
 
 export default class NotebookSteps extends React.Component {
@@ -38,7 +38,7 @@ export default class NotebookSteps extends React.Component {
   };
 
   render() {
-    const { question, className } = this.props;
+    const { question, className, updateQuestion } = this.props;
     const { openSteps, lastOpenedStep } = this.state;
 
     if (!question) {
@@ -51,8 +51,10 @@ export default class NotebookSteps extends React.Component {
       <div className={cx(className, "pt3")}>
         {steps.map((step, index) => {
           // pass a version of updateQuery that cleans subsequent steps etc
-          const updateQuery = async datasetQuery => {
-            await step.update(datasetQuery).update();
+          const updateQuery = async query => {
+            const datasetQuery = query.datasetQuery();
+            const updatedQuery = step.update(datasetQuery);
+            await updateQuestion(updatedQuery.question());
             // mark the step as "closed" since we can assume it's been added or removed by the updateQuery
             this.closeStep(step.id);
           };

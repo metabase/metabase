@@ -7,6 +7,7 @@
             [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.h2.actions :as h2.actions]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -19,7 +20,13 @@
             [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.ssh :as ssh])
   (:import [java.sql Clob ResultSet ResultSetMetaData]
-           java.time.OffsetTime))
+           java.time.OffsetTime
+           org.h2.command.Parser
+           org.h2.engine.Session
+           org.h2.engine.SessionRemote))
+
+;; method impls live in this namespace
+(comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent :sql-jdbc)
 
@@ -29,8 +36,13 @@
 
 (doseq [[feature supported?] {:full-join               false
                               :regex                   false
-                              :percentile-aggregations false}]
-  (defmethod driver/supports? [:h2 feature] [_ _] supported?))
+                              :percentile-aggregations false
+                              :actions                 true
+                              :actions/custom          true
+                              :now                     true}]
+  (defmethod driver/database-supports? [:h2 feature]
+    [_driver _feature _database]
+    supported?))
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -83,9 +95,66 @@
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
              {:type qp.error-type/db})))))))
 
+(defn- make-h2-parser [h2-db-id]
+  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
+    (let [inner-field (doto
+                          (.getDeclaredField (class conn) "inner")
+                        (.setAccessible true))
+          h2-jdbc-conn (.get inner-field conn)
+          session-field (doto
+                            (.getDeclaredField (class h2-jdbc-conn) "session")
+                          (.setAccessible true))
+          session (.get session-field h2-jdbc-conn)]
+      (cond
+        (instance? Session session)
+        (Parser. session)
+
+        ;; a SessionRemote cannot be used to make a parser
+        (instance? SessionRemote session)
+        ::client-side-session
+
+        :else
+        (throw (ex-info "Unknown session type" {:session session}))))))
+
+(defn- parse
+  ([h2-db-id s]
+   (let [h2-parser (make-h2-parser h2-db-id)]
+     (when-not (= ::client-side-session h2-parser)
+       (let [parse-method (doto (.getDeclaredMethod (class h2-parser)
+                                                    "parse"
+                                                    (into-array Class [java.lang.String]))
+                            (.setAccessible true))
+             parse-index-field (doto (.getDeclaredField (class h2-parser) "parseIndex")
+                                 (.setAccessible true))]
+         ;; parser moves parseIndex, so get-offset will be the index in the string that was parsed "up to"
+         (parse s
+                (fn parser [s]
+                  (try (.invoke parse-method h2-parser (object-array [s]))
+                       ;; need to chew through error scenarios because of a query like:
+                       ;;
+                       ;; vulnerability; abc;
+                       ;;
+                       ;; which would cause this parser to break w/o the error handling here, but this way we
+                       ;; still return the org.h2.command.ddl.* classes.
+                       (catch Throwable _ ::parse-fail)))
+                (fn get-offset [] (.get parse-index-field h2-parser)))))))
+  ([s parser get-offset] (vec (concat
+                               [(parser s)];; this call to parser parses up to the end of the first sql statement
+                               (let [more (apply str (drop (get-offset) s))] ;; more is the unparsed part of s
+                                 (when-not (str/blank? more)
+                                   (parse more parser get-offset)))))))
+
+(defn- check-disallow-ddl-commands [{:keys [database] :as query}]
+  (when query
+    (let [operations (parse database (-> query :native :query))
+          op-classes (map class operations)]
+      (when (some #(re-find #"org.h2.command.ddl." (str %)) op-classes)
+        (throw (ex-info "DDL commands are not allowed to be used with h2." {:classes op-classes}))))))
+
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
   (check-native-query-not-using-default-user query)
+  (check-disallow-ddl-commands query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
 (defmethod sql.qp/add-interval-honeysql-form :h2
@@ -136,6 +205,10 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod sql.qp/current-datetime-honeysql-form :h2
+  [_]
+  (hx/with-database-type-info :%now :TIMESTAMP))
+
 (defn- add-to-1970 [expr unit-str]
   (hsql/call :timestampadd
     (hx/literal unit-str)
@@ -166,28 +239,32 @@
 (defn- format-datetime   [format-str expr] (hsql/call :formatdatetime expr (hx/literal format-str)))
 (defn- parse-datetime    [format-str expr] (hsql/call :parsedatetime expr  (hx/literal format-str)))
 (defn- trunc-with-format [format-str expr] (parse-datetime format-str (format-datetime format-str expr)))
+(defn- extract           [unit expr]       (hsql/call :extract unit (hx/cast :timestamp expr)))
 
 (defmethod sql.qp/date [:h2 :minute]          [_ _ expr] (trunc-with-format "yyyyMMddHHmm" expr))
 (defmethod sql.qp/date [:h2 :minute-of-hour]  [_ _ expr] (hx/minute expr))
 (defmethod sql.qp/date [:h2 :hour]            [_ _ expr] (trunc-with-format "yyyyMMddHH" expr))
-(defmethod sql.qp/date [:h2 :hour-of-day]     [_ _ expr] (hx/hour expr))
+(defmethod sql.qp/date [:h2 :hour-of-day]     [_ _ expr] (extract :hour expr))
 (defmethod sql.qp/date [:h2 :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:h2 :day-of-month]    [_ _ expr] (hsql/call :day_of_month expr))
-(defmethod sql.qp/date [:h2 :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
+(defmethod sql.qp/date [:h2 :day-of-month]    [_ _ expr] (extract :day expr))
+(defmethod sql.qp/date [:h2 :day-of-year]     [_ _ expr] (extract :day_of_year expr))
 (defmethod sql.qp/date [:h2 :month]           [_ _ expr] (trunc-with-format "yyyyMM" expr))
-(defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (hx/month expr))
-(defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (hx/year expr)))
+(defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (extract :month expr))
+(defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (extract :quarter expr))
+(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (extract :year expr)))
+(defmethod sql.qp/date [:h2 :year-of-era]     [_ _ expr] (extract :year expr))
 
 (defmethod sql.qp/date [:h2 :day-of-week]
   [_ _ expr]
-  (sql.qp/adjust-day-of-week :h2 (hsql/call :iso_day_of_week expr)))
+  (sql.qp/adjust-day-of-week :h2 (extract :iso_day_of_week expr)))
 
 (defmethod sql.qp/date [:h2 :week]
   [_ _ expr]
   (sql.qp/add-interval-honeysql-form :h2 (sql.qp/date :h2 :day expr)
                                      (hx/- 1 (sql.qp/date :h2 :day-of-week expr))
                                      :day))
+
+(defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;
@@ -298,8 +375,14 @@
   [connection-string]
   {:pre [(string? connection-string)]}
   (let [[file options] (connection-string->file+options connection-string)]
-    (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
-                                                          "ACCESS_MODE_DATA" "r"}))))
+    (file+options->connection-string file (merge
+                                           (->> options
+                                                ;; Remove INIT=... from options for security reasons (Metaboat #165)
+                                                ;; http://h2database.com/html/features.html#execute_sql_on_connection
+                                                (remove (fn [[k _]] (= (str/lower-case k) "init")))
+                                                (into {}))
+                                           {"IFEXISTS"         "TRUE"
+                                            "ACCESS_MODE_DATA" "r"}))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]

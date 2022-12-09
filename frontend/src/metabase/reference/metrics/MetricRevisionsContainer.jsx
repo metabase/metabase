@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import MetricSidebar from "./MetricSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import MetricRevisions from "metabase/reference/metrics/MetricRevisions";
 
@@ -17,6 +16,7 @@ import {
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
+import MetricSidebar from "./MetricSidebar";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state, props),

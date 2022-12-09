@@ -4,7 +4,13 @@ import {
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-import { SettingsApi, EmailApi, SlackApi, LdapApi } from "metabase/services";
+import {
+  SettingsApi,
+  EmailApi,
+  SlackApi,
+  LdapApi,
+  GoogleApi,
+} from "metabase/services";
 import { refreshSiteSettings } from "metabase/redux/settings";
 
 // ACITON TYPES AND ACTION CREATORS
@@ -118,15 +124,10 @@ export const UPDATE_SLACK_SETTINGS =
 export const updateSlackSettings = createThunkAction(
   UPDATE_SLACK_SETTINGS,
   function (settings) {
-    return async function (dispatch, getState) {
-      try {
-        const result = await SlackApi.updateSettings(settings);
-        await dispatch(reloadSettings());
-        return result;
-      } catch (error) {
-        console.log("error updating slack settings", settings, error);
-        throw error;
-      }
+    return async function (dispatch) {
+      const result = await SlackApi.updateSettings(settings);
+      await dispatch(reloadSettings());
+      return result;
     };
   },
   {},
@@ -137,15 +138,23 @@ export const UPDATE_LDAP_SETTINGS =
 export const updateLdapSettings = createThunkAction(
   UPDATE_LDAP_SETTINGS,
   function (settings) {
-    return async function (dispatch, getState) {
-      try {
-        const result = await LdapApi.updateSettings(settings);
-        await dispatch(reloadSettings());
-        return result;
-      } catch (error) {
-        console.log("error updating LDAP settings", settings, error);
-        throw error;
-      }
+    return async function (dispatch) {
+      const result = await LdapApi.updateSettings(settings);
+      await dispatch(reloadSettings());
+      return result;
+    };
+  },
+);
+
+export const UPDATE_GOOGLE_SETTINGS =
+  "metabase/admin/settings/UPDATE_GOOGLE_SETTINGS";
+export const updateGoogleSettings = createThunkAction(
+  UPDATE_GOOGLE_SETTINGS,
+  function (settings) {
+    return async function (dispatch) {
+      const result = await GoogleApi.updateSettings(settings);
+      await dispatch(reloadSettings());
+      return result;
     };
   },
 );

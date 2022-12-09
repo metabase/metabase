@@ -1,5 +1,6 @@
 (ns metabase.pulse.render.table
-  (:require [hiccup.core :refer [h]]
+  (:require [clojure.string :as str]
+            [hiccup.core :refer [h]]
             [medley.core :as m]
             [metabase.pulse.render.color :as color]
             metabase.pulse.render.common
@@ -13,10 +14,9 @@
    (style/font-style)
    {:font-size :12px
     :font-weight     700
-    :color           style/color-text-medium
-    :border-bottom   (str "1px solid " style/color-header-row-border)
-    :padding-top     :20px
-    :padding-bottom  :5px}))
+    :color           style/color-text-dark
+    :border-bottom   (str "2px solid " style/color-border)
+    :border-right    0}))
 
 (def ^:private max-bar-width 106)
 
@@ -24,13 +24,12 @@
   (merge
    (style/font-style)
    {:font-size      :12px
-    :font-weight    700
+    :font-weight    400
     :text-align     :left
     :color          style/color-text-dark
-    :border-bottom  (str "1px solid " style/color-body-row-border)
-    :height         :28px
-    :padding-right  :0.375em
-    :padding-left   :0.375em}))
+    :border-bottom  (str "1px solid " style/color-border)
+    :border-right   (str "1px solid " style/color-border)
+    :padding        "0.75em 1em"}))
 
 (defn- bar-th-style-numeric []
   (merge (style/font-style) (bar-th-style) {:text-align :right}))
@@ -74,14 +73,21 @@
   [score]
   (int (* (/ score 100.0) max-bar-width)))
 
+(def ^:private max-column-character-length 16)
+
+(defn- truncate-text [text]
+  (if (> (count text) max-column-character-length)
+    (str (str/trim (subs text 0 max-column-character-length)) "...")
+    text))
+
 (defn- render-table-head [{:keys [bar-width row]}]
   [:thead
-   [:tr
-    (for [header-cell row]
-      [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :42px})}
-       (h header-cell)])
-    (when bar-width
-      [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
+   (conj (into [:tr]
+               (for [header-cell row]
+                 [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :42px}) :title header-cell}
+                  (truncate-text (h header-cell))]))
+         (when bar-width
+           [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}]))])
 
 (defn- render-bar
   [bar-width normalized-zero]
@@ -116,7 +122,11 @@
                       (row-style-for-type cell)
                       {:background-color (get-background-color cell (get column-names col-idx) row-idx)}
                       (when (and bar-width (= col-idx 1))
-                        {:font-weight 700}))}
+                        {:font-weight 700})
+                      (when (= row-idx (dec (count rows)))
+                        {:border-bottom 0})
+                      (when (= col-idx (dec (count row)))
+                        {:border-right 0}))}
          (h cell)])
       (some-> bar-width (render-bar normalized-zero))])])
 
@@ -131,8 +141,8 @@
   ([color-selector normalized-zero column-names [header & rows]]
    [:table {:style (style/style {:max-width "100%"
                                  :white-space :nowrap
-                                 :padding-bottom :8px
-                                 :border-collapse :collapse
+                                 :border  (str "1px solid " style/color-border)
+                                 :border-radius :6px
                                  :width "1%"})
             :cellpadding "0"
             :cellspacing "0"}

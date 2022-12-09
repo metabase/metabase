@@ -15,6 +15,7 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
+import * as metadataActions from "metabase/redux/metadata";
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getQuestionUrl } from "../utils";
@@ -25,8 +26,6 @@ import {
   getLoading,
   getTable,
 } from "../selectors";
-
-import * as metadataActions from "metabase/redux/metadata";
 
 const emptyStateData = table => {
   return {

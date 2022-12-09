@@ -1,5 +1,4 @@
 import moment from "moment-timezone";
-import _ from "underscore";
 import { restore, popover, openOrdersTable } from "__support__/e2e/helpers";
 
 const STARTING_FROM_UNITS = [

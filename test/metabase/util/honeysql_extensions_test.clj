@@ -183,16 +183,19 @@
              (hx/with-database-type-info (hx/with-database-type-info :field "date") nil))))))
 
 (deftest ^:parallel is-of-type?-test
-  (mt/are+ [expr tyype expected] (= expected (hx/is-of-type? expr tyype))
-    typed-form     "text" true
-    typed-form     "TEXT" true
-    typed-form     :text  true
-    typed-form     :TEXT  true
-    typed-form     :te/xt false
-    typed-form     "date" false
-    typed-form     nil    false
-    nil            "date" false
-    :%current_date "date" false
+  (are [expr tyype expected] (= expected (hx/is-of-type? expr tyype))
+    typed-form     "text"   true
+    typed-form     "TEXT"   true
+    typed-form     :text    true
+    typed-form     :TEXT    true
+    typed-form     :te/xt   false
+    typed-form     "date"   false
+    typed-form     nil      false
+    typed-form     #"tex.*" true
+    nil            #"tex.*" false
+    typed-form     #"int*"  false
+    nil            "date"   false
+    :%current_date "date"   false
     ;; I guess this behavior makes sense? I guess untyped = "is of type nil"
     nil            nil    true
     :%current_date nil    true))

@@ -1,6 +1,6 @@
+import Field from "metabase-lib/metadata/Field";
+import { DimensionOption } from "metabase-lib/queries/StructuredQuery";
 import { sortDimensions } from "./utils";
-import Field from "metabase-lib/lib/metadata/Field";
-import { DimensionOption } from "metabase-lib/lib/queries/StructuredQuery";
 
 const mockDimensionOption = (
   semantic_type: string,
@@ -73,12 +73,12 @@ describe("sortDimensionOptions", () => {
 
     expect(sorted[0].dimension.field().base_type).toBe("type/Text");
     expect(
-      sorted[0].dimension.field().fingerprint.type["type/Text"][
+      sorted[0].dimension.field().fingerprint?.type?.["type/Text"]?.[
         "average-length"
       ],
     ).toBe(10);
     expect(
-      sorted[1].dimension.field().fingerprint.type["type/Text"][
+      sorted[1].dimension.field().fingerprint?.type?.["type/Text"]?.[
         "average-length"
       ],
     ).toBe(400);

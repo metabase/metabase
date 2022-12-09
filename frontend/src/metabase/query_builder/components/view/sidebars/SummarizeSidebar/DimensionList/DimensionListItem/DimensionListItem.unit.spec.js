@@ -2,7 +2,7 @@ import React from "react";
 import { render } from "@testing-library/react";
 import { metadata, ORDERS } from "__support__/sample_database_fixture";
 
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/Dimension";
 
 import { DimensionListItem } from "./DimensionListItem";
 

@@ -1,7 +1,9 @@
 (ns metabase.query-processor-test.advanced-math-test
-  (:require [clojure.test :refer :all]
-            [metabase.test :as mt]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (defn- test-math-expression
   [expr]
@@ -63,28 +65,46 @@
                    int)))))
 
 
-(defn- test-aggregation
-  [agg]
-  (->> {:aggregation [agg]}
-       (mt/run-mbql-query venues)
-       mt/rows
-       ffirst
-       double
-       (u/round-to-decimals 2)))
+(defn- aggregation=
+  [expected agg]
+  (testing "As a top-level aggregation"
+    (let [query (mt/mbql-query venues
+                  {:aggregation [agg]})]
+      (mt/with-native-query-testing-context query
+        (is (= expected
+               (ffirst
+                (mt/formatted-rows [1.0]
+                  (mt/process-query query))))))))
+  (when (driver/database-supports? driver/*driver* :expression-aggregations (mt/db))
+    (testing "Inside an expression aggregation"
+      (let [query (mt/mbql-query venues
+                    {:aggregation [[:+ agg 1]]})]
+        (mt/with-native-query-testing-context query
+          (is (= (+ expected 1.0)
+                 (ffirst
+                  (mt/formatted-rows [1.0]
+                    (mt/process-query query))))))))))
+
+;;; there is a test for standard deviation itself
+;;; in [[metabase.query-processor-test.aggregation-test/standard-deviation-test]]
 
 (deftest test-variance
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
-    (is (= 0.59 (test-aggregation [:var [:field (mt/id :venues :price) nil]])))))
+    (aggregation= 0.6
+                  [:var [:field (mt/id :venues :price) nil]])))
 
 (deftest test-median
   (mt/test-drivers (mt/normal-drivers-with-feature :percentile-aggregations)
-    (is (= 2.0 (test-aggregation [:median [:field (mt/id :venues :price) nil]])))))
+    (aggregation= 2.0
+                  [:median [:field (mt/id :venues :price) nil]])))
 
 (deftest test-percentile
   (mt/test-drivers (mt/normal-drivers-with-feature :percentile-aggregations)
-    (is (= 3.0 (test-aggregation [:percentile [:field (mt/id :venues :price) nil] 0.9])))))
+    (aggregation= 3.0
+                  [:percentile [:field (mt/id :venues :price) nil] 0.9])))
 
 (deftest test-nesting
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 2.0 (test-math-expression [:sqrt [:power 2.0 2]])))
-    (is (= 59.0 (test-aggregation [:count-where [:between [:- [:round [:power [:field (mt/id :venues :price) nil] 2]] 1] 1 5]])))))
+    (aggregation= 59.0
+                  [:count-where [:between [:- [:round [:power [:field (mt/id :venues :price) nil] 2]] 1] 1 5]])))

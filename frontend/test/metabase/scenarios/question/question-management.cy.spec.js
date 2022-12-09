@@ -1,3 +1,4 @@
+import { onlyOn } from "@cypress/skip-test";
 import {
   restore,
   visitQuestion,
@@ -8,8 +9,6 @@ import {
   openQuestionActions,
   questionInfoButton,
 } from "__support__/e2e/helpers";
-
-import { onlyOn } from "@cypress/skip-test";
 
 import { USERS } from "__support__/e2e/cypress_data";
 

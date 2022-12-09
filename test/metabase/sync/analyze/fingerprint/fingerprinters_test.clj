@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.models.field :as field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.test :as mt]
             [schema.core :as s]
@@ -21,7 +22,7 @@
                     :type   {:type/DateTime {:earliest "2013-01-01"
                                              :latest   "2018-01-01"}}}
                   (transduce identity
-                             (fingerprinters/fingerprinter (field/map->FieldInstance {:base_type :type/DateTime}))
+                             (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/DateTime}))
                              [#t "2013" nil #t "2018" nil nil #t "2015"])))
            (testing "handle ChronoLocalDateTime"
              (is (= {:global {:distinct-count 2
@@ -29,7 +30,7 @@
                      :type   {:type/DateTime {:earliest "2013-01-01T20:04:00Z"
                                               :latest   "2018-01-01T04:04:00Z"}}}
                     (transduce identity
-                               (fingerprinters/fingerprinter (field/map->FieldInstance {:base_type :type/Temporal}))
+                               (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Temporal}))
                                [(java.time.LocalDateTime/of 2013 01 01 20 04 0 0)
                                 (java.time.LocalDateTime/of 2018 01 01 04 04 0 0)]))))
            (testing "handle comparing explicit Instant with ChronoLocalDateTime"
@@ -38,7 +39,7 @@
                      :type   {:type/DateTime {:earliest "2007-12-03T10:15:30Z"
                                               :latest   "2018-01-01T04:04:00Z"}}}
                     (transduce identity
-                               (fingerprinters/fingerprinter (field/map->FieldInstance {:base_type :type/Temporal}))
+                               (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Temporal}))
                                [(java.time.Instant/parse "2007-12-03T10:15:30.00Z")
                                 (java.time.LocalDateTime/of 2018 01 01 04 04 0 0)]))))
            (testing "mixing numbers and strings"
@@ -47,7 +48,7 @@
                      :type   {:type/DateTime {:earliest "1970-01-01T00:00:01.234Z"
                                               :latest   "2007-12-03T10:15:30Z"}}}
                     (transduce identity
-                               (fingerprinters/fingerprinter (field/map->FieldInstance {:base_type :type/Temporal}))
+                               (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Temporal}))
                                ["2007-12-03T10:15:30.00Z" 1234]))))
            (testing "nil temporal values"
              (is (= {:global {:distinct-count 1
@@ -55,7 +56,7 @@
                      :type   {:type/DateTime {:earliest nil
                                               :latest   nil}}}
                     (transduce identity
-                               (fingerprinters/fingerprinter (field/map->FieldInstance {:base_type :type/DateTime}))
+                               (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/DateTime}))
                                (repeat 10 nil)))))
             (testing "handle all supported types"
               (is (= {:global {:distinct-count 5
@@ -63,7 +64,7 @@
                       :type   {:type/DateTime {:earliest "1970-01-01T00:00:01.234Z"
                                                :latest   "2020-07-06T20:25:33.36Z"}}}
                      (transduce identity
-                                (fingerprinters/fingerprinter (field/map->FieldInstance {:base_type :type/Temporal}))
+                                (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Temporal}))
                                 [(java.time.LocalDateTime/of 2013 01 01 20 04 0 0) ; LocalDateTime
                                  1234 ; int
                                  1594067133360 ; long
@@ -94,7 +95,7 @@
                                  :q3  2.75
                                  :sd  1.0}}}
          (transduce identity
-                    (fingerprinters/fingerprinter (field/map->FieldInstance {:base_type :type/Number}))
+                    (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Number}))
                     [1.0 2.0 3.0])))
   (testing "We should robustly survive weird values such as NaN, Infinity, and nil"
     (is (= {:global {:distinct-count 7
@@ -106,7 +107,7 @@
                                    :q3  2.75
                                    :sd  1.0}}}
            (transduce identity
-                      (fingerprinters/fingerprinter (field/map->FieldInstance {:base_type :type/Number}))
+                      (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Number}))
                       [1.0 2.0 3.0 Double/NaN Double/POSITIVE_INFINITY Double/NEGATIVE_INFINITY nil nil])))))
 
 (deftest fingerprint-string-values-test
@@ -118,7 +119,7 @@
                                :percent-state  0.0
                                :average-length 6.4}}}
          (transduce identity
-                    (fingerprinters/fingerprinter (field/map->FieldInstance {:base_type :type/Text}))
+                    (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Text}))
                     ["metabase" "more" "like" "metabae" "[1, 2, 3]"])))
   (let [truncated-json (subs (json/generate-string (vec (range 50))) 0 30)]
     (is (= {:global {:distinct-count 5
@@ -129,7 +130,7 @@
                                  :percent-state  0.0
                                  :average-length 10.6}}}
            (transduce identity
-                      (fingerprinters/fingerprinter (field/map->FieldInstance {:base_type :type/Text}))
+                      (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Text}))
                       ["metabase" "more" "like" "metabae" truncated-json])))))
 
 (deftest fingerprints-in-db-test

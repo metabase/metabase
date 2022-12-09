@@ -3,16 +3,16 @@ import React, { memo } from "react";
 
 import Text from "metabase/components/type/Text";
 
+import { ITreeNodeItem } from "metabase/components/tree/types";
 import { FilterableTree } from "../FilterableTree";
 
+import { EntityViewSwitch } from "../EntityViewSwitch";
 import {
   SidebarHeader,
   BackButton,
   BackIcon,
 } from "./PermissionsSidebar.styled";
 import { SidebarContentTitle } from "./PermissionsSidebarContent.styled";
-import { EntityViewSwitch } from "../EntityViewSwitch";
-import { ITreeNodeItem } from "metabase/components/tree/types";
 
 export interface PermissionsSidebarContentProps {
   title?: string;

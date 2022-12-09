@@ -21,7 +21,12 @@ global.makeCellBackgroundGetter = function (
   const cols = JSON.parse(colsJSON);
   const settings = JSON.parse(settingsJSON);
   try {
-    return makeCellBackgroundGetter(rows, cols, settings);
+    return makeCellBackgroundGetter(
+      rows,
+      cols,
+      settings["table.column_formatting"] ?? [],
+      settings["table.pivot"],
+    );
   } catch (e) {
     print("ERROR", e);
     return () => null;

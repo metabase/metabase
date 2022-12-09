@@ -23,7 +23,11 @@
 
 (s/defn ^:private update-field-values-for-field! [field :- i/FieldInstance]
   (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
-  (field-values/create-or-update-full-field-values! field))
+  (let [field-values (db/select-one FieldValues :field_id (u/the-id field) :type :full)]
+    (if (field-values/inactive? field-values)
+      (log/debug (trs "Field {0} has not been used since {1}. Skipping..."
+                      (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values)))))
+      (field-values/create-or-update-full-field-values! field))))
 
 (defn- update-field-value-stats-count [counts-map result]
   (if (instance? Exception result)

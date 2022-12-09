@@ -1,6 +1,7 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.driver.common.parameters.operators :as params.ops]
@@ -17,18 +18,22 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(defn- check-card-is-in-dashboard
-  "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in a DashboardCard at the top level or
-  as a series, or throw an Exception. If not such relationship exists this will throw a 404 Exception."
-  [card-id dashboard-id]
+(defn- check-card-and-dashcard-are-in-dashboard
+  "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in the DashboardCard with
+  `dashcard-id` at the top level or as a series. If not such relationship exists this will throw a 404 Exception."
+  [dashboard-id card-id dashcard-id]
   (api/check-404
    (or (db/exists? DashboardCard
+         :id           dashcard-id
          :dashboard_id dashboard-id
          :card_id      card-id)
-       (when-let [dashcard-ids (db/select-ids DashboardCard :dashboard_id dashboard-id)]
-         (db/exists? DashboardCardSeries
-           :card_id          card-id
-           :dashboardcard_id [:in dashcard-ids])))))
+       (and
+        (db/exists? DashboardCard
+          :id           dashcard-id
+          :dashboard_id dashboard-id)
+        (db/exists? DashboardCardSeries
+          :card_id          card-id
+          :dashboardcard_id dashcard-id)))))
 
 (defn- resolve-param-for-card
   [card-id dashcard-id param-id->param {param-id :id, :as request-param}]
@@ -69,10 +74,13 @@
        request-param
        ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
        ;; vector so the parameter handling code doesn't explode.
-       (when (and (params.ops/operator? (:type matching-param))
-                  (seq (:value request-param))
-                  (not (sequential? (:value request-param))))
-         {:value [(:value request-param)]})
+       (let [value (:value request-param)]
+         (when (and (params.ops/operator? (:type matching-param))
+                    (if (string? value)
+                      (not (str/blank? value))
+                      (some? value))
+                    (not (sequential? value)))
+           {:value [value]}))
        {:id     param-id
         :target (:target matching-mapping)}))))
 
@@ -156,7 +164,8 @@
   ;; make sure we can read this Dashboard. Card will get read-checked later on inside
   ;; [[qp.card/run-query-for-card-async]]
   (api/read-check Dashboard dashboard-id)
-  (check-card-is-in-dashboard card-id dashboard-id)
+  (api/check-is-readonly {:is_write (db/select-one-field :is_write 'Card :id card-id)})
+  (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
   (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
         options         (merge
                          {:ignore_cache false

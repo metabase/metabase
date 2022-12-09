@@ -2,9 +2,11 @@ import { ForeignKey } from "./foreign-key";
 import { Database } from "./database";
 import { Field } from "./field";
 
-export type TableId = number | string; // can be string for virtual questions (e.g. "card__17")
+export type ConcreteTableId = number;
+export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
+export type TableId = ConcreteTableId | VirtualTableId;
 
-export type VisibilityType =
+export type TableVisibilityType =
   | null
   | "details-only"
   | "hidden"
@@ -24,6 +26,6 @@ export interface Table {
   schema: string;
   fks?: ForeignKey[];
   schema_name?: string;
-  visibility_type: VisibilityType;
+  visibility_type: TableVisibilityType;
   fields?: Field[];
 }

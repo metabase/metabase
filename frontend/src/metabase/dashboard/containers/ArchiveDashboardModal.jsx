@@ -41,9 +41,14 @@ class ArchiveDashboardModal extends Component {
   };
 
   render() {
+    const { dashboard } = this.props;
     return (
       <ArchiveModal
-        title={t`Archive this dashboard?`}
+        title={
+          dashboard.is_app_age
+            ? t`Archive this page?`
+            : t`Archive this dashboard?`
+        }
         message={t`Are you sure you want to do this?`}
         onClose={this.close}
         onArchive={this.archive}

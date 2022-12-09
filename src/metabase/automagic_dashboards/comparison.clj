@@ -1,10 +1,19 @@
 (ns metabase.automagic-dashboards.comparison
   (:require [medley.core :as m]
             [metabase.api.common :as api]
-            [metabase.automagic-dashboards.core :refer [->field ->related-entity ->root automagic-analysis capitalize-first cell-title encode-base64-json metric-name source-name]]
+            [metabase.automagic-dashboards.core :refer [->field
+                                                        ->related-entity
+                                                        ->root
+                                                        automagic-analysis
+                                                        capitalize-first
+                                                        cell-title
+                                                        encode-base64-json
+                                                        metric-name
+                                                        source-name]]
             [metabase.automagic-dashboards.filters :as filters]
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.models.interface :as mi]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
@@ -18,11 +27,11 @@
   [dashboard]
   (->> dashboard
        :ordered_cards
-       (map (fn [{:keys [sizeY card col row series] :as dashcard}]
+       (map (fn [{:keys [size_y card col row series] :as dashcard}]
               (assoc card
                 :text     (-> dashcard :visualization_settings :text)
                 :series   series
-                :height   sizeY
+                :height   size_y
                 :position (+ (* row populate/grid-width) col))))
        (sort-by :position)))
 
@@ -85,13 +94,13 @@
                          vector)]
           (update dashboard :ordered_cards conj {:col                    0
                                                  :row                    row
-                                                 :sizeX                  populate/grid-width
-                                                 :sizeY                  height
+                                                 :size_x                 populate/grid-width
+                                                 :size_y                 height
                                                  :card                   card
                                                  :card_id                (:id card)
                                                  :series                 series
                                                  :visualization_settings {:graph.y_axis.auto_split false
-                                                                          :graph.series_labels [(:name card) (:name (first series))]}
+                                                                          :graph.series_labels     [(:name card) (:name (first series))]}
                                                  :id                     (gensym)}))
         (let [width        (/ populate/grid-width 2)
               series-left  (map clone-card (:series card-left))
@@ -105,8 +114,8 @@
           (-> dashboard
               (update :ordered_cards conj {:col                    0
                                            :row                    row
-                                           :sizeX                  width
-                                           :sizeY                  height
+                                           :size_x                 width
+                                           :size_y                 height
                                            :card                   card-left
                                            :card_id                (:id card-left)
                                            :series                 series-left
@@ -114,8 +123,8 @@
                                            :id                     (gensym)})
               (update :ordered_cards conj {:col                    width
                                            :row                    row
-                                           :sizeX                  width
-                                           :sizeY                  height
+                                           :size_x                 width
+                                           :size_y                 height
                                            :card                   card-right
                                            :card_id                (:id card-right)
                                            :series                 series-right
@@ -196,7 +205,7 @@
                           :description ""})
                        (when (and ((some-fn :query-filter :cell-query) left)
                                   (not= (:source left) (:entity right)))
-                         [{:url         (if (->> left :source (instance? (type Table)))
+                         [{:url         (if (->> left :source (mi/instance-of? Table))
                                           (str (:url left) "/compare/table/"
                                                (-> left :source u/the-id))
                                           (str (:url left) "/compare/adhoc/"
@@ -237,8 +246,8 @@
                                                           (cell-title left))))
         right              (cond-> right
                              (part-vs-whole-comparison? left right)
-                             (assoc :comparison-name (condp instance? (:entity right)
-                                                       (type Table)
+                             (assoc :comparison-name (condp mi/instance-of? (:entity right)
+                                                       Table
                                                        (tru "All {0}" (:short-name right))
 
                                                        (tru "{0}, all {1}"

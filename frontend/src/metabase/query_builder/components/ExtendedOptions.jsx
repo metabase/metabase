@@ -4,14 +4,13 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
+import Popover from "metabase/components/Popover";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import AddClauseButton from "./AddClauseButton";
 import Expressions from "./expressions/Expressions";
 import ExpressionWidget from "./expressions/ExpressionWidget";
 import LimitWidget from "./LimitWidget";
 import SortWidget from "./SortWidget";
-import Popover from "metabase/components/Popover";
-
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 export class ExtendedOptionsPopover extends Component {
   state = {
@@ -35,9 +34,10 @@ export class ExtendedOptionsPopover extends Component {
 
   setExpression(name, expression, previousName) {
     const { query, setDatasetQuery } = this.props;
-    query
-      .updateExpression(name, expression, previousName)
-      .update(setDatasetQuery);
+
+    const newQuery = query.updateExpression(name, expression, previousName);
+    setDatasetQuery(newQuery);
+
     this.setState({ editExpression: null });
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
@@ -48,7 +48,10 @@ export class ExtendedOptionsPopover extends Component {
 
   removeExpression(name) {
     const { query, setDatasetQuery } = this.props;
-    query.removeExpression(name).update(setDatasetQuery);
+
+    const newQuery = query.removeExpression(name);
+    setDatasetQuery(newQuery);
+
     this.setState({ editExpression: null });
 
     MetabaseAnalytics.trackStructEvent("QueryBuilder", "Remove Expression");
@@ -56,7 +59,10 @@ export class ExtendedOptionsPopover extends Component {
 
   setLimit = limit => {
     const { query, setDatasetQuery } = this.props;
-    query.updateLimit(limit).update(setDatasetQuery);
+
+    const newQuery = query.setLimit(limit);
+    setDatasetQuery(newQuery);
+
     MetabaseAnalytics.trackStructEvent("QueryBuilder", "Set Limit", limit);
     if (this.props.onClose) {
       this.props.onClose();
@@ -79,9 +85,9 @@ export class ExtendedOptionsPopover extends Component {
           tableMetadata={query.table()}
           sort={sort}
           fieldOptions={query.sortOptions(sort)}
-          removeOrderBy={() => query.removeSort(index).update(setDatasetQuery)}
+          removeOrderBy={() => setDatasetQuery(query.removeSort(index))}
           updateOrderBy={orderBy =>
-            query.updateSort(index, orderBy).update(setDatasetQuery)
+            setDatasetQuery(query.updateSort(index, orderBy))
           }
         />
       ));
@@ -91,7 +97,7 @@ export class ExtendedOptionsPopover extends Component {
           <AddClauseButton
             text={t`Pick a field to sort by`}
             onClick={() => {
-              query.sort(["asc", null]).update(setDatasetQuery);
+              setDatasetQuery(query.sort(["asc", null]));
             }}
           />
         );

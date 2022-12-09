@@ -8,31 +8,6 @@ summary: |
 
 /api/dashboard endpoints.
 
-  - [DELETE /api/dashboard/:dashboard-id/public_link](#delete-apidashboarddashboard-idpublic_link)
-  - [DELETE /api/dashboard/:id](#delete-apidashboardid)
-  - [DELETE /api/dashboard/:id/cards](#delete-apidashboardidcards)
-  - [GET /api/dashboard/](#get-apidashboard)
-  - [GET /api/dashboard/:id](#get-apidashboardid)
-  - [GET /api/dashboard/:id/params/:param-key/search/:query](#get-apidashboardidparamsparam-keysearchquery)
-  - [GET /api/dashboard/:id/params/:param-key/values](#get-apidashboardidparamsparam-keyvalues)
-  - [GET /api/dashboard/:id/related](#get-apidashboardidrelated)
-  - [GET /api/dashboard/:id/revisions](#get-apidashboardidrevisions)
-  - [GET /api/dashboard/embeddable](#get-apidashboardembeddable)
-  - [GET /api/dashboard/params/valid-filter-fields](#get-apidashboardparamsvalid-filter-fields)
-  - [GET /api/dashboard/public](#get-apidashboardpublic)
-  - [POST /api/dashboard/](#post-apidashboard)
-  - [POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query](#post-apidashboarddashboard-iddashcarddashcard-idcardcard-idquery)
-  - [POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format](#post-apidashboarddashboard-iddashcarddashcard-idcardcard-idqueryexport-format)
-  - [POST /api/dashboard/:dashboard-id/public_link](#post-apidashboarddashboard-idpublic_link)
-  - [POST /api/dashboard/:from-dashboard-id/copy](#post-apidashboardfrom-dashboard-idcopy)
-  - [POST /api/dashboard/:id/cards](#post-apidashboardidcards)
-  - [POST /api/dashboard/:id/revert](#post-apidashboardidrevert)
-  - [POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query](#post-apidashboardpivotdashboard-iddashcarddashcard-idcardcard-idquery)
-  - [POST /api/dashboard/save](#post-apidashboardsave)
-  - [POST /api/dashboard/save/collection/:parent-collection-id](#post-apidashboardsavecollectionparent-collection-id)
-  - [PUT /api/dashboard/:id](#put-apidashboardid)
-  - [PUT /api/dashboard/:id/cards](#put-apidashboardidcards)
-
 ## `DELETE /api/dashboard/:dashboard-id/public_link`
 
 Delete the publicly-accessible link to this Dashboard.
@@ -70,6 +45,18 @@ Get `Dashboards`. With filter option `f` (default `all`), restrict results as fo
 ### PARAMS:
 
 *  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `mine`.
+
+## `GET /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute/:slug`
+
+Fetches the values for filling in execution parameters.
+
+### PARAMS:
+
+*  **`dashboard-id`** value must be an integer greater than zero.
+
+*  **`dashcard-id`** value must be an integer greater than zero.
+
+*  **`slug`** value must be a non-blank string.
 
 ## `GET /api/dashboard/:id`
 
@@ -189,6 +176,8 @@ Create a new Dashboard.
 
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
+*  **`is_app_page`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`_dashboard`**
 
 ## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`
@@ -227,6 +216,32 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 *  **`request-parameters`**
 
+## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute/:slug`
+
+Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
+
+   `parameters` should be the mapped dashboard parameters with values.
+   `extra_parameters` should be the extra, user entered parameter values.
+
+### PARAMS:
+
+*  **`dashboard-id`** value must be an integer greater than zero.
+
+*  **`dashcard-id`** value must be an integer greater than zero.
+
+*  **`slug`** value must be a non-blank string.
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a map with schema: (
+  value must be a map with schema: (
+    p? : 
+    pred-name : 
+  ) : value must be a map with schema: (
+    _ : 
+  )
+)
+
+*  **`_body`**
+
 ## `POST /api/dashboard/:dashboard-id/public_link`
 
 Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
@@ -255,6 +270,8 @@ Copy a Dashboard.
 
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
+*  **`is_deep_copy`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`_dashboard`**
 
 ## `POST /api/dashboard/:id/cards`
@@ -267,7 +284,15 @@ Add a `Card` to a Dashboard.
 
 *  **`cardId`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`parameter_mappings`** value may be nil, or if non-nil, value must be an array.
+*  **`parameter_mappings`** value may be nil, or if non-nil, value must be an array. Each value must be a map with schema: (
+  parameter_id : value must be a non-blank string.
+  value must be a map with schema: (
+    p? : 
+    pred-name : 
+  ) : value must be a map with schema: (
+    _ : 
+  )
+)
 
 *  **`dashboard-card`**
 
@@ -345,6 +370,8 @@ Update a Dashboard.
 
 *  **`caveats`** value may be nil, or if non-nil, value must be a string.
 
+*  **`is_app_page`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`embedding_params`** value may be nil, or if non-nil, value must be a valid embedding params map.
 
 *  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
@@ -358,8 +385,8 @@ Update a Dashboard.
 Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id                 ... ; DashboardCard ID
-              :sizeX              ...
-              :sizeY              ...
+              :size_x             ...
+              :size_y             ...
               :row                ...
               :col                ...
               :parameter_mappings ...

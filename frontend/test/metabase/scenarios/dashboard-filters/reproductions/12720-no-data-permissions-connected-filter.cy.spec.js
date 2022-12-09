@@ -54,8 +54,8 @@ describe("issue 12720", () => {
                 card_id: 1,
                 row: 0,
                 col: 0,
-                sizeX: 5,
-                sizeY: 5,
+                size_x: 5,
+                size_y: 5,
                 parameter_mappings: [
                   {
                     parameter_id: dashboardFilter.id,
@@ -69,9 +69,9 @@ describe("issue 12720", () => {
                 id: SQL_DASH_CARD_ID,
                 card_id: SQL_ID,
                 row: 0,
-                col: 6, // previous card's sizeX + 1 (making sure they don't overlap)
-                sizeX: 5,
-                sizeY: 5,
+                col: 6, // previous card's size_x + 1 (making sure they don't overlap)
+                size_x: 5,
+                size_y: 5,
                 parameter_mappings: [
                   {
                     parameter_id: dashboardFilter.id,

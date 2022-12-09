@@ -3,11 +3,11 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { ISO8601Time } from ".";
+import { DatetimeUnit } from "metabase-types/api/query";
 import { FieldId } from "./Field";
 import { DatasetQuery } from "./Card";
 import { FieldLiteral, Field } from "./Query";
-import { DatetimeUnit } from "metabase-types/api/query";
+import { ISO8601Time } from ".";
 
 export type ColumnName = string;
 
@@ -32,6 +32,7 @@ export type Column = {
   expression_name?: any;
   settings?: ColumnSettings;
   field_ref?: Field;
+  visibility_type?: "normal" | "details-only" | "hidden";
 };
 
 export type Value =
@@ -55,4 +56,5 @@ export type Dataset = {
   data: DatasetData;
   json_query: DatasetQuery;
   error?: string;
+  row_count?: number;
 };

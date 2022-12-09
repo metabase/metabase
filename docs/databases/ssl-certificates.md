@@ -1,10 +1,10 @@
 ---
-title: Securing database connections using an SSL certificate
+title: SSL certificate
 redirect_from:
   - /docs/latest/administration-guide/secure-database-connections-with-ssl-certificates
 ---
 
-## Securing database connections using an SSL certificate
+## SSL certificate
 
 If you'd like to connect your Metabase Cloud or self-hosted instance to a database, you can secure the connection using Secure Socket Layer (SSL) encryption with a certificate.
 
@@ -56,7 +56,7 @@ You'll need to specify the location of the certificate on the server that's runn
 
 For example, when connecting to a PostgreSQL database, you'll need to add two parameters:
 
-- `sslmode`. You can see the full list of options in [PostgreSQL's documentation](https://jdbc.postgresql.org/documentation/head/ssl-client.html). We recommend you use `verify-full`; it's the most secure, and overhead is minimal.
+- `sslmode`. You can see the full list of options in [PostgreSQL's documentation](https://jdbc.postgresql.org/documentation/ssl/#configuring-the-client). We recommend you use `verify-full`; it's the most secure, and overhead is minimal.
 - `sslrootcert`. Here you'll specify the file path for the certificate.
 
 You'll add an ampersand (`&`) to separate each parameter. For example, In the **Add additional connection string options** field, you'd add something like:
@@ -71,9 +71,9 @@ You can learn more about [SSL support for PostgreSQL](https://www.postgresql.org
 
 ## Securing connection to application database using environment variables
 
-If you're self-hosting Metabase, you can secure the connection to your application database using [environment variables](../operations-guide/environment-variables.md).
+If you're self-hosting Metabase, you can secure the connection to your application database using [environment variables](../configuring-metabase/environment-variables.md).
 
-The environment variable to use is [`MB_DB_CONNECTION_URI`](../operations-guide/environment-variables.md#mb_db_connection_uri).
+The environment variable to use is [`MB_DB_CONNECTION_URI`](../configuring-metabase/environment-variables.md#mb_db_connection_uri).
 
 You'll need to include the full connection string here, including the db host, port, db name and user info, as well as the additional connection parameters to include the certificate. For example,
 

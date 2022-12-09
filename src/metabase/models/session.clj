@@ -24,7 +24,7 @@
   (let [session-type (if anti-csrf-token :full-app-embed :normal)]
     (assoc session :type session-type)))
 
-(u/strict-extend (class Session)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Session)
   models/IModel
   (merge
    models/IModelDefaults

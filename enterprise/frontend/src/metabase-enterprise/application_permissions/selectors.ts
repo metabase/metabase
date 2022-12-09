@@ -1,6 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
 import { createSelector } from "reselect";
+import { getIn } from "icepick";
 import { Group } from "metabase-types/api";
 import { isAdminGroup } from "metabase/lib/groups";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
@@ -8,15 +9,14 @@ import {
   getAdminGroup,
   getOrderedGroups,
 } from "metabase/admin/permissions/selectors/data-permissions/groups";
+import { getDefaultGroupHasHigherAccessText } from "metabase/admin/permissions/selectors/confirmations";
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
-import { getIn } from "icepick";
 import { ApplicationPermissionsState } from "./types/state";
 import {
   ApplicationPermissionKey,
   ApplicationPermissions,
   ApplicationPermissionValue,
 } from "./types/permissions";
-import { getDefaultGroupHasHigherAccessText } from "metabase/admin/permissions/selectors/confirmations";
 
 export function getPermissionWarning(
   value: ApplicationPermissionValue,

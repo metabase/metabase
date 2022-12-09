@@ -13,6 +13,7 @@
             [metabase.models.database :as database :refer [Database]]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :as field :refer [Field]]
+            [metabase.models.interface :as mi]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.models.pulse :refer [Pulse]]
@@ -99,25 +100,26 @@
   [entity]
   (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :location
                   :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id
-                  :pulse_id :result_metadata)
+                  :pulse_id :result_metadata :entity_id)
     (some #(instance? % entity) (map type [Metric Field Segment])) (dissoc :table_id)))
 
 (defmulti ^:private serialize-one
-  type)
+  {:arglists '([instance])}
+  mi/model)
 
 (def ^{:arglists '([entity])} serialize
   "Serialize entity `entity`."
   (comp ids->fully-qualified-names strip-crud serialize-one))
 
 (defmethod serialize-one :default
-  [entity]
-  entity)
+  [instance]
+  instance)
 
-(defmethod serialize-one (type Database)
+(defmethod serialize-one Database
   [db]
   (dissoc db :features))
 
-(defmethod serialize-one (type Field)
+(defmethod serialize-one Field
   [field]
   (let [field (-> field
                   (update :parent_id (partial fully-qualified-name Field))
@@ -160,9 +162,9 @@
 
 (defn- convert-click-behavior [{:keys [::mb.viz/link-type ::mb.viz/link-target-id] :as click}]
   (-> (if-let [new-target-id (case link-type
-                               ::mb.viz/card      (-> (Card link-target-id)
+                               ::mb.viz/card      (-> (db/select-one Card :id link-target-id)
                                                       fully-qualified-name)
-                               ::mb.viz/dashboard (-> (Dashboard link-target-id)
+                               ::mb.viz/dashboard (-> (db/select-one Dashboard :id link-target-id)
                                                       fully-qualified-name)
                                nil)]
         (assoc click ::mb.viz/link-target-id new-target-id)
@@ -199,18 +201,18 @@
           (assoc :visualization_settings (convert-viz-settings (:visualization_settings dashboard-card)))
           strip-crud))))
 
-(defmethod serialize-one (type Dashboard)
+(defmethod serialize-one Dashboard
   [dashboard]
   (assoc dashboard :dashboard_cards (dashboard-cards-for-dashboard dashboard)))
 
-(defmethod serialize-one (type Card)
+(defmethod serialize-one Card
   [card]
   (-> card
       (m/update-existing :table_id (partial fully-qualified-name Table))
       (update :database_id (partial fully-qualified-name Database))
       (m/update-existing :visualization_settings convert-viz-settings)))
 
-(defmethod serialize-one (type Pulse)
+(defmethod serialize-one Pulse
   [pulse]
   (assoc pulse
     :cards    (for [card (db/select PulseCard :pulse_id (u/the-id pulse))]
@@ -220,16 +222,16 @@
     :channels (for [channel (db/select PulseChannel :pulse_id (u/the-id pulse))]
                 (strip-crud channel))))
 
-(defmethod serialize-one (type User)
+(defmethod serialize-one User
   [user]
   (select-keys user [:first_name :last_name :email :is_superuser]))
 
-(defmethod serialize-one (type Dimension)
+(defmethod serialize-one Dimension
   [dimension]
   (-> dimension
       (update :field_id (partial fully-qualified-name Field))
       (update :human_readable_field_id (partial fully-qualified-name Field))))
 
-(defmethod serialize-one (type NativeQuerySnippet)
+(defmethod serialize-one NativeQuerySnippet
   [snippet]
   (select-keys snippet [:name :description :content]))

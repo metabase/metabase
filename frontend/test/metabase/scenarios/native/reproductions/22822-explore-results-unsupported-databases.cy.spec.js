@@ -11,7 +11,7 @@ const questionDetails = {
   },
 };
 
-describe("issue 22822", () => {
+describe("issue 22822", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();

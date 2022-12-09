@@ -1,9 +1,8 @@
 import React from "react";
-import { ComponentStory } from "@storybook/react";
-
-import { TokenFieldItem, TokenFieldAddon } from "./TokenFieldItem.styled";
+import type { ComponentStory } from "@storybook/react";
 
 import Icon from "../Icon";
+import { TokenFieldItem, TokenFieldAddon } from "./TokenFieldItem.styled";
 
 export default {
   title: "Core/TokenFieldItem",

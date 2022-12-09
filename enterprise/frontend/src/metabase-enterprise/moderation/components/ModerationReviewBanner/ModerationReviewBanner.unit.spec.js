@@ -1,6 +1,6 @@
 import React from "react";
-import { ModerationReviewBanner } from "./ModerationReviewBanner";
 import { render } from "@testing-library/react";
+import { ModerationReviewBanner } from "./ModerationReviewBanner";
 
 const moderationReview = {
   status: "verified",

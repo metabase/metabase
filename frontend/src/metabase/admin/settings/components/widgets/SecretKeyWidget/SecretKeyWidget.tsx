@@ -1,10 +1,10 @@
 import React from "react";
 
-import SettingInput from "../SettingInput";
+import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import Confirm from "metabase/components/Confirm";
-import { t } from "ttag";
 import { UtilApi } from "metabase/services";
+import SettingInput from "../SettingInput";
 import { GenerateButton, SecretKeyWidgetRoot } from "./SecretKeyWidget.styled";
 
 interface SecretKeyWidgetProps {
@@ -38,7 +38,7 @@ const SecretKeyWidget = ({
         <GenerateButton
           primary
           onClick={generateToken}
-        >{t`Generate Key`}</GenerateButton>
+        >{t`Generate key`}</GenerateButton>
       )}
     </SecretKeyWidgetRoot>
   );

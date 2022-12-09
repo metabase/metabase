@@ -8,10 +8,6 @@ summary: |
 
 /api/task endpoints.
 
-  - [GET /api/task/](#get-apitask)
-  - [GET /api/task/:id](#get-apitaskid)
-  - [GET /api/task/info](#get-apitaskinfo)
-
 ## `GET /api/task/`
 
 Fetch a list of recent tasks stored as Task History.

@@ -29,7 +29,6 @@ const propTypes = {
   isQueryBuilder: PropTypes.bool,
   children: PropTypes.node,
   onHoverChange: PropTypes.func,
-  onAddSeries: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
 };
@@ -47,7 +46,6 @@ const LegendLayout = ({
   isQueryBuilder,
   children,
   onHoverChange,
-  onAddSeries,
   onSelectSeries,
   onRemoveSeries,
 }) => {
@@ -76,7 +74,6 @@ const LegendLayout = ({
             visibleLength={visibleLength}
             isVertical={isVertical}
             onHoverChange={onHoverChange}
-            onAddSeries={onAddSeries}
             onSelectSeries={onSelectSeries}
             onRemoveSeries={onRemoveSeries}
           />

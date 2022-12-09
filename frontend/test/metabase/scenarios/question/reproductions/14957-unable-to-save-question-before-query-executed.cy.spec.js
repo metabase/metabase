@@ -2,7 +2,7 @@ import { restore, modal, openNativeEditor } from "__support__/e2e/helpers";
 
 const PG_DB_NAME = "QA Postgres12";
 
-describe.skip("issue 14957", () => {
+describe.skip("issue 14957", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

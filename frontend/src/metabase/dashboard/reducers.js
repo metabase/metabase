@@ -36,6 +36,7 @@ import {
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
+  SET_PARAMETER_VALUES,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -282,6 +283,9 @@ const parameterValues = handleActions(
     [FETCH_DASHBOARD]: {
       next: (state, { payload: { parameterValues } }) => parameterValues,
     },
+    [SET_PARAMETER_VALUES]: {
+      next: (state, { payload }) => payload,
+    },
     [RESET]: { next: state => ({}) },
   },
   {},
@@ -405,6 +409,18 @@ const sidebar = handleActions(
   DEFAULT_SIDEBAR,
 );
 
+const missingActionParameters = handleActions(
+  {
+    [INITIALIZE]: {
+      next: (state, payload) => null,
+    },
+    [RESET]: {
+      next: (state, payload) => null,
+    },
+  },
+  null,
+);
+
 export default combineReducers({
   dashboardId,
   isEditing,
@@ -418,4 +434,5 @@ export default combineReducers({
   isAddParameterPopoverOpen,
   sidebar,
   parameterValuesSearchCache,
+  missingActionParameters,
 });

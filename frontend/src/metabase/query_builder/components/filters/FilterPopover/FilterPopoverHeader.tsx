@@ -2,9 +2,9 @@
 import React from "react";
 import cx from "classnames";
 
+import Filter from "metabase-lib/queries/structured/Filter";
 import OperatorSelector from "../OperatorSelector";
 import SidebarHeader from "../../SidebarHeader";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 type Props = {
   className?: string;

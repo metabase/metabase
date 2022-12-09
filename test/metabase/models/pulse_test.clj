@@ -14,7 +14,8 @@
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.time.LocalDateTime))
 
 (defn- user-details
   [username]
@@ -57,11 +58,11 @@
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"
-    (tt/with-temp* [Pulse        [{pulse-id :id}               {:name "Lodi Dodi"}]
-                    PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id
-                                                                :details  {:other  "stuff"
-                                                                           :emails ["foo@bar.com"]}}]
-                    Card         [{card-id :id}                {:name "Test Card"}]]
+    (tt/with-temp* [Pulse        [{pulse-id :id}   {:name "Lodi Dodi"}]
+                    PulseChannel [{channel-id :id} {:pulse_id pulse-id
+                                                    :details  {:other  "stuff"
+                                                               :emails ["foo@bar.com"]}}]
+                    Card         [{card-id :id}    {:name "Test Card"}]]
       (db/insert! PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (db/insert! PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
       (is (= (merge
@@ -134,7 +135,7 @@
                    :schedule_hour 4
                    :recipients    [{:email "foo@bar.com"}
                                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
-           (-> (PulseChannel :pulse_id id)
+           (-> (db/select-one PulseChannel :pulse_id id)
                (hydrate :recipients)
                (dissoc :id :pulse_id :created_at :updated_at)
                (update :entity_id boolean)
@@ -372,7 +373,7 @@
 
 (defmacro with-pulse-in-collection
   "Execute `body` with a temporary Pulse, in a Collection, containing a single Card."
-  {:style/indent 1}
+  {:style/indent :defn}
   [[db-binding collection-binding pulse-binding card-binding] & body]
   `(do-with-pulse-in-collection
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or pulse-binding '_) ~(or card-binding '_)]
@@ -459,8 +460,9 @@
 
 (deftest identity-hash-test
   (testing "Pulse hashes are composed of the name and the collection hash"
-    (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/"}]
-                    Pulse       [pulse {:name "my pulse" :collection_id (:id coll)}]]
-      (is (= "6432d0a9"
-             (serdes.hash/raw-hash ["my pulse" (serdes.hash/identity-hash coll)])
-             (serdes.hash/identity-hash pulse))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/" :created_at now}]
+                      Pulse       [pulse {:name "my pulse" :collection_id (:id coll) :created_at now}]]
+        (is (= "82553101"
+               (serdes.hash/raw-hash ["my pulse" (serdes.hash/identity-hash coll) now])
+               (serdes.hash/identity-hash pulse)))))))

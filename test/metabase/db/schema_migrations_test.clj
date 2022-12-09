@@ -13,19 +13,56 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.db.setup :as db.setup]
    [metabase.driver :as driver]
-   [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table User]]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            Database
+            Field
+            Permissions
+            PermissionsGroup
+            Pulse
+            Setting
+            Table
+            User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.db :as db])
-  (:import java.sql.Connection
-           java.util.UUID))
+  (:import
+   (java.sql Connection)
+   (java.util UUID)))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(deftest rollback-test
+  (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
+    ;; using test-migrations to excercise all drivers
+    (impl/test-migrations [1] [_]
+      (let [{:keys [db-type data-source]} mdb.connection/*application-db*
+            migrate!    (partial db.setup/migrate! db-type data-source)
+            get-last-id (fn []
+                          (-> {:connection (.getConnection data-source)}
+                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
+                              first
+                              :id))]
+        (migrate! :up)
+        (let [latest-id (get-last-id)]
+          ;; This is an unusual usage of db.setup/migrate! with an explicit version, which is not currently
+          ;; available via the CLI, but is used here to rollback to the lowest version we support.
+          (migrate! :down 44)
+            ;; will always be the last v44 migration
+          (is (= "v44.00-044" (get-last-id)))
+          (migrate! :up)
+          (is (= latest-id (get-last-id))))))))
 
 (deftest database-position-test
   (testing "Migration 165: add `database_position` to Field"
@@ -37,7 +74,7 @@
         (db/simple-insert! Field (assoc mock-field :name "Field 1"))
         (db/simple-insert! Field (assoc mock-field :name "Field 2")))
       (testing "sanity check: Fields should not have a `:database_position` column yet"
-        (is (not (contains? (Field 1) :database_position))))
+        (is (not (contains? (db/select-one Field :id 1) :database_position))))
       ;; now run migration 165
       (migrate!)
       (testing "Fields should get `:database_position` equal to their IDs"
@@ -668,3 +705,68 @@
                                                            :group_id (all-users-group-id)}]})
                               (migrate!)
                               (is (= ["All Users"] (get-perms))))))))
+
+(deftest make-database-details-not-null-test
+  (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"
+    (impl/test-migrations ["v45.00-042" "v45.00-043"] [migrate!]
+      (let [database-id (db/simple-insert! Database (-> (dissoc (mt/with-temp-defaults Database) :details)
+                                                        (assoc :engine "h2")))]
+        (is (partial= {:details nil}
+                      (db/select-one Database :id database-id)))
+        (migrate!)
+        (is (partial= {:details {}}
+                      (db/select-one Database :id database-id)))))))
+
+(deftest populate-collection-created-at-test
+  (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
+    (impl/test-migrations ["v45.00-048" "v45.00-050"] [migrate!]
+      (let [database-id              (db/simple-insert! Database {:details   "{}"
+                                                                  :engine    "h2"
+                                                                  :is_sample false
+                                                                  :name      "populate-collection-created-at-test-db"})
+            user-id                  (db/simple-insert! User {:first_name  "Cam"
+                                                              :last_name   "Era"
+                                                              :email       "cam@example.com"
+                                                              :password    "123456"
+                                                              :date_joined #t "2022-10-20T02:09Z"})
+            personal-collection-id   (db/simple-insert! Collection {:name              "Cam Era's Collection"
+                                                                    :personal_owner_id user-id
+                                                                    :color             "#ff0000"
+                                                                    :slug              "personal_collection"})
+            impersonal-collection-id (db/simple-insert! Collection {:name  "Regular Collection"
+                                                                    :color "#ff0000"
+                                                                    :slug  "regular_collection"})
+            empty-collection-id      (db/simple-insert! Collection {:name  "Empty Collection"
+                                                                    :color "#ff0000"
+                                                                    :slug  "empty_collection"})
+            _                        (db/simple-insert! Card {:collection_id          impersonal-collection-id
+                                                              :name                   "Card 1"
+                                                              :display                "table"
+                                                              :dataset_query          "{}"
+                                                              :visualization_settings "{}"
+                                                              :creator_id             user-id
+                                                              :database_id            database-id
+                                                              :created_at             #t "2022-10-20T02:09Z"
+                                                              :updated_at             #t "2022-10-20T02:09Z"})
+            _                        (db/simple-insert! Card {:collection_id          impersonal-collection-id
+                                                              :name                   "Card 2"
+                                                              :display                "table"
+                                                              :dataset_query          "{}"
+                                                              :visualization_settings "{}"
+                                                              :creator_id             user-id
+                                                              :database_id            database-id
+                                                              :created_at             #t "2021-10-20T02:09Z"
+                                                              :updated_at             #t "2022-10-20T02:09Z"})]
+        (migrate!)
+        (testing "A personal Collection should get created_at set by to the date_joined from its owner"
+          (is (= (t/offset-date-time #t "2022-10-20T02:09Z")
+                 (t/offset-date-time (db/select-one-field :created_at Collection :id personal-collection-id)))))
+        (testing "A non-personal Collection should get created_at set to its oldest object"
+          (is (= (t/offset-date-time #t "2021-10-20T02:09Z")
+                 (t/offset-date-time (db/select-one-field :created_at Collection :id impersonal-collection-id)))))
+        (testing "Empty Collection should not have been updated"
+          (let [empty-collection-created-at (t/offset-date-time (db/select-one-field :created_at Collection :id empty-collection-id))]
+            (is (not= (t/offset-date-time #t "2021-10-20T02:09Z")
+                      empty-collection-created-at))
+            (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
+                      empty-collection-created-at))))))))

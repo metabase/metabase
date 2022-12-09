@@ -1,4 +1,5 @@
 import { restore, describeEE, isOSS } from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > admin > databases > list", () => {
   beforeEach(() => {
@@ -88,13 +89,13 @@ describe("scenarios > admin > databases > list", () => {
   it("should let you access edit page a database", () => {
     cy.visit("/admin/databases");
     cy.contains("Sample Database").click();
-    cy.url().should("match", /\/admin\/databases\/1$/);
+    cy.location("pathname").should("eq", `/admin/databases/${SAMPLE_DB_ID}`);
   });
 
   it("should let you bring back the sample database", () => {
     cy.intercept("POST", "/api/database/sample_database").as("sample_database");
 
-    cy.request("DELETE", "/api/database/1").as("delete");
+    cy.request("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
     cy.visit("/admin/databases");
     cy.contains("Bring the sample database back").click();
     cy.wait("@sample_database");

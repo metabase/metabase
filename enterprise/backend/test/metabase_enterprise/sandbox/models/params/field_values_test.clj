@@ -119,6 +119,32 @@
                (is (not= (hash-for-user-id-with-attributes user-id-1 {"State" "CA"} (mt/id :categories :name))
                          (hash-for-user-id-with-attributes user-id-2 {"State" "NY"} (mt/id :categories :name)))))))
 
+          (testing "gtap with native question"
+            (mt/with-temp*
+              [Card                       [{card-id :id} {:query_type :native
+                                                          :name "A native query"
+                                                          :dataset_query
+                                                          {:type :native
+                                                           :database (mt/id)
+                                                           :native
+                                                           {:query "SELECT * FROM People WHERE state = {{STATE}}"
+                                                            :template-tags
+                                                            {"STATE" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
+                                                                      :name "STATE"
+                                                                      :display-name "STATE"
+                                                                      :type "text"}}}}}]
+               PermissionsGroup           [{group-id :id}]
+               User                       [{user-id :id}]
+               PermissionsGroupMembership [_ {:group_id group-id
+                                              :user_id user-id}]
+               GroupTableAccessPolicy     [_ {:card_id card-id
+                                              :group_id group-id
+                                              :table_id (mt/id :categories)
+                                              :attribute_remappings {"State" [:variable [:template-tag "STATE"]]}}]]
+              (testing "same users but if the login_attributes change, they should have different hash (#24966)"
+                (is (not= (hash-for-user-id-with-attributes user-id {"State" "CA"} (mt/id :categories :name))
+                          (hash-for-user-id-with-attributes user-id {"State" "NY"} (mt/id :categories :name)))))))
+
           (testing "2 users in different groups but gtaps use the same card"
             (mt/with-temp*
               [Card                       [{card-id :id}]

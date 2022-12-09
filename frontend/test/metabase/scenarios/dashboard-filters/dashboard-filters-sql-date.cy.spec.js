@@ -9,11 +9,11 @@ import {
   visitDashboard,
 } from "__support__/e2e/helpers";
 
+import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 import {
   DASHBOARD_SQL_DATE_FILTERS,
   questionDetails,
 } from "./dashboard-filters-sql-date";
-import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
 describe("scenarios > dashboard > filters > SQL > date", () => {
   beforeEach(() => {

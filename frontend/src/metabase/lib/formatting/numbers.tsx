@@ -24,7 +24,7 @@ interface FormatNumberOptionsType {
   negativeInParentheses?: boolean;
   number_separators?: string;
   number_style?: string;
-  scale?: string;
+  scale?: number;
   type?: string;
 }
 
@@ -83,7 +83,12 @@ export function formatNumber(
   } else {
     try {
       let nf;
-      if (number < 1 && number > -1 && options.decimals == null) {
+      if (
+        number < 1 &&
+        number > -1 &&
+        options.decimals == null &&
+        options.number_style !== "percent"
+      ) {
         // NOTE: special case to match existing behavior for small numbers, use
         // max significant digits instead of max fraction digits
         nf = numberFormatterForOptions({
@@ -209,7 +214,7 @@ function formatNumberCompactWithoutOptions(value: number) {
   }
 }
 
-// replaces the decimale and grouping separators with those specified by a NumberSeparators option
+// replaces the decimal and grouping separators with those specified by a NumberSeparators option
 function replaceNumberSeparators(formatted: any, separators: any) {
   const [decimalSeparator, groupingSeparator] = (separators || ".,").split("");
 

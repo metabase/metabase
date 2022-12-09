@@ -8,7 +8,8 @@
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models :refer [Card Collection Database Field FieldValues Table]]
+            [metabase.models :refer [Card Collection Database Field
+                                     FieldValues Table]]
             [metabase.models.database :as database :refer [protected-password]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -77,6 +78,37 @@
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position]))))
 
+(defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
+  (merge
+   {:name          card-name
+    :database_id   (mt/id)
+    :dataset_query {:database (mt/id)
+                    :type     :native
+                    :native   {:query (format "SELECT * FROM VENUES")}}}
+   kvs))
+
+(defn- card-with-mbql-query {:style/indent 1} [card-name & {:as inner-query-clauses}]
+  {:name          card-name
+   :database_id   (mt/id)
+   :dataset_query {:database (mt/id)
+                   :type     :query
+                   :query    inner-query-clauses}})
+
+(defn- virtual-table-for-card [card & {:as kvs}]
+  (merge
+   {:id               (format "card__%d" (u/the-id card))
+    :db_id            (:database_id card)
+    :display_name     (:name card)
+    :schema           "Everything else"
+    :moderated_status nil
+    :description      nil}
+   kvs))
+
+(defn- ok-mbql-card []
+  (assoc (card-with-mbql-query "OK Card"
+                               :source-table (mt/id :checkins))
+         :result_metadata [{:name "num_toucans"}]))
+
 (deftest get-database-test
   (testing "GET /api/database/:id"
     (testing "DB details visibility"
@@ -135,7 +167,7 @@
                       s/Keyword s/Any}
                      response))
         (when (integer? db-id)
-          (Database db-id)))
+          (db/select-one Database :id db-id)))
       (finally (db/delete! Database :name db-name)))))
 
 (deftest create-db-test
@@ -275,7 +307,7 @@
                                      :entity_type         "entity/GenericTable"
                                      :initial_sync_status "complete"
                                      :fields              [(merge
-                                                            (field-details (Field (mt/id :categories :id)))
+                                                            (field-details (db/select-one Field :id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/PK"
                                                              :name              "ID"
@@ -285,9 +317,10 @@
                                                              :effective_type    "type/BigInteger"
                                                              :visibility_type   "normal"
                                                              :has_field_values  "none"
-                                                             :database_position 0})
+                                                             :database_position 0
+                                                             :database_required false})
                                                            (merge
-                                                            (field-details (Field (mt/id :categories :name)))
+                                                            (field-details (db/select-one Field :id (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/Name"
                                                              :name              "NAME"
@@ -297,7 +330,8 @@
                                                              :effective_type    "type/Text"
                                                              :visibility_type   "normal"
                                                              :has_field_values  "list"
-                                                             :database_position 1})]
+                                                             :database_position 1
+                                                             :database_required true})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)
@@ -374,32 +408,37 @@
                                                      :prefix "a"
                                                      :substring "a")))))))))))
 
-
-(defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
-  (merge
-   {:name          card-name
-    :database_id   (mt/id)
-    :dataset_query {:database (mt/id)
-                    :type     :native
-                    :native   {:query (format "SELECT * FROM VENUES")}}}
-   kvs))
-
-(defn- card-with-mbql-query {:style/indent 1} [card-name & {:as inner-query-clauses}]
-  {:name          card-name
-   :database_id   (mt/id)
-   :dataset_query {:database (mt/id)
-                   :type     :query
-                   :query    inner-query-clauses}})
-
-(defn- virtual-table-for-card [card & {:as kvs}]
-  (merge
-   {:id               (format "card__%d" (u/the-id card))
-    :db_id            (:database_id card)
-    :display_name     (:name card)
-    :schema           "Everything else"
-    :moderated_status nil
-    :description      nil}
-   kvs))
+(deftest card-autocomplete-suggestions-test
+  (testing "GET /api/database/:id/card_autocomplete_suggestions"
+    (mt/with-temp* [Collection [collection {:name "Maz Analytics"}]
+                    Card       [card-1 (card-with-native-query "Maz Quote Views Per Month")]
+                    Card       [card-2 (card-with-native-query "Maz Quote Views Per Day" :collection_id (:id collection))]]
+      (let [card->result {card-1 (assoc (select-keys card-1 [:id :name :dataset]) :collection_name nil)
+                          card-2 (assoc (select-keys card-2 [:id :name :dataset]) :collection_name (:name collection))}]
+        (testing "exclude cards without perms"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (is (= [(card->result card-2)]
+                   (mt/user-http-request :rasta :get 200
+                                         (format "database/%d/card_autocomplete_suggestions" (mt/id))
+                                         :query "maz"))))
+          (testing "cards should match the query"
+            (doseq [[query expected-cards] {"QUOTE-views"              [card-2 card-1]
+                                            "per-day"                  [card-2]
+                                            (str (:id card-1))         [card-1]
+                                            (str (:id card-2) "-maz")  [card-2]
+                                            (str (:id card-2) "-kyle") []}]
+              (is (= (map card->result expected-cards)
+                     (mt/user-http-request :rasta :get 200
+                                           (format "database/%d/card_autocomplete_suggestions" (mt/id))
+                                           :query query)))))))
+      (testing "should reject requests for databases for which the user has no perms"
+        (mt/with-temp* [Database [{database-id :id}]
+                        Card     [_ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)]]
+          (perms/revoke-data-perms! (perms-group/all-users) database-id)
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403
+                                       (format "database/%d/card_autocomplete_suggestions" database-id)
+                                       :query "maz"))))))))
 
 (driver/register! ::no-nested-query-support
                   :parent :sql-jdbc
@@ -407,16 +446,11 @@
 
 (defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
 
-(defn- ok-mbql-card []
-  (assoc (card-with-mbql-query "OK Card"
-                               :source-table (mt/id :checkins))
-         :result_metadata [{:name "num_toucans"}]))
-
 (deftest databases-list-test
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (mt/id))))
+        (let [expected-keys (-> (into #{:features :native_permissions} (keys (db/select-one Database :id (mt/id))))
                                 (disj :details :settings))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
@@ -507,7 +541,7 @@
                       (:data (mt/user-http-request :crowberto :get 200 (str "database" params)))))]
         (testing "Check that we get back 'virtual' tables for Saved Questions"
           (testing "The saved questions virtual DB should be the last DB in the list"
-            (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
+            (mt/with-temp Card [card (card-with-native-query "Maz Quote Views Per Month")]
               ;; run the Card which will populate its result_metadata column
               (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
               ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
@@ -517,7 +551,7 @@
                 (check-tables-included response (virtual-table-for-card card)))))
 
           (testing "Make sure saved questions are NOT included if the setting is disabled"
-            (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
+            (mt/with-temp Card [card (card-with-native-query "Maz Quote Views Per Month")]
               (mt/with-temporary-setting-values [enable-nested-queries false]
                 ;; run the Card which will populate its result_metadata column
                 (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
@@ -1014,7 +1048,8 @@
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
                       Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
-                      Card       [card-2 (card-with-native-query "Card 2")]]
+                      Card       [card-2 (card-with-native-query "Card 2")]
+                      Card       [_card-3 (assoc (card-with-native-query "Card 3") :is_write true :result_metadata {})]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
@@ -1038,6 +1073,7 @@
                            :schema           (s/eq (api.table/root-collection-schema-name))
                            :description      (s/maybe s/Str)}]
                          response))
+            (is (not (contains? (set (map :display_name response)) "Card 3")))
             (is (contains? (set response)
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)

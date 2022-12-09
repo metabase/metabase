@@ -75,6 +75,7 @@
             :user                          "camsaul"
             :ssl                           true
             :sslmode                       "require"
+            :sslpassword                   ""
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl    true
@@ -106,6 +107,7 @@
             :sslkey                        "my-key"
             :sslfactory                    "myfactoryoverride"
             :sslrootcert                   "myrootcert"
+            :sslpassword                   ""
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
              {:ssl         true
@@ -223,7 +225,7 @@
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
             (exec! spec ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
-                         "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Kanye Nest');"
+                         "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Parroty');"
                          "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"
                          "GRANT ALL ON angry_birds to PUBLIC;"])
             ;; now sync the DB
@@ -258,7 +260,7 @@
             (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]
               (let [sync! #(sync/sync-database! database)]
                 ;; create a main partitioned table and two partitions for it
-                (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\")";"
+                (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\");"
                              "CREATE TABLE part_vals_0 (val bigint NOT NULL);"
                              "ALTER TABLE ONLY part_vals ATTACH PARTITION part_vals_0 FOR VALUES FROM (0) TO (1000);"
                              "CREATE TABLE part_vals_1 (val bigint NOT NULL);"
@@ -317,18 +319,18 @@
                         Field    [val-field {:table_id      (u/the-id table)
                                              :nfc_path      [:jsons "values" "qty"]
                                              :database_type "integer"}]]
-        (qp.store/with-store
-          (qp.store/fetch-and-store-database! (u/the-id database))
-          (qp.store/fetch-and-store-tables! [(u/the-id table)])
-          (qp.store/fetch-and-store-fields! [(u/the-id val-field)])
-          (let [field-clause [:field (u/the-id val-field) {:binning
-                                                           {:strategy :num-bins,
-                                                            :num-bins 100,
-                                                            :min-value 0.75,
-                                                            :max-value 54.0,
-                                                            :bin-width 0.75}}]]
-            (is (= ["((floor((((complicated_identifiers.jsons#>> ?::text[])::integer  - 0.75) / 0.75)) * 0.75) + 0.75)" "{values,qty}"]
-                   (hsql/format (sql.qp/->honeysql :postgres field-clause)))))))))))
+          (qp.store/with-store
+            (qp.store/fetch-and-store-database! (u/the-id database))
+            (qp.store/fetch-and-store-tables! [(u/the-id table)])
+            (qp.store/fetch-and-store-fields! [(u/the-id val-field)])
+            (let [field-clause [:field (u/the-id val-field) {:binning
+                                                             {:strategy :num-bins,
+                                                              :num-bins 100,
+                                                              :min-value 0.75,
+                                                              :max-value 54.0,
+                                                              :bin-width 0.75}}]]
+              (is (= ["((floor((((complicated_identifiers.jsons#>> ?::text[])::integer  - 0.75) / 0.75)) * 0.75) + 0.75)" "{values,qty}"]
+                     (hsql/format (sql.qp/->honeysql :postgres field-clause)))))))))))
 
 (deftest json-alias-test
   (mt/test-driver :postgres
@@ -559,7 +561,7 @@
                        :parameters
                        [{:type   "text"
                          :target ["dimension" ["template-tag" "user"]]
-                         :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}])))))
+                         :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]))))))
       (testing "Check that we can filter by multiple UUIDs for SQL Field filters"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
                 [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]]
@@ -577,7 +579,7 @@
                        [{:type   "text"
                          :target ["dimension" ["template-tag" "user"]]
                          :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
-                                  "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}]))))))))))
+                                  "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}])))))))))
 
 
 (mt/defdataset ip-addresses
@@ -697,15 +699,18 @@
                              :database-type     "varchar"
                              :base-type         :type/Text
                              :pk?               true
-                             :database-position 0}
+                             :database-position 0
+                             :database-required true}
                             {:name              "status"
                              :database-type     "bird_status"
                              :base-type         :type/PostgresEnum
-                             :database-position 1}
+                             :database-position 1
+                             :database-required true}
                             {:name              "type"
                              :database-type     "bird type"
                              :base-type         :type/PostgresEnum
-                             :database-position 2}}}
+                             :database-position 2
+                             :database-required true}}}
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"
@@ -731,7 +736,7 @@
                         {:database (u/the-id db)
                          :type     :query
                          :query    {:source-table table-id
-                                    :filter       [:= [:field-id (u/the-id bird-type-field-id)] "toucan"]
+                                    :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
                                     :limit        10}})
                        :data
                        (select-keys [:rows :native_form]))))))))))
@@ -745,9 +750,9 @@
               (mt/with-temporary-setting-values [report-timezone report-timezone]
                 (ffirst
                  (mt/rows
-                   (qp/process-query {:database (mt/id)
-                                      :type     :native
-                                      :native   {:query "SELECT current_setting('TIMEZONE') AS timezone;"}})))))]
+                  (qp/process-query {:database (mt/id)
+                                     :type     :native
+                                     :native   {:query "SELECT current_setting('TIMEZONE') AS timezone;"}})))))]
       (testing "check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific"
         (is  (= "US/Pacific"
                 (get-timezone-with-report-timezone "US/Pacific"))))
@@ -756,9 +761,8 @@
                (get-timezone-with-report-timezone "America/Chicago"))))
       (testing (str "ok, check that if we try to put in a fake timezone that the query still reëxecutes without a "
                     "custom timezone. This should give us the same result as if we didn't try to set a timezone at all")
-        (mt/suppress-output
-          (is (= (get-timezone-with-report-timezone nil)
-                 (get-timezone-with-report-timezone "Crunk Burger"))))))))
+        (is (= (get-timezone-with-report-timezone nil)
+               (get-timezone-with-report-timezone "Crunk Burger")))))))
 
 (deftest fingerprint-time-fields-test
   (mt/test-driver :postgres
@@ -959,7 +963,7 @@
 (deftest can-set-ssl-key-via-gui
   (testing "ssl key can be set via the gui (#20319)"
     (with-redefs [secret/value->file!
-                  (fn [{:keys [connection-property-name value] :as _secret} _driver?]
+                  (fn [{:keys [connection-property-name value] :as _secret} & [_driver? _ext?]]
                     (str "file:" connection-property-name "=" value))]
       (is (= "file:ssl-key=/clientkey.pkcs12"
              (:sslkey
@@ -969,7 +973,7 @@
                 :ssl-client-cert-path "/client.pem"
                 :ssl-key-options "local"
                 :ssl-key-password-value "sslclientkeypw!"
-                :ssl-key-path "/clientkey.pkcs12", ;; <-- this is what is set via ui.
+                :ssl-key-path "/clientkey.pkcs12" ;; <-- this is what is set via ui.
                 :ssl-mode "verify-ca"
                 :ssl-root-cert-options "local"
                 :ssl-root-cert-path "/root.pem"
@@ -982,3 +986,24 @@
                 :user "bcm"
                 :password "abcdef123"
                 :port 5432})))))))
+
+(deftest pkcs-12-extension-test
+  (testing "Uploaded PKCS-12 SSL keys are stored in a file with the .p12 extension (#20319)"
+    (is (true?
+         (-> (#'postgres/ssl-params
+              {:ssl true
+               :ssl-key-options "uploaded"
+               :ssl-key-value "data:application/x-pkcs12;base64,SGVsbG8="
+               :ssl-mode "require"
+               :ssl-use-client-auth true
+               :tunnel-enabled false
+               :advanced-options false
+               :dbname "metabase"
+               :engine :postgres
+               :host "localhost"
+               :user "bcm"
+               :password "abcdef123"
+               :port 5432})
+             :sslkey
+             .getAbsolutePath
+             (str/ends-with? ".p12"))))))

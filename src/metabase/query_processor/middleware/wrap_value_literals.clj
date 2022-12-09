@@ -21,8 +21,9 @@
 
 (defmethod type-info :default [_] nil)
 
-(defmethod type-info (class Field) [this]
-  (let [field-info (select-keys this [:base_type :effective_type :coercion_strategy :semantic_type :database_type :name])]
+(defmethod type-info Field
+  [field]
+  (let [field-info (select-keys field [:base_type :effective_type :coercion_strategy :semantic_type :database_type :name])]
     (merge
      field-info
      ;; add in a default unit for this Field so we know to wrap datetime strings in `absolute-datetime` below based on
@@ -120,6 +121,12 @@
   (mbql.u/replace mbql
     [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
     [clause field (add-type-info x (type-info field))]
+
+    [:datetime-diff (x :guard string?) (y :guard string?) unit]
+    [:datetime-diff (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]
+
+    [(clause :guard #{:datetime-add :datetime-subtract :convert-timezone :temporal-extract}) (field :guard string?) & args]
+    (into [clause (add-type-info (u.date/parse field) nil)] args)
 
     [:between field (min-val :guard raw-value?) (max-val :guard raw-value?)]
     [:between

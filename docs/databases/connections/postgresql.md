@@ -58,11 +58,17 @@ If you set the SSL Mode to either "verify-ca" or "verify-full", you'll need to s
 
 You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
-#### SSL Client KEY (PKCS-8/DER or PKCS-12)
+#### SSL Client Key (PKCS-8/DER)
 
-Again, you have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
+Again, you have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate. You'll also need to input your **SSL Client Key Password**.
 
-You'll also need to input your **SSL Client Key Password**.
+The private key must be PKCS8 and stored in DER format.
+
+If you instead have a PEM SSL client key, you can convert that key to the PKCS-8/DER format using [openssl](https://www.openssl.org/). The command would look something like:
+
+```
+openssl pkcs8 -topk8 -inform PEM -outform DER -in client-key.pem -out client-key.pk8 -nocrypt
+```
 
 ## Use an SSH tunnel
 
@@ -99,7 +105,7 @@ The problem is that if the keys in the JSON vary record to record, the first fiv
 Metabase can create tables with model data in your database and refresh them on a schedule you define. Metabase's connection's credentials to that database must be able to read and write to the schema displayed in the info tooltip.
 
 See [Models](../../data-modeling/models.md).
-
-[ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client
+-
+[ssl-modes]: https://jdbc.postgresql.org/documentation/ssl/#configuring-the-client
 [ssh-tunnel]: ../ssh-tunnel.md
 

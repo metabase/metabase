@@ -1,11 +1,11 @@
 import React from "react";
 
-import { Route } from "metabase/hoc/Title";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { createAdminRouteGuard } from "metabase/admin/utils";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
+import { Route } from "metabase/hoc/Title";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { createAdminRouteGuard } from "metabase/admin/utils";
 
 import AuditApp from "./containers/AuditApp";
 import UnsubscribeUserModal from "./containers/UnsubscribeUserModal/UnsubscribeUserModal";

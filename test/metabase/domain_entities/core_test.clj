@@ -5,18 +5,20 @@
             [metabase.models.table :as table :refer [Table]]
             [metabase.test.data :as data]
             [metabase.test.domain-entities :as test.de]
+            [toucan.db :as db]
             [toucan.hydrate :as hydrate]))
 
 (deftest mbql-reference-test
   (is (= [:field (data/id :venues :price) nil]
-         (#'de/mbql-reference (Field (data/id :venues :price)))))
+         (#'de/mbql-reference (db/select-one Field :id (data/id :venues :price)))))
 
   (is (= [:field "PRICE" {:base-type :type/Integer}]
-         (#'de/mbql-reference (dissoc (Field (data/id :venues :price)) :id)))))
+         (#'de/mbql-reference (dissoc (db/select-one Field :id (data/id :venues :price)) :id)))))
 
 (defn- hydrated-table
   [table-name]
-  (-> table-name data/id Table (hydrate/hydrate :fields)))
+  (-> (db/select-one Table :id (data/id table-name))
+      (hydrate/hydrate :fields)))
 
 (deftest satisfies-requierments?-test
   (is (de/satisfies-requierments? (hydrated-table :venues) (test.de/test-domain-entity-specs "Venues"))))
@@ -30,9 +32,9 @@
   (testing "Do all the MBQL snippets get instantiated correctly"
     (test.de/with-test-domain-entity-specs
       (is (= {:metrics             {"Avg Price" {:name        "Avg Price"
-                                                 :aggregation [:avg (#'de/mbql-reference (Field (data/id :venues :price)))]}}
+                                                 :aggregation [:avg (#'de/mbql-reference (db/select-one Field :id (data/id :venues :price)))]}}
               :segments            nil
-              :breakout_dimensions [(#'de/mbql-reference (Field (data/id :venues :category_id)))]
+              :breakout_dimensions [(#'de/mbql-reference (db/select-one Field :id (data/id :venues :category_id)))]
               :dimensions          (into {} (for [field (:fields (hydrated-table :venues))]
                                               [(-> field (#'de/field-type) name) field]))
               :type                :DomainEntity/Venues

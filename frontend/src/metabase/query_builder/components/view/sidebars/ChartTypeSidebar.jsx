@@ -25,6 +25,7 @@ const ChartTypeSidebar = ({
   result,
   onOpenChartSettings,
   onCloseChartType,
+  updateQuestion,
   isShowingChartTypeSidebar,
   setUIControls,
   ...props
@@ -64,13 +65,14 @@ const ChartTypeSidebar = ({
                     visualization.isSensible(result.data, props.query)
                   }
                   onClick={() => {
-                    question
+                    const newQuestion = question
                       .setDisplay(type)
-                      .lockDisplay(true) // prevent viz auto-selection
-                      .update(null, {
-                        reload: false,
-                        shouldUpdateUrl: question.query().isEditable(),
-                      });
+                      .lockDisplay(true); // prevent viz auto-selection
+
+                    updateQuestion(newQuestion, {
+                      reload: false,
+                      shouldUpdateUrl: question.query().isEditable(),
+                    });
                     onOpenChartSettings({ section: t`Data` });
                     setUIControls({ isShowingRawTable: false });
                   }}

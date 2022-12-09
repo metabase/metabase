@@ -14,7 +14,9 @@
                                                            org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   buddy/buddy-sign                          {:mvn/version "3.4.333"}            ; JSON Web Tokens; High-Level message signing library
+  camel-snake-kebab/camel-snake-kebab       {:mvn/version "0.4.3"}              ; util functions for converting between camel, snake, and kebob case
   cheshire/cheshire                         {:mvn/version "5.10.2"}             ; fast JSON encoding (used by Ring JSON middleware)
+  clj-commons/iapetos                       {:mvn/version "0.1.12"}             ; prometheus metrics
   clj-http/clj-http                         {:mvn/version "3.12.3"              ; HTTP client
                                              :exclusions  [commons-codec/commons-codec
                                                            commons-io/commons-io
@@ -30,7 +32,8 @@
   com.draines/postal                        {:mvn/version "2.0.5"}              ; SMTP library
   com.google.guava/guava                    {:mvn/version "31.0.1-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.fasterxml.jackson.core/jackson-databind
-                                            {:mvn/version "2.13.2.2"}           ; JSON processor used by snowplow-java-tracker (pinned version due to CVE-2020-36518)
+                                            {:mvn/version "2.13.4.2"}           ; JSON processor used by snowplow-java-tracker
+  com.fasterxml.woodstox/woodstox-core      {:mvn/version "6.4.0"}              ; trans dep of commons-codec (pinned version due to CVE-2022-40151)
   com.h2database/h2                         {:mvn/version "1.4.197"}            ; embedded SQL database
   com.snowplowanalytics/snowplow-java-tracker
                                             {:mvn/version "0.12.0"              ; Snowplow analytics
@@ -61,6 +64,8 @@
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
+  io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
+  io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
   joda-time/joda-time                       {:mvn/version "2.10.13"}
   kixi/stats                                {:mvn/version "0.4.4"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
@@ -78,6 +83,7 @@
                                                            org.slf4j/slf4j-api]}
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.0"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api]}
+  net.thisptr/jackson-jq                    {:mvn/version "1.0.0-preview.20210928"} ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress       {:mvn/version "1.21"}               ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.12.0"}             ; helper methods for working with java.lang stuff
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.18.0"}             ; apache logging framework
@@ -90,8 +96,8 @@
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.2"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.9.0"}              ; ssh tunneling and test server
-  org.apache.xmlgraphics/batik-all          {:mvn/version "1.14"}               ; SVG -> image
+  org.apache.sshd/sshd-core                 {:mvn/version "2.9.2"}              ; ssh tunneling and test server
+  org.apache.xmlgraphics/batik-all          {:mvn/version "1.16"}               ; SVG -> image
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk15on           {:mvn/version "1.70"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk15on           {:mvn/version "1.70"}
@@ -102,12 +108,14 @@
   org.clojure/core.match                    {:mvn/version "1.0.0"}
   org.clojure/core.memoize                  {:mvn/version "1.0.257"}            ; useful FIFO, LRU, etc. caching mechanisms
   org.clojure/data.csv                      {:mvn/version "1.0.1"}              ; CSV parsing / generation
+  org.clojure/data.xml                      {:mvn/version "0.0.8"}              ; XML parsing / generation
   org.clojure/java.classpath                {:mvn/version "1.0.0"}              ; examine the Java classpath from Clojure programs
   org.clojure/java.jdbc                     {:mvn/version "0.7.12"}             ; basic JDBC access from Clojure
   org.clojure/java.jmx                      {:mvn/version "1.0.0"}              ; JMX bean library, for exporting diagnostic info
   org.clojure/math.combinatorics            {:mvn/version "0.1.6"}              ; combinatorics functions
   org.clojure/math.numeric-tower            {:mvn/version "0.0.5"}              ; math functions like `ceil`
   org.clojure/tools.logging                 {:mvn/version "1.2.4"}              ; logging framework
+  org.clojure/tools.macro                   {:mvn/version "0.1.5"}              ; local macros
   org.clojure/tools.namespace               {:mvn/version "1.3.0"}
   org.clojure/tools.reader                  {:mvn/version "1.3.6"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
@@ -118,12 +126,12 @@
                                              :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.6"}              ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.4.1"}             ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.5.0"}             ; Postgres driver
   org.quartz-scheduler/quartz               {:mvn/version "2.3.2"}              ; Quartz job scheduler, provided by quartzite but this is a newer version.
   org.slf4j/slf4j-api                       {:mvn/version "1.7.36"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.7.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
-  org.yaml/snakeyaml                        {:mvn/version "1.30"}               ; YAML parser
+  org.yaml/snakeyaml                        {:mvn/version "1.33"}               ; YAML parser
   potemkin/potemkin                         {:mvn/version "0.4.5"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed
@@ -153,6 +161,20 @@
  :paths
  ["src" "shared/src" "resources"]
 
+ ;; These are needed for the Athena and Redshift drivers if you are developing against them locally. If those drivers'
+ ;; dependencies are not included (i.e., if we don't have the `:drivers` profile), these repos are effectively
+ ;; ignored.
+ ;;
+ ;; 1. Maven repos from subprojects do not get copied over -- see
+ ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
+ ;;
+ ;; 2. You cannot include `:mvn/repos` inside of an alias -- see
+ ;; https://ask.clojure.org/index.php/12367/support-mvn-repos-inside-an-alias -- if we could, this could go in the
+ ;; `:drivers` alias instead.
+ :mvn/repos
+ {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
+  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
+
  :aliases
  {
 ;;; Local Dev & test profiles
@@ -173,15 +195,17 @@
                                                            :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo                                   {:mvn/version "2022.08.03"} ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage                                   {:mvn/version "1.2.2"}
+    djblue/portal                                         {:mvn/version "0.30.0"}
     eftest/eftest                                         {:mvn/version "0.5.9"}
+    io.github.camsaul/humane-are                          {:mvn/version "1.0.2"}
     jonase/eastwood                                       {:mvn/version "1.2.2"}
-    lein-check-namespace-decls/lein-check-namespace-decls {:mvn/version "1.0.4"} ; misnomer since this works on Clojure CLI now too
     pjstadig/humane-test-output                           {:mvn/version "0.11.0"}
     reifyhealth/specmonstah                               {:mvn/version "2.0.0"
                                                            :exclusions  [org.clojure/clojure
                                                                          org.clojure/clojurescript]}
     ring/ring-mock                                        {:mvn/version "0.4.0"}
-    talltale/talltale                                     {:mvn/version "0.5.8"}}
+    talltale/talltale                                     {:mvn/version "0.5.8"}
+    lambdaisland/deep-diff2                               {:mvn/version "2.3.127"}}
 
    :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
@@ -264,7 +288,7 @@
   ;;    clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test (for EE)
   :drivers-dev
   {:extra-paths
-   ["modules/drivers/bigquery/test"
+   ["modules/drivers/athena/test"
     "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/druid/test"
     "modules/drivers/googleanalytics/test"
@@ -282,16 +306,33 @@
 
 ;;; Linters
 
-  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
-  :namespace-checker
-  {:exec-fn   metabase.linters.namespace-checker/check-namespace-decls
-   :exec-args {:prefix-rewriting false}}
-
-  ;; clojure -M:dev:ee:ee-dev:drivers:drivers-dev:check
+  ;; clojure -M:ee:drivers:check
+  ;;
+  ;; checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't
+  ;; ship (such as `:dev` dependencies). See #27009 for more context.
   :check
   {:extra-deps {athos/clj-check {:git/url "https://github.com/athos/clj-check.git"
                                  :sha     "518d5a1cbfcd7c952f548e6dbfcb9a4a5faf9062"}}
-   :main-opts  ["-m" "clj-check.check"]}
+   :main-opts  ["-m" "clj-check.check"
+                "src"
+                "shared/src"
+                "enterprise/backend/src"
+                "modules/drivers/athena/src"
+                "modules/drivers/bigquery-cloud-sdk/src"
+                "modules/drivers/druid/src"
+                "modules/drivers/googleanalytics/src"
+                "modules/drivers/mongo/src"
+                "modules/drivers/oracle/src"
+                "modules/drivers/presto/src"
+                "modules/drivers/presto-common/src"
+                "modules/drivers/presto-jdbc/src"
+                "modules/drivers/redshift/src"
+                "modules/drivers/snowflake/src"
+                "modules/drivers/sparksql/src"
+                "modules/drivers/sqlite/src"
+                "modules/drivers/sqlserver/src"
+                "modules/drivers/vertica/src"]
+   :jvm-opts   ["-Dclojure.main.report=stderr"]}
 
   ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
   :eastwood
@@ -301,7 +342,7 @@
                :source-paths    ["src"
                                  "shared/src"
                                  "enterprise/backend/src"
-                                 "modules/drivers/bigquery/src"
+                                 "modules/drivers/athena/src"
                                  "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/druid/src"
                                  "modules/drivers/googleanalytics/src"
@@ -341,11 +382,13 @@
   :whitespace-linter
   {:deps       {com.github.camsaul/whitespace-linter {:sha "912644a2b9cc91edcce31a6fa997c46479341a1d"}}
    :ns-default whitespace-linter
+   :exec-fn    whitespace-linter/lint
    :exec-args  {:paths            ["./.dir-locals.el"
                                    "./deps.edn"
                                    "./package.json"
                                    "./shadow-cljs.edn"
                                    ".circleci"
+                                   ".clj-kondo"
                                    ".github"
                                    "bin"
                                    "enterprise"
@@ -370,7 +413,9 @@
                                    "frontend/src/cljs"
                                    "frontend/test/metabase/lib/urls\\.unit\\.spec\\.js$"
                                    "frontend/test/metabase/lib/formatting\\.unit\\.spec\\.js$"
-                                   "shared/src/metabase/shared/util/currency\\.cljc$"]}}
+                                   "shared/src/metabase/shared/util/currency\\.cljc$"
+                                   "#.+#$"
+                                   "\\.transit\\.json$"]}}
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage

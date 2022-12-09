@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import FieldSidebar from "./FieldSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import FieldDetail from "metabase/reference/databases/FieldDetail";
 
@@ -18,6 +17,7 @@ import {
   getDatabaseId,
   getIsEditing,
 } from "../selectors";
+import FieldSidebar from "./FieldSidebar";
 
 const mapStateToProps = (state, props) => ({
   database: getDatabase(state, props),

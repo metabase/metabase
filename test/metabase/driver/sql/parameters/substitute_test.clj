@@ -13,7 +13,8 @@
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))
@@ -82,7 +83,7 @@
   information about"
   []
   (params/map->FieldFilter
-   {:field (Field (mt/id :checkins :date))
+   {:field (db/select-one Field :id (mt/id :checkins :date))
     :value {:type  :date/single
             :value (t/offset-date-time "2019-09-20T19:52:00.000-07:00")}}))
 
@@ -165,7 +166,7 @@
           (testing operator
             (is (= expected
                    (substitute query {"param" (params/map->FieldFilter
-                                               {:field (Field (mt/id :venues field))
+                                               {:field (db/select-one Field :id (mt/id :venues field))
                                                 :value {:type  operator
                                                         :value value}})})))))))))
 

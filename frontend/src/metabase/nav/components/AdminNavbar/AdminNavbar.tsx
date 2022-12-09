@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import { AdminNavItem } from "./AdminNavItem";
-import StoreLink from "../StoreLink";
 import LogoIcon from "metabase/components/LogoIcon";
 import Icon from "metabase/components/Icon";
+import { User } from "metabase-types/api";
+import { AdminPath } from "metabase-types/store";
+import StoreLink from "../StoreLink";
 import {
   AdminExitLink,
   AdminLogoContainer,
@@ -16,8 +17,7 @@ import {
   AdminMobileNavBarItems,
   MobileHide,
 } from "./AdminNavbar.styled";
-import { User } from "metabase-types/api";
-import { AdminPath } from "metabase-types/store";
+import { AdminNavItem } from "./AdminNavItem";
 
 interface AdminNavbarProps {
   path: string;

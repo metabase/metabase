@@ -47,6 +47,11 @@
                                         {:native su/NonBlankString}
                                         :else
                                         su/FieldType)
+   ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
+   ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
+   ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
+   ;; datasets e.g. [[metabase.actions.test-util/with-actions-test-data]]
+   (s/optional-key :not-null?)         (s/maybe s/Bool)
    (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
    (s/optional-key :effective-type)    (s/maybe su/FieldType)
    (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
@@ -234,20 +239,32 @@
 
 (defmethod metabase-instance FieldDefinition
   [this table]
-  (Field :table_id (:id table), :%lower.name (str/lower-case (:field-name this))))
+  (db/select-one Field
+                 :table_id    (u/the-id table)
+                 :%lower.name (str/lower-case (:field-name this))
+                 {:order-by [[:id :asc]]}))
 
 (defmethod metabase-instance TableDefinition
   [this database]
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
-  (or (Table :db_id (:id database), :%lower.name (str/lower-case (:table-name this)))
-      (Table :db_id (:id database), :%lower.name (db-qualified-table-name (:name database) (:table-name this)))))
+  (letfn [(table-with-name [table-name]
+            (db/select-one Table
+                           :db_id       (:id database)
+                           :%lower.name table-name
+                           {:order-by [[:id :asc]]}))]
+    (or (table-with-name (str/lower-case (:table-name this)))
+        (table-with-name (db-qualified-table-name (:name database) (:table-name this))))))
 
-(defmethod metabase-instance DatabaseDefinition [{:keys [database-name]} driver-kw]
+(defmethod metabase-instance DatabaseDefinition
+  [{:keys [database-name]} driver]
   (assert (string? database-name))
-  (assert (keyword? driver-kw))
+  (assert (keyword? driver))
   (mdb/setup-db!)
-  (Database :name database-name, :engine (name driver-kw)))
+  (db/select-one Database
+                 :name    database-name
+                 :engine (u/qualified-name driver)
+                 {:order-by [[:id :asc]]}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -273,10 +290,12 @@
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.
 
+  `connection-type` is either:
+
   *  `:server` - Return details for making the connection in a way that isn't DB-specific (e.g., for
                  creating/destroying databases)
   *  `:db`     - Return details for connecting specifically to the DB."
-  {:arglists '([driver context database-definition])}
+  {:arglists '([driver connection-type database-definition])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -339,6 +358,21 @@
 
 (defmethod sorts-nil-first? ::test-extensions [_ _] true)
 
+(defmulti supports-time-type?
+  "Whether this database supports a `TIME` data type or equivalent."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod supports-time-type? ::test-extensions [_driver] true)
+
+(defmulti supports-timestamptz-type?
+  "Whether this database supports a `timestamp with time zone` data type or equivalent."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod supports-timestamptz-type? ::test-extensions [_driver] true)
 
 (defmulti aggregate-column-info
   "Return the expected type information that should come back for QP results as part of `:cols` for an aggregation of a
@@ -501,8 +535,7 @@
 (s/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  {:style/indent 2}
-  [new-name :- su/NonBlankString, wrapped-definition & transform-fns :- [(s/pred fn?)]]
+  [new-name :- su/NonBlankString wrapped-definition & transform-fns :- [(s/pred fn?)]]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                       (transform-fn

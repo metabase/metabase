@@ -1,13 +1,13 @@
 import _ from "underscore";
 import { createAction } from "redux-actions";
+import { push } from "react-router-redux";
 import {
   combineReducers,
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
-import { push } from "react-router-redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
+import { getDefaultEngine } from "metabase/lib/engine";
 
 import { MetabaseApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
@@ -121,7 +121,7 @@ export const initializeDatabase = function (databaseId) {
       const newDatabase = {
         name: "",
         auto_run_queries: true,
-        engine: Object.keys(MetabaseSettings.get("engines"))[0],
+        engine: getDefaultEngine(),
         details: {},
         created: false,
       };

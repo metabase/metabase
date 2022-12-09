@@ -53,8 +53,8 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
                 card_id: QUESTION_ID,
                 row: 0,
                 col: 0,
-                sizeX: 12,
-                sizeY: 9,
+                size_x: 12,
+                size_y: 9,
                 visualization_settings: {},
                 parameter_mappings: [
                   {

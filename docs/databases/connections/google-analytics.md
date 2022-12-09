@@ -32,18 +32,18 @@ To create the service account JSON file, follow Google's documentation on [setti
 
 2. Click **+ CREATE SERVICE ACCOUNT** and fill out your service account details.
    - Name the service account.
-   - Add a description (the service account ID will populate once you add a name). 
+   - Add a description (the service account ID will populate once you add a name).
 
 3. Click **Continue** to skip the optional sections.
 
 4. Click **Done** to create your service account.
 
 4. From the **...** menu, go to **Manage keys** > **Add key**.
-   - Select **JSON** for the **key type**. 
-   - Click **Create** to download the JSON file to your computer. **You can only download the key once**. 
+   - Select **JSON** for the **key type**.
+   - Click **Create** to download the JSON file to your computer. **You can only download the key once**.
    - If you delete the key, you'll need to create another service account with the same roles.
 
-5. [**Add the service account**][google-analytics-add-user] to your Google Analytics account. 
+5. [**Add the service account**][google-analytics-add-user] to your Google Analytics account.
 
    - Find the service account email by clicking into your service account name from **IAM & Admin** > **Service accounts**.
    - The service account email will like:
@@ -109,5 +109,5 @@ If you're having trouble, see the guides under [Troubleshooting data sources][tr
 [google-managing-service-accounts]: https://cloud.google.com/iam/docs/creating-managing-service-accounts
 [google-oauth-scopes]: https://developers.google.com/identity/protocols/oauth2/scopes
 [google-service-accounts]: https://cloud.google.com/iam/docs/service-accounts
-[sync-docs]: ../connecting.md#choose-when-metabase-syncs-and-scans
-[troubleshooting-data-sources]: ../../troubleshooting-guide/index.html#databases
+[sync-docs]: ../connecting.md#syncing-and-scanning-databases
+[troubleshooting-data-sources]: ../../troubleshooting-guide#databases

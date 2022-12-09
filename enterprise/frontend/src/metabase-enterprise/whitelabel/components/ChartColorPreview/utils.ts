@@ -1,5 +1,5 @@
-import { color } from "metabase/lib/colors";
 import _ from "underscore";
+import { color } from "metabase/lib/colors";
 
 export const getAccentColorGroups = (palette: Record<string, string>) => {
   const groups = [

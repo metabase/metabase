@@ -9,7 +9,8 @@
 (defmethod t/assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
          actual#   ~actual
-         matches?# (some->> actual# (re-matches pattern#))]
+         matches?# (when (string? actual#)
+                     (re-matches pattern# actual#))]
      (assert (instance? java.util.regex.Pattern pattern#))
      (t/do-report
       {:type     (if matches?# :pass :fail)

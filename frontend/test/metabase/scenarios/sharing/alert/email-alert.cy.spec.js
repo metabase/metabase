@@ -1,6 +1,6 @@
 import { restore, setupSMTP, visitQuestion } from "__support__/e2e/helpers";
 
-describe("scenarios > alert > email_alert", () => {
+describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/alert").as("savedAlert");
 

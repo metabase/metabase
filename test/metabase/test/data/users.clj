@@ -65,9 +65,9 @@
              active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
-  (or (User :email email)
+  (or (db/select-one User :email email)
       (locking create-user-lock
-        (or (User :email email)
+        (or (db/select-one User :email email)
             (db/insert! User
               :email        email
               :first_name   first
@@ -165,18 +165,6 @@
         (clear-cached-session-tokens!)
         (binding [*retrying-authentication*  true]
           (apply client-fn username args))))))
-
-(s/defn ^:deprecated user->client :- (s/pred fn?)
-  "Returns a [[metabase.http-client/client]] partially bound with the credentials for User with `username`.
-   In addition, it forces lazy creation of the User if needed.
-
-     ((user->client) :get 200 \"meta/table\")
-
-  DEPRECATED -- use `user-http-request` instead, which has proper `:arglists` metadata which makes it a bit easier to
-  use when writing code."
-  [username :- TestUserName]
-  (fetch-user username) ; force creation of the user if not already created
-  (partial client-fn username))
 
 (defn user-http-request
   "A version of our test HTTP client that issues the request with credentials for a given User. User may be either a

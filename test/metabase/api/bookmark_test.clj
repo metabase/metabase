@@ -1,21 +1,24 @@
 (ns metabase.api.bookmark-test
   "Tests for /api/bookmark endpoints."
   (:require [clojure.test :refer :all]
+            [metabase.models.app :refer [App]]
             [metabase.models.bookmark :refer [BookmarkOrdering CardBookmark
                                               CollectionBookmark
                                               DashboardBookmark]]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
+            [metabase.models.interface :as mi]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
 
 (deftest bookmarks-test
   (testing "POST /api/bookmark/:model/:model-id"
-    (mt/with-temp* [Collection [collection {:name "Test Collection"}]
-                    Card       [card {:name "Test Card" :display "area"}]
-                    Dashboard  [dashboard {:name "Test Dashboard"}]]
+    (mt/with-temp* [Collection [{coll-id :id :as collection} {:name "Test Collection"}]
+                    Card       [card {:name "Test Card", :display "area", :collection_id coll-id}]
+                    Dashboard  [dashboard {:name "Test Dashboard", :is_app_page true, :collection_id coll-id}]
+                    App        [app {:collection_id coll-id, :dashboard_id (:id dashboard)}]]
       (testing "check that we can bookmark a Collection"
         (is (= (u/the-id collection)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/collection/" (u/the-id collection)))
@@ -25,7 +28,7 @@
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/card/" (u/the-id card)))
                     :card_id))))
       (let [card-result (->> (mt/user-http-request :rasta :get 200 "bookmark")
-                             (filter #(= (:type % ) "card"))
+                             (filter #(= (:type %) "card"))
                              first)]
         (testing "check a card bookmark has `:display` key"
           (is (contains? card-result :display)))
@@ -36,10 +39,15 @@
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/dashboard/" (u/the-id dashboard)))
                     :dashboard_id))))
       (testing "check that we can retreive the user's bookmarks"
-        (is (= #{"card" "collection" "dashboard"}
-               (->> (mt/user-http-request :rasta :get 200 "bookmark")
-                    (map :type)
-                    set))))
+        (let [result (mt/user-http-request :rasta :get 200 "bookmark")]
+          (is (= #{"card" "collection" "dashboard"}
+                 (into #{} (map :type) result)))
+          (testing "that app_id is hydrated on app collections"
+            (is (partial= [{:item_id (:id collection), :name "Test Collection", :app_id (:id app)}]
+                          (filter #(= (:type %) "collection") result))))
+          (testing "that is_app_page is returned for dashboards"
+            (is (partial= [{:item_id (:id dashboard), :name "Test Dashboard", :is_app_page true, :app_id (:id app)}]
+                          (filter #(= (:type %) "dashboard") result))))))
       (testing "check that we can delete bookmarks"
         (mt/user-http-request :rasta :delete 204 (str "bookmark/card/" (u/the-id card)))
         (is (= #{"collection" "dashboard"}
@@ -56,17 +64,17 @@
 (defn bookmark-models [user-id & models]
   (doseq [model models]
     (cond
-      (instance? (class Collection) model)
+      (mi/instance-of? Collection model)
       (db/insert! CollectionBookmark
                   {:user_id user-id
                    :collection_id (u/the-id model)})
 
-      (instance? (class Card) model)
+      (mi/instance-of? Card model)
       (db/insert! CardBookmark
                   {:user_id user-id
                    :card_id (u/the-id model)})
 
-      (instance? (class Dashboard) model)
+      (mi/instance-of? Dashboard model)
       (db/insert! DashboardBookmark
                   {:user_id user-id
                    :dashboard_id (u/the-id model)})

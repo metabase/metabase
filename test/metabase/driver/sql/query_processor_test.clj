@@ -11,7 +11,8 @@
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.test :as mt]
             [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (deftest sql-source-query-validation-test
   (testing "[[sql.qp/sql-source-query]] should throw Exceptions if you pass in invalid nonsense"
@@ -52,7 +53,7 @@
       (mt/with-everything-store
         (is (= "SELECT VENUES.PRICE AS PRICE WHERE VENUES.PRICE = 4"
                (->> {:query {:fields [[:field (mt/id :venues :price)]]
-                             :filter [:= (Field (mt/id :venues :price)) [:value 4 {:base-type :type/Integer}]]}}
+                             :filter [:= (db/select-one Field :id (mt/id :venues :price)) [:value 4 {:base-type :type/Integer}]]}}
                     (sql.qp/mbql->native :h2)
                     :query
                     sql.qp-test-util/pretty-sql)))))))
@@ -379,7 +380,7 @@
     (mt/dataset sample-dataset
       (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                           source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE
-                          parsedatetime (year (source.CREATED_AT) "yyyy") AS CREATED_AT
+                          parsedatetime (extract (year from CAST (source.CREATED_AT AS timestamp)) "yyyy") AS CREATED_AT
                           source.pivot-grouping AS pivot-grouping
                           count (*) AS count]
                :from     [{:select    [ORDERS.ID                          AS ID
@@ -407,16 +408,16 @@
                            AND
                            (source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ? OR source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?)
                            AND
-                           source.CREATED_AT >= parsedatetime (year (dateadd ("year" CAST (-2 AS long) now ())) "yyyy")
+                           source.CREATED_AT >= parsedatetime (extract (year from CAST (dateadd ("year" CAST (-2 AS long) now ()) AS timestamp)) "yyyy")
                            AND
-                           source.CREATED_AT < parsedatetime (year (now ()) "yyyy"))]
+                           source.CREATED_AT < parsedatetime (extract (year from CAST (now () AS timestamp)) "yyyy"))]
                :group-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY
                           source.PEOPLE__via__USER_ID__SOURCE
-                          parsedatetime (year (source.CREATED_AT) "yyyy")
+                          parsedatetime (extract (year from CAST (source.CREATED_AT AS timestamp)) "yyyy")
                           source.pivot-grouping]
                :order-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY ASC
                           source.PEOPLE__via__USER_ID__SOURCE ASC
-                          parsedatetime (year (source.CREATED_AT) "yyyy") ASC
+                          parsedatetime (extract (year from CAST (source.CREATED_AT AS timestamp)) "yyyy") ASC
                           source.pivot-grouping ASC]}
              (-> (mt/mbql-query orders
                    {:aggregation [[:aggregation-options [:count] {:name "count"}]]

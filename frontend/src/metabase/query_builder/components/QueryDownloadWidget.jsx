@@ -6,6 +6,8 @@ import { t } from "ttag";
 import { parse as urlParse } from "url";
 import querystring from "querystring";
 
+import _ from "underscore";
+import cx from "classnames";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -15,8 +17,6 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import * as Urls from "metabase/lib/urls";
 
-import _ from "underscore";
-import cx from "classnames";
 import {
   WidgetFormat,
   WidgetHeader,

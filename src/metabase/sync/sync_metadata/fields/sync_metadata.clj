@@ -23,12 +23,15 @@
          old-field-comment     :field-comment
          old-semantic-type     :semantic-type
          old-database-position :database-position
-         old-database-name     :name}  metabase-field
+         old-database-name     :name
+         old-db-required       :database-required} metabase-field
         {new-database-type     :database-type
          new-base-type         :base-type
          new-field-comment     :field-comment
          new-database-position :database-position
-         new-database-name     :name} field-metadata
+         new-database-name     :name
+         new-db-required       :database-required} field-metadata
+        new-db-required                            (boolean new-db-required)
         new-database-type                          (or new-database-type "NULL")
         new-semantic-type                          (common/semantic-type field-metadata)
 
@@ -53,6 +56,8 @@
         ;; these fields are paired by by metabase.sync.sync-metadata.fields.common/canonical-name, so if they are
         ;; different they have the same canonical representation (lower-casing at the moment).
         new-name? (not= old-database-name new-database-name)
+
+        new-db-required? (not= old-db-required new-db-required)
 
         ;; calculate combined updates
         updates
@@ -90,7 +95,13 @@
                           (common/field-metadata-name-for-logging table metabase-field)
                           old-database-name
                           new-database-name))
-           {:name new-database-name}))]
+           {:name new-database-name})
+         (when new-db-required?
+           (log/info (trs "Database required of {0} has changed from ''{1}'' to ''{2}''."
+                          (common/field-metadata-name-for-logging table metabase-field)
+                          old-db-required
+                          new-db-required))
+           {:database_required new-db-required}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
              (db/update! Field (u/the-id metabase-field) updates))

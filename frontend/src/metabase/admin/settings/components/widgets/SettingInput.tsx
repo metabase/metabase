@@ -1,7 +1,7 @@
 import React from "react";
 
-import InputBlurChange from "metabase/components/InputBlurChange";
 import cx from "classnames";
+import InputBlurChange from "metabase/components/InputBlurChange";
 
 const getValue = (value: string, type: string) => {
   if (type === "number") {

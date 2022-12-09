@@ -29,6 +29,8 @@ const infoTextPropTypes = {
 
 export function InfoText({ result }) {
   switch (result.model) {
+    case "app":
+      return t`App`;
     case "card":
       return jt`Saved question in ${formatCollection(
         result,
@@ -40,6 +42,8 @@ export function InfoText({ result }) {
       return getCollectionInfoText(result.collection);
     case "database":
       return t`Database`;
+    case "page":
+      return t`Page`;
     case "table":
       return <TablePath result={result} />;
     case "segment":

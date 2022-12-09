@@ -6,7 +6,12 @@ import {
   editDashboard,
   saveDashboard,
   visitDashboard,
+  getFullName,
 } from "__support__/e2e/helpers";
+
+import { USERS } from "__support__/e2e/cypress_data";
+
+const { normal } = USERS;
 
 describe("metabase > scenarios > home > activity-page", () => {
   beforeEach(() => {
@@ -49,7 +54,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     cy.visit("/activity");
 
     cy.findAllByText("joined!").should("have.length", 2);
-    cy.findAllByText("Robert Tableton").should("have.length", 2);
+    cy.findAllByText(getFullName(normal)).should("have.length", 2);
     cy.findByText("Products, Filtered by Rating");
   });
 

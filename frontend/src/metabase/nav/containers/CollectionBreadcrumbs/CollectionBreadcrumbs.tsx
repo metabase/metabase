@@ -1,15 +1,10 @@
 import Collections from "metabase/entities/collections";
-import { CollectionId } from "metabase-types/api";
+import { getCollectionId } from "metabase/selectors/app";
 import { State } from "metabase-types/store";
 import CollectionBreadcrumbs from "../../components/CollectionBreadcrumbs";
 
-export interface PathBreadcrumbsProps {
-  collectionId: CollectionId;
-}
-
 const collectionProps = {
-  id: (state: State, { collectionId }: PathBreadcrumbsProps) =>
-    collectionId ?? "root",
+  id: (state: State) => getCollectionId(state) ?? "root",
   loadingAndErrorWrapper: false,
   properties: ["name", "authority_level"],
 };

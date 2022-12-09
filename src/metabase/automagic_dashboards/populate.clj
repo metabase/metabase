@@ -135,8 +135,8 @@
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj {:col                    y
                                            :row                    x
-                                           :sizeX                  width
-                                           :sizeY                  height
+                                           :size_x                 width
+                                           :size_y                 height
                                            :card                   card
                                            :card_id                (:id card)
                                            :visualization_settings {}
@@ -156,8 +156,8 @@
                                     visualization-settings)
            :col                    y
            :row                    x
-           :sizeX                  width
-           :sizeY                  height
+           :size_x                 width
+           :size_y                 height
            :card                   nil
            :id                     (gensym)}))
 
@@ -324,7 +324,7 @@
    (let [[paramters parameter-mappings] (merge-filters [target dashboard])
          offset                         (->> target
                                              :ordered_cards
-                                             (map #(+ (:row %) (:sizeY %)))
+                                             (map #(+ (:row %) (:size_y %)))
                                              (apply max -1) ; -1 so it neturalizes +1 for spacing
                                                             ; if the target dashboard is empty.
                                              inc)

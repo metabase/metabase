@@ -8,12 +8,6 @@ summary: |
 
 `/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies).
 
-  - [DELETE /api/mt/gtap/:id](#delete-apimtgtapid)
-  - [GET /api/mt/gtap/](#get-apimtgtap)
-  - [GET /api/mt/gtap/:id](#get-apimtgtapid)
-  - [POST /api/mt/gtap/](#post-apimtgtap)
-  - [PUT /api/mt/gtap/:id](#put-apimtgtapid)
-
 ## `DELETE /api/mt/gtap/:id`
 
 Delete a GTAP entry.

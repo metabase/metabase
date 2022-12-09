@@ -3,7 +3,7 @@ import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
 
-describe("scenarios > auth > password", () => {
+describe("scenarios > auth > password", { tags: "@external" }, () => {
   beforeEach(() => {
     restore();
 

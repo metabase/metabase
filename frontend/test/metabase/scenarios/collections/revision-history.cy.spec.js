@@ -1,3 +1,4 @@
+import { onlyOn } from "@cypress/skip-test";
 import {
   restore,
   visitDashboard,
@@ -6,8 +7,6 @@ import {
   questionInfoButton,
   rightSidebar,
 } from "__support__/e2e/helpers";
-
-import { onlyOn } from "@cypress/skip-test";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -57,11 +56,11 @@ describe("revision history", () => {
       cy.wait("@revert");
       cy.request("GET", "/api/dashboard/1").then(xhr => {
         const SECOND_CARD = xhr.body.ordered_cards[1];
-        const { col, sizeX, sizeY } = SECOND_CARD;
+        const { col, size_x, size_y } = SECOND_CARD;
         // The second card shrunk its size and changed the position completely to the left covering the first one
         expect(col).not.to.eq(0);
-        expect(sizeX).to.eq(4);
-        expect(sizeY).to.eq(4);
+        expect(size_x).to.eq(4);
+        expect(size_y).to.eq(4);
       });
     });
   });

@@ -1,3 +1,4 @@
+import { updateIn } from "icepick";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -14,7 +15,6 @@ import Collections, {
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import forms from "./questions/forms";
-import { updateIn } from "icepick";
 
 const Questions = createEntity({
   name: "questions",
@@ -73,7 +73,7 @@ const Questions = createEntity({
 
   objectSelectors: {
     getName: question => question && question.name,
-    getUrl: question => question && Urls.question(question),
+    getUrl: (question, opts) => question && Urls.question(question, opts),
     getColor: () => color("text-medium"),
     getCollection: question =>
       question && normalizedCollection(question.collection),
@@ -123,7 +123,7 @@ const Questions = createEntity({
   forms,
 });
 
-function getIcon(question) {
+export function getIcon(question) {
   if (question.dataset || question.model === "dataset") {
     return { name: "model" };
   }

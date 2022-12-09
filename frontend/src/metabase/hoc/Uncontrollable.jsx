@@ -28,7 +28,9 @@ const Uncontrollable = () => WrappedComponent =>
 
     handleChange = e => {
       this.setState({ value: e.target.value });
+      this.props.onChange?.(e);
     };
+
     render() {
       if (this.props.value !== undefined) {
         // controlled

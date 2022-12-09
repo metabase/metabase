@@ -2,16 +2,26 @@ import React from "react";
 import { t } from "ttag";
 import AuthButton from "../AuthButton";
 
-interface PasswordButtonProps {
+export interface PasswordButtonProps {
+  isLdapEnabled: boolean;
   redirectUrl?: string;
 }
 
-const PasswordButton = ({ redirectUrl }: PasswordButtonProps) => {
+const PasswordButton = ({
+  isLdapEnabled,
+  redirectUrl,
+}: PasswordButtonProps) => {
   const link = redirectUrl
     ? `/auth/login/password?redirect=${encodeURIComponent(redirectUrl)}`
     : `/auth/login/password`;
 
-  return <AuthButton link={link}>{t`Sign in with email`}</AuthButton>;
+  return (
+    <AuthButton link={link}>
+      {isLdapEnabled
+        ? t`Sign in with username or email`
+        : t`Sign in with email`}
+    </AuthButton>
+  );
 };
 
 export default PasswordButton;

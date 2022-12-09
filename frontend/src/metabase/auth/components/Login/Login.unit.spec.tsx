@@ -1,7 +1,7 @@
 import React, { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
-import Login from "./Login";
 import { AuthProvider } from "../../types";
+import Login from "./Login";
 
 describe("Login", () => {
   it("should render a list of auth providers", () => {

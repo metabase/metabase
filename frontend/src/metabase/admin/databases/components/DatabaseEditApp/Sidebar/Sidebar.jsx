@@ -14,12 +14,14 @@ import { SidebarRoot } from "./Sidebar.styled";
 
 const propTypes = {
   database: PropTypes.object.isRequired,
+  updateDatabase: PropTypes.func.isRequired,
   deleteDatabase: PropTypes.func.isRequired,
   syncDatabaseSchema: PropTypes.func.isRequired,
   dismissSyncSpinner: PropTypes.func.isRequired,
   rescanDatabaseFields: PropTypes.func.isRequired,
   discardSavedFieldValues: PropTypes.func.isRequired,
   isAdmin: PropTypes.bool,
+  isWritebackEnabled: PropTypes.bool,
   isModelPersistenceEnabled: PropTypes.bool,
 };
 
@@ -31,6 +33,7 @@ const DatabaseEditAppSidebar = ({
   rescanDatabaseFields,
   discardSavedFieldValues,
   isAdmin,
+  isWritebackEnabled,
   isModelPersistenceEnabled,
 }) => {
   const discardSavedFieldValuesModal = useRef();

@@ -137,7 +137,7 @@
           (is (= nil
                  (get-semantic-type))))
         (testing "Calling sync-table! should set the semantic type again"
-          (sync/sync-table! (Table (mt/id :venues)))
+          (sync/sync-table! (db/select-one Table :id (mt/id :venues)))
           (is (= :type/PK
                  (get-semantic-type))))
         (testing "sync-table! should *not* change the semantic type of fields that are marked with a different type"
@@ -146,7 +146,7 @@
                  (get-semantic-type))))
         (testing "Make sure that sync-table runs set-table-pks-if-needed!"
           (db/update! Field (mt/id :venues :id), :semantic_type nil)
-          (sync/sync-table! (Table (mt/id :venues)))
+          (sync/sync-table! (db/select-one Table :id (mt/id :venues)))
           (is (= :type/PK
                  (get-semantic-type))))))))
 

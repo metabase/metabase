@@ -41,7 +41,7 @@
   (String. ^bytes (codecs/bytes->b64 (qp.util/query-hash query))))
 
 (def ^:dynamic *allow-persisted-substitution*
-  "Allow persisted substitution. When refreshing, set this to nil to ensure that all undelrying queries are used to
+  "Allow persisted substitution. When refreshing, set this to nil to ensure that all underlying queries are used to
   rebuild the persisted table."
   true)
 
@@ -64,7 +64,7 @@
 
 (models/defmodel PersistedInfo :persisted_info)
 
-(u/strict-extend (class PersistedInfo)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class PersistedInfo)
   models/IModel
   (merge models/IModelDefaults
          {:types (constantly {:definition ::definition})}))

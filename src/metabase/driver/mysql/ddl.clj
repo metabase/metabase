@@ -87,7 +87,7 @@
                                               (map :schema_name)
                                               (into #{}))]
                     (or (contains? existing-schemas schema-name)
-                      (sql.ddl/execute! conn [(sql.ddl/create-schema-sql database)]))))
+                        (sql.ddl/execute! conn [(sql.ddl/create-schema-sql database)]))))
                 (fn undo-check-schema [conn]
                   (sql.ddl/execute! conn [(sql.ddl/drop-schema-sql database)]))]
                [:persist.check/create-table
@@ -96,11 +96,11 @@
                                          db-spec
                                          (.toMillis (t/minutes 10))
                                          [(sql.ddl/create-table-sql
-                                            database
-                                            {:table-name table-name
-                                             :field-definitions [{:field-name "field"
-                                                                  :base-type :type/Text}]}
-                                            "values (1)")]))
+                                           database
+                                           {:table-name table-name
+                                            :field-definitions [{:field-name "field"
+                                                                 :base-type :type/Text}]}
+                                           "select 1")]))
                 (fn undo-create-table [conn]
                   (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database table-name)]))]
                [:persist.check/read-table
@@ -116,27 +116,27 @@
     ;; Unlike postgres, mysql ddl clauses will not rollback in a transaction.
     ;; So we keep track of undo-steps to manually rollback previous, completed steps.
     (jdbc/with-db-connection [conn db-spec]
-                             (loop [[[step stepfn undofn] & remaining] steps
-                                    undo-steps []]
-                               (let [result (try (stepfn conn)
-                                                 (log/info (trs "Step {0} was successful for db {1}"
-                                                                step (:name database)))
-                                                 ::valid
-                                                 (catch Exception e
-                                                   (log/warn (trs "Error in `{0}` while checking for model persistence permissions." step))
-                                                   (log/warn e)
-                                                   (try
-                                                     (doseq [[undo-step undofn] (reverse undo-steps)]
-                                                       (log/warn (trs "Undoing step `{0}` for db {1}" undo-step (:name database)))
-                                                       (undofn conn))
-                                                     (catch Exception _e
-                                                       (log/warn (trs "Unable to rollback database check for model persistence"))))
-                                                   step))]
-                                 (cond (and (= result ::valid) remaining)
-                                       (recur remaining (conj undo-steps [step undofn]))
+      (loop [[[step stepfn undofn] & remaining] steps
+             undo-steps []]
+        (let [result (try (stepfn conn)
+                          (log/info (trs "Step {0} was successful for db {1}"
+                                         step (:name database)))
+                          ::valid
+                          (catch Exception e
+                            (log/warn (trs "Error in `{0}` while checking for model persistence permissions." step))
+                            (log/warn e)
+                            (try
+                              (doseq [[undo-step undofn] (reverse undo-steps)]
+                                (log/warn (trs "Undoing step `{0}` for db {1}" undo-step (:name database)))
+                                (undofn conn))
+                              (catch Exception _e
+                                (log/warn (trs "Unable to rollback database check for model persistence"))))
+                            step))]
+          (cond (and (= result ::valid) remaining)
+                (recur remaining (conj undo-steps [step undofn]))
 
-                                       (= result ::valid)
-                                       [true :persist.check/valid]
+                (= result ::valid)
+                [true :persist.check/valid]
 
-                                       :else
-                                       [false step]))))))
+                :else
+                [false step]))))))

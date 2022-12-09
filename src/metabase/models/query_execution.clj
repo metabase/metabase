@@ -20,7 +20,7 @@
   ;; sadly we have 2 ways to reference the row count :(
   (assoc query-execution :row_count (or result_rows 0)))
 
-(u/strict-extend (class QueryExecution)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class QueryExecution)
   models/IModel
   (merge models/IModelDefaults
          {:types       (constantly {:json_query :json, :status :keyword, :context :keyword})

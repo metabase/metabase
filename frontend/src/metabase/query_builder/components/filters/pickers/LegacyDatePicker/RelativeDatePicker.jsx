@@ -2,9 +2,9 @@
 import React, { Component } from "react";
 import cx from "classnames";
 
+import { assoc } from "icepick";
 import DateUnitSelector from "../DatePicker/DateUnitSelector";
 
-import { assoc } from "icepick";
 import { IntervalInput } from "./RelativeDatePicker.styled";
 
 export const DATE_PERIODS = ["day", "week", "month", "quarter", "year"];

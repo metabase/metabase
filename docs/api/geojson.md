@@ -8,9 +8,6 @@ summary: |
 
 API endpoints for GeoJSON.
 
-  - [GET /api/geojson/](#get-apigeojson)
-  - [GET /api/geojson/:key](#get-apigeojsonkey)
-
 ## `GET /api/geojson/`
 
 Load a custom GeoJSON file based on a URL or file path provided as a query parameter.

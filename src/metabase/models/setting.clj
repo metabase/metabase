@@ -139,18 +139,19 @@
   "The model that underlies [[defsetting]]."
   :setting)
 
-(u/strict-extend (class Setting)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Setting)
   models/IModel
   (merge models/IModelDefaults
          {:types       (constantly {:value :encrypted-text})
-          :primary-key (constantly :key)})
+          :primary-key (constantly :key)}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:key])})
+(defmethod serdes.hash/identity-hash-fields Setting
+  [_setting]
+  [:key])
 
 (defmethod serdes.base/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
-                              :getter (partial get-value-of-type :string))]
+                             :getter (partial get-value-of-type :string))]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))
@@ -223,6 +224,9 @@
    :munged-name s/Str
    :namespace   s/Symbol
    :description s/Any            ; description is validated via the macro, not schema
+   ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
+   ;; from source. To exclude a setting from documenation, set to `false`. See metabase.cmd.env-var-dox.
+   :doc         s/Any
    :default     s/Any
    :type        Type             ; all values are stored in DB as Strings,
    :getter      clojure.lang.IFn ; different getters/setters take care of parsing/unparsing
@@ -245,7 +249,8 @@
    ;; optional fn called whether to allow the getter to return a value. Useful for ensuring premium settings are not available to
    :enabled?    (s/maybe clojure.lang.IFn)})
 
-(defonce ^:private registered-settings
+(defonce ^{:doc "Map of loaded defsettings"}
+  registered-settings
   (atom {}))
 
 (defprotocol ^:private Resolvable
@@ -605,8 +610,7 @@
          :as setting}                     (resolve-setting setting-definition-or-name)
         obfuscated?                       (and sensitive? (obfuscated-value? new-value))
         setting-name                      (setting-name setting)]
-    ;; if someone attempts to set a sensitive setting to an obfuscated value (probably via a misuse of the `set-many!`
-    ;; function, setting values that have not changed), ignore the change. Log a message that we are ignoring it.
+    ;; if someone attempts to set a sensitive setting to an obfuscated value (probably via a misuse of the `set-many!` function, setting values that have not changed), ignore the change. Log a message that we are ignoring it.
     (if obfuscated?
       (log/info (trs "Attempted to set Setting {0} to obfuscated value. Ignoring change." setting-name))
       (do
@@ -752,6 +756,7 @@
                  :munged-name    munged-name
                  :namespace      setting-ns
                  :description    nil
+                 :doc            nil
                  :type           setting-type
                  :default        default
                  :on-change      nil
@@ -929,6 +934,11 @@
 
   The ability of this Setting to be /Database-local/. Valid values are `:only`, `:allowed`, and `:never`. Default:
   `:never`. See docstring for [[metabase.models.setting]] for more information.
+
+  ###### `:user-local`
+
+  Whether this Setting is /User-local/. Valid values are `:only`, `:allowed`, and `:never`. Default: `:never`. See
+  docstring for [[metabase.models.setting]] for more info.
 
   ###### `:deprecated`
 

@@ -1,5 +1,6 @@
 (ns metabase.models.field
   (:require [clojure.core.memoize :as memoize]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
@@ -66,6 +67,10 @@
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Field :metabase_field)
+
+(doto Field
+  (derive ::mi/read-policy.partial-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set))
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
@@ -148,11 +153,10 @@
        (perms-objects-set* db-id schema table-id read-or-write)))
    :ttl/threshold 5000))
 
-(defn- perms-objects-set
-  "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
-   same as permissions to access its parent Table."
+;;; Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
+;;; same as permissions to access its parent Table.
+(defmethod mi/perms-objects-set Field
   [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
-  {:arglists '([field read-or-write])}
   (if db-id
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
     (perms-objects-set* db-id schema table-id read-or-write)
@@ -176,7 +180,7 @@
   :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
 
 
-(u/strict-extend (class Field)
+(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Field)
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
@@ -190,16 +194,11 @@
                                        :settings          :json
                                        :nfc_path          :json})
           :properties     (constantly {:timestamped? true})
-          :pre-insert     pre-insert})
+          :pre-insert     pre-insert}))
 
-  mi/IObjectPermissions
-  (merge mi/IObjectPermissionsDefaults
-         {:perms-objects-set perms-objects-set
-          :can-read?         (partial mi/current-user-has-partial-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)})
-
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
+(defmethod serdes.hash/identity-hash-fields Field
+  [_field]
+  [:name (serdes.hash/hydrated-hash :table)])
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
@@ -209,7 +208,7 @@
   [{:keys [semantic_type fk_target_field_id]}]
   (when (and (isa? semantic_type :type/FK)
              fk_target_field_id)
-    (Field fk_target_field_id)))
+    (db/select-one Field :id fk_target_field_id)))
 
 (defn values
   "Return the `FieldValues` associated with this `field`."
@@ -343,7 +342,7 @@
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (Field parent-id)]
+  (conj (vec (if-let [parent (db/select-one Field :id parent-id)]
                (qualified-name-components parent)
                (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
                  (conj (when schema
@@ -402,27 +401,83 @@
 (defmethod serdes.base/serdes-entity-id "Field" [_ {:keys [name]}]
   name)
 
+(defmethod serdes.base/extract-query "Field" [_model-name _opts]
+  (let [dimensions (->> (db/select Dimension)
+                        (group-by :field_id))]
+    (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
+              (db/select-reducible Field))))
+
 (defmethod serdes.base/serdes-dependencies "Field" [field]
+  ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
   ;; Take the path, but drop the Field section to get the parent Table's path instead.
-  [(pop (serdes.base/serdes-path field))])
+  (let [this  (serdes.base/serdes-path field)
+        table (pop this)
+        fks   (some->> field :fk_target_field_id serdes.util/field->path)
+        human (->> (:dimensions field)
+                   (keep :human_readable_field_id)
+                   (map serdes.util/field->path)
+                   set)]
+    (cond-> (set/union #{table} human)
+      fks   (set/union #{fks})
+      true  (disj this))))
+
+(defn- extract-dimensions [dimensions]
+  (->> (for [dim dimensions]
+         (-> (into (sorted-map) dim)
+             (dissoc :field_id :updated_at) ; :field_id is implied by the nesting under that field.
+             (update :human_readable_field_id serdes.util/export-field-fk)))
+       (sort-by :created_at)))
 
 (defmethod serdes.base/extract-one "Field"
   [_model-name _opts field]
-  (-> (serdes.base/extract-one-basics "Field" field)
-      (update :table_id serdes.util/export-table-fk)))
+  (let [field (if (contains? field :dimensions)
+                field
+                (assoc field :dimensions (db/select Dimension :field_id (:id field))))]
+    (-> (serdes.base/extract-one-basics "Field" field)
+        (update :dimensions         extract-dimensions)
+        (update :table_id           serdes.util/export-table-fk)
+        (update :fk_target_field_id serdes.util/export-field-fk))))
 
 (defmethod serdes.base/load-xform "Field"
   [field]
   (-> (serdes.base/load-xform-basics field)
-      (update :table_id serdes.util/import-table-fk)))
+      (update :table_id           serdes.util/import-table-fk)
+      (update :fk_target_field_id serdes.util/import-field-fk)))
 
 (defmethod serdes.base/load-find-local "Field"
   [path]
-  (let [db-name            (-> path first :id)
-        schema-name        (when (= 3 (count path))
-                             (-> path second :id))
-        [{table-name :id}
-         {field-name :id}] (take-last 2 path)
-        db-id              (db/select-one-field :id 'Database :name db-name)
-        table-id           (db/select-one-field :id 'Table :name table-name :db_id db-id :schema schema-name)]
-    (db/select-one-field :id Field :name field-name :table_id table-id)))
+  (let [table (serdes.base/load-find-local (pop path))]
+    (db/select-one Field :name (-> path last :id) :table_id (:id table))))
+
+(defmethod serdes.base/load-one! "Field" [ingested maybe-local]
+  (let [field ((get-method serdes.base/load-one! :default) (dissoc ingested :dimensions) maybe-local)]
+    (doseq [dim (:dimensions ingested)]
+      (let [local (db/select-one Dimension :entity_id (:entity_id dim))
+            dim   (assoc dim
+                         :field_id    (:id field)
+                         :serdes/meta [{:model "Dimension" :id (:entity_id dim)}])]
+        (serdes.base/load-one! dim local)))))
+
+(defmethod serdes.base/storage-path "Field" [field _]
+  (-> field
+      serdes.base/serdes-path
+      drop-last
+      serdes.util/storage-table-path-prefix
+      (concat ["fields" (:name field)])))
+
+(serdes.base/register-ingestion-path!
+  "Field"
+  ;; ["databases" "my-db" "schemas" "PUBLIC" "tables" "customers" "fields" "customer_id"]
+  ;; ["databases" "my-db" "tables" "customers" "fields" "customer_id"]
+  (fn [path]
+    (when-let [{db     "databases"
+                schema "schemas"
+                table  "tables"
+                field  "fields"}   (and (#{6 8} (count path))
+                                        (serdes.base/ingestion-matcher-pairs
+                                          path [["databases" "schemas" "tables" "fields"]
+                                                ["databases" "tables" "fields"]]))]
+      (filterv identity [{:model "Database" :id db}
+                         (when schema {:model "Schema" :id schema})
+                         {:model "Table" :id table}
+                         {:model "Field" :id field}]))))

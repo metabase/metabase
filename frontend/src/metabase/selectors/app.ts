@@ -1,6 +1,7 @@
 import { Location } from "history";
 import { createSelector } from "reselect";
-import { getUser } from "metabase/selectors/user";
+import { t } from "ttag";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import {
   getIsEditing as getIsEditingDashboard,
   getDashboard,
@@ -18,7 +19,12 @@ export interface RouterProps {
 }
 
 const HOMEPAGE_PATH = /^\/$/;
-const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
+const PATHS_WITHOUT_NAVBAR = [
+  /\/model\/.*\/query/,
+  /\/model\/.*\/metadata/,
+  /\/model\/query/,
+  /\/model\/metadata/,
+];
 const EMBEDDED_PATHS_WITH_NAVBAR = [
   HOMEPAGE_PATH,
   /^\/collection\/.*/,
@@ -63,9 +69,15 @@ export const getIsAppBarVisible = createSelector(
     embedOptions,
   ) => {
     const isFullscreen = hash.includes("fullscreen");
+    const allEmbeddedAppBarElementsHidden =
+      !embedOptions.search &&
+      !embedOptions.new_button &&
+      !embedOptions.breadcrumbs;
+    const isEmbeddedAppBarHidden =
+      !embedOptions.top_nav || allEmbeddedAppBarElementsHidden;
     if (
       !currentUser ||
-      (isEmbedded && !embedOptions.top_nav) ||
+      (isEmbedded && isEmbeddedAppBarHidden) ||
       isAdminApp ||
       isEditingDashboard ||
       isFullscreen
@@ -76,7 +88,7 @@ export const getIsAppBarVisible = createSelector(
   },
 );
 
-export const getIsNavBarVisible = createSelector(
+export const getIsNavBarEnabled = createSelector(
   [
     getUser,
     getRouterPath,
@@ -133,10 +145,17 @@ export const getCollectionId = createSelector(
 );
 
 export const getIsCollectionPathVisible = createSelector(
-  [getQuestion, getDashboard, getRouterPath],
-  (question, dashboard, path) =>
-    ((question != null && question.isSaved()) || dashboard != null) &&
-    PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path)),
+  [getQuestion, getDashboard, getRouterPath, getIsEmbedded, getEmbedOptions],
+  (question, dashboard, path, isEmbedded, embedOptions) => {
+    if (isEmbedded && !embedOptions.breadcrumbs) {
+      return false;
+    }
+
+    return (
+      ((question != null && question.isSaved()) || dashboard != null) &&
+      PATHS_WITH_COLLECTION_BREADCRUMBS.some(pattern => pattern.test(path))
+    );
+  },
 );
 
 export const getIsQuestionLineageVisible = createSelector(

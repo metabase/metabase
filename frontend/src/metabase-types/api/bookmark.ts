@@ -8,4 +8,10 @@ export interface Bookmark {
   item_id: number;
   name: string;
   type: BookmarkType;
+
+  // For questions and models
+  dataset?: boolean;
+
+  // For data app collections
+  app_id?: number;
 }

@@ -156,14 +156,14 @@
 (defn- describe-table-field [field-kw field-info idx]
   (let [most-common-object-type  (most-common-object-type (vec (:types field-info)))
         [nested-fields idx-next]
-          (reduce
-           (fn [[nested-fields idx] nested-field]
-             (let [[nested-field idx-next] (describe-table-field nested-field
-                                                                 (nested-field (:nested-fields field-info))
-                                                                 idx)]
-               [(conj nested-fields nested-field) idx-next]))
-           [#{} (inc idx)]
-           (keys (:nested-fields field-info)))]
+        (reduce
+         (fn [[nested-fields idx] nested-field]
+           (let [[nested-field idx-next] (describe-table-field nested-field
+                                                               (nested-field (:nested-fields field-info))
+                                                               idx)]
+             [(conj nested-fields nested-field) idx-next]))
+         [#{} (inc idx)]
+         (keys (:nested-fields field-info)))]
     [(cond-> {:name              (name field-kw)
               :database-type     (some-> most-common-object-type .getName)
               :base-type         (class->base-type most-common-object-type)
@@ -218,15 +218,34 @@
 
 (doseq [feature [:basic-aggregations
                  :nested-fields
-                 :native-parameters]]
-  (defmethod driver/supports? [:mongo feature] [_ _] true))
+                 :native-parameters
+                 :standard-deviation-aggregations]]
+  (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
+
+(defn- db-version [db]
+  (get-in db [:details :version]))
+
+(defn- parse-version [version]
+  (->> (str/split version #"\.")
+       (take 2)
+       (map #(Integer/parseInt %))))
+
+(defn- db-major-version [db]
+  (some-> (db-version db) parse-version first))
 
 (defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
-  (let [version (some-> (get-in db [:details :version])
-                        (str/split #"\.")
-                        first
-                        Integer/parseInt)]
-    (and (some? version) (<= 4 version))))
+  (let [version (db-major-version db)]
+    (and (some? version) (>= version 4))))
+
+(defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
+  (let [version (db-major-version db)]
+    (and (some? version) (>= version 5))))
+
+(defmethod driver/database-supports? [:mongo :now]
+  ;; The $$NOW aggregation expression was introduced in version 4.2.
+  [_ _ db]
+  (let [version (some-> (db-version db) parse-version)]
+    (and (some? version) (>= (first version) 4) (>= (second version) 2))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]

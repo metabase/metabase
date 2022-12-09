@@ -4,23 +4,23 @@ import { t } from "ttag";
 import { usePrevious } from "metabase/hooks/use-previous";
 
 import { color } from "metabase/lib/colors";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { FieldDimension } from "metabase-lib/lib/Dimension";
-import { isStartingFrom } from "metabase/lib/query_time";
 
 import Icon from "metabase/components/Icon";
 import ExpressionPopover from "metabase/query_builder/components/ExpressionPopover";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
+import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
+import { FieldDimension } from "metabase-lib/Dimension";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
 
-import FilterPopoverHeader from "./FilterPopoverHeader";
-import FilterPopoverPicker from "./FilterPopoverPicker";
-import FilterPopoverFooter from "./FilterPopoverFooter";
-import { Button } from "./FilterPopover.styled";
 import DatePicker from "../pickers/DatePicker/DatePicker";
 import TimePicker from "../pickers/TimePicker";
 import { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
 import DimensionList from "../../DimensionList";
+import { Button } from "./FilterPopover.styled";
+import FilterPopoverFooter from "./FilterPopoverFooter";
+import FilterPopoverPicker from "./FilterPopoverPicker";
+import FilterPopoverHeader from "./FilterPopoverHeader";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
@@ -35,7 +35,7 @@ type Props = {
   query: StructuredQuery;
   onChange?: (filter: Filter) => void;
   onChangeFilter: (filter: Filter) => void;
-
+  onResize?: () => void;
   onClose?: () => void;
 
   noCommitButton?: boolean;
@@ -70,6 +70,7 @@ export default function FilterPopover({
   checkedColor,
   onChange,
   onChangeFilter,
+  onResize,
   onClose,
 }: Props) {
   const [filter, setFilter] = useState(
@@ -84,7 +85,7 @@ export default function FilterPopover({
 
   // if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
   useEffect(() => {
-    if (filter && previousQuery && query !== previousQuery) {
+    if (filter && filter.query() === previousQuery && query !== previousQuery) {
       setFilter(filter.setQuery(query));
     }
   }, [query, previousQuery, filter]);
@@ -146,9 +147,9 @@ export default function FilterPopover({
   };
 
   const handleFilterChange = (mbql: any[] = []) => {
-    const newFilter = new Filter(mbql, filter?.index(), query);
-
+    const newFilter = filter ? filter.set(mbql) : new Filter(mbql, null, query);
     setFilter(newFilter);
+    onResize?.();
   };
 
   if (editingFilter) {

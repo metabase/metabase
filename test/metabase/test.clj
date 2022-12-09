@@ -6,8 +6,8 @@
   (:refer-clojure :exclude [compile])
   (:require clojure.data
             [clojure.test :refer :all]
-            [clojure.tools.macro :as tools.macro]
             [environ.core :as env]
+            [humane-are.core :as humane-are]
             [java-time :as t]
             [medley.core :as m]
             [metabase.driver :as driver]
@@ -15,6 +15,7 @@
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.email-test :as et]
             [metabase.http-client :as client]
+            [metabase.models.action :as action]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -32,6 +33,7 @@
             [metabase.test.data.interface :as tx]
             [metabase.test.data.users :as test.users]
             [metabase.test.initialize :as initialize]
+            [metabase.test.persistence :as test.persistence]
             metabase.test.redefs
             [metabase.test.util :as tu]
             [metabase.test.util.async :as tu.async]
@@ -44,7 +46,9 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
+(humane-are/install!)
 (humane-test-output/activate!)
+(alter-var-root #'action/*data-apps-enabled* (constantly true))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
@@ -59,6 +63,7 @@
   initialize/keep-me
   metabase.test.redefs/keep-me
   mw.session/keep-me
+  test.persistence/keep-me
   qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
@@ -164,10 +169,12 @@
  [test-runner.assert-exprs
   derecordize]
 
+ [test.persistence
+  with-persistence-enabled]
+
  [test.users
   fetch-user
   test-user?
-  user->client
   user->credentials
   user->id
   user-descriptor
@@ -204,8 +211,8 @@
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
-  with-scheduler
   with-temp-env-var-value
+  with-temp-dir
   with-temp-file
   with-temp-scheduler
   with-temp-vals-in-db
@@ -221,7 +228,6 @@
  [tu.log
   ns-log-level
   set-ns-log-level!
-  suppress-output
   with-log-messages-for-level
   with-log-level]
 
@@ -242,7 +248,9 @@
   has-questionable-timezone-support?
   has-test-extensions?
   metabase-instance
-  sorts-nil-first?]
+  sorts-nil-first?
+  supports-time-type?
+  supports-timestamptz-type?]
 
  [tx.env
   set-test-drivers!
@@ -256,7 +264,7 @@
                                 with-gtaps-for-user
                                 with-user-attributes])))
 
-;; TODO -- move this stuff into some other namespace and refer to it here
+;;; TODO -- move all the stuff below into some other namespace and import it here.
 
 (defn do-with-clock [clock thunk]
   (test-runner.parallel/assert-test-is-not-parallel "with-clock")
@@ -279,10 +287,16 @@
   [clock & body]
   `(do-with-clock ~clock (fn [] ~@body)))
 
-;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
+;;;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
 
-(defn ^:deprecated test-qp-middleware
-  "Helper for testing QP middleware. Changes are returned in a map with keys:
+(defn test-qp-middleware
+  "Helper for testing QP middleware that uses the
+
+    (defn middleware [qp]
+      (fn [query rff context]
+        (qp query rff context)))
+
+  pattern, such as stuff in [[metabase.query-processor/around-middleware]]. Changes are returned in a map with keys:
 
     * `:result`   ­ final result
     * `:pre`      ­ `query` after preprocessing
@@ -355,27 +369,6 @@
      (test-runner.init/assert-tests-are-not-initializing (list 'object-defaults (symbol (name toucan-model))))
      (initialize/initialize-if-needed! :db)
      (db/resolve-model toucan-model))))
-
-(defn are+-message [expr arglist args]
-  (pr-str
-   (second
-    (macroexpand-1
-     (list
-      `tools.macro/symbol-macrolet
-      (vec (apply concat (map-indexed (fn [i arg]
-                                        [arg (nth args i)])
-                                      arglist)))
-      expr)))))
-
-(defmacro are+
-  "Like [[clojure.test/are]] but includes a message for easier test failure debugging. (Also this is somewhat more
-  efficient since it generates far less code ­ it uses `doseq` rather than repeating the entire test each time.)"
-  {:style/indent 2}
-  [argv expr & args]
-  `(doseq [args# ~(mapv vec (partition (count argv) args))
-           :let [~argv args#]]
-     (is ~expr
-         (str (are+-message '~expr '~argv args#)))))
 
 (defmacro disable-flaky-test-when-running-driver-tests-in-ci
   "Only run `body` when we're not running driver tests in CI (i.e., `DRIVERS` and `CI` are both not set). Perfect for

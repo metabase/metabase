@@ -3,11 +3,11 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
-            [metabase.models :as models :refer [Field Table]]
-            [metabase.models.database :as database]
-            [metabase.models.field :as field]
+            [metabase.models :as models :refer [Database Field Table]]
+            [metabase.models.interface :as mi]
             [metabase.models.table :as table]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [toucan.db :as db]))
 
 ;; Redshift tests are randomly failing -- see https://github.com/metabase/metabase/issues/2767
 (defn- metadata-queries-test-drivers []
@@ -16,24 +16,24 @@
 (deftest field-distinct-count-test
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= 100
-           (metadata-queries/field-distinct-count (Field (mt/id :checkins :venue_id)))))
+           (metadata-queries/field-distinct-count (db/select-one Field :id (mt/id :checkins :venue_id)))))
     (is (= 15
-           (metadata-queries/field-distinct-count (Field (mt/id :checkins :user_id)))))))
+           (metadata-queries/field-distinct-count (db/select-one Field :id (mt/id :checkins :user_id)))))))
 
 (deftest field-count-test
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= 1000
-           (metadata-queries/field-count (Field (mt/id :checkins :venue_id)))))))
+           (metadata-queries/field-count (db/select-one Field :id (mt/id :checkins :venue_id)))))))
 
 (deftest table-row-count-test
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= 1000
-           (metadata-queries/table-row-count (Table (mt/id :checkins)))))))
+           (metadata-queries/table-row-count (db/select-one Table :id (mt/id :checkins)))))))
 
 (deftest field-distinct-values-test
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
-           (map int (metadata-queries/field-distinct-values (Field (mt/id :checkins :user_id))))))))
+           (map int (metadata-queries/field-distinct-values (db/select-one Field :id (mt/id :checkins :user_id))))))))
 
 (deftest table-rows-sample-test
   (let [expected [["20th Century Cafe"]
@@ -41,8 +41,8 @@
                   ["33 Taps"]
                   ["800 Degrees Neapolitan Pizzeria"]
                   ["BCD Tofu House"]]
-        table    (Table (mt/id :venues))
-        fields   [(Field (mt/id :venues :name))]
+        table    (db/select-one Table :id (mt/id :venues))
+        fields   [(db/select-one Field :id (mt/id :venues :name))]
         fetch!   #(->> (metadata-queries/table-rows-sample table fields (constantly conj) (when % {:truncation-size %}))
                        ;; since order is not guaranteed do some sorting here so we always get the same results
                        (sort-by first)
@@ -58,9 +58,9 @@
               "Did not truncate a text field")))))
 
   (testing "substring checking"
-    (with-redefs [table/database (constantly (database/map->DatabaseInstance {:id 5678}))]
-      (let [table  (table/map->TableInstance {:id 1234})
-            fields [(field/map->FieldInstance {:id 4321 :base_type :type/Text})]]
+    (with-redefs [table/database (constantly (mi/instance Database {:id 5678}))]
+      (let [table  (mi/instance Table {:id 1234})
+            fields [(mi/instance Field {:id 4321 :base_type :type/Text})]]
         (testing "uses substrings if driver supports expressions"
           (with-redefs [driver/supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
@@ -70,8 +70,8 @@
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions])))))))
       (testing "pre-existing json fields are still marked as `:type/Text`"
-        (let [table (table/map->TableInstance {:id 1234})
-              fields [(field/map->FieldInstance {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
+        (let [table (mi/instance Table {:id 1234})
+              fields [(mi/instance Field {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
           (with-redefs [driver/supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))

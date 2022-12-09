@@ -72,35 +72,60 @@
     ;; [[metabase.email/email-smtp-port]] was originally a string Setting (it predated our introduction of different
     ;; Settings types) -- make sure our API endpoints still work if you pass in the value as a String rather than an
     ;; integer.
-    (doseq [:let         [original-values (email-settings)]
-            body         [default-email-settings
-                          (update default-email-settings :email-smtp-port str)]
-            ;; test what happens on both a successful and an unsuccessful connection.
-            [success? f] {true  (fn [thunk]
-                                  (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
-                                    (thunk)))
-                          false (fn [thunk]
-                                  (with-redefs [email/retry-delay-ms 0]
-                                    (thunk)))}]
-      (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
-                                   email-smtp-password email-from-address email-from-name email-reply-to]
-        (testing (format "SMTP connection is valid? %b\n" success?)
-          (f (fn []
-               (testing "API request"
-                 (testing (format "\nRequest body =\n%s" (u/pprint-to-str body))
-                   (if success?
-                     (is (= (-> default-email-settings
-                                (assoc :with-corrections {})
-                                (update :email-smtp-security name))
-                            (mt/user-http-request :crowberto :put 200 "email" body)))
-                     (is (= {:errors {:email-smtp-host "Wrong host or port"
-                                      :email-smtp-port "Wrong host or port"}}
-                            (mt/user-http-request :crowberto :put 400 "email" body))))))
-               (testing "Settings after API request is finished"
-                 (is (= (if success?
-                          default-email-settings
-                          original-values)
-                        (email-settings))))))))))
+    (let [original-values (email-settings)]
+      (doseq [body         [default-email-settings
+                            (update default-email-settings :email-smtp-port str)]
+              ;; test what happens on both a successful and an unsuccessful connection.
+              [success? f] {true  (fn [thunk]
+                                    (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+                                      (thunk)))
+                            false (fn [thunk]
+                                    (with-redefs [email/retry-delay-ms 0]
+                                      (thunk)))}]
+        (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
+                                     email-smtp-password email-from-address email-from-name email-reply-to]
+          (testing (format "SMTP connection is valid? %b\n" success?)
+            (f (fn []
+                 (testing "API request"
+                   (testing (format "\nRequest body =\n%s" (u/pprint-to-str body))
+                     (if success?
+                       (is (= (-> default-email-settings
+                                  (assoc :with-corrections {})
+                                  (update :email-smtp-security name))
+                              (mt/user-http-request :crowberto :put 200 "email" body)))
+                       (is (= {:errors {:email-smtp-host "Wrong host or port"
+                                        :email-smtp-port "Wrong host or port"}}
+                              (mt/user-http-request :crowberto :put 400 "email" body))))))
+                 (testing "Settings after API request is finished"
+                   (is (= (if success?
+                            default-email-settings
+                            original-values)
+                          (email-settings)))))))))
+      (testing (format "SMTP connection is still valid when some settings are not specified, but set with env vars")
+        (let [body (dissoc default-email-settings
+                           :email-smtp-port
+                           :email-smtp-host
+                           :email-smtp-security
+                           :email-smtp-username
+                           :email-smtp-password
+                           :email-from-address)]
+          (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
+                                       email-smtp-password email-from-address email-from-name email-reply-to]
+            (mt/with-temp-env-var-value [mb-email-smtp-port     (:email-smtp-port default-email-settings)
+                                         mb-email-smtp-host     (:email-smtp-host default-email-settings)
+                                         mb-email-smtp-security (name (:email-smtp-security default-email-settings))
+                                         mb-email-smtp-username (:email-smtp-username default-email-settings)
+                                         mb-email-smtp-password (:email-smtp-password default-email-settings)
+                                         mb-email-from-address  (:email-from-address default-email-settings)]
+              (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+                (testing "API request"
+                  (is (= (-> default-email-settings
+                             (assoc :with-corrections {})
+                             (update :email-smtp-security name))
+                         (mt/user-http-request :crowberto :put 200 "email" body))))
+                (testing "Settings after API request is finished"
+                  (is (= default-email-settings
+                         (email-settings)))))))))))
   (testing "Updating values with obfuscated password (#23919)"
     (mt/with-temporary-setting-values [email-from-address  "notifications@metabase.com"
                                        email-from-name     "Sender Name"

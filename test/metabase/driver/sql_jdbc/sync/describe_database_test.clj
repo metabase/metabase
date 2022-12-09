@@ -20,7 +20,7 @@
 
 (deftest simple-select-probe-query-test
   (testing "simple-select-probe-query shouldn't actually return any rows"
-    (let [{:keys [name schema]} (Table (mt/id :venues))]
+    (let [{:keys [name schema]} (db/select-one Table :id (mt/id :venues))]
       (is (= []
              (mt/rows
                (qp/process-query

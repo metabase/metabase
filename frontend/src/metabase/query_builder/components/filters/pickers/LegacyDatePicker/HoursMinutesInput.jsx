@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
+import moment from "moment-timezone";
 import { has24HourModeSetting } from "metabase/lib/time";
 import NumericInput from "metabase/components/NumericInput";
 import Icon from "metabase/components/Icon";
 
-import moment from "moment-timezone";
 import { AmPmLabel } from "./HoursMinutesInput.styled";
 
 const HoursMinutesInput = ({

@@ -1,9 +1,15 @@
-import { popover, restore, visitQuestionAdhoc } from "__support__/e2e/helpers";
-import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
+import {
+  popover,
+  restore,
+  visitQuestionAdhoc,
+  getFullName,
+} from "__support__/e2e/helpers";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const { PEOPLE_ID } = SAMPLE_DATABASE;
+const { nocollection } = USERS;
 
 describe("issue 23981", () => {
   beforeEach(() => {
@@ -33,7 +39,7 @@ describe("issue 23981", () => {
     });
 
     cy.findByText("Save").click();
-    cy.findByText("No Collection Tableton's Personal Collection").click();
+    cy.findByText(`${getFullName(nocollection)}'s Personal Collection`).click();
 
     popover().within(() => {
       cy.findByText("Our analytics").should("not.exist");

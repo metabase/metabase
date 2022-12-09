@@ -1,11 +1,13 @@
 (ns metabase.test.data.presto-jdbc
   "Presto JDBC driver test extensions."
   (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.config :as config]
             [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.test.data.dataset-definitions :as defs]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -22,6 +24,12 @@
 ;; during unit tests don't treat presto as having FK support
 (defmethod driver/supports? [:presto-jdbc :foreign-keys] [_ _] (not config/is-test?))
 
+;; in the past, we had to manually update our Docker image and add a new catalog for every new dataset definition we
+;; added. That's insane. Just use the `test-data` catalog and put everything in that, and use
+;; `db-qualified-table-name` like everyone else.
+(def ^:private test-catalog-name "test_data")
+
+
 (doseq [[base-type db-type] {:type/BigInteger             "BIGINT"
                              :type/Boolean                "BOOLEAN"
                              :type/Date                   "DATE"
@@ -37,7 +45,7 @@
                              :type/TimeWithTZ             "TIME WITH TIME ZONE"}]
   (defmethod sql.tx/field-base-type->sql-type [:presto-jdbc base-type] [_ _] db-type))
 
-(defn dbdef->connection-details [database-name]
+(defn dbdef->connection-details [_database-name]
   (let [base-details
         {:host                               (tx/db-test-env-var-or-throw :presto-jdbc :host "localhost")
          :port                               (tx/db-test-env-var :presto-jdbc :port "8080")
@@ -56,7 +64,7 @@
          :kerberos-keytab-path               (tx/db-test-env-var :presto-jdbc :kerberos-keytab-path nil)
          :kerberos-config-path               (tx/db-test-env-var :presto-jdbc :kerberos-config-path nil)
          :kerberos-service-principal-pattern (tx/db-test-env-var :presto-jdbc :kerberos-service-principal-pattern nil)
-         :catalog                            (u/snake-key database-name)
+         :catalog                            test-catalog-name
          :schema                             (tx/db-test-env-var :presto-jdbc :schema nil)}]
     (assoc base-details
            :ssl-use-keystore (every? some? (map base-details [:ssl-keystore-path :ssl-keystore-password-value]))
@@ -122,9 +130,9 @@
 
 (defmethod sql.tx/qualified-name-components :presto-jdbc
   ;; use the default schema from the in-memory connector
-  ([_ db-name]                       [(u/snake-key db-name) "default"])
-  ([_ db-name table-name]            [(u/snake-key db-name) "default" (u/snake-key table-name)])
-  ([_ db-name table-name field-name] [(u/snake-key db-name) "default" (u/snake-key table-name) field-name]))
+  ([_ _db-name]                       [test-catalog-name "default"])
+  ([_ db-name table-name]            [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name)])
+  ([_ db-name table-name field-name] [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name) field-name]))
 
 (defmethod sql.tx/pk-sql-type :presto-jdbc
   [_]
@@ -132,9 +140,20 @@
 
 (defmethod sql.tx/create-table-sql :presto-jdbc
   [driver dbdef tabledef]
-  ;; strip out the PRIMARY KEY stuff from the CREATE TABLE statement
-  (let [sql ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
+  ;; Presto doesn't support NOT NULL columns
+  (let [tabledef (update tabledef :field-definitions (fn [field-defs]
+                                                       (for [field-def field-defs]
+                                                         (dissoc field-def :not-null?))))
+        ;; strip out the PRIMARY KEY stuff from the CREATE TABLE statement
+        sql      ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
     (str/replace sql #", PRIMARY KEY \([^)]+\)" "")))
+
+(deftest ^:parallel create-table-sql-test
+  (testing "Make sure logic to strip out NOT NULL and PRIMARY KEY stuff works as expected"
+    (let [db-def    (tx/get-dataset-definition defs/test-data)
+          table-def (-> db-def :table-definitions second)]
+      (is (= "CREATE TABLE \"test_data\".\"default\".\"categories\" (\"id\" INTEGER, \"name\" VARCHAR) ;"
+             (sql.tx/create-table-sql :presto-jdbc db-def table-def))))))
 
 (defmethod ddl.i/format-name :presto-jdbc [_ table-or-field-name]
   (u/snake-key table-or-field-name))

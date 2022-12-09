@@ -1,7 +1,7 @@
 import React from "react";
-import { renderWithProviders } from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import moment from "moment-timezone";
+import { renderWithProviders } from "__support__/ui";
 
 import {
   DEFAULT_DATE_STYLE,

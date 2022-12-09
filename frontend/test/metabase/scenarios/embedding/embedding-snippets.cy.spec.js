@@ -17,7 +17,7 @@ describe("scenarios > embedding > code snippets", () => {
   it("dashboard should have the correct embed snippet", () => {
     visitDashboard(1);
     cy.icon("share").click();
-    cy.contains("Embed this dashboard in an application").click();
+    cy.contains("Embed in your application").click();
     cy.contains("Code").click();
 
     cy.findByText("To embed this dashboard in your application:");
@@ -68,7 +68,7 @@ describe("scenarios > embedding > code snippets", () => {
   it("question should have the correct embed snippet", () => {
     visitQuestion(1);
     cy.icon("share").click();
-    cy.contains("Embed this question in an application").click();
+    cy.contains("Embed in your application").click();
     cy.contains("Code").click();
 
     cy.findByText("To embed this question in your application:");

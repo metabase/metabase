@@ -206,7 +206,7 @@ describe("binning related reproductions", () => {
 
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTextEnsureVisible("Table options");
-      cy.findByText("Created At").siblings(".Icon-close").click();
+      cy.findByText("Created At").siblings(".Icon-eye_outline").click();
       cy.button("Done").click();
     });
 
@@ -254,7 +254,7 @@ describe("binning related reproductions", () => {
 
       changeBinningForDimension({
         name: "Average of Subtotal",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "10 bins",
       });
 
@@ -270,7 +270,7 @@ describe("binning related reproductions", () => {
 
       changeBinningForDimension({
         name: "Average of Subtotal",
-        fromBinning: "Auto binned",
+        fromBinning: "Auto bin",
         toBinning: "10 bins",
       });
 

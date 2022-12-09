@@ -1,12 +1,14 @@
 (ns metabase.models.segment-test
   (:require [clojure.test :refer :all]
             [metabase.models.database :refer [Database]]
+            [metabase.models.revision :as revision]
             [metabase.models.segment :as segment :refer [Segment]]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import java.time.LocalDateTime))
 
 (defn- user-details
   [username]
@@ -67,7 +69,7 @@
             :entity_id               (:entity_id segment)
             :definition              {:filter [:> [:field 4 nil] "2014-10-19"]}
             :archived                false}
-           (into {} (-> (#'segment/serialize-segment Segment (:id segment) segment)
+           (into {} (-> (revision/serialize-instance Segment (:id segment) segment)
                         (update :id boolean)
                         (update :table_id boolean)))))))
 
@@ -82,7 +84,7 @@
                           :after  "BBB"}
             :name        {:before "Toucans in the rainforest"
                           :after  "Something else"}}
-           (#'segment/diff-segments
+           (revision/diff-map
             Segment
             segment
             (assoc segment
@@ -93,7 +95,7 @@
   (testing "test case where definition doesn't change"
     (is (= {:name {:before "A"
                    :after  "B"}}
-           (#'segment/diff-segments
+           (revision/diff-map
             Segment
             {:name        "A"
              :description "Unchanged"
@@ -106,7 +108,7 @@
     (is (= {:name        {:after "A"}
             :description {:after "Unchanged"}
             :definition  {:after {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}}
-           (#'segment/diff-segments
+           (revision/diff-map
             Segment
             nil
             {:name        "A"
@@ -116,7 +118,7 @@
   (testing "removals only"
     (is (= {:definition {:before {:filter [:and [:> [:field 4 nil] "2014-10-19"] [:= 5 "yes"]]}
                          :after  {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}}}
-           (#'segment/diff-segments
+           (revision/diff-map
             Segment
             {:name        "A"
              :description "Unchanged"
@@ -127,9 +129,10 @@
 
 (deftest identity-hash-test
   (testing "Segment hashes are composed of the segment name and table identity-hash"
-    (mt/with-temp* [Database [db      {:name "field-db" :engine :h2}]
-                    Table    [table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                    Segment  [segment {:name "big customers" :table_id (:id table)}]]
-      (is (= "a40066a4"
-             (serdes.hash/raw-hash ["big customers" (serdes.hash/identity-hash table)])
-             (serdes.hash/identity-hash segment))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Database [db      {:name "field-db" :engine :h2}]
+                      Table    [table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                      Segment  [segment {:name "big customers" :table_id (:id table) :created_at now}]]
+        (is (= "be199b7c"
+               (serdes.hash/raw-hash ["big customers" (serdes.hash/identity-hash table) now])
+               (serdes.hash/identity-hash segment)))))))

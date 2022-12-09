@@ -191,3 +191,21 @@
                 (mock-change-set
                   :id "v42.00-001"
                   :changes [(mock-add-column-changes :columns [(mock-column :type problem-type)])]))))))))
+
+(deftest require-rollback-test
+  (testing "change types with no automatic rollback support"
+    (testing "missing rollback key fails"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"rollback-present-when-required"
+           (validate (mock-change-set :id "v45.12-345" :changes [{:sql {:sql "select 1"}}])))))
+    (testing "nil rollback is allowed"
+      (is (= :ok (validate (mock-change-set :id "v45.12-345"
+                                            :changes [{:sql {:sql "select 1"}}]
+                                            :rollback nil)))))
+    (testing "rollback values are allowed"
+      (is (= :ok (validate (mock-change-set :id "v45.12-345"
+                                            :changes [{:sql {:sql "select 1"}}]
+                                            :rollback {:sql {:sql "select 1"}}))))))
+  (testing "change types with automatic rollback support are allowed"
+    (is (= :ok (validate (mock-change-set :id "v45.12-345" :changes [(mock-add-column-changes)]))))))

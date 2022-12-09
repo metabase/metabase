@@ -1,5 +1,5 @@
 import { restore, popover, describeEE } from "__support__/e2e/helpers";
-import { USER_GROUPS } from "__support__/e2e/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -16,7 +16,7 @@ describeEE("issue 17763", () => {
   });
 
   it('should be able to edit tables permissions in granular view after "block" permissions (metabase#17763)', () => {
-    cy.visit("/admin/permissions/data/database/1");
+    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     cy.findByText("Block").click();
 
@@ -24,7 +24,7 @@ describeEE("issue 17763", () => {
 
     cy.location("pathname").should(
       "eq",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/1`,
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
     );
 
     cy.findByTestId("permission-table").within(() => {

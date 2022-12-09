@@ -10,7 +10,7 @@
             [metabase.models :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.util :as tu]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
 
 (deftest parse-connection-string-test
@@ -30,7 +30,11 @@
 
   (testing "Check that we override shady connection string options set by shady admins with safe ones"
     (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
-           (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;ACCESS_MODE_DATA=rws")))))
+           (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;ACCESS_MODE_DATA=rws"))))
+
+  (testing "Check that we override the INIT connection string option"
+    (is (= "file:my-file;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
+           (#'h2/connection-string-set-safe-options "file:my-file;INIT=ANYTHING_HERE_WILL_BE_IGNORED")))))
 
 (deftest db-details->user-test
   (testing "make sure we return the USER from db details if it is a keyword key in details..."
@@ -53,10 +57,14 @@
                   (and (re-matches #"Database .+ not found .+" (.getMessage e))
                        ::exception-thrown)))))))
 
-(deftest db-timezone-id-test
+(deftest db-default-timezone-test
   (mt/test-driver :h2
-    (is (= "UTC"
-           (tu/db-timezone-id)))))
+    ;; [[driver/db-default-timezone]] returns `nil`. This *probably* doesn't make sense. We should go in an fix it, by
+    ;; implementing [[metabase.driver.sql-jdbc.sync.interface/db-default-timezone]], which is what the default
+    ;; `:sql-jdbc` implementation of `db-default-timezone` hands off to. In the mean time, here is a placeholder test we
+    ;; can update when things are fixed.
+    (is (= nil
+           (driver/db-default-timezone :h2 (mt/db))))))
 
 (deftest disallow-admin-accounts-test
   (testing "Check that we're not allowed to run SQL against an H2 database with a non-admin account"
@@ -150,3 +158,38 @@
                       "GROUP BY ATTEMPTS.DATE "
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp/compile query) :query pretty-sql))))))))
+
+(deftest classify-ddl-test
+  (mt/test-driver :h2
+    (is (= [org.h2.command.dml.Select]
+           (mapv type (#'h2/parse (u/the-id (mt/db)) "select 1"))))
+    (is (= [org.h2.command.dml.Update]
+           (mapv type (#'h2/parse (u/the-id (mt/db)) "update venues set name = 'bill'"))))
+    (is (= [org.h2.command.dml.Delete]
+           (mapv type (#'h2/parse (u/the-id (mt/db)) "delete venues"))))
+    (is (= [org.h2.command.dml.Select
+            org.h2.command.dml.Update
+            org.h2.command.dml.Delete]
+           (mapv type (#'h2/parse (u/the-id (mt/db))
+                                  (str/join "; "
+                                            ["select 1"
+                                             "update venues set name = 'bill'"
+                                             "delete venues"])))))
+    (is (= nil (#'h2/check-disallow-ddl-commands
+                {:database (u/the-id (mt/db))
+                 :engine :h2
+                 :native {:query (str/join "; "
+                                           ["select 1"
+                                            "update venues set name = 'bill'"
+                                            "delete venues"])}})))
+    (let [trigger-creation-attempt
+          (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
+                          "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
+                          "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
+      (is (thrown?
+           clojure.lang.ExceptionInfo
+           #"DDL commands are not allowed to be used with h2."
+           (#'h2/check-disallow-ddl-commands
+            {:database (u/the-id (mt/db))
+             :engine :h2
+             :native {:query trigger-creation-attempt}}))))))

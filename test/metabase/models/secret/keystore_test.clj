@@ -4,7 +4,8 @@
             [metabase.api.common :as api]
             [metabase.models :refer [Database Secret]]
             [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures])
+            [metabase.test.fixtures :as fixtures]
+            [toucan.db :as db])
   (:import [java.io ByteArrayOutputStream File]
            java.nio.charset.StandardCharsets
            [java.security KeyStore KeyStore$PasswordProtection KeyStore$SecretKeyEntry]
@@ -71,8 +72,8 @@
             (is (contains? details :keystore-id) "keystore-id was added to details")
             (is (not (contains? details :keystore-password-value)) ":keystore-password-value was removed from details")
             (is (contains? details :keystore-password-id) ":keystore-password-id was added to details")
-            (let [{ks-pw-bytes :value} (Secret (:keystore-password-id details))
+            (let [{ks-pw-bytes :value} (db/select-one Secret :id (:keystore-password-id details))
                   ks-pw-str            (String. ks-pw-bytes StandardCharsets/UTF_8)
-                  {:keys [value]}      (Secret (:keystore-id details))
+                  {:keys [value]}      (db/select-one Secret :id (:keystore-id details))
                   ks                   (bytes->keystore value (.toCharArray ks-pw-str))]
               (assert-entries ks-pw-str ks {key-alias key-value}))))))))

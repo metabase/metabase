@@ -114,7 +114,7 @@
    :friendly_names       (= (humanization/humanization-strategy) "advanced")
    :email_configured     (email/email-configured?)
    :slack_configured     (slack/slack-configured?)
-   :sso_configured       (boolean (google/google-auth-client-id))
+   :sso_configured       (google/google-auth-enabled)
    :instance_started     (snowplow/instance-creation)
    :has_sample_data      (db/exists? Database, :is_sample true)})
 
