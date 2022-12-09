@@ -99,7 +99,7 @@ config:
 
 ## Users and Admins
 
-A user will be Admin of the instance if it's the first user created. Otherwise you can specify a user as an admin by using the `is_superuser` key.
+The first user created in a Metabase instance is an Admin. The first user listed in the config file may be designated an admin, but not necessarily, for example if someone has already spun up and logged into that Metabase for the first time, that user would be the automatically designated admin. Additionally, you can specify a user account as an admin by using the `is_superuser: true` key.
 
 In the following example:
 ```
