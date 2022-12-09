@@ -221,7 +221,6 @@
   with-user-in-groups]
 
  [tu.async
-  wait-for-close
   wait-for-result
   with-open-channels]
 
