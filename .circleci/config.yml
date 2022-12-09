@@ -562,18 +562,6 @@ workflows:
             - checkout
 
       - clojure:
-          matrix:
-            parameters:
-              edition: ["ee"]
-              java-version: ["java-11"]
-          name: be-tests-<< matrix.java-version >>-<< matrix.edition >>
-          requires:
-            - be-deps
-          e: << matrix.java-version >>
-          clojure-args: -X:dev:ci:test
-          skip-when-no-change: true
-
-      - clojure:
           name: be-linter-cloverage
           requires:
             - be-deps
