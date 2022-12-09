@@ -98,6 +98,7 @@ class Column extends Component {
                 value={this.props.field.description || ""}
                 onBlurChange={this.handleChangeDescription}
                 placeholder={t`No column description yet`}
+                fullWidth
               />
             </div>
           </div>

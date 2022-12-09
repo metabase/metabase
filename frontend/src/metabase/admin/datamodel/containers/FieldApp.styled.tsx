@@ -1,13 +1,14 @@
 import styled from "@emotion/styled";
 import { Link } from "react-router";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import { alpha, color } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export const FieldNameInput = styled(InputBlurChange)`
   display: block;
   margin-bottom: 0.5rem;
-  border: 1px solid ${alpha("accent2", 0.2)};
-  border-radius: 0.5rem;
+  ${InputBlurChange.Field} {
+    background-color: ${color("bg-light")};
+  }
 `;
 
 export const BackButtonLink = styled(Link)`

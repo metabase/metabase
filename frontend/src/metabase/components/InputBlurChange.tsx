@@ -11,14 +11,17 @@ import Input from "metabase/core/components/Input";
 interface InputBlurChangeProps {
   type: string;
   value: string;
-  defaultValue: string;
-  className: string;
-  name: string;
-  placeholder: string;
-  autoFocus: boolean;
-  onFocus: (event: React.FocusEvent<HTMLInputElement>) => void;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onBlurChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  defaultValue?: string;
+  className?: string;
+  name?: string;
+  id?: string;
+  placeholder?: string;
+  autoFocus?: boolean;
+  error?: boolean;
+  fullWidth?: boolean;
+  onFocus?: (event: React.FocusEvent<HTMLInputElement>) => void;
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onBlurChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 const InputBlurChange = ({
   value,
