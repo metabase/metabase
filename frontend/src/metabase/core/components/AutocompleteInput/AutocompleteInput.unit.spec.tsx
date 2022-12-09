@@ -22,9 +22,9 @@ const setup = ({
 
 describe("AutocompleteInput", () => {
   it("shows all options on focus", async () => {
-    const { input, getOptions } = setup();
+    const { input, getOptions } = setup({ value: "" });
 
-    userEvent.click(input);
+    await userEvent.click(input);
 
     const options = await getOptions();
 

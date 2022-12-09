@@ -254,6 +254,19 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti dbms-version
+  "Return a map containing information that describes the version of the DBMS. This typically includes a
+  `:version` containing the (semantic) version of the DBMS as a string and potentially a `:flavor`
+  specifying the flavor like `MySQL` or `MariaDB`."
+  {:arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+;; Some drivers like BigQuery or Snowflake cannot provide a meaningful stable version.
+(defmethod dbms-version :default
+  [_ _]
+  nil)
+
 (defmulti describe-database
   "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
   model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
@@ -386,7 +399,9 @@
     ;; DEFAULTS TO TRUE.
     :basic-aggregations
 
-    ;; Does this driver support standard deviation and variance aggregations?
+    ;; Does this driver support standard deviation and variance aggregations? Note that if variance is not supported
+    ;; directly, you can calculate it manually by taking the square of the standard deviation. See the MongoDB driver
+    ;; for example.
     :standard-deviation-aggregations
 
     ;; Does this driver support expressions (e.g. adding the values of 2 columns together)?
@@ -759,5 +774,19 @@
   "Execute a writeback query (from an `is_write` Card) e.g. one powering a custom
   `QueryAction` (see [[metabase.models.action]]). Drivers that support `:actions/custom` must implement this method."
   {:added "0.44.0", :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti table-rows-sample
+  "Processes a sample of rows produced by `driver`, from the `table`'s `fields`
+  using the query result processing function `rff`.
+  The default implementation defined in [[metabase.db.metadata-queries]] runs a
+  row sampling MBQL query using the regular query processor to produce the
+  sample rows. This is good enough in most cases so this multimethod should not
+  be implemented unless really necessary.
+  `opts` is a map that may contain additional parameters:
+  `:truncation-size`: size to truncate text fields to if the driver supports
+  expressions."
+  {:arglists '([driver table fields rff opts]), :added "0.46.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

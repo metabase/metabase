@@ -22,6 +22,10 @@
   [_ database table]
   (druid.sync/describe-table database table))
 
+(defmethod driver/dbms-version :druid
+  [_ database]
+  (druid.sync/dbms-version database))
+
 (defmethod driver/describe-database :druid
   [_ database]
   (druid.sync/describe-database database))

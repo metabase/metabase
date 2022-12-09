@@ -9,14 +9,14 @@ import {
   ModalTitle,
   ModalBody,
   ModalCloseIcon,
-} from "./SyncingModal.styled";
+} from "./DatabaseSyncModal.styled";
 
-export interface SyncingModalProps {
+export interface DatabaseSyncModalProps {
   sampleUrl?: string;
   onClose?: () => void;
 }
 
-const SyncingModal = ({ sampleUrl, onClose }: SyncingModalProps) => {
+const DatabaseSyncModal = ({ sampleUrl, onClose }: DatabaseSyncModalProps) => {
   return (
     <ModalRoot>
       <ModalBody>
@@ -49,4 +49,4 @@ const SyncingModal = ({ sampleUrl, onClose }: SyncingModalProps) => {
   );
 };
 
-export default SyncingModal;
+export default DatabaseSyncModal;

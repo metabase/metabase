@@ -17,6 +17,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
@@ -63,7 +64,7 @@
         :s3_staging_dir s3_staging_dir
         :workgroup      workgroup
         :AwsRegion      region}
-       (when (str/blank? access_key)
+       (when (and (not (premium-features/is-hosted?)) (str/blank? access_key))
          {:AwsCredentialsProviderClass "com.simba.athena.amazonaws.auth.DefaultAWSCredentialsProviderChain"})
        (when-not (str/blank? catalog)
          {:MetadataRetrievalMethod "ProxyAPI"

@@ -89,15 +89,17 @@
   "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.
    This table contains information about type information, descriptions, and other properties that
    should be set for Metabase objects like Tables and Fields."
-  [database :- i/DatabaseInstance]
-  (sync-util/with-error-handling (format "Error syncing _metabase_metadata table for %s"
-                                         (sync-util/name-for-logging database))
-    (let [driver (driver.u/database->driver database)]
-      ;; `sync-metabase-metadata-table!` relies on `driver/table-rows-seq` being defined
-      (when (get-method driver/table-rows-seq driver)
-        ;; If there's more than one metabase metadata table (in different schemas) we'll sync each one in turn.
-        ;; Hopefully this is never the case.
-        (doseq [table (:tables (fetch-metadata/db-metadata database))]
-          (when (is-metabase-metadata-table? table)
-            (sync-metabase-metadata-table! driver database table))))
-      {})))
+  ([database :- i/DatabaseInstance]
+   (sync-metabase-metadata! database (fetch-metadata/db-metadata database)))
+  ([database :- i/DatabaseInstance db-metadata]
+   (sync-util/with-error-handling (format "Error syncing _metabase_metadata table for %s"
+                                          (sync-util/name-for-logging database))
+     (let [driver (driver.u/database->driver database)]
+       ;; `sync-metabase-metadata-table!` relies on `driver/table-rows-seq` being defined
+       (when (get-method driver/table-rows-seq driver)
+         ;; If there's more than one metabase metadata table (in different schemas) we'll sync each one in turn.
+         ;; Hopefully this is never the case.
+         (doseq [table (:tables db-metadata)]
+           (when (is-metabase-metadata-table? table)
+             (sync-metabase-metadata-table! driver database table))))
+       {}))))

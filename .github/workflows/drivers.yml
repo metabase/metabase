@@ -96,6 +96,8 @@ jobs:
     env:
       CI: 'true'
       DRIVERS: mongo
+      MB_MONGO_TEST_USER: metabase
+      MB_MONGO_TEST_PASSWORD: metasample123
     services:
       mongodb:
         image: metabase/qa-databases:mongo-sample-4.0
@@ -114,6 +116,8 @@ jobs:
     env:
       CI: 'true'
       DRIVERS: mongo
+      MB_MONGO_TEST_USER: metabase
+      MB_MONGO_TEST_PASSWORD: metasample123
     services:
       mongodb:
         image: metabase/qa-databases:mongo-sample-5.0
@@ -132,6 +136,8 @@ jobs:
     env:
       CI: 'true'
       DRIVERS: mongo
+      MB_MONGO_TEST_USER: metabase
+      MB_MONGO_TEST_PASSWORD: metasample123
     services:
       mongodb:
         image: circleci/mongo:latest
