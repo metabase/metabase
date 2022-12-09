@@ -6,6 +6,8 @@
   (:require [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.schema.helpers :as helpers]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as qp.i]
@@ -94,10 +96,17 @@
   inferring semantic types and what-not; we don't want to scan millions of values at any rate."
   10000)
 
+(def nested-field-sample-limit
+  "Number of rows to sample for tables with nested (e.g., JSON) columns."
+  500)
+
 (def TableRowsSampleOptions
   "Schema for `table-rows-sample` options"
-  (s/maybe {(s/optional-key :truncation-size) s/Int
-            (s/optional-key :rff)             s/Any}))
+  (s/maybe {(s/optional-key :truncation-start) s/Int
+            (s/optional-key :truncation-size)  s/Int
+            (s/optional-key :limit)            s/Int
+            (s/optional-key :order-by)         (helpers/distinct (helpers/non-empty [mbql.s/OrderBy]))
+            (s/optional-key :rff)              s/Any}))
 
 (defn- text-field?
   "Identify text fields which can accept our substring optimization.
@@ -110,22 +119,29 @@
 
 (defn- table-rows-sample-query
   "Returns the mbql query to query a table for sample rows"
-  [table fields {:keys [truncation-size] :as _opts}]
-  (let [driver             (-> table table/database driver.u/database->driver)
+  [table
+   fields
+   {:keys [truncation-start truncation-size limit order-by]
+    :or {truncation-start 1, limit max-sample-rows}
+    :as _opts}]
+  (let [database           (table/database table)
+        driver             (driver.u/database->driver database)
         text-fields        (filter text-field? fields)
-        field->expressions (when (and truncation-size (driver/supports? driver :expressions))
+        field->expressions (when (and truncation-size (driver/database-supports? driver :expressions database))
                              (into {} (for [field text-fields]
                                         [field [(str (gensym "substring"))
-                                                [:substring [:field (u/the-id field) nil] 1 truncation-size]]])))]
+                                                [:substring [:field (u/the-id field) nil]
+                                                 truncation-start truncation-size]]])))]
     {:database   (:db_id table)
      :type       :query
-     :query      {:source-table (u/the-id table)
-                  :expressions  (into {} (vals field->expressions))
-                  :fields       (vec (for [field fields]
-                                       (if-let [[expression-name _] (get field->expressions field)]
-                                         [:expression expression-name]
-                                         [:field (u/the-id field) nil])))
-                  :limit        max-sample-rows}
+     :query      (cond-> {:source-table (u/the-id table)
+                          :expressions  (into {} (vals field->expressions))
+                          :fields       (vec (for [field fields]
+                                               (if-let [[expression-name _] (get field->expressions field)]
+                                                 [:expression expression-name]
+                                                 [:field (u/the-id field) nil])))
+                          :limit        limit}
+                   order-by (assoc :order-by order-by))
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 
@@ -140,8 +156,8 @@
   ([table :- i/TableInstance, fields :- [i/FieldInstance], rff]
    (table-rows-sample table fields rff nil))
   ([table :- i/TableInstance, fields :- [i/FieldInstance], rff, opts :- TableRowsSampleOptions]
-   (let [query   (table-rows-sample-query table fields opts)
-         qp      (resolve 'metabase.query-processor/process-query)]
+   (let [query (table-rows-sample-query table fields opts)
+         qp    (resolve 'metabase.query-processor/process-query)]
      (qp query {:rff rff}))))
 
 (defmethod driver/table-rows-sample :default

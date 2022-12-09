@@ -3,6 +3,7 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+            [metabase.driver.util :as driver.u]
             [metabase.models :as models :refer [Database Field Table]]
             [metabase.models.interface :as mi]
             [metabase.models.table :as table]
@@ -58,7 +59,8 @@
               "Did not truncate a text field")))))
 
   (testing "substring checking"
-    (with-redefs [table/database (constantly (mi/instance Database {:id 5678}))]
+    (with-redefs [driver.u/database->driver (constantly (:engine (mt/db)))
+                  table/database (constantly (mi/instance Database {:id 5678}))]
       (let [table  (mi/instance Table {:id 1234})
             fields [(mi/instance Field {:id 4321 :base_type :type/Text})]]
         (testing "uses substrings if driver supports expressions"
