@@ -232,26 +232,33 @@
   (get-in db [:details :version]))
 
 (defn- parse-version [version]
-  (->> (str/split version #"\.")
-       (take 2)
-       (map #(Integer/parseInt %))))
+  (let [[major minor] (str/split version #"\.")]
+    [major minor]))
 
-(defn- db-major-version [db]
-  (some-> (db-version db) parse-version first))
+(defn version-gte
+  "Returns true if x is greater than or equal to y according to semantic versioning.
+   x and y are version strings of the form \"major.minor.patch\" where minor and patch are optional.
+   Compares major and minor versions only, not patch versions.
+   (version-gte \"4.0.1\" \"4\") => true
+   (version-gte \"4\" \"4.0.1\") => true
+   (version-gte \"4.0\" \"4.0.1\") => true
+   (version-gte \"3.9\" \"4.0.0\") => false
+   (version-gte \"3.9\" \"4\") => false"
+  [x y]
+  (nat-int? (compare (parse-version x) (parse-version y))))
 
-(defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
-  (let [version (db-major-version db)]
-    (and (some? version) (>= version 4))))
+(defmethod driver/database-supports? [:mongo :expressions]
+  [_ _ db]
+  (some-> (db-version db) (version-gte "4")))
 
-(defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
-  (let [version (db-major-version db)]
-    (and (some? version) (>= version 5))))
+(defmethod driver/database-supports? [:mongo :date-arithmetics]
+  [_ _ db]
+  (some-> (db-version db) (version-gte "5")))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
   [_ _ db]
-  (let [version (some-> (db-version db) parse-version)]
-    (and (some? version) (>= (first version) 4) (>= (second version) 2))))
+  (some-> (db-version db) (version-gte "4.2")))
 
 (defmethod driver/mbql->native :mongo
   [_ query]

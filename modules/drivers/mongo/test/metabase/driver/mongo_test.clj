@@ -452,3 +452,13 @@
                                  [:= $list_field "value_lf_a"]]
                    :aggregation [[:count]]
                    :breakout    [$coll.metas.group_field]}))))))))
+
+(deftest version-gte-test
+  (testing "version-gte"
+    (is (true? (mongo/version-gte "5" "4.0.1")))
+    (is (true? (mongo/version-gte "4.0.1" "4")))
+    (is (true? (mongo/version-gte "4.0.1" "4.0.1")))
+    (is (true? (mongo/version-gte "4.0" "4.0.1")))
+    (is (false? (mongo/version-gte "3.9.0" "4.0.0")))
+    (is (false? (mongo/version-gte "4" "4.1.1")))
+    (is (false? (mongo/version-gte "3.9" "4")))))
