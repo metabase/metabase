@@ -30,6 +30,7 @@ import NewEventModal from "metabase/timelines/questions/containers/NewEventModal
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
+import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import QuestionMoveToast from "./QuestionMoveToast";
 
 const mapDispatchToProps = {
@@ -68,6 +69,7 @@ class QueryModals extends React.Component {
       initialCollectionId,
       onCloseModal,
       onOpenModal,
+      updateQuestion,
       setQueryBuilderMode,
     } = this.props;
 
@@ -282,6 +284,14 @@ class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.PREVIEW_QUERY ? (
       <Modal fit onClose={onCloseModal}>
         <PreviewQueryModal question={question} onClose={onCloseModal} />
+      </Modal>
+    ) : modal === MODAL_TYPES.CONVERT_QUERY ? (
+      <Modal fit onClose={onCloseModal}>
+        <ConvertQueryModal
+          question={question}
+          onUpdateQuestion={updateQuestion}
+          onClose={onCloseModal}
+        />
       </Modal>
     ) : null;
   }
