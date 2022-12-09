@@ -1,8 +1,5 @@
-import type {
-  DatetimeUnit,
-  DimensionReference,
-} from "metabase-types/api/query";
 import { DatabaseId } from "./database";
+import { DatetimeUnit, DimensionReference } from "./query";
 import { DownloadPermission } from "./permissions";
 
 export type RowValue = string | number | null | boolean;
@@ -39,4 +36,8 @@ export interface Dataset {
   database_id: DatabaseId;
   row_count: number;
   running_time: number;
+}
+
+export interface NativeQueryForm {
+  query: string;
 }
