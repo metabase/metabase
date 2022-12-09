@@ -443,7 +443,7 @@ export class FieldValueMapping extends React.Component {
       <div className="flex align-center">
         <h3>{original}</h3>
         <InputBlurChange
-          className="AdminInput input ml-auto"
+          className="ml-auto"
           value={mapped}
           onChange={this.onInputChange}
           placeholder={t`Enter value`}

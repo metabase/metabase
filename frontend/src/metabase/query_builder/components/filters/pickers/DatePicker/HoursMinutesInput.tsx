@@ -54,18 +54,21 @@ const HoursMinutesInput = ({
     />
     {!is24HourMode && (
       <div className="flex align-center pl1">
-        <AmPmLabel
-          isSelected={hours < 12}
-          onClick={hours >= 12 ? () => onChangeHours(hours - 12) : undefined}
-        >
-          {moment.localeData().meridiem(0, 0, false)}
-        </AmPmLabel>
-        <AmPmLabel
-          isSelected={hours >= 12}
-          onClick={hours < 12 ? () => onChangeHours(hours + 12) : undefined}
-        >
-          {moment.localeData().meridiem(12, 0, false)}
-        </AmPmLabel>
+        {hours < 12 ? (
+          <AmPmLabel
+            isSelected={hours < 12}
+            onClick={() => onChangeHours(hours + 12)}
+          >
+            {moment.localeData().meridiem(0, 0, false)}
+          </AmPmLabel>
+        ) : (
+          <AmPmLabel
+            isSelected={hours >= 12}
+            onClick={() => onChangeHours(hours - 12)}
+          >
+            {moment.localeData().meridiem(12, 0, false)}
+          </AmPmLabel>
+        )}
       </div>
     )}
     {onClear && (

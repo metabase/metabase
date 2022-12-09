@@ -8,6 +8,7 @@ interface ColumnItemInputProps {
 
 export const ColumnItemInput = styled(InputBlurChange)<ColumnItemInputProps>`
   ${InputBlurChange.Field} {
+    width: 100%;
     background-color: ${props =>
       color(props.variant === "primary" ? "white" : "bg-light")};
   }

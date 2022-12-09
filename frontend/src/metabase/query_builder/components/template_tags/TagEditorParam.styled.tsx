@@ -37,13 +37,11 @@ export const InputContainer = styled.div<InputContainerProps>`
 `;
 
 export const WidgetLabelInput = styled(InputBlurChange)`
-  font-weight: 700;
-  padding: 0.5rem;
-  border: 1px solid ${color("border-dark")};
-  border-radius: 0.5rem;
-  width: 100%;
-  color: ${color("text-dark")};
-  font-size: 0.875rem;
+  ${InputBlurChange.Field} {
+    font-weight: 700;
+    color: ${color("text-dark")};
+    font-size: 0.875rem;
+  }
 `;
 
 export const DefaultParameterValueWidget = styled(ParameterValueWidget)`

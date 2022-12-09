@@ -80,9 +80,10 @@ class ParameterSidebar extends React.Component {
               <div className="py2">
                 <label className="mt2 mb1 block text-bold">{t`Label`}</label>
                 <InputBlurChange
-                  className="input block full"
+                  className="block full"
                   value={parameter.name}
                   onBlurChange={e => setName(e.target.value)}
+                  fullWidth
                 />
               </div>
               <label className="mt2 mb1 block text-bold">{t`Default value`}</label>

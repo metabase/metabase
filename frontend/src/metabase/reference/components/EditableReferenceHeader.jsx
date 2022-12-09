@@ -45,6 +45,7 @@ const EditableReferenceHeader = ({
         {isEditing && name === "Details" ? (
           <InputBlurChange
             className={S.headerTextInput}
+            fullWidth
             type="text"
             name={
               hasDisplayName ? displayNameFormField.name : nameFormField.name

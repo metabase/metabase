@@ -9,7 +9,7 @@ import Input from "metabase/core/components/Input";
  */
 
 interface InputBlurChangeProps {
-  type: string;
+  type?: string;
   value: string;
   defaultValue?: string;
   className?: string;

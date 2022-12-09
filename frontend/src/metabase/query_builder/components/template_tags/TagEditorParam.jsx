@@ -261,6 +261,7 @@ export class TagEditorParam extends Component {
               onBlurChange={e =>
                 this.setParameterAttribute("display-name", e.target.value)
               }
+              fullWidth
             />
           </InputContainer>
         )}

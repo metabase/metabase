@@ -35,8 +35,7 @@ const ChartNestedSettingsSeriesSingle = ({
           onChange={value => onChangeObjectSettings(object, { color: value })}
         />
         <InputBlurChange
-          className="input flex-full ml1 align-self-stretch"
-          size={1}
+          className="flex-full ml1 align-self-stretch"
           value={computedSettings.title}
           onBlurChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             onChangeObjectSettings(object, { title: e.target.value })
