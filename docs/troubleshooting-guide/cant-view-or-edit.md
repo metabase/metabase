@@ -29,11 +29,11 @@ Someone with edit permissions (your Metabase admin is probably a safe bet) will 
 
 ## Related problems
 
+- [Error message: your question took too long](./timeout.md).
+- [Error message: permission denied](./data-permissions.md#getting-a-permission-denied-error-message).
 - [I can't view or edit queries from the SQL editor](./data-permissions.md#a-user-group-cant-access-the-sql-editor).
-- [I'm getting a "permission denied" error message](./data-permissions.md#getting-a-permission-denied-error-message).
 - [I can't save my question or dashboard](./proxies.md).
 - [I can't see my tables](./cant-see-tables.md).
-- [My visualizations are wrong](./visualization.md).
 
 ## Are you still stuck?
 
