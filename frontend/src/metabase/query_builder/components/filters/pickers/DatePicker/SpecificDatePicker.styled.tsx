@@ -13,13 +13,12 @@ export const CalendarIcon = styled(Icon)`
 `;
 
 export const DateInput = styled(InputBlurChange)`
-  font-size: 1rem;
-  font-weight: 700;
-  width: 100%;
-  padding: 0.5rem;
-  border: none;
-  outline: none;
-  background: none;
+  ${InputBlurChange.Field} {
+    font-size: 1rem;
+    font-weight: 700;
+    width: 100%;
+    padding: 0.5rem;
+  }
 `;
 
 interface DateInputContainerProps {
@@ -31,9 +30,9 @@ export const DateInputContainer = styled.div<DateInputContainerProps>`
   align-items: center;
   width: 100%;
   margin-bottom: 1rem;
-  border: 1px solid
-    ${({ isActive }) => (isActive ? color("brand") : color("border"))};
-  border-radius: 0.5rem;
+  // border: 1px solid
+  //   ${({ isActive }) => (isActive ? color("brand") : color("border"))};
+  // border-radius: 0.5rem;
 
   &:focus-within {
     border-color: ${color("brand")};

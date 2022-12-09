@@ -28,7 +28,6 @@ const HoursMinutesInput = ({
 }: Props) => (
   <div className="flex align-center">
     <NumericInput
-      className="input"
       style={{ height: 36 }}
       size={2}
       maxLength={2}
@@ -47,7 +46,6 @@ const HoursMinutesInput = ({
     />
     <span className="px1">:</span>
     <NumericInput
-      className="input"
       style={{ height: 36 }}
       size={2}
       maxLength={2}
