@@ -185,6 +185,20 @@ class PivotTable extends Component {
         return addMissingCardBreakouts(setting, card);
       },
     },
+    "pivot.show_row_totals": {
+      section: t`Columns`,
+      title: t`Show row totals`,
+      widget: "toggle",
+      default: true,
+      inline: true,
+    },
+    "pivot.show_column_totals": {
+      section: t`Columns`,
+      title: t`Show column totals`,
+      widget: "toggle",
+      default: true,
+      inline: true,
+    },
     [COLUMN_FORMATTING_SETTING]: {
       section: t`Conditional Formatting`,
       widget: ChartSettingsTableFormatting,
