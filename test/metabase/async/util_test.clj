@@ -27,16 +27,16 @@
                                   out-chan (a/promise-chan)]
       (async.u/promise-pipe in-chan out-chan)
       (a/close! out-chan)
-      (is (= true
-             (boolean (tu.async/wait-for-close in-chan 100))))))
+      (is (= nil
+             (tu.async/wait-for-result in-chan 100)))))
 
   (testing "`promise-pipe` should close output-chan if input-chan is closed"
     (tu.async/with-open-channels [in-chan  (a/promise-chan)
                                   out-chan (a/promise-chan)]
       (async.u/promise-pipe in-chan out-chan)
       (a/close! in-chan)
-      (is (= true
-             (tu.async/wait-for-close out-chan 100)))))
+      (is (= nil
+             (tu.async/wait-for-result out-chan 100)))))
 
   (testing "if you are a knucklehead and write directly to out-chan it should close `in-chan`"
     (tu.async/with-open-channels [in-chan  (a/promise-chan)
@@ -96,6 +96,6 @@
               (Thread/sleep 10)
               ::success)]
       (tu.async/with-open-channels [result-chan (a/promise-chan)]
-        (async.u/promise-pipe (async.u/cancelable-thread-call f) result-chan)
+        (async.u/promise-pipe (#'async.u/cancelable-thread-call f) result-chan)
         (is (= ::success
                (first (a/alts!! [result-chan (a/timeout 500)]))))))))

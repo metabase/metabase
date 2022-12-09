@@ -1,23 +1,6 @@
 (ns metabase.test.util.async
-  (:require [clojure.core.async :as a])
-  (:import java.util.concurrent.TimeoutException))
-
-(defn wait-for-close
-  "Wait up to `timeout-ms` for `chan` to be closed, and returns `true` once it is; otherwise throws an Exception if
-  channel is not closed by the timeout or unexpectedly returns a result."
-  [chan timeout-ms]
-  (let [[result first-to-finish] (a/alts!! [chan (a/timeout timeout-ms)])]
-    (cond
-      (and (= result nil)
-           (= first-to-finish chan))
-      true
-
-      (= result nil)
-      (throw (TimeoutException. "Timed out."))
-
-      :else
-      (throw (ex-info (format "Waiting for channel to close, but got unexpected result %s" (pr-str result))
-                      {:result result})))))
+  (:require
+   [clojure.core.async :as a]))
 
 (defmacro with-open-channels
   "Like [[with-open]], but closes core.async channels at the conclusion of `body`."

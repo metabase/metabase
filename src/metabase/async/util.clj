@@ -20,6 +20,8 @@
   "Schema for a core.async promise channel."
   (s/constrained ManyToManyChannel promise-chan? "promise chan"))
 
+;;; TODO -- this is used in literally one place only, [[metabase.api.public/run-query-for-card-with-id-async-run-fn]],
+;;; so maybe we should consider getting rid of it.
 (s/defn promise-pipe
   "Like `core.async/pipe` but for promise channels, and closes `in-chan` if `out-chan` is closed before receiving a
   result. Closes both channels when `in-chan` closes or receives a result."
@@ -35,7 +37,7 @@
       (a/close! out-chan)))
   nil)
 
-(defn cancelable-thread-call
+(defn- cancelable-thread-call
   "Exactly like `a/thread-call`, with two differences:
 
     1) the result channel is a promise channel instead of a regular channel
