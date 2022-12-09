@@ -211,9 +211,7 @@ describe("scenarios > models query editor", () => {
 
       cy.findByText(/Syntax error in SQL/).should("be.visible");
 
-      cy.get(".ace_content").type(
-        "{backspace}{backspace}{backspace}{backspace}{backspace}",
-      );
+      cy.get(".ace_content").type("{backspace}".repeat(" FROM".length));
       runNativeQuery();
 
       cy.get(".cellData").contains(1);
