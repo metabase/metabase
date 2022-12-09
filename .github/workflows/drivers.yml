@@ -351,6 +351,25 @@ jobs:
       with:
         junit-name: 'be-tests-redshift-ee'
 
+  be-tests-snowflake-ee:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 120
+    env:
+      CI: 'true'
+      DRIVERS: snowflake
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Snowflake driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-snowflake-ee'
+
   be-tests-sparksql-ee:
     if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
