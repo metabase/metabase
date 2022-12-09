@@ -13060,18 +13060,26 @@ databaseChangeLog:
             # entries by `updated_at` but the SQL for doing that across the three databases was such a hairball and
             # having duplicates in the first place was such an edge case I decided this approach is fine for now. The
             # `row_number()` window function would have made this easier to do but we haven't merged H2 v2 yet.
+            #
+            # Writing the query with these unnecessary subselects is stupid, but MySQL 5.7 doesn't work without them.
+            # See https://metaboat.slack.com/archives/CKZEMT1MJ/p1670624514320419 for more info
             sql: >-
               DELETE FROM dimension
               WHERE field_id IN (
                 SELECT field_id
-                FROM dimension
-                GROUP BY field_id
-                HAVING COUNT(*) > 1
+                FROM (
+                  SELECT field_id
+                  FROM dimension
+                  GROUP BY field_id
+                  HAVING COUNT(*) > 1
+                ) duplicates
               )
               AND id NOT IN (
-                SELECT max(id) AS id
-                FROM dimension
-                GROUP BY field_id
+                SELECT id FROM (
+                  SELECT max(id) AS id
+                  FROM dimension
+                  GROUP BY field_id
+                ) most_recents
               );
       rollback: # don't need to roll back anything, deleting duplicate entries doesn't need to be reversed.
 
