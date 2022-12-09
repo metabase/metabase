@@ -33,7 +33,7 @@
    "https://token-check.metabase.com"))
 
 (def store-url
-  "Fallback URL for token checks, also used for fetching cloud gateway IP addresses"
+  "Store URL, used as a fallback for token checks"
   "https://store.metabase.com")
 
 
