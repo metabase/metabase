@@ -37,7 +37,7 @@
       (a/close! out-chan)))
   nil)
 
-(defn- cancelable-thread-call
+(defn cancelable-thread-call
   "Exactly like `a/thread-call`, with two differences:
 
     1) the result channel is a promise channel instead of a regular channel

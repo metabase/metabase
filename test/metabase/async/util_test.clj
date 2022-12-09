@@ -96,6 +96,6 @@
               (Thread/sleep 10)
               ::success)]
       (tu.async/with-open-channels [result-chan (a/promise-chan)]
-        (async.u/promise-pipe (#'async.u/cancelable-thread-call f) result-chan)
+        (async.u/promise-pipe (async.u/cancelable-thread-call f) result-chan)
         (is (= ::success
                (first (a/alts!! [result-chan (a/timeout 500)]))))))))
