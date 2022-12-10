@@ -27,19 +27,6 @@ executors:
     docker:
       - image: metabase/ci:java-17-clj-1.11.0.1100.04-2022-build
 
-  mysql-latest:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-        environment:
-          MB_DB_TYPE: mysql
-          MB_DB_HOST: localhost
-          MB_DB_PORT: 3306
-          MB_DB_DBNAME: circle_test
-          MB_DB_USER: root
-          MB_MYSQL_TEST_USER: root
-      - image: circleci/mysql:latest
-
   mongo-4-0-ssl:
      working_directory: /home/circleci/metabase/metabase/
      docker:
@@ -615,28 +602,6 @@ workflows:
             - be-deps
           e: << matrix.version >>
           driver: mongo
-
-      - test-driver:
-          name: be-tests-mysql-latest-ee
-          description: "(MySQL latest)"
-          requires:
-            - be-deps
-          e:
-            name: mysql-latest
-          driver: mysql
-          # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
-          # they are deliberately given a different name to prevent them from affecting the regular test run against
-          # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
-          # that overrides the MB_MYSQL_TEST_* values with them
-          # the MYSQL_RDS_SSL_INSTANCE vars are secret and/or changeable, so they are defined in the CircleCI settings
-          timeout: 30m
-          extra-env: >-
-            MB_MYSQL_SSL_TEST_HOST=$MYSQL_RDS_SSL_INSTANCE_HOST
-            MB_MYSQL_SSL_TEST_SSL=true
-            MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS='verifyServerCertificate=true'
-            MB_MYSQL_SSL_TEST_SSL_CERT="$(cat /home/circleci/metabase/metabase/resources/certificates/rds-combined-ca-bundle.pem)"
-            MB_MYSQL_SSL_TEST_USER=metabase
-            MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
 
       - test-driver:
           name: be-tests-oracle-ee
