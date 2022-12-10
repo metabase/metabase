@@ -21,10 +21,6 @@
    :entity_id               true
    :definition              nil})
 
-(defn- user-details
-  [username]
-  (dissoc (mt/fetch-user username) :date_joined :last_login))
-
 (deftest update-test
   (testing "Updating"
     (mt/with-temp Metric [{:keys [id]} {:creator_id (mt/user->id :rasta)}]
