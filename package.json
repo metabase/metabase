@@ -218,7 +218,7 @@
     "eslint-plugin-react-hooks": "^4.2.0",
     "glob": "^7.1.1",
     "html-webpack-harddisk-plugin": "^2.0.0",
-    "html-webpack-plugin": "^5.3.1",
+    "html-webpack-plugin": "5.5.0",
     "husky": "^7.0.4",
     "jest": "^29.3.1",
     "jest-canvas-mock": "^2.4.0",
