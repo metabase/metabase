@@ -24,7 +24,7 @@ jobs:
 
   be-tests-druid-ee:
     runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: druid
@@ -44,7 +44,7 @@ jobs:
 
   be-tests-mariadb-10-2-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -68,7 +68,7 @@ jobs:
 
   be-tests-mariadb-latest-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -92,7 +92,7 @@ jobs:
 
   be-tests-mongo-4-0-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -110,7 +110,7 @@ jobs:
 
   be-tests-mongo-5-0-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -128,7 +128,7 @@ jobs:
 
   be-tests-mongo-latest-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -149,7 +149,7 @@ jobs:
 
   be-tests-mysql-5-7-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -173,7 +173,7 @@ jobs:
 
   be-tests-mysql-latest-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -209,7 +209,7 @@ jobs:
 
   be-tests-postgres-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -236,7 +236,7 @@ jobs:
 
   be-tests-postgres-latest-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -267,7 +267,7 @@ jobs:
 
   be-tests-presto-186-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: presto
@@ -287,7 +287,7 @@ jobs:
 
   be-tests-sparksql-ee:
     runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: sparksql
@@ -305,7 +305,7 @@ jobs:
 
   be-tests-sqlite-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: sqlite
@@ -318,7 +318,7 @@ jobs:
 
   be-tests-sqlserver-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: sqlserver
