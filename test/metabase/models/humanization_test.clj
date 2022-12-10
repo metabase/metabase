@@ -9,8 +9,8 @@
 (deftest simple-humanization-test
   (doseq [[input expected] {nil                         nil
                             ""                          nil
-                            "_"                         ""
-                            "-"                         ""
+                            "_"                         "_"
+                            "-"                         "-"
                             "_id"                       "ID"
                             "uid"                       "UID"
                             "uuid"                      "UUID"
