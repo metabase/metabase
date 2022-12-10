@@ -11,6 +11,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.field]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -26,7 +27,10 @@
    [pretty.core :refer [PrettyPrintable]]
    [schema.core :as s])
   (:import
+   (metabase.models.field FieldInstance)
    (metabase.util.honeysql_extensions Identifier TypedHoneySQLForm)))
+
+(comment metabase.models.field/keep-me) ; for FieldInstance
 
 (def source-query-alias
   "Alias to use for source queries, e.g.:
