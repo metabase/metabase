@@ -305,41 +305,44 @@
 (defmethod describe-table-fks ::driver [_ _ _]
   nil)
 
-(def ConnectionDetailsProperty
-  "Schema for a map containing information about a connection property we should ask the user to supply when setting up
+;;; this is unused but I'm leaving it around for now as documentation until we decide what to do with it. Maybe we
+;;; should write a test that uses this or something.
+(comment
+  (def ConnectionDetailsProperty
+    "Schema for a map containing information about a connection property we should ask the user to supply when setting up
   a new database, as returned by an implementation of `connection-properties`."
-  (s/constrained
-   {
-    ;; The key that should be used to store this property in the `details` map.
-    :name su/NonBlankString
+    (s/constrained
+     {
+      ;; The key that should be used to store this property in the `details` map.
+      :name su/NonBlankString
 
-    ;; Human-readable name that should be displayed to the User in UI for editing this field.
-    :display-name su/NonBlankString
+      ;; Human-readable name that should be displayed to the User in UI for editing this field.
+      :display-name su/NonBlankString
 
-    ;; Human-readable text that gives context about a field's input.
-    (s/optional-key :helper-text) s/Str
+      ;; Human-readable text that gives context about a field's input.
+      (s/optional-key :helper-text) s/Str
 
-    ;; Type of this property. Defaults to `:string` if unspecified.
-    ;; `:select` is a `String` in the backend.
-    (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
+      ;; Type of this property. Defaults to `:string` if unspecified.
+      ;; `:select` is a `String` in the backend.
+      (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
 
-    ;; A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
-    ;; placeholder.
-    (s/optional-key :default) s/Any
+      ;; A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
+      ;; placeholder.
+      (s/optional-key :default) s/Any
 
-    ;; Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value
-    ;; is *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as
-    ;; placeholders, you cannot specify both `:default` and `:placeholder`.
-    (s/optional-key :placeholder) s/Any
+      ;; Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value
+      ;; is *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as
+      ;; placeholders, you cannot specify both `:default` and `:placeholder`.
+      (s/optional-key :placeholder) s/Any
 
-    ;; Is this property required? Defaults to `false`.
-    (s/optional-key :required?) s/Bool
+      ;; Is this property required? Defaults to `false`.
+      (s/optional-key :required?) s/Bool
 
-    ;; Any options for `:select` types
-    (s/optional-key :options) {s/Keyword s/Str}}
+      ;; Any options for `:select` types
+      (s/optional-key :options) {s/Keyword s/Str}}
 
-   (complement (every-pred #(contains? % :default) #(contains? % :placeholder)))
-   "connection details that does not have both default and placeholder"))
+     (complement (every-pred #(contains? % :default) #(contains? % :placeholder)))
+     "connection details that does not have both default and placeholder")))
 
 (defmulti connection-properties
   "Return information about the connection properties that should be exposed to the user for databases that will use
@@ -525,12 +528,6 @@
   :hierarchy #'hierarchy)
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
-
-(defmulti ^{:deprecated "0.42.0"} format-custom-field-name
-  "Unused in Metabase 0.42.0+. Implement [[escape-alias]] instead. This method will be removed in a future release."
-  {:arglists '([driver custom-field-name])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for

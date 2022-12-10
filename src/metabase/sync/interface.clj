@@ -61,12 +61,6 @@
   "Schema for the expected output of `describe-table-fks`."
   (s/maybe #{FKMetadataEntry}))
 
-(def TimeZoneId
-  "Schema predicate ensuring a valid time zone string"
-  (s/pred (fn [tz-str]
-            (u/ignore-exceptions (time/time-zone-for-id tz-str)))
-          'time/time-zone-for-id))
-
 ;; These schemas are provided purely as conveniences since adding `:import` statements to get the corresponding
 ;; classes from the model namespaces also requires a `:require`, which `clj-refactor` seems more than happy to strip
 ;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
@@ -75,31 +69,9 @@
 (def DatabaseInstance             "Schema for a valid instance of a Metabase Database." (mi/InstanceOf Database))
 (def TableInstance                "Schema for a valid instance of a Metabase Table."    (mi/InstanceOf Table))
 (def FieldInstance                "Schema for a valid instance of a Metabase Field."    (mi/InstanceOf Field))
-(def ResultColumnMetadataInstance "Schema for result column metadata."                  su/Map)
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            SAMPLING & FINGERPRINTS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def FieldSample
-  "Schema for a sample of values returned by the `sample` sub-stage of analysis and passed into the `fingerprint`
-   stage. Guaranteed to be non-empty and non-nil."
-  ;; Validating against this is actually pretty quick, in the order of microseconds even for a 10,000 value sequence
-  (s/constrained [(s/pred (complement nil?))] seq "Non-empty sequence of non-nil values."))
-
-(def TableSample
-  "Schema for a sample of values of certain Fields for a TABLE. This should basically just be a sequence of rows where
-   each row is a sequence of values in the same order as the Fields passed in (basically the format you get from JDBC
-   when `:as-arrays?` is `false`).
-
-   e.g. if Fields passed in were `ID` and `Name` the Table sample should look something like:
-
-     [[1 \"Rasta Toucan\"]
-      [2 \"Lucky Pigeon\"]
-      [3 \"Parroty\"]]"
-  [[s/Any]])
-
 
 (def Percent
   "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."

@@ -14,7 +14,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
+            [toucan.hydrate :refer []]
             [toucan.models :as models]))
 
 (models/defmodel Metric :metric)
@@ -106,18 +106,3 @@
 
 ;;; ----------------------------------------------------- OTHER ------------------------------------------------------
 
-(s/defn retrieve-metrics :- [(mi/InstanceOf Metric)]
-  "Fetch all `Metrics` for a given `Table`. Optional second argument allows filtering by active state by providing one
-  of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
-  ([table-id :- su/IntGreaterThanZero]
-   (retrieve-metrics table-id :active))
-
-  ([table-id :- su/IntGreaterThanZero, state :- (s/enum :all :active :deleted)]
-   (-> (db/select Metric
-         {:where    [:and [:= :table_id table-id]
-                     (case state
-                       :all     true
-                       :active  [:= :archived false]
-                       :deleted [:= :archived true])]
-          :order-by [[:name :asc]]})
-       (hydrate :creator))))

@@ -67,9 +67,6 @@
     metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql-jdbc.sync.interface/syncable-schemas                     {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*field-options*               {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*source-query*                {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*table-alias*                 {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql.query-processor.deprecated/escape-alias                  {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql.query-processor.deprecated/field->alias                  {:namespaces ["metabase\\.driver.*"]}
     metabase.driver.sql.query-processor.deprecated/field->identifier             {:namespaces ["metabase\\.driver.*"]}

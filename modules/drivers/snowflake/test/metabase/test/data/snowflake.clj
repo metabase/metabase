@@ -69,12 +69,18 @@
   []
   (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil)))
 
+(defn- get-catalogs
+  "Returns a set of all of the catalogs found via `metadata`"
+  [^java.sql.DatabaseMetaData metadata]
+  (with-open [rs (.getCatalogs metadata)]
+    (set (map :table_cat (jdbc/metadata-result rs)))))
+
 (defn- existing-dataset-names []
   (let [db-spec (no-db-connection-spec)]
     (jdbc/with-db-metadata [metadata db-spec]
       ;; for whatever dumb reason the Snowflake JDBC driver always returns these as uppercase despite us making them
       ;; all lower-case
-      (set (map u/lower-case-en (sql-jdbc.sync/get-catalogs metadata))))))
+      (set (map u/lower-case-en (get-catalogs metadata))))))
 
 (let [datasets (atom nil)]
   (defn- existing-datasets []

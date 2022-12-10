@@ -370,16 +370,6 @@
     false "cam.saul+1@metabase.co.uk" "metabase.com"
     true  "cam.saul+1@metabase.com"   "metabase.com"))
 
-(deftest ^:parallel round-to-precision-test
-  (are [exp figs n] (= exp
-                       (u/round-to-precision figs n))
-       1.0     1 1.234
-       1.2     2 1.234
-       1.3     2 1.278
-       1.3     2 1.251
-       12300.0 3 12345.67
-       0.00321 3 0.003209817))
-
 (defspec pick-first-test 100
   (prop/for-all [coll (gen/list gen/int)]
     (let [result (u/pick-first pos? coll)]

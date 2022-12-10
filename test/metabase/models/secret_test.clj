@@ -1,13 +1,14 @@
 (ns metabase.models.secret-test
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
-            [metabase.models.secret :as secret :refer [Secret]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [metabase.util.encryption-test :as encryption-test]
-            [toucan.db :as db])
-  (:import [java.io DataInputStream File]
-           java.nio.charset.StandardCharsets))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.test :refer :all]
+   [metabase.models.secret :as secret :refer [Secret]]
+   [metabase.test :as mt]
+   [metabase.util.encryption-test :as encryption-test]
+   [toucan.db :as db])
+  (:import
+   (java.io DataInputStream File)
+   (java.nio.charset StandardCharsets)))
 
 (defn- value-matches?
   "Returns true iff `expected` value matches the `actual` (bytes) value. If `expected` is a String, then `actual` is
@@ -152,7 +153,7 @@
     (:value (secret/db-details-prop->secret-map
                   {:ssl true
                    :ssl-mode "verify-ca"
-                   value-key (format "data:%s;base64,%s" mime-type (u/encode-base64 content))
+                   value-key (format "data:%s;base64,%s" mime-type (mt/encode-base64 content))
                    options-key "uploaded"
                    :port 5432,
                    :advanced-options false

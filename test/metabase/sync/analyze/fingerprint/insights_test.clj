@@ -1,7 +1,10 @@
 (ns metabase.sync.analyze.fingerprint.insights-test
-  (:require [clojure.test :refer :all]
-            [metabase.sync.analyze.fingerprint.insights :as insights :refer [change insights]]
-            [metabase.util :as u]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.sync.analyze.fingerprint.insights
+    :as insights
+    :refer [change insights]]
+   [metabase.test :as mt]))
 
 (def ^:private cols [{:base_type :type/DateTime} {:base_type :type/Number}])
 
@@ -113,7 +116,7 @@
                                    {:base_type :type/Number}])
                         ts)
              ; This value varies between machines (M1 Macs? JVMs?) so round it to avoid test failures.
-             (update-in [0 :best-fit 1] #(u/round-to-precision 6 %)))))
+             (update-in [0 :best-fit 1] #(mt/round-to-precision 6 %)))))
   (testing "We should robustly survive weird values such as NaN, Infinity, and nil"
     (is (= [{:last-value     20.0
              :previous-value 10.0

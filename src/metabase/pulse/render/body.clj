@@ -95,10 +95,6 @@
 
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
-(def ^:dynamic *render-img-fn*
-  "The function that should be used for rendering image bytes. Defaults to `render-img-data-uri`."
-  image-bundle/render-img-data-uri)
-
 (defn- create-remapping-lookup
   "Creates a map with from column names to a column index. This is used to figure out what a given column name or value
   should be replaced with"

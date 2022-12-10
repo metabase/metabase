@@ -56,20 +56,6 @@
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- group-id->num-members
-  "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
-  groups.)"
-  []
-  (let [results (db/query
-                  {:select    [[:pgm.group_id :group_id] [:%count.pgm.id :members]]
-                   :from      [[:permissions_group_membership :pgm]]
-                   :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
-                   :where     [:= :user.is_active true]
-                   :group-by  [:pgm.group_id]})]
-    (zipmap
-      (map :group_id results)
-      (map :members results))))
-
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`."
   [limit offset query]
@@ -78,14 +64,6 @@
                (some? limit)  (hh/limit  limit)
                (some? offset) (hh/offset offset)
                (some? query)  (hh/where query))))
-
-(defn add-member-counts
-  "Efficiently add `:member_count` to PermissionGroups."
-  {:batched-hydrate :member_count}
-  [groups]
-  (let [group-id->num-members (group-id->num-members)]
-    (for [group groups]
-      (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
 
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.

@@ -1,24 +1,47 @@
 (ns metabase.models.collection-test
   (:refer-clojure :exclude [ancestors descendants])
-  (:require [clojure.math.combinatorics :as math.combo]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [clojure.walk :as walk]
-            [metabase.api.common :refer [*current-user-permissions-set*]]
-            [metabase.models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
-            [metabase.models.collection :as collection]
-            [metabase.models.permissions :as perms]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
-  (:import java.time.LocalDateTime))
+  (:require
+   [clojure.math.combinatorics :as math.combo]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [metabase.api.common :refer [*current-user-permissions-set*]]
+   [metabase.models
+    :refer [Card
+            Collection
+            Dashboard
+            NativeQuerySnippet
+            Permissions
+            PermissionsGroup
+            Pulse
+            User]]
+   [metabase.models.collection :as collection]
+   [metabase.models.permissions :as perms]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]])
+  (:import
+   (java.time LocalDateTime)))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
+
+(s/defn ^:private location-path :- collection/LocationPath
+  "Build a 'location path' from a sequence of `collections-or-ids`.
+
+     (location-path 10 20) ; -> \"/10/20/\""
+  [& collections-or-ids :- [(s/cond-pre su/IntGreaterThanZero su/Map)]]
+  (if-not (seq collections-or-ids)
+    "/"
+    (str
+     "/"
+     (str/join "/" (for [collection-or-id collections-or-ids]
+                     (u/the-id collection-or-id)))
+     "/")))
 
 (defn- lucky-collection-children-location []
   (collection/children-location (collection/user->personal-collection (mt/user->id :lucky))))
@@ -136,12 +159,12 @@
 (defn do-with-collection-hierarchy [options a-fn]
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [a (merge options {:name "A"})]
-                    Collection [b (merge options {:name "B", :location (collection/location-path a)})]
-                    Collection [c (merge options {:name "C", :location (collection/location-path a)})]
-                    Collection [d (merge options {:name "D", :location (collection/location-path a c)})]
-                    Collection [e (merge options {:name "E", :location (collection/location-path a c d)})]
-                    Collection [f (merge options {:name "F", :location (collection/location-path a c)})]
-                    Collection [g (merge options {:name "G", :location (collection/location-path a c f)})]]
+                    Collection [b (merge options {:name "B", :location (location-path a)})]
+                    Collection [c (merge options {:name "C", :location (location-path a)})]
+                    Collection [d (merge options {:name "D", :location (location-path a c)})]
+                    Collection [e (merge options {:name "E", :location (location-path a c d)})]
+                    Collection [f (merge options {:name "F", :location (location-path a c)})]
+                    Collection [g (merge options {:name "G", :location (location-path a c f)})]]
       (a-fn {:a a, :b b, :c c, :d d, :e e, :f f, :g g}))))
 
 (defmacro with-collection-hierarchy
@@ -205,7 +228,7 @@
                                [1 {:id 337}]             "/1/337/"}]
         (testing (pr-str (cons 'location-path args))
           (is (= expected
-                 (apply collection/location-path args))))))
+                 (apply location-path args))))))
 
     (testing "invalid input"
       (doseq [args [["1"]
@@ -216,7 +239,7 @@
         (testing (pr-str (cons 'location-path args))
           (is (thrown?
                Exception
-               (apply collection/location-path args))))))))
+               (apply location-path args))))))))
 
 (deftest location-path-ids-test
   (testing "valid input"
@@ -371,8 +394,8 @@
 
   (testing "We should be able to INSERT a Collection with a *valid* location"
     (mt/with-temp Collection [parent]
-      (with-collection-in-location [collection (collection/location-path parent)]
-        (is (= (collection/location-path parent)
+      (with-collection-in-location [collection (location-path parent)]
+        (is (= (location-path parent)
                (:location collection))))))
 
   (testing "Make sure we can't UPDATE a Collection to give it an invalid location"
@@ -386,21 +409,21 @@
     (mt/with-temp* [Collection [collection-1]
                     Collection [collection-2]]
       (is (= true
-             (db/update! Collection (u/the-id collection-1) :location (collection/location-path collection-2)))))))
+             (db/update! Collection (u/the-id collection-1) :location (location-path collection-2)))))))
 
 (deftest crud-validate-ancestors-test
   (testing "Make sure we can't INSERT a Collection with an non-existent ancestors"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid Collection location: some or all ancestors do not exist"
-         (with-collection-in-location [_ (collection/location-path (nonexistent-collection-id))]))))
+         (with-collection-in-location [_ (location-path (nonexistent-collection-id))]))))
 
   (testing "Make sure we can't UPDATE a Collection to give it a non-existent ancestors"
     (mt/with-temp Collection [collection]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid Collection location: some or all ancestors do not exist"
-           (db/update! Collection (u/the-id collection) :location (collection/location-path (nonexistent-collection-id))))))))
+           (db/update! Collection (u/the-id collection) :location (location-path (nonexistent-collection-id))))))))
 
 (deftest delete-descendant-collections-test
   (testing "When we delete a Collection do its descendants get deleted as well?"
@@ -1223,7 +1246,7 @@
         (is (thrown?
              Exception
              (db/update! Collection (u/the-id personal-collection)
-               :location (collection/location-path some-other-collection)))))))
+               :location (location-path some-other-collection)))))))
 
   (testing "Make sure we're not allowed to change the owner of a Personal Collection"
     (mt/with-temp User [my-cool-user]

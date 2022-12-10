@@ -32,12 +32,6 @@
            base-type))
        pattern->type))))
 
-(defn get-catalogs
-  "Returns a set of all of the catalogs found via `metadata`"
-  [^DatabaseMetaData metadata]
-  (with-open [rs (.getCatalogs metadata)]
-    (set (map :table_cat (jdbc/metadata-result rs)))))
-
 (defn- database-type->base-type-or-warn
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
   [driver database-type]

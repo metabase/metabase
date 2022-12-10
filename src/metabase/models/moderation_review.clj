@@ -17,14 +17,16 @@
   "Schema of valid statuses"
   (apply s/enum statuses))
 
-(def ReviewChanges
-  "Schema for a ModerationReview that's being updated (so most keys are optional)"
-  {(s/optional-key :id)                  su/IntGreaterThanZero
-   (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
-   (s/optional-key :moderated_item_type) moderation/moderated-item-types
-   (s/optional-key :status)              Statuses
-   (s/optional-key :text)                (s/maybe s/Str)
-   s/Any                                 s/Any})
+;;; this is unused but I'll leave it around for not for documentation purposes.
+(comment
+  (def ReviewChanges
+    "Schema for a ModerationReview that's being updated (so most keys are optional)"
+    {(s/optional-key :id)                  su/IntGreaterThanZero
+     (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
+     (s/optional-key :moderated_item_type) moderation/moderated-item-types
+     (s/optional-key :status)              Statuses
+     (s/optional-key :text)                (s/maybe s/Str)
+     s/Any                                 s/Any}))
 
 (models/defmodel ModerationReview :moderation_review)
 

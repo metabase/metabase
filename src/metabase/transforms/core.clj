@@ -10,7 +10,7 @@
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.transforms.materialize :as tf.materialize]
-            [metabase.transforms.specs :refer [Step transform-specs TransformSpec]]
+            [metabase.transforms.specs :refer [Step TransformSpec]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -189,10 +189,3 @@
           (apply-transform-to-tableset! spec)
           (validate-results spec)
           (resulting-entities spec)))
-
-(defn candidates
-  "Return a list of candidate transforms for a given table."
-  [table]
-  (filter (comp (partial some (comp #{(u/the-id table)} u/the-id))
-                (partial tables-matching-requirements (tableset (:db_id table) (:schema table))))
-          @transform-specs))

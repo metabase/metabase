@@ -193,6 +193,7 @@
   call-with-paused-query
   discard-setting-changes
   doall-recursive
+  encode-base64
   file->bytes
   is-uuid-string?
   obj->json->obj
@@ -200,6 +201,7 @@
   random-email
   random-name
   round-all-decimals
+  round-to-precision
   scheduler-current-tasks
   secret-value-equals?
   select-keys-sequentially

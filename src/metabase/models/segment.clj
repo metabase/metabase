@@ -13,7 +13,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
+            [toucan.hydrate :refer []]
             [toucan.models :as models]))
 
 (models/defmodel Segment :segment)
@@ -106,14 +106,3 @@
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 
-(s/defn retrieve-segments :- [(mi/InstanceOf Segment)]
-  "Fetch all `Segments` for a given `Table`. Optional second argument allows filtering by active state by providing
-   one of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
-  ([table-id :- su/IntGreaterThanZero]
-   (retrieve-segments table-id :active))
-
-  ([table-id :- su/IntGreaterThanZero state :- (s/enum :active :deleted :all)]
-   (-> (if (= :all state)
-         (db/select Segment, :table_id table-id, {:order-by [[:name :asc]]})
-         (db/select Segment, :table_id table-id, :archived (= :deleted state), {:order-by [[:name :asc]]}))
-       (hydrate :creator))))

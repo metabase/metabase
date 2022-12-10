@@ -33,19 +33,6 @@
             ;; macro for building queries. Do not remove
             (assoc mbql-query :source-table table-id)))
 
-(defn table-row-count
-  "Fetch the row count of `table` via the query processor."
-  [table]
-  {:pre  [(map? table)]
-   :post [(integer? %)]}
-  (let [results (qp-query (:db_id table) {:source-table (u/the-id table)
-                                          :aggregation  [[:count]]})]
-    (try (-> results first first long)
-         (catch Throwable e
-           (log/error "Error fetching table row count. Query returned:\n"
-                      (u/pprint-to-str results))
-           (throw e)))))
-
 (def ^Integer absolute-max-distinct-values-limit
   "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
   less values (at the time of this writing) get marked as `auto-list` Fields, meaning we save all their distinct

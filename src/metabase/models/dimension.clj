@@ -9,11 +9,6 @@
             [metabase.util.date-2 :as u.date]
             [toucan.models :as models]))
 
-(def dimension-types
-  "Possible values for `Dimension.type`"
-  #{:internal
-    :external})
-
 (models/defmodel Dimension :dimension)
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dimension)

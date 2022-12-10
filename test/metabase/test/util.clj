@@ -61,8 +61,9 @@
    [toucan.util.test :as tt])
   (:import
    (java.io File FileInputStream)
+   (java.math MathContext RoundingMode)
    (java.net ServerSocket)
-   (java.util Locale)
+   (java.util Base64 Base64$Encoder Locale)
    (java.util.concurrent TimeoutException)
    (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
@@ -1196,3 +1197,35 @@
       (if (neg? @a)
         (apply f args)
         (throw (ex-info "Not yet" {:remaining @a}))))))
+
+(defn round-to-precision
+  "Round (presumably floating-point) `number` to a precision of `sig-figures`. Returns a `Double`.
+
+  This rounds by significant figures, not decimal places. See [[round-to-decimals]] for that.
+
+    (round-to-precision 4 1234567.89) -> 123500.0"
+  ^Double [^Integer sig-figures ^Number number]
+  {:pre [(integer? sig-figures) (number? number)]}
+  (-> number
+      bigdec
+      (.round (MathContext. sig-figures RoundingMode/HALF_EVEN))
+      double))
+
+(deftest ^:parallel round-to-precision-test
+  (are [exp figs n] (= exp
+                       (round-to-precision figs n))
+       1.0     1 1.234
+       1.2     2 1.234
+       1.3     2 1.278
+       1.3     2 1.251
+       12300.0 3 12345.67
+       0.00321 3 0.003209817))
+
+(def ^Base64$Encoder base64-encoder
+  "A shared Base64 encoder instance."
+  (Base64/getEncoder))
+
+(defn encode-base64
+  "Encodes the UTF-8 encoding of the string `input` to a Base64 string."
+  ^String [^String input]
+  (.encodeToString base64-encoder (.getBytes input "UTF-8")))

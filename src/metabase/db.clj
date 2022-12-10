@@ -38,8 +38,7 @@
 ;; functions directly where applicable.
 (p/import-vars
  [mdb.connection
-  db-type
-  quoting-style])
+  db-type])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
 ;; [[mdb.connection/*application-db*]] (or its data source)

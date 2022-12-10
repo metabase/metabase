@@ -314,16 +314,6 @@
 (defmethod name-for-logging :default [{field-name :name}]
   (trs "Field ''{0}''" field-name))
 
-(defn calculate-hash
-  "Calculate a cryptographic hash on `clj-data` and return that hash as a string"
-  [clj-data]
-  (->> clj-data
-       ;; Serialize the sorted list to bytes that can be hashed
-       nippy/fast-freeze
-       buddy-hash/md5
-       ;; Convert the hash bytes to a string for storage/comparison with the hash in the database
-       codec/base64-encode))
-
 (s/defn calculate-duration-str :- s/Str
   "Given two datetimes, caculate the time between them, return the result as a string"
   [begin-time :- Temporal, end-time :- Temporal]
