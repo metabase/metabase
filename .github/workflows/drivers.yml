@@ -24,7 +24,7 @@ jobs:
 
   be-tests-druid-ee:
     runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: druid
@@ -44,7 +44,7 @@ jobs:
 
   be-tests-mariadb-10-2-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -68,7 +68,7 @@ jobs:
 
   be-tests-mariadb-latest-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -92,7 +92,7 @@ jobs:
 
   be-tests-mongo-4-0-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -110,7 +110,7 @@ jobs:
 
   be-tests-mongo-5-0-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -128,7 +128,7 @@ jobs:
 
   be-tests-mongo-latest-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -149,7 +149,7 @@ jobs:
 
   be-tests-mysql-5-7-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -171,9 +171,45 @@ jobs:
       with:
         junit-name: 'be-tests-mysql-5-7-ee'
 
+  be-tests-mysql-latest-ee:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: mysql
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
+      # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
+      # they are deliberately given a different name to prevent them from affecting the regular test run against
+      # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
+      # that overrides the MB_MYSQL_TEST_* values with them
+      # the MYSQL_RDS_SSL_INSTANCE vars are defined as secrets and can be altered
+      MB_MYSQL_SSL_TEST_HOST: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_HOST }}
+      MB_MYSQL_SSL_TEST_SSL: true
+      MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS: 'verifyServerCertificate=true'
+      # the contents of the ./resources/certificates/rds-combined-ca-bundle.pem file
+      MB_MYSQL_SSL_TEST_SSL_CERT: ${{ secrets.MB_MYSQL_SSL_TEST_SSL_CERT }}
+      MB_MYSQL_SSL_TEST_USER: metabase
+      MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
+    services:
+      mysql:
+        image: circleci/mysql:latest
+        ports:
+        - "3306:3306"
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test MySQL driver (latest)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mysql-latest-ee'
+
   be-tests-postgres-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -200,7 +236,7 @@ jobs:
 
   be-tests-postgres-latest-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -231,7 +267,7 @@ jobs:
 
   be-tests-presto-186-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: presto
@@ -251,7 +287,7 @@ jobs:
 
   be-tests-sparksql-ee:
     runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: sparksql
@@ -269,7 +305,7 @@ jobs:
 
   be-tests-sqlite-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: sqlite
@@ -282,7 +318,7 @@ jobs:
 
   be-tests-sqlserver-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: sqlserver
