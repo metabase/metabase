@@ -2,20 +2,18 @@
   "A Metric is a saved MBQL 'macro' expanding to a combination of `:aggregation` and/or `:filter` clauses.
   It is passed in as an `:aggregation` clause but is replaced by the `expand-macros` middleware with the appropriate
   clauses."
-  (:require [clojure.set :as set]
-            [medley.core :as m]
-            [metabase.models.interface :as mi]
-            [metabase.models.revision :as revision]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer []]
-            [toucan.models :as models]))
+  (:require
+   [clojure.set :as set]
+   [medley.core :as m]
+   [metabase.models.interface :as mi]
+   [metabase.models.revision :as revision]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel Metric :metric)
 
@@ -103,6 +101,3 @@
         (concat ["metrics" (serdes.base/storage-leaf-file-name id label)]))))
 
 (serdes.base/register-ingestion-path! "Metric" (serdes.base/ingestion-matcher-collected "databases" "Metric"))
-
-;;; ----------------------------------------------------- OTHER ------------------------------------------------------
-
