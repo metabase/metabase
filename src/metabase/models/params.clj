@@ -1,18 +1,18 @@
 (ns metabase.models.params
   "Utility functions for dealing with parameters for Dashboards and Cards."
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase.db.util :as mdb.u]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.set :as set]
+   [clojure.tools.logging :as log]
+   [medley.core :as m]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
@@ -77,11 +77,6 @@
           (catch Throwable e
             (log/error e (tru "Could not find matching Field ID for target:") target)))))))
 
-(defn- pk-fields
-  "Return the `fields` that are PK Fields."
-  [fields]
-  (filter #(isa? (:semantic_type %) :type/PK) fields))
-
 (def ^:private Field:params-columns-only
   "Form for use in Toucan `db/select` expressions (as a drop-in replacement for using `Field`) that returns Fields with
   only the columns that are appropriate for returning in public/embedded API endpoints, which make heavy use of the
@@ -90,32 +85,6 @@
 
     (db/select Field:params-columns-only)"
   ['Field :id :table_id :display_name :base_type :semantic_type :has_field_values])
-
-(defn- fields->table-id->name-field
-  "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
-  cases where more than one name Field exists for a Table, this just adds the first one it finds."
-  [fields]
-  (when-let [table-ids (seq (map :table_id fields))]
-    (m/index-by :table_id (-> (db/select Field:params-columns-only
-                                :table_id      [:in table-ids]
-                                :semantic_type (mdb.u/isa :type/Name))
-                              ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
-                              ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
-                              ;; `list` instead of `auto-list`.)
-                              (hydrate :has_field_values)))))
-
-(defn add-name-field
-  "For all `fields` that are `:type/PK` Fields, look for a `:type/Name` Field belonging to the same Table. For each
-  Field, if a matching name Field exists, add it under the `:name_field` key. This is so the Fields can be used in
-  public/embedded field values search widgets. This only includes the information needed to power those widgets, and
-  no more."
-  {:batched-hydrate :name_field}
-  [fields]
-  (let [table-id->name-field (fields->table-id->name-field (pk-fields fields))]
-    (for [field fields]
-      ;; add matching `:name_field` if it's a PK
-      (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
-                                 (table-id->name-field (:table_id field)))))))
 
 ;; We hydrate the `:human_readable_field` for each Dimension using the usual hydration logic, so it contains columns we
 ;; don't want to return. The two functions below work to remove the unneeded ones.
