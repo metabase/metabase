@@ -299,52 +299,6 @@
            (collection/permissions-set->visible-collection-ids
             #{"/collection/root/read/"})))))
 
-(deftest effective-location-path-test
-  (testing "valid input"
-    (doseq [[args expected] {["/10/20/30/" #{10 20}]    "/10/20/"
-                             ["/10/20/30/" #{10 30}]    "/10/30/"
-                             ["/10/20/30/" #{}]         "/"
-                             ["/10/20/30/" #{10 20 30}] "/10/20/30/"
-                             ["/10/20/30/" :all]        "/10/20/30/"}]
-      (testing (pr-str (cons 'effective-location-path args))
-        (is (= expected
-               (apply collection/effective-location-path args))))))
-
-  (testing "invalid input"
-    (doseq [args [["/10/20/30/" nil]
-                  ["/10/20/30/" [20]]
-                  [nil #{}]
-                  [[10 20] #{}]]]
-      (testing (pr-str (cons 'effective-location-path args))
-        (is (thrown?
-             Exception
-             (apply collection/effective-location-path args))))))
-
-  (testing "Does the function also work if we call the single-arity version that powers hydration?"
-    (testing "mix of full and read perms"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/"})]
-        (is (= "/10/20/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
-
-    (testing "missing some perms"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/read/" "/collection/30/read/"})]
-        (is (= "/10/30/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
-
-    (testing "no perms"
-      (binding [*current-user-permissions-set* (atom #{})]
-        (is (= "/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
-
-    (testing "read perms for all"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/" "/collection/30/read/"})]
-        (is (= "/10/20/30/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
-
-    (testing "root perms"
-      (binding [*current-user-permissions-set* (atom #{"/"})]
-        (is (= "/10/20/30/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Nested Collections: CRUD Constraints & Behavior                                 |

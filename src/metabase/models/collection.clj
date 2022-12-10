@@ -320,28 +320,6 @@
             [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
 
-(s/defn effective-location-path :- (s/maybe LocationPath)
-  "Given a `location-path` and a set of Collection IDs one is allowed to view (obtained from
-  `permissions-set->visible-collection-ids` above), calculate the 'effective' location path (excluding IDs of
-  Collections for which we do not have read perms) we should show to the User.
-
-  When called with a single argument, `collection`, this is used as a hydration function to hydrate
-  `:effective_location`."
-  {:hydrate :effective_location}
-  ([collection :- CollectionWithLocationOrRoot]
-   (if (collection.root/is-root-collection? collection)
-     nil
-     (effective-location-path (:location collection)
-                              (permissions-set->visible-collection-ids @*current-user-permissions-set*))))
-
-  ([real-location-path :- LocationPath, allowed-collection-ids :- VisibleCollections]
-   (if (= allowed-collection-ids :all)
-     real-location-path
-     (apply location-path (for [id    (location-path->ids real-location-path)
-                                :when (contains? allowed-collection-ids id)]
-                            id)))))
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
