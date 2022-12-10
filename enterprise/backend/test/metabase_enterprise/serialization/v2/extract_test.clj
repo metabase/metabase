@@ -420,12 +420,6 @@
                                                               :type       "internal"
                                                               :created_at (t/minus (t/offset-date-time)
                                                                                    (t/days 3))}]
-                       Dimension  [{dim2-eid     :entity_id} {:name     "Bonus Dimension"
-                                                              :field_id email-id
-                                                              :type     "internal"
-                                                              :created_at (t/minus (t/offset-date-time)
-                                                                                   (t/days 6))}]
-
                        ;; Advanced case: Dimension capturing a foreign relationship.
                        ;; The parent field (Orders.customer_id) is the foreign key.
                        ;; Dimension.field_id (Customers.id) is the foreign ID field;
@@ -457,8 +451,8 @@
                        ser))
           (is (not (contains? ser :id)))
 
-          (testing "ordered by ascending :created_at"
-            (is (= [dim2-eid dim1-eid]
+          (testing "As of #27062 a Field can only have one Dimension. For historic reasons it comes back as a list"
+            (is (= [dim1-eid]
                    (->> ser :dimensions (map :entity_id)))))
 
           (testing "which depend on just the table"

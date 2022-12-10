@@ -78,13 +78,9 @@
                            :changes [(mock-add-column-changes) (mock-add-column-changes)]))))))
 
 (deftest require-comment-test
-  (testing "[strict only] require a 'Added <version>' comment for a change set"
+  (testing "[strict only] require a comment for a change set"
     (is (= :ok
            (validate (dissoc (mock-change-set) :comment))))
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"clojure.core/re-find"
-         (validate (mock-change-set :id 200, :comment "Bad comment"))))
     (is (= :ok
            (validate (mock-change-set :id 200, :comment "Added x.38.0"))))))
 
