@@ -1,30 +1,31 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.data :as data]
-            [clojure.java.classpath :as classpath]
-            [clojure.math.numeric-tower :as math]
-            [clojure.pprint :refer [pprint]]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns.find]
-            [clojure.walk :as walk]
-            [colorize.core :as colorize]
-            [flatland.ordered.map :refer [ordered-map]]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.shared.util :as shared.u]
-            [metabase.util.i18n :refer [trs tru]]
-            [nano-id.core :as nano-id]
-            [potemkin :as p]
-            [ring.util.codec :as codec]
-            [weavejester.dependency :as dep])
-  (:import [java.math MathContext RoundingMode]
-           [java.net InetAddress InetSocketAddress Socket]
-           [java.text Normalizer Normalizer$Form]
-           [java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue]
-           java.util.concurrent.TimeoutException
-           [org.apache.commons.validator.routines RegexValidator UrlValidator]))
+  (:require
+   [clojure.data :as data]
+   [clojure.java.classpath :as classpath]
+   [clojure.math.numeric-tower :as math]
+   [clojure.pprint :refer [pprint]]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.tools.namespace.find :as ns.find]
+   [clojure.walk :as walk]
+   [colorize.core :as colorize]
+   [flatland.ordered.map :refer [ordered-map]]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.shared.util :as shared.u]
+   [metabase.util.i18n :refer [trs tru]]
+   [nano-id.core :as nano-id]
+   [potemkin :as p]
+   [ring.util.codec :as codec]
+   [weavejester.dependency :as dep])
+  (:import
+   (java.net InetAddress InetSocketAddress Socket)
+   (java.text Normalizer Normalizer$Form)
+   (java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue)
+   (java.util.concurrent TimeoutException)
+   (org.apache.commons.validator.routines RegexValidator UrlValidator)))
 
 (comment shared.u/keep-me)
 
