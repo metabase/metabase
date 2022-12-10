@@ -26,7 +26,6 @@
   (perms/delete-related-permissions! group-id
                                      (apply (partial perms/feature-perms-path perm-type perm-value) path-components)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Data model permissions                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -94,3 +93,17 @@
   permissions only work when EE code can be loaded."
   [db-id]
   (perms/feature-perms-path :details :yes db-id))
+
+(s/defn update-db-details-permissions!
+  "Update the DB details permissions for a database."
+  [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-perms :- perms/DetailsPermissions]
+  (when-not (premium-features/enable-advanced-permissions?)
+    (throw (perms/ee-permissions-exception :details)))
+  (case new-perms
+    :yes
+    (do
+      (revoke-permissions! :details :yes group-id db-id)
+      (grant-permissions! :details :yes group-id db-id))
+
+    :no
+    (revoke-permissions! :details :yes group-id db-id)))

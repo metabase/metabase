@@ -1,17 +1,22 @@
 (ns metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
-  (:require [clojure.data.csv :as csv]
-            [clojure.test :refer :all]
-            [metabase-enterprise.advanced-permissions.models.permissions :as ee.perms]
-            [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.qp.perms]
-            [metabase.api.dataset :as api.dataset]
-            [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perms-group]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
-            [metabase.query-processor.context.default :as context.default]
-            [metabase.query-processor.streaming-test :as streaming-test]
-            [metabase.test :as mt]
-            [metabase.util :as u])
-  (:import clojure.lang.ExceptionInfo))
+  (:require
+   [clojure.data.csv :as csv]
+   [clojure.test :refer :all]
+   [metabase-enterprise.advanced-permissions.models.permissions.test-util
+    :as ee.perms.test-util]
+   [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions
+    :as ee.qp.perms]
+   [metabase.api.dataset :as api.dataset]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
+   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.streaming-test :as streaming-test]
+   [metabase.test :as mt]
+   [metabase.util :as u])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (defn- do-with-download-perms
   [db-or-id graph f]
@@ -20,11 +25,11 @@
         current-download-perms-graph (get-in (perms/data-perms-graph)
                                              [:groups all-users-group-id db-id :download])]
     (premium-features-test/with-premium-features #{:advanced-permissions}
-      (ee.perms/update-db-download-permissions! all-users-group-id db-id graph)
+      (ee.perms.test-util/update-db-download-permissions! all-users-group-id db-id graph)
       (try
         (f)
         (finally
-          (ee.perms/update-db-download-permissions! all-users-group-id db-id current-download-perms-graph))))))
+          (ee.perms.test-util/update-db-download-permissions! all-users-group-id db-id current-download-perms-graph))))))
 
 (defmacro ^:private with-download-perms
   "Runs `f` with the download perms for `db-or-id` set to the values in `graph` for the All Users permissions group."
