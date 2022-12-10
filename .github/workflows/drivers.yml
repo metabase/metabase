@@ -23,6 +23,7 @@ on:
 jobs:
 
   be-tests-druid-ee:
+    if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 60
     env:
@@ -43,6 +44,7 @@ jobs:
         junit-name: 'be-tests-druid-ee'
 
   be-tests-mariadb-10-2-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -67,6 +69,7 @@ jobs:
         junit-name: 'be-tests-mariadb-10-2-ee'
 
   be-tests-mariadb-latest-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -91,6 +94,7 @@ jobs:
         junit-name: 'be-tests-mariadb-latest-ee'
 
   be-tests-mongo-4-0-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -111,6 +115,7 @@ jobs:
         junit-name: 'be-tests-mongo-4-0-ee'
 
   be-tests-mongo-5-0-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -131,6 +136,7 @@ jobs:
         junit-name: 'be-tests-mongo-5-0-ee'
 
   be-tests-mongo-latest-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -154,6 +160,7 @@ jobs:
         junit-name: 'be-tests-mongo-latest-ee'
 
   be-tests-mysql-5-7-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -214,6 +221,7 @@ jobs:
         junit-name: 'be-tests-mysql-latest-ee'
 
   be-tests-postgres-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -241,6 +249,7 @@ jobs:
         junit-name: 'be-tests-postgres-ee'
 
   be-tests-postgres-latest-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -272,6 +281,7 @@ jobs:
         junit-name: 'be-tests-postgres-latest-ee'
 
   be-tests-presto-186-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -292,6 +302,7 @@ jobs:
         junit-name: 'be-tests-presto-186-ee'
 
   be-tests-sparksql-ee:
+    if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 60
     env:
@@ -310,6 +321,7 @@ jobs:
         junit-name: 'be-tests-sparksql-ee'
 
   be-tests-sqlite-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
@@ -323,6 +335,7 @@ jobs:
         junit-name: 'be-tests-sqlite-ee'
 
   be-tests-sqlserver-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
