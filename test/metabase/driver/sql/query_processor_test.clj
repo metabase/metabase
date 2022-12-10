@@ -1,18 +1,18 @@
 (ns metabase.driver.sql.query-processor-test
-  (:require [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [metabase.driver :as driver]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.setting :as setting]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.test :as mt]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [honeysql.core :as hsql]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.setting :as setting]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.test :as mt]
+   [metabase.util.honeysql-extensions :as hx]
+   [schema.core :as s]))
 
 (deftest sql-source-query-validation-test
   (testing "[[sql.qp/sql-source-query]] should throw Exceptions if you pass in invalid nonsense"
@@ -46,17 +46,6 @@
       (-> (sql.qp/mbql->native :h2 (qp/preprocess query))
           :query
           sql.qp-test-util/pretty-sql))))
-
-(deftest compile-FieldInstance-test
-  (testing "For legacy compatibility, we should still be able to compile Field instances (for now)"
-    (driver/with-driver :h2
-      (mt/with-everything-store
-        (is (= "SELECT VENUES.PRICE AS PRICE WHERE VENUES.PRICE = 4"
-               (->> {:query {:fields [[:field (mt/id :venues :price)]]
-                             :filter [:= (db/select-one Field :id (mt/id :venues :price)) [:value 4 {:base-type :type/Integer}]]}}
-                    (sql.qp/mbql->native :h2)
-                    :query
-                    sql.qp-test-util/pretty-sql)))))))
 
 (deftest not-null-test
   (is (= '{:select [count (*) AS count]
