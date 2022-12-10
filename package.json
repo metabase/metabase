@@ -234,7 +234,7 @@
     "mochawesome-report-generator": "^6.2.0",
     "mockdate": "^2.0.2",
     "mutationobserver-shim": "^0.3.7",
-    "node-polyfill-webpack-plugin": "^1.1.2",
+    "node-polyfill-webpack-plugin": "2.0.1",
     "postcss": "~8.4.13",
     "postcss-color-mod-function": "^3.0.3",
     "postcss-import": "^14.0.2",
