@@ -58,7 +58,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:10.2.23
+        image: mariadb:10.2.23
         ports:
           - "3306:3306"
     steps:
@@ -83,7 +83,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:latest
+        image: mariadb:latest
         ports:
           - "3306:3306"
     steps:
@@ -146,7 +146,7 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
     services:
       mongodb:
-        image: circleci/mongo:latest
+        image: mongo:latest
         ports:
           - "27017:27017"
         env:
@@ -174,7 +174,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mysql:
-        image: circleci/mysql:5.7.23
+        image: mysql:5.7.23
         ports:
           - "3306:3306"
     steps:
@@ -208,11 +208,11 @@ jobs:
       MB_MYSQL_SSL_TEST_SSL_CERT: ${{ secrets.MB_MYSQL_SSL_TEST_SSL_CERT }}
       MB_MYSQL_SSL_TEST_USER: metabase
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
-    services:
-      mysql:
-        image: circleci/mysql:latest
-        ports:
-        - "3306:3306"
+    # services:
+    #   mysql:
+    #     image: mysql:latest
+    #     ports:
+    #     - "3306:3306"
     steps:
     - uses: actions/checkout@v3
     - name: Test MySQL driver (latest)
@@ -235,7 +235,7 @@ jobs:
       MB_POSTGRESQL_TEST_USER: circle_test
     services:
       postgres:
-        image: circleci/postgres:9.6-alpine
+        image: postgres:9.6
         ports:
           - "5432:5432"
         env:
@@ -266,7 +266,7 @@ jobs:
       MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
     services:
       postgres:
-        image: circleci/postgres:latest
+        image: postgres:latest
         ports:
           - "5432:5432"
         env:
