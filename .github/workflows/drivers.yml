@@ -362,7 +362,7 @@ jobs:
 
   be-tests-vertica-ee:
     if: github.event.pull_request.draft == false
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 60
     strategy:
       matrix:
