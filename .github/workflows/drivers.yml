@@ -364,9 +364,6 @@ jobs:
     if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 60
-    strategy:
-      matrix:
-        version: ['vertica-jdbc-7.1.2-0.jar']
     env:
       CI: 'true'
       DRIVERS: vertica
@@ -378,7 +375,7 @@ jobs:
     - name: Make plugins directory
       run: mkdir plugins
     - name: Fetch JDBC driver
-      run: wget --output-document=plugins/${{ matrix.version }} ${{ secrets.VERTICA_JDBC_JAR }}
+      run: wget --output-document=plugins/vertica-jdbc-7.1.2-0.jar ${{ secrets.VERTICA_JDBC_JAR }}
     - name: Test Vertica driver
       uses: ./.github/actions/test-driver
       with:
