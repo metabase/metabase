@@ -58,6 +58,10 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
+        env:
+          MARIADB_DATABASE: circle_test
+          MARIADB_USER: root
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true 
         image: mariadb:10.2.23
         ports:
           - "3306:3306"
@@ -83,6 +87,10 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
+        env:
+          MARIADB_DATABASE: circle_test
+          MARIADB_USER: root
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true 
         image: mariadb:latest
         ports:
           - "3306:3306"
@@ -174,6 +182,10 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mysql:
+        env:
+          MYSQL_DATABASE: circle_test
+          MYSQL_USER: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
         image: mysql:5.7.23
         ports:
           - "3306:3306"
@@ -208,11 +220,15 @@ jobs:
       MB_MYSQL_SSL_TEST_SSL_CERT: ${{ secrets.MB_MYSQL_SSL_TEST_SSL_CERT }}
       MB_MYSQL_SSL_TEST_USER: metabase
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
-    # services:
-    #   mysql:
-    #     image: mysql:latest
-    #     ports:
-    #     - "3306:3306"
+    services:
+      mysql:
+        image: mysql:latest
+        env:
+          MYSQL_DATABASE: circle_test
+          MYSQL_USER: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+        ports:
+        - "3306:3306"
     steps:
     - uses: actions/checkout@v3
     - name: Test MySQL driver (latest)
@@ -241,6 +257,7 @@ jobs:
         env:
           POSTGRES_USER: circle_test
           POSTGRES_DB: circle_test
+          POSTGRES_HOST_AUTH_METHOD: trust
     steps:
     - uses: actions/checkout@v3
     - name: Test Postgres driver (9.6)
