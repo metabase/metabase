@@ -211,6 +211,29 @@ jobs:
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
 
+  be-tests-mongo-5-0-ssl-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: mongo
+      MB_MONGO_TEST_USER: metabase
+      MB_MONGO_TEST_PASSWORD: metasample123
+      MB_TEST_MONGO_REQUIRES_SSL: true
+    services:
+      mongodb:
+        image: metabase/qa-databases:mongo-sample-5.0
+        ports:
+          - "27017:27017"
+    steps:
+    - uses: actions/checkout@v3
+    - run: mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
+    - name: Test MongoDB driver (5.0)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mongo-5-0-ee'
+
   be-tests-mongo-latest-ee:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
@@ -261,6 +284,7 @@ jobs:
         junit-name: 'be-tests-mysql-5-7-ee'
 
   be-tests-mysql-latest-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 60
     env:
