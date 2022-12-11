@@ -370,6 +370,8 @@ jobs:
     services:
       vertica:
         image: sumitchawla/vertica
+        ports:
+          - "5433:5433"
     steps:
     - uses: actions/checkout@v3
     - name: Make plugins directory
