@@ -10,7 +10,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: snowplow/igluctl:0.6.0
     steps:
       - name: Checkout

@@ -9,7 +9,7 @@ jobs:
   create_pull_request:
     name: Creates a pull request
     if: contains(github.event.comment.body, '@metabase-bot backport')
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: tibdex/github-app-token@v1.6.0
         id: generate-token
@@ -145,7 +145,7 @@ jobs:
           merge-method: squash
 
   notify_when_failed:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Notify about failure
     needs: create_pull_request
     if: ${{ failure() }}

@@ -35,7 +35,7 @@ on:
 
 jobs:
   fe-linter-prettier:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v3
@@ -45,7 +45,7 @@ jobs:
       name: Run Prettier formatting linter
 
   fe-linter-eslint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3
@@ -55,7 +55,7 @@ jobs:
       name: Run ESLint linter
 
   fe-type-check:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v3
@@ -80,7 +80,7 @@ jobs:
         flags: front-end
 
   fe-tests-timezones:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 14
     steps:
     - uses: actions/checkout@v3
@@ -90,7 +90,7 @@ jobs:
       name: Run frontend timezones tests
 
   fe-chromatic:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

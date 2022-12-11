@@ -25,28 +25,28 @@ on:
 jobs:
 
   be-linter-clj-kondo:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
 
   be-linter-eastwood:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
 
   be-linter-namespace-decls:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
 
   be-tests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 20
     strategy:

@@ -22,7 +22,7 @@ on:
 jobs:
 
   be-linter-clj-kondo:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v3
@@ -72,7 +72,7 @@ jobs:
         /work/modules/drivers/presto-jdbc/test
 
   be-linter-eastwood:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v3
@@ -84,7 +84,7 @@ jobs:
       name: Run Eastwood linter
 
   be-tests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 25
     strategy:

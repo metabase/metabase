@@ -18,7 +18,7 @@ jobs:
 
   build:
     if: github.event.pull_request.draft == false
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 25
     strategy:
       matrix:
@@ -44,7 +44,7 @@ jobs:
       uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
     needs: build
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
@@ -179,7 +179,7 @@ jobs:
         if-no-files-found: ignore
 
   visual-regression-tests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     needs: build
     name: percy-tests-sanity-check-${{ matrix.edition }}

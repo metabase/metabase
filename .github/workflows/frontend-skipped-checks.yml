@@ -38,42 +38,42 @@ on:
 
 jobs:
   fe-linter-prettier:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
 
   fe-linter-eslint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
 
   fe-type-check:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
 
   fe-tests-unit:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
 
   fe-tests-timezones:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 14
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
 
   fe-chromatic:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
