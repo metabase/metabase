@@ -22,6 +22,24 @@ on:
 
 jobs:
 
+  be-tests-athena-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: athena
+      MB_ATHENA_TEST_REGION: us-east-1
+      MB_ATHENA_TEST_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_ACCESS_KEY }}
+      MB_ATHENA_TEST_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_SECRET_KEY }}
+      MB_ATHENA_TEST_S3_STAGING_DIR: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Athena driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-athena-ee'
+
   be-tests-druid-ee:
     if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
