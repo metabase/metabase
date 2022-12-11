@@ -190,6 +190,29 @@ jobs:
       with:
         junit-name: 'be-tests-mongo-4-0-ee'
 
+  be-tests-mongo-4-0-ssl-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: mongo
+      MB_MONGO_TEST_USER: metabase
+      MB_MONGO_TEST_PASSWORD: metasample123
+      MB_TEST_MONGO_REQUIRES_SSL: true
+    services:
+      mongodb:
+        image: metabase/qa-databases:mongo-sample-4.0
+        ports:
+          - "27017:27017"
+    steps:
+    - uses: actions/checkout@v3
+    - run: mongod --dbpath /data/db2/ --sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt
+    - name: Test MongoDB driver (4.0)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mongo-4-0-ee'
+
   be-tests-mongo-5-0-ee:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04

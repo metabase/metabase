@@ -27,15 +27,6 @@ executors:
     docker:
       - image: metabase/ci:java-17-clj-1.11.0.1100.04-2022-build
 
-  mongo-4-0-ssl:
-     working_directory: /home/circleci/metabase/metabase/
-     docker:
-       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-         environment:
-           MB_TEST_MONGO_REQUIRES_SSL: true
-       - image: metabase/qa-databases:mongo-sample-4.0
-         command: mongod --dbpath /data/db2/ --sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt
-
 ########################################################################################################################
 #                                             MAP FRAGMENTS AND CACHE KEYS                                             #
 ########################################################################################################################
@@ -515,43 +506,6 @@ workflows:
                 command: bash <(curl -s https://codecov.io/bash) -F back-end
 
           skip-when-no-change: true
-
-      - test-driver:
-          matrix:
-            parameters:
-<<<<<<< HEAD
-              version: ["mongo-4-0-ssl", "mongo-5-0-ssl"]
-=======
-              driver: ["bigquery-cloud-sdk"]
-          name: be-tests-<< matrix.driver >>-ee
-          requires:
-            - be-deps
-          driver: << matrix.driver >>
-          timeout: 30m
-
-      - test-driver:
-          name: be-google-related-drivers-classpath-test
-          requires:
-            - be-deps
-          driver: googleanalytics,bigquery-cloud-sdk
-          test-args: >-
-            :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
-                    metabase.driver.googleanalytics-test]"
-
-      - test-driver:
-          matrix:
-            parameters:
-              version: ["mongo-4-0-ssl"]
->>>>>>> 75c5f579ea (Migrate Mongo 5 ssl driver test to GitHub Actions)
-          name: be-tests-<< matrix.version >>-ee
-          description: "(<< matrix.version >>)"
-          requires:
-            - be-deps
-          e: << matrix.version >>
-          driver: mongo
-          extra-env: >-
-            MB_MONGO_TEST_USER=metabase
-            MB_MONGO_TEST_PASSWORD=metasample123
 
       - test-driver:
           name: be-tests-oracle-ee
