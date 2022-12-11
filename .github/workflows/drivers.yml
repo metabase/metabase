@@ -43,6 +43,20 @@ jobs:
       with:
         junit-name: 'be-tests-druid-ee'
 
+  be-tests-googleanalytics-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: googleanalytics
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Google Analytics driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-googleanalytics-ee'
+
   be-tests-mariadb-10-2-ee:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
