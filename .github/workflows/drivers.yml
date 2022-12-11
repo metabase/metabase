@@ -207,7 +207,17 @@ jobs:
           - "27017:27017"
     steps:
     - uses: actions/checkout@v3
-    - run: mongod --dbpath /data/db2/ --sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt
+    - run: |
+        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.crt \
+        -o ./test_resources/ssl/mongo/metabase.crt
+
+        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.key \
+        -o ./test_resources/ssl/mongo/metabase.key
+
+        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
+        -o ./test_resources/ssl/mongo/metaca.crt
+
+        mongod --dbpath /data/db2/ --sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt
     - name: Test MongoDB driver (4.0)
       uses: ./.github/actions/test-driver
       with:
@@ -251,7 +261,17 @@ jobs:
           - "27017:27017"
     steps:
     - uses: actions/checkout@v3
-    - run: mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
+    - run: |
+        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.crt \
+        -o ./test_resources/ssl/mongo/metabase.crt
+
+        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.key \
+        -o ./test_resources/ssl/mongo/metabase.key
+
+        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
+        -o ./test_resources/ssl/mongo/metaca.crt
+
+        mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
     - name: Test MongoDB driver (5.0)
       uses: ./.github/actions/test-driver
       with:
