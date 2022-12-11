@@ -315,6 +315,24 @@ jobs:
       with:
         junit-name: 'be-tests-presto-186-ee'
 
+  be-tests-redshift-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: redshift
+      MB_REDSHIFT_TEST_USER: metabase_ci
+      MB_REDSHIFT_TEST_DB: testdb
+      MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
+      MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Redshift driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-redshift-ee'
+
   be-tests-sparksql-ee:
     if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
