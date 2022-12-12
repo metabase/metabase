@@ -107,8 +107,9 @@
           (.setAccessible true))
         obj))
 
-(defn- make-h2-parser ^Parser [h2-db-id]
+(defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"
+  ^Parser [h2-db-id]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
     ;; The H2 Parser class is created from the H2 JDBC session, but these fields are not public
     (let [session (-> conn (get-field "inner") (get-field "session"))]
