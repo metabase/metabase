@@ -48,6 +48,7 @@ class ParameterSidebar extends React.Component {
     const {
       parameter,
       otherParameters,
+      remove,
       done,
       setName,
       setDefaultValue,
@@ -77,6 +78,7 @@ class ParameterSidebar extends React.Component {
               onNameChange={setName}
               onDefaultValueChange={setDefaultValue}
               onMultiSelectChange={setIsMultiSelect}
+              onRemove={remove}
             />
           ) : (
             <OtherParameterList

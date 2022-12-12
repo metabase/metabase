@@ -1,4 +1,10 @@
-import React, { FocusEvent, useCallback } from "react";
+import React, {
+  ChangeEvent,
+  FocusEvent,
+  useCallback,
+  useLayoutEffect,
+  useState,
+} from "react";
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
@@ -7,6 +13,7 @@ import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import {
   SettingLabel,
+  SettingRemoveButton,
   SettingSection,
   SettingsRoot,
   SettingValueWidget,
@@ -22,6 +29,7 @@ interface ParameterSettingsProps {
   onNameChange: (name: string) => void;
   onDefaultValueChange: (value: unknown) => void;
   onMultiSelectChange: (isMultiSelect: boolean) => void;
+  onRemove: () => void;
 }
 
 const ParameterSettings = ({
@@ -29,19 +37,13 @@ const ParameterSettings = ({
   onNameChange,
   onDefaultValueChange,
   onMultiSelectChange,
+  onRemove,
 }: ParameterSettingsProps): JSX.Element => {
-  const handleNameBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
-      onNameChange(event.target.value);
-    },
-    [onNameChange],
-  );
-
   return (
     <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
-        <Input value={parameter.name} fullWidth onBlur={handleNameBlur} />
+        <ParameterInput initialValue={parameter.name} onChange={onNameChange} />
       </SettingSection>
       <SettingSection>
         <SettingLabel>{t`Default value`}</SettingLabel>
@@ -64,7 +66,41 @@ const ParameterSettings = ({
           />
         </SettingSection>
       )}
+      <SettingRemoveButton onClick={onRemove}>{t`Remove`}</SettingRemoveButton>
     </SettingsRoot>
+  );
+};
+
+interface ParameterInputProps {
+  initialValue: string;
+  onChange: (value: string) => void;
+}
+
+const ParameterInput = ({ initialValue, onChange }: ParameterInputProps) => {
+  const [value, setValue] = useState(initialValue);
+
+  useLayoutEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
+  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setValue(event.target.value);
+  }, []);
+
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      onChange(event.target.value);
+    },
+    [onChange],
+  );
+
+  return (
+    <Input
+      value={value}
+      fullWidth
+      onChange={handleChange}
+      onBlur={handleBlur}
+    />
   );
 };
 
