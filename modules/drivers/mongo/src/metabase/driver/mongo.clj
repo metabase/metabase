@@ -248,16 +248,16 @@
   (nat-int? (compare (parse-version x) (parse-version y))))
 
 (defmethod driver/database-supports? [:mongo :expressions]
-  [_ _ db]
+  [_driver _feature db]
   (boolean (some-> (db-version db) (version-gte "4.0"))))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics]
-  [_ _ db]
+  [_driver _feature db]
   (boolean (some-> (db-version db) (version-gte "5.0"))))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
-  [_ _ db]
+  [_driver _feature db]
   (boolean (some-> (db-version db) (version-gte "4.2"))))
 
 (defmethod driver/mbql->native :mongo
