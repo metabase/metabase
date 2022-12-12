@@ -21,15 +21,17 @@ const ConvertQueryButton = ({
   onOpenModal,
 }: ConvertQueryButtonProps): JSX.Element => {
   const engineType = getEngineNativeType(question.database()?.engine);
+  const tooltip = BUTTON_TOOLTIP[engineType];
 
   const handleClick = useCallback(() => {
     onOpenModal?.(MODAL_TYPES.CONVERT_QUERY);
   }, [onOpenModal]);
 
   return (
-    <Tooltip tooltip={BUTTON_TOOLTIP[engineType]} placement="bottom">
+    <Tooltip tooltip={tooltip} placement="bottom">
       <SqlButton
         onClick={handleClick}
+        aria-label={tooltip}
         data-metabase-event="Notebook Mode; Convert to SQL Click"
       >
         <SqlIcon name="sql" />

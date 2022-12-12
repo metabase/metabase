@@ -452,3 +452,20 @@
                                  [:= $list_field "value_lf_a"]]
                    :aggregation [[:count]]
                    :breakout    [$coll.metas.group_field]}))))))))
+
+;; Make sure that simple `_` columns can be queried (#4647)
+(tx/defdataset underscore-column
+  [["bird_species"
+    [{:field-name "name", :base-type :type/Text}
+     {:field-name "_", :base-type :type/Text}]
+    [["House Finch" "sunflower seeds, ants, nettle, dandelion"]
+     ["Mourning Dove" "millet seeds, breadcrumbs, ice cream"]]]])
+
+(deftest underscore-filter-test
+  (testing "Simple `_` columns should be possible to query (#4647)"
+    (mt/test-driver :mongo
+      (mt/dataset underscore-column
+        (is (= [[1 "House Finch" "sunflower seeds, ants, nettle, dandelion"]]
+               (mt/rows
+                (mt/run-mbql-query bird_species
+                  {:filter [:contains $bird_species._ "nett"]}))))))))
