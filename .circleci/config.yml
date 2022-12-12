@@ -556,16 +556,6 @@ workflows:
           skip-when-no-change: true
 
       - test-driver:
-          matrix:
-            parameters:
-              driver: ["bigquery-cloud-sdk"]
-          name: be-tests-<< matrix.driver >>-ee
-          requires:
-            - be-deps
-          driver: << matrix.driver >>
-          timeout: 30m
-
-      - test-driver:
           name: be-google-related-drivers-classpath-test
           requires:
             - be-deps
