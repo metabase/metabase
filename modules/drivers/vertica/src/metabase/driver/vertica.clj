@@ -176,6 +176,20 @@
                    :else
                    (hx/* -1 (positive-diff y x))))
 
+      :quarter
+      (let [positive-diff
+            (fn [a b]
+              (hx/cast
+               :integer
+               (hx/floor (hx// (hx/- (datediff :month a b)
+                                     (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b))))
+                               3))))]
+        (hsql/call :case
+                   (hsql/call :<= (cast-timestamp x) (cast-timestamp y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
+
       :month
       (let [positive-diff (fn [a b]
                             (hx/-
