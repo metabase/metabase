@@ -7,9 +7,9 @@
    [clojure.java.shell :as sh]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
-   [metabase.util.i18n :refer [trs]])
+   [metabase.util.files :as u.files])
   (:import
-   (java.nio.file Files Paths)))
+   (java.nio.file Files)))
 
 ;;; Generic utils
 
@@ -51,25 +51,33 @@
 (def ^:private v1-jar-url
   "https://repo1.maven.org/maven2/com/h2database/h2/1.4.197/h2-1.4.197.jar")
 
-(def ^:private jar-path
-  "/tmp/metabase_h2-1.4.197.jar")
+(defn- tmp-path
+  [& components]
+  (str (apply u.files/get-path (System/getProperty "java.io.tmpdir") components)))
 
-(def ^:private migration-sql-path "/tmp/metabase-migrate-h2-db-v1-v2.sql")
+(def ^:private jar-path
+  (tmp-path (last (.split v1-jar-url "/"))))
+
+(def ^:private migration-sql-path
+  (tmp-path "metabase-migrate-h2-db-v1-v2.sql"))
 
 ;;; Migration logic
 
 (defn- update!
+  "Updates existing H2 v1 database to H2 v2"
   [jdbc-url]
-  (log/info "Downloading" v1-jar-url)
-  (io/copy (:body (http/get v1-jar-url {:as :stream})) (io/file jar-path))
+  (when-not (.exists (io/file jar-path))
+    (log/info "Downloading" v1-jar-url)
+    (io/copy (:body (http/get v1-jar-url {:as :stream})) (io/file jar-path)))
   (log/info "Creating v1 database backup at" migration-sql-path)
   (let [result (sh/sh "java" "-cp" jar-path "org.h2.tools.Script" "-url" jdbc-url "-script" migration-sql-path)]
     (when-not (= 0 (:exit result))
       (throw (ex-info "Dumping H2 database failed." {:result result}))))
-  (log/info "Moving old H2 database to backup location")
-  (let [base-path   (h2-base-path jdbc-url)]
-    (Files/move (Paths/get (str base-path ".mv.db") (into-array String []))
-                (Paths/get (str base-path ".v1-backup.mv.db") (into-array String []))
+  (let [base-path (h2-base-path jdbc-url)
+        backup-path (str base-path ".v1-backup.mv.db")]
+    (log/info "Moving old app database to" backup-path)
+    (Files/move (u.files/get-path (str base-path ".mv.db"))
+                (u.files/get-path backup-path)
                 (into-array java.nio.file.CopyOption [])))
   (log/info "Restoring backup into v2 database")
   (jdbc/execute! {:connection-uri jdbc-url} ["RUNSCRIPT FROM ? FROM_1X" migration-sql-path])
