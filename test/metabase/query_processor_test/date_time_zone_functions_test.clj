@@ -865,7 +865,9 @@
                                  "2022-11-02T00:00:00Z")))))      ; 2022-11-02T00:00:00Z
         (testing "hour under a quarter"
           (mt/with-temporary-setting-values [driver/report-timezone "Atlantic/Cape_Verde"]
-            (is (partial= {:month 3 :quarter 1}
+            (is (partial= (if (driver/supports? driver/*driver* :set-timezone)
+                            {:month 3 :quarter 1}
+                            {:month 2 :quarter 0})
                           (diffs "2022-10-02T00:00:00Z"          ; 2022-10-01T23:00:00-01:00
                                  "2023-01-02T00:00:00+01:00")))) ; 2023-01-01T22:00:00-01:00
           (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
