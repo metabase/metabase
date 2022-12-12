@@ -7,23 +7,31 @@ import CategoryRadioPicker from "./CategoryRadioPicker";
 
 const MAX_DISTINCT_OPTIONS_FOR_RADIO_INPUT = 7;
 
-function CategoryFieldPicker({ field, fieldInstance }: CategoryWidgetProps) {
-  const { value } = field;
-
+function CategoryFieldPicker({
+  value,
+  onChange,
+  fieldInstance,
+}: CategoryWidgetProps) {
   const distinctCount = fieldInstance.fingerprint?.global?.["distinct-count"];
 
   if (
     distinctCount != null &&
     distinctCount <= MAX_DISTINCT_OPTIONS_FOR_RADIO_INPUT
   ) {
-    return <CategoryRadioPicker field={field} fieldInstance={fieldInstance} />;
+    return (
+      <CategoryRadioPicker
+        value={value}
+        onChange={onChange}
+        fieldInstance={fieldInstance}
+      />
+    );
   }
 
   return (
     <CategoryFieldInput
       value={value}
-      field={fieldInstance}
-      onChange={field.onChange}
+      onChange={onChange}
+      fieldInstance={fieldInstance}
     />
   );
 }

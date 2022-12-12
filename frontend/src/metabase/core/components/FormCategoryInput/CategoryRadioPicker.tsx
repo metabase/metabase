@@ -40,7 +40,8 @@ const mapDispatchToProps = {
 };
 
 function CategoryRadioPicker({
-  field,
+  value,
+  onChange,
   fieldInstance,
   fieldValues = [],
   fetchFieldValues,
@@ -56,7 +57,14 @@ function CategoryRadioPicker({
     value: String(value),
   }));
 
-  return <Radio {...field} options={options} variant="bubble" />;
+  return (
+    <Radio
+      value={value}
+      onChange={onChange}
+      options={options}
+      variant="bubble"
+    />
+  );
 }
 
 export default connect<
