@@ -1,7 +1,6 @@
 (ns metabase.models.values-card
   (:require
    [clojure.string :as str]
-   [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [toucan.db :as db]
@@ -29,7 +28,7 @@
                           [:= :parameterized_object_id dashboard-id]
                           [:= :parameterized_object_type "dashboard"]
                           [:= :parameter_id param-key]]})
-       (db/do-post-select Card)
+       (db/do-post-select 'Card)
        first
        :dataset_query))
 
@@ -40,3 +39,35 @@
    (->> (qp/process-query (query-for-dashboard dashboard param-key) {:rff (constantly conj)})
         (map first)
         (filter (partial search-match? search-term)))})
+
+(defn- upsert-for-dashboard!
+  [dashboard-id parameters]
+  (doseq [{:keys [cardId id]} parameters]
+    (let [conditions {:parameterized_object_id   dashboard-id
+                      :parameterized_object_type "dashboard"
+                      :parameter_id              id}]
+      (or (db/update-where! ValuesCard conditions :card_id cardId)
+          (db/insert! ValuesCard (merge conditions {:card_id cardId}))))))
+
+(defn delete-for-dashboard!
+  "Deletes any lingering ValuesCards associated with the `dashboard` and NOT listed in the optional
+  `parameter-ids-still-in-use`"
+  ([dashboard-id]
+   (delete-for-dashboard! dashboard-id []))
+  ([dashboard-id parameter-ids-still-in-use]
+   (db/delete! ValuesCard
+     :parameterized_object_type "dashboard"
+     :parameterized_object_id   dashboard-id
+     (if (empty? parameter-ids-still-in-use)
+       {}
+       {:where [:not-in :parameter_id parameter-ids-still-in-use]}))))
+
+(defn upsert-or-delete-for-dashboard!
+  "Create, update, or delete appropriate ValuesCards for each parameter in the dashboard"
+  [{dashboard-id :id parameters :parameters :as db}]
+  (println "doing it" db)
+  (let [upsertable?           (fn [{:keys [sourceType cardId id]}] (and sourceType cardId id (= sourceType "card")))
+        upsertable-parameters (filter upsertable? parameters)]
+
+    (upsert-for-dashboard! dashboard-id upsertable-parameters)
+    (delete-for-dashboard! dashboard-id (map :id upsertable-parameters))))

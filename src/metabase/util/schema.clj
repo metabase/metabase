@@ -365,16 +365,17 @@
   "Schema for a valid Parameter.
   We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
-  (with-api-error-message {:id                              NonBlankString
-                           :type                            keyword-or-non-blank-str
-                           (s/optional-key :sourceType)     (s/enum "static-list" "card")
-                           (s/optional-key :sourceOptions)  Map
+  (with-api-error-message {:id                             NonBlankString
+                           :type                           keyword-or-non-blank-str
+                           (s/optional-key :sourceType)    (s/enum "static-list" "card")
+                           (s/optional-key :sourceOptions) Map
+                           (s/optional-key :cardId)        IntGreaterThanZero
                            ;; Allow blank name and slug #15279
-                           (s/optional-key :name)           s/Str
-                           (s/optional-key :slug)           s/Str
-                           (s/optional-key :default)        s/Any
-                           (s/optional-key :sectionId)      NonBlankString
-                           s/Keyword                        s/Any}
+                           (s/optional-key :name)          s/Str
+                           (s/optional-key :slug)          s/Str
+                           (s/optional-key :default)       s/Any
+                           (s/optional-key :sectionId)     NonBlankString
+                           s/Keyword                       s/Any}
     (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping

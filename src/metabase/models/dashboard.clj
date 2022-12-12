@@ -20,7 +20,7 @@
             [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.serialization.util :as serdes.util]
-            [metabase.models.values-card :refer [ValuesCard]]
+            [metabase.models.values-card :as values-card :refer [ValuesCard]]
             [metabase.moderation :as moderation]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
@@ -72,7 +72,9 @@
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (defn- pre-delete [dashboard]
-  (db/delete! 'Revision :model "Dashboard" :model_id (u/the-id dashboard)))
+  (let [dashboard-id (u/the-id dashboard)]
+    (values-card/delete-for-dashboard! dashboard-id)
+    (db/delete! 'Revision :model "Dashboard" :model_id dashboard-id)))
 
 (defn- pre-insert [dashboard]
   (let [defaults  {:parameters []}
@@ -81,9 +83,15 @@
       (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
 
+(defn- post-insert
+  [dashboard]
+  (u/prog1 dashboard
+    (values-card/upsert-or-delete-for-dashboard! dashboard)))
+
 (defn- pre-update [dashboard]
   (u/prog1 dashboard
     (params/assert-valid-parameters dashboard)
+    (values-card/upsert-or-delete-for-dashboard! dashboard)
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
 (defn- update-dashboard-subscription-pulses!
@@ -144,9 +152,9 @@
   [{dashboard-id :id parameters :parameters :as dashboard}]
   (assoc dashboard :parameters
          (let [param-id->card-id (card-ids-by-param-id dashboard-id)]
-           (for [{:keys [:id :sourceType] :as param} parameters]
+           (for [{:keys [id sourceType cardId] :as param} parameters]
              (if (= sourceType "card")
-               (assoc param :cardId (get param-id->card-id id))
+               (assoc param :cardId (get param-id->card-id id cardId))
                param)))))
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)
@@ -157,6 +165,7 @@
           :types       (constantly {:parameters :parameters-list, :embedding_params :json})
           :pre-delete  pre-delete
           :pre-insert  pre-insert
+          :post-insert post-insert
           :pre-update  pre-update
           :post-update post-update
           :post-select (comp populate-values-card public-settings/remove-public-uuid-if-public-sharing-is-disabled)}))
