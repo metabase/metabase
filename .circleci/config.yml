@@ -75,12 +75,6 @@ executors:
     # (see above)
     resource_class: large
 
-  vertica:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-      - image: sumitchawla/vertica
-
 ########################################################################################################################
 #                                             MAP FRAGMENTS AND CACHE KEYS                                             #
 ########################################################################################################################
@@ -576,7 +570,7 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              driver: ["bigquery-cloud-sdk", "googleanalytics", "redshift", "athena"]
+              driver: ["bigquery-cloud-sdk"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
             - be-deps
@@ -658,21 +652,3 @@ workflows:
                 command: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
                 when: always
           driver: presto-jdbc
-
-      - test-driver:
-          name: be-tests-snowflake-ee
-          requires:
-            - be-deps
-          driver: snowflake
-          timeout: 115m # whut
-
-      - test-driver:
-          name: be-tests-vertica-ee
-          requires:
-            - be-deps
-          e: vertica
-          before-steps:
-            - fetch-jdbc-driver:
-                source: VERTICA_JDBC_JAR
-                dest: vertica-jdbc-7.1.2-0.jar
-          driver: vertica
