@@ -283,12 +283,11 @@ class QueryModals extends React.Component {
       </Modal>
     ) : modal === MODAL_TYPES.PREVIEW_QUERY ? (
       <Modal fit onClose={onCloseModal}>
-        <PreviewQueryModal question={question} onClose={onCloseModal} />
+        <PreviewQueryModal onClose={onCloseModal} />
       </Modal>
     ) : modal === MODAL_TYPES.CONVERT_QUERY ? (
       <Modal fit onClose={onCloseModal}>
         <ConvertQueryModal
-          question={question}
           onUpdateQuestion={updateQuestion}
           onClose={onCloseModal}
         />
