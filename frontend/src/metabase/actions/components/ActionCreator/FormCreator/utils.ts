@@ -144,6 +144,9 @@ export const getInputType = (param: Parameter, field?: Field) => {
   if (field.isDate()) {
     return field.isDateWithoutTime() ? "date" : "datetime";
   }
+  if (field.semantic_type === TYPE.Email) {
+    return "string";
+  }
   if (
     field.semantic_type === TYPE.Description ||
     field.semantic_type === TYPE.Comment ||
