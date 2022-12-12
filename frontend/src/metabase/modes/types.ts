@@ -54,7 +54,6 @@ export type ClickActionBase = {
   icon?: string;
   buttonType: ClickActionButtonType;
   default?: boolean;
-  defaultAlways?: boolean;
   tooltip?: string;
   extra?: () => Record<string, unknown>;
 };
@@ -96,7 +95,7 @@ export type ClickAction = RegularClickAction | AlwaysDefaultClickAction;
 
 export type DrillOptions = {
   question: Question;
-  clicked: ClickObject;
+  clicked?: ClickObject;
 };
 
 export type Drill = (options: DrillOptions) => ClickAction[];
