@@ -1,32 +1,70 @@
 import React, { FocusEvent, useCallback } from "react";
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
+import Radio from "metabase/core/components/Radio";
 import { Parameter } from "metabase-types/api";
-import { SettingLabel, SettingSection } from "./ParameterSettings.styled";
+import { getIsMultiSelect } from "../../utils/dashboards";
+import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
+import {
+  SettingLabel,
+  SettingSection,
+  SettingsRoot,
+  SettingValueWidget,
+} from "./ParameterSettings.styled";
+
+const MULTI_SELECT_OPTIONS = [
+  { name: t`Multiple values`, value: true },
+  { name: t`A single value`, value: false },
+];
 
 interface ParameterSettingsProps {
   parameter: Parameter;
-  onChangeName: (name: string) => void;
+  onNameChange: (name: string) => void;
+  onDefaultValueChange: (value: unknown) => void;
+  onMultiSelectChange: (isMultiSelect: boolean) => void;
 }
 
 const ParameterSettings = ({
   parameter,
-  onChangeName,
+  onNameChange,
+  onDefaultValueChange,
+  onMultiSelectChange,
 }: ParameterSettingsProps): JSX.Element => {
   const handleNameBlur = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
-      onChangeName(event.target.value);
+      onNameChange(event.target.value);
     },
-    [onChangeName],
+    [onNameChange],
   );
 
   return (
-    <div>
+    <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
         <Input value={parameter.name} fullWidth onBlur={handleNameBlur} />
       </SettingSection>
-    </div>
+      <SettingSection>
+        <SettingLabel>{t`Default value`}</SettingLabel>
+        <SettingValueWidget
+          parameter={parameter}
+          name={parameter.name}
+          value={parameter.default}
+          placeholder={t`No default`}
+          setValue={onDefaultValueChange}
+        />
+      </SettingSection>
+      {isSingleOrMultiSelectable(parameter) && (
+        <SettingSection>
+          <SettingLabel>{t`Users can pick`}</SettingLabel>
+          <Radio
+            value={getIsMultiSelect(parameter)}
+            options={MULTI_SELECT_OPTIONS}
+            vertical
+            onChange={onMultiSelectChange}
+          />
+        </SettingSection>
+      )}
+    </SettingsRoot>
   );
 };
 
