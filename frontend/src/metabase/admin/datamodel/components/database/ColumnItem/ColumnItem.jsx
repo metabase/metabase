@@ -59,7 +59,7 @@ class Column extends Component {
               <ColumnItemInput
                 variant="primary"
                 style={{ minWidth: 420 }}
-                className="TableEditor-field-name float-left inline-block rounded text-bold"
+                className="float-left inline-block"
                 type="text"
                 value={this.props.field.display_name || ""}
                 onBlurChange={this.handleChangeName}

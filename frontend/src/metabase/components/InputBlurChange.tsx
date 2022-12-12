@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import _ from "underscore";
-import Input from "metabase/core/components/Input";
+import Input, { InputProps } from "metabase/core/components/Input";
 // import { Input } from "./InputBlurChange.styled";
 
 /**
@@ -8,19 +8,7 @@ import Input from "metabase/core/components/Input";
  * `onBlurChange` feature, otherwise you should use <input> directly
  */
 
-interface InputBlurChangeProps {
-  type?: string;
-  value: string;
-  defaultValue?: string;
-  className?: string;
-  name?: string;
-  id?: string;
-  placeholder?: string;
-  autoFocus?: boolean;
-  error?: boolean;
-  fullWidth?: boolean;
-  onFocus?: (event: React.FocusEvent<HTMLInputElement>) => void;
-  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+interface InputBlurChangeProps extends InputProps {
   onBlurChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 const InputBlurChange = ({
