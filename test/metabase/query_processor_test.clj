@@ -46,7 +46,8 @@
     (set (for [driver (normal-drivers)
                :let   [driver (tx/the-driver-with-test-extensions driver)]
                :when  (driver/with-driver driver
-                        (set/subset? features (driver.u/features driver (data/db))))]
+                        (let [db (data/db)]
+                          (every? #(driver/database-supports? driver % db) features)))]
            driver))))
 
 (alter-meta! #'normal-drivers-with-feature assoc :arglists (list (into ['&] (sort driver/driver-features))))
