@@ -1,18 +1,13 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { t } from "ttag";
-
-import EmptyState from "metabase/components/EmptyState";
-import Form from "metabase/containers/FormikForm";
-
-import { ActionsApi } from "metabase/services";
+import { ActionForm } from "metabase/actions/components/ActionForm";
 
 import {
   getSubmitButtonColor,
   getSubmitButtonLabel,
   generateFieldSettingsFromParameters,
-  getForm,
 } from "metabase/actions/components/ActionCreator/FormCreator";
-import { shouldPrefetchValues } from "metabase/actions/utils";
+import EmptyState from "metabase/components/EmptyState";
 
 import type {
   WritebackParameter,
@@ -21,7 +16,11 @@ import type {
   DataAppPage,
   ActionDashboardCard,
   ParametersForActionExecution,
+  ActionFormSettings,
 } from "metabase-types/api";
+
+import { ActionsApi } from "metabase/services";
+import { shouldPrefetchValues } from "metabase/actions/utils";
 
 import {
   setDefaultValues,
@@ -90,11 +89,6 @@ function ActionParametersInputForm({
     [action, missingParameters, dashcard],
   );
 
-  const form = useMemo(
-    () => getForm(missingParameters, fieldSettings),
-    [missingParameters, fieldSettings],
-  );
-
   const initialValues = useMemo(
     () => getInitialValues(fieldSettings, prefetchValues),
     [fieldSettings, prefetchValues],
@@ -142,11 +136,16 @@ function ActionParametersInputForm({
 
   const submitButtonLabel = getSubmitButtonLabel(action);
 
+  const formSettings: ActionFormSettings = action.visualization_settings ?? {
+    type: "button",
+    fields: fieldSettings,
+  };
+
   return (
-    <Form
-      form={form}
+    <ActionForm
+      parameters={missingParameters}
+      formSettings={formSettings}
       initialValues={initialValues}
-      overwriteOnInitialValuesChange
       onClose={onCancel}
       onSubmit={handleSubmit}
       submitTitle={submitButtonLabel}

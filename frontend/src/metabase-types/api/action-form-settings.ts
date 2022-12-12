@@ -20,7 +20,6 @@ export type InputSettingType =
 // these types get passed to the input components
 export type InputComponentType =
   | "text"
-  | "input" // this will be removed
   | "textarea"
   | "number"
   | "boolean"

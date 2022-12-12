@@ -40,5 +40,5 @@ export const FormFieldWidget = forwardRef(function FormFieldWidget(
   const Widget =
     (formField.type ? WIDGETS[formField.type] : FormInputWidget) ??
     FormInputWidget;
-  return <Widget {...formField} field={formField} ref={ref} />;
+  return <Widget {...formField} ref={ref} />;
 });

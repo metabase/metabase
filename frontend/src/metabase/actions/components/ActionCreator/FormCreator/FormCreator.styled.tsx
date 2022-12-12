@@ -13,31 +13,15 @@ export const FormCreatorWrapper = styled.div`
   overflow-y: auto;
 `;
 
-export const FormItemWrapper = styled.div`
-  border: 1px solid ${color("border")};
-  padding: ${space(2)} ${space(2)} ${space(1)} ${space(2)};
-  border-radius: ${space(1)};
-  margin-bottom: ${space(1)};
-  background-color: ${color("bg-white")};
-`;
-
 export const FieldSettingsButtonsContainer = styled.div`
-  padding-top: ${space(1)};
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: ${space(0)};
   display: flex;
   gap: ${space(1)};
   align-items: center;
   justify-content: flex-end;
-`;
-
-export const FormItemName = styled.div`
-  margin-bottom: ${space(2)};
-  margin-left: ${space(1)};
-  font-weight: bold;
-  color: ${color("text-medium")};
-`;
-
-export const Input = styled(InputBase)`
-  margin-right: ${space(1)};
 `;
 
 export const EmptyFormPlaceholderWrapper = styled.div`

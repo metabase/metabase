@@ -3,7 +3,6 @@ import React, { forwardRef } from "react";
 
 import { PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 
-import CategoryFieldPicker from "metabase/core/components/FormCategoryInput";
 import FormInfoWidget from "./widgets/FormInfoWidget";
 import FormInputWidget from "./widgets/FormInputWidget";
 import FormEmailWidget from "./widgets/FormEmailWidget";
@@ -34,14 +33,12 @@ const WIDGETS = {
   section: FormSectionWidget,
   select: FormSelectWidget,
   integer: FormNumericInputWidget,
-  number: FormNumericInputWidget,
   boolean: FormBooleanWidget,
   collection: FormCollectionWidget,
   snippetCollection: FormSnippetCollectionWidget,
   hidden: FormHiddenWidget,
   textFile: FormTextFileWidget,
   model: FormModelWidget,
-  category: CategoryFieldPicker,
 };
 
 export function getWidgetComponent(formField) {
