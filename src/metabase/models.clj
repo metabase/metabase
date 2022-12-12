@@ -41,6 +41,7 @@
             [metabase.models.timeline :as timeline]
             [metabase.models.timeline-event :as timeline-event]
             [metabase.models.user :as user]
+            [metabase.models.values-card :as values-card]
             [metabase.models.view-log :as view-log]
             [potemkin :as p]))
 
@@ -87,6 +88,7 @@
          timeline-event/keep-me
          timeline/keep-me
          user/keep-me
+         values-card/keep-me
          view-log/keep-me)
 
 (p/import-vars
@@ -135,4 +137,5 @@
  [timeline Timeline]
  [timeline-event TimelineEvent]
  [user User]
+ [values-card ValuesCard]
  [view-log ViewLog])
