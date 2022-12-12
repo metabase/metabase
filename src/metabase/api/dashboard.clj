@@ -23,7 +23,6 @@
             [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.models.params.chain-filter :as chain-filter]
-            [metabase.models.params.custom-values :as custom-values]
             [metabase.models.query :as query :refer [Query]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision :as revision]
@@ -734,8 +733,10 @@
            (api/throw-403 e)
            (throw e)))))))
 
-(defn param-values
-  [dashboard param-key query-params]
+(defn- param-values
+  ([dashboard param-key query-params]
+   (param-values dashboard param-key query-params nil))
+  ([dashboard param-key query-params query]
    (let [dashboard (hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param
@@ -744,8 +745,8 @@
                         :status-code     400})))
      (case (:sourceType param)
        "static-list" (println "TODO: Not implemented yet!!")
-       "card"        (values-card/values-for-dashboard dashboard param-key)
-       (chain-filter dashboard param-key query-params))))
+       "card"        (values-card/values-for-dashboard dashboard param-key query)
+       (chain-filter dashboard param-key query-params query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally

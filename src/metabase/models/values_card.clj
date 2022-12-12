@@ -1,5 +1,6 @@
 (ns metabase.models.values-card
   (:require
+   [clojure.string :as str]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
@@ -15,8 +16,12 @@
                         {:properties (constantly {:timestamped? true})
                          :types      (constantly {:parameterized_object_type :keyword})}))
 
+(defn- search-match?
+  [search-term filter-term]
+  (str/includes? filter-term search-term))
+
 (defn- query-for-dashboard
-  [{dashboard-id :id :as dashboard} param-key]
+  [{dashboard-id :id} param-key]
   (->> (db/query {:select [:dataset_query]
                   :from [:report_card]
                   :join [:values_card [:= :report_card.id :values_card.card_id]]
@@ -29,7 +34,9 @@
        :dataset_query))
 
 (defn values-for-dashboard
-  [dashboard param-key]
+  "Returns a map with the filter `:values` associated with the dashboard."
+  [dashboard param-key search-term]
   {:values
-   (map first
-        (qp/process-query (query-for-dashboard dashboard param-key) {:rff (constantly conj)}))})
+   (->> (qp/process-query (query-for-dashboard dashboard param-key) {:rff (constantly conj)})
+        (map first)
+        (filter (partial search-match? search-term)))})
