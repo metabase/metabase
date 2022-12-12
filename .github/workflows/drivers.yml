@@ -205,32 +205,24 @@ jobs:
         image: metabase/qa-databases:mongo-sample-4.0
         ports:
           - "27017:27017"
-        options: '--name mongo-qa'
+        options: "--entrypoint --dbpath /data/db2/ --sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt"
     steps:
-    - uses: actions/checkout@v3
-    - name: Make SSL certificates for Mongo available
-      run: |
-        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.crt \
-        -o ./test_resources/ssl/mongo/metabase.crt
+      - uses: actions/checkout@v3
+      - name: Make SSL certificates for Mongo available
+        run: |
+          curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.crt \
+          -o ./test_resources/ssl/mongo/metabase.crt
 
-        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.key \
-        -o ./test_resources/ssl/mongo/metabase.key
+          curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.key \
+          -o ./test_resources/ssl/mongo/metabase.key
 
-        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
-        -o ./test_resources/ssl/mongo/metaca.crt
+          curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
+          -o ./test_resources/ssl/mongo/metaca.crt
 
-    - name: Prepare the Docker image
-      run: |
-          docker exec -i mongo-qa bash \
-          && mongod --dbpath /data/db2/ \
-                    --sslMode requireSSL \
-                    --sslPEMKeyFile /etc/mongo/metamongo.pem \
-                    --sslCAFile /etc/mongo/metaca.crt
-
-    - name: Test MongoDB driver (4.0)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-mongo-4-0-ee'
+      - name: Test MongoDB driver (4.0)
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: 'be-tests-mongo-4-0-ee'
 
   be-tests-mongo-5-0-ee:
     if: github.event.pull_request.draft == false
