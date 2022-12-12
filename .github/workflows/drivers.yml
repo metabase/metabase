@@ -205,7 +205,7 @@ jobs:
         image: metabase/qa-databases:mongo-sample-4.0
         ports:
           - "27017:27017"
-        options: "--entrypoint mongod --dbpath /data/db2/ --sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt"
+        options: "--entrypoint 'mongod --dbpath /data/db2/ --sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt'"
     steps:
       - uses: actions/checkout@v3
       - name: Make SSL certificates for Mongo available
