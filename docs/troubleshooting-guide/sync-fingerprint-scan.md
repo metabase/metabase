@@ -47,9 +47,9 @@ LIMIT 0
 To run the sync query, Metabase must:
 
 - successfully connect to your database, and
-- be granted permissions to query that database. 
+- be [granted privileges](./data-permissions.md#granting-database-privileges) to query that database. 
 
-If the connection is failing or the database privileges are wrong, the sync query won't be able to run. If Metabase can't sync with your database after you first set it up, then the initial scan and fingerprinting queries won't run either.
+If the [connection is failing](./db-connection.md) or the database privileges are wrong, the sync query won't be able to run. If Metabase can't sync with your database after you first set it up, then the initial scan and fingerprinting queries won't run either.
 
 ## Unfolding JSON columns with Object records
 

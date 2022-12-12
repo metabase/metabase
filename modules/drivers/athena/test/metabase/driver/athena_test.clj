@@ -6,6 +6,7 @@
             [metabase.driver.athena :as athena]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]))
 
@@ -109,3 +110,25 @@
         (mt/with-native-query-testing-context query
           (is (= ["2022-11-17T12:21:00Z"]
                  (mt/first-row (qp/process-query query)))))))))
+
+(deftest hard-coded-iam-credential-handling
+  (testing "When not hosted"
+    (with-redefs [premium-features/is-hosted? (constantly false)]
+      (testing "Specifying access-key will not use credential chain"
+        (is (not (contains?
+                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
+                   :AwsCredentialsProviderClass))))
+      (testing "Not specifying access-key will use credential chain"
+        (is (contains?
+              (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
+              :AwsCredentialsProviderClass)))))
+  (testing "When hosted"
+    (with-redefs [premium-features/is-hosted? (constantly true)]
+      (testing "Specifying access-key will not use credential chain"
+        (is (not (contains?
+                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
+                   :AwsCredentialsProviderClass))))
+      (testing "Not specifying access-key will still not use credential chain"
+        (is (not (contains?
+                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
+                   :AwsCredentialsProviderClass)))))))

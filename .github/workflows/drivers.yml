@@ -22,9 +22,28 @@ on:
 
 jobs:
 
+  be-tests-athena-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: athena
+      MB_ATHENA_TEST_REGION: us-east-1
+      MB_ATHENA_TEST_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_ACCESS_KEY }}
+      MB_ATHENA_TEST_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_SECRET_KEY }}
+      MB_ATHENA_TEST_S3_STAGING_DIR: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Athena driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-athena-ee'
+
   be-tests-druid-ee:
+    if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: druid
@@ -42,9 +61,24 @@ jobs:
       with:
         junit-name: 'be-tests-druid-ee'
 
-  be-tests-mariadb-10-2-ee:
+  be-tests-googleanalytics-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: googleanalytics
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Google Analytics driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-googleanalytics-ee'
+
+  be-tests-mariadb-10-2-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -67,8 +101,9 @@ jobs:
         junit-name: 'be-tests-mariadb-10-2-ee'
 
   be-tests-mariadb-latest-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -91,8 +126,9 @@ jobs:
         junit-name: 'be-tests-mariadb-latest-ee'
 
   be-tests-mongo-4-0-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -109,8 +145,9 @@ jobs:
         junit-name: 'be-tests-mongo-4-0-ee'
 
   be-tests-mongo-5-0-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -127,8 +164,9 @@ jobs:
         junit-name: 'be-tests-mongo-5-0-ee'
 
   be-tests-mongo-latest-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -148,8 +186,9 @@ jobs:
         junit-name: 'be-tests-mongo-latest-ee'
 
   be-tests-mysql-5-7-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -171,9 +210,46 @@ jobs:
       with:
         junit-name: 'be-tests-mysql-5-7-ee'
 
-  be-tests-postgres-ee:
+  be-tests-mysql-latest-ee:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: mysql
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
+      # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
+      # they are deliberately given a different name to prevent them from affecting the regular test run against
+      # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
+      # that overrides the MB_MYSQL_TEST_* values with them
+      # the MYSQL_RDS_SSL_INSTANCE vars are defined as secrets and can be altered
+      MB_MYSQL_SSL_TEST_HOST: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_HOST }}
+      MB_MYSQL_SSL_TEST_SSL: true
+      MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS: 'verifyServerCertificate=true'
+      # the contents of the ./resources/certificates/rds-combined-ca-bundle.pem file
+      MB_MYSQL_SSL_TEST_SSL_CERT: ${{ secrets.MB_MYSQL_SSL_TEST_SSL_CERT }}
+      MB_MYSQL_SSL_TEST_USER: metabase
+      MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
+    services:
+      mysql:
+        image: circleci/mysql:latest
+        ports:
+        - "3306:3306"
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test MySQL driver (latest)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mysql-latest-ee'
+
+  be-tests-postgres-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -199,8 +275,9 @@ jobs:
         junit-name: 'be-tests-postgres-ee'
 
   be-tests-postgres-latest-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -230,8 +307,9 @@ jobs:
         junit-name: 'be-tests-postgres-latest-ee'
 
   be-tests-presto-186-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: presto
@@ -249,9 +327,48 @@ jobs:
       with:
         junit-name: 'be-tests-presto-186-ee'
 
+  be-tests-redshift-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: redshift
+      MB_REDSHIFT_TEST_USER: metabase_ci
+      MB_REDSHIFT_TEST_DB: testdb
+      MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
+      MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Redshift driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-redshift-ee'
+
+  be-tests-snowflake-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: snowflake
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Snowflake driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-snowflake-ee'
+
   be-tests-sparksql-ee:
+    if: github.event.pull_request.draft == false
     runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: sparksql
@@ -268,8 +385,9 @@ jobs:
         junit-name: 'be-tests-sparksql-ee'
 
   be-tests-sqlite-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: sqlite
@@ -281,8 +399,9 @@ jobs:
         junit-name: 'be-tests-sqlite-ee'
 
   be-tests-sqlserver-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: sqlserver
@@ -304,3 +423,26 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-ee'
+
+  be-tests-vertica-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: vertica
+    services:
+      vertica:
+        image: sumitchawla/vertica
+        ports:
+          - "5433:5433"
+    steps:
+    - uses: actions/checkout@v3
+    - name: Make plugins directory
+      run: mkdir plugins
+    - name: Fetch JDBC driver
+      run: wget --output-document=plugins/vertica-jdbc-7.1.2-0.jar ${{ secrets.VERTICA_JDBC_JAR }}
+    - name: Test Vertica driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-vertica-ee'

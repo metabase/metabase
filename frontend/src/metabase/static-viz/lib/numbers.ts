@@ -1,4 +1,3 @@
-import { merge } from "icepick";
 import { formatNumber as appFormatNumber } from "metabase/lib/formatting/numbers";
 
 export type NumberFormatOptions = {
