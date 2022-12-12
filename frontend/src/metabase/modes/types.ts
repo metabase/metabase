@@ -58,31 +58,29 @@ export type ClickActionBase = {
   extra?: () => Record<string, unknown>;
 };
 
-type ReduxClickAction = {
+type ReduxClickAction = ClickActionBase & {
   action: () => ReduxAction | Dispatcher;
 };
 
-type QuestionChangeClickAction = {
+type QuestionChangeClickAction = ClickActionBase & {
   question: () => Question;
 };
 
-type PopoverClickAction = {
+type PopoverClickAction = ClickActionBase & {
   popoverProps?: Record<string, unknown>;
   popover: (props: ClickActionPopoverProps) => JSX.Element;
 };
 
-type UrlClickAction = {
+type UrlClickAction = ClickActionBase & {
   ignoreSiteUrl?: boolean;
   url: () => string;
 };
 
-export type RegularClickActionEffect =
+type RegularClickAction =
   | ReduxClickAction
   | QuestionChangeClickAction
   | PopoverClickAction
   | UrlClickAction;
-
-type RegularClickAction = ClickActionBase & RegularClickActionEffect;
 
 type AlwaysDefaultClickAction = Omit<
   RegularClickAction,

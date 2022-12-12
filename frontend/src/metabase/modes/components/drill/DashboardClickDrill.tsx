@@ -16,7 +16,7 @@ import {
   getDashboardDrillUrl,
 } from "metabase-lib/queries/drills/dashboard-click-drill";
 
-import type { ClickObject, Drill, RegularClickActionEffect } from "../../types";
+import type { ClickAction, ClickObject, Drill } from "../../types";
 
 type DashboardDrillType =
   | "link-url"
@@ -30,7 +30,7 @@ function getAction(
   type: DashboardDrillType,
   question: Question,
   clicked: ClickObject,
-): RegularClickActionEffect {
+): Partial<ClickAction> {
   switch (type) {
     case "link-url":
       return {
