@@ -1,16 +1,16 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import type { FieldSettings, FieldType, InputType } from "metabase-types/api";
 
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
-import Icon from "metabase/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
 import { getFieldTypes, getInputTypes } from "./constants";
 import {
+  SettingsTriggerIcon,
   ToggleContainer,
   SettingsPopoverBody,
   SectionLabel,
@@ -27,7 +27,13 @@ export function FieldSettingsPopover({
   return (
     <TippyPopoverWithTrigger
       placement="bottom-end"
-      triggerContent={<Icon name="gear" size={16} />}
+      triggerContent={
+        <SettingsTriggerIcon
+          name="gear"
+          size={14}
+          tooltip={t`change field settings`}
+        />
+      }
       maxWidth={400}
       popoverContent={() => (
         <FormCreatorPopoverBody

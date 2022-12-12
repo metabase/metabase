@@ -11,7 +11,7 @@ import type { Parameter } from "metabase-types/types/Parameter";
 import type { ActionFormSettings, FieldSettings } from "metabase-types/api";
 
 import { addMissingSettings } from "metabase/entities/actions/utils";
-import { FieldSettingsPopover } from "./FieldSettingsPopover";
+
 import {
   getDefaultFormSettings,
   getDefaultFieldSettings,
@@ -19,16 +19,15 @@ import {
   sortActionParams,
   hasNewParams,
 } from "./utils";
-import { FormField } from "./FormField";
-import { OptionPopover } from "./OptionEditor";
 
+import { FormField } from "./FormField";
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
+import { FieldSettingsButtons } from "./FieldSettingsButtons";
 
 import {
   FormItemWrapper,
   FormCreatorWrapper,
   FormItemName,
-  FormSettings,
 } from "./FormCreator.styled";
 
 export function FormCreator({
@@ -146,17 +145,6 @@ function FormItem({
 }) {
   const name = param["display-name"] ?? param.name;
 
-  const updateOptions = (newOptions: (string | number)[]) => {
-    onChange({
-      ...fieldSettings,
-      valueOptions: newOptions,
-    });
-  };
-
-  const hasOptions =
-    fieldSettings.inputType === "dropdown" ||
-    fieldSettings.inputType === "radio";
-
   return (
     <FormItemWrapper>
       <FormItemName>
@@ -164,18 +152,7 @@ function FormItem({
         {!!fieldSettings.required && " *"}
       </FormItemName>
       <FormField param={param} fieldSettings={fieldSettings} />
-      <FormSettings>
-        {hasOptions && (
-          <OptionPopover
-            options={fieldSettings.valueOptions ?? []}
-            onChange={updateOptions}
-          />
-        )}
-        <FieldSettingsPopover
-          fieldSettings={fieldSettings}
-          onChange={onChange}
-        />
-      </FormSettings>
+      <FieldSettingsButtons fieldSettings={fieldSettings} onChange={onChange} />
     </FormItemWrapper>
   );
 }
