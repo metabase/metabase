@@ -61,7 +61,7 @@
 (defn- update!
   [jdbc-url]
   (log/info (trs "Downloading {0}" v1-jar-url))
-  (clojure.java.io/copy (:body (http/get v1-jar-url {:as :stream})) (io/file jar-path))
+  (io/copy (:body (http/get v1-jar-url {:as :stream})) (io/file jar-path))
   (log/info (trs "Creating v1 database backup at {0}" migration-sql-path))
   (let [result (sh/sh "java" "-cp" jar-path "org.h2.tools.Script" "-url" jdbc-url "-script" migration-sql-path)]
     (when-not (= 0 (:exit result))
