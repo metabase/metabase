@@ -19,22 +19,30 @@ RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build
 ## jar from the previous stage rather than the local build
 ## we're not yet there to provide an ARM runner till https://github.com/adoptium/adoptium/issues/96 is ready
 
-FROM --platform=linux/amd64 eclipse-temurin:11-jre-alpine as runner
+FROM --platform=$TARGETPLATFORM eclipse-temurin:11-jre-focal
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+ARG BUILDARCH
+ARG TARGETARCH
 
 ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk add -U bash ttf-dejavu fontconfig curl java-cacerts && \
-    apk upgrade && \
-    rm -rf /var/cache/apk/* && \
+RUN apt-get update -yq && apt-get install -yq bash ttf-dejavu fontconfig curl openjdk-11-jre-headless && \
+    apt-get clean && \
+    rm -rf /var/lib/{apt,dpkg,cache,log}/ && \
     mkdir -p /app/certs && \
     curl https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem -o /app/certs/rds-combined-ca-bundle.pem  && \
     /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias aws-rds -file /app/certs/rds-combined-ca-bundle.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \
     curl https://cacerts.digicert.com/DigiCertGlobalRootG2.crt.pem -o /app/certs/DigiCertGlobalRootG2.crt.pem  && \
     /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias azure-cert -file /app/certs/DigiCertGlobalRootG2.crt.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \
-    mkdir -p /plugins && chmod a+rwx /plugins
+    mkdir -p /plugins && chmod a+rwx /plugins && \
+    useradd --shell /bin/bash metabase
 
-# add Metabase script and uberjar
+USER metabase
+WORKDIR /app
+
+# copy app from the offical image
 COPY --from=builder /home/circleci/target/uberjar/metabase.jar /app/
 COPY bin/docker/run_metabase.sh /app/
 
