@@ -111,9 +111,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-googleanalytics-ee'
-        test-args: >-
-          ':only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
-                   metabase.driver.googleanalytics-test]"'
+        test-args: ':only "[metabase.query-processor-test.expressions-test metabase.driver.google-test metabase.driver.googleanalytics-test]"'
 
   be-tests-mariadb-10-2-ee:
     if: github.event.pull_request.draft == false
