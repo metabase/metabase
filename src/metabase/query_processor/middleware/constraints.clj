@@ -4,7 +4,7 @@
   (:require [metabase.models.setting :as setting]
             [metabase.util.i18n :refer [deferred-tru]]))
 
-(def ^:private ^:const default-max-results-bare-rows 2000)
+(def ^:private ^:const default-max-results-bare-rows 10000)
 
 ;; NOTE: this was changed from a hardcoded var with value of 2000 (now moved to [[default-max-results-bare-rows]])
 ;; to a setting in 0.43 the setting, which allows for DB local value, can still be nil, so any places below that used
