@@ -13,13 +13,10 @@ import {
 
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
-import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import { getIsMultiSelect } from "metabase/parameters/utils/dashboards";
+import ParameterSettings from "./ParameterSettings";
 
 const LINKED_FILTER = "linked-filters";
 const TABS = [
@@ -51,7 +48,6 @@ class ParameterSidebar extends React.Component {
     const {
       parameter,
       otherParameters,
-      remove,
       done,
       setName,
       setDefaultValue,
@@ -76,48 +72,12 @@ class ParameterSidebar extends React.Component {
         </div>
         <div className="px2">
           {currentTab === "settings" ? (
-            <div className="px2">
-              <div className="py2">
-                <label className="mt2 mb1 block text-bold">{t`Label`}</label>
-                <InputBlurChange
-                  className="input block full"
-                  value={parameter.name}
-                  onBlurChange={e => setName(e.target.value)}
-                />
-              </div>
-              <label className="mt2 mb1 block text-bold">{t`Default value`}</label>
-              <div className="pb2">
-                <ParameterValueWidget
-                  parameter={parameter}
-                  name={parameter.name}
-                  value={parameter.default}
-                  setValue={setDefaultValue}
-                  placeholder={t`No default`}
-                  className="input bg-white"
-                />
-              </div>
-              {isSingleOrMultiSelectable(parameter) && (
-                <div className="pb2">
-                  <label className="mt2 mb1 block text-bold">{t`Users can pick`}</label>
-                  <Radio
-                    value={getIsMultiSelect(parameter)}
-                    onChange={setIsMultiSelect}
-                    options={[
-                      { name: t`Multiple values`, value: true },
-                      { name: t`A single value`, value: false },
-                    ]}
-                    vertical
-                  />
-                </div>
-              )}
-              <a
-                borderless
-                className="mt2 block text-medium text-error-hover text-bold"
-                onClick={remove}
-              >
-                {t`Remove`}
-              </a>
-            </div>
+            <ParameterSettings
+              parameter={parameter}
+              onNameChange={setName}
+              onDefaultValueChange={setDefaultValue}
+              onMultiSelectChange={setIsMultiSelect}
+            />
           ) : (
             <OtherParameterList
               showAddParameterPopover={this.props.showAddParameterPopover}
