@@ -137,7 +137,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
-  it("should be possible to update/change label for an empty row value (metabase#12128)", () => {
+  it.only("should be possible to update/change label for an empty row value (metabase#12128)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",
@@ -167,7 +167,7 @@ describe("scenarios > visualizations > line chart", () => {
     // Now do the same for the input with no value
     openSeriesSettings("Unknown", true);
     popover().within(() => {
-      cy.get("input[type=text]").type("cat2").blur();
+      cy.findAllByTestId("series-name-input").type("cat2").blur();
       cy.findByDisplayValue("cat2");
     });
     cy.button("Done").click();

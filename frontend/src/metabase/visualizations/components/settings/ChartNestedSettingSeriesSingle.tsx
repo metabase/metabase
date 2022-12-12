@@ -37,6 +37,7 @@ const ChartNestedSettingsSeriesSingle = ({
         <InputBlurChange
           className="flex-full ml1 align-self-stretch"
           value={computedSettings.title}
+          data-testid="series-name-input"
           onBlurChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             onChangeObjectSettings(object, { title: e.target.value })
           }

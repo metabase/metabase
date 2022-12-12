@@ -47,7 +47,7 @@ export default class ChartNestedSettingSeriesMultiple extends React.Component {
                     }
                   />
                   <InputBlurChange
-                    className="input flex-full ml1 align-self-stretch"
+                    className="flex-full ml1 align-self-stretch"
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
                     size={1}
