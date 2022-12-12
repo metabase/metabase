@@ -20,10 +20,16 @@ export const ModalHeader = styled.div`
   margin-bottom: 1.5rem;
 `;
 
-export const ModalBody = styled.div`
+interface ModalBodyProps {
+  isCentered?: boolean;
+}
+
+export const ModalBody = styled.div<ModalBodyProps>`
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  justify-content: ${props => props.isCentered && "center"};
+  align-items: ${props => props.isCentered && "center"};
   min-height: 0;
 `;
 

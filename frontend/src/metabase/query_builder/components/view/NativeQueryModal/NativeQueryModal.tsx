@@ -43,7 +43,7 @@ const NativeQueryModal = ({
         </ModalCloseButton>
       </ModalHeader>
       {error && <ModalDivider />}
-      <ModalBody>
+      <ModalBody isCentered={isLoading}>
         {isLoading ? (
           <ModalLoadingSpinner />
         ) : error ? (

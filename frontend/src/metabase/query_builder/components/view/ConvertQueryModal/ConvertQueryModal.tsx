@@ -1,7 +1,14 @@
 import React, { useCallback } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import { getEngineNativeType } from "metabase/lib/engine";
 import Button from "metabase/core/components/Button";
+import {
+  getNativeQueryFn,
+  getQuestion,
+} from "metabase/query_builder/selectors";
+import { NativeQueryForm } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
 
@@ -21,17 +28,19 @@ interface UpdateQuestionOpts {
 
 interface ConvertQueryModalProps {
   question: Question;
+  onLoadQuery: () => Promise<NativeQueryForm>;
   onUpdateQuestion?: (question: Question, opts?: UpdateQuestionOpts) => void;
   onClose?: () => void;
 }
 
 const ConvertQueryModal = ({
   question,
+  onLoadQuery,
   onUpdateQuestion,
   onClose,
 }: ConvertQueryModalProps): JSX.Element => {
   const engineType = getEngineNativeType(question.database()?.engine);
-  const { query, error, isLoading } = useNativeQuery(question);
+  const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
 
   const handleConvertClick = useCallback(() => {
     if (!query) {
@@ -65,4 +74,9 @@ const ConvertQueryModal = ({
   );
 };
 
-export default ConvertQueryModal;
+const mapStateToProps = (state: State) => ({
+  question: getQuestion(state),
+  onLoadQuery: getNativeQueryFn(state),
+});
+
+export default connect(mapStateToProps)(ConvertQueryModal);

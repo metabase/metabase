@@ -52,7 +52,7 @@ jobs:
         java-package: jre
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       name: Retrieve previously downloaded Uberjar
       with:
         name: metabase-uberjar-${{ github.ref_name }}
