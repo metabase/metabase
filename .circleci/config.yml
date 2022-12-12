@@ -570,7 +570,7 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              driver: ["bigquery-cloud-sdk", "googleanalytics", "redshift", "athena"]
+              driver: ["bigquery-cloud-sdk"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
             - be-deps
