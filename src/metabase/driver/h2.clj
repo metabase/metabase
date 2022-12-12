@@ -90,25 +90,30 @@
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
-           (when (= (keyword query-type) :native)
-             (let [{:keys [details]} (qp.store/database)
-                   user              (db-details->user details)]
-               (when (or (str/blank? user)
-                         (= user "sa"))        ; "sa" is the default USER
-                 (throw
-                  (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
-                           {:type qp.error-type/db})))))))
+    (when (= (keyword query-type) :native)
+      (let [{:keys [details]} (qp.store/database)
+            user              (db-details->user details)]
+        (when (or (str/blank? user)
+                  (= user "sa"))        ; "sa" is the default USER
+          (throw
+           (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
+                    {:type qp.error-type/db})))))))
 
 (defn- get-field
-  "Returns value of private field"
+  "Returns value of private field. This function is used to bypass field protection to instantiate
+   a low-level H2 Parser object in order to detect DDL statements in queries."
   [obj field]
   (.get (doto (.getDeclaredField (class obj) field)
           (.setAccessible true))
         obj))
 
 (defn- make-h2-parser ^Parser [h2-db-id]
+  "Returns an H2 Parser object for the given (H2) database ID"
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
+    ;; The H2 Parser class is created from the H2 JDBC session, but these fields are not public
     (let [session (-> conn (get-field "inner") (get-field "session"))]
+      ;; Only SessionLocal represents a connection we can create a parser with. Remote sessions and other
+      ;; session types are ignored.
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
@@ -122,13 +127,12 @@
         ;; Command types are organized with all DDL commands listed first
         ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
         (< command-type CommandInterface/ALTER_SEQUENCE))
-        ;; if the query is invalid, then it isn't DDL
+      ;; if the query is invalid, then it isn't DDL
       (catch Throwable _ false))))
 
 (defn- check-disallow-ddl-commands [{:keys [database] {:keys [query]} :native}]
-  (when query
-    (when (contains-ddl? database query)
-      (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2.")))))
+  (when (and query (contains-ddl? database query))
+    (throw (IllegalArgumentException. "DDL commands are not allowed to be used with h2."))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]

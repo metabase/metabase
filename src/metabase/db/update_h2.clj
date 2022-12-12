@@ -60,21 +60,20 @@
 
 (defn- update!
   [jdbc-url]
-  (log/info (trs "Downloading {0}" v1-jar-url))
+  (log/info "Downloading" v1-jar-url)
   (io/copy (:body (http/get v1-jar-url {:as :stream})) (io/file jar-path))
-  (log/info (trs "Creating v1 database backup at {0}" migration-sql-path))
+  (log/info "Creating v1 database backup at" migration-sql-path)
   (let [result (sh/sh "java" "-cp" jar-path "org.h2.tools.Script" "-url" jdbc-url "-script" migration-sql-path)]
     (when-not (= 0 (:exit result))
-      (log/error "Dumping H2 database failed:" (:out result))
-      (throw (RuntimeException. "Dumping H2 database failed!"))))
-  (log/info (trs "Moving old H2 database to backup location"))
+      (throw (ex-info "Dumping H2 database failed." {:result result}))))
+  (log/info "Moving old H2 database to backup location")
   (let [base-path   (h2-base-path jdbc-url)]
     (Files/move (Paths/get (str base-path ".mv.db") (into-array String []))
                 (Paths/get (str base-path ".v1-backup.mv.db") (into-array String []))
                 (into-array java.nio.file.CopyOption [])))
-  (log/info (trs "Restoring backup into v2 database"))
+  (log/info "Restoring backup into v2 database")
   (jdbc/execute! {:connection-uri jdbc-url} ["RUNSCRIPT FROM ? FROM_1X" migration-sql-path])
-  (log/info (trs "Backup restored into H2 v2 database. Update complete!")))
+  (log/info "Backup restored into H2 v2 database. Update complete!"))
 
 (def ^:private h2-lock (Object.))
 
@@ -84,9 +83,9 @@
   [jdbc-url]
   (locking h2-lock
     (when (= 1 (db-version jdbc-url))
-      (log/info (trs "H2 v1 database detected, updating..."))
+      (log/info "H2 v1 database detected, updating...")
       (try
         (update! jdbc-url)
         (catch Exception e
-          (log/error (trs "Failed to update H2 database:") e)
+          (log/error "Failed to update H2 database:" e)
           (throw e))))))
