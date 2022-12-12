@@ -373,16 +373,15 @@
   (or (not *enforce-setting-access-checks*)
       (nil? api/*current-user-id*)
       api/*is-superuser?*
-      (not= (:visibility setting) :admin)
-      #_(and
-         ;; Non-admin setting managers can only access settings that are not marked as admin-only
-         (not api/*is-superuser?*)
-         (has-advanced-setting-access?)
-         (not= (:visibility setting) :admin))
-      #_(and
-         ;; Non-admins can only access user-local settings not marked as admin-only
-         (allows-user-local-values? setting)
-         (not= (:visibility setting) :admin))))
+      (and
+       ;; Non-admin setting managers can only access settings that are not marked as admin-only
+       (not api/*is-superuser?*)
+       (has-advanced-setting-access?)
+       (not= (:visibility setting) :admin))
+      (and
+       ;; Non-admins can only access user-local settings not marked as admin-only
+       (allows-user-local-values? setting)
+       (not= (:visibility setting) :admin))))
 
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
