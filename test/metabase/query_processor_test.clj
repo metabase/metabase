@@ -8,7 +8,6 @@
             [medley.core :as m]
             [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
