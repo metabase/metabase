@@ -13195,7 +13195,7 @@ databaseChangeLog:
       changes:
         - addUniqueConstraint:
             tableName: values_card
-            columnNames: parameterized_object_id, parameterized_object_type, parameter_id, card_id
+            columnNames: parameterized_object_id, parameterized_object_type, parameter_id
             constraintName: unique_parameterized_object_card_parameter
 
   - changeSet:
@@ -13221,6 +13221,19 @@ databaseChangeLog:
               - column:
                   name: card_id
             indexName: idx_values_card_card_id
+
+  - changeSet:
+      id: v46.00-035
+      author: tsmacdonald
+      comment: Added 0.46.0 - values_card.card_id foreign key
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: values_card
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_values_card_ref_card_id
+            onDelete: CASCADE
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
