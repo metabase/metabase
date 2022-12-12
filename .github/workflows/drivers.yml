@@ -95,6 +95,26 @@ jobs:
       with:
         junit-name: 'be-tests-googleanalytics-ee'
 
+  be-tests-google-related-classpath-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        driver: ['googleanalytics', 'bigquery-cloud-sdk']
+    env:
+      CI: 'true'
+      DRIVERS: ${{ matrix.driver }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test Google Related Classpath drivers
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-googleanalytics-ee'
+        test-args: >-
+          ':only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
+                   metabase.driver.googleanalytics-test]"'
+
   be-tests-mariadb-10-2-ee:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
