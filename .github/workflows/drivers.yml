@@ -352,6 +352,7 @@ jobs:
         junit-name: 'be-tests-redshift-ee'
 
   be-tests-snowflake-ee:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
     timeout-minutes: 120
     env:
