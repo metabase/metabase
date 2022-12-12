@@ -570,25 +570,6 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              driver: ["bigquery-cloud-sdk"]
-          name: be-tests-<< matrix.driver >>-ee
-          requires:
-            - be-deps
-          driver: << matrix.driver >>
-          timeout: 30m
-
-      - test-driver:
-          name: be-google-related-drivers-classpath-test
-          requires:
-            - be-deps
-          driver: googleanalytics,bigquery-cloud-sdk
-          test-args: >-
-            :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
-                    metabase.driver.googleanalytics-test]"
-
-      - test-driver:
-          matrix:
-            parameters:
               version: ["mongo-4-0-ssl", "mongo-5-0-ssl"]
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
