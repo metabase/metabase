@@ -9,10 +9,10 @@ import { getUser } from "metabase/selectors/user";
 
 import type { Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type Table from "metabase-lib/lib/metadata/Table";
-import type Schema from "metabase-lib/lib/metadata/Schema";
+import type Table from "metabase-lib/metadata/Table";
+import type Schema from "metabase-lib/metadata/Schema";
 
-import { getCollectionVirtualSchemaId } from "metabase-lib/lib/metadata/utils/saved-questions";
+import { getCollectionVirtualSchemaId } from "metabase-lib/metadata/utils/saved-questions";
 
 import type {
   DataPickerProps,

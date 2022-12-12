@@ -5,9 +5,9 @@ import SelectList from "metabase/components/SelectList";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Table from "metabase-lib/lib/metadata/Table";
-import type Schema from "metabase-lib/lib/metadata/Schema";
+import type Database from "metabase-lib/metadata/Database";
+import type Table from "metabase-lib/metadata/Table";
+import type Schema from "metabase-lib/metadata/Schema";
 
 import type { DataPickerSelectedItem } from "../types";
 

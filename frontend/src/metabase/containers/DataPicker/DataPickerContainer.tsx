@@ -2,8 +2,8 @@ import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
+import { getHasDataAccess } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
-import { getHasDataAccess } from "metabase/new_query/selectors";
 
 import { useOnMount } from "metabase/hooks/use-on-mount";
 
@@ -15,7 +15,7 @@ import type { State } from "metabase-types/store";
 import {
   getRootCollectionVirtualSchemaId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
-} from "metabase-lib/lib/metadata/utils/saved-questions";
+} from "metabase-lib/metadata/utils/saved-questions";
 
 import type {
   DataPickerProps as DataPickerOwnProps,
