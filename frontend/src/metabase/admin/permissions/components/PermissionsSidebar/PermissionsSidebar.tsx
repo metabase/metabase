@@ -1,11 +1,11 @@
 import React from "react";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   PermissionsSidebarContent,
   PermissionsSidebarContentProps,
 } from "./PermissionsSidebarContent";
 import { SidebarRoot } from "./PermissionsSidebar.styled";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 interface PermissionsSidebar extends PermissionsSidebarContentProps {
   isLoading?: boolean;

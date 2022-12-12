@@ -6,7 +6,7 @@ import {
   addMySQLDatabase,
 } from "__support__/e2e/helpers";
 
-describe("qa databases snapshots", () => {
+describe("qa databases snapshots", { tags: "@external" }, () => {
   beforeEach(() => {
     restoreAndAuthenticate();
   });

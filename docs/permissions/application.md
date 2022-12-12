@@ -12,10 +12,6 @@ Application settings are useful for granting groups access to some, but not all,
 
 To set application permissions, got to the top right of the screen and click on the **gear** icon > **Admin settings** > **Permissions** > **Application**.
 
-- [Settings access](#settings-access)
-- [Monitoring access](#monitoring-access)
-- [Subscriptions and alerts](#subscriptions-and-alerts)
-
 ## Settings access
 
 Settings access defines which groups can view and edit the settings under the Admin > Settings tab. These settings include:
@@ -26,17 +22,17 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Authentication](../people-and-groups/start.md)
 - [Maps](../configuring-metabase/custom-maps.md)
 - [Localization](../configuring-metabase/localization.md)
-- [Public sharing](../embedding/public-links.md)
+- [Appearance](../configuring-metabase/appearance.md)
+- [Public sharing](../questions/sharing/public-links.md)
 - [Embedding in other applications](../embedding/start.md)
 - [Caching](../configuring-metabase/caching.md)
-- [White labeling](../embedding/whitelabeling.md)
 
 ## Monitoring access
 
 Monitoring access sets permissions on the following Admin tabs:
 
-- [Tools](../enterprise-guide/tools.md)
-- [Auditing](../enterprise-guide/audit.md)
+- [Tools](../usage-and-performance-tools/tools.md)
+- [Auditing](../usage-and-performance-tools/audit.md)
 - [Troubleshooting](../troubleshooting-guide/index.md)
 
 ## Subscriptions and alerts

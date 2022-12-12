@@ -74,15 +74,16 @@ function addAbbreviatedLocale() {
   moment.locale(initialLocale);
 }
 
-export function checkIfTimeSpanTooGreat(
-  amount: DurationInputArg1,
-  key: DurationInputArg2,
-) {
+export function isValidTimeInterval(interval: number, unit: DurationInputArg2) {
+  if (!interval) {
+    return false;
+  }
+
   const now = moment();
-  const newTime = moment().add(amount, key);
+  const newTime = moment().add(interval, unit);
   const diff = now.diff(newTime, "years");
 
-  return Number.isNaN(diff);
+  return !Number.isNaN(diff);
 }
 
 export function formatFrame(frame: "first" | "last" | "mid") {

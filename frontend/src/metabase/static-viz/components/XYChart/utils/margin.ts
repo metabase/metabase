@@ -2,7 +2,7 @@ import { measureTextHeight } from "metabase/static-viz/lib/text";
 import { CHART_PADDING } from "metabase/static-viz/components/XYChart/constants";
 import { ChartSettings } from "metabase/static-viz/components/XYChart/types";
 
-export const LABEL_OFFSET = 10;
+export const LABEL_OFFSET = 12;
 export const MARGIN = 6;
 
 const calculateSideMargin = (
@@ -27,12 +27,12 @@ export const calculateMargin = (
   xTickWidth: number,
   labels: ChartSettings["labels"],
   labelFontSize: number,
-  hasMargin?: boolean,
+  hasTopMargin?: boolean,
 ) => {
   const minHorizontalMargin = xTickWidth / 2;
 
   return {
-    top: hasMargin ? MARGIN + CHART_PADDING : CHART_PADDING,
+    top: hasTopMargin ? MARGIN + CHART_PADDING : CHART_PADDING,
     left: calculateSideMargin(
       leftYTickWidth,
       labelFontSize,

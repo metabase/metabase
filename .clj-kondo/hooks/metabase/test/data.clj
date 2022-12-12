@@ -83,7 +83,7 @@
            (> (count (str symb)) 1)
            (not (re-find #"^%\d+" (str symb)))))))
 
-(defn- replace-$id-special-tokens
+(defn replace-$id-special-tokens
   "Impl for [[$ids]] and [[mbql-query]]. Walk `form` and look for special tokens like `$field` and replace them with
   strings so we don't get unresolved symbol errors. Preserves metadata."
   [form]

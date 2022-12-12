@@ -11,8 +11,8 @@ import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import AggregationPopover from "../AggregationPopover";
 import BreakoutPopover from "../BreakoutPopover";
@@ -60,6 +60,10 @@ class View extends React.Component {
     ...DEFAULT_POPOVER_STATE,
   };
 
+  onUpdateQuery = (query, options = { run: true }) => {
+    this.props.updateQuestion(query.question(), options);
+  };
+
   handleAddSeries = e => {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
@@ -77,7 +81,7 @@ class View extends React.Component {
 
   handleRemoveSeries = (e, index) => {
     const { query } = this.props;
-    query.removeAggregation(index).update(null, { run: true });
+    this.onUpdateQuery(query.removeAggregation(index));
   };
 
   handleEditBreakout = (e, index) => {
@@ -98,11 +102,11 @@ class View extends React.Component {
     const { query } = this.props;
     const { aggregationIndex } = this.state;
     if (aggregationIndex != null) {
-      query
-        .updateAggregation(aggregationIndex, aggregation)
-        .update(null, { run: true });
+      this.onUpdateQuery(
+        query.updateAggregation(aggregationIndex, aggregation),
+      );
     } else {
-      query.aggregate(aggregation).update(null, { run: true });
+      this.onUpdateQuery(query.aggregate(aggregation));
     }
     this.handleClosePopover();
   };
@@ -111,9 +115,9 @@ class View extends React.Component {
     const { query } = this.props;
     const { breakoutIndex } = this.state;
     if (breakoutIndex != null) {
-      query.updateBreakout(breakoutIndex, breakout).update(null, { run: true });
+      this.onUpdateQuery(query.updateBreakout(breakoutIndex, breakout));
     } else {
-      query.breakout(breakout).update(null, { run: true });
+      this.onUpdateQuery(query.breakout(breakout));
     }
     this.handleClosePopover();
   };
@@ -148,6 +152,7 @@ class View extends React.Component {
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
       runQuestionQuery,
+      updateQuestion,
       visibleTimelineIds,
       selectedTimelineEventIds,
       xDomain,
@@ -170,6 +175,7 @@ class View extends React.Component {
           onClose={onCloseSummary}
           isResultDirty={isResultDirty}
           runQuestionQuery={runQuestionQuery}
+          updateQuestion={updateQuestion}
         />
       );
     }
@@ -428,6 +434,7 @@ class View extends React.Component {
       onConfirmToast,
       isShowingToaster,
       isHeaderVisible,
+      updateQuestion,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
@@ -441,7 +448,13 @@ class View extends React.Component {
       isStructured && !query.sourceTableId() && !query.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
-      return <NewQuestionView query={query} className="full-height" />;
+      return (
+        <NewQuestionView
+          query={query}
+          updateQuestion={updateQuestion}
+          className="full-height"
+        />
+      );
     }
 
     if (card.dataset && queryBuilderMode === "dataset") {

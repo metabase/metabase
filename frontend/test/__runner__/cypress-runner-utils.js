@@ -1,5 +1,5 @@
-const chalk = require("chalk");
 const { exec } = require("child_process");
+const chalk = require("chalk");
 
 function printBold(message) {
   console.log(chalk.bold(message));

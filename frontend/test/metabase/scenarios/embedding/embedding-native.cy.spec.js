@@ -250,7 +250,7 @@ function enableSharing() {
   cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
   cy.icon("share").click();
-  cy.findByText("Embed this question in an application").click();
+  cy.findByText("Embed in your application").click();
   cy.wait("@sessionProperties");
 }
 

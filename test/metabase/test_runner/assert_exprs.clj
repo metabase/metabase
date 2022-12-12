@@ -1,10 +1,12 @@
 (ns metabase.test-runner.assert-exprs
   "Custom implementations of [[clojure.test/is]] expressions (i.e., implementations of [[clojure.test/assert-expr]]).
-  `re=`, `schema=`, `query=`, `sql=`, and more."
-  (:require [clojure.data :as data]
-            [clojure.test :as t]
-            [clojure.walk :as walk]
-            [schema.core :as s]))
+  `re=`, `schema=`, `query=`, `sql=`, `=?`, and more."
+  (:require
+   [clojure.data :as data]
+   [clojure.test :as t]
+   [clojure.walk :as walk]
+   [metabase.test-runner.assert-exprs.approximately-equal :as approximately-equal]
+   [schema.core :as s]))
 
 (defmethod t/assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
@@ -147,3 +149,22 @@
       (fn []
         (t/do-report
          (sql=-report ~message ~expected query#))))))
+
+(defn =?-report
+  [message multifn expected actual]
+  (let [diff (if multifn
+               (approximately-equal/=?-diff* multifn expected actual)
+               (approximately-equal/=?-diff* expected actual))]
+    {:type     (if (not diff) :pass :fail)
+     :message  message
+     :expected expected
+     :actual   actual
+     :diffs    [[actual [diff nil]]]}))
+
+(defmethod t/assert-expr '=?
+  [message [_ & form]]
+  (let [[multifn expected actual] (case (count form)
+                                    2 (cons nil form)
+                                    3 form
+                                    (throw (ex-info "=? expects either 2 or 3 arguments" {:form form})))]
+    `(t/do-report (=?-report ~message ~multifn ~expected ~actual))))

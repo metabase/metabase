@@ -1,6 +1,6 @@
 import React from "react";
-import AuthButton from "./AuthButton";
 import { render, screen } from "@testing-library/react";
+import AuthButton from "./AuthButton";
 
 describe("AuthButton", () => {
   it("should render a card", () => {

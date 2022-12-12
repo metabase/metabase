@@ -6,16 +6,10 @@ import { Group } from "@visx/group";
 import { assoc } from "icepick";
 
 import { formatNumber } from "metabase/static-viz/lib/numbers";
-import {
-  Series,
-  ChartSettings,
-  ChartStyle,
-  HydratedSeries,
-} from "metabase/static-viz/components/XYChart/types";
 import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
 import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
 import { AreaSeries } from "metabase/static-viz/components/XYChart/shapes/AreaSeries";
-import { Legend } from "metabase/static-viz/components/XYChart/Legend";
+import { Legend } from "metabase/static-viz/components/Legend";
 import {
   CHART_PADDING,
   LABEL_PADDING,
@@ -32,11 +26,20 @@ import {
   calculateBounds,
   calculateYDomains,
   sortSeries,
-  getLegendColumns,
   calculateStackedItems,
-  getValueStep,
+  fixTimeseriesTicksExceedXTickCount,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
+import { measureText } from "metabase/static-viz/lib/text";
+
+import type {
+  Series,
+  ChartSettings,
+  ChartStyle,
+  HydratedSeries,
+} from "metabase/static-viz/components/XYChart/types";
+import Values from "../Values";
+import { calculateLegendRows } from "../Legend/utils";
 
 export interface XYChartProps {
   width: number;
@@ -74,15 +77,18 @@ export const XYChart = ({
 
   const yLabelOffsetLeft = yTickWidths.left + LABEL_PADDING;
   const yLabelOffsetRight = LABEL_PADDING;
+  const xTickVerticalMargins = style.axes.labels.fontSize * 2;
+
+  const showValues = settings.visualization_settings["graph.show_values"];
 
   const margin = calculateMargin(
     yTickWidths.left,
     yTickWidths.right,
-    xTicksDimensions.height,
+    xTicksDimensions.height + xTickVerticalMargins,
     xTicksDimensions.width,
     settings.labels,
     style.axes.ticks.fontSize,
-    !!settings.goal || !!settings.show_values,
+    !!settings.goal || showValues,
   );
 
   const { xMin, xMax, yMin, innerHeight, innerWidth } = calculateBounds(
@@ -90,8 +96,18 @@ export const XYChart = ({
     width,
     height,
   );
-
-  const xScale = createXScale(series, [0, innerWidth], settings.x.type);
+  const VALUE_CHAR_SIZE = measureText("0", style.value?.fontSize as number);
+  const valuesLeftOffset = getValuesLeftOffset(
+    settings,
+    series,
+    VALUE_CHAR_SIZE,
+  );
+  const calculatedInnerWidth = innerWidth - valuesLeftOffset;
+  const xScale = createXScale(
+    series,
+    [0, calculatedInnerWidth],
+    settings.x.type,
+  );
   const { yScaleLeft, yScaleRight } = createYScales(
     [innerHeight, 0],
     settings.y.type,
@@ -105,16 +121,23 @@ export const XYChart = ({
 
   const defaultYScale = yScaleLeft || yScaleRight;
 
-  const { leftColumn, rightColumn } = getLegendColumns(series);
+  const legendRows = calculateLegendRows(
+    series.map(series => ({ name: series.name, color: series.color })),
+    width - CHART_PADDING * 2,
+    style.legend.lineHeight,
+    style.legend.fontSize,
+    style.legend.fontWeight,
+  );
+
   const legendHeight =
-    Math.max(leftColumn.length, rightColumn.length) * style.legend.lineHeight;
+    legendRows != null ? legendRows.height + CHART_PADDING : 0;
 
   const xTickWidthLimit = getXTickWidthLimit(
     settings.x,
     xTicksDimensions.maxTextWidth,
     xScale.bandwidth,
   );
-  const xTicksCount = settings.x.type === "ordinal" ? Infinity : 4;
+  const xTickCount = settings.x.type === "ordinal" ? Infinity : 4;
 
   const labelProps: Partial<TextProps> = {
     fontWeight: style.axes.labels.fontWeight,
@@ -135,181 +158,174 @@ export const XYChart = ({
     fontSize: style.value?.fontSize,
     fontFamily: style.fontFamily,
     fontWeight: style.value?.fontWeight,
-    fill: style.value?.color,
     letterSpacing: 0.5,
+    fill: style.value?.color,
+    stroke: style.value?.stroke,
+    strokeWidth: style.value?.strokeWidth,
   };
 
-  const areXTicksRotated = settings.x.tick_display === "rotate-45";
+  const areXTicksRotated = settings.x.tick_display === "rotate-90";
   const areXTicksHidden = settings.x.tick_display === "hide";
   const xLabelOffset = areXTicksHidden ? -style.axes.ticks.fontSize : undefined;
 
-  // Use the same logic as in https://github.com/metabase/metabase/blob/1276595f073883853fed219ac185d0293ced01b8/frontend/src/metabase/visualizations/lib/chart_values.js#L178-L179
-  // TODO: set compact per series
-  const getAvgLength = (compact: boolean) => {
-    const lengths = series
-      .flatMap(s => s.data)
-      .map(
-        ([_, yValue]) =>
-          formatNumber(
-            yValue,
-            maybeAssoc(settings.y.format, "compact", compact),
-          ).length,
-      );
-    return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
-  };
-  const compact = getAvgLength(true) < getAvgLength(false) - 3;
-  const valueFormatter = (value: number): string =>
-    formatNumber(value, maybeAssoc(settings.y.format, "compact", compact));
-
-  const barsValueStep = getValueStep(
-    bars,
-    valueFormatter,
-    valueProps,
-    innerWidth,
-  );
-  const areasValueStep = getValueStep(
-    areas,
-    valueFormatter,
-    valueProps,
-    innerWidth,
-  );
-  const linesValueStep = getValueStep(
-    lines,
-    valueFormatter,
-    valueProps,
-    innerWidth,
+  const tickValues = fixTimeseriesTicksExceedXTickCount(
+    settings.x.type,
+    xScale.scale,
+    xTickCount,
   );
 
   return (
     <svg width={width} height={height + legendHeight}>
-      <Group top={margin.top} left={xMin}>
-        {defaultYScale && (
-          <GridRows
-            scale={defaultYScale}
-            width={innerWidth}
-            strokeDasharray="4"
-          />
-        )}
-
-        {xScale.barAccessor && xScale.bandwidth && (
-          <BarSeries
-            series={bars}
-            yScaleLeft={yScaleLeft}
-            yScaleRight={yScaleRight}
-            xAccessor={xScale.barAccessor}
-            bandwidth={xScale.bandwidth}
-            showValues={Boolean(settings.show_values)}
-            valueFormatter={valueFormatter}
-            valueProps={valueProps}
-            valueStep={barsValueStep}
-          />
-        )}
-        <AreaSeries
-          series={areas}
-          yScaleLeft={yScaleLeft}
-          yScaleRight={yScaleRight}
-          xAccessor={xScale.lineAccessor}
-          areStacked={settings.stacking === "stack"}
-          showValues={Boolean(settings.show_values)}
-          valueFormatter={valueFormatter}
-          valueProps={valueProps}
-          valueStep={areasValueStep}
-        />
-        <LineSeries
-          series={lines}
-          yScaleLeft={yScaleLeft}
-          yScaleRight={yScaleRight}
-          xAccessor={xScale.lineAccessor}
-          showValues={Boolean(settings.show_values)}
-          valueFormatter={valueFormatter}
-          valueProps={valueProps}
-          valueStep={linesValueStep}
-        />
-
-        {settings.goal && (
-          <GoalLine
-            label={settings.goal.label}
-            x1={0}
-            x2={innerWidth}
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            y={defaultYScale!(settings.goal.value)}
-            color={style.goalColor}
-          />
-        )}
-      </Group>
-
-      {yScaleLeft && (
-        <AxisLeft
-          hideTicks
-          hideAxisLine
-          label={settings.labels.left}
-          labelOffset={yLabelOffsetLeft}
-          top={margin.top}
-          left={xMin}
-          scale={yScaleLeft}
-          stroke={style.axes.color}
-          tickStroke={style.axes.color}
-          labelProps={labelProps}
-          tickFormat={value => formatNumber(value.valueOf(), settings.y.format)}
-          tickLabelProps={() => tickProps}
+      {legendRows && (
+        <Legend
+          top={CHART_PADDING}
+          left={CHART_PADDING}
+          items={legendRows.items}
+          fontSize={style.legend.fontSize}
+          fontWeight={style.legend.fontWeight}
         />
       )}
+      <Group top={legendHeight}>
+        {yScaleLeft && (
+          <AxisLeft
+            hideTicks
+            hideAxisLine
+            label={settings.labels.left}
+            labelOffset={yLabelOffsetLeft}
+            top={margin.top}
+            left={xMin}
+            scale={yScaleLeft}
+            stroke={style.axes.color}
+            tickStroke={style.axes.color}
+            labelProps={labelProps}
+            tickFormat={value =>
+              formatNumber(value.valueOf(), settings.y.format)
+            }
+            tickLabelProps={() => tickProps}
+          />
+        )}
 
-      {yScaleRight && (
-        <AxisRight
-          hideTicks
-          hideAxisLine
-          label={settings.labels.right}
-          labelOffset={yLabelOffsetRight}
-          top={margin.top}
-          left={xMax + yTickWidths.right}
-          scale={yScaleRight}
-          stroke={style.axes.color}
-          tickStroke={style.axes.color}
-          labelProps={labelProps}
-          tickFormat={value => formatNumber(value.valueOf(), settings.y.format)}
-          tickLabelProps={() => tickProps}
-        />
-      )}
+        {yScaleRight && (
+          <AxisRight
+            hideTicks
+            hideAxisLine
+            label={settings.labels.right}
+            labelOffset={yLabelOffsetRight}
+            top={margin.top}
+            left={xMax + yTickWidths.right}
+            scale={yScaleRight}
+            stroke={style.axes.color}
+            tickStroke={style.axes.color}
+            labelProps={labelProps}
+            tickFormat={value =>
+              formatNumber(value.valueOf(), settings.y.format)
+            }
+            tickLabelProps={() => tickProps}
+          />
+        )}
 
-      <AxisBottom
-        scale={xScale.scale}
-        label={areXTicksRotated ? undefined : settings.labels.bottom}
-        top={yMin}
-        left={xMin}
-        numTicks={xTicksCount}
-        labelOffset={xLabelOffset}
-        stroke={style.axes.color}
-        tickStroke={style.axes.color}
-        hideTicks={settings.x.tick_display === "hide"}
-        labelProps={labelProps}
-        tickFormat={value =>
-          formatXTick(value.valueOf(), settings.x.type, settings.x.format)
-        }
-        tickComponent={props =>
-          areXTicksHidden ? null : (
-            <Text
-              {...getXTickProps(
-                props,
-                style.axes.ticks.fontSize,
-                xTickWidthLimit,
-                areXTicksRotated,
-              )}
+        <Group left={valuesLeftOffset}>
+          <Group top={margin.top} left={xMin}>
+            {defaultYScale && (
+              <GridRows
+                scale={defaultYScale}
+                width={calculatedInnerWidth}
+                strokeDasharray="4"
+              />
+            )}
+          </Group>
+
+          <AxisBottom
+            scale={xScale.scale}
+            label={settings.labels.bottom}
+            top={yMin}
+            left={xMin}
+            numTicks={xTickCount}
+            labelOffset={xLabelOffset}
+            stroke={style.axes.color}
+            tickStroke={style.axes.color}
+            hideTicks={settings.x.tick_display === "hide"}
+            labelProps={{
+              ...labelProps,
+              transform: `translate(0, ${
+                areXTicksRotated ? xTickWidthLimit : CHART_PADDING
+              })`,
+            }}
+            tickValues={tickValues}
+            tickFormat={value =>
+              formatXTick(value.valueOf(), settings.x.type, settings.x.format)
+            }
+            tickComponent={props =>
+              areXTicksHidden ? null : (
+                <Text
+                  {...getXTickProps(
+                    props,
+                    style.axes.ticks.fontSize,
+                    xTickWidthLimit,
+                    areXTicksRotated,
+                  )}
+                />
+              )
+            }
+            tickLabelProps={() => tickProps}
+          />
+
+          <Group top={margin.top} left={xMin}>
+            {xScale.barAccessor && xScale.bandwidth && (
+              <BarSeries
+                series={bars}
+                yScaleLeft={yScaleLeft}
+                yScaleRight={yScaleRight}
+                xAccessor={xScale.barAccessor}
+                bandwidth={xScale.bandwidth}
+              />
+            )}
+            <AreaSeries
+              series={areas}
+              yScaleLeft={yScaleLeft}
+              yScaleRight={yScaleRight}
+              xAccessor={xScale.lineAccessor}
+              areStacked={settings.stacking === "stack"}
             />
-          )
-        }
-        tickLabelProps={() => tickProps}
-      />
+            <LineSeries
+              series={lines}
+              yScaleLeft={yScaleLeft}
+              yScaleRight={yScaleRight}
+              xAccessor={xScale.lineAccessor}
+            />
 
-      <Legend
-        leftColumn={leftColumn}
-        rightColumn={rightColumn}
-        padding={CHART_PADDING}
-        top={height}
-        width={width}
-        lineHeight={style.legend.lineHeight}
-        fontSize={style.legend.fontSize}
-      />
+            {settings.goal && (
+              <GoalLine
+                label={settings.goal.label}
+                x1={0}
+                x2={calculatedInnerWidth}
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                y={defaultYScale!(settings.goal.value)}
+                color={style.goalColor}
+              />
+            )}
+
+            {showValues && (
+              <Values
+                series={series}
+                formatter={(value: number, compact: boolean): string =>
+                  formatNumber(
+                    value,
+                    maybeAssoc(settings.y.format, "compact", compact),
+                  )
+                }
+                valueProps={valueProps}
+                xScale={xScale}
+                yScaleLeft={yScaleLeft}
+                yScaleRight={yScaleRight}
+                innerWidth={calculatedInnerWidth}
+                areStacked={settings.stacking === "stack"}
+                xAxisYPos={yMin - margin.top}
+              />
+            )}
+          </Group>
+        </Group>
+      </Group>
     </svg>
   );
 };
@@ -321,3 +337,30 @@ const maybeAssoc: typeof assoc = (collection, key, value) => {
 
   return assoc(collection, key, value);
 };
+
+// The approximate number of maximum characters for values could be around 7
+// because the values will be compact format when the average length of
+// compact format is less than the average length of full format by 3 characters.
+// https://github.com/metabase/metabase/blob/96e9febfb31d231e3ef08ae907fb42773e065ca5/frontend/src/metabase/static-viz/components/XYChart/Values/Values.tsx#L175
+// e.g. 110,000 vs 100K = 4 !< 7 - 3 it will use full format in this case.
+// So, we could estimate that 7 is the maximum number of characters for values.
+// Then 3.5 is the half the length of the approximate maximum value.
+const APPROXIMATE_MAX_VALUE_CHAR_LENGTH = 7;
+const MAX_SERIES_LENGTH = 15;
+function getValuesLeftOffset(
+  settings: ChartSettings,
+  multipleSeries: HydratedSeries[],
+  valueCharSize: number,
+) {
+  const maxSeriesLength = Math.max(
+    ...multipleSeries.map(series => series.data.length),
+  );
+  if (
+    settings.visualization_settings["graph.show_values"] &&
+    maxSeriesLength > MAX_SERIES_LENGTH
+  ) {
+    return valueCharSize * (APPROXIMATE_MAX_VALUE_CHAR_LENGTH / 2);
+  }
+
+  return 0;
+}

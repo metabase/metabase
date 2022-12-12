@@ -3,6 +3,8 @@ import React from "react";
 
 import { t, jt } from "ttag";
 
+import _ from "underscore";
+import cx from "classnames";
 import {
   getAccentColors,
   getStatusColorRanges,
@@ -24,10 +26,7 @@ import {
 } from "metabase/components/sortable";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { isNumeric, isString } from "metabase/lib/schema_metadata";
-
-import _ from "underscore";
-import cx from "classnames";
+import { isNumeric, isString } from "metabase-lib/types/utils/isa";
 
 const NUMBER_OPERATOR_NAMES = {
   "<": t`is less than`,
@@ -94,11 +93,12 @@ export default class ChartSettingsTableFormatting extends React.Component {
     editingRuleIsNew: null,
   };
   render() {
-    const { value, onChange, cols } = this.props;
+    const { value, onChange, cols, canHighlightRow } = this.props;
     const { editingRule, editingRuleIsNew } = this.state;
     if (editingRule !== null && value[editingRule]) {
       return (
         <RuleEditor
+          canHighlightRow={canHighlightRow}
           rule={value[editingRule]}
           cols={cols}
           isNew={editingRuleIsNew}
@@ -297,7 +297,15 @@ const RuleDescription = ({ rule }) => {
   );
 };
 
-const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
+const RuleEditor = ({
+  rule,
+  cols,
+  isNew,
+  onChange,
+  onDone,
+  onRemove,
+  canHighlightRow = true,
+}) => {
   const selectedColumns = rule.columns.map(name => _.findWhere(cols, { name }));
   const isStringRule =
     selectedColumns.length > 0 && _.all(selectedColumns, isString);
@@ -363,16 +371,20 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
           </Select>
           {hasOperand && isNumericRule ? (
             <NumericInput
+              data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               type="number"
               value={rule.value}
               onChange={value => onChange({ ...rule, value })}
+              placeholder="0"
             />
           ) : hasOperand ? (
             <input
+              data-testid="conditional-formatting-value-input"
               className={INPUT_CLASSNAME}
               value={rule.value}
               onChange={e => onChange({ ...rule, value: e.target.value })}
+              placeholder={t`Column value`}
             />
           ) : null}
           <h3 className="mt3 mb1">{t`…turn its background this color:`}</h3>
@@ -381,11 +393,16 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
             colors={COLORS}
             onChange={color => onChange({ ...rule, color })}
           />
-          <h3 className="mt3 mb1">{t`Highlight the whole row`}</h3>
-          <Toggle
-            value={rule.highlight_row}
-            onChange={highlight_row => onChange({ ...rule, highlight_row })}
-          />
+          {canHighlightRow && (
+            <>
+              <h3 className="mt3 mb1">{t`Highlight the whole row`}</h3>
+
+              <Toggle
+                value={rule.highlight_row}
+                onChange={highlight_row => onChange({ ...rule, highlight_row })}
+              />
+            </>
+          )}
         </div>
       ) : rule.type === "range" ? (
         <div>

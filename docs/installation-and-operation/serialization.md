@@ -1,10 +1,10 @@
 ---
-title: "Serialization: copying contents of one Metabase instance to another"
+title: "Serialization"
 redirect_from:
   - /docs/latest/enterprise-guide/serialization
 ---
 
-## Serialization: copying contents of one Metabase instance to another
+## Serialization
 
 {% include plans-blockquote.html feature="Serialization" self-hosted-only="true" %}
 
@@ -12,7 +12,7 @@ Once you really get rolling with Metabase it's often the case that you'll have m
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create a snapshot, called a dump, of the contents of a Metabase instance that can then be loaded into another instance. This lets you do things like create a set of dashboards and charts in one Metabase instance and then easily copy those items to a number of other Metabase instances. You could also use this feature to enable a staging-to-production workflow for important dashboards or reports by dumping from a staging instance of Metabase and then loading that dump into your production instance(s). You can even put the dump files into version control and audit changes to them, as the YAML files contained within the dump are pretty readable.
 
-If you're looking to do a one-time migration from H2 to MySQL/Postgres, then use the [migration guide instead](../operations-guide/migrating-from-h2.md).
+If you're looking to do a one-time migration from H2 to MySQL/Postgres, then use the [migration guide instead](./migrating-from-h2.md).
 
 ### What gets dumped and loaded
 
@@ -36,6 +36,7 @@ If you're looking to do a one-time migration from H2 to MySQL/Postgres, then use
 - User accounts or settings
 - Alerts on saved questions
 - Personal Collections or their contents (except for the user specified with the `--user` flag; see below)
+- Archived items
 
 ### Before creating or loading a dump
 
@@ -61,8 +62,6 @@ The `--on-error` flag allows you to specify whether the load process should keep
 
 Both of these flags are optional.
 
----
-
-To learn more, check out [Serialization: preloading dashboards in a new Metabase instance](https://www.metabase.com/blog/serialization/index.html).
+To learn more, check out [Serialization: preloading dashboards in a new Metabase instance](https://www.metabase.com/learn/administration/serialization).
 
 Still need help? Feel free to reach out to us at [support@metabase.com](mailto:support@metabase.com).

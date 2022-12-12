@@ -1,9 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
 
+import _ from "underscore";
 import Button from "metabase/core/components/Button";
 
-import _ from "underscore";
 import { AuditParametersInput } from "./AuditParameters.styled";
 
 const DEBOUNCE_PERIOD = 300;
@@ -67,8 +67,8 @@ export default class AuditParameters extends React.Component {
               value={inputValues[key] || ""}
               placeholder={placeholder}
               disabled={isEmpty || disabled}
-              onChange={value => {
-                this.changeValue(key, value);
+              onChange={e => {
+                this.changeValue(key, e.target.value);
               }}
               icon={icon}
             />

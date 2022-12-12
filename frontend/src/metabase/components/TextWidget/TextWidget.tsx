@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { forceRedraw } from "metabase/lib/dom";
 import { t } from "ttag";
+import { forceRedraw } from "metabase/lib/dom";
 import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
 type Props = {

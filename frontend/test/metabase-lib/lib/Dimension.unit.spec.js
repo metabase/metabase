@@ -1,20 +1,18 @@
-import _ from "underscore";
-import Dimension, {
-  FieldDimension,
-  TemplateTagDimension,
-} from "metabase-lib/lib/Dimension";
-import Field from "metabase-lib/lib/metadata/Field";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import Question from "metabase-lib/lib/Question";
-import { TemplateTagVariable } from "metabase-lib/lib/Variable";
-
 import {
   metadata,
   ORDERS,
   PRODUCTS,
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
+import Dimension, {
+  FieldDimension,
+  TemplateTagDimension,
+} from "metabase-lib/Dimension";
+import Field from "metabase-lib/metadata/Field";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Question from "metabase-lib/Question";
+import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 const nestedQuestionCard = {
   table_id: null,
@@ -58,55 +56,7 @@ const nestedQuestionCard = {
   display: "table",
 };
 
-const cardWithResultMetadata = {
-  id: 123,
-  dataset: true,
-  display: "table",
-  visualization_settings: {},
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DATABASE.id,
-    query: {
-      "source-table": ORDERS.id,
-    },
-  },
-  result_metadata: [
-    {
-      id: ORDERS.ID.id,
-      display_name: "Foo",
-    },
-    {
-      name: ORDERS.TOTAL.name,
-      display_name: "Bar",
-    },
-  ],
-};
-
 const PRODUCT_CATEGORY_FIELD_ID = 21;
-
-const ORDERS_USER_ID_FIELD = metadata.field(ORDERS.USER_ID.id).getPlainObject();
-
-const OVERWRITTEN_USER_ID_FIELD_METADATA = {
-  ...ORDERS_USER_ID_FIELD,
-  display_name: "Foo",
-  description: "Bar",
-  fk_target_field_id: 1,
-  semantic_type: "type/Price",
-  settings: {
-    show_mini_bar: true,
-  },
-};
-
-const ORDERS_DATASET = ORDERS.question()
-  .setDataset(true)
-  .setResultsMetadata({
-    columns: [OVERWRITTEN_USER_ID_FIELD_METADATA],
-  });
-ORDERS_DATASET.card().id = 111;
-
-// It isn't actually possible to overwrite metadata for non-models,
-// it's just needed to test it's only possible for models
-const ORDERS_WITH_OVERWRITTEN_METADATA = ORDERS_DATASET.setDataset(false);
 
 describe("Dimension", () => {
   describe("STATIC METHODS", () => {
@@ -238,7 +188,7 @@ describe("Dimension", () => {
   });
 
   describe("INSTANCE METHODS", () => {
-    describe("foriegn", () => {
+    describe("foreign", () => {
       it("should return a FieldDimension", () => {
         const dimension = ORDERS.PRODUCT_ID.dimension().foreign(
           PRODUCTS.CATEGORY.dimension(),
@@ -262,31 +212,6 @@ describe("Dimension", () => {
       ["field", PRODUCTS.CATEGORY.id, null],
       metadata,
     );
-
-    describe("STATIC METHODS", () => {
-      describe("normalizeOptions()", () => {
-        it("should remove empty options map", () => {
-          expect(FieldDimension.normalizeOptions(null)).toEqual(null);
-          expect(FieldDimension.normalizeOptions({})).toEqual(null);
-        });
-        it("should remove null/undefined keys", () => {
-          expect(
-            FieldDimension.normalizeOptions({
-              x: false,
-              y: null,
-              z: undefined,
-            }),
-          ).toEqual({ x: false });
-        });
-        it("should recursively normalize maps options", () => {
-          expect(
-            FieldDimension.normalizeOptions({ binning: { x: null } }),
-          ).toBe(null);
-        });
-        // TODO -- it should also remove empty arrays, but we currently don't have any situations where there might be
-        // one.
-      });
-    });
 
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
@@ -372,32 +297,6 @@ describe("Dimension", () => {
 
           expect(field.id).toEqual(ORDERS.TOTAL.id);
           expect(field.base_type).toEqual("type/Float");
-        });
-
-        it("should merge model's field results metadata with field info", () => {
-          const dimension = Dimension.parseMBQL(
-            ["field", ORDERS.USER_ID.id, null],
-            metadata,
-            ORDERS_DATASET.query(),
-          );
-
-          const field = dimension.field();
-          const fieldInfo = _.omit(field.getPlainObject(), "metadata", "query");
-
-          expect(fieldInfo).toEqual(OVERWRITTEN_USER_ID_FIELD_METADATA);
-        });
-
-        it("should not merge regular question's field results metadata with field info", () => {
-          const dimension = Dimension.parseMBQL(
-            ["field", ORDERS.USER_ID.id, null],
-            metadata,
-            ORDERS_WITH_OVERWRITTEN_METADATA.query(),
-          );
-
-          const field = dimension.field();
-          const fieldInfo = _.omit(field.getPlainObject(), "metadata", "query");
-
-          expect(fieldInfo).toEqual(ORDERS_USER_ID_FIELD);
         });
       });
     });
@@ -981,57 +880,6 @@ describe("Dimension", () => {
     });
   });
 
-  describe("Dimension connected to saved question with result_metadata", () => {
-    describe("field", () => {
-      it("should return a Field with properties from the field in the question's result_metadata", () => {
-        const questionWithResultMetadata = new Question(
-          cardWithResultMetadata,
-          metadata,
-        );
-        const fieldDimensionUsingIdProp = Dimension.parseMBQL(
-          ["field", ORDERS.ID.id, null],
-          metadata,
-          questionWithResultMetadata.query(),
-        );
-
-        const idField = fieldDimensionUsingIdProp.field();
-        expect(idField.id).toBe(ORDERS.ID.id);
-        expect(idField.display_name).toBe("Foo");
-        expect(idField.description).toBe(ORDERS.ID.description);
-      });
-    });
-  });
-
-  describe("Dimension connected to query based on nested card with result_metadata", () => {
-    describe("field", () => {
-      it("should return a Field with properties from the field in the question's result_metadata", () => {
-        metadata.questions[cardWithResultMetadata.id] = new Question(
-          cardWithResultMetadata,
-          metadata,
-        );
-
-        const questionWithResultMetadata = new Question(
-          cardWithResultMetadata,
-          metadata,
-        );
-        const unsavedQuestionBasedOnCard = questionWithResultMetadata
-          .composeThisQuery()
-          .setResultsMetadata([]);
-
-        const fieldDimensionUsingIdProp = Dimension.parseMBQL(
-          ["field", ORDERS.ID.id, null],
-          metadata,
-          unsavedQuestionBasedOnCard.query(),
-        );
-
-        const idField = fieldDimensionUsingIdProp.field();
-        expect(idField.id).toBe(ORDERS.ID.id);
-        expect(idField.display_name).toBe("Foo");
-        expect(idField.description).toBe(ORDERS.ID.description);
-      });
-    });
-  });
-
   describe("TemplateTagDimension", () => {
     describe("dimension tag (ie a field filter)", () => {
       const templateTagClause = ["template-tag", "foo"];
@@ -1065,24 +913,6 @@ describe("Dimension", () => {
             expect(
               TemplateTagDimension.parseMBQL(["field", 123, null], metadata),
             ).toBeNull();
-          });
-        });
-
-        describe("isTemplateTagClause", () => {
-          it("returns false for a field clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(["field", 123, null]),
-            ).toBe(false);
-          });
-
-          it("returns false for a non-array clause", () => {
-            expect(TemplateTagDimension.isTemplateTagClause("foo")).toBe(false);
-          });
-
-          it("returns true for a template tag clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(templateTagClause),
-            ).toBe(true);
           });
         });
       });
@@ -1220,24 +1050,6 @@ describe("Dimension", () => {
             expect(
               TemplateTagDimension.parseMBQL(["field", 123, null], metadata),
             ).toBeNull();
-          });
-        });
-
-        describe("isTemplateTagClause", () => {
-          it("returns false for a field clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(["field", 123, null]),
-            ).toBe(false);
-          });
-
-          it("returns false for a non-array clause", () => {
-            expect(TemplateTagDimension.isTemplateTagClause("foo")).toBe(false);
-          });
-
-          it("returns true for a template tag clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(templateTagClause),
-            ).toBe(true);
           });
         });
       });

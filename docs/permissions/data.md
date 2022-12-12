@@ -109,12 +109,20 @@ You can define whether a group can [edit metadata](../data-modeling/metadata-edi
 
 {% include plans-blockquote.html feature="Database management permissions" %}
 
-This setting defines whether a person can edit the connection settings for the data source, as well as to sync and scan the database. Note that this setting still prevents people from deleting database connections entirely. Only admins can delete database connections in your Metabase.
+The **Manage database** permission grants access to the settings page for a given database (i.e., the page at **Admin settings** > **Databases** > your database).
+
+On the database settings page, you can:
+
+- Edit any of the [connection options](../databases/connecting.md#database-connection-options) for the data source,
+- [sync schemas](../databases/connecting.md#manually-syncing-tables-and-columns), and
+- [scan field values](../databases/connecting.md#manually-scanning-column-values).
+
+Note that only admins can delete database connections in your Metabase, so people with **Manage database** permissions won't see the **Remove database** button. 
 
 ## Further reading
 
 - [Permissions introduction](./introduction.md)
-- [Learn permissions](/learn/permissions)
+- [Learn permissions](https://www.metabase.com/learn/permissions)
 - [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
 - [Data sandboxing: setting row-level permissions][sandbox-rows]
 - [Advanced data sandboxing: limiting access to columns][sandbox-columns]
@@ -123,6 +131,6 @@ This setting defines whether a person can edit the connection settings for the d
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-sandboxing]: ./data-sandboxes.md
 [permissions-overview]: ./introduction.md
-[sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions.html
-[sandbox-rows]: /learn/permissions/data-sandboxing-row-permissions.html
+[sandbox-columns]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions.html
+[sandbox-rows]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions.html
 [sql-snippet-folders]: ../questions/native-editor/sql-snippets.md

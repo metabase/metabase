@@ -1,6 +1,6 @@
 import React from "react";
-import ListSearchField from "./ListSearchField";
 import { render } from "@testing-library/react";
+import ListSearchField from "./ListSearchField";
 
 describe("ListSearchField", () => {
   let input;

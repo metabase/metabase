@@ -100,8 +100,13 @@ export function getMaxMetricsSupported(display) {
   return visualization.maxMetricsSupported || Infinity;
 }
 
+export function getMaxDimensionsSupported(display) {
+  const visualization = visualizations.get(display);
+  return visualization.maxDimensionsSupported || 2;
+}
+
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
-const extractRemappedColumns = data => {
+export const extractRemappedColumns = data => {
   const cols = data.cols.map(col => ({
     ...col,
     remapped_from_index:

@@ -7,9 +7,9 @@ import { renderWithProviders } from "__support__/ui";
 
 import { metadata } from "__support__/sample_database_fixture";
 
-import Field from "metabase-lib/lib/metadata/Field";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import Question from "metabase-lib/lib/Question";
+import Field from "metabase-lib/metadata/Field";
+import Filter from "metabase-lib/queries/structured/Filter";
+import Question from "metabase-lib/Question";
 
 import { InlineValuePicker } from "./InlineValuePicker";
 

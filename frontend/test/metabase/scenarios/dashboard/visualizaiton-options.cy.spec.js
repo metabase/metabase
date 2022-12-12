@@ -13,7 +13,7 @@ describe("scenarios > dashboard > visualization options", () => {
     cy.icon("palette").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("ID")
-        .closest("[draggable=true]")
+        .closest("[data-testid^=draggable-item]")
         .trigger("mousedown", 0, 0, { force: true })
         .trigger("mousemove", 5, 5, { force: true })
         .trigger("mousemove", 0, 100, { force: true })
@@ -24,7 +24,7 @@ describe("scenarios > dashboard > visualization options", () => {
        * It currently doesn't work in UI at all, but Cypress somehow manages to move the "ID" column.
        * However, it leaves an empty column in its place (thus, making it impossible to use this assertion).
        */
-      cy.get("[draggable=true]")
+      cy.findAllByTestId(/draggable-item/)
         .as("sidebarColumns") // Out of all the columns in the sidebar...
         .first() // ...pick the fist one and make sure it's not "ID" anymore
         .should("contain", "User ID");

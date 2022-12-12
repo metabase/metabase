@@ -2,8 +2,10 @@
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
             [clojure.test :refer :all]
+            [metabase.query-processor.streaming.interface :as qp.si]
             [metabase.test :as mt]
-            [metabase.test.data.dataset-definitions :as defs]))
+            [metabase.test.data.dataset-definitions :as defs])
+  (:import [java.io BufferedOutputStream ByteArrayOutputStream]))
 
 (defn- parse-and-sort-csv [response]
   (assert (some? response))
@@ -55,3 +57,27 @@
             ["4" "Simcha Yan"          "2014-01-01T08:30:00"]
             ["5" "Quentin Sören"       "2014-10-03T17:30:00"]]
            (parse-and-sort-csv result)))))
+
+(defn- csv-export
+  "Given a seq of result rows, write it as a CSV, then read the CSV and return the resulting data."
+  [rows]
+  (with-open [bos (ByteArrayOutputStream.)
+              os  (BufferedOutputStream. bos)]
+    (let [results-writer (qp.si/streaming-results-writer :csv os)]
+      (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
+      (doall (map-indexed
+              (fn [i row] (qp.si/write-row! results-writer row i [] {}))
+              rows))
+      (qp.si/finish! results-writer {:row_count (count rows)}))
+    (let [bytea (.toByteArray bos)]
+      (rest (csv/read-csv (String. bytea))))))
+
+(deftest lazy-seq-realized-test
+  (testing "Lazy seqs within rows are automatically realized during exports (#26261)"
+    (let [row (first (csv-export [[(lazy-seq [1 2 3])]]))]
+      (is (= ["[1 2 3]"] row))))
+
+  (testing "LocalDate in a lazy seq (checking that elements in a lazy seq are formatted correctly as strings)"
+   (mt/with-everything-store
+     (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T"])]]))]
+       (is (= ["[\"2021-03-30\"]"] row))))))

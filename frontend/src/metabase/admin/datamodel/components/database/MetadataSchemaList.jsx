@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import Icon from "metabase/components/Icon";
 import { t, ngettext, msgid } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
+import Icon from "metabase/components/Icon";
 
 import { regexpEscape } from "metabase/lib/string";
 

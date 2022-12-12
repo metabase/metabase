@@ -1,6 +1,6 @@
 import React from "react";
-import ModerationStatusIcon from "./ModerationStatusIcon";
 import { render } from "@testing-library/react";
+import ModerationStatusIcon from "./ModerationStatusIcon";
 
 const VERIFIED_ICON_SELECTOR = ".Icon-verified";
 

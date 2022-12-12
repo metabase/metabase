@@ -75,7 +75,7 @@
       permissions but no matching GTAP exists.
 
     * Segmented permissions can also be used to enforce column-level permissions -- any column not returned by the
-      underlying GTAP query is not allowed to be references by the parent query thru other means such as filter clauses.
+      underlying GTAP query is not allowed to be referenced by the parent query thru other means such as filter clauses.
       See [[metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check]].
 
     * GTAPs are not allowed to add columns not present in the original Table, or change their effective type to
@@ -1196,7 +1196,8 @@
   ([new-graph :- StrictPermissionsGraph]
    (let [old-graph (data-perms-graph)
          [old new] (data/diff (:groups old-graph) (:groups new-graph))
-         old       (or old {})]
+         old       (or old {})
+         new       (or new {})]
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)

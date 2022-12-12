@@ -1,8 +1,8 @@
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
+import moment from "moment-timezone";
 import { parseTimestamp } from "metabase/lib/time";
 import MetabaseUtils from "metabase/lib/utils";
-import moment from "moment-timezone";
 
 const n2w = (n: number) => MetabaseUtils.numberToWord(n);
 
@@ -52,6 +52,7 @@ const PASSWORD_COMPLEXITY_CLAUSES = {
 
 // TODO: dump this from backend settings definitions
 export type SettingName =
+  | "application-name"
   | "admin-email"
   | "analytics-uuid"
   | "anon-tracking-enabled"
@@ -71,13 +72,15 @@ export type SettingName =
   | "engines"
   | "ga-code"
   | "ga-enabled"
+  | "google-auth-enabled"
   | "google-auth-client-id"
   | "has-sample-database?"
   | "has-user-setup"
   | "hide-embed-branding?"
   | "is-hosted?"
+  | "ldap-enabled"
   | "ldap-configured?"
-  | "other-sso-configured?"
+  | "other-sso-enabled?"
   | "enable-password-login"
   | "map-tile-server-url"
   | "password-complexity"
@@ -87,6 +90,7 @@ export type SettingName =
   | "setup-token"
   | "site-url"
   | "site-uuid"
+  | "token-status"
   | "types"
   | "version-info-last-checked"
   | "version-info"
@@ -103,7 +107,8 @@ export type SettingName =
   | "application-font"
   | "available-fonts"
   | "enable-query-caching"
-  | "start-of-week";
+  | "start-of-week"
+  | "report-timezone-short";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
@@ -181,24 +186,28 @@ class Settings {
     return this.get("hide-embed-branding?");
   }
 
-  isGoogleAuthConfigured() {
-    return this.get("google-auth-client-id") != null;
+  isGoogleAuthEnabled() {
+    return this.get("google-auth-enabled");
+  }
+
+  isLdapEnabled() {
+    return this.get("ldap-enabled");
   }
 
   isLdapConfigured() {
     return this.get("ldap-configured?");
   }
 
-  // JWT or SAML is configured
-  isOtherSsoConfigured() {
-    return this.get("other-sso-configured?");
+  // JWT or SAML is enabled
+  isOtherSsoEnabled() {
+    return this.get("other-sso-enabled?");
   }
 
-  isSsoConfigured() {
+  isSsoEnabled() {
     return (
-      this.isGoogleAuthConfigured() ||
-      this.isLdapConfigured() ||
-      this.isGoogleAuthConfigured()
+      this.isLdapEnabled() ||
+      this.isGoogleAuthEnabled() ||
+      this.isOtherSsoEnabled()
     );
   }
 
@@ -287,6 +296,10 @@ class Settings {
     }
 
     return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
+  }
+
+  learnUrl(path = "") {
+    return `https://www.metabase.com/learn/${path}`;
   }
 
   storeUrl(path = "") {
@@ -397,4 +410,8 @@ function makeRegexTest(property: string, regex: RegExp) {
     (password.match(regex) || []).length >= (requirements[property] || 0);
 }
 
-export default new Settings(_.clone(window.MetabaseBootstrap));
+// window is not defined for static charts SSR
+const initValues =
+  typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
+
+export default new Settings(initValues);

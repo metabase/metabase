@@ -39,8 +39,8 @@ describe("issue 20656", () => {
             card_id,
             row: 0,
             col: 0,
-            sizeX: 18,
-            sizeY: 10,
+            size_x: 18,
+            size_y: 10,
             parameter_mappings: [
               {
                 parameter_id: filter.id,

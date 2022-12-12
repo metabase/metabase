@@ -2,8 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
-import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
 const propTypes = {
   parameters: PropTypes.array.isRequired,

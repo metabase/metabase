@@ -1,9 +1,8 @@
 import React from "react";
 import { renderWithProviders, fireEvent } from "__support__/ui";
 
-import { NumberColumn, StringColumn } from "../__support__/visualizations";
-
 import Visualization from "metabase/visualizations/components/Visualization";
+import { NumberColumn, StringColumn } from "../__support__/visualizations";
 
 const series = rows => {
   const cols = [

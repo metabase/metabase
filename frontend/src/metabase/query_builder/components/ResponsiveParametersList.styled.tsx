@@ -10,8 +10,18 @@ export const FilterButton = styled(Button)`
   margin: 0.5rem;
 `;
 
-export const ResponsiveParametersListRoot = styled.div`
-  width: 100%;
+interface ResponsiveParametersListRootProps {
+  isSmallScreen: boolean;
+  isShowingMobile: boolean;
+}
+
+export const ResponsiveParametersListRoot = styled.div<ResponsiveParametersListRootProps>`
+  ${({ isSmallScreen, isShowingMobile }) =>
+    isSmallScreen &&
+    isShowingMobile &&
+    css`
+      width: 100%;
+    `}
 `;
 
 interface ParametersListContainerProps {

@@ -9,7 +9,7 @@ import {
 const CC_NAME = "C-States";
 const PG_DB_NAME = "QA Postgres12";
 
-describe("issue 13751", () => {
+describe("issue 13751", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

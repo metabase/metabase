@@ -1,9 +1,9 @@
 import React from "react";
 
-import { CategoryWidgetProps } from "../types";
-import CategoryRadioPicker from "./CategoryRadioPicker";
-
 import CategoryFieldInput from "../components/CategoryFieldInput";
+import { CategoryWidgetProps } from "../types";
+
+import CategoryRadioPicker from "./CategoryRadioPicker";
 
 const MAX_DISTINCT_OPTIONS_FOR_RADIO_INPUT = 7;
 

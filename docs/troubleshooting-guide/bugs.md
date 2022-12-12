@@ -18,4 +18,4 @@ If the bug has not yet been reported, go ahead and [open a bug report][metabase-
 8. Screenshots (if relevant)
 
 [metabase-file-bug]: https://github.com/metabase/metabase/issues/new/choose
-[metabase-issues]: ./known-issues.html#how-to-find-a-known-bug
+[metabase-issues]: ./known-issues.md#how-to-find-a-known-bug

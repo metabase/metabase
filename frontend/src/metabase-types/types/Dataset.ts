@@ -3,11 +3,11 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { ISO8601Time } from ".";
+import { DatetimeUnit } from "metabase-types/api/query";
 import { FieldId } from "./Field";
 import { DatasetQuery } from "./Card";
 import { FieldLiteral, Field } from "./Query";
-import { DatetimeUnit } from "metabase-types/api/query";
+import { ISO8601Time } from ".";
 
 export type ColumnName = string;
 

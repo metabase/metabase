@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_APPLICATION_PERMISSIONS,
@@ -6,7 +7,6 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import getRoutes from "./routes";
-import { t } from "ttag";
 import { canManageSubscriptions } from "./selectors";
 import applicationPermissionsReducer from "./reducer";
 import {

@@ -1,9 +1,8 @@
-import { suggest as suggest_ } from "metabase/lib/expressions/suggest";
-
 import _ from "underscore";
+import { ORDERS, REVIEWS } from "__support__/sample_database_fixture";
+import { suggest as suggest_ } from "metabase-lib/expressions/suggest";
 
 import { aggregationOpts, expressionOpts } from "./__support__/expressions";
-import { ORDERS, REVIEWS } from "__support__/sample_database_fixture";
 
 // custom metadata defined in __support__/sample_database_fixture
 const SEGMENTS_ORDERS = [{ text: "[Expensive Things]", type: "segments" }];

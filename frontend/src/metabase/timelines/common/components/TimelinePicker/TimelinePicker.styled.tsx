@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import { css } from "@emotion/react";
 
 export const ListRoot = styled.div`
   display: block;

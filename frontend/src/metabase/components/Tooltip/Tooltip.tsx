@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import * as Tippy from "@tippyjs/react";
 import * as ReactIs from "react-is";
 
+import { isReactDOMTypeElement } from "metabase-types/guards";
+
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 
@@ -32,12 +34,6 @@ export interface TooltipProps
   isEnabled?: boolean;
   isOpen?: boolean;
   maxWidth?: string | number | undefined;
-}
-
-// checking to see if the `element` is in JSX.IntrinisicElements since they support refs
-// tippy's `children` prop seems to complain about anything more specific that React.ReactElement, unfortunately
-function isReactDOMTypeElement(element: any): element is React.ReactElement {
-  return ReactIs.isElement(element) && typeof element.type === "string";
 }
 
 // Tippy relies on child nodes forwarding refs, so when `children` is neither

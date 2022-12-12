@@ -6,7 +6,7 @@ import {
 
 const PG_DB_NAME = "QA Postgres12";
 
-describe("postgres > question > custom columns", () => {
+describe("postgres > question > custom columns", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

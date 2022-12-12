@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import cx from "classnames";
+import InputBlurChange from "metabase/components/InputBlurChange";
 
 const maybeSingletonList = value => (value ? [value] : null);
 

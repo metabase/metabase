@@ -1,5 +1,5 @@
 import { ORDERS, PRODUCTS, REVIEWS } from "__support__/sample_database_fixture";
-import Join from "metabase-lib/lib/queries/structured/Join";
+import Join from "metabase-lib/queries/structured/Join";
 
 function getOrdersJoinQuery({
   alias = "Products",

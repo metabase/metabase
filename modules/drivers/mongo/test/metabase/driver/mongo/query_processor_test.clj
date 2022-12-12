@@ -2,9 +2,11 @@
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
             [java-time :as t]
+            [metabase.driver :as driver]
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.models :refer [Field Table]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -54,6 +56,22 @@
                   (mt/mbql-query attempts
                     {:aggregation [[:count]]
                      :filter      [:time-interval $datetime :last :month]})))))))))
+
+(deftest absolute-datetime-test
+  (mt/test-driver :mongo
+    (testing "Make sure absolute-datetime are compiled correctly"
+      (doseq [[expected date]
+              [["2014-01-01"        (t/local-date "2014-01-01")]
+               ["10:00"             (t/local-time "10:00:00")]
+               ["2014-01-01T10:00"  (t/local-date-time "2014-01-01T10:00")]
+               ["03:00Z"            (t/offset-time "10:00:00+07:00")]
+               ["2014-01-01T03:00Z" (t/offset-date-time "2014-01-01T10:00+07:00")]
+               ["2014-01-01T00:00Z" (t/zoned-date-time "2014-01-01T07:00:00+07:00[Asia/Ho_Chi_Minh]")]]]
+        (testing (format "with %s" (type date))
+          (is (= {:$expr {"$lt" ["$date-field" {:$dateFromString {:dateString expected}}]}}
+                 (mongo.qp/compile-filter [:<
+                                           [:field "date-field"]
+                                           [:absolute-datetime date]]))))))))
 
 (deftest no-initial-projection-test
   (mt/test-driver :mongo
@@ -308,11 +326,11 @@
                   (qp/compile
                    (mt/mbql-query checkins
                      {:filter   [:time-interval $date -4 :month]
-                      :breakout [[:datetime-field $date :day]]}))))))))))
+                      :breakout [!day.date]}))))))))))
 
 (deftest temporal-arithmetic-test
   (testing "Mixed integer and date arithmetic works with Mongo 5+"
-    (with-redefs [mongo.qp/get-mongo-version (constantly "5.2.13")]
+    (with-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
       (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
         (is (= {:$expr
                 {"$lt"
@@ -339,10 +357,102 @@
                                           [:interval -1 :week]
                                           86400000]]))))))
   (testing "Date arithmetic fails with Mongo 4-"
-    (with-redefs [mongo.qp/get-mongo-version (constantly "4")]
+    (with-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo  #"Date arithmetic not supported in versions before 5"
                             (mongo.qp/compile-filter [:<
                                                       [:+
                                                        [:interval 1 :year]
                                                        [:field "date-field"]]
                                                       [:absolute-datetime (t/local-date "2008-05-31")]]))))))
+
+(deftest datetime-math-tests
+  (mt/test-driver :mongo
+    (mt/dataset qp.datetime-test/times-mixed
+      ;; date arithmetic doesn't supports until mongo 5+
+      (when (driver/database-supports? :mongo :date-arithmetics (mt/db))
+        (testing "date arithmetic with datetime columns"
+          (doseq [[col-type field-id] [[:datetime (mt/id :times :dt)]
+                                       [:text-as-datetime (mt/id :times :as_dt)]]
+                  op                  [:datetime-add :datetime-subtract]
+                  unit                [:year :quarter :month :day :hour :minute :second :millisecond]
+                  {:keys [expected query]}
+                  [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
+                               (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                               (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
+                               (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]
+                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                               :fields      [[:expression "expr"]]}}
+                   {:expected (into [] (frequencies
+                                        [(qp.datetime-test/datetime-math op #t "2004-03-19 09:19:09" 2 unit col-type)
+                                         (qp.datetime-test/datetime-math op #t "2008-06-20 10:20:10" 2 unit col-type)
+                                         (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)
+                                         (qp.datetime-test/datetime-math op #t "2012-11-21 11:21:11" 2 unit col-type)]))
+                    :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                               :aggregation [[:count]]
+                               :breakout    [[:expression "expr"]]}}]]
+            (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
+              (is (= (set expected) (set (qp.datetime-test/test-datetime-math query)))))))
+
+        (testing "date arithmetic with date columns"
+          (let [[col-type field-id] [:date (mt/id :times :d)]]
+            (doseq [op               [:datetime-add :datetime-subtract]
+                    unit             [:year :quarter :month :day]
+                    {:keys [expected query]}
+                    [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type)
+                                 (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)
+                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]
+                       :query   {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                 :fields      [[:expression "expr"]]}}
+                     {:expected (into [] (frequencies
+                                           [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type)
+                                            (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
+                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)
+                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
+                      :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                 :aggregation [[:count]]
+                                 :breakout    [[:expression "expr"]]}}]]
+              (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
+                (is (= (set expected) (set (qp.datetime-test/test-datetime-math query))))))))))))
+
+(deftest expr-test
+  (mt/test-driver
+    :mongo
+    (testing "Should use $expr for simple comparisons and ops for others"
+      (are [x y] (partial= {:query [{"$match" x}]}
+                           (mt/compile (mt/mbql-query venues {:filter y})))
+        {"price" 100}
+        [:= $price 100]
+
+        {"price" {"$ne" 100}}
+        [:!= $price 100]
+
+        {"price" {"$gt" 100}}
+        [:> $price 100]
+
+        {"price" {"$gte" 100}}
+        [:>= $price 100]
+
+        {"price" {"$lt" 100}}
+        [:< $price 100]
+
+        {"price" {"$lte" 100}}
+        [:<= $price 100]
+
+        {"name" {"$regex" "hello"}}
+        [:contains $name "hello"]
+
+        {"name" {"$regex" "^hello"}}
+        [:starts-with $name "hello"]
+
+        {"$and" [{:$expr {"$eq" ["$price" {"$add" ["$price" 1]}]}} {"name" "hello"}]}
+        [:and [:= $price [:+ $price 1]] [:= $name "hello"]]
+
+        {:$expr {"$eq" ["$price" "$price"]}}
+        [:= $price $price]
+
+        {:$expr {"$eq" [{"$add" ["$price" 1]} 100]}}
+        [:= [:+ $price 1] 100]
+
+        {:$expr {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
+        [:= $price [:+ [:- $price 5] 100]]))))

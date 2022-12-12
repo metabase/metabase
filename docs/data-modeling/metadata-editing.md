@@ -1,10 +1,10 @@
 ---
-title: "The data model page"
+title: "Metadata editing"
 redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
 ---
 
-# The Data Model page
+# Metadata editing
 
 Metabase allows admins to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.
 
@@ -37,7 +37,7 @@ For table metadata, you can:
 
 You can set tables to be **Queryable** or **Hidden**. Setting table visibility can be especially useful if you have a lot of tables in your database but your users will only be interested in a subset of those tables. Table visibility can help keep your Metabase instance tidy by hiding unnecessary tables out of the user interface.
 
-Visibility settings are distinct from **permissions**. Users can still query hidden tables using the **SQL editor**. See [**permissions**](../administration-guide/05-setting-permissions.md) for controlling access to data.
+Visibility settings are distinct from **permissions**. Users can still query hidden tables using the **SQL editor**. See [**permissions**](../permissions/start.md) for controlling access to data.
 
 **Queryable tables** can be selected from the **notebook editor**, and all of the data in the table can be displayed (unless certain columns are excluded — more on that below).
 
@@ -140,6 +140,16 @@ You can manually change the user interface for the filter to:
 - Plain input box
 
 ![Filter options](./images/filter-options.png)
+
+## Changing a search box filter to a dropdown filter
+
+1. Go to **Settings** > **Admin settings** > **Data Model**.
+2. Select the database, schema, table, and field in question.
+3. Click the **gear** icon to view all the field’s settings.
+4. Set **Field Type** to “Category”.
+5. Set **Filtering on this field** to “A list of all values".
+
+This setting will run a query against your database to get the first 1,000 distinct values (ordered ascending) for that field and cache the first 100kB of text to display in the dropdown menu. If you have columns with more than 1,000 distinct values, or columns with text-heavy data, we recommend setting **Filtering on this field** to "Search box" instead. For more info, see [How database scans work](../databases/connecting.md#how-database-scans-work).
 
 ## Column order
 

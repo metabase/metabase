@@ -13,6 +13,9 @@ export interface CustomFormSubmitProps {
   fullWidth?: boolean;
 }
 
+/**
+ * @deprecated
+ */
 function CustomFormSubmit(props: CustomFormSubmitProps) {
   const {
     submitting,

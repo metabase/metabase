@@ -114,7 +114,7 @@
    :friendly_names       (= (humanization/humanization-strategy) "advanced")
    :email_configured     (email/email-configured?)
    :slack_configured     (slack/slack-configured?)
-   :sso_configured       (boolean (google/google-auth-client-id))
+   :sso_configured       (google/google-auth-enabled)
    :instance_started     (snowplow/instance-creation)
    :has_sample_data      (db/exists? Database, :is_sample true)})
 
@@ -274,9 +274,11 @@
 (defn- database-metrics
   "Get metrics based on Databases."
   []
-  {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} (db/select [Database :is_full_sync])]
-                                  {:total    1
-                                   :analyzed is-full-sync?}))})
+  (let [databases (db/select [Database :is_full_sync :engine :dbms_version])]
+    {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
+                                    {:total    1
+                                     :analyzed is-full-sync?}))
+     :dbms_versions (frequencies (map #(assoc (:dbms_version %) :engine (:engine %)) databases))}))
 
 
 (defn- table-metrics

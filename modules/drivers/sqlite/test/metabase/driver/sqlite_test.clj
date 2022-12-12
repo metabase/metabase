@@ -12,15 +12,14 @@
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
 (deftest timezone-id-test
   (mt/test-driver :sqlite
-    (is (= "UTC"
-           (tu/db-timezone-id)))))
+    (is (= nil
+           (driver/db-default-timezone :sqlite (mt/db))))))
 
 (deftest filter-by-date-test
   (testing "Make sure filtering against a LocalDate works correctly in SQLite"

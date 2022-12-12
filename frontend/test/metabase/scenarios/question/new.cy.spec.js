@@ -25,16 +25,7 @@ describe("scenarios > question > new", () => {
     it("data selector popover should not be too small (metabase#15591)", () => {
       // Add 10 more databases
       for (let i = 0; i < 10; i++) {
-        cy.request("POST", "/api/database", {
-          engine: "h2",
-          name: "Sample" + i,
-          details: {
-            db: "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest",
-          },
-          auto_run_queries: false,
-          is_full_sync: false,
-          schedules: {},
-        });
+        cy.addH2SampleDatabase({ name: "Sample" + i });
       }
 
       startNewQuestion();
@@ -77,12 +68,10 @@ describe("scenarios > question > new", () => {
         .should("have.attr", "href")
         .and("eq", `/browse/${SAMPLE_DB_ID}-sample-database`);
 
-      // Discarding the search qquery should take us back to the original selector
+      // Discarding the search query should take us back to the original selector
       // that starts with the list of databases and saved questions
-      cy.findByPlaceholderText("Search for a table…")
-        .next()
-        .find(".Icon-close")
-        .click();
+      cy.findByPlaceholderText("Search for a table…");
+      cy.findByTestId("input-reset-button").click();
 
       cy.findByText("Saved Questions").click();
 

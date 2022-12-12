@@ -1,5 +1,5 @@
-import { assignUserColors } from "./colors";
 import { color } from "metabase/lib/colors";
+import { assignUserColors } from "./colors";
 
 describe("lib/formatting/colors", () => {
   it("should assign colors to users when currentUserId is passed", () => {

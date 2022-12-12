@@ -8,15 +8,18 @@ import {
 function filterDashboard(suggests = true) {
   visitDashboard(1);
   cy.contains("Orders");
+  cy.contains("Text").click();
 
   // We should get a suggested response and be able to click it if we're an admin
   if (suggests) {
-    cy.contains("Text").type("Main Street");
+    cy.findByPlaceholderText("Search by Address").type("Main Street");
     cy.contains("100 Main Street").click();
   } else {
-    cy.contains("Text").type("100 Main Street");
-    cy.wait("@search").should(xhr => {
-      expect(xhr.status).to.equal(403);
+    cy.findByPlaceholderText("Search by Address")
+      .type("100 Main Street")
+      .blur();
+    cy.wait("@search").should(({ response }) => {
+      expect(response.statusCode).to.equal(403);
     });
   }
   cy.contains("Add filter").click({ force: true });
@@ -26,6 +29,8 @@ function filterDashboard(suggests = true) {
 
 describe("support > permissions (metabase#8472)", () => {
   beforeEach(() => {
+    cy.intercept("GET", "/api/dashboard/1/params/*/search/*").as("search");
+
     restore();
     cy.signInAsAdmin();
 
@@ -52,11 +57,6 @@ describe("support > permissions (metabase#8472)", () => {
   });
 
   it("should allow a nodata user to select the filter", () => {
-    cy.server();
-    cy.route("GET", "/api/dashboard/1/params/*/search/100 Main Street").as(
-      "search",
-    );
-
     cy.signIn("nodata");
     filterDashboard(false);
   });

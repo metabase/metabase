@@ -6,7 +6,7 @@ import {
   getSemanticTypeIcon,
   getSemanticTypeName,
 } from "metabase/lib/schema_metadata";
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/Dimension";
 
 import {
   LabelContainer,

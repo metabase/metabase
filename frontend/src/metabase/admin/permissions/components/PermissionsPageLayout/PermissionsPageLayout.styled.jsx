@@ -1,6 +1,6 @@
+import styled from "@emotion/styled";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
-import styled from "@emotion/styled";
 
 export const PermissionPageRoot = styled.div`
   display: flex;

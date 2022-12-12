@@ -2,13 +2,12 @@ import React, { useState, useEffect } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import type Filter from "metabase-lib/lib/queries/structured/Filter";
 import Fields from "metabase/entities/fields";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Dimension from "metabase-lib/lib/Dimension";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
-
 import Warnings from "metabase/query_builder/components/Warnings";
+import type Filter from "metabase-lib/queries/structured/Filter";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Dimension from "metabase-lib/Dimension";
 
 import { InlineValuePicker } from "../InlineValuePicker";
 

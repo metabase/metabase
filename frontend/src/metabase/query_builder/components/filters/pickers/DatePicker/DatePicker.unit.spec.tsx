@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ORDERS } from "__support__/sample_database_fixture";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 import DatePicker from "./DatePicker";
 
@@ -168,7 +168,7 @@ describe("DatePicker", () => {
         render(<DatePickerStateWrapper filter={filter} />);
 
         userEvent.click(screen.getByText(new RegExp(type, "i")));
-        await screen.findByTestId(`${type}-date-picker`);
+        await screen.findAllByTestId(`${type}-date-picker`);
       });
     });
 
@@ -235,6 +235,7 @@ describe("DatePicker", () => {
             <DatePickerStateWrapper filter={filter} onChange={changeSpy} />,
           );
           userEvent.click(screen.getByText(/specific dates/i));
+          userEvent.click(screen.getByText("On"));
           await screen.findByTestId(`specific-date-picker`);
           userEvent.click(screen.getByText(new RegExp(description, "i")));
           const dateField = screen.getByText("21");
@@ -259,7 +260,6 @@ describe("DatePicker", () => {
         const dateField1 = screen.getByText("17");
         const dateField2 = screen.getByText("19");
 
-        userEvent.click(dateField1); // end range
         userEvent.click(dateField1); // begin range, clears end range
         userEvent.click(dateField2); // end range
 
@@ -274,6 +274,7 @@ describe("DatePicker", () => {
       it("can navigate between months on the calendar using arrows", async () => {
         render(<DatePickerStateWrapper filter={filter} />);
         userEvent.click(screen.getByText(/specific/i));
+        userEvent.click(screen.getByText("On"));
 
         await screen.findByText("May 2020");
         userEvent.click(await screen.getByLabelText(/chevronright/i));

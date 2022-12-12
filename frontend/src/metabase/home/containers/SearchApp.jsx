@@ -29,6 +29,11 @@ const PAGE_SIZE = 50;
 
 const SEARCH_FILTERS = [
   {
+    name: t`Apps`,
+    filter: "app",
+    icon: "star",
+  },
+  {
     name: t`Dashboards`,
     filter: "dashboard",
     icon: "dashboard",
@@ -57,6 +62,11 @@ const SEARCH_FILTERS = [
     name: t`Questions`,
     filter: "card",
     icon: "bar",
+  },
+  {
+    name: t`Pages`,
+    filter: "page",
+    icon: "document",
   },
   {
     name: t`Pulses`,

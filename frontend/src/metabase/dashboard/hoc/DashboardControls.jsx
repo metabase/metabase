@@ -4,10 +4,9 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
 
+import screenfull from "screenfull";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
-
-import screenfull from "screenfull";
 
 const TICK_PERIOD = 1; // seconds
 

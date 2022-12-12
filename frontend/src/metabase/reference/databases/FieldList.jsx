@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { useFormik } from "formik";
 import { t } from "ttag";
+import cx from "classnames";
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
 import F from "metabase/reference/components/Field.css";
@@ -16,8 +17,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 
-import cx from "classnames";
-
+import * as metadataActions from "metabase/redux/metadata";
+import * as actions from "metabase/reference/reference";
+import { getIconForField } from "metabase-lib/metadata/utils/fields";
 import {
   getError,
   getFieldsByTable,
@@ -27,11 +29,6 @@ import {
   getTable,
   getUser,
 } from "../selectors";
-
-import { getIconForField } from "metabase/lib/schema_metadata";
-
-import * as metadataActions from "metabase/redux/metadata";
-import * as actions from "metabase/reference/reference";
 
 const emptyStateData = {
   message: t`Fields in this table will appear here as they're added`,

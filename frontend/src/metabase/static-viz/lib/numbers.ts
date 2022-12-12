@@ -1,7 +1,9 @@
+import { formatNumber as appFormatNumber } from "metabase/lib/formatting/numbers";
+
 export type NumberFormatOptions = {
   number_style?: "currency" | "decimal" | "scientific" | "percentage";
   currency?: string;
-  currency_style?: string;
+  currency_style?: "symbol" | "code" | "name";
   number_separators?: ".,";
   decimals?: number;
   scale?: number;
@@ -22,49 +24,13 @@ const DEFAULT_OPTIONS = {
 };
 
 export const formatNumber = (number: number, options?: NumberFormatOptions) => {
-  const {
-    number_style,
-    currency,
-    currency_style,
-    number_separators: [decimal_separator, grouping_separator],
-    decimals,
-    scale,
-    prefix,
-    suffix,
-    compact,
-  } = { ...DEFAULT_OPTIONS, ...options };
+  const optionsWithDefault = {
+    ...DEFAULT_OPTIONS,
+    ...options,
+  };
+  const { prefix, suffix } = optionsWithDefault;
 
-  function createFormat(compact?: boolean) {
-    if (compact) {
-      return new Intl.NumberFormat("en", {
-        style: number_style !== "scientific" ? number_style : "decimal",
-        notation: "compact",
-        compactDisplay: "short",
-        currency: currency,
-        currencyDisplay: currency_style,
-        useGrouping: true,
-      });
-    }
-
-    return new Intl.NumberFormat("en", {
-      style: number_style !== "scientific" ? number_style : "decimal",
-      notation: number_style !== "scientific" ? "standard" : "scientific",
-      currency: currency,
-      currencyDisplay: currency_style,
-      useGrouping: true,
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals != null ? decimals : 2,
-    });
-  }
-
-  const format = createFormat(compact);
-
-  const formattedNumber = format
-    .format(number * scale)
-    .replace(/\./g, decimal_separator)
-    .replace(/,/g, grouping_separator ?? "");
-
-  return `${prefix}${formattedNumber}${suffix}`;
+  return `${prefix}${appFormatNumber(number, optionsWithDefault)}${suffix}`;
 };
 
 export const formatPercent = (percent: number) =>

@@ -14,7 +14,6 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -69,15 +68,6 @@
   ;; connection zone
   (hx/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
 
-(defrecord AtTimeZone
-  ;; record type to support applying Presto's `AT TIME ZONE` operator to an expression
-  [expr zone]
-  hformat/ToSql
-  (to-sql [_]
-    (format "%s AT TIME ZONE %s"
-      (hformat/to-sql expr)
-      (hformat/to-sql (hx/literal zone)))))
-
 (defn- in-report-zone
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Presto's
   `AT TIME ZONE` operator. See https://prestodb.io/docs/current/functions/datetime.html"
@@ -92,7 +82,7 @@
              ;; if one has already been set, don't do so again
              (not (::in-report-zone? (meta expr)))
              report-zone)
-      (-> (hx/with-database-type-info (->AtTimeZone expr report-zone) timestamp-with-time-zone-db-type)
+      (-> (hx/with-database-type-info (hx/->AtTimeZone expr report-zone) timestamp-with-time-zone-db-type)
         (vary-meta assoc ::in-report-zone? true))
       expr)))
 
@@ -315,10 +305,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Sync                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod sql-jdbc.sync/database-type->base-type :presto-jdbc
-  [_ field-type]
-  (presto-common/presto-type->base-type field-type))
 
 (defn- have-select-privilege?
   "Checks whether the connected user has permission to select from the given `table-name`, in the given `schema`.

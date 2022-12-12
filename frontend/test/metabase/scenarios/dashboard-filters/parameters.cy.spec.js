@@ -38,6 +38,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("filter").click();
     cy.contains("Text or Category").click();
     cy.findByText("Dropdown").click();
+    cy.findByText("A single value").click();
 
     // connect it to people.name and product.category
     // (this doesn't make sense to do, but it illustrates the feature)
@@ -112,8 +113,8 @@ describe("scenarios > dashboard > parameters", () => {
               card_id,
               row: 0,
               col: 0,
-              sizeX: 12,
-              sizeY: 8,
+              size_x: 12,
+              size_y: 8,
               series: [],
               visualization_settings: {},
               parameter_mappings: [
@@ -251,8 +252,8 @@ describe("scenarios > dashboard > parameters", () => {
             card_id,
             row: 0,
             col: 0,
-            sizeX: 8,
-            sizeY: 6,
+            size_x: 8,
+            size_y: 6,
             parameter_mappings: [
               {
                 parameter_id: matchingFilterType.id,
@@ -271,7 +272,7 @@ describe("scenarios > dashboard > parameters", () => {
       cy.icon("pencil").click();
       cy.icon("filter").click();
       cy.findByText("ID").click();
-      cy.findByText("No valid fields");
+      cy.findByText(/Add a variable to this question/).should("be.visible");
 
       // Confirm that the correct parameter type is connected to the native question's field filter
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
@@ -301,7 +302,9 @@ describe("scenarios > dashboard > parameters", () => {
       // Confirm that it is not possible to connect filter to the updated question anymore (metabase#9299)
       cy.icon("pencil").click();
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
-      cy.findByText("No valid fields");
+      cy.findByText(/Add a string variable to this question/).should(
+        "be.visible",
+      );
     });
   });
 
@@ -361,8 +364,8 @@ describe("scenarios > dashboard > parameters", () => {
               card_id,
               row: 0,
               col: 0,
-              sizeX: 14,
-              sizeY: 12,
+              size_x: 14,
+              size_y: 12,
               parameter_mappings: [
                 {
                   parameter_id: titleFilter.id,

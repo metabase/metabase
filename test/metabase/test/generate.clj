@@ -127,8 +127,8 @@
 (s/def ::row pos-int?)
 (s/def ::col pos-int?)
 (s/def ::col pos-int?)
-(s/def ::sizeX pos-int?)
-(s/def ::sizeY pos-int?)
+(s/def ::size_x pos-int?)
+(s/def ::size_y pos-int?)
 (s/def ::parameter_mappings #{[{}]})
 
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
@@ -149,7 +149,7 @@
 (s/def ::native-query-snippet (s/keys :req-un [::id ::name ::description ::content]))
 (s/def ::dashboard (s/keys :req-un [::id ::name ::description ::parameters]))
 
-(s/def ::dashboard-card (s/keys :req-un [::id ::sizeX ::sizeY ::row ::col ::parameter_mappings ::visualization_settings ]))
+(s/def ::dashboard-card (s/keys :req-un [::id ::size_x ::size_y ::row ::col ::parameter_mappings ::visualization_settings ]))
 (s/def ::pulse-card (s/keys :req-un [::id ::position]))
 
 
@@ -301,7 +301,7 @@
                (get-in [:table-fields (:table_id visit-val)])))
 
     ;; Users' emails need to be unique. This enforces it, and appends junk to before the @ if needed.
-    (= ent-type :core_user)
+    (= ent-type :core-user)
     (update :email unique-email)
 
     ;; Database names need to be unique. This enforces it, and appends junk to names if needed.

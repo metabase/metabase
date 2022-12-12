@@ -8,7 +8,6 @@
             [metabase.automagic-dashboards.rules :as rules]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Collection Database Field Metric Table]]
-            [metabase.models.field :as field]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -28,11 +27,11 @@
 
 (deftest ->reference-test
   (is (= [:field 1 nil]
-         (->> (assoc (field/->FieldInstance) :id 1)
+         (->> (assoc (mi/instance Field) :id 1)
               (#'magic/->reference :mbql))))
 
   (is (= [:field 2 {:source-field 1}]
-         (->> (assoc (field/->FieldInstance) :id 1 :fk_target_field_id 2)
+         (->> (assoc (mi/instance Field) :id 1 :fk_target_field_id 2)
               (#'magic/->reference :mbql))))
 
   (is (= 42
@@ -289,7 +288,7 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (let [q (query/adhoc-query {:query {:aggregation [[:count]]
-                                          :breakout [[:fk-> (mt/id :checkins) (mt/id :venues :category_id)]]
+                                          :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
                                           :source-table (mt/id :checkins)}
                                   :type :query
                                   :database (mt/id)})]
@@ -515,7 +514,7 @@
 (deftest handlers-test
   (testing "Make sure we have handlers for all the units available"
     (doseq [unit (disj (set (concat u.date/extract-units u.date/truncate-units))
-                       :iso-day-of-year :millisecond)]
+                       :iso-day-of-year :second-of-minute :millisecond)]
       (testing unit
         (is (some? (#'magic/humanize-datetime "1990-09-09T12:30:00" unit)))))))
 
@@ -549,7 +548,8 @@
 (deftest filter-referenced-fields-test
   (testing "X-Ray should work if there's a filter in the question (#19241)"
     (mt/dataset sample-dataset
-      (let [query (query/map->QueryInstance
+      (let [query (mi/instance
+                   Query
                    {:database-id   (mt/id)
                     :table-id      (mt/id :products)
                     :dataset_query {:database (mt/id)

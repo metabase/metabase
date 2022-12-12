@@ -17,6 +17,7 @@
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.public-settings :as public-settings]
+            [metabase.query-processor.middleware.limit :as limit]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.task :as task]
             [metabase.util :as u]
@@ -53,7 +54,8 @@
   (reify Refresher
     (refresh! [_ database definition card]
       (binding [persisted-info/*allow-persisted-substitution* false]
-        (ddl.i/refresh! (:engine database) database definition (:dataset_query card))))
+        (let [query (limit/disable-max-results (:dataset_query card))]
+          (ddl.i/refresh! (:engine database) database definition query))))
     (unpersist! [_ database persisted-info]
      (ddl.i/unpersist! (:engine database) database persisted-info))))
 

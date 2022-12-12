@@ -90,36 +90,64 @@
     (api-error-message (s/maybe (non-empty [NonBlankString])))
     ;; -> \"value may be nil, or if non-nil, value must be an array. Each value must be a non-blank string.
             The array cannot be empty.\""
-  [schema]
-  (or (:api-error-message schema)
-      (existing-schema->api-error-message schema)
-      ;; for schemas wrapped by an `s/maybe` we can generate a nice error message like
-      ;; "value may be nil, or if non-nil, value must be ..."
-      (when (instance? schema.core.Maybe schema)
-        (when-let [message (api-error-message (:schema schema))]
-          (deferred-tru "value may be nil, or if non-nil, {0}" message)))
-      ;; we can do something similar for enum schemas which are also likely to be defined inline
-      (when (instance? schema.core.EnumSchema schema)
-        (deferred-tru "value must be one of: {0}." (str/join ", " (for [v (sort (map str (:vs schema)))]
-                                                                    (str "`" v "`")))))
-      ;; For cond-pre schemas we'll generate something like
-      ;; value must satisfy one of the following requirements:
-      ;; 1) value must be a boolean.
-      ;; 2) value must be a valid boolean string ('true' or 'false').
-      (when (instance? schema.core.CondPre schema)
-        (create-cond-schema-message (:schemas schema)))
 
-      ;; For conditional schemas we'll generate a string similar to `cond-pre` above
-      (when (instance? schema.core.ConditionalSchema schema)
-        (create-cond-schema-message (map second (:preds-and-schemas schema))))
+  ([schema] (api-error-message schema 0))
+  ([schema indent-depth]
+   (or (:api-error-message schema)
+       (existing-schema->api-error-message schema)
+       ;; for schemas wrapped by an `s/maybe` we can generate a nice error message like
+       ;; "value may be nil, or if non-nil, value must be ..."
+       (when (instance? schema.core.Maybe schema)
+         (when-let [message (api-error-message (:schema schema))]
+           (deferred-tru "value may be nil, or if non-nil, {0}" message)))
 
-      ;; do the same for sequences of a schema
-      (when (vector? schema)
-        (str (deferred-tru "value must be an array.")
-             (when (= (count schema) 1)
-               (when-let [message (api-error-message (first schema))]
-                 (str " " (deferred-tru "Each {0}" message))))))))
+       ;; we can do something similar for enum schemas which are also likely to be defined inline
+       (when (instance? schema.core.EnumSchema schema)
+         (deferred-tru "value must be one of: {0}." (str/join ", " (for [v (sort (map str (:vs schema)))]
+                                                                     (str "`" v "`")))))
+       ;; For cond-pre schemas we'll generate something like
+       ;; value must satisfy one of the following requirements:
+       ;; 1) value must be a boolean.
+       ;; 2) value must be a valid boolean string ('true' or 'false').
+       (when (instance? schema.core.CondPre schema)
+         (create-cond-schema-message (:schemas schema)))
 
+       ;; For conditional schemas we'll generate a string similar to `cond-pre` above
+       (when (instance? schema.core.ConditionalSchema schema)
+         (create-cond-schema-message (map second (:preds-and-schemas schema))))
+
+       ;; do the same for sequences of a schema
+       (when (vector? schema)
+         (str (deferred-tru "value must be an array.")
+              (when (= (count schema) 1)
+                (when-let [message (api-error-message (first schema))]
+                  (str " " (deferred-tru "Each {0}" message))))))
+
+       ;; Optional map keys
+       (when (instance? schema.core.OptionalKey schema)
+         (deferred-tru "{0} (optional)" (api-error-message (:k schema))))
+
+       ;; schema map keys
+       (when (instance? clojure.lang.Keyword schema)
+         (name schema))
+
+       ;; for maps of a schema, write out what keys and values
+       ;; this keeps track of indentation because the message is very difficult to read without it.
+       (when (map? schema)
+         (let [spaces (str/join (repeat indent-depth "  "))]
+           (str (deferred-tru "value must be a map with schema: (\n{0}{1}{2}{3}{4}{5}"
+                  spaces
+                  "  "
+                  (str/join
+                   (str "\n" spaces "  ")
+                   (for [k (sort-by pr-str (keys schema))] ;; keep order of keys deterministic
+                     (str
+                      (api-error-message k (inc indent-depth))
+                      " : "
+                      (api-error-message (get schema k) (inc indent-depth)))))
+                  "\n"
+                  spaces
+                  ")")))))))
 
 (defn non-empty
   "Add an addditonal constraint to `schema` (presumably an array) that requires it to be non-empty

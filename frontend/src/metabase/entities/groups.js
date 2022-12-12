@@ -1,9 +1,9 @@
+import { assocIn } from "icepick";
 import { createEntity } from "metabase/lib/entities";
 import {
   CREATE_MEMBERSHIP,
   DELETE_MEMBERSHIP,
 } from "metabase/admin/people/events";
-import { assocIn } from "icepick";
 
 const Groups = createEntity({
   name: "groups",

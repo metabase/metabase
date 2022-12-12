@@ -28,6 +28,6 @@ describe("dashboard_grid", () => {
 });
 
 // shorthand for creating a position object, default to 2x2
-function pos(col, row, sizeX = 2, sizeY = 2) {
-  return { col, row, sizeX, sizeY };
+function pos(col, row, size_x = 2, size_y = 2) {
+  return { col, row, size_x, size_y };
 }

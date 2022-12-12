@@ -1,17 +1,17 @@
 ---
-title: Setting up SAML with Keycloak
+title: SAML with Keycloak
 redirect_from:
   - /docs/latest/enterprise-guide/saml-keycloak
 ---
 
-# Setting up SAML with Keycloak
+# SAML with Keycloak
 
 Keycloak is an open source platform that can be used as a user directory to save user data while acting as the IdP for single sign-on.
 
 1. [Set up SAML in Keycloak](#working-in-the-keycloak-console) (the identity provider).
-2. [Set up SAML in Metabase](../authenticating-with-saml.md#enabling-saml-authentication-in-metabase) (the service provider).
+2. [Set up SAML in Metabase](./authenticating-with-saml.md#enabling-saml-authentication-in-metabase) (the service provider).
 
-For more information, check out our guide for [authenticating with SAML](../authenticating-with-saml.md).
+For more information, check out our guide for [authenticating with SAML](./authenticating-with-saml.md).
 
 ## Working in the Keycloak console
 

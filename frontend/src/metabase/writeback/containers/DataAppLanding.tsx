@@ -1,15 +1,19 @@
 import React, { ReactNode } from "react";
+import { Location } from "history";
 
-import { extractCollectionId } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
-import DataApps from "metabase/entities/data-apps";
+import DataApps, { getDataAppHomePageId } from "metabase/entities/data-apps";
+import Search from "metabase/entities/search";
 
 import CollectionContent from "metabase/collections/containers/CollectionContent";
+import DashboardApp from "metabase/dashboard/containers/DashboardApp";
 
 import { DataApp } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 interface DataAppLandingOwnProps {
+  location: Location;
   params: {
     slug: string;
   };
@@ -20,10 +24,39 @@ interface DataAppLandingProps extends DataAppLandingOwnProps {
   dataApp: DataApp;
 }
 
-const DataAppLanding = ({ dataApp, children }: DataAppLandingProps) => {
+const DataAppLanding = ({
+  dataApp,
+  location,
+  params,
+  children,
+}: DataAppLandingProps) => {
+  if (Urls.isDataAppPreviewPath(location.pathname)) {
+    return (
+      <CollectionContent collectionId={dataApp.collection_id} isRoot={false} />
+    );
+  }
+
   return (
     <>
-      <CollectionContent collectionId={dataApp.collection_id} isRoot={false} />
+      <Search.ListLoader
+        query={{
+          collection: dataApp.collection_id,
+          models: ["page"],
+          limit: 100,
+        }}
+        loadingAndErrorWrapper={false}
+      >
+        {({ list: pages = [] }: { list: any[] }) => {
+          const homepageId = getDataAppHomePageId(dataApp, pages);
+          return homepageId ? (
+            <DashboardApp
+              dashboardId={homepageId}
+              location={location}
+              params={params}
+            />
+          ) : null;
+        }}
+      </Search.ListLoader>
       {children}
     </>
   );
@@ -31,5 +64,5 @@ const DataAppLanding = ({ dataApp, children }: DataAppLandingProps) => {
 
 export default DataApps.load({
   id: (state: State, { params }: DataAppLandingOwnProps) =>
-    extractCollectionId(params.slug),
+    Urls.extractCollectionId(params.slug),
 })(DataAppLanding);

@@ -1,3 +1,5 @@
+import { assocIn } from "icepick";
+import { t } from "ttag";
 import {
   compose,
   withAction,
@@ -8,8 +10,6 @@ import {
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-import { assocIn } from "icepick";
-import { t } from "ttag";
 
 import { addUndo } from "metabase/redux/undo";
 
@@ -94,6 +94,7 @@ const Dashboards = createEntity({
             await Dashboards.api.copy({
               id: entityObject.id,
               ...overrides,
+              is_deep_copy: !overrides.is_shallow_copy,
             }),
           );
           if (notify) {
@@ -133,7 +134,7 @@ const Dashboards = createEntity({
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard),
     getCollection: dashboard =>
       dashboard && normalizedCollection(dashboard.collection),
-    getIcon: dashboard => ({ name: "dashboard" }),
+    getIcon: () => ({ name: "dashboard" }),
     getColor: () => color("dashboard"),
   },
 

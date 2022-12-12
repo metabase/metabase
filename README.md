@@ -1,6 +1,6 @@
 # Metabase
 
-[Metabase](https://www.metabase.com/) is the easy, open-source way for everyone in your company to ask questions and learn from data.
+[Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data.
 
 ![Metabase Product Screenshot](docs/images/metabase-product-screenshot.svg)
 
@@ -25,8 +25,8 @@ Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of
 
 ## Supported databases
 
-- [Officially supported databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html#officially-supported-databases).
-- [Community-supported drivers](https://www.metabase.com/docs/latest/developers-guide-drivers.html#how-to-use-a-community-built-driver).
+- [Officially supported databases](./docs/databases/connecting.md#connecting-to-supported-databases)
+- [Partner and Community drivers](./docs/developers-guide/partner-and-community-drivers.md)
 
 ## Installation
 
@@ -42,11 +42,11 @@ We want Metabase to be available in as many languages as possible. See which tra
 
 ## Extending Metabase
 
-Metabase also allows you to hit our Query API directly from Javascript to integrate the simple analytics we provide with your own application or third party services to do things like:
+Hit our Query API from Javascript to integrate analytics. Metabase enables your application to:
 
 - Build moderation interfaces.
 - Export subsets of your users to third party marketing automation software.
-- Provide a specialized customer lookup application for the people in your company.
+- Provide a custom customer lookup application for the people in your company.
 
 Check out our guide, [Working with the Metabase API](https://www.metabase.com/learn/administration/metabase-api).
 
@@ -56,8 +56,12 @@ See [SECURITY.md](./SECURITY.md) for details.
 
 ## License
 
-This repository contains the source code for both the Open Source edition of Metabase, released under the AGPL, as well as the [commercial editions of Metabase](https://www.metabase.com/pricing/), which are released under the Metabase Commercial Software License.
+This repository contains the source code for both the Open Source edition of Metabase, released under the AGPL, as well as the [commercial editions of Metabase](https://www.metabase.com/pricing), which are released under the Metabase Commercial Software License.
 
 See [LICENSE.txt](./LICENSE.txt) for details.
 
 Unless otherwise noted, all files © 2022 Metabase, Inc.
+
+## [Metabase Experts](https://www.metabase.com/partners/)
+
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/?utm_source=readme&utm_medium=metabase-expetrs&utm_campaign=readme).

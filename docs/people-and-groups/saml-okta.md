@@ -1,17 +1,10 @@
 ---
-title: Setting up SAML with Okta
+title: SAML with Okta
 ---
 
-# Setting up SAML with Okta
+# SAML with Okta
 
 {% include plans-blockquote.html feature="Okta SAML authentication" %}
-
-1. [Creating an app integration in Okta][okta-saml-docs] (the identity provider).
-2. [Configuring SAML settings in Okta](#configuring-saml-settings-in-okta).
-3. [Managing signing certificates in Okta](#managing-signing-certificates-in-okta).
-4. [Configuring group mappings](#configuring-group-mappings) (optional).
-
-For more information, check out our guide for [authenticating with SAML][saml-doc].
 
 ## Configuring SAML settings in Okta
 
@@ -112,9 +105,9 @@ This expression will return a list of strings containing User Group names that t
 
 For common issues, go to [Troubleshooting SAML][troubleshooting-saml].
 
-[enabling-saml-in-metabase]: ./authenticating-with-saml#enabling-saml-authentication-in-metabase
+[enabling-saml-in-metabase]: ./authenticating-with-saml.md#enabling-saml-authentication-in-metabase
 [okta-saml-docs]: https://help.okta.com/en-us/Content/Topics/Apps/Apps_App_Integration_Wizard_SAML.htm
 [okta-create-attribute-statement]: https://support.okta.com/help/s/article/How-to-define-and-configure-a-custom-SAML-attribute-statement
-[saml-doc]: ../enterprise-guide/authenticating-with-saml.html
+[saml-doc]: ./authenticating-with-saml.md
 [site-url]: ../configuring-metabase/settings.md#site-url
-[troubleshooting-saml]: ../troubleshooting-guide/saml.html
+[troubleshooting-saml]: ../troubleshooting-guide/saml.md

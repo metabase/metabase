@@ -3,22 +3,23 @@ import { t } from "ttag";
 import _ from "lodash";
 
 import { formatColumn } from "metabase/lib/formatting";
-import {
-  isNumber,
-  isURL,
-  isEmail,
-  isImageURL,
-  isAvatarURL,
-} from "metabase/lib/schema_metadata";
 
 import List from "metabase/visualizations/components/List/List";
 import ChartSettingsListColumns from "metabase/visualizations/components/settings/ChartSettingsListColumns";
+import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { VisualizationSettings } from "metabase-types/api/card";
 import { Column } from "metabase-types/types/Dataset";
 import type { DatasetColumn } from "metabase-types/api/dataset";
 import { Series, VisualizationProps } from "metabase-types/types/Visualization";
+import {
+  isNumber,
+  isURL,
+  isEmail,
+  isImageURL,
+  isAvatarURL,
+} from "metabase-lib/types/utils/isa";
 
 function ListViz(props: VisualizationProps) {
   const { data, settings } = props;
@@ -48,6 +49,8 @@ export default Object.assign(ListViz, {
   uiName: t`List`,
   identifier: "list",
   iconName: "list",
+
+  hidden: true,
 
   minSize: {
     width: 4,
@@ -171,22 +174,56 @@ export default Object.assign(ListViz, {
 
     settings["link_text"] = {
       title: t`Link text`,
-      widget: "input",
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_: unknown, settings: VisualizationSettings) =>
         settings["view_as"] !== "link" && settings["view_as"] !== "email_link",
       readDependencies: ["view_as"],
+      getProps: (
+        col: Column,
+        settings: VisualizationSettings,
+        onChange: (col: Column) => void,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        }: { series: Series },
+      ) => {
+        return {
+          keys: cols.map(column => column.name),
+          placeholder: t`Link to {{bird_id}}`,
+        };
+      },
     };
 
     settings["link_url"] = {
       title: t`Link URL`,
-      widget: "input",
+      widget: ChartSettingLinkUrlInput,
       hint: linkFieldsHint,
       default: null,
       getHidden: (_: unknown, settings: VisualizationSettings) =>
         settings["view_as"] !== "link",
       readDependencies: ["view_as"],
+      getProps: (
+        col: Column,
+        settings: VisualizationSettings,
+        onChange: (col: Column) => void,
+        {
+          series: [
+            {
+              data: { cols },
+            },
+          ],
+        }: { series: Series },
+      ) => {
+        return {
+          keys: cols.map(column => column.name),
+          placeholder: t`http://toucan.example/{{bird_id}}`,
+        };
+      },
     };
 
     return settings;

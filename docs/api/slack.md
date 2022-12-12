@@ -8,9 +8,6 @@ summary: |
 
 /api/slack endpoints.
 
-  - [GET /api/slack/manifest](#get-apislackmanifest)
-  - [PUT /api/slack/settings](#put-apislacksettings)
-
 ## `GET /api/slack/manifest`
 
 Returns the YAML manifest file that should be used to bootstrap new Slack apps.

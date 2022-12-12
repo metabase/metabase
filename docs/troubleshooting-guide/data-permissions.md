@@ -79,7 +79,7 @@ If you get an error message that says something like "permission denied to \<you
 2. Get the credentials that Metabase uses to connect to your database. If you're not sure what those credentials are, ask your database admin.
 3. Using a different application (like your CLI or database IDE), connect to your database using the same credentials your Metabase uses to connect to that database, and run the query from step 1.
 4. If you cannot access the table or schema in both step 1 and 3, ask your database admin to:
-    - Grant permissions to the role that Metabase is using to connect, or
+    - [Grant database privileges](#granting-database-privileges) to the role that Metabase is using to connect, or
     - Provide a set of database credentials with the correct permissions.
 5. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
@@ -96,6 +96,24 @@ This means that settings configured on the database side can prevent Metabase fr
 1. Open an incognito browser window.
 2. Log in to Metabase as the person in question.
 3. Run a question, dashboard, or native query to confirm that the person can see the data they're supposed to.
+
+## Granting database privileges
+
+These sample commands use PostgreSQL syntax. If you use a different database, refer to your database's syntax guide.
+
+To allow Metabase to query a specific table:
+
+```sql
+USE <database>;
+GRANT ALL ON <table> IN SCHEMA <schema> TO <metabase_user>;
+```
+
+To allow Metabase to query all tables in a specific schema:
+
+```sql
+USE <database>;
+GRANT ALL ON <table> TO <metabase_user>;
+```
 
 ## Do you have a different problem?
 
@@ -119,12 +137,12 @@ If you can’t solve your problem using the troubleshooting guides:
 [discourse]: https://discourse.metabase.com/
 [groups]: ../people-and-groups/managing.md#groups
 [group-permissions]: ../permissions/introduction.md#key-points-regarding-permissions
-[known-issues]: ./known-issues.html
-[learn-permissions]: /learn/permissions
+[known-issues]: ./known-issues.md
+[learn-permissions]: https://www.metabase.com/learn/permissions
 [native-query-editing]: ../permissions/data.md#native-query-editing
 [no-self-service]: ../permissions/data.md#no-self-service-access
 [pricing]: https://www.metabase.com/pricing
-[proxies]: ./proxies.html
+[proxies]: ./proxies.md
 [sql-access]: ./data-permissions.md#a-user-group-cant-access-the-sql-editor
 [sql-sandboxing]: ./sandboxing.md#is-the-question-written-in-sql
 [table-schema-access]: ./data-permissions.md#people-have-the-wrong-access-to-a-table-or-schema

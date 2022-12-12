@@ -10,6 +10,9 @@ export interface CustomFormMessageProps {
   noPadding?: boolean;
 }
 
+/**
+ * @deprecated
+ */
 function CustomFormMessage(props: CustomFormMessageProps) {
   const { error } = useForm();
   if (error) {

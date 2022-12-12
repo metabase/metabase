@@ -39,12 +39,12 @@
 
   1. Calls util fn `datasource` to get a c3p0 connection pool DataSource
   2. Calls `.getConnection()` the normal way
-  3. Executes `set-timezone-sql` if implemented by the driver.
+  3. Executes [[set-timezone-sql]] if implemented by the driver.
 
   `timezone-id` will be `nil` if a `report-timezone` Setting is not currently set; don't change the session time zone
   if this is the case.
 
-  For drivers that support session timezones, the default implementation and `set-timezone-sql` should be considered
+  For drivers that support session timezones, the default implementation and [[set-timezone-sql]] should be considered
   deprecated in favor of implementing `connection-with-timezone` directly. This way you can set the session timezone
   in the most efficient manner, e.g. only setting it if needed (if there's an easy way for you to check this), or by
   setting it as a parameter of the connection itself (the default connection pools are automatically flushed when

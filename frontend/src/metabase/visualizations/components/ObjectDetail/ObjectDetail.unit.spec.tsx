@@ -1,12 +1,12 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
+import testDataset from "__support__/testDataset";
 import {
   ObjectDetailFn as ObjectDetail,
   ObjectDetailHeader,
   ObjectDetailBody,
 } from "./ObjectDetail";
-import testDataset from "__support__/testDataset";
 
 describe("Object Detail", () => {
   it("renders an object detail header", () => {

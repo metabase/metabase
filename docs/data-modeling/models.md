@@ -28,9 +28,23 @@ The idea with models is to give other people a good "starting point table" that 
 
 ## Create a model
 
-First, search for models that already exist. If you can't find one that meets your needs, you can create a model like so:
+First, search for models that already exist. If you can't find one that meets your needs, you can create a model:
 
-1. [Ask a question][question] using either the query builder or the SQL editor.
+- [from scratch](#create-a-model-from-scratch), or
+- [from a saved question](#create-a-model-from-a-saved-question).
+
+Models you create are automatically [pinned to the current collection](../exploration-and-organization/collections.md#pinned-items).
+
+### Create a model from scratch
+
+1. In the upper right, click **New +** > **Model**.
+2. Choose either the query builder or a native query (if you want to use SQL). The advantage of using the query builder is that Metabase will be able to fill out some of the metadata for you; if you use SQL, you'll have to fill out that metadata manually.
+3. Select your data.
+4. Create and save your query.
+
+### Create a model from a saved question
+
+1. [Ask a question][question] using either the query builder or the SQL editor, or select an existing saved question that you want to convert to a model.
 2. Save the question.
 3. Click on the **...** > **Turn this into a model**.
 
@@ -58,7 +72,7 @@ For models based on SQL queries, you can tell Metabase if the column has the sam
 
 You can set the [column type][column-type]. The default is "No special type". Be sure to set the Column type so people can interact with the results.
 
-## This column should appear in...
+### This column should appear in...
 
 You can specify whether a column should appear in the table view, or just in a detail view (when you click on the entity/primary key for the row).
 
@@ -70,9 +84,9 @@ You can specify whether a column should appear in the table view, or just in a d
 - Text
 - Link (it's a URL people should be able to click on)
 
-### Editing the model's query
+## Edit a model's query
 
-You can edit the model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares).
+You can edit a model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares).
 
 ## Start a question from a model
 
@@ -84,7 +98,7 @@ You can refer to a model in a SQL query just like you can refer to a saved quest
 
 ```
 {% raw %}
-SELECT * FROM {{#1}}
+SELECT * FROM {{#1-customer-model}}
 {% endraw %}
 ```
 
@@ -92,11 +106,15 @@ Or as a [common table expression (CTE)][cte]:
 
 ```
 {% raw %}
-WITH model AS {{#3807}}
+WITH model AS {{#3807-invoice-model}}
 SELECT *
 FROM model;
 {% endraw %}
 ```
+
+Simply typing `{% raw %}{{#}} {% endraw %}` will allow you to search for models (for example, you could type in `{% raw %}{{#customer}}{% endraw %}` to search models, questions, and tables with the word "customer" in the title.
+
+You can also use the data reference sidebar to browse the models available. To open the data reference sidebar, click on the **book** icon.
 
 ## Model history
 
@@ -114,32 +132,37 @@ _Currently available for PostgreSQL, MySQL, and Redshift_.
 
 Metabase can cache the results of your models so that the models load faster. Metabase caches models by creating tables in a bespoke schema in your data warehouse, and saves the results of the queries that underlie your models in those tables. When people ask questions based on your models, Metabase will substitute those cached results in place of running the model's query.
 
-### Enable model caching for a database
+To set up model caching:
 
-There are two steps to enabling model caching for your database.
+1. [Enable model caching in Metabase](#enable-model-caching-in-metabase).
+2. [Create a schema to store cached models](#create-a-schema-to-store-cached-models).
 
-1. [Create a schema in your database to store cached models](#1-create-a-schema-in-your-database-to-store-cached-models)
-2. [Enable model caching in your Metabase](#2-enable-model-caching-in-your-metabase)
+### Enable model caching in Metabase
 
-#### 1. Create a schema in your database to store cached models
-
-To create the schema in your database, in your Metabase click on the **gear** icon in the upper right and select **Admin settings** > **Databases**, then select the relevant database connection. On the right, click on **Turn model caching on**.
-
-![Cache models UI](./images/cache-model-schema.png)
-
-If the credentials you've given Metabase to connect to your database are permissive, Metabase should do all the work for you: Metabase will check if the schema exists, or otherwise attempt to create it. 
-
-If the connection's credentials lack the necessary permissions to create the schema in your database, you'll need to create the schema in the database yourself. Click on the info button to view the name of the schema that you'll need to create in your database to store your cached models. In the above image, the schema name is "metabase_cache_134ba_7", but your schema name will differ. Once you've created that schema, ensure that the credentials Metabase uses can manage and write to that schema. Make sure that you name the schema exactly as the tooltip in Metabase suggests.
-
-#### 2. Enable model caching in your Metabase
-
-Once you've completed step one, return to the **Admin settings** > **Settings** > **Caching**.
+Go to **Admin settings** > **Settings** > **Caching** > **Models** to turn the feature on.
 
 ![Model caching](./images/model-caching-custom.png)
 
 You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data.
 
-If someone changes the query definition of a model, any question based on that model will skip the cache until the next cache refresh.
+If someone [changes the query definition of a model](#edit-a-models-query), any question based on that model will skip the cache until the next cache refresh.
+
+### Create a schema to store cached models
+
+Go to **Admin settings** > **Databases** > your database > **Turn model caching on**.
+
+![Cache models UI](./images/cache-model-schema.png)
+
+If the credentials you've given Metabase to connect to your database are permissive, Metabase should do all the work for you: Metabase will check if the schema exists, or otherwise attempt to create it.
+
+If the connection's credentials lack the necessary permissions to create the schema in your database, you'll need to create the schema in the database yourself:
+
+1. Click on the **info icon** to get the schema name.
+
+   > In the above image, the schema name is "metabase_cache_134ba_7", but your schema name will differ.
+
+2. Create the schema in your database---make sure you use the exact schema name from step 1.
+3. Ensure that the credentials Metabase uses can manage and write to that schema.
 
 ### Refreshing a model's cached results
 
@@ -147,7 +170,7 @@ To refresh a model's cached results, go to the model and click on the **i** info
 
 ### View model caching logs
 
-You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../enterprise-guide/tools.md).
+You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../usage-and-performance-tools/tools.md).
 
 ### Caching individual models
 
@@ -158,14 +181,11 @@ On some paid plans, you can also toggle caching on or off for individual models.
 ## Further reading
 
 - [Models in Metabase][learn-models]
-
-## Need help?
-
-If you're having trouble with your model, go to the [Models troubleshooting guide][troubleshooting-models].
+- [Troubleshooting models][troubleshooting-models].
 
 [column-type]: ./field-types.md
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
-[question]: ../users-guide/04-asking-questions.md
-[learn-models]: /learn/getting-started/models
-[troubleshooting-models]: ../troubleshooting-guide/models.html
+[question]: ../questions/start.md
+[learn-models]: https://www.metabase.com/learn/getting-started/models
+[troubleshooting-models]: ../troubleshooting-guide/models.md

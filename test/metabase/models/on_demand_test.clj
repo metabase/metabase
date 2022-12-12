@@ -160,7 +160,7 @@
 
 (defn- parameter-mappings-for-card-and-field [card-or-id field-or-id]
   [{:card_id (u/the-id card-or-id)
-    :target  [:dimension [:field-id (u/the-id field-or-id)]]}])
+    :target  [:dimension [:field (u/the-id field-or-id) nil]]}])
 
 (defn- add-dashcard-with-parameter-mapping! [dashboard-or-id card-or-id field-or-id]
   (dashboard/add-dashcard! dashboard-or-id card-or-id

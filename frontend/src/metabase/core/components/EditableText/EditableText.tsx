@@ -5,9 +5,13 @@ import React, {
   HTMLAttributes,
   Ref,
   useCallback,
+  useEffect,
   useState,
   useRef,
 } from "react";
+
+import { usePrevious } from "metabase/hooks/use-previous";
+
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
 export type EditableTextAttributes = Omit<
@@ -42,6 +46,13 @@ const EditableText = forwardRef(function EditableText(
   const [submitValue, setSubmitValue] = useState(initialValue ?? "");
   const displayValue = inputValue ? inputValue : placeholder;
   const submitOnBlur = useRef(true);
+  const previousInitialValue = usePrevious(initialValue);
+
+  useEffect(() => {
+    if (initialValue && initialValue !== previousInitialValue) {
+      setInputValue(initialValue);
+    }
+  }, [initialValue, previousInitialValue]);
 
   const handleBlur = useCallback(
     e => {

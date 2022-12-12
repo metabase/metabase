@@ -6,16 +6,19 @@ import { IconProps } from "metabase/components/Icon";
 
 import {
   FullWidthLink,
+  ItemName,
   NameContainer,
   NodeRoot,
   SidebarIcon,
   FullWidthButton,
+  LeftElementContainer,
+  RightElementContainer,
 } from "./SidebarItems.styled";
 
-interface Props {
+interface SidebarLinkProps {
   children: string;
   url?: string;
-  icon: string | IconProps | React.ReactElement;
+  icon?: string | IconProps | React.ReactElement;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
   left?: React.ReactNode;
@@ -50,8 +53,11 @@ function SidebarLink({
   left = null,
   right = null,
   ...props
-}: Props) {
+}: SidebarLinkProps) {
   const renderIcon = useCallback(() => {
+    if (!icon) {
+      return null;
+    }
     if (React.isValidElement(icon)) {
       return icon;
     }
@@ -79,14 +85,25 @@ function SidebarLink({
       onMouseDown={disableImageDragging}
       {...props}
     >
-      {React.isValidElement(left) && left}
+      {React.isValidElement(left) && (
+        <LeftElementContainer>{left}</LeftElementContainer>
+      )}
       <Content>
         {icon && renderIcon()}
         <NameContainer>{children}</NameContainer>
       </Content>
-      {React.isValidElement(right) && right}
+      {React.isValidElement(right) && (
+        <RightElementContainer>{right}</RightElementContainer>
+      )}
     </NodeRoot>
   );
 }
 
-export default SidebarLink;
+export type { SidebarLinkProps };
+
+export default Object.assign(SidebarLink, {
+  NameContainers: [ItemName, TreeNode.NameContainer],
+  Icon: SidebarIcon,
+  LeftElement: LeftElementContainer,
+  RightElement: RightElementContainer,
+});

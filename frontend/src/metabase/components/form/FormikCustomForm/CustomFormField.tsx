@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from "react";
-import { getIn } from "icepick";
 import _ from "underscore";
 
+import { isCustomWidget } from "metabase-types/guards";
 import FormField from "metabase/components/form/FormikFormField";
 import FormWidget from "metabase/components/form/FormWidget";
 
@@ -11,20 +11,10 @@ import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import {
   BaseFieldDefinition,
   StandardFormFieldDefinition,
-  CustomFormFieldDefinition,
   FormFieldDefinition,
 } from "metabase-types/forms";
 
 import { useForm } from "./context";
-
-function isCustomWidget(
-  formField: FormFieldDefinition,
-): formField is CustomFormFieldDefinition {
-  return (
-    !(formField as StandardFormFieldDefinition).type &&
-    typeof (formField as CustomFormFieldDefinition).widget === "function"
-  );
-}
 
 export interface CustomFormFieldProps extends BaseFieldDefinition {
   onChange?: (e: unknown) => void;
@@ -45,6 +35,9 @@ function getFieldDefinition(
   );
 }
 
+/**
+ * @deprecated
+ */
 function RawCustomFormField(
   props: CustomFormFieldProps & { forwardedRef?: any },
 ) {
@@ -112,8 +105,14 @@ function RawCustomFormField(
   );
 }
 
-export default React.forwardRef<HTMLInputElement, CustomFormFieldProps>(
-  function CustomFormField(props, ref) {
-    return <RawCustomFormField {...props} forwardedRef={ref} />;
-  },
-);
+/**
+ * @deprecated
+ */
+const CustomFormField = React.forwardRef<
+  HTMLInputElement,
+  CustomFormFieldProps
+>(function CustomFormField(props, ref) {
+  return <RawCustomFormField {...props} forwardedRef={ref} />;
+});
+
+export default CustomFormField;

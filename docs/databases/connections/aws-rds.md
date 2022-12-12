@@ -11,7 +11,7 @@ RDS offers several databases that Metabase officially supports, including Postgr
 Here's how to get connection information for databases on Amazon's RDS:
 
 1. Go to your AWS Management Console.
-   - Need help finding that? Visit [https://**My_AWS_Account_ID**.signin.aws.amazon.com/console](https://**My_AWS_Account_ID**.signin.aws.amazon.com/console). Be sure to insert your own AWS Account ID, though!
+   - Need help finding that? Visit `https://**My_AWS_Account_ID**.signin.aws.amazon.com/console`. Be sure to insert your own AWS Account ID, though!
 2. Under **Database** services, click **RDS**.
 3. Then click **Instances**.
 4. Select the database you want to connect to Metabase.

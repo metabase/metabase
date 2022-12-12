@@ -2,7 +2,7 @@ import { restore, startNewQuestion, visualize } from "__support__/e2e/helpers";
 
 const PG_DB_NAME = "QA Postgres12";
 
-describe("postgres > user > query", () => {
+describe("postgres > user > query", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();

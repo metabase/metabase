@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 export interface ClickActionButtonProps {
   type: "sort" | "formatting" | "horizontal" | "token" | "token-filter";
@@ -78,4 +79,8 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
         background-color: ${color("filter")};
       }
     `}
+`;
+
+export const FlexTippyPopover = styled(TippyPopover)`
+  display: flex;
 `;

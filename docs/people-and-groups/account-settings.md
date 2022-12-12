@@ -6,11 +6,7 @@ redirect_from:
 
 # Account settings
 
-You can view your account settings by going to the top right of the screen and clicking on the **gear** icon > **Account settings**. Here you'll find three tabs:
-
-- [Profile](#account-profile)
-- [Password](#account-password)
-- [Login history](#account-login-history)
+You can view your account settings by going to the top right of the screen and clicking on the **gear** icon > **Account settings**. 
 
 ## Account profile
 

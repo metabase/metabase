@@ -1,22 +1,25 @@
 ---
-title: Setting up email
+title: Email
 redirect_from:
   - /docs/latest/administration-guide/02-setting-up-email
 ---
 
-# Setting up email
+# Email
 
-Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users.  Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
+Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users. Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
 
-- [Configuring your email account](#configuring-your-email-account)
-  - [Google Apps](#google-apps)
-  - [Amazon SES](#amazon-ses)
-  - [Mandrill](#mandrill)
-- [Recommended settings](#recommended-settings)
+## Metabase Cloud
+
+Metabase Cloud manages an email server for you, so you don't need to set up email (and you won't see SMTP settings in your Admin console).
+
+If you like, you can still set up:
+
+- a name for your Cloud email account (from name)
+- an email address to recieve email replies (reply-to address)
 
 ## Configuring your email account
 
-For Metabase to send messages to your organization's users, you'll need to set up an email account to send emails via *SMTP* (simple mail transfer protocol), which is an email standard that secures emails with SSL security protection.
+For Metabase to send messages to your organization's users, you'll need to set up an email account to send emails via **SMTP** (simple mail transfer protocol), which is an email standard that secures emails with SSL security protection.
 
 To start, go to the Admin Panel from the dropdown menu in the top right of Metabase, then from the Settings page, click on **Email** in the left menu.
 
@@ -24,7 +27,7 @@ You should see this form:
 
 ![Email Credentials](images/EmailCredentials.png)
 
-### Google Apps
+## Google Apps
 
 1. In the **SMTP host** field, enter smtp.gmail.com
 2. Fill in 465 for the **SMTP port** field
@@ -33,7 +36,7 @@ You should see this form:
 5. Enter your Google Apps password in the **SMTP password** field
 6. Enter the email address you would like to be used as the sender of system notifications in the **From Address* field.
 
-### Amazon SES
+## Amazon SES
 
 1. Log on to [https://console.aws.amazon.com/ses](https://console.aws.amazon.com/ses).
 2. Click **SMTP Settings** from the navigation pane.
@@ -46,11 +49,11 @@ You should see this form:
 
 Check if [email quotas](https://docs.aws.amazon.com/ses/latest/dg/quotas.html) apply to your Amazon SES server. You may want to manage your email recipients using groups instead.
 
-### Mandrill
+## Mandrill
 
 1. Log in to your Mandrill account and locate your credentials from the **SMTP & API Info** page there.
 2. Your SMTP password is any active API key for your account — *not* your Mandrill password.
-3. Although Mandrill lists **port 587**, [any port supported by Mandrill](https://mandrill.zendesk.com/hc/en-us/articles/205582167-What-SMTP-ports-can-I-use-) will work for SMTP email.
+3. Although Mandrill lists **port 587**, [any port supported by Mandrill](https://mailchimp.com/developer/transactional/docs/smtp-integration/#the-basics) will work for SMTP email.
 4. Now you can go back to the Metabase Admin Panel form and enter the info there.
 
 ## Recommended settings

@@ -1,0 +1,1 @@
+{:lint-as {babashka.fs/with-temp-dir clojure.core/let}}

@@ -1,4 +1,8 @@
-# Installation and operation
+---
+title: "Installation and operation overview"
+---
+
+# Installation and operation overview
 
 The birth, care, and feeding of your Metabase.
 
@@ -14,14 +18,13 @@ The simplest and most basic way of running Metabase.
 
 If you prefer to use a Docker container, we've got you covered.
 
-### [Metabase Cloud](/start/)
+### [Metabase Cloud](https://www.metabase.com/pricing)
 
-Our official hosted version, [Metabase Cloud](/start/). All you need to do is sign up for a free trial, and you're off to the races.
+Our official hosted version, [Metabase Cloud](https://www.metabase.com/pricing). All you need to do is sign up for a free trial, and you're off to the races.
 
 ### Other installation options
 
 - [Running on Azure Web Apps](running-metabase-on-azure.md)
-- [Running on Heroku](running-metabase-on-heroku.md)
 - [Running on Debian as a service](running-metabase-on-debian.md)
 - [Running on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md)
   - [Advanced topics for running on AWS Elastic Beanstalk](./advanced-topics-for-running-Metabase-in-AWS-ElasticBeanstalk.md)
@@ -50,6 +53,10 @@ How to use an RDS instance as your application database.
 
 Monitor your Metabase with JMX.
 
+## [Observability with Prometheus](./observability-with-prometheus.md)
+
+Export Metabase metrics for viewing with Prometheus.
+
 ## [Java versions](./java-versions.md)
 
 Some notes on Java versions.
@@ -57,3 +64,7 @@ Some notes on Java versions.
 ## [Supported browsers](./supported-browsers.md)
 
 Rest in peace, Internet Explorer.
+
+*** 
+
+If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).

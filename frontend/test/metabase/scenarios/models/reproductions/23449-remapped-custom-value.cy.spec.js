@@ -5,7 +5,7 @@ const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = { query: { "source-table": REVIEWS_ID, limit: 2 } };
 
-describe.skip("issue 23449", () => {
+describe("issue 23449", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -36,13 +36,13 @@ describe.skip("issue 23449", () => {
 });
 
 function turnIntoModel() {
-  cy.intercept("POST", "/api/dataset").as("dataset");
+  cy.intercept("PUT", "/api/card/*").as("cardUpdate");
 
   openQuestionActions();
   cy.findByText("Turn into a model").click();
   cy.findByText("Turn this into a model").click();
 
-  cy.wait("@dataset").then(({ response }) => {
+  cy.wait("@cardUpdate").then(({ response }) => {
     expect(response.body.error).to.not.exist;
   });
 }

@@ -7,9 +7,9 @@
   complex logic around this, but now it's just a simple priority. If SAML is configured use that otherwise JWT"
   [_]
   (cond
-    (sso-settings/saml-configured?) :saml
-    (sso-settings/jwt-enabled)      :jwt
-    :else                           nil))
+    (sso-settings/saml-enabled) :saml
+    (sso-settings/jwt-enabled)  :jwt
+    :else                       nil))
 
 (defmulti sso-get
   "Multi-method for supporting the first part of an SSO signin request. An implementation of this method will usually

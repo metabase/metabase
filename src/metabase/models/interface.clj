@@ -8,6 +8,7 @@
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.dispatch :as models.dispatch]
+            [metabase.models.json-migration :as jm]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.cron :as u.cron]
@@ -29,6 +30,12 @@
   InstanceOf
   model
   instance])
+
+(def ^:dynamic *deserializing?*
+  "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
+  deserialization. Most notably, we don't want to generate an `:entity_id`, as that would lead to duplicated entities
+  on a future deserialization."
+  false)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
@@ -151,9 +158,31 @@
       ;; the word "expression" but it is not MBQL (metabase#15882)
       (get viz-settings "graph.metrics")   (assoc :graph.metrics (get viz-settings "graph.metrics")))))
 
+(jm/def-json-migration migrate-viz-settings*)
+
+(def ^:private viz-settings-current-version 2)
+
+(defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
+  (let [{percent? :pie.show_legend_perecent ;; [sic]
+         legend?  :pie.show_legend} viz-settings]
+    (if-let [new-value (cond
+                         legend?  "inside"
+                         percent? "legend")]
+      (assoc viz-settings :pie.percent_visibility new-value)
+      viz-settings))) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+
+(defn- migrate-viz-settings
+  [viz-settings]
+  (let [new-viz-settings (migrate-viz-settings* viz-settings viz-settings-current-version)]
+    (cond-> new-viz-settings
+      (not= new-viz-settings viz-settings) (jm/update-version viz-settings-current-version))))
+
+;; migrate-viz settings was introduced with v. 2, so we'll never be in a situation where we can downgrade from 2 to 1.
+;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
+
 (models/add-type! :visualization-settings
-  :in  json-in
-  :out (comp normalize-visualization-settings json-out-without-keywordization))
+  :in  (comp json-in migrate-viz-settings)
+  :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization))
 
 ;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
 ;; permissions set
@@ -228,10 +257,12 @@
   ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
-  (assoc obj :created_at (now)))
+  (cond-> obj
+    (not (:created_at obj)) (assoc :created_at (now))))
 
 (defn- add-updated-at-timestamp [obj & _]
-  (assoc obj :updated_at (now)))
+  (cond-> obj
+    (not (:updated_at obj)) (assoc :updated_at (now))))
 
 (models/add-property! :timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
@@ -247,7 +278,10 @@
   :update add-updated-at-timestamp)
 
 (defn- add-entity-id [obj & _]
-  (if (contains? obj :entity_id)
+  (if (or (contains? obj :entity_id)
+          *deserializing?*)
+    ;; Don't generate a new entity_id if either: (a) there's already one set; or (b) we're deserializing.
+    ;; Generating them at deserialization time can lead to duplicated entities if they're deserialized again.
     obj
     (assoc obj :entity_id (u/generate-nano-id))))
 
@@ -258,7 +292,9 @@
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- dispatch-on-model [x & _args]
+(defn dispatch-on-model
+  "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
+  [x & _args]
   (models.dispatch/model x))
 
 (defmulti perms-objects-set
@@ -435,6 +471,8 @@
 ;;; swap out [[models/defmodel]] with a special magical version that avoids redefining stuff if the definition has not
 ;;; changed at all. This is important to make the stuff in [[models.dispatch]] work properly, since we're dispatching
 ;;; off of the model objects themselves e.g. [[metabase.models.user/User]] -- it is important that they do not change
+;;;
+;;; This code is temporary until the switch to Toucan 2.
 
 (defonce ^:private original-defmodel @(resolve `models/defmodel))
 
@@ -450,3 +488,5 @@
          (alter-meta! (var ~model) assoc ::defmodel-hash ~(hash &form))))))
 
 (alter-var-root #'models/defmodel (constantly @#'defmodel))
+(alter-meta! #'models/defmodel (fn [mta]
+                                 (merge mta (select-keys (meta #'defmodel) [:file :line :column :ns]))))

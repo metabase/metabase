@@ -1,5 +1,5 @@
-import { color } from "metabase/lib/colors";
 import styled from "@emotion/styled";
+import { color } from "metabase/lib/colors";
 
 import Button from "metabase/core/components/Button";
 

@@ -108,7 +108,7 @@ Type: string<br>
 Default: `"Lato"`<br>
 Since: v44.0
 
-Change the font used in Metabase. See [fonts](../enterprise-guide/fonts.md).
+Change the font used in Metabase. See [fonts](../configuring-metabase/fonts.md).
 
 ### `MB_APPLICATION_FONT_FILES`
 
@@ -134,7 +134,7 @@ Tell Metabase which font files to use for different styles. Example value:
 ]
 ```
 
-See [fonts](../enterprise-guide/fonts.md).
+See [fonts](../configuring-metabase/fonts.md).
 
 ### `MB_APPLICATION_LOGO_URL`
 
@@ -188,6 +188,13 @@ Default: `true`
 
 Color log lines. When set to `false` it will disable log line colors. This is disabled on Windows. Related to [MB_EMOJI_IN_LOGS](#mb_emoji_in_logs).
 
+### `MB_CONFIG_FILE_PATH`
+
+Type: string<br>
+Default: `config.yml`
+
+This feature requires the `advanced-config` feature flag on your token.
+
 ### `MB_CUSTOM_FORMATTING`
 
 Type: string<br>
@@ -202,6 +209,13 @@ Default: `"{}"`
 
 JSON object containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.
 
+### `MB_CUSTOM_GEOJSON_ENABLED`
+
+Type: boolean<br>
+Default: `true`
+
+Whether or not the use of custom GeoJSON is enabled.
+
 ### `MB_DB_AUTOMIGRATE`
 
 Type: boolean<br>
@@ -212,9 +226,9 @@ When set to `false`, Metabase will print migrations needed to be done in the app
 ### `MB_DB_CONNECTION_TIMEOUT_MS`
 
 Type: integer<br>
-Default: `5000`
+Default: `10000`
 
-Timeout in milliseconds for connecting to the application database.
+Timeout in milliseconds for connecting to databases, both Metabase application database and data connections. In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value as the connections via tunnels have more overhead than connections without.
 
 ### `MB_DB_CONNECTION_URI`
 

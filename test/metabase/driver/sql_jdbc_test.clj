@@ -8,7 +8,6 @@
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]))
 
 (deftest describe-database-test
@@ -112,8 +111,7 @@
                             :tunnel-port    21212
                             :tunnel-user    "example"
                             :user           "postgres"}]
-               (tu.log/suppress-output
-                (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
+               (driver.u/can-connect-with-details? :postgres details :throw-exceptions))
              (catch Throwable e
                (loop [^Throwable e e]
                  (or (when (instance? java.net.ConnectException e)
@@ -199,12 +197,10 @@
       (mt/$ids checkins
         (testing "splicing a date"
           (is (= 3
-                 (spliced-count-of :checkins [:= $date "2014-03-05"]))))))
-
-    ;; Oracle, Redshift, and SparkSQL don't have 'Time' types
-    (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :redshift :sparksql)
-      (testing "splicing a time"
-        (is (= 2
-               (mt/dataset test-data-with-time
-                 (mt/$ids users
-                   (spliced-count-of :users [:= $last_login_time "09:30"])))))))))
+                 (spliced-count-of :checkins [:= $date "2014-03-05"])))))
+      (when (mt/supports-time-type? driver/*driver*)
+        (testing "splicing a time"
+          (mt/dataset test-data-with-time
+            (is (= 2
+                   (mt/$ids users
+                     (spliced-count-of :users [:= $last_login_time "09:30"]))))))))))

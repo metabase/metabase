@@ -8,6 +8,7 @@
             [metabase.api.common :as api]
             [metabase.api.table :as api.table]
             [metabase.config :as config]
+            [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.util :as driver.u]
@@ -37,6 +38,7 @@
             [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
             [metabase.util.cron :as u.cron]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -154,6 +156,7 @@
                           :where    (into [:and
                                            [:not= :result_metadata nil]
                                            [:= :archived false]
+                                           [:= :is_write false]
                                            [:= :dataset (= question-type :dataset)]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
                                            (collection/visible-collection-ids->honeysql-filter-clause
@@ -413,6 +416,43 @@
      :order-by [[:%lower.name :asc]]
      :limit    limit}))
 
+(defn- autocomplete-cards
+  "Returns cards that match the search string in the given database, ordered by id.
+  `search-card-slug` should be in a format like '123-foo-bar' or '123' or 'foo-bar', where 123 is the card ID
+   and foo-bar is a prefix of the card name converted into a slug.
+
+   If the search string contains a number like '123' we match that as a prefix against the card IDs.
+   If the search string contains a number at the start AND text like '123-foo' we match do an exact match on card ID, and a substring match on the card name.
+   If the search string does not start with a number, and is text like 'foo' we match that as a substring on the card name."
+  [database-id search-card-slug]
+  (let [search-id   (re-find #"\d*" search-card-slug)
+        search-name (-> (re-matches #"\d*-?(.*)" search-card-slug)
+                        second
+                        (str/replace #"-" " ")
+                        str/lower-case)]
+    (db/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
+               {:where    [:and
+                           [:= :report_card.database_id database-id]
+                           [:= :report_card.archived false]
+                           (cond
+                             ;; e.g. search-string = "123"
+                             (and (not-empty search-id) (empty? search-name))
+                             [:like (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text) :report_card.id) (str search-id "%")]
+
+                             ;; e.g. search-string = "123-foo"
+                             (and (not-empty search-id) (not-empty search-name))
+                             [:and
+                              [:= :report_card.id (Integer/parseInt search-id)]
+                              ;; this is a prefix match to be consistent with substring matches on the entire slug
+                              [:like :%lower.report_card.name (str search-name "%")]]
+
+                             ;; e.g. search-string = "foo"
+                             (and (empty? search-id) (not-empty search-name))
+                             [:like :%lower.report_card.name (str "%" search-name "%")])]
+                :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
+                :order-by [[:report_card.id :desc]]
+                :limit    50})))
+
 (defn- autocomplete-fields [db-id search-string limit]
   (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
     :metabase_field.active          true
@@ -472,22 +512,40 @@
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
   `substring` will have priority if both are present.
 
-  This is intened for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
+  This is intended for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
   and `Fields` in this `Database`.
 
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
   [id prefix substring]
+  {id        s/Int
+   prefix    (s/maybe su/NonBlankString)
+   substring (s/maybe su/NonBlankString)}
   (api/read-check Database id)
+  (when (and (str/blank? prefix) (str/blank? substring))
+    (throw (ex-info "Must include prefix or search" {:status-code 400})))
   (try
     (cond
       substring
       (autocomplete-suggestions id (str "%" substring "%"))
       prefix
-      (autocomplete-suggestions id (str prefix "%"))
-      :else
-      (ex-info "must include prefix or search" {}))
+      (autocomplete-suggestions id (str prefix "%")))
+    (catch Throwable t
+      (log/warn "Error with autocomplete: " (.getMessage t)))))
+
+(api/defendpoint GET "/:id/card_autocomplete_suggestions"
+  "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
+
+  This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
+  [id query]
+  {id    s/Int
+   query su/NonBlankString}
+  (api/read-check Database id)
+  (try
+    (->> (autocomplete-cards id query)
+         (filter mi/can-read?)
+         (map #(select-keys % [:id :name :dataset :collection_name])))
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 

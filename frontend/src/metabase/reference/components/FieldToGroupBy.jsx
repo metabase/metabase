@@ -3,10 +3,10 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import S from "./FieldToGroupBy.css";
 import Q from "metabase/components/QueryButton.css";
 
 import Icon from "metabase/components/Icon";
+import S from "./FieldToGroupBy.css";
 
 const FieldToGroupBy = ({
   className,

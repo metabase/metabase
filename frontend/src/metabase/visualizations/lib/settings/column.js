@@ -3,17 +3,7 @@ import { t } from "ttag";
 import moment from "moment-timezone";
 import _ from "underscore";
 
-import { nestedSettings } from "./nested";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
-
-import { keyForColumn } from "metabase/lib/dataset";
-import {
-  isDate,
-  isNumber,
-  isCoordinate,
-  isCurrency,
-  isDateWithoutTime,
-} from "metabase/lib/schema_metadata";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
@@ -43,8 +33,8 @@ export function columnSettings({
     section: t`Formatting`,
     objectName: "column",
     getObjects: getColumns,
-    getObjectKey: keyForColumn,
-    getSettingDefintionsForObject: getSettingDefintionsForColumn,
+    getObjectKey: getColumnKey,
+    getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
     useRawSeries: true,
@@ -53,6 +43,15 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
+import {
+  isDate,
+  isNumber,
+  isCoordinate,
+  isCurrency,
+  isDateWithoutTime,
+} from "metabase-lib/types/utils/isa";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
   const columnSettings = {};
@@ -220,9 +219,10 @@ export const DATE_COLUMN_SETTINGS = {
     getHidden: ({ unit }, settings) => !/\//.test(settings["date_style"] || ""),
   },
   date_abbreviate: {
-    title: t`Abbreviate names of days and months`,
+    title: t`Abbreviate days and months`,
     widget: "toggle",
     default: false,
+    inline: true,
     getHidden: ({ unit }, settings) => {
       const format = getDateFormatFromStyle(settings["date_style"], unit);
       return !format.match(/MMMM|dddd/);
@@ -379,6 +379,9 @@ export const NUMBER_COLUMN_SETTINGS = {
   decimals: {
     title: t`Minimum number of decimal places`,
     widget: "number",
+    props: {
+      placeholder: "1",
+    },
   },
   scale: {
     title: t`Multiply by a number`,
@@ -390,10 +393,16 @@ export const NUMBER_COLUMN_SETTINGS = {
   prefix: {
     title: t`Add a prefix`,
     widget: "input",
+    props: {
+      placeholder: "$",
+    },
   },
   suffix: {
     title: t`Add a suffix`,
     widget: "input",
+    props: {
+      placeholder: t`dollars`,
+    },
   },
   // Optimization: build a single NumberFormat object that is used by formatting.js
   _numberFormatter: {
@@ -452,7 +461,7 @@ const COMMON_COLUMN_SETTINGS = {
   },
 };
 
-export function getSettingDefintionsForColumn(series, column) {
+export function getSettingDefinitionsForColumn(series, column) {
   const { visualization } = getVisualizationRaw(series);
   const extraColumnSettings =
     typeof visualization.columnSettings === "function"

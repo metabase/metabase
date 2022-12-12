@@ -5,8 +5,8 @@ import { forgotPassword } from "../../actions";
 
 const canResetPassword = () => {
   const isEmailConfigured = MetabaseSettings.isEmailConfigured();
-  const isLdapConfigured = MetabaseSettings.isLdapConfigured();
-  return isEmailConfigured && !isLdapConfigured;
+  const isLdapEnabled = MetabaseSettings.isLdapEnabled();
+  return isEmailConfigured && !isLdapEnabled;
 };
 
 const mapStateToProps = (state: any, props: any) => ({

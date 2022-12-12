@@ -65,8 +65,8 @@
 (s/defn ^:private fetch-or-create-user! :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
-  (when-not (sso-settings/saml-configured?)
-    (throw (IllegalArgumentException. (tru "Can't create new SAML user when SAML is not configured"))))
+  (when-not (sso-settings/saml-enabled)
+    (throw (IllegalArgumentException. (tru "Can't create new SAML user when SAML is not enabled"))))
   (when-not email
     (throw (ex-info (str (tru "Invalid SAML configuration: could not find user email.")
                          " "
@@ -103,7 +103,7 @@
          :alias    key-name}))))
 
 (defn- check-saml-enabled []
-  (api/check (sso-settings/saml-configured?)
+  (api/check (sso-settings/saml-enabled)
     [400 (tru "SAML has not been enabled and/or configured")]))
 
 (defmethod sso.i/sso-get :saml
@@ -126,10 +126,10 @@
                             :credential (sp-cert-keystore-details)})
             relay-state  (saml/str->base64 redirect-url)]
         (saml/idp-redirect-response saml-request idp-url relay-state))
-    (catch Throwable e
-      (let [msg (trs "Error generating SAML request")]
-        (log/error e msg)
-        (throw (ex-info msg {:status-code 500} e)))))))
+     (catch Throwable e
+       (let [msg (trs "Error generating SAML request")]
+         (log/error e msg)
+         (throw (ex-info msg {:status-code 500} e)))))))
 
 (defn- validate-response [response]
   (let [idp-cert (or (sso-settings/saml-identity-provider-certificate)

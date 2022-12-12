@@ -8,6 +8,7 @@ import {
   ColumnItemContainer,
   ColumnItemRoot,
   ColumnItemDragHandle,
+  ColumnItemColorPicker,
 } from "./ColumnItem.styled";
 
 const ActionIcon = ({ icon, onClick }) => (
@@ -15,23 +16,52 @@ const ActionIcon = ({ icon, onClick }) => (
     name={icon}
     onClick={e => {
       e.stopPropagation();
-      onClick();
+      onClick(e.target);
     }}
   />
 );
 
-const ColumnItem = ({ title, onAdd, onRemove, onClick, onEdit, draggable }) => (
-  <ColumnItemRoot draggable={draggable} onClick={onClick}>
-    <ColumnItemContainer>
-      {draggable && <ColumnItemDragHandle name="grabber2" />}
-      <ColumnItemContent>
-        <ColumnItemSpan>{title}</ColumnItemSpan>
-        {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}
-        {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
-        {onRemove && <ActionIcon icon="eye_filled" onClick={onRemove} />}
-      </ColumnItemContent>
-    </ColumnItemContainer>
-  </ColumnItemRoot>
-);
+const ColumnItem = ({
+  title,
+  color,
+  onAdd,
+  onRemove,
+  onClick,
+  onEdit,
+  onEnable,
+  onColorChange,
+  draggable,
+  className = "",
+}) => {
+  return (
+    <ColumnItemRoot
+      className={className}
+      onClick={onClick}
+      isDraggable={draggable}
+      data-testid={`draggable-item-${title}`}
+    >
+      <ColumnItemContainer>
+        {draggable && <ColumnItemDragHandle name="grabber2" size={12} />}
+        {onColorChange && color && (
+          <ColumnItemColorPicker
+            value={color}
+            onChange={onColorChange}
+            pillSize="small"
+          />
+        )}
+        <ColumnItemContent>
+          <ColumnItemSpan>{title}</ColumnItemSpan>
+          {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}
+          {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
+          {onRemove && <ActionIcon icon="eye_outline" onClick={onRemove} />}
+          {onEnable && <ActionIcon icon="eye_crossed_out" onClick={onEnable} />}
+        </ColumnItemContent>
+      </ColumnItemContainer>
+    </ColumnItemRoot>
+  );
+};
 
-export default ColumnItem;
+export default Object.assign(ColumnItem, {
+  Root: ColumnItemRoot,
+  Container: ColumnItemContainer,
+});

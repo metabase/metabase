@@ -2,12 +2,8 @@
 import React from "react";
 import { t } from "ttag";
 import moment from "moment-timezone";
-import _ from "underscore";
 
-import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Icon from "metabase/components/Icon";
-
-import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
 import {
   computeFilterTimeRange,
   getTimeComponent,
@@ -15,7 +11,10 @@ import {
   setTimeComponent,
   TIME_SELECTOR_DEFAULT_HOUR,
   TIME_SELECTOR_DEFAULT_MINUTE,
-} from "metabase/lib/query_time";
+} from "metabase-lib/queries/utils/query-time";
+import Filter from "metabase-lib/queries/structured/Filter";
+
+import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
 
 type Props = {
   primaryColor?: string;

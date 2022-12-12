@@ -35,6 +35,7 @@
           (format "instance of a %s" (name model))))
 
 (p/defprotocol+ Model
+  :extend-via-metadata true ;; useful for testing. Not used in application proper
   (model [this]
     "Given either a Toucan model or a Toucan instance, return the Toucan model. Otherwise return `nil`."))
 
@@ -52,6 +53,10 @@
       :else
       nil))
 
+  clojure.lang.Symbol
+  (model [symb]
+    (db/resolve-model symb))
+
   nil
   (model [_this] nil))
 
@@ -59,6 +64,8 @@
   "Create a new instance of Toucan `model` with a map `m`.
 
     (instance User {:first_name \"Cam\"})"
-  [model m]
-  (let [model (db/resolve-model model)]
-    (into (empty model) m)))
+  ([model]
+   (let [model (db/resolve-model model)]
+     (empty model)))
+  ([model m]
+   (into (instance model) m)))

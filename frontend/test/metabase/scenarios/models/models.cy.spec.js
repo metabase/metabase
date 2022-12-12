@@ -14,6 +14,8 @@ import {
   startNewQuestion,
   openQuestionActions,
   closeQuestionActions,
+  visitCollection,
+  undo,
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -71,7 +73,7 @@ describe("scenarios > models", () => {
     });
 
     cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
-    getCollectionItemRow("Orders Model").within(() => {
+    getCollectionItemCard("Orders Model").within(() => {
       cy.icon("model");
     });
     getCollectionItemRow("Q1").within(() => {
@@ -120,7 +122,7 @@ describe("scenarios > models", () => {
     });
 
     cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
-    getCollectionItemRow("Orders Model").within(() => {
+    getCollectionItemCard("Orders Model").within(() => {
       cy.icon("model");
     });
     getCollectionItemRow("Q1").within(() => {
@@ -422,14 +424,11 @@ describe("scenarios > models", () => {
     assertIsQuestion();
     closeQuestionActions();
 
+    // Check card tags are supported by models
     cy.findByText(/Open editor/i).click();
     cy.get(".ace_content").type(
-      "{leftarrow}{leftarrow}{backspace}{backspace}#",
+      "{leftarrow}{leftarrow}{backspace}{backspace}#1",
     );
-    cy.findByTestId("tag-editor-sidebar").within(() => {
-      cy.findByTestId("select-button").click();
-    });
-    selectFromDropdown("Orders");
     cy.findByText("Save").click();
     modal().findByText("Save").click();
 
@@ -444,16 +443,13 @@ describe("scenarios > models", () => {
     }).then(({ body: { id: modelId } }) => {
       cy.request("PUT", `/api/card/${modelId}`, { dataset: true }).then(() => {
         cy.visit(`/model/${modelId}/query`);
-        cy.get(".ace_content")
+        cy.get(".ace_editor:not(.ace_autocomplete)")
           .should("be.visible")
-          .as("editor")
           .type("{movetoend}")
           .type(" WHERE {{F", {
             parseSpecialCharSequences: false,
           });
         cy.findByTestId("tag-editor-sidebar").should("not.exist");
-        cy.get("@editor").type("{leftarrow}{leftarrow}{backspace}#");
-        cy.findByTestId("tag-editor-sidebar").should("be.visible");
       });
     });
   });
@@ -466,12 +462,34 @@ describe("scenarios > models", () => {
       native: {
         query: "select * from orders",
       },
+    }).then(({ body: { id: modelId } }) => {
+      cy.signIn("nodata");
+      cy.visit(`/model/${modelId}`);
+      cy.wait("@cardQuery");
+      cy.findByText(/This question is written in SQL/i).should("not.exist");
     });
-    cy.signIn("nodata");
-    cy.visit("/collection/root");
-    cy.findByText("TEST MODEL").click();
-    cy.wait("@cardQuery");
-    cy.findByText(/This question is written in SQL/i).should("not.exist");
+  });
+
+  it("should automatically pin newly created models", () => {
+    visitQuestion(1);
+
+    turnIntoModel();
+
+    visitCollection("root");
+    cy.findByText("Useful data");
+    cy.findByText("A model");
+  });
+
+  it("should undo pinning a question if turning into a model was undone", () => {
+    visitQuestion(1);
+
+    turnIntoModel();
+    undo();
+    cy.wait("@cardUpdate");
+
+    visitCollection("root");
+    cy.findByText("Useful data").should("not.exist");
+    cy.findByText("A model").should("not.exist");
   });
 
   describe("listing", () => {
@@ -497,12 +515,9 @@ describe("scenarios > models", () => {
 
     it("should allow using models in native queries", () => {
       cy.intercept("POST", "/api/dataset").as("query");
-      openNativeEditor().type("select * from {{#}}", {
+      openNativeEditor().type("select * from {{#1}}", {
         parseSpecialCharSequences: false,
       });
-      sidebar().contains("Pick a question or a model").click();
-      selectFromDropdown("Orders Model");
-      cy.get("@editor").contains("select * from {{#1}}");
       cy.get(".NativeQueryEditor .Icon-play").click();
       cy.wait("@query");
       cy.get(".TableInteractive").within(() => {
@@ -516,6 +531,10 @@ describe("scenarios > models", () => {
 
 function getCollectionItemRow(itemName) {
   return cy.findByText(itemName).closest("tr");
+}
+
+function getCollectionItemCard(itemName) {
+  return cy.findByText(itemName).parent();
 }
 
 function testDataPickerSearch({

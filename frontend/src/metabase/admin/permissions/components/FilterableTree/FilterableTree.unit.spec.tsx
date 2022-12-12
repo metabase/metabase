@@ -1,8 +1,8 @@
 import React from "react";
 import { render, fireEvent, act } from "@testing-library/react";
 
-import { FilterableTree } from "./FilterableTree";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { FilterableTree } from "./FilterableTree";
 
 const itemGroups = [
   [

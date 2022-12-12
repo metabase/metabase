@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.sync
   "Implementations for sync-related driver multimethods for SQL JDBC drivers, using JDBC DatabaseMetaData."
-  (:require [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+  (:require [metabase.driver.sql-jdbc.sync.dbms-version :as sql-jdbc.dbms-version]
+            [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
             [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [potemkin :as p]))
@@ -31,4 +32,7 @@
  [sql-jdbc.describe-database
   describe-database
   fast-active-tables
-  post-filtered-active-tables])
+  post-filtered-active-tables]
+
+ [sql-jdbc.dbms-version
+  dbms-version])

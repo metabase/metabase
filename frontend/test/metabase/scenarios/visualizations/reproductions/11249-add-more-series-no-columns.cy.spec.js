@@ -36,9 +36,9 @@ describe("issue 11249", () => {
       cy.findByText("Data").click();
       cy.findByText("Count").should("not.exist");
 
-      cy.findByText("Add another series...").click();
+      cy.findByText("Add another series").click();
       cy.findByText("Count").should("be.visible");
-      cy.findByText("Add another series...").should("not.exist");
+      cy.findByText("Add another series").should("not.exist");
     });
   });
 });

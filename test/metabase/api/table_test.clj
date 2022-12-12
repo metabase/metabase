@@ -13,8 +13,6 @@
             [metabase.models.table :as table]
             [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
-            [metabase.test.mock.util :as mock.util]
-            [metabase.test.util :as tu]
             [metabase.timeseries-query-processor-test.util :as tqpt]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -31,7 +29,7 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -502,42 +500,42 @@
                   :dimension_options (default-dimension-options)
                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
                                                 with-field-literal-id)
-                                          [{:name         "NAME"
-                                            :display_name "NAME"
-                                            :base_type    "type/Text"
-                                            :effective_type "type/Text"
-                                            :semantic_type "type/Name"
-                                            :fingerprint  (:name mock.util/venue-fingerprints)
-                                            :field_ref    ["field" "NAME" {:base-type "type/Text"}]}
-                                           {:name         "ID"
-                                            :display_name "ID"
-                                            :base_type    "type/BigInteger"
-                                            :effective_type "type/BigInteger"
-                                            :semantic_type nil
-                                            :fingerprint  (:id mock.util/venue-fingerprints)
-                                            :field_ref    ["field" "ID" {:base-type "type/BigInteger"}]}
-                                           (with-numeric-dimension-options
-                                             {:name         "PRICE"
-                                              :display_name "PRICE"
-                                              :base_type    "type/Integer"
-                                              :effective_type "type/Integer"
-                                              :semantic_type nil
-                                              :fingerprint  (:price mock.util/venue-fingerprints)
-                                              :field_ref    ["field" "PRICE" {:base-type "type/Integer"}]})
-                                           (with-coordinate-dimension-options
-                                             {:name         "LATITUDE"
-                                              :display_name "LATITUDE"
-                                              :base_type    "type/Float"
-                                              :effective_type "type/Float"
-                                              :semantic_type "type/Latitude"
-                                              :fingerprint  (:latitude mock.util/venue-fingerprints)
-                                              :field_ref    ["field" "LATITUDE" {:base-type "type/Float"}]})])})
+                                          (let [id->fingerprint   (db/select-id->field :fingerprint Field :table_id (mt/id :venues))
+                                                name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
+                                            [{:name           "NAME"
+                                              :display_name   "NAME"
+                                              :base_type      "type/Text"
+                                              :effective_type "type/Text"
+                                              :semantic_type  "type/Name"
+                                              :fingerprint    (name->fingerprint :name)
+                                              :field_ref      ["field" "NAME" {:base-type "type/Text"}]}
+                                             {:name           "ID"
+                                              :display_name   "ID"
+                                              :base_type      "type/BigInteger"
+                                              :effective_type "type/BigInteger"
+                                              :semantic_type  nil
+                                              :fingerprint    (name->fingerprint :id)
+                                              :field_ref      ["field" "ID" {:base-type "type/BigInteger"}]}
+                                             (with-numeric-dimension-options
+                                               {:name           "PRICE"
+                                                :display_name   "PRICE"
+                                                :base_type      "type/Integer"
+                                                :effective_type "type/Integer"
+                                                :semantic_type  nil
+                                                :fingerprint    (name->fingerprint :price)
+                                                :field_ref      ["field" "PRICE" {:base-type "type/Integer"}]})
+                                             (with-coordinate-dimension-options
+                                               {:name           "LATITUDE"
+                                                :display_name   "LATITUDE"
+                                                :base_type      "type/Float"
+                                                :effective_type "type/Float"
+                                                :semantic_type  "type/Latitude"
+                                                :fingerprint    (name->fingerprint :latitude)
+                                                :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]})]))})
                (->> card
                     u/the-id
                     (format "table/card__%d/query_metadata")
-                    (mt/user-http-request :crowberto :get 200)
-                    (tu/round-fingerprint-cols [:fields])
-                    (mt/round-all-decimals 2))))))))
+                    (mt/user-http-request :crowberto :get 200))))))))
 
 (deftest include-date-dimensions-in-nested-query-test
   (testing "GET /api/table/:id/query_metadata"
@@ -747,7 +745,7 @@
                    (dimension-options-for-field response "timestamp"))))))
 
       (testing "time columns"
-        (mt/test-drivers (mt/normal-drivers-except #{:sparksql :mongo :oracle :redshift})
+        (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers))
           (mt/dataset test-data-with-time
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
               (is (= @#'api.table/time-dimension-indexes

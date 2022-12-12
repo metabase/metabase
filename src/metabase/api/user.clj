@@ -7,9 +7,9 @@
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
+            [metabase.api.ldap :as api.ldap]
             [metabase.email.messages :as messages]
             [metabase.integrations.google :as google]
-            [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.permissions-group :as perms-group]
@@ -349,10 +349,9 @@
     ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
     ;; (see metabase#3323)
     :google_auth   (boolean (and (:google_auth existing-user)
-                                 ;; if google-auth-client-id is set it means Google Auth is enabled
-                                 (google/google-auth-client-id)))
+                                 (google/google-auth-enabled)))
     :ldap_auth     (boolean (and (:ldap_auth existing-user)
-                                 (ldap/ldap-configured?))))
+                                 (api.ldap/ldap-enabled))))
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 

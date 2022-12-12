@@ -11,21 +11,6 @@ describe("ChartSettingsSidebar", () => {
     cols: [{ base_type: "type/Integer", name: "foo", display_name: "foo" }],
   };
 
-  it("should hide title and section picker when viewing column settings", () => {
-    const { container, getByText, queryByText } = render(
-      <ChartSettingsSidebar
-        question={SAMPLE_DATABASE.question()}
-        result={{ data }}
-      />,
-    );
-    getByText("Table options");
-    getByText("Conditional Formatting");
-
-    fireEvent.click(container.querySelector(".Icon-ellipsis"));
-    expect(queryByText("Table options")).toBe(null);
-    expect(queryByText("Conditional Formatting")).toBe(null);
-  });
-
   it("should not hide the title for gauge charts", () => {
     const { getByText } = render(
       <ChartSettingsSidebar

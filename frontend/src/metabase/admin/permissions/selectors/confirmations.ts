@@ -6,9 +6,13 @@ import {
   getNativePermission,
   getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
-import { Group, GroupsPermissions } from "metabase-types/api";
-import { EntityId } from "../types";
-import Database from "metabase-lib/lib/metadata/Database";
+import type {
+  Group,
+  GroupsPermissions,
+  ConcreteTableId,
+} from "metabase-types/api";
+import type Database from "metabase-lib/metadata/Database";
+import type { EntityId } from "../types";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
   t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
@@ -139,7 +143,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     const allTableEntityIds = database.tables.map(table => ({
       databaseId: table.db_id,
       schemaName: table.schema_name || "",
-      tableId: table.id,
+      tableId: table.id as ConcreteTableId,
     }));
 
     // Show the warning only if user tries to revoke access to the very last table of all schemas

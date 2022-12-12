@@ -168,6 +168,6 @@ Public questions and dashboards can't be sandboxed. Sandboxing works by filterin
 - [Learn track on permissions][permissions]
 - [Troubleshooting access to columns and rows][troubleshoot-sandbox]
 
-[advanced-sandboxing]: /learn/permissions/data-sandboxing-column-permissions
-[permissions]: /learn/permissions/
-[troubleshoot-sandbox]: ../troubleshooting-guide/sandboxing
+[advanced-sandboxing]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions
+[permissions]: https://www.metabase.com/learn/permissions/
+[troubleshoot-sandbox]: ../troubleshooting-guide/sandboxing.md

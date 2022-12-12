@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import MetricSidebar from "./MetricSidebar";
 import SidebarLayout from "metabase/components/SidebarLayout";
 import MetricDetail from "metabase/reference/metrics/MetricDetail";
 
@@ -13,6 +12,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 
 import { getUser, getMetric, getMetricId, getDatabaseId } from "../selectors";
+import MetricSidebar from "./MetricSidebar";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state, props),

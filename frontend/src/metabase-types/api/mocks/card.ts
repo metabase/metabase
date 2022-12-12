@@ -16,7 +16,9 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   dataset: false,
   can_write: false,
   cache_ttl: null,
+  collection_id: null,
   last_query_start: null,
+  archived: false,
   ...opts,
 });
 

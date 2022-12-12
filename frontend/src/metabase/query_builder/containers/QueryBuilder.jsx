@@ -40,6 +40,7 @@ import View from "../components/view/View";
 import {
   getCard,
   getDatabasesList,
+  getDataReferenceStack,
   getOriginalCard,
   getLastRunCard,
   getFirstQueryResult,
@@ -65,7 +66,6 @@ import {
   getQuery,
   getQuestion,
   getOriginalQuestion,
-  getSettings,
   getQueryStartTime,
   getRawSeries,
   getQuestionAlerts,
@@ -90,6 +90,7 @@ import {
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
   getAutocompleteResultsFn,
+  getCardAutocompleteResultsFn,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -138,6 +139,7 @@ const mapStateToProps = (state, props) => {
 
     uiControls: getUiControls(state),
     ...state.qb.uiControls,
+    dataReferenceStack: getDataReferenceStack(state),
     isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isBookmarked: getIsBookmarked(state, props),
@@ -164,8 +166,7 @@ const mapStateToProps = (state, props) => {
     visualizationSettings: getVisualizationSettings(state),
 
     autocompleteResultsFn: getAutocompleteResultsFn(state),
-
-    instanceSettings: getSettings(state),
+    cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
 
     initialCollectionId: Collections.selectors.getInitialCollectionId(
       state,
@@ -204,7 +205,6 @@ function QueryBuilder(props) {
     initializeQB,
     apiCreateQuestion,
     apiUpdateQuestion,
-    updateQuestion,
     updateUrl,
     locationChanged,
     onChangeLocation,
@@ -266,8 +266,14 @@ function QueryBuilder(props) {
 
   const handleCreate = useCallback(
     async card => {
-      const questionWithUpdatedCard = question.setCard(card);
+      const shouldBePinned = Boolean(card.dataset);
+
+      const questionWithUpdatedCard = question
+        .setCard(card)
+        .setPinned(shouldBePinned);
+
       await apiCreateQuestion(questionWithUpdatedCard);
+
       setRecentlySaved("created");
     },
     [question, apiCreateQuestion, setRecentlySaved],
@@ -354,12 +360,6 @@ function QueryBuilder(props) {
       locationChanged(previousLocation, location, params);
     }
   }, [location, params, previousLocation, locationChanged]);
-
-  useEffect(() => {
-    if (question) {
-      question._update = updateQuestion;
-    }
-  });
 
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 

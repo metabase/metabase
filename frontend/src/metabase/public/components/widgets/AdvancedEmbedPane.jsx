@@ -3,10 +3,10 @@ import React from "react";
 
 import _ from "underscore";
 
+import { t } from "ttag";
 import ToggleLarge from "metabase/components/ToggleLarge";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
-import { t } from "ttag";
 import AdvancedSettingsPane from "./AdvancedSettingsPane";
 import PreviewPane from "./PreviewPane";
 import EmbedCodePane from "./EmbedCodePane";

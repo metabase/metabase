@@ -8,12 +8,10 @@ import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
+import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+import Aggregation from "metabase-lib/queries/structured/Aggregation";
 import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
 import ExpressionPopover from "../ExpressionPopover";
-
-import * as AGGREGATION from "metabase/lib/query/aggregation";
-
-import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
 import {
   ExpressionPopoverRoot,
@@ -106,26 +104,26 @@ export default class AggregationPopover extends Component {
     const aggregation = this._getAggregation();
 
     if (dimension) {
-      if (item.aggregation && item.aggregation.requiresField) {
+      if (item.aggregation?.requiresField) {
         this.commitAggregation(
           AGGREGATION.setField(item.value, dimension.mbql()),
         );
       }
     } else if (item.custom) {
       // use the existing aggregation if it's valid
-      const value = aggregation && aggregation.isValid() ? aggregation : null;
+      const value = aggregation?.isValid() ? aggregation : null;
       this.setState({
         aggregation: value,
         editingAggregation: true,
       });
-    } else if (item.aggregation && item.aggregation.requiresField) {
+    } else if (item.aggregation?.requiresField) {
       // check if this aggregation requires a field, if so then force user to pick that now, otherwise we are done
       this.setState({
         aggregation: item.value,
         choosingField: true,
       });
     } else {
-      // this includse picking a METRIC or picking an aggregation which doesn't require a field
+      // this includes picking a METRIC or picking an aggregation which doesn't require a field
       this.commitAggregation(item.value);
     }
   };
@@ -147,9 +145,12 @@ export default class AggregationPopover extends Component {
     const { aggregationOperators, query, dimension, showRawData } = this.props;
     return (
       aggregationOperators ||
-      (dimension && dimension.aggregationOperators()) ||
+      dimension?.aggregationOperators() ||
       query.table().aggregationOperators()
-    ).filter(agg => showRawData || agg.short !== "rows");
+    ).filter(
+      aggregationOperator =>
+        showRawData || aggregationOperator.short !== "rows",
+    );
   }
 
   itemIsSelected(item) {
@@ -158,7 +159,7 @@ export default class AggregationPopover extends Component {
   }
 
   renderItemExtra(item, itemIndex) {
-    if (item.aggregation && item.aggregation.description) {
+    if (item.aggregation?.description) {
       return (
         <div className="p1">
           <Tooltip tooltip={item.aggregation.description}>
@@ -172,77 +173,29 @@ export default class AggregationPopover extends Component {
   }
 
   renderMetricTooltip(metric) {
+    const content = <QueryDefinitionTooltip type="metric" object={metric} />;
+
     return (
       <div className="p1">
-        <Tooltip
-          tooltip={<QueryDefinitionTooltip type="metric" object={metric} />}
-        >
+        <Tooltip tooltip={content}>
           <span className="QuestionTooltipTarget" />
         </Tooltip>
       </div>
     );
   }
 
-  render() {
-    let { query, dimension, showCustom, showMetrics, alwaysExpanded } =
-      this.props;
-
-    const table = query.table();
-    const aggregationOperators = this._getAvailableAggregations();
-
-    if (dimension) {
-      showCustom = false;
-      showMetrics = false;
-    }
-    if (!table.database.hasFeature("expression-aggregations")) {
-      showCustom = false;
-    }
-
-    const { choosingField, editingAggregation } = this.state;
-    const aggregation = AGGREGATION.getContent(this.state.aggregation);
-
-    let selectedAggregation;
-    if (AGGREGATION.isMetric(aggregation)) {
-      selectedAggregation = _.findWhere(table.metrics, {
-        id: AGGREGATION.getMetric(aggregation),
-      });
-    } else if (AGGREGATION.isStandard(aggregation)) {
-      selectedAggregation = _.findWhere(aggregationOperators, {
-        short: AGGREGATION.getOperator(aggregation),
-      });
-    }
-
-    const aggregationItems = aggregationOperators.map(aggregation => ({
-      name: dimension
-        ? aggregation.name.replace("of ...", "")
-        : aggregation.name,
-      value: [aggregation.short, ...aggregation.fields.map(field => null)],
-      isSelected: agg =>
-        AGGREGATION.isStandard(agg) &&
-        AGGREGATION.getOperator(agg) === aggregation.short,
-      aggregation: aggregation,
-    }));
-
-    // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
-    // retired metric then we include it in the list to maintain continuity
-    const metrics = table.metrics
-      ? table.metrics.filter(metric =>
-          showMetrics
-            ? !metric.archived ||
-              (selectedAggregation && selectedAggregation.id === metric.id)
-            : // GA metrics are more like columns, so they should be displayed even when showMetrics is false
-              metric.googleAnalyics,
-        )
-      : [];
-    const metricItems = metrics.map(metric => ({
-      name: metric.name,
-      value: ["metric", metric.id],
-      isSelected: aggregation =>
-        AGGREGATION.getMetric(aggregation) === metric.id,
-      metric: metric,
-    }));
+  getSections(table, selectedAggregation) {
+    const { alwaysExpanded, dimension, showCustom } = this.props;
+    const aggregationItems = this.getAggregationItems();
+    const metricItems = this.getMetricItems(table, selectedAggregation);
 
     const sections = [];
+
+    const maybeOverriddenShowCustomProp =
+      dimension || !table.database.hasFeature("expression-aggregations")
+        ? false
+        : showCustom;
+
     // "Basic Metrics", e.x. count, sum, avg, etc
     if (aggregationItems.length > 0) {
       sections.push({
@@ -251,6 +204,7 @@ export default class AggregationPopover extends Component {
         items: aggregationItems,
       });
     }
+
     // "Common Metrics" a.k.a. saved metrics
     if (metricItems.length > 0) {
       sections.push({
@@ -266,14 +220,16 @@ export default class AggregationPopover extends Component {
         aggregationItems,
         item => COMMON_AGGREGATIONS.has(item.aggregation.short),
       );
+
       // move COMMON_AGGREGATIONS into the "common metrics" section
       sections[0].items = basicAggregationItems;
       sections[1].items = [...commonAggregationItems, ...metricItems];
+
       // swap the order of the sections so "common metrics" are first
       sections.reverse();
     }
 
-    if (showCustom) {
+    if (maybeOverriddenShowCustomProp) {
       // add "custom" as it's own section
       sections.push({
         name: CUSTOM_SECTION_NAME,
@@ -294,6 +250,80 @@ export default class AggregationPopover extends Component {
     if (sections.length === 1) {
       sections[0].name = null;
     }
+
+    return sections;
+  }
+
+  getSelectedAggregation(table, aggregation) {
+    const aggregationOperators = this._getAvailableAggregations();
+
+    if (AGGREGATION.isMetric(aggregation)) {
+      return _.findWhere(table.metrics, {
+        id: AGGREGATION.getMetric(aggregation),
+      });
+    }
+
+    return _.findWhere(aggregationOperators, {
+      short: AGGREGATION.getOperator(aggregation),
+    });
+  }
+
+  getAggregationItems() {
+    const { dimension } = this.props;
+    const aggregationOperators = this._getAvailableAggregations();
+
+    return aggregationOperators.map(aggregation => ({
+      name: dimension
+        ? aggregation.name.replace("of ...", "")
+        : aggregation.name,
+      value: [aggregation.short, ...aggregation.fields.map(field => null)],
+      isSelected: agg =>
+        AGGREGATION.isStandard(agg) &&
+        AGGREGATION.getOperator(agg) === aggregation.short,
+      aggregation: aggregation,
+    }));
+  }
+
+  getMetrics(table, selectedAggregation) {
+    const { dimension, showMetrics } = this.props;
+    const maybeOverriddenShowMetrics = dimension ? false : showMetrics;
+
+    // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
+    // retired metric then we include it in the list to maintain continuity
+
+    const filter = metric =>
+      maybeOverriddenShowMetrics
+        ? !metric.archived ||
+          (selectedAggregation && selectedAggregation.id === metric.id)
+        : // GA metrics are more like columns, so they should be displayed even when showMetrics is false
+          metric.googleAnalyics;
+
+    if (table.metrics) {
+      return table.metrics.filter(filter);
+    }
+
+    return [];
+  }
+
+  getMetricItems(table, selectedAggregation) {
+    const metrics = this.getMetrics(table, selectedAggregation);
+
+    return metrics.map(metric => ({
+      name: metric.name,
+      value: ["metric", metric.id],
+      isSelected: aggregation =>
+        AGGREGATION.getMetric(aggregation) === metric.id,
+      metric: metric,
+    }));
+  }
+
+  render() {
+    const { query } = this.props;
+    const table = query.table();
+    const { choosingField, editingAggregation } = this.state;
+    const aggregation = AGGREGATION.getContent(this.state.aggregation);
+    const selectedAggregation = this.getSelectedAggregation(table, aggregation);
+    const sections = this.getSections(table, selectedAggregation);
 
     if (editingAggregation) {
       return (
@@ -362,10 +392,10 @@ export default class AggregationPopover extends Component {
           sections={sections}
           onChange={this.onPickAggregation}
           itemIsSelected={this.itemIsSelected.bind(this)}
-          renderSectionIcon={s => <Icon name={s.icon} size={18} />}
+          renderSectionIcon={section => <Icon name={section.icon} size={18} />}
           renderItemExtra={this.renderItemExtra.bind(this)}
           getItemClassName={item =>
-            item.metric && item.metric.archived ? "text-medium" : null
+            item.metric?.archived ? "text-medium" : null
           }
           onChangeSection={(section, sectionIndex) => {
             if (section.custom) {

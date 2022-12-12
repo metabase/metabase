@@ -1,11 +1,13 @@
 (ns metabase-enterprise.serialization.cmd
   (:refer-clojure :exclude [load])
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase-enterprise.serialization.dump :as dump]
             [metabase-enterprise.serialization.load :as load]
             [metabase-enterprise.serialization.v2.extract :as v2.extract]
             [metabase-enterprise.serialization.v2.ingest.yaml :as v2.ingest]
             [metabase-enterprise.serialization.v2.load :as v2.load]
+            [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
             [metabase-enterprise.serialization.v2.storage.yaml :as v2.storage]
             [metabase.db :as mdb]
             [metabase.models.card :refer [Card]]
@@ -41,7 +43,7 @@
     (deferred-trs "invalid context seed value")))
 
 (s/defn v1-load
-  "Load serialized metabase instance as created by `dump` command from directory `path`."
+  "Load serialized metabase instance as created by [[dump]] command from directory `path`."
   [path context :- Context]
   (plugins/load-plugins!)
   (mdb/setup-db!)
@@ -73,6 +75,7 @@
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
   ;(when-not (load/compatible? path)
   ;  (log/warn (trs "Dump was produced using a different version of Metabase. Things may break!")))
+  (log/info (trs "Loading serialized Metabase files from {0}" path))
   (v2.load/load-metabase (v2.ingest/ingest-yaml path)))
 
 (defn load
@@ -173,15 +176,37 @@
   (dump/dump-dimensions path)
   (log/info (trs "END DUMP to {0} via user {1}" path user)))
 
+(defn- v2-extract [opts]
+  ;; if opts has `collections` (a comma-separated string) then convert those to a list of `:targets`
+  (let [opts (cond-> opts
+               (:collections opts)
+               (assoc :targets (for [c (str/split (:collections opts) #",")]
+                                 ["Collection" (Integer/parseInt c)])))]
+    ;; if we have `:targets` (either because we created them from `:collections`, or because they were specified
+    ;; elsewhere) use [[v2.extract/extract-subtrees]]
+    (if (:targets opts)
+      (v2.extract/extract-subtrees opts)
+      (v2.extract/extract-metabase opts))))
+
 (defn- v2-dump [path opts]
-  (v2.storage/store! (v2.extract/extract-metabase opts) path))
+  (-> (v2-extract opts)
+      (v2.storage/store! path)))
 
 (defn dump
   "Serialized metabase instance into directory `path`."
   [path {:keys [state user v2]
          :or {state :active}
          :as opts}]
-  (mdb/setup-db!) (db/select 'User)
+  (log/tracef "Dumping to %s with options %s" (pr-str path) (pr-str opts))
+  (mdb/setup-db!)
+  (db/select User) ;; TODO -- why???
   (if v2
     (v2-dump path opts)
     (v1-dump path state user opts)))
+
+(defn seed-entity-ids
+  "Add entity IDs for instances of serializable models that don't already have them.
+
+  Returns truthy if all entity IDs were added successfully, or falsey if any errors were encountered."
+  [options]
+  (v2.seed-entity-ids/seed-entity-ids! options))

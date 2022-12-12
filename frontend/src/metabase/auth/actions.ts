@@ -5,6 +5,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { createThunkAction } from "metabase/lib/redux";
 import { loadLocalization } from "metabase/lib/i18n";
 import { deleteSession } from "metabase/lib/auth";
+import * as Urls from "metabase/lib/urls";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUser } from "metabase/selectors/user";
@@ -73,12 +74,7 @@ export const logout = createThunkAction(LOGOUT, (redirectUrl: string) => {
     await dispatch(refreshLocale());
     trackLogout();
 
-    let loginUrl = "/auth/login";
-    if (redirectUrl) {
-      loginUrl += `?redirect=${encodeURIComponent(redirectUrl)}`;
-    }
-
-    dispatch(push(loginUrl));
+    dispatch(push(Urls.login(redirectUrl)));
     window.location.reload(); // clears redux state and browser caches
   };
 });
@@ -101,13 +97,18 @@ export const resetPassword = createThunkAction(
   },
 );
 
-export const VALIDATE_PASSWORD = "metabase/auth/VALIDATE_PASSWORD";
-export const validatePassword = createThunkAction(
-  VALIDATE_PASSWORD,
-  (password: string) => async () => {
+export const validatePassword = async (password: string) => {
+  const error = MetabaseSettings.passwordComplexityDescription(password);
+  if (error) {
+    return error;
+  }
+
+  try {
     await UtilApi.password_check({ password });
-  },
-);
+  } catch (error) {
+    return getIn(error, ["data", "errors", "password"]);
+  }
+};
 
 export const VALIDATE_PASSWORD_TOKEN = "metabase/auth/VALIDATE_TOKEN";
 export const validatePasswordToken = createThunkAction(

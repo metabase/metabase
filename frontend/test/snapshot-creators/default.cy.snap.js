@@ -39,6 +39,7 @@ describe("snapshots", () => {
       createCollections();
       withSampleDatabase(SAMPLE_DATABASE => {
         ensureTableIdsAreCorrect(SAMPLE_DATABASE);
+        hideNewSampleTables(SAMPLE_DATABASE);
         createQuestionsAndDashboards(SAMPLE_DATABASE);
         cy.writeFile(
           "frontend/test/__support__/e2e/cypress_sample_database.json",
@@ -181,8 +182,8 @@ describe("snapshots", () => {
               card_id,
               row: 0,
               col: 0,
-              sizeX: 12,
-              sizeY: 8,
+              size_x: 12,
+              size_y: 8,
             },
           ],
         });
@@ -225,6 +226,17 @@ describe("snapshots", () => {
     expect(ANALYTIC_EVENTS_ID).to.eq(STATIC_ANALYTIC_EVENTS_ID);
     expect(FEEDBACK_ID).to.eq(STATIC_FEEDBACK_ID);
     expect(INVOICES_ID).to.eq(STATIC_INVOICES_ID);
+  }
+
+  function hideNewSampleTables({
+    ACCOUNTS_ID,
+    ANALYTIC_EVENTS_ID,
+    FEEDBACK_ID,
+    INVOICES_ID,
+  }) {
+    [ACCOUNTS_ID, ANALYTIC_EVENTS_ID, FEEDBACK_ID, INVOICES_ID].forEach(id => {
+      cy.request("PUT", `/api/table/${id}`, { visibility_type: "hidden" });
+    });
   }
 
   // TODO: It'd be nice to have one file per snapshot.

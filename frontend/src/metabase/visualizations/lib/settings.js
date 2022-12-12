@@ -128,21 +128,31 @@ function getSettingWidget(
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
     }
+    for (const settingId of settingDef.eraseDependencies || []) {
+      newSettings[settingId] = null;
+    }
     onChangeSettings(newSettings);
   };
   if (settingDef.useRawSeries && object._raw) {
+    extra.transformedSeries = object;
     object = object._raw;
   }
   return {
     ...settingDef,
     id: settingId,
     value: value,
+    section: settingDef.getSection
+      ? settingDef.getSection(object, computedSettings, extra)
+      : settingDef.section,
     title: settingDef.getTitle
       ? settingDef.getTitle(object, computedSettings, extra)
       : settingDef.title,
     hidden: settingDef.getHidden
       ? settingDef.getHidden(object, computedSettings, extra)
       : settingDef.hidden || false,
+    marginBottom: settingDef.getMarginBottom
+      ? settingDef.getMarginBottom(object, computedSettings, extra)
+      : settingDef.marginBottom,
     disabled: settingDef.getDisabled
       ? settingDef.getDisabled(object, computedSettings, extra)
       : settingDef.disabled || false,

@@ -54,7 +54,7 @@
         (throw (if (::with-temp-error? (ex-data e))
                  e
                  (ex-info (format "with-temp error for %s: %s" (name model) (ex-message e))
-                          {:model                    (name model)
+                          {:model                    model
                            :attributes               attributes
                            :attributes-with-defaults attributes-with-defaults
                            :primary-key-column       (models/primary-key model)

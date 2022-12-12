@@ -2,15 +2,16 @@
 import React, { Component } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import styles from "./Text.css";
+import rehypeExternalLinks from "rehype-external-links";
 
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
 
+import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
 import { withInstanceLanguage, siteLocale } from "metabase/lib/i18n";
 
-import { substitute_tags } from "cljs/metabase.shared.parameters.parameters";
+import styles from "./Text.css";
 
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",
@@ -20,6 +21,9 @@ const getSettingsStyle = settings => ({
 });
 
 const REMARK_PLUGINS = [remarkGfm];
+const REHYPE_PLUGINS = [
+  [rehypeExternalLinks, { rel: ["noreferrer"], target: "_blank" }],
+];
 
 export default class Text extends Component {
   constructor(props) {
@@ -88,6 +92,7 @@ export default class Text extends Component {
       section: t`Display`,
       title: t`Show background`,
       dashboard: true,
+      inline: true,
       widget: "toggle",
       default: true,
     },
@@ -150,6 +155,7 @@ export default class Text extends Component {
           {isPreviewing ? (
             <ReactMarkdown
               remarkPlugins={REMARK_PLUGINS}
+              rehypePlugins={REHYPE_PLUGINS}
               className={cx(
                 "full flex-full flex flex-column text-card-markdown",
                 styles["text-card-markdown"],
@@ -189,6 +195,7 @@ export default class Text extends Component {
       >
         <ReactMarkdown
           remarkPlugins={REMARK_PLUGINS}
+          rehypePlugins={REHYPE_PLUGINS}
           className={cx(
             "full flex-full flex flex-column text-card-markdown",
             styles["text-card-markdown"],

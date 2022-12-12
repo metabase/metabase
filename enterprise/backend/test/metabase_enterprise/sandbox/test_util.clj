@@ -43,10 +43,10 @@
                            (f nil)))]
       (do-with-card
        (fn [card-id]
-         (tt/with-temp GroupTableAccessPolicy [gtap {:group_id             (u/the-id group)
-                                                     :table_id             (data/id table-kw)
-                                                     :card_id              card-id
-                                                     :attribute_remappings remappings}]
+         (tt/with-temp GroupTableAccessPolicy [_gtap {:group_id             (u/the-id group)
+                                                      :table_id             (data/id table-kw)
+                                                      :card_id              card-id
+                                                      :attribute_remappings remappings}]
            (perms/grant-permissions! group (perms/table-segmented-query-path (db/select-one Table :id (data/id table-kw))))
            (do-with-gtap-defs group more f)))))))
 

@@ -54,7 +54,7 @@ const TimelineEmptyState = ({
           <EmptyStateTooltipIcon name="mail" />
           <EmptyStateTooltipBody>
             <EmptyStateTooltipTitle>{t`Launch of v2.0`}</EmptyStateTooltipTitle>
-            <EmptyStateTooltipDate value={date} unit="day" />
+            <EmptyStateTooltipDate value={date} unit="day" data-server-date />
           </EmptyStateTooltipBody>
         </EmptyStateTooltip>
         <EmptyStateThread>

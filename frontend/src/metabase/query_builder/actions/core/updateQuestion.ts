@@ -1,20 +1,18 @@
 import _ from "underscore";
 import { assocIn } from "icepick";
 
-import { isSupportedTemplateTagForModel } from "metabase/lib/data-modeling/utils";
-import {
-  getTemplateTagsForParameters,
-  getTemplateTagParameters,
-} from "metabase/parameters/utils/cards";
-
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
 import { Dataset } from "metabase-types/api";
 import { Series } from "metabase-types/types/Visualization";
 import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
+import {
+  getTemplateTagsForParameters,
+  getTemplateTagParameters,
+} from "metabase-lib/parameters/utils/template-tags";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
+import { isSupportedTemplateTagForModel } from "metabase-lib/metadata/utils/models";
 import {
   getFirstQueryResult,
   getIsShowingTemplateTagsEditor,
@@ -72,9 +70,7 @@ function checkShouldRerunPivotTableQuestion({
   );
 }
 
-type NextTemplateTagEditorState = "visible" | "hidden" | undefined;
-
-function getNextTemplateTagEditorState({
+function shouldTemplateTagEditorBeVisible({
   currentQuestion,
   newQuestion,
   isVisible,
@@ -84,26 +80,24 @@ function getNextTemplateTagEditorState({
   newQuestion: Question;
   isVisible: boolean;
   queryBuilderMode: QueryBuilderMode;
-}): NextTemplateTagEditorState {
-  const currentQuery = currentQuestion?.query() as NativeQuery;
-  const nextQuery = newQuestion.query() as NativeQuery;
-  const previousTags = currentQuery.templateTagsWithoutSnippets?.() || [];
-  const nextTags = nextQuery.templateTagsWithoutSnippets?.() || [];
-
+}): boolean {
+  // variable tags are not supported by models, so don't change the visibility
+  if (queryBuilderMode === "dataset") {
+    return isVisible;
+  }
+  const previousTags = currentQuestion?.isNative()
+    ? (currentQuestion.query() as NativeQuery).variableTemplateTags()
+    : [];
+  const nextTags = newQuestion.isNative()
+    ? (newQuestion.query() as NativeQuery).variableTemplateTags()
+    : [];
   if (nextTags.length > previousTags.length) {
-    if (queryBuilderMode !== "dataset") {
-      return "visible";
-    }
-    return nextTags.every(isSupportedTemplateTagForModel)
-      ? "visible"
-      : "hidden";
+    return true;
+  } else if (nextTags.length === 0) {
+    return false;
+  } else {
+    return isVisible;
   }
-
-  if (nextTags.length === 0 && isVisible) {
-    return "hidden";
-  }
-
-  return;
 }
 
 type UpdateQuestionOpts = {
@@ -143,6 +137,13 @@ export const updateQuestion = (
         newQuestion = newQuestion.setDataset(false);
         dispatch(onCloseQuestionInfo());
       }
+    }
+
+    // This scenario happens because the DatasetQueryEditor converts the dataset/model question into a normal question
+    // so that its query is shown properly in the notebook editor. Various child components of the notebook editor have access to
+    // this `updateQuestion` action, so they end up triggering the action with the altered question.
+    if (queryBuilderMode === "dataset" && !newQuestion.isDataset()) {
+      newQuestion = newQuestion.setDataset(true);
     }
 
     const queryResult = getFirstQueryResult(getState());
@@ -216,19 +217,27 @@ export const updateQuestion = (
 
     if (currentQuestion?.isNative?.() || newQuestion.isNative()) {
       const isVisible = getIsShowingTemplateTagsEditor(getState());
-      const nextState = getNextTemplateTagEditorState({
+      const shouldBeVisible = shouldTemplateTagEditorBeVisible({
         currentQuestion,
         newQuestion,
         queryBuilderMode,
         isVisible,
       });
-      if (nextState) {
-        dispatch(setIsShowingTemplateTagsEditor(nextState === "visible"));
+      if (isVisible !== shouldBeVisible) {
+        dispatch(setIsShowingTemplateTagsEditor(shouldBeVisible));
       }
     }
 
-    const currentDependencies = currentQuestion?.query().dependentMetadata();
-    const nextDependencies = newQuestion.query().dependentMetadata();
+    const currentDependencies = currentQuestion
+      ? [
+          ...currentQuestion.dependentMetadata(),
+          ...currentQuestion.query().dependentMetadata(),
+        ]
+      : [];
+    const nextDependencies = [
+      ...newQuestion.dependentMetadata(),
+      ...newQuestion.query().dependentMetadata(),
+    ];
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
         await dispatch(loadMetadataForCard(newQuestion.card()));

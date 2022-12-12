@@ -1,11 +1,12 @@
 (ns metabase.util.encryption-test
   "Tests for encryption of Metabase DB details."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.models.setting.cache :as setting.cache]
-            [metabase.test.initialize :as initialize]
-            [metabase.test.util :as tu]
-            [metabase.util.encryption :as encryption]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.models.setting.cache :as setting.cache]
+   [metabase.test :as mt]
+   [metabase.test.initialize :as initialize]
+   [metabase.util.encryption :as encryption]))
 
 (defn do-with-secret-key [^String secret-key thunk]
   ;; flush the Setting cache so unencrypted values have to be fetched from the DB again
@@ -88,7 +89,7 @@
 
 (deftest no-errors-for-unencrypted-test
   (testing "Something obviously not encrypted should avoiding trying to decrypt it (and thus not log an error)"
-    (is (empty? (tu/with-log-messages-for-level :warn
+    (is (empty? (mt/with-log-messages-for-level :warn
                   (encryption/maybe-decrypt secret "abc"))))))
 
 (def ^:private fake-ciphertext
@@ -101,10 +102,10 @@
   (testing (str "Something that is not encrypted, but might be (is the correct shape etc) should attempt to be "
                 "decrypted. If unable to decrypt it, log a warning.")
     (is (includes-encryption-warning?
-         (tu/with-log-messages-for-level :warn
+         (mt/with-log-messages-for-level :warn
            (encryption/maybe-decrypt secret fake-ciphertext))))
     (is (includes-encryption-warning?
-         (tu/with-log-messages-for-level :warn
+         (mt/with-log-messages-for-level :warn
            (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW")))))))
 
 (deftest ^:parallel possibly-encrypted-test

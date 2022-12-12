@@ -1,23 +1,13 @@
-import { TYPE } from "metabase/lib/types";
-import { formatSourceForTarget } from "metabase/lib/click-behavior";
-
-import Database from "metabase-lib/lib/metadata/Database";
-import Field from "metabase-lib/lib/metadata/Field";
-
-import { Database as IDatabase } from "metabase-types/types/Database";
-import { DashCard } from "metabase-types/types/Dashboard";
-import { Parameter, ParameterId } from "metabase-types/types/Parameter";
-
-import {
+import type {
+  ActionDashboardCard,
+  BaseDashboardOrderedCard,
+  Card,
+  Database as IDatabase,
   WritebackAction,
-  ParameterMappings,
-  ParametersMappedToValues,
-  ParametersSourceTargetMap,
-  ActionClickBehaviorData,
-  ActionClickExtraData,
-  ActionClickBehavior,
-  ActionParameterTuple,
-} from "./types";
+} from "metabase-types/api";
+import { TYPE } from "metabase-lib/types/constants";
+import type Database from "metabase-lib/metadata/Database";
+import type Field from "metabase-lib/metadata/Field";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -70,118 +60,39 @@ export const isEditableField = (field: Field) => {
   return true;
 };
 
-export const isActionButtonDashCard = (dashCard: DashCard) =>
-  dashCard.visualization_settings?.virtual_card?.display === "action-button";
+export const isActionCard = (card: Card) => card?.display === "action";
 
-export const getActionButtonEmitterId = (dashCard: DashCard) =>
-  dashCard.visualization_settings?.click_behavior?.emitter_id;
-
-export const getActionButtonActionId = (dashCard: DashCard) =>
-  dashCard.visualization_settings?.click_behavior?.action;
-
-export function getActionParameterType(parameter: Parameter) {
-  const { type } = parameter;
-  if (type === "category") {
-    return "string/=";
-  }
-  return type;
+export function isActionDashCard(
+  dashCard: BaseDashboardOrderedCard,
+): dashCard is ActionDashboardCard {
+  const virtualCard = dashCard?.visualization_settings?.virtual_card;
+  return isActionCard(virtualCard as Card);
 }
 
-function isParametersTuple(
-  listOrListOfTuples: ActionParameterTuple[] | Parameter[],
-): listOrListOfTuples is ActionParameterTuple[] {
-  const [sample] = listOrListOfTuples;
-  if (!sample) {
-    return false;
-  }
-  return Array.isArray(sample);
+/**
+ * Checks if a dashboard card is an explicit action (has associated WritebackAction).
+ *
+ * @param {BaseDashboardOrderedCard} dashboard card
+ *
+ * @returns {boolean} true if the button has an associated action.
+ * False for implicit actions using click behavior, and in case a button has no action attached
+ */
+export function isMappedExplicitActionButton(
+  dashCard: BaseDashboardOrderedCard,
+): dashCard is ActionDashboardCard {
+  const isAction = isActionDashCard(dashCard);
+  return (
+    isAction && typeof dashCard.visualization_settings.action_slug === "string"
+  );
 }
 
-function getParametersFromTuples(
-  parameterTuples: ActionParameterTuple[] | Parameter[],
-): Parameter[] {
-  if (!isParametersTuple(parameterTuples)) {
-    return parameterTuples;
-  }
-  return parameterTuples.map(tuple => {
-    const [, parameter] = tuple;
-    return parameter;
-  });
+export function getActionButtonLabel(dashCard: ActionDashboardCard) {
+  const label = dashCard.visualization_settings?.["button.label"];
+  return label || "";
 }
 
-export const getActionEmitterParameterMappings = (action: WritebackAction) => {
-  const parameters = getParametersFromTuples(action.parameters);
-  const parameterMappings: ParameterMappings = {};
+export const hasImplicitActions = (actions: WritebackAction[]): boolean =>
+  actions.some(isImplicitAction);
 
-  parameters.forEach(parameter => {
-    parameterMappings[parameter.id] = [
-      "variable",
-      ["template-tag", parameter.slug],
-    ];
-  });
-
-  return parameterMappings;
-};
-
-export function getActionParameters(
-  parameterMapping: ParametersSourceTargetMap = {},
-  {
-    data,
-    extraData,
-    clickBehavior,
-  }: {
-    data: ActionClickBehaviorData;
-    extraData: ActionClickExtraData;
-    clickBehavior: ActionClickBehavior;
-  },
-) {
-  const action = extraData.actions[clickBehavior.action];
-
-  const parameters = getParametersFromTuples(action.parameters);
-  const parameterValuesMap: ParametersMappedToValues = {};
-
-  Object.values(parameterMapping).forEach(({ id, source, target }) => {
-    const targetParameter = parameters.find(parameter => parameter.id === id);
-    if (targetParameter) {
-      const result = formatSourceForTarget(source, target, {
-        data,
-        extraData,
-        clickBehavior,
-      });
-      // For some reason it's sometimes [1] and sometimes just 1
-      const value = Array.isArray(result) ? result[0] : result;
-
-      parameterValuesMap[id] = {
-        value,
-        type: getActionParameterType(targetParameter),
-      };
-    }
-  });
-
-  return parameterValuesMap;
-}
-
-export function getNotProvidedActionParameters(
-  action: WritebackAction,
-  parameterValuesMap: ParametersMappedToValues,
-) {
-  const parameters = getParametersFromTuples(action.parameters);
-  const mappedParameterIDs = Object.keys(parameterValuesMap);
-
-  const emptyParameterIDs: ParameterId[] = [];
-  mappedParameterIDs.forEach(parameterId => {
-    const { value } = parameterValuesMap[parameterId];
-    if (value === undefined) {
-      emptyParameterIDs.push(parameterId);
-    }
-  });
-
-  return parameters.filter(parameter => {
-    if ("default" in parameter) {
-      return false;
-    }
-    const isNotMapped = !mappedParameterIDs.includes(parameter.id);
-    const isMappedButNoValue = emptyParameterIDs.includes(parameter.id);
-    return isNotMapped || isMappedButNoValue;
-  });
-}
+export const isImplicitAction = (action: WritebackAction): boolean =>
+  action.type === "implicit";

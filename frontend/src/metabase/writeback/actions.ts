@@ -1,6 +1,7 @@
 import { ActionsApi } from "metabase/services";
 
-import Table from "metabase-lib/lib/metadata/Table";
+import type { Value } from "metabase-types/types/Dataset";
+import type Table from "metabase-lib/metadata/Table";
 
 export type InsertRowPayload = {
   table: Table;
@@ -21,7 +22,7 @@ export const createRow = (payload: InsertRowPayload) => {
 
 export type UpdateRowPayload = {
   table: Table;
-  id: number | string;
+  id: Value;
   values: Record<string, unknown>;
 };
 
@@ -62,7 +63,7 @@ export const updateManyRows = (payload: BulkUpdatePayload) => {
 
 export type DeleteRowPayload = {
   table: Table;
-  id: number | string;
+  id: Value;
 };
 
 export const deleteRow = (payload: DeleteRowPayload) => {

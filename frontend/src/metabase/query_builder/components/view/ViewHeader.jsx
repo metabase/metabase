@@ -19,18 +19,18 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
+import QuestionActions from "../QuestionActions";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import QuestionNotebookButton from "./QuestionNotebookButton";
+import ConvertQueryButton from "./ConvertQueryButton";
 import QuestionFilters, {
   FilterHeaderToggle,
   FilterHeader,
   QuestionFilterWidget,
 } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
-import QuestionActions from "../QuestionActions";
-import NativeQueryButton from "./NativeQueryButton";
 import {
   AdHocViewHeading,
   SaveButton,
@@ -69,6 +69,7 @@ const viewTitleHeaderPropTypes = {
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
+  updateQuestion: PropTypes.func,
 
   onOpenModal: PropTypes.func,
   onEditSummary: PropTypes.func,
@@ -80,7 +81,7 @@ const viewTitleHeaderPropTypes = {
 };
 
 export function ViewTitleHeader(props) {
-  const { question, className, style, isNavBarOpen } = props;
+  const { question, className, style, isNavBarOpen, updateQuestion } = props;
 
   const [
     areFiltersExpanded,
@@ -110,6 +111,13 @@ export function ViewTitleHeader(props) {
   const isSummarized =
     isStructured && question.query().topLevelQuery().hasAggregations();
 
+  const onQueryChange = useCallback(
+    newQuery => {
+      updateQuestion(newQuery.question(), { run: true });
+    },
+    [updateQuestion],
+  );
+
   return (
     <>
       <ViewHeaderContainer
@@ -136,6 +144,7 @@ export function ViewTitleHeader(props) {
           areFiltersExpanded={areFiltersExpanded}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
+          onQueryChange={onQueryChange}
         />
       </ViewHeaderContainer>
       {QuestionFilters.shouldRender(props) && (
@@ -143,6 +152,7 @@ export function ViewTitleHeader(props) {
           {...props}
           expanded={areFiltersExpanded}
           question={question}
+          onQueryChange={onQueryChange}
         />
       )}
     </>
@@ -322,6 +332,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isResultDirty: PropTypes.bool,
   isActionListVisible: PropTypes.bool,
   runQuestionQuery: PropTypes.func,
+  updateQuestion: PropTypes.func.isRequired,
   cancelQuery: PropTypes.func,
   onOpenModal: PropTypes.func,
   onEditSummary: PropTypes.func,
@@ -339,6 +350,7 @@ ViewTitleHeaderRightSide.propTypes = {
   onCloseQuestionInfo: PropTypes.func,
   isShowingQuestionInfoSidebar: PropTypes.bool,
   onModelPersistenceChange: PropTypes.bool,
+  onQueryChange: PropTypes.func,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -374,6 +386,7 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
+    onQueryChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
@@ -416,6 +429,7 @@ function ViewTitleHeaderRightSide(props) {
           expanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
+          onQueryChange={onQueryChange}
         />
       )}
       {QuestionFilterWidget.shouldRender(props) && (
@@ -448,14 +462,8 @@ function ViewTitleHeaderRightSide(props) {
           />
         </ViewHeaderIconButtonContainer>
       )}
-      {NativeQueryButton.shouldRender(props) && (
-        <ViewHeaderIconButtonContainer>
-          <NativeQueryButton
-            size={16}
-            question={question}
-            data-metabase-event="Notebook Mode; Convert to SQL Click"
-          />
-        </ViewHeaderIconButtonContainer>
+      {ConvertQueryButton.shouldRender(props) && (
+        <ConvertQueryButton question={question} onOpenModal={onOpenModal} />
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (

@@ -1,53 +1,70 @@
-import { color } from "metabase/lib/colors";
-import { colors } from "metabase/lib/colors/palette";
 import React from "react";
+import _ from "underscore";
+import { ColorGetter } from "metabase/static-viz/lib/colors";
 import { XYChart } from "../XYChart";
-import { ChartSettings, ChartStyle, Series } from "../XYChart/types";
+import { CardSeries, ChartSettings, ChartStyle } from "../XYChart/types";
 import { Colors } from "./types";
 import {
   adjustSettings,
   calculateChartSize,
   getXValuesCount,
 } from "./utils/settings";
+import {
+  getSeriesWithColors,
+  getSeriesWithLegends,
+  removeNoneSeriesFields,
+  reorderSeries,
+} from "./utils/series";
 
 interface LineAreaBarChartProps {
-  series: Series[];
+  multipleSeries: CardSeries[];
   settings: ChartSettings;
   colors: Colors;
+  getColor: ColorGetter;
 }
 
 const LineAreaBarChart = ({
-  series,
+  multipleSeries,
   settings,
+  getColor,
   colors: instanceColors,
 }: LineAreaBarChartProps) => {
-  const palette = { ...colors, ...instanceColors };
-
   const chartStyle: ChartStyle = {
     fontFamily: "Lato, sans-serif",
     axes: {
-      color: color("text-light", palette),
+      color: getColor("text-light"),
       ticks: {
-        color: color("text-medium", palette),
-        fontSize: 11,
+        color: getColor("text-medium"),
+        fontSize: 12,
       },
       labels: {
-        color: color("text-medium", palette),
-        fontSize: 11,
+        color: getColor("text-medium"),
+        fontSize: 14,
         fontWeight: 700,
       },
     },
     legend: {
-      fontSize: 13,
-      lineHeight: 16,
+      fontSize: 14,
+      lineHeight: 20,
+      fontWeight: 700,
     },
     value: {
-      color: color("text-dark", palette),
-      fontSize: 11,
+      color: getColor("text-dark"),
+      fontSize: 12,
       fontWeight: 800,
+      stroke: getColor("white"),
+      strokeWidth: 3,
     },
-    goalColor: color("text-medium", palette),
+    goalColor: getColor("text-medium"),
   };
+
+  const series = pipe(
+    _.partial(getSeriesWithColors, settings, instanceColors),
+    _.partial(getSeriesWithLegends, settings),
+    _.partial(reorderSeries, settings),
+    _.flatten,
+    removeNoneSeriesFields,
+  )(multipleSeries);
 
   const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;
   const xValuesCount = getXValuesCount(series);
@@ -69,5 +86,9 @@ const LineAreaBarChart = ({
     />
   );
 };
+
+function pipe(...functions: ((arg: any) => any)[]) {
+  return _.compose(...functions.reverse());
+}
 
 export default LineAreaBarChart;

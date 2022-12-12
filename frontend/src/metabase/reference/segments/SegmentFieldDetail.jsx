@@ -15,6 +15,8 @@ import Detail from "metabase/reference/components/Detail";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 
+import * as metadataActions from "metabase/redux/metadata";
+import * as actions from "metabase/reference/reference";
 import { getQuestionUrl } from "../utils";
 
 import {
@@ -27,9 +29,6 @@ import {
   getForeignKeys,
   getIsFormulaExpanded,
 } from "../selectors";
-
-import * as metadataActions from "metabase/redux/metadata";
-import * as actions from "metabase/reference/reference";
 
 const interestingQuestions = (table, field) => {
   return [

@@ -12,10 +12,11 @@ import PaginationControls from "metabase/components/PaginationControls";
 
 import User from "metabase/entities/users";
 
-import AddMemberRow from "../AddMemberRow";
 import { Group, Member, User as IUser } from "metabase-types/api";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { State } from "metabase-types/store";
+import { isNotNull } from "metabase/core/utils/types";
+import AddMemberRow from "../AddMemberRow";
 
 const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell;
@@ -80,7 +81,7 @@ function GroupMembersTable({
     t`Name`,
     canEditMembership(group) ? t`Type` : null,
     t`Email`,
-  ].filter(Boolean);
+  ].filter(isNotNull);
 
   const alreadyMembersIds = useMemo(
     () => new Set(groupMemberships.map(membership => membership.user_id)),

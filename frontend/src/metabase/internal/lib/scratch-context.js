@@ -3,6 +3,7 @@ import styled from "@emotion/styled";
 import * as systemExports from "styled-system";
 import colors, * as colorsExports from "metabase/lib/colors";
 import * as entities from "metabase/entities";
+import { capitalize } from "metabase/lib/formatting";
 import COMPONENTS from "./components-webpack";
 
 const context = {
@@ -19,7 +20,6 @@ for (const { component } of COMPONENTS) {
 }
 
 // Metabase's entities, capitalized
-import { capitalize } from "metabase/lib/formatting";
 for (const [name, entity] of Object.entries(entities)) {
   context[capitalize(name)] = entity;
 }

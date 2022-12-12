@@ -19,7 +19,6 @@ describe("scenarios > visualizations > pie chart", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
   });
 
   it("should render a pie chart (metabase#12506)", () => {

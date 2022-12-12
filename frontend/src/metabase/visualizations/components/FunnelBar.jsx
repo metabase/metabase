@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
+import { assocIn } from "icepick";
 import BarChart from "metabase/visualizations/visualizations/BarChart";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { assocIn } from "icepick";
 
 export default class FunnelBar extends Component {
   render() {

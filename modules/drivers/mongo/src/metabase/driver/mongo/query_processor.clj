@@ -11,6 +11,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
@@ -21,10 +22,11 @@
             [metabase.util.schema :as su]
             [monger.operators :refer [$add $addToSet $and $avg $cond $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
                                       $group $gt $gte $hour $limit $lt $lte $match $max $min $minute $mod $month
-                                      $multiply $ne $not $or $project $regex $size $skip $sort $strcasecmp $subtract
-                                      $sum $toLower]]
+                                      $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
+                                      $sum $toLower $year]]
             [schema.core :as s])
-  (:import org.bson.types.ObjectId))
+  (:import [org.bson.types ObjectId Binary]
+           org.bson.BsonBinarySubType))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -136,10 +138,27 @@
 
       (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
       {"$dateFromString" {:dateString field-name
-                          :format "%Y%m%d%H%M%S"
-                          :onError field-name}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
 
-      :else field-name)))
+      ;; mongo only supports datetime
+      (isa? coercion :Coercion/ISO8601->DateTime)
+      {"$dateFromString" {:dateString field-name
+                          :onError    field-name}}
+
+
+      (isa? coercion :Coercion/ISO8601->Date)
+      (throw (ex-info (tru "MongoDB does not support parsing strings as dates. Try parsing to a datetime instead")
+                      {:type              qp.error-type/unsupported-feature
+                       :coercion-strategy coercion}))
+
+
+      (isa? coercion :Coercion/ISO8601->Time)
+      (throw (ex-info (tru "MongoDB does not support parsing strings as times. Try parsing to a datetime instead")
+                      {:type              qp.error-type/unsupported-feature
+                       :coercion-strategy coercion}))
+
+     :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
 ;;
@@ -192,6 +211,24 @@
                                               [resolution])]
                              [part (str (name parts) \. (name part))]))}))
 
+(declare with-rvalue-temporal-bucketing)
+
+(defn- days-till-start-of-first-full-week
+  [column]
+  (let [start-of-year                (with-rvalue-temporal-bucketing column :year)
+        day-of-week-of-start-of-year (with-rvalue-temporal-bucketing start-of-year :day-of-week)]
+    {:$subtract [8 day-of-week-of-start-of-year]}))
+
+(defn- week-of-year
+  "Full explanation of this magic is in [[metabase.driver.sql.query-processor/week-of-year]]."
+  [column mode]
+  (let [doy    (with-rvalue-temporal-bucketing column :day-of-year)
+        dtsofw (binding [driver.common/*start-of-week* (case mode
+                                                         :us :sunday
+                                                         :instance nil)]
+                 (days-till-start-of-first-full-week column))]
+    {:$toInt {:$add [1 {:$ceil {:$divide [{:$subtract [doy dtsofw]} 7]}}]}}))
+
 (defn- with-rvalue-temporal-bucketing
   [field unit]
   (if (= unit :default)
@@ -200,20 +237,24 @@
       (letfn [(truncate [unit]
                 (truncate-to-resolution column unit))]
         (case unit
-          :default        column
-          :minute         (truncate :minute)
-          :minute-of-hour {$minute column}
-          :hour           (truncate :hour)
-          :hour-of-day    {$hour column}
-          :day            (truncate :day)
-          :day-of-week    (day-of-week column)
-          :day-of-month   {$dayOfMonth column}
-          :day-of-year    {$dayOfYear column}
-          :week           (truncate-to-resolution (week column) :day)
-          :week-of-year   {:$ceil {$divide [{$dayOfYear (week column)}
-                                            7.0]}}
-          :month          (truncate :month)
-          :month-of-year  {$month column}
+          :default          column
+          :second-of-minute {$second column}
+          :minute           (truncate :minute)
+          :minute-of-hour   {$minute column}
+          :hour             (truncate :hour)
+          :hour-of-day      {$hour column}
+          :day              (truncate :day)
+          :day-of-week      (day-of-week column)
+          :day-of-month     {$dayOfMonth column}
+          :day-of-year      {$dayOfYear column}
+          :week             (truncate-to-resolution (week column) :day)
+          :week-of-year     {:$ceil {$divide [{$dayOfYear (week column)}
+                                              7.0]}}
+          :week-of-year-iso {:$isoWeek column}
+          :week-of-year-us  (week-of-year column :us)
+          :week-of-year-instance  (week-of-year column :instance)
+          :month            (truncate :month)
+          :month-of-year    {$month column}
           ;; For quarter we'll just subtract enough days from the current date to put it in the correct month and
           ;; stringify it as yyyy-MM Subtracting (($dayOfYear(column) % 91) - 3) days will put you in correct month.
           ;; Trust me.
@@ -233,7 +274,10 @@
                       3]})
 
           :year
-          (truncate :year))))))
+          (truncate :year)
+
+          :year-of-era
+          {$year column})))))
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit]}]]
@@ -246,15 +290,32 @@
 
 (defmethod ->rvalue nil [_] nil)
 
+(defn- uuid->bsonbinary
+  [u]
+  (let [lo (.getLeastSignificantBits ^java.util.UUID u)
+        hi (.getMostSignificantBits  ^java.util.UUID u)
+        ba (-> (java.nio.ByteBuffer/allocate 16) ; UUID is 128 bits-long
+               (.putLong hi)
+               (.putLong lo)
+               (.array))]
+    (Binary. BsonBinarySubType/UUID_STANDARD ba)))
+
 (defmethod ->rvalue :value
   [[_ value {base-type :base_type}]]
-  (if (and (isa? base-type :type/MongoBSONID)
-           (some? value))
-    ;; Passing nil or "" to the ObjectId constructor throws an exception
-    ;; "invalid hexadecimal representation of an ObjectId: []" so, just treat it as nil
-    (when (not= value "")
-      (ObjectId. (str value)))
-    value))
+  (cond
+    ;; Passing nil or "" to the ObjectId or Binary constructor throws an exception
+    (or (nil? value) (= value ""))
+    value
+
+    (isa? base-type :type/MongoBSONID)
+    (ObjectId. (str value))
+
+    (isa? base-type :type/UUID)
+    (-> (str value)
+        java.util.UUID/fromString
+        uuid->bsonbinary)
+
+    :else value))
 
 (defn- $date-from-string [s]
   {:$dateFromString {:dateString (str s)}})
@@ -264,12 +325,12 @@
   (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
                                    "UTC"))
         t           (condp = (class t)
-                      java.time.LocalDate      t
-                      java.time.LocalTime      t
-                      java.time.LocalDateTime  t
-                      java.time.OffsetTime     (t/with-offset-same-instant t report-zone)
-                      java.time.OffsetDateTime (t/with-offset-same-instant t report-zone)
-                      java.time.ZonedDateTime  (t/offset-date-time (t/with-zone-same-instant t report-zone)))]
+                     java.time.LocalDate      t
+                     java.time.LocalTime      t
+                     java.time.LocalDateTime  t
+                     java.time.OffsetTime     (t/offset-time t report-zone)
+                     java.time.OffsetDateTime (t/offset-date-time t report-zone)
+                     java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
     (letfn [(extract [unit]
               (u.date/extract t unit))
             (bucket [unit]
@@ -311,6 +372,7 @@
 
 (defmethod ->lvalue :avg       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :stddev    [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :var       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :sum       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :min       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :max       [[_ inp]] (->lvalue inp))
@@ -343,11 +405,11 @@
 
 (defmethod ->lvalue :coalesce [[_ & args]] (->lvalue (first args)))
 
-(defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})
-(defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevPop" (->rvalue inp)})
+(defmethod ->rvalue :avg       [[_ inp]] {$avg (->rvalue inp)})
+(defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevSamp" (->rvalue inp)})
 (defmethod ->rvalue :sum       [[_ inp]] {"$sum" (->rvalue inp)})
-(defmethod ->rvalue :min       [[_ inp]] {"$min" (->rvalue inp)})
-(defmethod ->rvalue :max       [[_ inp]] {"$max" (->rvalue inp)})
+(defmethod ->rvalue :min       [[_ inp]] {$min (->rvalue inp)})
+(defmethod ->rvalue :max       [[_ inp]] {$max (->rvalue inp)})
 
 (defmethod ->rvalue :floor     [[_ inp]] {"$floor" (->rvalue inp)})
 (defmethod ->rvalue :ceil      [[_ inp]] {"$ceil" (->rvalue inp)})
@@ -370,6 +432,9 @@
 (defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
 (defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
 
+(defmethod ->rvalue :temporal-extract [[_ inp unit]]
+  (with-rvalue-temporal-bucketing (->rvalue inp) unit))
+
 ;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
 ;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
 ;;; Also, date arithmetic with intervals was first implemented in version 5. (Before that only
@@ -379,14 +444,10 @@
 ;;; version of the database and throw a nice exception if it's less than 5.
 
 (defn- get-mongo-version []
-  (:version (driver/describe-database :mongo (qp.store/database))))
-
-(defn- get-major-version [version]
-  (some-> version (str/split #"\.") first parse-long))
+  (driver/dbms-version :mongo (qp.store/database)))
 
 (defn- check-date-operations-supported []
-  (let [mongo-version (get-mongo-version)
-        major-version (get-major-version mongo-version)]
+  (let [{mongo-version :version, [major-version] :semantic-version} (get-mongo-version)]
     (when (and major-version (< major-version 5))
       (throw (ex-info "Date arithmetic not supported in versions before 5"
                       {:database-version mongo-version})))))
@@ -436,6 +497,25 @@
 (defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
+
+(defmethod ->rvalue :now [[_]]
+  (if (driver/database-supports? :mongo :now (qp.store/database))
+    "$$NOW"
+    (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
+                    {:database-version (:version (get-mongo-version))}))))
+
+(defmethod ->rvalue :datetime-add [[_ inp amount unit]]
+  (check-date-operations-supported)
+  {"$dateAdd" {:startDate (->rvalue inp)
+               :unit      unit
+               :amount    amount}})
+
+(defmethod ->rvalue :datetime-subtract
+  [[_ inp amount unit]]
+  (check-date-operations-supported)
+  {"$dateSubtract" {:startDate (->rvalue inp)
+                    :unit      unit
+                    :amount    amount}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
@@ -615,21 +695,14 @@
     {$sum {$cond {:if   (->rvalue arg)
                   :then 1
                   :else 0}}}
-    [:avg arg]
-    {$avg (->rvalue arg)}
 
+    ;; these aggregation types can all be used in expressions as well so their implementations live above in the
+    ;; general [[->rvalue]] implementations
+    #{:avg :stddev :sum :min :max}
+    (->rvalue &match)
 
     [:distinct arg]
     {$addToSet (->rvalue arg)}
-
-    [:sum arg]
-    {$sum (->rvalue arg)}
-
-    [:min arg]
-    {$min (->rvalue arg)}
-
-    [:max arg]
-    {$max (->rvalue arg)}
 
     [:sum-where arg pred]
     {$sum {$cond {:if   (compile-cond pred)
@@ -663,22 +736,46 @@
                 {$size (str \$ ag-name)}
                 true)])))
 
-(defmulti ^:private expand-aggregation (comp first unwrap-named-ag))
+(defmulti ^:private expand-aggregation
+  "Expand aggregations like `:share` and `:var` that can't be done as top-level aggregations in the `$group` stage
+  alone. See [[group-and-post-aggregations]] for more info. See also
+  https://www.mongodb.com/docs/manual/reference/operator/aggregation/group/#accumulator-operator for a list of what
+  aggregation operators are allowed inside `$group` (vs the ones that have to be done in a later stage)."
+  {:arglists '([mbql-clause])}
+  (comp first unwrap-named-ag))
+
+;;; * `:group` = stuff to do in the `$group` stage
+;;;
+;;; * `:post` = stuff to do in the `$addFields` stage immediately following it
+;;;
+;;; both of these are maps of LHS column name => RHS definition
+;;;
+;;; Note that this code doesn't handle expression aggregations, but that's ok because we do not support
+;;; `:expression-aggregations` for Mongo DB.
 
 (defmethod expand-aggregation :share
   [[_ pred :as ag]]
-  (let [count-where-name (name (gensym "count-where"))
+  (let [count-where-name (name (gensym "count-where-"))
         count-name       (name (gensym "count-"))
         pred             (if (= (first pred) :share)
                            (second pred)
                            pred)]
-    [[[count-where-name (aggregation->rvalue [:count-where pred])]
-      [count-name (aggregation->rvalue [:count])]]
-     [[(annotate/aggregation-name ag) {$divide [(str "$" count-where-name) (str "$" count-name)]}]]]))
+    {:group {count-where-name (aggregation->rvalue [:count-where pred])
+             count-name       (aggregation->rvalue [:count])}
+     :post  {(annotate/aggregation-name ag) {$divide [(str "$" count-where-name) (str "$" count-name)]}}}))
+
+;; MongoDB doesn't have a variance operator, but you calculate it by taking the square of the standard deviation.
+;; However, `$pow` is not allowed in the `$group` stage. So calculate standard deviation in the
+(defmethod expand-aggregation :var
+  [ag]
+  (let [[_ expr]    (unwrap-named-ag ag)
+        stddev-name (name (gensym "stddev-"))]
+    {:group {stddev-name (aggregation->rvalue [:stddev expr])}
+     :post  {(annotate/aggregation-name ag) {:$pow [(str \$ stddev-name) 2]}}}))
 
 (defmethod expand-aggregation :default
   [ag]
-  [[[(annotate/aggregation-name ag) (aggregation->rvalue ag)]]])
+  {:group {(annotate/aggregation-name ag) (aggregation->rvalue ag)}})
 
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
@@ -688,8 +785,8 @@
    accrued in `$group` stage are discarded in the final `$project` stage."
   [id aggregations]
   (let [expanded-ags (map expand-aggregation aggregations)
-        group-ags    (mapcat first expanded-ags)
-        post-ags     (mapcat second expanded-ags)]
+        group-ags    (mapcat :group expanded-ags)
+        post-ags     (mapcat :post expanded-ags)]
     [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}
      (when (not-empty post-ags)
        {:$addFields (into (ordered-map/ordered-map) post-ags)})]))

@@ -19,7 +19,6 @@ import {
   createAdminRedirect,
 } from "metabase/admin/utils";
 
-import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
 import AdminApp from "metabase/admin/app/components/AdminApp";
 import NewUserModal from "metabase/admin/people/containers/NewUserModal";
 import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
@@ -69,6 +68,7 @@ import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 
 // Tools
 import Tools from "metabase/admin/tools/containers/Tools";
+import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
 
 const UserCanAccessTools = UserAuthWrapper({
   predicate: isEnabled => isEnabled,

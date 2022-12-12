@@ -71,6 +71,7 @@
     (embed-test/with-embedding-enabled-and-new-secret-key
       (embed-test/with-temp-card [card]
         (testing "It should be possible to run a Card successfully if you jump through the right hoops..."
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (embed-test/test-query-results
            (mt/user-http-request :crowberto :get 202 (card-query-url card))))
 
@@ -97,6 +98,7 @@
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:venue_id "locked"}})))))
 
           (testing "if `:locked` param is supplied, request should succeed"
+            #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:venue_id "locked"}
                                                                              :params            {:venue_id 100}}))))
@@ -134,10 +136,12 @@
                                                                   "?venue_id=200")))))
 
           (testing "If an `:enabled` param is present in the JWT, that's ok"
+            #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:venue_id "enabled"}
                                                                              :params            {:venue_id "enabled"}}))))
           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
+            #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}})
                                                             "?venue_id=200")))))))))
@@ -223,6 +227,7 @@
     (embed-test/with-embedding-enabled-and-new-secret-key
       (embed-test/with-temp-dashcard [dashcard]
         (testing "It should be possible to run a Card successfully if you jump through the right hoops..."
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (embed-test/test-query-results
            (mt/user-http-request :crowberto :get 202 (dashcard-url dashcard))))
 
@@ -374,8 +379,8 @@
                                                                :parameter_mappings [{:parameter_id "_VENUE_ID_"
                                                                                      :card_id      (u/the-id card)
                                                                                      :target       [:dimension
-                                                                                                    [:field-id
-                                                                                                     (mt/id :venues :id)]]}]}}]
+                                                                                                    [:field
+                                                                                                     (mt/id :venues :id) nil]]}]}}]
             (is (= [[1]]
                    (mt/rows (mt/user-http-request :crowberto :get (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}})
                                                                        "?venue_id=1")))))))))))

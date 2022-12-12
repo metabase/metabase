@@ -1,9 +1,9 @@
 import React from "react";
 import { screen, waitFor } from "@testing-library/react";
 
-import EntityName from "./EntityName";
 import { renderWithProviders } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
+import EntityName from "./EntityName";
 
 describe("EntityName", () => {
   describe("users", () => {

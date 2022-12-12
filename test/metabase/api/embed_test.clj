@@ -171,7 +171,7 @@
         (is (= "Embedding is not enabled."
                (client/client :get 400 (card-url card))))))))
 
-(deftest check-that-if-embedding--is--enabled-globally-but-not-for-the-card-the-request-fails
+(deftest check-that-if-embedding-is-enabled-globally-but-not-for-the-card-the-request-fails
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card]
       (is (= "Embedding is not enabled for this object."
@@ -243,6 +243,7 @@
         (let [expected-status (response-format->status-code response-format)]
           (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
             (with-temp-card [card {:enable_embedding true}]
+              #_{:clj-kondo/ignore [:deprecated-var]}
               (test-query-results
                response-format
                (client/client :get expected-status (card-query-url card response-format)
@@ -295,6 +296,7 @@
                  (client/client :get 400 (card-query-url card response-format)))))
 
         (testing "if `:locked` param is present, request should succeed"
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (test-query-results
            response-format
            (client/client :get (response-format->status-code response-format)
@@ -309,7 +311,7 @@
 (deftest card-disabled-params-test
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "disabled"}}]
-      (do-response-formats [response-format request-options]
+      (do-response-formats [response-format _request-options]
         (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
                       "`:disabled` parameter")
           (is (= "You're not allowed to specify a value for :venue_id."
@@ -328,6 +330,7 @@
                  (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=200")))))
 
         (testing "If an `:enabled` param is present in the JWT, that's ok"
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (test-query-results
            response-format
            (client/client :get (response-format->status-code response-format)
@@ -335,6 +338,7 @@
                           {:request-options request-options})))
 
         (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (test-query-results
            response-format
            (client/client :get (response-format->status-code response-format)
@@ -450,6 +454,7 @@
   (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (test-query-results (client/client :get 202 (dashcard-url dashcard)))))))
 
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-shouldn-t-be-subject-to-the-default-query-constraints
@@ -816,7 +821,7 @@
                (client/client :get 400 (search-url))))))))
 
 (deftest chain-filter-random-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [values-url search-url]}]
     (testing "Requests should fail if parameter is not explicitly enabled"
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= "Cannot search for values: \"category_id\" is not an enabled parameter."
@@ -826,7 +831,7 @@
                (client/client :get 400 (search-url))))))))
 
 (deftest chain-filter-enabled-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (db/update! Dashboard (:id dashboard)
       :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
     (testing "Should work if the param we're fetching values for is enabled"
@@ -870,7 +875,7 @@
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
     (mt/with-temp-copy-of-db
       (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-      (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+      (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
         (db/update! Dashboard (:id dashboard)
           :embedding_params {"category_id" "enabled", "category_name" "enabled", "price" "enabled"})
         (testing "Should work if the param we're fetching values for is enabled"
@@ -884,7 +889,7 @@
                    (chain-filer-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (search-url)))))))))))
 
 (deftest chain-filter-locked-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is locked"
       (db/update! Dashboard (:id dashboard)
         :embedding_params {"category_id" "locked", "category_name" "locked"})
@@ -921,7 +926,7 @@
                    (client/client :get 400 (str url "?_PRICE_=4"))))))))))
 
 (deftest chain-filter-disabled-params-test
-  (with-chain-filter-fixtures [{:keys [dashboard param-keys values-url search-url]}]
+  (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
     (testing "Requests should fail if searched param is disabled"
       (db/update! Dashboard (:id dashboard)
         :embedding_params {"category_id" "disabled", "category_name" "disabled"})

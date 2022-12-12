@@ -1,10 +1,10 @@
-import { alpha, color } from "metabase/lib/colors";
 import styled from "@emotion/styled";
+import { alpha, color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 import Button from "metabase/core/components/Button";
-import BaseDateUnitSelector from "./DateUnitSelector";
 import BaseNumericInput from "metabase/components/NumericInput";
+import BaseDateUnitSelector from "./DateUnitSelector";
 
 type BaseProps = {
   primaryColor?: string;

@@ -4,21 +4,19 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
 
-import NumberPicker from "./NumberPicker";
-import SelectPicker from "./SelectPicker";
-import TextPicker from "./TextPicker";
-
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+
+import { getCurrencySymbol } from "metabase/lib/formatting";
 
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
-  isCurrency,
-} from "metabase/lib/schema_metadata";
-
-import { getCurrencySymbol } from "metabase/lib/formatting";
-
-import { keyForColumn } from "metabase/lib/dataset";
+} from "metabase-lib/operators/utils";
+import { isCurrency } from "metabase-lib/types/utils/isa";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import TextPicker from "./TextPicker";
+import SelectPicker from "./SelectPicker";
+import NumberPicker from "./NumberPicker";
 
 import {
   BetweenLayoutContainer,
@@ -68,7 +66,7 @@ export default function DefaultPicker({
 
   const visualizationSettings = filter?.query()?.question()?.settings();
 
-  const key = keyForColumn(dimension.column());
+  const key = getColumnKey(dimension.column());
   const columnSettings = visualizationSettings?.column_settings?.[key];
 
   const fieldMetadata = field?.metadata?.fields[field?.id];

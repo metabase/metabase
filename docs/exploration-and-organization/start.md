@@ -1,8 +1,10 @@
 ---
-title: "Finding things and keeping organized"
+title: "Organization overview"
 ---
 
-# Finding things and keeping organized
+# Organization overview
+
+Tools for finding things and keeping your Metabase organized. 
 
 ## [Basic exploration](./exploration.md)
 
@@ -11,6 +13,14 @@ Find data, explore questions and dashboards, and bookmark your favorites.
 ## [Collections](./collections.md)
 
 Organize questions, dashboards, and models with collections.
+
+## [History](./history.md)
+
+View changes to a question or dashboard, revert to previous versions, and archive outdated items.
+
+## [Data reference](./data-model-reference.md)
+
+Documentation that helps you understand your data sources: tables, columns, metrics, and more.
 
 ## [Events and timelines](./events-and-timelines.md)
 

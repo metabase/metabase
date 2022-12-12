@@ -1,12 +1,11 @@
 (ns metabase.transforms.specs-test
   (:require [clojure.test :refer :all]
-            [metabase.test :as mt]
             [metabase.transforms.specs :as tf.specs]
             [metabase.util.schema :as su]))
 
 (deftest extract-dimensions-test
-  (mt/are+ [arg expected] (= expected
-                             (#'tf.specs/extract-dimensions arg))
+  (are [arg expected] (= expected
+                         (#'tf.specs/extract-dimensions arg))
     [:dimension "foo"]                    ["foo"]
     [:some-op 12 {:k [:dimension "foo"]}] ["foo"]
     nil                                   nil

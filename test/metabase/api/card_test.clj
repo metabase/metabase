@@ -15,18 +15,15 @@
             [metabase.http-client :as client]
             [metabase.models :refer [Card
                                      CardBookmark
-                                     CardEmitter
                                      Collection
                                      Dashboard
                                      Database
-                                     Emitter
                                      ModerationReview
                                      PersistedInfo
                                      Pulse
                                      PulseCard
                                      PulseChannel
                                      PulseChannelRecipient
-                                     QueryAction
                                      Table
                                      Timeline
                                      TimelineEvent
@@ -408,17 +405,17 @@
                                        :query_type    "native"
                                        :dataset_query (:dataset_query card)})))))
       (testing "You can create a card with a saved question CTE as a model"
-        (let [card-reference (str "#" (u/the-id card))]
+        (let [card-tag-name (str "#" (u/the-id card))]
           (mt/user-http-request :rasta :post 200 "card"
                                 (merge
                                  (mt/with-temp-defaults Card)
                                  {:dataset_query {:database (u/the-id db)
                                                   :type     :native
-                                                  :native   {:query         (format "SELECT * FROM {{%s}};" card-reference)
-                                                             :template-tags {card-reference {:card-id      (u/the-id card),
-                                                                                             :display-name card-reference,
+                                                  :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
+                                                             :template-tags {card-tag-name {:card-id      (u/the-id card),
+                                                                                             :display-name card-tag-name,
                                                                                              :id           (str (random-uuid))
-                                                                                             :name         card-reference,
+                                                                                             :name         card-tag-name,
                                                                                              :type         :card}}}}})))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
@@ -774,22 +771,6 @@
                           :moderation_reviews
                           (map clean)))))))))))
 
-(deftest fetch-card-emitter-test
-  (testing "GET /api/card/:id"
-    (testing "Fetch card with an emitter"
-      (mt/with-temp* [Card [read-card {:name "Test Read Card"}]
-                      Card [write-card {:is_write true :name "Test Write Card"}]
-                      Emitter [{emitter-id :id} {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))}]]
-        (db/insert! CardEmitter {:emitter_id emitter-id
-                                 :card_id (u/the-id read-card)})
-        (testing "admin sees emitters"
-          (is (partial=
-               {:emitters [{:action {:type "query" :card {:name "Test Write Card"}}}]}
-               (mt/user-http-request :crowberto :get 200 (format "card/%d" (u/the-id read-card))))))
-        (testing "non-admin does not see emitters"
-          (is (nil?
-               (:emitters (mt/user-http-request :rasta :get 200 (format "card/%d" (u/the-id read-card)))))))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       UPDATING A CARD (PUT /api/card/:id)
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -964,7 +945,7 @@
 
 (deftest update-card-validation-test
   (testing "PUT /api/card"
-    (with-temp-native-card-with-params [db card]
+    (with-temp-native-card-with-params [_db card]
       (testing  "You cannot update a model to have variables"
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
@@ -987,6 +968,7 @@
 
 (defmacro with-ordered-items
   "Macro for creating many sequetial collection_position model instances, putting each in `collection`"
+  {:style/indent :defn}
   [collection model-and-name-syms & body]
   `(mt/with-temp* ~(vec (mapcat (fn [idx [model-instance name-sym]]
                                   [model-instance [name-sym {:name                (name name-sym)
@@ -1290,8 +1272,8 @@
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                     {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:datetime-field (mt/id :checkins :date) "hour"]
-                                                                                                  [:datetime-field (mt/id :checkins :date) "minute"]])}))}
+                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}
            {:message        "Adding an additional breakout will cause the alert to be removed if a goal is set"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}
@@ -1306,8 +1288,8 @@
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                     {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:datetime-field (mt/id :checkins :date) "hour"]
-                                                                                                  [:datetime-field (mt/id :checkins :date) "minute"]])}))}]]
+                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
     (testing message
       (mt/with-temp* [Card                  [card  card]
                       Pulse                 [pulse {:alert_condition  "rows"
@@ -2260,7 +2242,7 @@
 (defmacro ^:private with-actions-enabled {:style/indent 0} [& body]
   `(do-with-actions-enabled (fn [] ~@body)))
 
-(defn- test-update-is-write-card [{:keys [user query status-code before-fn result-fn]
+(defn- test-update-is-write-card [{:keys [user query status-code before-fn result-fn get-fn]
                                    :or   {user  :crowberto
                                           query (mt/native-query {:query "UPDATE whatever SET whatever = {{whatever}};"})}}]
   (testing "PUT /api/card/:id"
@@ -2274,7 +2256,7 @@
           (when before-fn
             (before-fn (db/select-one Card :id card-id)))
           (let [result (mt/user-http-request user :put status-code (str "card/" card-id) {:is_write new-value})]
-            (result-fn result))
+            (result-fn result new-value))
           (let [fail?          (>= status-code 400)
                 expected-value (if fail?
                                  initial-value
@@ -2283,8 +2265,11 @@
               (is (= expected-value
                      (db/select-one-field :is_write Card :id card-id))))
             (testing "GET /api/card/:id value"
-              (is (partial= {:is_write expected-value}
-                            (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))
+              (let [get-result (mt/user-http-request :crowberto :get 200 (str "card/" card-id))]
+                (is (partial= {:is_write expected-value}
+                              get-result))
+                (when get-fn
+                  (get-fn get-result expected-value))))
             (when fail?
               (testing "\nNo-op update should be allowed."
                 (is (some? (mt/user-http-request user :put 200 (str "card/" card-id) {:is_write initial-value})))))))))))
@@ -2297,7 +2282,7 @@
       (let [result (mt/user-http-request user :post status-code "card" (merge (mt/with-temp-defaults Card)
                                                                               {:is_write      true
                                                                                :dataset_query query}))]
-        (result-fn result)
+        (result-fn result true)
         (when (map? result)
           (when-let [card-id (:id result)]
             (let [fail? (>= status-code 400)]
@@ -2313,7 +2298,7 @@
       (doseq [f [test-update-is-write-card
                  test-create-is-write-card]]
         (f {:status-code 400
-            :result-fn   (fn [result]
+            :result-fn   (fn [result _]
                            (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Actions are not enabled."}}
                                   result)))})))))
 
@@ -2326,7 +2311,7 @@
       (doseq [f [test-update-is-write-card
                  test-create-is-write-card]]
         (f {:status-code 400
-            :result-fn   (fn [result]
+            :result-fn   (fn [result _]
                            (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."}}
                                         result)))})))))
 
@@ -2342,7 +2327,7 @@
       (doseq [f [test-update-is-write-card
                  test-create-is-write-card]]
         (f {:status-code 400
-            :result-fn   (fn [result]
+            :result-fn   (fn [result _]
                            (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."}}
                                         result)))})))))
 
@@ -2352,7 +2337,7 @@
      {:before-fn   (fn [{card-id :id}]
                      (db/update! Card card-id :dataset true))
       :status-code 400
-      :result-fn   (fn [result]
+      :result-fn   (fn [result _]
                      (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Saved Question is a Dataset."}}
                             result)))})))
 
@@ -2362,7 +2347,7 @@
                test-create-is-write-card]]
       (f {:status-code 403
           :user                 :rasta
-          :result-fn            (fn [result]
+          :result-fn            (fn [result _]
                                   (is (= "You don't have permissions to do that."
                                          result)))}))))
 
@@ -2372,7 +2357,7 @@
                test-create-is-write-card]]
       (f {:status-code 400
           :query       (mt/mbql-query venues)
-          :result-fn   (fn [result]
+          :result-fn   (fn [result _]
                          (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Query must be a native query."}}
                                       result)))}))))
 
@@ -2380,11 +2365,21 @@
   (with-actions-enabled
     (doseq [f [test-update-is-write-card
                test-create-is-write-card]]
-      ;; TODO -- Setting `is_write` also needs to create the `Action` and `QueryAction`. Unsetting should delete those
-      ;; rows. Add tests for these once that code is in place.
       (f {:status-code 200
-          :result-fn            (fn [result]
-                                  (is (map? result)))}))))
+          :get-fn (fn [result is-write]
+                    (if is-write
+                      (is (contains? result :action_id))
+                      (is (not (contains? result :action_id)))))
+          :result-fn (fn [result is-write]
+                       (if is-write
+                         (do
+                           (is (contains? result :action_id))
+                           (is (some? (db/select-one 'QueryAction :card_id (:id result)))))
+                         (do
+                           (is (not (contains? result :action_id)))
+                           (is (nil? (db/select-one 'QueryAction :card_id (:id result))))))
+                       (is (map? result)))}))))
+
 (defn- do-with-persistence-setup [f]
   ;; mt/with-temp-scheduler actually just reuses the current scheduler. The scheduler factory caches by name set in
   ;; the resources/quartz.properties file and we reuse that scheduler

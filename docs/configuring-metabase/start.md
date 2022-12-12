@@ -1,8 +1,8 @@
 ---
-title: "Configuring Metabase"
+title: "Configuration overview"
 ---
 
-# Configuring Metabase
+# Configuration overview
 
 ## [Setting up Metabase](./setting-up-metabase.md)
 
@@ -20,14 +20,38 @@ Set up email for [Alerts](../questions/sharing/alerts.md) and [Dashboard subscri
 
 Set up Slack for Alerts and Dashboard subscriptions.
 
-## [Localization](./localization.md)
+## [Environment variables](./environment-variables.md)
 
-Set language, datetime, and currency settings.
+Configure Metabase on launch via environment variables.
 
-## [Caching](./caching.md)
+## [Configuration file](./config-file.md)
 
-Cache query results for faster loading times.
+On self-hosted paid plans, you can configure Metabase via a configuration file.
 
 ## [Metabase logs configuration](./log-configuration.md)
 
 Tell Metabase what to log.
+
+## [Timezones](./timezones.md)
+
+Guidance on timezone settings.
+
+## [Languages and localization](./localization.md)
+
+Set language, datetime, and currency settings.
+
+## [Appearance](./appearance.md)
+
+Customize colors, fonts, and other visual elements.
+
+## [Caching query results](./caching.md)
+
+Cache query results for faster loading times.
+
+## [Custom maps](./custom-maps.md)
+
+Upload custom maps to your Metabase.
+
+## [Customizing the Metabase Jetty webserver](./customizing-jetty-webserver.md)
+
+Set SSL and port settings for the Jetty webserver.

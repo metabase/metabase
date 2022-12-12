@@ -2,7 +2,7 @@
 title: Questions overview
 ---
 
-# Questions
+# Questions overview
 
 Questions are queries plus their visualization. You can ask questions using Metabase's graphical query builder, or create a native/SQL query.
 
@@ -32,10 +32,6 @@ Also known as the SQL editor (we say native because you can also query databases
 
 Write native code (like SQL) to query your data source.
 
-### [Viewing metadata](./native-editor/data-model-reference.md)
-
-Metabase's data model reference can help you understand your tables and fields.
-
 ### [SQL templates](./native-editor/sql-parameters.md)
 
 Pass parameters into variables in your SQL templates.
@@ -56,6 +52,10 @@ Save questions, download results, and share links.
 
 Choose from a variety of visualization types.
 
-### [Sharing](./sharing/alerts.md)
+### [Alerts](./sharing/alerts.md)
 
 Get results via email or Slack, either on a schedule, or only when something interesting happens.
+
+### [Public sharing](./sharing/public-links.md)
+
+Create links or embeds for the good people of the internet.

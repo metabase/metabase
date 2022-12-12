@@ -101,7 +101,6 @@
                ~dashcard-binding  (add-card-to-dashboard! card# dash#)]
            ~@body)))))
 
-
 ;;; ------------------------------------------- GET /api/public/card/:uuid -------------------------------------------
 
 (deftest fetch-card-test
@@ -306,7 +305,7 @@
          :dataset_query {:database (mt/id)
                          :type     :query
                          :query   {:source-table (mt/id :checkins)
-                                   :breakout     [[:datetime-field [:field (mt/id :checkins :date) nil]  :month]]
+                                   :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :month}]]
                                    :aggregation  [[:count]]}}))
 
 (deftest make-sure-we-include-all-the-relevant-fields-like-insights
@@ -792,7 +791,6 @@
   `(do-with-sharing-enabled-and-temp-card-referencing ~table-kw ~field-kw
      (fn [~card-binding]
        ~@body)))
-
 
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
   (is (= {:values          [["20th Century Cafe"]

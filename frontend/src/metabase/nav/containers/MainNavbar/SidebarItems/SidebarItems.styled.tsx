@@ -9,7 +9,7 @@ import Link from "metabase/core/components/Link";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
-import { darken, color, lighten, alpha } from "metabase/lib/colors";
+import { darken, color, alpha } from "metabase/lib/colors";
 
 export const SidebarIcon = styled(Icon)<{
   color?: string | null;
@@ -72,13 +72,13 @@ NodeRoot.defaultProps = {
   hasDefaultIconStyle: true,
 };
 
+export const collectionDragAndDropHoverStyle = css`
+  color: ${color("text-white")};
+  background-color: ${color("brand")};
+`;
+
 export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
-  ${props =>
-    props.hovered &&
-    css`
-      color: ${color("text-white")};
-      background-color: ${color("brand")};
-    `}
+  ${props => props.hovered && collectionDragAndDropHoverStyle}
 `;
 
 const itemContentStyle = css`
@@ -109,7 +109,7 @@ export const FullWidthLink = styled(Link)`
 const ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD = 35;
 const ITEM_NAME_LABEL_WIDTH = Math.round(parseInt(NAV_SIDEBAR_WIDTH, 10) * 0.7);
 
-const ItemName = styled(TreeNode.NameContainer)`
+export const ItemName = styled(TreeNode.NameContainer)`
   width: ${ITEM_NAME_LABEL_WIDTH}px;
   padding: 6px 3px;
   white-space: nowrap;
@@ -127,3 +127,6 @@ export function NameContainer({ children: itemName }: { children: string }) {
   }
   return <TreeNode.NameContainer>{itemName}</TreeNode.NameContainer>;
 }
+
+export const LeftElementContainer = styled.div``;
+export const RightElementContainer = styled.div``;

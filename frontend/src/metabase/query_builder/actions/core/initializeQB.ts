@@ -1,41 +1,42 @@
-import _ from "underscore";
 import querystring from "querystring";
 import { LocationDescriptorObject } from "history";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
-import { normalize } from "metabase/lib/query/normalize";
 import * as Urls from "metabase/lib/urls";
-
-import { cardIsEquivalent } from "metabase/meta/Card";
 
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
 
 import Snippets from "metabase/entities/snippets";
+import Questions from "metabase/entities/questions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
-
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
-
-import { Card, SavedCard } from "metabase-types/types/Card";
+import type { Card } from "metabase-types/types/Card";
+import { isSavedCard } from "metabase-types/guards";
+import { isNotNull } from "metabase/core/utils/types";
+import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
+import { normalize } from "metabase-lib/queries/utils/normalize";
+import Question from "metabase-lib/Question";
+import NativeQuery, {
+  updateCardTemplateTagNames,
+} from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
-import { redirectToNewQuestionFlow, updateUrl } from "../navigation";
+import { updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
 import { resetQB } from "./core";
 import { loadMetadataForCard } from "./metadata";
 import {
-  handleDashboardParameters,
+  propagateDashboardParameters,
   getParameterValuesForQuestion,
 } from "./parameterUtils";
 
@@ -103,8 +104,12 @@ function deserializeCard(serializedCard: string) {
   return card;
 }
 
-async function fetchAndPrepareSavedQuestionCards(cardId: number) {
-  const card = await loadCard(cardId);
+async function fetchAndPrepareSavedQuestionCards(
+  cardId: number,
+  dispatch: Dispatch,
+  getState: GetState,
+) {
+  const card = await loadCard(cardId, { dispatch, getState });
   const originalCard = { ...card };
 
   // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
@@ -114,7 +119,11 @@ async function fetchAndPrepareSavedQuestionCards(cardId: number) {
   return { card, originalCard };
 }
 
-async function fetchAndPrepareAdHocQuestionCards(deserializedCard: Card) {
+async function fetchAndPrepareAdHocQuestionCards(
+  deserializedCard: Card,
+  dispatch: Dispatch,
+  getState: GetState,
+) {
   if (!deserializedCard.original_card_id) {
     return {
       card: deserializedCard,
@@ -122,7 +131,10 @@ async function fetchAndPrepareAdHocQuestionCards(deserializedCard: Card) {
     };
   }
 
-  const originalCard = await loadCard(deserializedCard.original_card_id);
+  const originalCard = await loadCard(deserializedCard.original_card_id, {
+    dispatch,
+    getState,
+  });
 
   if (cardIsEquivalent(deserializedCard, originalCard)) {
     return {
@@ -146,10 +158,14 @@ async function resolveCards({
   cardId,
   deserializedCard,
   options,
+  dispatch,
+  getState,
 }: {
   cardId?: number;
   deserializedCard?: Card;
   options: BlankQueryOptions;
+  dispatch: Dispatch;
+  getState: GetState;
 }): Promise<ResolveCardsResult> {
   if (!cardId && !deserializedCard) {
     return {
@@ -157,8 +173,12 @@ async function resolveCards({
     };
   }
   return cardId
-    ? fetchAndPrepareSavedQuestionCards(cardId)
-    : fetchAndPrepareAdHocQuestionCards(deserializedCard as Card);
+    ? fetchAndPrepareSavedQuestionCards(cardId, dispatch, getState)
+    : fetchAndPrepareAdHocQuestionCards(
+        deserializedCard as Card,
+        dispatch,
+        getState,
+      );
 }
 
 function parseHash(hash?: string) {
@@ -178,11 +198,40 @@ function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
-function isSavedCard(card: Card): card is SavedCard {
-  return !!(card as SavedCard).id;
-}
-
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
+
+/**
+ * Updates the template tag names in the query
+ * to match the latest on the backend, because
+ * they might have changed since the query was last opened.
+ */
+export async function updateTemplateTagNames(
+  query: NativeQuery,
+  getState: GetState,
+  dispatch: Dispatch,
+): Promise<NativeQuery> {
+  const referencedCards = (
+    await Promise.all(
+      query.referencedQuestionIds().map(async id => {
+        try {
+          const actionResult = await dispatch(
+            Questions.actions.fetch({ id }, { noEvent: true }),
+          );
+          return Questions.HACK_getObjectFromAction(actionResult);
+        } catch {
+          return null;
+        }
+      }),
+    )
+  ).filter(isNotNull);
+  query = updateCardTemplateTagNames(query, referencedCards);
+  if (query.hasSnippets()) {
+    await dispatch(Snippets.actions.fetchList());
+    const snippets = Snippets.selectors.getList(getState());
+    query = query.updateSnippetNames(snippets);
+  }
+  return query;
+}
 
 async function handleQBInit(
   dispatch: Dispatch,
@@ -201,25 +250,16 @@ async function handleQBInit(
   const { options, serializedCard } = parseHash(location.hash);
   const hasCard = cardId || serializedCard;
 
-  if (
-    !hasCard &&
-    !options.db &&
-    !options.table &&
-    !options.segment &&
-    !options.metric
-  ) {
-    dispatch(redirectToNewQuestionFlow());
-    return;
-  }
-
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
     : null;
 
-  const { card, originalCard } = await resolveCards({
+  let { card, originalCard } = await resolveCards({
     cardId,
     deserializedCard,
     options,
+    dispatch,
+    getState,
   });
 
   if (isSavedCard(card) && card.archived) {
@@ -236,17 +276,17 @@ async function handleQBInit(
     return;
   }
 
-  if (hasCard) {
-    await handleDashboardParameters(card, {
+  if (deserializedCard?.dashcardId) {
+    card = await propagateDashboardParameters({
+      card,
       deserializedCard,
       originalCard,
       dispatch,
-      getState,
     });
-  } else {
-    if (options.metric) {
-      uiControls.isShowingSummarySidebar = true;
-    }
+  }
+
+  if (!hasCard && options.metric) {
+    uiControls.isShowingSummarySidebar = true;
   }
 
   MetabaseAnalytics.trackStructEvent(
@@ -268,21 +308,16 @@ async function handleQBInit(
     question = question.lockDisplay();
 
     const currentUser = getUser(getState());
-    if (currentUser.is_qbnewb) {
+    if (currentUser?.is_qbnewb) {
       uiControls.isShowingNewbModal = true;
       MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
     }
   }
 
-  if (question && question.isNative()) {
+  if (question.isNative() && !question.query().readOnly()) {
     const query = question.query() as NativeQuery;
-    if (query.hasSnippets() && !query.readOnly()) {
-      await dispatch(Snippets.actions.fetchList());
-      const snippets = Snippets.selectors.getList(getState());
-      question = question.setQuery(
-        query.updateQueryTextWithNewSnippetNames(snippets),
-      );
-    }
+    const newQuery = await updateTemplateTagNames(query, getState, dispatch);
+    question = question.setQuery(newQuery);
   }
 
   const finalCard = question.card();
@@ -307,7 +342,7 @@ async function handleQBInit(
   });
 
   if (uiControls.queryBuilderMode !== "notebook") {
-    if (question.canRun()) {
+    if (question.canRun() && (question.isSaved() || question.isStructured())) {
       // Timeout to allow Parameters widget to set parameterValues
       setTimeout(
         () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),

@@ -26,7 +26,6 @@
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.test.util :as tu]
-            [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
@@ -169,8 +168,7 @@
                             ;; doesn't wrap every exception in an SshdException
                             :tunnel-port    21212
                             :tunnel-user    "bogus"}]
-               (tu.log/suppress-output
-                (driver.u/can-connect-with-details? engine details :throw-exceptions)))
+               (driver.u/can-connect-with-details? engine details :throw-exceptions))
              (catch Throwable e
                (loop [^Throwable e e]
                  (or (when (instance? java.net.ConnectException e)
@@ -179,8 +177,8 @@
 
 (deftest timezone-id-test
   (mt/test-driver :oracle
-    (is (= "UTC"
-           (tu/db-timezone-id)))))
+    (is (= nil
+           (driver/db-default-timezone :oracle (mt/db))))))
 
 (deftest insert-rows-ddl-test
   (mt/test-driver :oracle

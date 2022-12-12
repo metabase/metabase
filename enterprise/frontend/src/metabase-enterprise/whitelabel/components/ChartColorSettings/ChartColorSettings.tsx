@@ -6,6 +6,7 @@ import { useCurrentRef } from "metabase/hooks/use-current-ref";
 import Button from "metabase/core/components/Button";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import ColorResetModal from "metabase-enterprise/whitelabel/components/ColorResetModal";
 import {
   getAutoChartColors,
   getChartColorGroups,
@@ -21,7 +22,6 @@ import {
   TableLink,
   TableTitle,
 } from "./ChartColorSettings.styled";
-import ColorResetModal from "metabase-enterprise/whitelabel/components/ColorResetModal";
 
 export interface ChartColorSettingsProps {
   colors: Record<string, string>;

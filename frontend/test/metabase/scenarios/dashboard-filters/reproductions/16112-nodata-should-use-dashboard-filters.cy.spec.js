@@ -53,8 +53,8 @@ describe("issues 15119 and 16112", () => {
               card_id,
               row: 0,
               col: 0,
-              sizeX: 12,
-              sizeY: 9,
+              size_x: 12,
+              size_y: 9,
               visualization_settings: {},
               parameter_mappings: [
                 {

@@ -74,7 +74,7 @@ Use the same data types within a single `coalesce` function. If you want to coal
 
 If you want to use `coalesce` with JSON or JSONB data types, you'll need to flatten the JSON objects first. For more information, look up the JSON functions that are available in your SQL dialect. You can find some [common SQL reference guides here][sql-reference-guide].
 
-## Converting a function into a `coalesce` expression
+## Related functions
 
 This section covers functions and formulas that can be used interchangeably with the Metabase `coalesce` expression, with notes on how to choose the best option for your use case.
 
@@ -99,7 +99,7 @@ All examples use the custom expression and sample data from the [Consolidating v
 
 ### Case
 
-The [Metabase `case` expression](./case)
+The [Metabase `case` expression](./case.md)
 
 ```
 case(ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = FALSE, [Notes],
@@ -171,14 +171,14 @@ coalesce([Notes], [Comments] "No notes or comments.")
 - [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
-[case-to-coalesce]: ./case#coalesce
+[case-to-coalesce]: ./case.md#coalesce
 [cast-data-type]: ../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type
-[custom-expressions-doc]: ../expressions
-[custom-expressions-learn]: /learn/questions/custom-expressions
-[data-types]: /learn/databases/data-types-overview#examples-of-data-types
-[missing-dates]: /learn/debugging-sql/sql-logic-missing-data#how-to-fill-in-data-for-missing-report-dates
-[notebook-editor-def]: /glossary/notebook_editor
+[custom-expressions-doc]: ../expressions.md
+[custom-expressions-learn]: https://www.metabase.com/learn/questions/custom-expressions
+[data-types]: https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types
+[missing-dates]: https://www.metabase.com/learn/debugging-sql/sql-logic-missing-data#how-to-fill-in-data-for-missing-report-dates
+[notebook-editor-def]: https://www.metabase.com/glossary/notebook_editor
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
 [spreadsheets-to-bi]: /blog/spreadsheets-to-bi
-[sql-reference-guide]: /learn/debugging-sql/sql-syntax.html#common-sql-reference-guides
+[sql-reference-guide]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html#common-sql-reference-guides

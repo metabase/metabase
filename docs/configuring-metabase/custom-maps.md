@@ -26,7 +26,7 @@ relative path to a local file in the JVM's classpath.
 
 ## Custom Region Maps
 
-If you need a map that focuses on a specific region, you may want to upload a custom GeoJSON map.
+If you need a map that focuses on a specific region, you may want to upload a custom GeoJSON map. We recommend a GeoJSON file size of 5MB or less.
 
 To get started, click the `Add a map` button. A modal will appear, asking for:
 
@@ -35,6 +35,4 @@ To get started, click the `Add a map` button. A modal will appear, asking for:
  * The JSON property that Metabase should use as your region's identifier (a distinct way of identifying this specific region map)
  * The JSON property that Metabase should use as the display name (how the name of the region map appears in the user interface)
 
-If you do not currently have a GeoJSON file, there are many tools available to create one, such as
-[MapShaper](https://mapshaper.org/) or [GeoJSON.io](http://geojson.io/). If you're just interested in reading more about
-GeoJSON, we recommend that you start [here](https://geojson.org/).
+If you do not currently have a GeoJSON file, there are many tools available to create one, such as [MapShaper](https://mapshaper.org/) or [GeoJSON.io](http://geojson.io/). If you're just interested in reading more about GeoJSON, we recommend that you start [here](https://geojson.org/).

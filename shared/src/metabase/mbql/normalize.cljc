@@ -149,6 +149,33 @@
   [[_ amount unit]]
   [:interval amount (maybe-normalize-token unit)])
 
+(defmethod normalize-mbql-clause-tokens :datetime-add
+  [[_ field amount unit]]
+  [:datetime-add (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :datetime-subtract
+  [[_ field amount unit]]
+  [:datetime-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :get-week
+  [[_ field mode]]
+  (if mode
+    [:get-week (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]
+    [:get-week (normalize-tokens field :ignore-path)]))
+
+(defmethod normalize-mbql-clause-tokens :temporal-extract
+  [[_ field unit mode]]
+  (if mode
+    [:temporal-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit) (maybe-normalize-token mode)]
+    [:temporal-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit)]))
+
+(defmethod normalize-mbql-clause-tokens :datetime-diff
+  [[_ x y unit]]
+  [:datetime-diff
+   (normalize-tokens x :ignore-path)
+   (normalize-tokens y :ignore-path)
+   (maybe-normalize-token unit)])
+
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
   ;; See https://github.com/metabase/metabase/issues/23354 for details

@@ -1,9 +1,6 @@
 import inflection from "inflection";
 
-import { getDataFromClicked } from "metabase/lib/click-behavior";
 import { formatUrl } from "./url";
-import { renderLinkTextForClick } from "./link";
-import { formatValue, getRemappedValue } from "./value";
 import { formatEmail } from "./email";
 import { formatImage } from "./image";
 
@@ -29,8 +26,8 @@ export function capitalize(str: string, { lowercase = true } = {}) {
 export function inflect(
   str: string,
   count: number,
-  singular: string | undefined,
-  plural: string | undefined,
+  singular?: string,
+  plural?: string,
 ) {
   return inflection.inflect(str, count, singular, plural);
 }
@@ -41,20 +38,6 @@ export function titleize(str: string) {
 
 export function humanize(str: string, lowFirstLetter?: boolean) {
   return inflection.humanize(str, lowFirstLetter);
-}
-
-// fallback for formatting a string without a column semantic_type
-export function formatStringFallback(value: any, options: OptionsType = {}) {
-  if (options.view_as !== null) {
-    value = formatUrl(value, options);
-    if (typeof value === "string") {
-      value = formatEmail(value, options);
-    }
-    if (typeof value === "string") {
-      value = formatImage(value, options);
-    }
-  }
-  return value;
 }
 
 export function conjunct(list: string[], conjunction: string) {
@@ -69,23 +52,4 @@ export function conjunct(list: string[], conjunction: string) {
 // Removes trailing "id" from field names
 export function stripId(name: string) {
   return name?.replace(/ id$/i, "").trim();
-}
-
-function getLinkText(value: string, options: OptionsType) {
-  const { view_as, link_text, clicked } = options;
-
-  const isExplicitLink = view_as === "link";
-  const hasCustomizedText = link_text && clicked;
-
-  if (isExplicitLink && hasCustomizedText) {
-    return renderLinkTextForClick(
-      link_text,
-      getDataFromClicked(clicked) as any,
-    );
-  }
-
-  return (
-    getRemappedValue(value, options) ||
-    formatValue(value, { ...options, view_as: null })
-  );
 }

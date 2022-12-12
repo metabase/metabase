@@ -5,9 +5,7 @@ import _ from "underscore";
 import { assoc, assocIn } from "icepick";
 import { t } from "ttag";
 
-import RecipientPicker from "./RecipientPicker";
-
-import SchedulePicker from "metabase/components/SchedulePicker";
+import SchedulePicker from "metabase/containers/SchedulePicker";
 import ActionButton from "metabase/components/ActionButton";
 import Toggle from "metabase/core/components/Toggle";
 import Icon from "metabase/components/Icon";
@@ -17,6 +15,7 @@ import SlackChannelField from "metabase/sharing/components/SlackChannelField";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { channelIsValid, createChannel } from "metabase/lib/pulse";
+import RecipientPicker from "./RecipientPicker";
 
 export const CHANNEL_ICONS = {
   email: "mail",

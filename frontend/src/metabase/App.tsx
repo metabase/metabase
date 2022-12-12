@@ -1,8 +1,6 @@
-import React, { ErrorInfo, ReactNode, useRef, useState } from "react";
+import React, { ErrorInfo, ReactNode, useState } from "react";
 import { connect } from "react-redux";
 import { Location } from "history";
-
-import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
 
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import {
@@ -17,11 +15,13 @@ import {
   getErrorPage,
   getIsAdminApp,
   getIsAppBarVisible,
-  getIsNavBarVisible,
+  getIsNavBarEnabled,
 } from "metabase/selectors/app";
+import { setErrorPage } from "metabase/redux/app";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { initializeIframeResizer } from "metabase/lib/dom";
 
+import AppBanner from "metabase/components/AppBanner";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/containers/StatusListing";
@@ -50,8 +50,13 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
+  bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
-  isNavBarVisible: boolean;
+  isNavBarEnabled: boolean;
+}
+
+interface AppDispatchProps {
+  onError: (error: unknown) => void;
 }
 
 interface AppRouterOwnProps {
@@ -59,7 +64,7 @@ interface AppRouterOwnProps {
   children: ReactNode;
 }
 
-type AppProps = AppStateProps & AppRouterOwnProps;
+type AppProps = AppStateProps & AppDispatchProps & AppRouterOwnProps;
 
 const mapStateToProps = (
   state: State,
@@ -68,8 +73,12 @@ const mapStateToProps = (
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
-  isNavBarVisible: getIsNavBarVisible(state, props),
+  isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
+
+const mapDispatchToProps: AppDispatchProps = {
+  onError: setErrorPage,
+};
 
 class ErrorBoundary extends React.Component<{
   onError: (errorInfo: ErrorInfo) => void;
@@ -87,23 +96,24 @@ function App({
   errorPage,
   isAdminApp,
   isAppBarVisible,
-  isNavBarVisible,
+  isNavBarEnabled,
   children,
+  onError,
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
-  const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
 
   useOnMount(() => {
     initializeIframeResizer();
   });
 
   return (
-    <ErrorBoundary onError={setErrorInfo}>
+    <ErrorBoundary onError={onError}>
       <ScrollToTop>
         <AppContainer className="spread">
-          {isAppBarVisible && <AppBar isNavBarVisible={isNavBarVisible} />}
+          <AppBanner />
+          {isAppBarVisible && <AppBar isNavBarEnabled={isNavBarEnabled} />}
           <AppContentContainer isAdminApp={isAdminApp}>
-            {isNavBarVisible && <Navbar />}
+            {isNavBarEnabled && <Navbar />}
             <AppContent ref={setViewportElement}>
               <ContentViewportContext.Provider value={viewportElement ?? null}>
                 {errorPage ? getErrorComponent(errorPage) : children}
@@ -112,7 +122,6 @@ function App({
             <UndoListing />
             <StatusListing />
           </AppContentContainer>
-          <AppErrorCard errorInfo={errorInfo} />
         </AppContainer>
       </ScrollToTop>
     </ErrorBoundary>
@@ -121,4 +130,5 @@ function App({
 
 export default connect<AppStateProps, unknown, AppRouterOwnProps, State>(
   mapStateToProps,
+  mapDispatchToProps,
 )(App);

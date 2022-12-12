@@ -9,6 +9,13 @@
   org.flatland/ordered {:mvn/version "1.5.7"}
   stencil/stencil      {:mvn/version "0.5.0"}}
 
+ ;; These are needed for the Athena and Redshift drivers in order to build them. Maven repos from subprojects do not
+ ;; get copied over -- see
+ ;; https://ask.clojure.org/index.php/10726/deps-manifest-dependencies-respect-repos-dependent-project
+ :mvn/repos
+ {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
+  "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}}
+
  :aliases
  {:test {:extra-paths ["test"]
          :extra-deps  {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"

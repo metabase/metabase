@@ -44,64 +44,65 @@
     :properties     (constantly {:timestamped? true
                                  :entity_id    true})
     :hydration-keys (constantly [:segment])
-    :pre-update     pre-update})
+    :pre-update     pre-update}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
+(defmethod serdes.hash/identity-hash-fields Segment
+  [_segment]
+  [:name (serdes.hash/hydrated-hash :table) :created_at])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defn- serialize-segment [_ _ instance]
+(defmethod revision/serialize-instance Segment
+  [_model _id instance]
   (dissoc instance :created_at :updated_at))
 
-(defn- diff-segments [this segment1 segment2]
+(defmethod revision/diff-map Segment
+  [model segment1 segment2]
   (if-not segment1
     ;; this is the first version of the segment
     (m/map-vals (fn [v] {:after v}) (select-keys segment2 [:name :description :definition]))
     ;; do our diff logic
-    (let [base-diff (revision/default-diff-map this
-                                               (select-keys segment1 [:name :description :definition])
-                                               (select-keys segment2 [:name :description :definition]))]
+    (let [base-diff ((get-method revision/diff-map :default)
+                     model
+                     (select-keys segment1 [:name :description :definition])
+                     (select-keys segment2 [:name :description :definition]))]
       (cond-> (merge-with merge
                           (m/map-vals (fn [v] {:after v}) (:after base-diff))
                           (m/map-vals (fn [v] {:before v}) (:before base-diff)))
-              (or (get-in base-diff [:after :definition])
-                  (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
-                                                                                :after  (get-in segment2 [:definition])})))))
+        (or (get-in base-diff [:after :definition])
+            (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
+                                                                          :after  (get-in segment2 [:definition])})))))
 
-
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
-  revision/IRevisioned
-  (merge
-   revision/IRevisionedDefaults
-   {:serialize-instance serialize-segment
-    :diff-map           diff-segments}))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
-
-(defmethod serdes.base/serdes-generate-path "Segment"
-  [_ segment]
-  [(assoc (serdes.base/infer-self-path "Segment" segment)
-          :label (:name segment))])
-
 (defmethod serdes.base/extract-one "Segment"
   [_model-name _opts segment]
   (-> (serdes.base/extract-one-basics "Segment" segment)
       (update :table_id   serdes.util/export-table-fk)
-      (update :creator_id serdes.util/export-fk-keyed 'User :email)
-      (update :definition serdes.util/export-json-mbql)))
+      (update :creator_id serdes.util/export-user)
+      (update :definition serdes.util/export-mbql)))
 
 (defmethod serdes.base/load-xform "Segment" [segment]
   (-> segment
       serdes.base/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
-      (update :creator_id serdes.util/import-fk-keyed 'User :email)
-      (update :definition serdes.util/import-json-mbql)))
+      (update :creator_id serdes.util/import-user)
+      (update :definition serdes.util/import-mbql)))
 
 (defmethod serdes.base/serdes-dependencies "Segment" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes.util/table->path table_id)}
                       (serdes.util/mbql-deps definition))))
+
+(defmethod serdes.base/storage-path "Segment" [segment _ctx]
+  (let [{:keys [id label]} (-> segment serdes.base/serdes-path last)]
+    (-> segment
+        :table_id
+        serdes.util/table->path
+        serdes.util/storage-table-path-prefix
+        (concat ["segments" (serdes.base/storage-leaf-file-name id label)]))))
+
+(serdes.base/register-ingestion-path! "Segment" (serdes.base/ingestion-matcher-collected "databases" "Segment"))
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 

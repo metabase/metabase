@@ -1,16 +1,20 @@
 import styled from "@emotion/styled";
+import {
+  focusOutlineStyle,
+  inputPadding,
+  inputTypography,
+  numericInputReset,
+} from "metabase/core/style/input";
 import { color } from "metabase/lib/colors";
 
 export const Input = styled.input`
-  border: 1px solid ${color("border")};
+  ${inputPadding};
+  ${inputTypography};
+  ${focusOutlineStyle("brand")};
+  ${numericInputReset};
 
-  &::-webkit-outer-spin-button,
-  &::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  &[type="number"] {
-    -moz-appearance: textfield;
-  }
+  border: 1px solid ${() => color("border")};
+  border-radius: 0.5rem;
+  color: ${() => color("text-dark")};
+  transition: border 0.3s;
 `;

@@ -907,11 +907,12 @@
 
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")
-      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
+      (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                         google-auth-enabled    true]
         (mt/with-temp User [user {:google_auth true}]
           (db/update! User (u/the-id user)
             :is_active false)
-          (mt/with-temporary-setting-values [google-auth-client-id nil]
+          (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :google_auth false}
                    (mt/derecordize (db/select-one [User :is_active :google_auth] :id (u/the-id user)))))))))))

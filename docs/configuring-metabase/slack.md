@@ -1,20 +1,12 @@
 ---
-title: Setting up Slack
+title: Slack
 redirect_from:
   - /docs/latest/administration-guide/09-setting-up-slack
 ---
 
-# Setting up Slack
+# Slack
 
 If you want to have your [Dashboard subscriptions][dashboard-subscriptions] sent to Slack channels (or people on Slack), an admin must first integrate your Metabase with Slack.
-
-Here's an overview of the steps for setting up Slack:
-
-1. [Create your Slack App](#create-your-slack-app)
-2. [Install your app to your workspace](#install-your-app-to-your-workspace)
-3. [Get the Bot User OAuth Token](#the-bot-user-oauth-token)
-4. [Create a dedicated Metabase channel in your Slack](#create-a-dedicated-metabase-channel-in-your-slack)
-5. [Save your changes](#save-your-changes-in-metabase)
 
 ## Create your Slack App
 

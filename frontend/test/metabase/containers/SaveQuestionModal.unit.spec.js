@@ -1,16 +1,9 @@
 import React from "react";
-import {
-  act,
-  renderWithProviders,
-  screen,
-  waitFor,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import mock from "xhr-mock";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
-import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";
 
 import {
@@ -19,6 +12,7 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
+import Question from "metabase-lib/Question";
 
 function mockCachingEnabled(enabled = true) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);
@@ -47,25 +41,6 @@ const setup = async (question, originalQuestion) => {
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
-
-  const db = question.database().getPlainObject();
-  const collectionId =
-    question?.collectionId?.() || originalQuestion?.collectionId?.();
-  const collectionIdPath = collectionId || "root";
-
-  mock.get(`/api/database/${db.id}`, {
-    body: JSON.stringify(db),
-  });
-  mock.get(`/api/collection/${collectionIdPath}`, {
-    body: JSON.stringify({}),
-  });
-
-  const settingsState = {
-    values: {
-      "experimental-actions-enabled": false,
-    },
-  };
-
   renderWithProviders(
     <SaveQuestionModal
       card={question.card()}
@@ -75,19 +50,8 @@ const setup = async (question, originalQuestion) => {
       onSave={onSaveMock}
       onClose={onCloseMock}
     />,
-    {
-      reducers: {
-        settings: () => settingsState,
-        storeInitialState: {
-          settings: settingsState,
-        },
-      },
-    },
   );
-
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
   await waitFor(() => screen.getByRole("button", { name: "Save" }));
-
   return { onSaveMock, onCreateMock, onCloseMock };
 };
 

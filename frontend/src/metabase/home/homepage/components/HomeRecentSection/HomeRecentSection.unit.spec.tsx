@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import HomeRecentSection, { HomeRecentSectionProps } from "./HomeRecentSection";
 import { createMockRecentItem, createMockUser } from "metabase-types/api/mocks";
+import HomeRecentSection, { HomeRecentSectionProps } from "./HomeRecentSection";
 
 describe("HomeRecentSection", () => {
   beforeEach(() => {

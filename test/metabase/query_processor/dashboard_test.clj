@@ -3,13 +3,25 @@
   (:require [clojure.test :refer :all]
             [metabase.api.common :as api]
             [metabase.api.dashboard-test :as api.dashboard-test]
-            [metabase.models :refer [Card Dashboard DashboardCard]]
+            [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.card-test :as qp.card-test]
             [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.test :as mt]))
 
 ;; there are more tests in [[metabase.api.dashboard-test]]
+
+(defn- run-query-for-dashcard [dashboard-id card-id dashcard-id & options]
+  ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
+  ;; stuff doesn't belong in the Dashboard QP namespace
+  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (apply qp.dashboard/run-query-for-dashcard-async
+     :dashboard-id dashboard-id
+     :card-id      card-id
+     :dashcard-id  dashcard-id
+     :run          (fn [query info]
+                     (qp/process-query (assoc query :async? false) info))
+     options)))
 
 (deftest resolve-parameters-validation-test
   (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
@@ -32,19 +44,77 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid parameter type :number/!= for parameter \"_PRICE_\".*"
-             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}])))))))
+             (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}]))))))
+  (testing "Resolves new operator type arguments without error (#25031)"
+    (mt/dataset sample-dataset
+      (let [query (mt/native-query {:query         "select COUNT(*) from \"ORDERS\" where true [[AND quantity={{qty_locked}}]]"
+                                    :template-tags {"qty_locked"
+                                                    {:id           "_query_id_"
+                                                     :name         "qty_locked"
+                                                     :display-name "quantity locked"
+                                                     :type         :number
+                                                     :default      nil}}})]
+        (mt/with-temp* [Card [{card-id :id} {:dataset_query query}]
+                        Dashboard [{dashboard-id :id} {:parameters [{:name "param"
+                                                                     :slug "param"
+                                                                     :id   "_dash_id_"
+                                                                     :type :number/=}]}]
+                        DashboardCard [{dashcard-id :id} {:parameter_mappings [{:parameter_id "_dash_id_"
+                                                                                :card_id card-id
+                                                                                :target [:variable [:template-tag "qty_locked"]]}]
+                                                          :card_id card-id
+                                                          :visualization_settings {}
+                                                          :dashboard_id dashboard-id}]]
+          (let [params [{:id "_dash_id_" :value 4}]]
+            (is (= [{:id "_dash_id_"
+                     :type :number/=
+                     :value [4]
+                     :target [:variable [:template-tag "qty_locked"]]}]
+                   (#'qp.dashboard/resolve-params-for-query dashboard-id card-id dashcard-id params)))
+            ;; test the full query with two different values to ensure it is actually used
+            (is (= [[2391]]
+                   (mt/rows
+                    (run-query-for-dashcard dashboard-id card-id dashcard-id
+                                            {:parameters params}))))
+            (is (= [[2738]]
+                   (mt/rows
+                    (run-query-for-dashcard dashboard-id card-id dashcard-id
+                                            {:parameters (assoc-in params [0 :value] 3)}))))))))))
 
-(defn- run-query-for-dashcard [dashboard-id card-id dashcard-id & options]
-  ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
-  ;; stuff doesn't belong in the Dashboard QP namespace
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (apply qp.dashboard/run-query-for-dashcard-async
-     :dashboard-id dashboard-id
-     :card-id      card-id
-     :dashcard-id  dashcard-id
-     :run          (fn [query info]
-                     (qp/process-query (assoc query :async? false) info))
-     options)))
+(deftest card-and-dashcard-id-validation-test
+  (mt/with-temp* [Dashboard     [{dashboard-id :id} {:parameters []}]
+                  Card          [{card-id-1 :id} {:dataset_query (mt/mbql-query venues)}]
+                  Card          [{card-id-2 :id} {:dataset_query (mt/mbql-query venues)}]
+                  Card          [{card-id-3 :id} {:dataset_query (mt/mbql-query venues)}]
+                  DashboardCard [{dashcard-id-1 :id} {:card_id card-id-1, :dashboard_id dashboard-id}]
+                  DashboardCard [{dashcard-id-2 :id} {:card_id card-id-2, :dashboard_id dashboard-id}]
+                  DashboardCard [{dashcard-id-3 :id} {:card_id card-id-3, :dashboard_id dashboard-id}]
+                  DashboardCardSeries [_ {:dashboardcard_id dashcard-id-3, :card_id card-id-3}]]
+    (testing "Sanity check that a valid combination card, dashcard and dashboard IDs executes successfully"
+      (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-1))))))
+
+    (testing "A 404 error should be thrown if the card-id is not valid for the dashboard"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Not found"
+                              (run-query-for-dashcard dashboard-id (* card-id-1 2) dashcard-id-1))))
+
+    (testing "A 404 error should be thrown if the dashcard-id is not valid for the dashboard"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Not found"
+                              (run-query-for-dashcard dashboard-id card-id-1 (* dashcard-id-1 2)))))
+
+    (testing "A 404 error should be thrown if the dashcard-id is not valid for the card"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Not found"
+                              (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-2))))
+
+    (testing "Sanity check that a card-id in a dashboard card series executes successfully"
+      (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-3 dashcard-id-3))))))
+
+    (testing "A 404 error should be thrown if the card-id is not valid for the dashcard series"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Not found"
+                              (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
 
 (deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"

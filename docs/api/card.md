@@ -8,27 +8,6 @@ summary: |
 
 /api/card endpoints.
 
-  - [DELETE /api/card/:card-id/public_link](#delete-apicardcard-idpublic_link)
-  - [DELETE /api/card/:id](#delete-apicardid)
-  - [GET /api/card/](#get-apicard)
-  - [GET /api/card/:id](#get-apicardid)
-  - [GET /api/card/:id/related](#get-apicardidrelated)
-  - [GET /api/card/:id/timelines](#get-apicardidtimelines)
-  - [GET /api/card/embeddable](#get-apicardembeddable)
-  - [GET /api/card/public](#get-apicardpublic)
-  - [POST /api/card/](#post-apicard)
-  - [POST /api/card/:card-id/persist](#post-apicardcard-idpersist)
-  - [POST /api/card/:card-id/public_link](#post-apicardcard-idpublic_link)
-  - [POST /api/card/:card-id/query](#post-apicardcard-idquery)
-  - [POST /api/card/:card-id/query/:export-format](#post-apicardcard-idqueryexport-format)
-  - [POST /api/card/:card-id/refresh](#post-apicardcard-idrefresh)
-  - [POST /api/card/:card-id/unpersist](#post-apicardcard-idunpersist)
-  - [POST /api/card/:id/copy](#post-apicardidcopy)
-  - [POST /api/card/collections](#post-apicardcollections)
-  - [POST /api/card/pivot/:card-id/query](#post-apicardpivotcard-idquery)
-  - [POST /api/card/related](#post-apicardrelated)
-  - [PUT /api/card/:id](#put-apicardid)
-
 ## `DELETE /api/card/:card-id/public_link`
 
 Delete the publicly-accessible link to this Card.
@@ -49,7 +28,7 @@ Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.
 
 Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, and `archived`. See
-  corresponding implementation functions above for the specific behavior of each filter option. :card_index:.
+  corresponding implementation functions above for the specific behavior of each filter option. :card_index.
 
 ### PARAMS:
 
@@ -106,6 +85,8 @@ Create a new `Card`.
 
 *  **`visualization_settings`** value must be a map.
 
+*  **`is_write`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys
 
 *  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
@@ -120,7 +101,7 @@ Create a new `Card`.
 
 *  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`dataset_query`** 
+*  **`dataset_query`** value must be a map.
 
 *  **`parameter_mappings`** value may be nil, or if non-nil, value must be an array. Each parameter_mapping must be a map with :parameter_id and :target keys
 

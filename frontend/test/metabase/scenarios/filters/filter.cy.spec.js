@@ -159,7 +159,7 @@ describe("scenarios > question > filter", () => {
     cy.findAllByText("Gizmo");
   });
 
-  it.skip("should not drop aggregated filters (metabase#11957)", () => {
+  it("should not drop aggregated filters (metabase#11957)", () => {
     const AGGREGATED_FILTER = "Count is less than or equal to 20";
 
     cy.createQuestion(

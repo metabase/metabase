@@ -10,14 +10,9 @@ Metabase provides an official Docker image via Dockerhub that can be used for de
 
 If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](upgrading-metabase.md).
 
-- [Quick start](#quick-start)
-- [Production installation](#production-installation)
-- [Migrating to a production installation](#migrating-to-a-production-installation)
-- [Additional Docker maintenance and configuration](#additional-docker-maintenance-and-configuration)
+## Open Source quick start
 
-## Quick start
-
-> The quick start is intended for running Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+Use this quick start to run the Open Source version of Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
 Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
 
@@ -31,6 +26,38 @@ Then start the Metabase container:
 docker run -d -p 3000:3000 --name metabase metabase/metabase
 ```
 
+This will launch an Metabase server on port 3000 by default.
+
+Optional: to view the logs as your Open Source Metabase initializes, run:
+
+```
+docker logs -f metabase
+```
+
+Once startup completes, you can access your Open Source Metabase at `http://localhost:3000`.
+
+To run your Open Source Metabase on a different port, say port 12345:
+
+```
+docker run -d -p 12345:3000 --name metabase metabase/metabase
+```
+
+## Pro or Enterprise quick start
+
+Use this quick start if you have a [license token](../paid-features/activating-the-enterprise-edition.md) for a [paid version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+
+Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
+
+```
+docker pull metabase/metabase-enterprise:latest
+```
+
+Then start the Metabase container:
+
+```
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise
+```
+
 This will launch a Metabase server on port 3000 by default.
 
 Optional: to view the logs as Metabase initializes, run:
@@ -39,12 +66,12 @@ Optional: to view the logs as Metabase initializes, run:
 docker logs -f metabase
 ```
 
-Once the Metabase startup completes, you can access your Metabase at [localhost:3000](http://localhost:3000).
+Once startup completes, you can access your Pro or Enterprise Metabase at `http://localhost:3000`.
 
-To run Metabase on a different port, say port 12345:
+To run your Pro or Enterprise Metabase on a different port, say port 12345:
 
 ```
-docker run -d -p 12345:3000 --name metabase metabase/metabase
+docker run -d -p 12345:3000 --name metabase metabase/metabase-enterprise
 ```
 
 ## Production installation
@@ -256,7 +283,7 @@ secrets:
      file: db_user.txt
 ```
 
-We currently support the following [environment variables](../configuring-metabase/environment-variables.html) to be used as secrets:
+We currently support the following [environment variables](../configuring-metabase/environment-variables.md) to be used as secrets:
 
 - MB_DB_USER
 - MB_DB_PASS
@@ -274,4 +301,4 @@ See Running Metabase in the [Troubleshooting guide](../troubleshooting-guide/run
 
 ## Continue to setup
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).

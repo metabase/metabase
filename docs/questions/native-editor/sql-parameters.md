@@ -1,10 +1,10 @@
 ---
-title: SQL variables
+title: SQL parameters
 redirect_from:
   - /docs/latest/users-guide/13-sql-parameters
 ---
 
-# SQL variables 
+# SQL parameters
 
 You can create SQL templates by adding variables to your SQL queries in the [Native/SQL editor][sql-editor]. These variables will create filter widgets that you can use to change the variable's value in the query. You can also add parameters to your question's URL to set the filters' values, so that when the question loads, those values are inserted into the variables.
 
@@ -102,7 +102,7 @@ WHERE true
   [[AND {% raw %}{{category}}{% endraw %}]]
 ```
 
-That last clause uses a Field filter (note the lack of a column in the `AND` clause). When using a field filter, you must exclude the column in the query; you need to map the variable in the side panel. 
+That last clause uses a Field filter (note the lack of a column in the `AND` clause). When using a field filter, you must exclude the column in the query; you need to map the variable in the side panel.
 
 If you're using MongoDB, you can make an clause optional like so:
 
@@ -135,7 +135,7 @@ Or with multiple optional filters:
 
 ## Setting a default value in the filter widget
 
-In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty). You'll need to insert a new value into the filter widget to override the default. 
+In the variables sidebar, you can set a default value for your variable. This value will be inserted into the corresponding filter widget by default (even if the filter widget is empty). You'll need to insert a new value into the filter widget to override the default.
 
 ## Setting complex default values in the query
 
@@ -253,6 +253,26 @@ An example for **BigQuery**, back ticks are needed, like `` FROM `dataset.table`
 
 For **Oracle** it would be `FROM "schema"."table"`.
 
+### Include dependencies in your query
+
+Your main query should be aware of all the tables that your Field Filter variable is pointing to, otherwise you'll get a SQL syntax error. For example, let's say that your main query includes a field filter like this:
+
+```
+SELECT *
+FROM ORDERS
+WHERE {% raw %}{{ product_category }}{% endraw %}
+``` 
+
+Let's say the `{% raw %}{{ product_category }}{% endraw %}` variable refers to another question that uses the `Products` table. For the field filter to work, you'll need to include a join to `Products` in your main query.
+
+```
+SELECT *
+FROM ORDERS o
+JOIN PRODUCTS p
+ON o.product_id = p.id
+WHERE {% raw %}{{ product_category }}{% endraw %}
+```
+
 ## Connecting a SQL question to a dashboard filter
 
 In order for a saved SQL/native question to be usable with a dashboard filter, the question must contain at least one variable.
@@ -281,8 +301,8 @@ Learn how to [refer to a saved question in a SQL query](referencing-saved-questi
 
 [sql-editor]: ./writing-sql.md
 [dashboard-filters]: ../../dashboards/filters.md
-[field-filter]: /learn/sql-questions/field-filters.html
-[sql-variables]: /learn/sql-questions/sql-variables.html
+[field-filter]: https://www.metabase.com/learn/sql-questions/field-filters.html
+[sql-variables]: https://www.metabase.com/learn/sql-questions/sql-variables.html
 [troubleshooting-filters]: ../../troubleshooting-guide/filters.md
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
-[basic-input]: /learn/sql-questions/sql-variables.html#basic-input-variable-text
+[basic-input]: https://www.metabase.com/learn/sql-questions/sql-variables.html#basic-input-variable-text

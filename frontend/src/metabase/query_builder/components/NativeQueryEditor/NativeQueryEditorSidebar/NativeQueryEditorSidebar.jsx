@@ -7,6 +7,7 @@ import { isMac } from "metabase/lib/browser";
 import DataReferenceButton from "metabase/query_builder/components/view/DataReferenceButton";
 import NativeVariablesButton from "metabase/query_builder/components/view/NativeVariablesButton";
 import SnippetSidebarButton from "metabase/query_builder/components/view/SnippetSidebarButton";
+import PreviewQueryButton from "metabase/query_builder/components/view/PreviewQueryButton";
 
 import {
   Container,
@@ -14,12 +15,13 @@ import {
 } from "./NativeQueryEditorSidebar.styled";
 
 const propTypes = {
-  cancelQuery: PropTypes.func.isRequired,
-  isResultDirty: PropTypes.bool.isRequired,
-  isRunnable: PropTypes.bool.isRequired,
-  isRunning: PropTypes.bool.isRequired,
+  question: PropTypes.object,
+  cancelQuery: PropTypes.func,
+  isResultDirty: PropTypes.bool,
+  isRunnable: PropTypes.bool,
+  isRunning: PropTypes.bool,
   nativeEditorSelectedText: PropTypes.string,
-  runQuery: PropTypes.func.isRequired,
+  runQuery: PropTypes.func,
   snippetCollections: PropTypes.array,
   snippets: PropTypes.array,
 };
@@ -28,6 +30,7 @@ const ICON_SIZE = 18;
 
 const NativeQueryEditorSidebar = props => {
   const {
+    question,
     cancelQuery,
     isResultDirty,
     isRunnable,
@@ -56,6 +59,8 @@ const NativeQueryEditorSidebar = props => {
     return command + " " + shortcut;
   };
 
+  const canRunQuery = runQuery && cancelQuery;
+
   return (
     <Container>
       <DataReferenceButton {...props} size={ICON_SIZE} className="mt3" />
@@ -63,15 +68,20 @@ const NativeQueryEditorSidebar = props => {
       {showSnippetSidebarButton && (
         <SnippetSidebarButton {...props} size={ICON_SIZE} className="mt3" />
       )}
-      <RunButtonWithTooltipStyled
-        disabled={!isRunnable}
-        isRunning={isRunning}
-        isDirty={isResultDirty}
-        onRun={runQuery}
-        onCancel={cancelQuery}
-        compact
-        getTooltip={getTooltip}
-      />
+      {PreviewQueryButton.shouldRender({ question }) && (
+        <PreviewQueryButton {...props} />
+      )}
+      {!!canRunQuery && (
+        <RunButtonWithTooltipStyled
+          disabled={!isRunnable}
+          isRunning={isRunning}
+          isDirty={isResultDirty}
+          onRun={runQuery}
+          onCancel={cancelQuery}
+          compact
+          getTooltip={getTooltip}
+        />
+      )}
     </Container>
   );
 };

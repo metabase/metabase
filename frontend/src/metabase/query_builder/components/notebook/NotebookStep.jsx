@@ -166,7 +166,7 @@ export default class NotebookStep extends React.Component {
               name="close"
               className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
               tooltip={t`Remove`}
-              onClick={() => step.revert(step.query).update(updateQuery)}
+              onClick={() => updateQuery(step.revert(step.query))}
               data-testid="remove-step"
             />
           </StepHeader>

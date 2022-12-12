@@ -10,7 +10,7 @@
 (deftest fetch-field-test
   (testing "GET /api/field/:id"
     (mt/with-gtaps {:gtaps      {:venues {:query      (mt.tu/restricted-column-query (mt/id))
-                                          :remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}}}
+                                          :remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
                     :attributes {:cat 50}}
       (testing "Can I fetch a Field that I don't have read access for if I have segmented table access for it?"
         (let [result (mt/user-http-request :rasta :get 200 (str "field/" (mt/id :venues :name)))]
@@ -22,67 +22,82 @@
 
 (deftest field-values-test
   (testing "GET /api/field/:id/values"
-    (mt/with-gtaps {:gtaps      {:venues {:query      (mt.tu/restricted-column-query (mt/id))
-                                          :remappings {:cat [:dimension (mt/id :venues :category_id)]}}}
-                    :attributes {:cat 50}}
-      (testing (str "When I call the FieldValues API endpoint for a Field that I have segmented table access only "
-                    "for, will I get ad-hoc values?\n")
-        (letfn [(fetch-values [user field]
-                  (-> (mt/user-http-request user :get 200 (format "field/%d/values" (mt/id :venues field)))
-                      (update :values (partial take 3))))]
-          ;; Rasta Toucan is only allowed to see Venues that are in the "Mexican" category [category_id = 50]. So
-          ;; fetching FieldValues for `venue.name` should do an ad-hoc fetch and only return the names of venues in
-          ;; that category.
-          (is (= {:field_id        (mt/id :venues :name)
-                  :values          [["Garaje"]
-                                    ["Gordo Taqueria"]
-                                    ["La Tortilla"]]
-                  :has_more_values false}
-                 (fetch-values :rasta :name)))
+    (mt/with-temp-copy-of-db
+      (doseq [[query-type gtap-rule]
+              [["MBQL"
+                {:gtaps      {:venues {:query      (mt.tu/restricted-column-query (mt/id))
+                                       :remappings {:cat [:dimension (mt/id :venues :category_id)]}}}
+                 :attributes {:cat 50}}]
+               ["native"
+                {:gtaps      {:venues {:query
+                                       (mt/native-query
+                                         {:query "SELECT id, name, category_id FROM venues WHERE category_id = {{cat}}"
+                                          :template-tags {"cat" {:id           "__MY_CAT__"
+                                                                 :name         "cat"
+                                                                 :display-name "Cat id"
+                                                                 :type         :number}}})
+                                       :remappings {:cat [:variable [:template-tag "cat"]]}}}
+                 :attributes {:cat 50}}]]]
+        (testing (format "GTAP rule is a %s query" query-type)
+          (mt/with-gtaps gtap-rule
+            (testing (str "When I call the FieldValues API endpoint for a Field that I have segmented table access only "
+                          "for, will I get ad-hoc values?\n")
+              (letfn [(fetch-values [user field]
+                        (-> (mt/user-http-request user :get 200 (format "field/%d/values" (mt/id :venues field)))
+                            (update :values (partial take 3))))]
+                ;; Rasta Toucan is only allowed to see Venues that are in the "Mexican" category [category_id = 50]. n
+                ;; fetching FieldValues for `venue.name` should do an ad-hoc fetch and only return the names of venues in
+                ;; that category.
+                (is (= {:field_id        (mt/id :venues :name)
+                        :values          [["Garaje"]
+                                          ["Gordo Taqueria"]
+                                          ["La Tortilla"]]
+                        :has_more_values false}
+                       (fetch-values :rasta :name)))
 
-          (testing (str "Now in this case recall that the `restricted-column-query` GTAP we're using does *not* include "
-                        "`venues.price` in the results. (Toucan isn't allowed to know the number of dollar signs!) So "
-                        "make sure if we try to fetch the field values instead of seeing `[[1] [2] [3] [4]]` we get no "
-                        "results")
-            (is (= {:field_id        (mt/id :venues :price)
-                    :values          []
-                    :has_more_values false}
-                   (fetch-values :rasta :price))))
+                (testing (str "Now in this case recall that the `restricted-column-query` GTAP we're using does *not* include "
+                              "`venues.price` in the results. (Toucan isn't allowed to know the number of dollar signs!) So "
+                              "make sure if we try to fetch the field values instead of seeing `[[1] [2] [3] [4]]` we get no "
+                              "results")
+                  (is (= {:field_id        (mt/id :venues :price)
+                          :values          []
+                          :has_more_values false}
+                         (fetch-values :rasta :price))))
 
-          (testing "Reset field values; if another User fetches them first, do I still see sandboxed values? (metabase/metaboat#128)"
-            (field-values/clear-field-values-for-field! (mt/id :venues :name))
-            ;; fetch Field values with an admin
-            (testing "Admin should see all Field values"
-              (is (= {:field_id        (mt/id :venues :name)
-                      :values          [["20th Century Cafe"]
-                                        ["25°"]
-                                        ["33 Taps"]]
-                      :has_more_values false}
-                     (fetch-values :crowberto :name))))
-            (testing "Sandboxed User should still see only their values after an admin fetches the values"
-              (is (= {:field_id        (mt/id :venues :name)
-                      :values          [["Garaje"]
-                                        ["Gordo Taqueria"]
-                                        ["La Tortilla"]]
-                      :has_more_values false}
-                     (fetch-values :rasta :name))))
-            (testing "A User with a *different* sandbox should see their own values"
-              (let [password (mt/random-name)]
-                (mt/with-temp User [another-user {:password password}]
-                  (mt/with-gtaps-for-user another-user {:gtaps      {:venues
-                                                                     {:remappings
-                                                                      {:cat
-                                                                       [:dimension (mt/id :venues :category_id)]}}}
-                                                        :attributes {:cat 5 #_BBQ}}
+                (testing "Reset field values; if another User fetches them first, do I still see sandboxed values? (metabase/metaboat#128)"
+                  (field-values/clear-field-values-for-field! (mt/id :venues :name))
+                  ;; fetch Field values with an admin
+                  (testing "Admin should see all Field values"
                     (is (= {:field_id        (mt/id :venues :name)
-                            :values          [["Baby Blues BBQ"]
-                                              ["Bludso's BBQ"]
-                                              ["Boneyard Bistro"]]
+                            :values          [["20th Century Cafe"]
+                                              ["25°"]
+                                              ["33 Taps"]]
                             :has_more_values false}
-                           (-> (mt/client {:username (:email another-user), :password password}
-                                          :get 200
-                                          (format "field/%d/values" (mt/id :venues :name)))
-                               (update :values (partial take 3)))))))))))))))
+                           (fetch-values :crowberto :name))))
+                  (testing "Sandboxed User should still see only their values after an admin fetches the values"
+                    (is (= {:field_id        (mt/id :venues :name)
+                            :values          [["Garaje"]
+                                              ["Gordo Taqueria"]
+                                              ["La Tortilla"]]
+                            :has_more_values false}
+                           (fetch-values :rasta :name))))
+                  (testing "A User with a *different* sandbox should see their own values"
+                    (let [password (mt/random-name)]
+                      (mt/with-temp User [another-user {:password password}]
+                        (mt/with-gtaps-for-user another-user {:gtaps      {:venues
+                                                                           {:remappings
+                                                                            {:cat
+                                                                             [:dimension (mt/id :venues :category_id)]}}}
+                                                              :attributes {:cat 5 #_BBQ}}
+                          (is (= {:field_id        (mt/id :venues :name)
+                                  :values          [["Baby Blues BBQ"]
+                                                    ["Bludso's BBQ"]
+                                                    ["Boneyard Bistro"]]
+                                  :has_more_values false}
+                                 (-> (mt/client {:username (:email another-user), :password password}
+                                                :get 200
+                                                (format "field/%d/values" (mt/id :venues :name)))
+                                     (update :values (partial take 3))))))))))))))))))
 
 (deftest human-readable-values-test
   (testing "GET /api/field/:id/values should returns correct human readable mapping if exists"
@@ -95,7 +110,7 @@
         (is (= [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]
                (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" field-id)))))
         (mt/with-gtaps {:gtaps      {:venues
-                                     {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}}}
+                                     {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
                         :attributes {:cat 4}}
           (is (= [[1 "$"] [3 "$$$"]]
                  (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))))))
@@ -103,7 +118,7 @@
 (deftest search-test
   (testing "GET /api/field/:id/search/:search-id"
     (mt/with-gtaps {:gtaps      {:venues
-                                 {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
+                                 {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                   :query      (mt.tu/restricted-column-query (mt/id))}}
                     :attributes {:cat 50}}
       (testing (str "Searching via the query builder needs to use a GTAP when the user has segmented permissions. "
@@ -122,7 +137,7 @@
 (deftest caching-test
   (mt/with-gtaps {:gtaps
                   {:venues
-                   {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
+                   {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                     :query      (mt.tu/restricted-column-query (mt/id))}}
                   :attributes {:cat 50}}
     (let [field (db/select-one Field :id (mt/id :venues :name))]
@@ -141,7 +156,7 @@
         (let [password (mt/random-name)]
           (mt/with-temp User [another-user {:password password}]
             (mt/with-gtaps-for-user another-user {:gtaps      {:venues
-                                                               {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
+                                                               {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                                                 :query      (mt.tu/restricted-column-query (mt/id))}}
                                                   :attributes {:cat 5}}
               (mt/user-http-request another-user :get 200 (str "field/" (:id field) "/values"))

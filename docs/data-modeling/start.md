@@ -1,8 +1,8 @@
 ---
-title: "Data modeling"
+title: "Data modeling overview"
 ---
 
-# Data modeling
+# Data modeling overview
 
 Metabase provides tools for organizing your data and making it easier for people to understand.
 

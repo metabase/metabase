@@ -1,16 +1,18 @@
 (ns metabase.public-settings.premium-features-test
-  (:require [cheshire.core :as json]
-            [clj-http.client :as http]
-            [clj-http.fake :as http-fake]
-            [clojure.test :refer :all]
-            [metabase.config :as config]
-            [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise defenterprise-schema]]
-            [metabase.test :as mt]
-            [metabase.test.util :as tu]
-            [schema.core :as s]
-            [toucan.util.test :as tt]))
+  (:require
+   [cheshire.core :as json]
+   [clj-http.client :as http]
+   [clj-http.fake :as http-fake]
+   [clojure.test :refer :all]
+   [metabase.config :as config]
+   [metabase.models.user :refer [User]]
+   [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise defenterprise-schema]]
+   [metabase.test :as mt]
+   [schema.core :as s]
+   [toucan.util.test :as tt]))
 
 (defn do-with-premium-features [features f]
   (let [features (set (map name features))]
@@ -76,21 +78,30 @@
                   :error-details "network issues"}
                  (premium-features/fetch-token-status (apply str (repeat 64 "b")))))))
       (testing "Only attempt the token once"
-        (let [call-count (atom 0)]
+        (let [call-count (atom 0)
+              token      (random-token)]
           (binding [clj-http.client/request (fn [& _]
                                               (swap! call-count inc)
                                               (throw (Exception. "no internet")))]
-            (mt/with-temporary-raw-setting-values [:premium-embedding-token (random-token)]
-              (doseq [premium-setting [premium-features/hide-embed-branding?
-                                       premium-features/enable-whitelabeling?
-                                       premium-features/enable-audit-app?
-                                       premium-features/enable-sandboxes?
-                                       premium-features/enable-sso?
-                                       premium-features/enable-advanced-config?
-                                       premium-features/enable-content-management?]]
-                (is (false? (premium-setting))
-                    (str (:name (meta premium-setting)) "is not false")))
-              (is (= @call-count 1))))))
+
+            (mt/with-temporary-raw-setting-values [:premium-embedding-token token]
+              (testing "Sanity check"
+                (is (= token
+                       (premium-features/premium-embedding-token)))
+                (is (= #{}
+                       (#'premium-features/token-features))))
+              (doseq [has-feature? [#'premium-features/hide-embed-branding?
+                                    #'premium-features/enable-whitelabeling?
+                                    #'premium-features/enable-audit-app?
+                                    #'premium-features/enable-sandboxes?
+                                    #'premium-features/enable-sso?
+                                    #'premium-features/enable-advanced-config?
+                                    #'premium-features/enable-content-management?
+                                    #'premium-features/enable-serialization?]]
+                (testing (format "\n%s is false" (:name (meta has-feature?)))
+                  (is (not (has-feature?)))))
+              (is (= 1
+                     @call-count))))))
 
       (testing "With a valid token"
         (let [result (token-status-response random-fake-token {:status 200
@@ -99,7 +110,7 @@
           (is (contains? (set (:features result)) "test")))))))
 
 (deftest not-found-test
-  (tu/with-log-level :fatal
+  (mt/with-log-level :fatal
     ;; `partial=` here in case the Cloud API starts including extra keys... this is a "dangerous" test since changes
     ;; upstream in Cloud could break this. We probably want to catch that stuff anyway tho in tests rather than waiting
     ;; for bug reports to come in
@@ -233,3 +244,13 @@
     (testing "EE schema is not validated if OSS fallback is called"
       (is (= "Hi rasta, the return value was valid"
              (greeting-with-invalid-ee-return-schema :rasta))))))
+
+(deftest token-status-setting-test
+  (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
+            from the store.metabase.com endpoint for that token."
+    (mt/with-temporary-raw-setting-values [premium-embedding-token (random-token)]
+      (is (= {:valid false, :status "Token does not exist."}
+             (premium-features/token-status)))))
+  (testing "If premium-embedding-token is nil, the token-status setting should also be nil."
+    (mt/with-temporary-setting-values [premium-embedding-token nil]
+      (is (nil? (premium-features/token-status))))))

@@ -48,6 +48,7 @@
 
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
+  ;; if the driver has a non-default implementation of [[sql-jdbc.sync/db-default-timezone]], use that.
   (when (not= (get-method sql-jdbc.sync/db-default-timezone driver)
               (get-method sql-jdbc.sync/db-default-timezone :sql-jdbc))
     (sql-jdbc.sync/db-default-timezone driver (sql-jdbc.conn/db->pooled-connection-spec database))))
@@ -59,6 +60,10 @@
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
   (sql-jdbc.conn/notify-database-updated database))
+
+(defmethod driver/dbms-version :sql-jdbc
+  [driver database]
+  (sql-jdbc.sync/dbms-version driver (sql-jdbc.conn/db->pooled-connection-spec database)))
 
 (defmethod driver/describe-database :sql-jdbc
   [driver database]

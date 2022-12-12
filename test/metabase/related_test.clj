@@ -12,7 +12,7 @@
 (deftest collect-context-bearing-forms-test
   (is (= #{[:field 1 nil] [:metric 1] [:field 2 nil] [:segment 1]}
          (#'related/collect-context-bearing-forms [[:> [:field 1 nil] 3]
-                                                   ["and" [:= ["FIELD-ID" 2] 2]
+                                                   ["and" [:= ["field" 2 nil] 2]
                                                     ["segment" 1]]
                                                    [:metric 1]]))))
 

@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { useFormik } from "formik";
 import { t } from "ttag";
-import S from "../components/Detail.css";
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
@@ -15,6 +14,8 @@ import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import Formula from "metabase/reference/components/Formula";
 import Link from "metabase/core/components/Link";
 
+import * as metadataActions from "metabase/redux/metadata";
+import * as actions from "metabase/reference/reference";
 import { getQuestionUrl } from "../utils";
 
 import {
@@ -28,8 +29,7 @@ import {
   getIsFormulaExpanded,
 } from "../selectors";
 
-import * as metadataActions from "metabase/redux/metadata";
-import * as actions from "metabase/reference/reference";
+import S from "../components/Detail.css";
 
 const interestingQuestions = (table, segment) => {
   return [
