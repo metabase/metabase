@@ -210,6 +210,12 @@
              :when  (driver/available? driver)]
          driver)))
 
+(defn semantic-version-gte
+  "Returns true if x is greater than or equal to y according to semantic versioning.
+   x and y are two-vectors of integers of the form `[major minor]`."
+  [x y]
+  (nat-int? (compare x y)))
+
 (defn- file-upload-props [{prop-name :name, visible-if :visible-if, disp-nm :display-name, :as conn-prop}]
   (if (premium-features/is-hosted?)
     [(-> (assoc conn-prop

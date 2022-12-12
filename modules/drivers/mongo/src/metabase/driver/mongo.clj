@@ -12,6 +12,7 @@
             [metabase.driver.mongo.parameters :as mongo.params]
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
+            [metabase.driver.util :as driver.u]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
@@ -228,37 +229,24 @@
                  :standard-deviation-aggregations]]
   (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 
-(defn- db-version [db]
-  (get-in db [:details :version]))
-
-(defn- parse-version [version]
-  (let [[major minor] (str/split version #"\.")]
-    [major minor]))
-
-(defn version-gte
-  "Returns true if x is greater than or equal to y according to semantic versioning.
-   x and y are version strings of the form \"major.minor.patch\" where minor and patch are optional.
-   Compares major and minor versions only, not patch versions.
-   (version-gte \"4.0.1\" \"4\") => true
-   (version-gte \"4\" \"4.0.1\") => true
-   (version-gte \"4.0\" \"4.0.1\") => true
-   (version-gte \"3.9\" \"4.0.0\") => false
-   (version-gte \"3.9\" \"4\") => false"
-  [x y]
-  (nat-int? (compare (parse-version x) (parse-version y))))
-
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]
-  (boolean (some-> (db-version db) (version-gte "4.0"))))
+  (boolean (some-> (driver/dbms-version db)
+                   :semantic-version
+                   (driver.u/semantic-version-gte [4 0]))))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics]
   [_driver _feature db]
-  (boolean (some-> (db-version db) (version-gte "5.0"))))
+  (boolean (some-> (driver/dbms-version db)
+                   :semantic-version
+                   (driver.u/semantic-version-gte [5 0]))))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
   [_driver _feature db]
-  (boolean (some-> (db-version db) (version-gte "4.2"))))
+  (boolean (some-> (driver/dbms-version db)
+                   :semantic-version
+                   (driver.u/semantic-version-gte [4 2]))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
