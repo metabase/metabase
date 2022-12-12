@@ -5,7 +5,7 @@ import {
 } from "metabase-lib/queries/drills/summarize-column-by-time-drill";
 import type { Drill } from "../../types";
 
-const SummarizeColumnByTimeDrill: Drill = ({ question, clicked }) => {
+const SummarizeColumnByTimeDrill: Drill = ({ question, clicked = {} }) => {
   if (!summarizeColumnByTimeDrill({ question, clicked })) {
     return [];
   }

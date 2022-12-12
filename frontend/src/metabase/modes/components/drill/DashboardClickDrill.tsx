@@ -66,7 +66,7 @@ function getAction(
   }
 }
 
-const DashboardClickDrill: Drill = ({ question, clicked }) => {
+const DashboardClickDrill: Drill = ({ question, clicked = {} }) => {
   const type = getDashboardDrillType(clicked);
   if (!type) {
     return [];
