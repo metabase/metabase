@@ -13,7 +13,7 @@
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
             [metabase.driver.util :as driver.u]
-            [metabase.query-processor.store :as qp.store]
+            [metabafse.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [monger.collection :as mc]
@@ -307,7 +307,6 @@
 
 (comment
   (require '[clojure.java.io :as io]
-           '[metabase.driver.util :as driver.u]
            '[monger.credentials :as mcred])
   (import javax.net.ssl.SSLSocketFactory)
 
