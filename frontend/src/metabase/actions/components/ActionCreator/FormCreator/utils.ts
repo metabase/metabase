@@ -15,7 +15,8 @@ import type {
   ActionFormOption,
   ActionFormProps,
   ActionFormFieldProps,
-  InputType,
+  InputSettingType,
+  InputComponentType,
 } from "metabase-types/api";
 
 import type { Parameter } from "metabase-types/types/Parameter";
@@ -44,6 +45,7 @@ const getOptionsFromArray = (
 export const getDefaultFieldSettings = (
   overrides: Partial<FieldSettings> = {},
 ): FieldSettings => ({
+  id: "",
   name: "",
   title: "",
   description: "",
@@ -63,7 +65,7 @@ const getSampleOptions = () => [
   { name: t`Option Three`, value: 3 },
 ];
 
-type FieldPropTypeMap = Record<InputType, string>;
+type FieldPropTypeMap = Record<InputSettingType, InputComponentType>;
 
 const fieldPropsTypeMap: FieldPropTypeMap = {
   string: "input",
@@ -71,19 +73,15 @@ const fieldPropsTypeMap: FieldPropTypeMap = {
   date: "date",
   datetime: "datetime-local",
   time: "time",
-  monthyear: "date",
-  quarteryear: "date",
-  email: "email",
-  password: "password",
-  number: "integer", // this input type is badly named, it works for floats too
+  number: "number",
   boolean: "boolean",
-  category: "categoryPillOrSearch",
-  dropdown: "select",
+  category: "category",
+  select: "select",
   radio: "radio",
 };
 
 const inputTypeHasOptions = (fieldSettings: FieldSettings) =>
-  ["dropdown", "radio"].includes(fieldSettings.inputType);
+  ["select", "radio"].includes(fieldSettings.inputType);
 
 export const getFormField = (
   parameter: Parameter,
@@ -190,6 +188,7 @@ export const generateFieldSettingsFromParameters = (
     const displayName = field?.displayName?.() ?? name;
 
     fieldSettings[param.id] = getDefaultFieldSettings({
+      id: param.id,
       name,
       title: displayName,
       placeholder: displayName,
@@ -230,9 +229,6 @@ export const getInputType = (param: Parameter, field?: Field) => {
   }
   if (field.isDate()) {
     return field.isDateWithoutTime() ? "date" : "datetime";
-  }
-  if (field.semantic_type === TYPE.Email) {
-    return "email";
   }
   if (
     field.semantic_type === TYPE.Description ||

@@ -1,7 +1,11 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 
-import type { FieldSettings, FieldType, InputType } from "metabase-types/api";
+import type {
+  FieldSettings,
+  FieldType,
+  InputSettingType,
+} from "metabase-types/api";
 
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
@@ -61,7 +65,7 @@ export function FormCreatorPopoverBody({
       inputType: inputTypes[newFieldType][0].value,
     });
 
-  const handleUpdateInputType = (newInputType: InputType) =>
+  const handleUpdateInputType = (newInputType: InputSettingType) =>
     onChange({
       ...fieldSettings,
       inputType: newInputType,
@@ -148,9 +152,9 @@ function InputTypeSelect({
   value,
   onChange,
 }: {
-  value: InputType;
+  value: InputSettingType;
   fieldType: FieldType;
-  onChange: (newInputType: InputType) => void;
+  onChange: (newInputType: InputSettingType) => void;
 }) {
   const inputTypes = useMemo(getInputTypes, []);
 

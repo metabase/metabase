@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import type { FieldType, InputType } from "metabase-types/api";
+import type { FieldType, InputSettingType } from "metabase-types/api";
 
 interface FieldOptionType {
   value: FieldType;
@@ -26,7 +26,7 @@ export const getFieldTypes = (): FieldOptionType[] => [
 ];
 
 interface InputOptionType {
-  value: InputType;
+  value: InputSettingType;
   name: string;
 }
 
@@ -50,7 +50,7 @@ const getTextInputs = (): InputOptionType[] => [
 
 const getSelectInputs = (): InputOptionType[] => [
   {
-    value: "dropdown",
+    value: "select",
     name: t`dropdown`,
   },
   {

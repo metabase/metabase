@@ -5,7 +5,7 @@ import { getDefaultFieldSettings } from "metabase/actions/components/ActionCreat
 import type {
   ActionFormSettings,
   FieldType,
-  InputType,
+  InputSettingType,
   ParameterType,
 } from "metabase-types/api";
 import type { Parameter as ParameterObject } from "metabase-types/types/Parameter";
@@ -50,7 +50,7 @@ export const addMissingSettings = (
     fields: {
       ...settings.fields,
       ...Object.fromEntries(
-        missingIds.map(id => [id, getDefaultFieldSettings()]),
+        missingIds.map(id => [id, getDefaultFieldSettings({ id })]),
       ),
     },
   };
@@ -58,7 +58,7 @@ export const addMissingSettings = (
 
 const getParameterTypeFromFieldSettings = (
   fieldType: FieldType,
-  inputType: InputType,
+  inputType: InputSettingType,
 ): ParameterType => {
   if (fieldType === "date") {
     return dateTypeToParameterTypeMap[inputType] ?? "date/single";

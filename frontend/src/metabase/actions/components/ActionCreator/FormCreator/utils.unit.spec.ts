@@ -253,13 +253,6 @@ describe("actions > ActionCreator > FormCreator > utils", () => {
       });
     });
 
-    it('should return "email" for email', () => {
-      const field = createField({
-        semantic_type: "type/Email",
-      });
-      expect(getInputType(createParameter(), field)).toEqual("email");
-    });
-
     it('should return "category" for categories', () => {
       const field = createField({
         semantic_type: "type/Category",
