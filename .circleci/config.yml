@@ -45,17 +45,6 @@ executors:
        - image: metabase/qa-databases:mongo-sample-5.0
          command: mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
 
-  presto-186:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-      - image: metabase/presto-mb-ci:0.186
-        environment:
-          JAVA_TOOL_OPTIONS: "-Xmx2g"
-    # Run instance with 8GB or RAM instead of the default 4GB for medium instances. The Presto Docker image runs
-    # OOM sometimes with the default medium size.
-    resource_class: large
-
   presto-jdbc-env:
     working_directory: /home/circleci/metabase/metabase/
     docker:
