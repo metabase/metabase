@@ -20,7 +20,7 @@ import type {
 
 import type { Parameter } from "metabase-types/types/Parameter";
 
-import { isEditableField } from "metabase/actions/utils";
+import { isEditableField, sortActionParams } from "metabase/actions/utils";
 import Field from "metabase-lib/metadata/Field";
 import { TYPE } from "metabase-lib/types/constants";
 
@@ -273,14 +273,6 @@ export const reorderFields = (
 
   return _.indexBy(fieldsWithUpdatedOrderProperty, "id");
 };
-
-export const sortActionParams =
-  (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
-    const aOrder = formSettings.fields[a.id]?.order ?? 0;
-    const bOrder = formSettings.fields[b.id]?.order ?? 0;
-
-    return aOrder - bOrder;
-  };
 
 export const hasNewParams = (
   params: Parameter[],

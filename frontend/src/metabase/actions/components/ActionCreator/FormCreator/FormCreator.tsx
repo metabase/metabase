@@ -10,13 +10,13 @@ import type {
 import type { Parameter } from "metabase-types/types/Parameter";
 import type { ActionFormSettings, FieldSettings } from "metabase-types/api";
 
+import { sortActionParams } from "metabase/actions/utils";
 import { addMissingSettings } from "metabase/entities/actions/utils";
 
 import {
   getDefaultFormSettings,
   getDefaultFieldSettings,
   reorderFields,
-  sortActionParams,
   hasNewParams,
 } from "./utils";
 
