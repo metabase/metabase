@@ -1,20 +1,29 @@
 import React from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
+import {
+  getNativeQueryFn,
+  getQuestion,
+} from "metabase/query_builder/selectors";
+import { NativeQueryForm } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import NativeQueryModal, { useNativeQuery } from "../NativeQueryModal";
 import { ModalExternalLink } from "./PreviewQueryModal.styled";
 
 interface PreviewQueryModalProps {
   question: Question;
+  onLoadQuery: () => Promise<NativeQueryForm>;
   onClose?: () => void;
 }
 
 const PreviewQueryModal = ({
   question,
+  onLoadQuery,
   onClose,
 }: PreviewQueryModalProps): JSX.Element => {
-  const { query, error, isLoading } = useNativeQuery(question);
+  const { query, error, isLoading } = useNativeQuery(question, onLoadQuery);
   const learnUrl = MetabaseSettings.learnUrl("debugging-sql/sql-syntax");
 
   return (
@@ -34,4 +43,9 @@ const PreviewQueryModal = ({
   );
 };
 
-export default PreviewQueryModal;
+const mapStateToProps = (state: State) => ({
+  question: getQuestion(state),
+  onLoadQuery: getNativeQueryFn(state),
+});
+
+export default connect(mapStateToProps)(PreviewQueryModal);

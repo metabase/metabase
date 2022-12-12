@@ -19,7 +19,7 @@ const PreviewQueryButton = ({
 
   return (
     <Tooltip tooltip={t`Preview the query`}>
-      <PreviewButton onClick={handleClick}>
+      <PreviewButton aria-label={t`Preview the query`} onClick={handleClick}>
         <PreviewButtonIcon name="eye_filled" />
       </PreviewButton>
     </Tooltip>
