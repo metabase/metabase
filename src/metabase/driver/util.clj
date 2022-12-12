@@ -158,16 +158,6 @@
         (log/error e (trs "Failed to connect to database"))
         false))))
 
-(defn report-timezone-if-supported
-  "Returns the report-timezone if `driver` supports setting it's timezone and a report-timezone has been specified by
-  the user."
-  [driver]
-  (when (driver/supports? driver :set-timezone)
-    (let [report-tz (driver/report-timezone)]
-      (when (seq report-tz)
-        report-tz))))
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Driver Resolution                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+

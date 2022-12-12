@@ -95,7 +95,7 @@
       (testing (str "connect with " details)
         (is (= expected
                (let [db (db/insert! Database {:name "dummy", :engine "mongo", :details ssl-details})]
-                 (driver/database-supports? :mongo :expressions db))))))))
+                 (driver/database-supports? :mongo :date-arithmetics db))))))))
 
 
 (def ^:private native-query

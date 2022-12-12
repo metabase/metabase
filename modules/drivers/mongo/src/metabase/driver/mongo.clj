@@ -223,13 +223,14 @@
                         column-info))})))
 
 (doseq [feature [:basic-aggregations
+                 :expressions
                  :nested-fields
                  :native-parameters
                  :standard-deviation-aggregations]]
   (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 
 (defn- db-version [db]
-  (get-in db [:details :version]))
+  (:version (driver/dbms-version :mongo db)))
 
 (defn- parse-version [version]
   (->> (str/split version #"\.")
@@ -238,10 +239,6 @@
 
 (defn- db-major-version [db]
   (some-> (db-version db) parse-version first))
-
-(defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
-  (let [version (db-major-version db)]
-    (and (some? version) (>= version 4))))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
   (let [version (db-major-version db)]
