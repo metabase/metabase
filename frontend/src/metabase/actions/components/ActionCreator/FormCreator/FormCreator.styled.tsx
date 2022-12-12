@@ -26,7 +26,7 @@ export const FormSettings = styled.div`
   display: flex;
   gap: ${space(2)};
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
 `;
 
 export const FormItemName = styled.div`
@@ -48,21 +48,6 @@ export const EmptyFormPlaceholderWrapper = styled.div`
   height: 100%;
   text-align: center;
   padding: 5rem;
-`;
-
-export const EditButton = styled(Button)`
-  color: ${color("brand")};
-  background-opacity: 0;
-  &:hover {
-    color: ${color("accent0-light")};
-  }
-`;
-
-export const FormSettingsPreviewContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${space(1)};
-  min-width: 12rem;
 `;
 
 export const ExplainerText = styled.p`
