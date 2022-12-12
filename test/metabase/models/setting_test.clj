@@ -266,24 +266,11 @@
 
 (deftest admin-writable-settings-test
   (testing `setting/admin-writable-settings
-    (test-setting-1! nil)
-    (test-setting-2! "TOUCANS")
-    (is (= {:key            :test-setting-2
-            :value          "TOUCANS"
-            :description    "Test setting - this only shows up in dev (2)"
-            :is_env_setting false
-            :env_name       "MB_TEST_SETTING_2"
-            :default        "[Default Value]"}
-           (some (fn [setting]
-                   (when (re-find #"^test-setting-2$" (name (:key setting)))
-                     setting))
-                 (setting/admin-writable-settings))))
-
-    (testing "with a custom getter"
+    (mt/with-test-user :crowberto
       (test-setting-1! nil)
       (test-setting-2! "TOUCANS")
       (is (= {:key            :test-setting-2
-              :value          7
+              :value          "TOUCANS"
               :description    "Test setting - this only shows up in dev (2)"
               :is_env_setting false
               :env_name       "MB_TEST_SETTING_2"
@@ -291,44 +278,59 @@
              (some (fn [setting]
                      (when (re-find #"^test-setting-2$" (name (:key setting)))
                        setting))
-                   (setting/admin-writable-settings :getter (comp count (partial setting/get-value-of-type :string)))))))
+                   (setting/admin-writable-settings))))
 
-    ;; TODO -- probably don't need both this test and the "TOUCANS" test above, we should combine them
-    (testing "test settings"
-      (test-setting-1! nil)
-      (test-setting-2! "S2")
-      (is (= [{:key            :test-setting-1
-               :value          nil
-               :is_env_setting false
-               :env_name       "MB_TEST_SETTING_1"
-               :description    "Test setting - this only shows up in dev (1)"
-               :default        nil}
-              {:key            :test-setting-2
-               :value          "S2"
-               :is_env_setting false
-               :env_name       "MB_TEST_SETTING_2"
-               :description    "Test setting - this only shows up in dev (2)"
-               :default        "[Default Value]"}]
-             (for [setting (setting/admin-writable-settings)
-                   :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
-               setting))))))
+      (testing "with a custom getter"
+        (test-setting-1! nil)
+        (test-setting-2! "TOUCANS")
+        (is (= {:key            :test-setting-2
+                :value          7
+                :description    "Test setting - this only shows up in dev (2)"
+                :is_env_setting false
+                :env_name       "MB_TEST_SETTING_2"
+                :default        "[Default Value]"}
+               (some (fn [setting]
+                       (when (re-find #"^test-setting-2$" (name (:key setting)))
+                         setting))
+                     (setting/admin-writable-settings :getter (comp count (partial setting/get-value-of-type :string)))))))
+
+      ;; TODO -- probably don't need both this test and the "TOUCANS" test above, we should combine them
+      (testing "test settings"
+        (test-setting-1! nil)
+        (test-setting-2! "S2")
+        (is (= [{:key            :test-setting-1
+                 :value          nil
+                 :is_env_setting false
+                 :env_name       "MB_TEST_SETTING_1"
+                 :description    "Test setting - this only shows up in dev (1)"
+                 :default        nil}
+                {:key            :test-setting-2
+                 :value          "S2"
+                 :is_env_setting false
+                 :env_name       "MB_TEST_SETTING_2"
+                 :description    "Test setting - this only shows up in dev (2)"
+                 :default        "[Default Value]"}]
+               (for [setting (setting/admin-writable-settings)
+                     :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
+                 setting)))))))
 
 (defsetting test-i18n-setting
   (deferred-tru "Test setting - with i18n"))
 
 (deftest validate-description-test
   (testing "Validate setting description with i18n string"
-    (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}}
-      (letfn [(description []
-                (some (fn [{:keys [key description]}]
-                        (when (= :test-i18n-setting key)
-                          description))
-                      (setting/admin-writable-settings)))]
-        (is (= "Test setting - with i18n"
-               (description)))
-        (mt/with-user-locale "zz"
-          (is (= "TEST SETTING - WITH I18N"
-                 (description))))))))
+    (mt/with-test-user :crowberto
+      (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}}
+        (letfn [(description []
+                  (some (fn [{:keys [key description]}]
+                          (when (= :test-i18n-setting key)
+                            description))
+                        (setting/admin-writable-settings)))]
+          (is (= "Test setting - with i18n"
+                 (description)))
+          (mt/with-user-locale "zz"
+            (is (= "TEST SETTING - WITH I18N"
+                   (description)))))))))
 
 
 ;;; ------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------
