@@ -930,26 +930,14 @@
                       (mt/formatted-rows [int int int int])
                       first))))))))
 
-(mt/defdataset diff-type-test-cases
-  [["times"
-    [{:field-name "a_text",      :base-type :type/Text}
-     {:field-name "a_datetime",  :base-type :type/DateTime}
-     {:field-name "b_text",      :base-type :type/Text}
-     {:field-name "b_time",      :base-type :type/Time}]
-    [["2022-10-02T01:00:00"    ; a_text
-      #t "2022-10-02T01:00:00" ; a_datetime
-      "05:00:00"               ; b_text
-      #t "05:00:00"]]]])       ; b_time
-
 (deftest datetime-diff-type-test
   (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers-with-feature :datetime-diff))
     (testing "Cannot datetime-diff against time column"
-      (mt/dataset diff-type-test-cases
+      (mt/dataset test-data-with-time
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Only datetime, timestamp, or date types allowed. Found .*"
-             (mt/rows
-              (mt/run-mbql-query times
-                {:limit 1
-                 :fields      [[:expression "diff-day"]]
-                 :expressions {"diff-day" [:datetime-diff $a_datetime $b_time :day]}}))))))))
+             (mt/run-mbql-query users
+               {:limit 1
+                :fields      [[:expression "diff-day"]]
+                :expressions {"diff-day" [:datetime-diff $last_login_time $last_login_date :day]}})))))))
