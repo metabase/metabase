@@ -10,28 +10,30 @@ interface UseNativeQuery {
   isLoading: boolean;
 }
 
-export const useNativeQuery = (question: Question) => {
+export const useNativeQuery = (
+  question: Question,
+  getNativeQuery: () => Promise<NativeQueryForm>,
+) => {
   const [state, setState] = useState<UseNativeQuery>({ isLoading: true });
 
   useEffect(() => {
-    question
-      .apiGetNativeQueryForm()
+    getNativeQuery()
       .then(data =>
-        setState({ query: getQuery(question, data), isLoading: false }),
+        setState({ query: getQueryText(question, data), isLoading: false }),
       )
       .catch(error =>
-        setState({ error: getErrorMessage(error), isLoading: false }),
+        setState({ error: getQueryError(error), isLoading: false }),
       );
-  }, [question]);
+  }, [question, getNativeQuery]);
 
   return state;
 };
 
-const getQuery = (question: Question, data: NativeQueryForm) => {
+const getQueryText = (question: Question, data: NativeQueryForm) => {
   const engine = question.database()?.engine;
   return formatNativeQuery(data.query, engine);
 };
 
-const getErrorMessage = (error: unknown): string | undefined => {
+const getQueryError = (error: unknown): string | undefined => {
   return getIn(error, ["data", "message"]);
 };
