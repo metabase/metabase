@@ -377,6 +377,53 @@ jobs:
       with:
         junit-name: 'be-tests-presto-186-ee'
 
+  be-tests-presto-jdbc-ee:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: presto
+      MB_PRESTO_JDBC_TEST_CATALOG: test_data
+      MB_PRESTO_JDBC_TEST_HOST: localhost
+      MB_PRESTO_JDBC_TEST_PORT: 8443
+      MB_PRESTO_JDBC_TEST_SSL: true
+      MB_PRESTO_JDBC_TEST_USER: metabase
+      MB_PRESTO_JDBC_TEST_PASSWORD: metabase
+      MB_ENABLE_PRESTO_JDBC_DRIVER: true
+      MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS: 'SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit'
+    services:
+      presto:
+        image: metabase/presto-mb-ci:latest # version 0.254
+        ports:
+          - "8443:8443"
+        env:
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
+    steps:
+    - uses: actions/checkout@v3
+    - name: Create temp cacerts file based on bundled JDK one
+      run: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
+    - name: Capture Presto server self signed CA
+      run: |
+          while [[ ! -s /tmp/presto-ssl-ca.pem ]];
+            do echo "Waiting to capture SSL CA" \
+              && openssl s_client -connect localhost:8443 2>/dev/null </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/presto-ssl-ca.pem \
+              && sleep 1; done
+    - name: Convert Presto CA from PEM to DER
+      run: openssl x509 -outform der -in /tmp/presto-ssl-ca.pem -out /tmp/presto-ssl-ca.der
+    - name: Add write permission on cacerts file
+      run: chmod u+w /tmp/cacerts-with-presto-ssl.jks
+    - name: Import Presto CA into temp cacerts file
+      run: |
+          keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
+                  -storepass changeit -file /tmp/presto-ssl-ca.der -trustcacerts
+    - name: Test Presto JDBC driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-presto-jdbc-ee'
+    - name: Capture max memory usage
+      run: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
+
   be-tests-redshift-ee:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-20.04
