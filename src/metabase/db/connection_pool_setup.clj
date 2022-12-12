@@ -1,9 +1,37 @@
 (ns metabase.db.connection-pool-setup
   "Code for creating the connection pool for the application DB and setting it as the default Toucan connection."
-  (:require [metabase.config :as config]
+  (:require [java-time :as t]
+            [metabase.config :as config]
             [metabase.connection-pool :as connection-pool]
+            [metabase.plugins.classloader :as classloader]
             [schema.core :as s])
-  (:import com.mchange.v2.c3p0.PoolBackedDataSource))
+  (:import [com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource]))
+
+(def ^:private latest-checkin (atom nil))
+
+(def ^:private recent-window-seconds 15)
+
+(defn recent-activity?
+  "Returns true if there has been recent activity. Define recent activity as an application db connection checked in
+  within 15 seconds. Check-in means a query succeeded and the db connection is no longer needed."
+  []
+  (when-let [activity @latest-checkin]
+    (t/after? activity (t/minus (t/offset-date-time) (t/seconds recent-window-seconds)))))
+
+(defrecord CheckinTracker []
+  ConnectionCustomizer
+  (onAcquire [_ _connection _identity-token])
+  (onCheckIn [_ _connection _identity-token]
+    (reset! latest-checkin (t/offset-date-time)))
+  (onCheckOut [_ _connection _identity-token]
+    (reset! latest-checkin (t/offset-date-time)))
+  (onDestroy [_ _connection _identity-token]))
+
+(let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
+              (.setAccessible true))]
+
+  (.put (.get field com.mchange.v2.c3p0.C3P0Registry)
+        (.getName CheckinTracker) (->CheckinTracker)))
 
 (def ^:private application-db-connection-pool-props
   "Options for c3p0 connection pool for the application DB. These are set in code instead of a properties file because
@@ -11,7 +39,8 @@
   https://www.mchange.com/projects/c3p0/#configuring_connection_testing for an overview of the options used
   below (jump to the 'Simple advice on Connection testing' section.)"
   (merge
-   {"idleConnectionTestPeriod" 60}
+   {"idleConnectionTestPeriod" 60
+    "connectionCustomizerClassName" (.getName CheckinTracker)}
    ;; only merge in `max-pool-size` if it's actually set, this way it doesn't override any things that may have been
    ;; set in `c3p0.properties`
    (when-let [max-pool-size (config/config-int :mb-application-db-max-connection-pool-size)]
@@ -26,6 +55,7 @@
     data-source
     (let [ds-name    (format "metabase-%s-app-db" (name db-type))
           pool-props (assoc application-db-connection-pool-props "dataSourceName" ds-name)]
+      (classloader/the-classloader)
       (com.mchange.v2.c3p0.DataSources/pooledDataSource
        data-source
        (connection-pool/map->properties pool-props)))))
