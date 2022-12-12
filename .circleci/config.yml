@@ -652,10 +652,3 @@ workflows:
                 command: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
                 when: always
           driver: presto-jdbc
-
-      - test-driver:
-          name: be-tests-snowflake-ee
-          requires:
-            - be-deps
-          driver: snowflake
-          timeout: 115m # whut
