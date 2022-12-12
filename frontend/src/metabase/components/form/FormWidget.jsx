@@ -3,6 +3,7 @@ import React, { forwardRef } from "react";
 
 import { PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 
+import CategoryFieldPicker from "metabase/core/components/FormCategoryInput";
 import FormInfoWidget from "./widgets/FormInfoWidget";
 import FormInputWidget from "./widgets/FormInputWidget";
 import FormEmailWidget from "./widgets/FormEmailWidget";
@@ -20,7 +21,6 @@ import FormSnippetCollectionWidget from "./widgets/FormSnippetCollectionWidget";
 import FormHiddenWidget from "./widgets/FormHiddenWidget";
 import FormTextFileWidget from "./widgets/FormTextFileWidget";
 import FormModelWidget from "./widgets/FormModelWidget";
-import CategoryFieldPicker from "./widgets/FormCategoryWidget";
 
 const WIDGETS = {
   info: FormInfoWidget,
