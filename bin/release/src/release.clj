@@ -6,7 +6,6 @@
             [release
              [check-prereqs :as check-prereqs]
              [common :as c]
-             [docker :as docker]
              [draft-release :as draft-release]
              [elastic-beanstalk :as eb]
              [git-tags :as git-tags]
@@ -21,10 +20,8 @@
 (def ^:private steps*
   (ordered-map/ordered-map
    :build-uberjar                       uberjar/build-uberjar!
-   :build-docker                        docker/build-docker-image!
-   :push-git-tags                       git-tags/push-tags!
    :upload-uberjar                      uberjar/upload-uberjar!
-   :push-docker-image                   docker/push-docker-image!
+   :push-git-tags                       git-tags/push-tags!
    :publish-draft-release               draft-release/create-draft-release!
    :update-heroku-buildpack             heroku/update-heroku-buildpack!
    :publish-elastic-beanstalk-artifacts eb/publish-elastic-beanstalk-artifacts!
