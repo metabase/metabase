@@ -56,7 +56,7 @@
   (str (apply u.files/get-path (System/getProperty "java.io.tmpdir") components)))
 
 (def ^:private jar-path
-  (tmp-path (last (.split v1-jar-url "/"))))
+  (tmp-path (last (.split ^String v1-jar-url "/"))))
 
 (def ^:private migration-sql-path
   (tmp-path "metabase-migrate-h2-db-v1-v2.sql"))
