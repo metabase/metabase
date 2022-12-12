@@ -12,12 +12,13 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.driver.sqlserver :as sqlserver]
-            [metabase.models :refer [Database]]
+            [metabase.models :refer [Card Database]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 (deftest fix-order-bys-test
   (testing "Remove order-by from joins"
@@ -342,3 +343,397 @@
                          qp/process-query
                          mt/rows
                          ffirst))))))))
+
+;;; --- PERCENTILE AGGREGATIONS WITH USE OF WINDOW FUNCTION ----------------------------------------------------------
+
+;; TODO -- rewrite to sanity?
+(deftest simple-percentile-aggregations-test
+  (mt/test-driver
+   :sqlserver
+   (testing "Compute percentile aggregation without breakout"
+     (let [result
+           (mt/run-mbql-query venues
+                              {:aggregation [[:aggregation-options
+                                              [:percentile [:field (mt/id :venues :latitude) nil] 0.5]
+                                              {:name "median of latitude"}]]})]
+       (is (= [[34.11345]]
+              (mt/formatted-rows [double] result)))))
+   (testing "Compute percentile aggreagation with breakout"
+     (let [result
+           (mt/run-mbql-query venues
+                              {:aggregation [[:aggregation-options
+                                              [:percentile [:field (mt/id :venues :price) nil] 0.5]
+                                              {:name "median of price over category"}]]
+                               :breakout    [[:field (mt/id :venues :category_id) nil]]
+                               :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]
+                               :limit 3})]
+       (is (= [[2 2.5] [3 2.0] [4 2.0]]
+              (mt/formatted-rows [int double] result)))))
+   (testing "Compute percentile aggregation with multiple breakout fields"
+     (let [result
+           (mt/run-mbql-query venues
+                              {:aggregation [[:aggregation-options
+                                              [:percentile [:field (mt/id :venues :price) nil] 0.5]
+                                              {:name "median of price over category"}]]
+                               :breakout    [[:field (mt/id :venues :category_id) nil]
+                                             [:field (mt/id :venues :latitude) {:binning {:strategy :default}}]]
+                               :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]
+                               :limit 3})]
+       (is (= [[2 30.0] [3 30.0] [4 10.0]]
+              (mt/formatted-rows [int double] result)))))
+   (testing "Compute percentile aggregation of expression field"
+     (let [result
+           (mt/run-mbql-query venues
+                              {:expressions {"silly multiplication" [:*
+                                                                     [:field (mt/id :venues :price) nil]
+                                                                     [:field (mt/id :venues :latitude) nil]]}
+                               :aggregation [[:aggregation-options
+                                              [:percentile [:expression "silly multiplication"] 0.5]
+                                              {:name "median of silly"}]]
+                               :breakout    [[:field (mt/id :venues :category_id) nil]]
+                               :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]
+                               :limit 3})]
+       (is (= [[2 85.13065] [3 68.2697] [4 33.98795]] ;; postgres
+              (mt/formatted-rows [int double] result)))))))
+
+(comment
+  (mt/set-test-drivers! [:sqlserver :postgres])
+  (metabase.test-runner/run [#'metabase.driver.sqlserver-test/simple-percentile-aggregations-test])
+  )
+
+;; TODO -- add here all card scenarios
+(deftest percentile-aggregations-with-card-test
+  (mt/test-driver
+   :sqlserver
+   (testing "Percentile on card results is correct"
+     (mt/with-temp* [Card [{id :id}
+                           {:dataset_query
+                            (mt/mbql-query
+                             venues
+                             {:aggregation [[:aggregation-options
+                                             [:percentile [:field (mt/id :venues :price) nil] 0.5]
+                                             {:name "median of price over category"}]]
+                              :breakout    [[:field (mt/id :venues :category_id) nil]]
+                              :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]})}]]
+       (let [query (mt/mbql-query
+                    venues
+                    {:joins [{:alias (str "Question " id)
+                              :fields :all
+                              :source-table (str "card__" id)
+                              :condition [:=
+                                          [:field (mt/id :venues :category_id) nil]
+                                          [:field (mt/id :venues :category_id)
+                                           {:join-alias (str "Question " id)}]]}]
+                     :order-by [[:asc [:field (mt/id :venues :id) nil]]]
+                     :limit 5})
+             res (qp/process-query query)
+             formatted (mt/formatted-rows [int str int double double int int double] res)]
+         (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 4 2.0]
+                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 11 2.0]
+                 [3 "The Apple Pan" 11 34.0406 -118.428 2 11 2.0]
+                 [4 "Wurstküche" 29 33.9997 -118.465 2 29 2.0]
+                 [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2 20 2.0]]
+                formatted)))))
+(testing "Percentile of joined percentile  is correct"
+  (mt/dataset
+   sample-dataset
+   (mt/with-temp* [Card [{c1-id :id}
+                         {:dataset_query
+                          (mt/mbql-query
+                           venues
+                           {:source-table (mt/id :orders),
+                            :aggregation
+                            [[:aggregation-options [:percentile [:field (mt/id :orders :total) nil] 0.5] 
+                              {:name "p50 total", :display-name "p50 total"}]]
+                            :breakout [[:field (mt/id :orders :user_id) nil]],
+                            :order-by [[:asc [:field (mt/id :orders :user_id) nil]]]})}]
+                   Card [{c2-id :id}
+                         {:dataset_query
+                          (mt/mbql-query
+                           venues
+                           {:source-table (mt/id :orders),
+                            :aggregation
+                            [[:aggregation-options
+                              [:percentile
+                               [:field "p50 total" {:base-type :type/Float,
+                                                    :join-alias (str "Question " c1-id)}]
+                               0.8]
+                              {:name "p80 of p50 total", :display-name "p80 of p50 total"}]],
+                            :breakout [[:field (mt/id :orders :product_id) nil]],
+                            :order-by [[:asc [:field (mt/id :orders :product_id) nil]]],
+                            :joins
+                            [{:alias (str "Question " c1-id)
+                              :strategy :left-join,
+                              :fields
+                              [[:field (mt/id :orders :user_id) {:join-alias (str "Question " c1-id)}]
+                               [:field "p50 total" {:base-type :type/Float, :join-alias (str "Question " c1-id)}]],
+                              :condition [:=
+                                          [:field (mt/id :orders :user_id) nil]
+                                          [:field (mt/id :orders :user_id)
+                                           {:join-alias (str "Question " c1-id)}]],
+                              :source-table (str "card__" c1-id)}]})}]]
+     (let [query (mt/mbql-query
+                  orders
+                  {:source-table (mt/id :orders),
+                   :aggregation
+                   [[:aggregation-options
+                     [:percentile [:field "p80 of p50 total" {:base-type :type/Float, :join-alias (str "Question " c2-id)}] 0.2]
+                     {:name "p20 of p80 of p50 of total", :display-name "p20 of p80 of p50 of total"}]],
+                   :breakout [[:field (mt/id :orders :tax) nil]],
+                   :order-by [[:asc [:field (mt/id :orders :tax) nil]]],
+                   :limit 5
+                   :joins
+                   [{:alias (str "Question " c2-id),
+                     :strategy :left-join,
+                     :fields
+                     [[:field (mt/id :orders :product_id) {:join-alias (str "Question " c2-id)}]
+                      [:field "p80 of p50 total" {:base-type :type/Integer, :join-alias (str "Question " c2-id)}]],
+                     :condition [:=
+                                 [:field (mt/id :orders :product_id) nil]
+                                 [:field (mt/id :orders :product_id) {:join-alias (str "Question " c2-id)}]],
+                     :source-table (str "card__" c2-id)}]})
+           res (qp/process-query query)
+           formatted (mt/formatted-rows [double double] res)
+          ;;  formatted (mt/rows res)
+           ]
+       (is (= [[0.0 81.28]
+               [0.59 82.193]
+               [0.62 78.622]
+               [0.63 81.42]
+               [0.65 82.25800000000001]]
+              formatted))))))))
+
+(comment
+  (mt/set-test-drivers! [:sqlserver :postgres])
+  (metabase.test-runner/run [#'metabase.driver.sqlserver-test/percentile-aggregations-with-card-test])
+  )
+
+(deftest percentile-aggregations-with-joins-test
+  (mt/test-driver
+   :sqlserver
+   (testing "median on expression computed on joined column"
+     (let [query (mt/mbql-query
+                  venues
+                  {:expressions {"latitude * user id"
+                                 [:*
+                                  [:field (mt/id :venues :latitude) nil]
+                                  [:field (mt/id :users :id) {:join-alias "Users"}]]}
+                   :aggregation [[:aggregation-options
+                                  [:percentile [:expression "latitude * user id"] 0.5]
+                                  {:name "median of latitude"}]]
+                   :breakout [[:field (mt/id :users :id) {:join-alias "Users"}]
+                              [:field (mt/id :users :name) {:join-alias "Users"}]]
+                   :order-by [[:asc [:field (mt/id :users :id) {:join-alias "Users"}]]]
+                   :limit 5
+                   :joins
+                   [{:alias "Checkins",
+                     :strategy :left-join,
+                     :fields [[:field (mt/id :checkins :date)
+                               {:join-alias "Checkins", :temporal-unit :default}]],
+                     :source-table (mt/id :checkins),
+                     :condition [:=
+                                 [:field (mt/id :venues :id) nil]
+                                 [:field (mt/id :checkins :venue_id) {:join-alias "Checkins"}]]}
+                    {:alias "Users",
+                     :strategy :left-join,
+                     :fields
+                     [[:field (mt/id :users :id) {:join-alias "Users"}]
+                      [:field (mt/id :users :name) {:join-alias "Users"}]
+                      [:field (mt/id :users :last_login) {:temporal-unit :default, :join-alias "Users"}]],
+                     :source-table (mt/id :users),
+                     :condition [:=
+                                 [:field (mt/id :checkins :user_id) {:join-alias "Checkins"}]
+                                 [:field (mt/id :users :id) {:join-alias "Users"}]]}
+                    {:alias "Categories",
+                     :strategy :left-join,
+                     :fields [[:field (mt/id :categories :id) {:join-alias "Categories"}]
+                              [:field (mt/id :categories :name) {:join-alias "Categories"}]],
+                     :source-table (mt/id :categories)
+                     :condition [:=
+                                 [:field (mt/id :venues :category_id) nil]
+                                 [:field (mt/id :categories :id) {:join-alias "Categories"}]]}]})
+           res (qp/process-query query)
+           formatted (mt/formatted-rows [int str double double] res)]
+       (is (= [[1 "Plato Yeshua" 34.1505]
+               [2 "Felipinho Asklepios" 68.2508]
+               [3 "Kaneonuskatew Eiran" 102.45150000000001]
+               [4 "Simcha Yan" 136.6864]
+               [5 "Quentin Sören" 170.522]]
+              formatted))))))
+
+(comment
+  (mt/set-test-drivers! [:sqlserver :postgres])
+  (metabase.test-runner/run [#'metabase.driver.sqlserver-test/percentile-aggregations-with-joins-test])
+  )
+
+(deftest nested-percentile-aggregations-test
+  (testing "Compute percentile of percentile of percentile aggregation"
+    (mt/test-driver
+     :sqlserver
+     (mt/dataset
+      sample-dataset
+      (as-> (mt/run-mbql-query
+             orders
+             {:aggregation
+              [[:aggregation-options
+                [:percentile [:field "median of median of total" {:base-type :type/Float}] 0.5]
+                {:name "median of median of median of total" :display-name "median of median of median of total"}]]
+              :breakout [[:field (mt/id :orders :subtotal) {:join-alias "Orders - Product"}]]
+              :limit 5
+              :order-by [[:asc [:field (mt/id :orders :subtotal) {:join-alias "Orders - Product"}]]]
+              :joins
+              [{:alias "Orders - Product"
+                :strategy :inner-join
+                :fields
+                [[:field (mt/id :orders :id) {:join-alias "Orders - Product"}]
+                 [:field (mt/id :orders :user_id) {:join-alias "Orders - Product"}]
+                 [:field (mt/id :orders :product_id) {:join-alias "Orders - Product"}]
+                 [:field (mt/id :orders :subtotal) {:join-alias "Orders - Product"}]
+                 [:field (mt/id :orders :tax) {:join-alias "Orders - Product"}]
+                 [:field (mt/id :orders :total) {:join-alias "Orders - Product"}]
+                 [:field (mt/id :orders :discount) {:join-alias "Orders - Product"}]
+                 [:field (mt/id :orders :created_at) {:temporal-unit :default :join-alias "Orders - Product"}]
+                 [:field (mt/id :orders :quantity) {:join-alias "Orders - Product"}]]
+                :source-table (mt/id :orders)
+                :condition [:=
+                            [:field (mt/id :orders :product_id) {:join-alias "Orders - User"}]
+                            [:field (mt/id :orders :product_id) {:join-alias "Orders - Product"}]]}]
+              :source-query
+              {:aggregation
+               [[:aggregation-options
+                 [:percentile [:field "median of total" {:base-type :type/Float}] 0.5]
+                 {:name "median of median of total" :display-name "median of median of total"}]]
+               :breakout [[:field (mt/id :orders :product_id) {:join-alias "Orders - User"}]]
+               :order-by [[:asc [:field (mt/id :orders :product_id) {:join-alias "Orders - User"}]]]
+               :joins
+               [{:alias "Orders - User"
+                 :strategy :inner-join
+                 :fields
+                 [[:field (mt/id :orders :id) {:join-alias "Orders - Product"}]
+                  [:field (mt/id :orders :user_id) {:join-alias "Orders - Product"}]
+                  [:field (mt/id :orders :product_id) {:join-alias "Orders - Product"}]
+                  [:field (mt/id :orders :subtotal) {:join-alias "Orders - Product"}]
+                  [:field (mt/id :orders :tax) {:join-alias "Orders - Product"}]
+                  [:field (mt/id :orders :total) {:join-alias "Orders - Product"}]
+                  [:field (mt/id :orders :discount) {:join-alias "Orders - Product"}]
+                  [:field (mt/id :orders :created_at) {:temporal-unit :default :join-alias "Orders - Product"}]
+                  [:field (mt/id :orders :quantity) {:join-alias "Orders - Product"}]]
+                 :source-table (mt/id :orders)
+                 :condition [:=
+                             [:field (mt/id :orders :user_id) {}]
+                             [:field (mt/id :orders :user_id) {:join-alias "Orders - User"}]]}]
+               :source-query
+               {:source-table (mt/id :orders)
+                :aggregation
+                [[:aggregation-options
+                  [:percentile [:field (mt/id :orders :total) nil] 0.5]
+                  {:name "median of total" :display-name "median of total"}]]
+                :breakout [[:field (mt/id :orders :user_id) nil]]
+                :order-by [[:asc [:field (mt/id :orders :user_id) nil]]]}}})
+            result
+        (mt/formatted-rows [double double] result)
+        (is (= [[15.69 72.945]
+                [19.87 72.8725]
+                [20.41 72.76]
+                [21.42 71.49000000000001]
+                [22.38 72.85]]
+               result)))))))
+
+(comment
+  (mt/set-test-drivers! [:sqlserver :postgres])
+  (metabase.test-runner/run [#'metabase.driver.sqlserver-test/nested-percentile-aggregations-test])
+  )
+
+(deftest percentile-aggregations-with-expressions-test
+  (mt/test-driver
+   :sqlserver
+   (mt/dataset
+    sample-dataset
+    (testing "Compute percentile aggregation with different aggregation over same breakout"
+     (as-> (mt/run-mbql-query
+            orders
+            {:source-table (mt/id :orders),
+             :aggregation
+             [[:aggregation-options [:avg [:field (mt/id :orders :total) nil]] {:name "avg"}]
+              [:aggregation-options
+               [:percentile [:field (mt/id :orders :subtotal) nil] 0.5]
+               {:name "percentile of subtotal", :display-name "percentile of subtotal"}]],
+             :breakout [[:field (mt/id :orders :user_id) nil]],
+             :order-by [[:asc [:field (mt/id :orders :user_id) nil]]]
+             :limit 5})
+           result
+       (mt/formatted-rows [int #(u/round-to-decimals 6 %) #(u/round-to-decimals 6 %)] result)
+       (is (= [[1 81.827273 77.4]
+               [3 100.306 107.21]
+               [4 63.305 51.29]
+               [5 103.65 99.66]
+               [6 90.13 93.185]]
+              result)))))))
+
+(comment
+  (mt/set-test-drivers! [:sqlserver :postgres])
+  (metabase.test-runner/run [#'metabase.driver.sqlserver-test/percentile-aggregations-with-expressions-test])
+  )
+
+(deftest expression-in-breakout-test
+  (mt/test-driver
+   :sqlserver
+   (mt/dataset
+    sample-dataset
+    (as-> (mt/run-mbql-query
+           orders
+           {:expressions {"total + subtotal"
+                           [:+
+                            [:field (mt/id :orders :total) nil]
+                            [:field (mt/id :orders :subtotal) nil]]
+                           "total * subtotal"
+                           [:*
+                            [:field (mt/id :orders :total) nil]
+                            [:field (mt/id :orders :subtotal) nil]]
+                           "rating * quantity"
+                           [:*
+                            [:field (mt/id :orders :quantity) nil]
+                            [:field (mt/id :products :rating) {:join-alias "Products"}]]}
+            :aggregation [[:aggregation-options [:percentile [:expression "total + subtotal" nil] 0.5]
+                           {:name "p50 total * subtotal"}]
+                          [:aggregation-options [:count [:field (mt/id :orders :total)]]
+                           {:name "p50 total"}]
+                          [:aggregation-options [:percentile [:field (mt/id :orders :total)] 0.5]
+                           {:name "p50 total"}]]
+            :breakout [#_[:field (mt/id :products :ean) nil]
+                       [:expression "rating * quantity" nil]]
+            :joins [{:alias "Products"
+                     :source-table (mt/id :products)
+                     :strategy :inner-join
+                     :condition [:=
+                                 [:field (mt/id :products :id) {:join-alias "Products"}]
+                                 [:field (mt/id :orders :product_id) nil]]}]
+            :order-by [[:asc [:expression "rating * quantity" nil]]]
+            :limit 5})
+          result
+          (mt/formatted-rows [double double int double] result)
+          #_(mt/rows result)
+          (is (= #_[["0001664425970" 0.0 152.34 1 77.26]
+                  ["0006590063715" 0.0 137.47 1 70.82]
+                  ["0010465925138" 0.0 139.395 76 71.275]
+                  ["0038948983000" 0.0 191.22 1 97.94]
+                  ["0212722801067" 0.0 223.87 2 113.39]]
+                 [[0.0 140.67000000000002 2368 72.38]
+                    [2.0 228.79000000000002 28 117.86]
+                    [2.5 78.22 21 39.92]
+                    [2.7 160.55 27 81.85]
+                    [3.0 221.98 43 110.99]]
+                 result))))))
+
+(comment
+  (mt/set-test-drivers! [:sqlserver :postgres])
+  (metabase.test-runner/run [#'metabase.driver.sqlserver-test/expression-in-breakout-test])
+  )
+
+
+
+
+
+
+
+
