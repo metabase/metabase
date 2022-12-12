@@ -34,7 +34,7 @@ interface ActionFormProps {
   shouldDisplayButton: boolean;
 }
 
-function ActionForm({
+function ActionVizForm({
   onSubmit,
   dashcard,
   settings,
@@ -122,4 +122,4 @@ const ConfirmMessage = ({ message }: { message?: string | null }) => (
   <div>{message ?? t`This action cannot be undone.`}</div>
 );
 
-export default ActionForm;
+export default ActionVizForm;

@@ -156,7 +156,6 @@ export const ActionParameterMappingForm = ({
   showEditModal,
 }: ActionParameterMapperProps &
   DispatchProps & { showEditModal?: () => void }) => {
-  console.log({ passedAction });
   const action = passedAction ?? dashcard?.action;
   const actionParameters = action?.parameters ?? [];
   const dashboardParameters = page.parameters ?? [];
