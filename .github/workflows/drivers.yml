@@ -221,7 +221,7 @@ jobs:
 
     - name: Prepare the Docker image
       run: |
-          docker exec -it mongo-qa bash \
+          docker exec -i mongo-qa bash \
           && mongod --dbpath /data/db2/ \
                     --sslMode requireSSL \
                     --sslPEMKeyFile /etc/mongo/metamongo.pem \
