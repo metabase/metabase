@@ -3,7 +3,6 @@
   (:require [java-time :as t]
             [metabase.config :as config]
             [metabase.connection-pool :as connection-pool]
-            [metabase.plugins.classloader :as classloader]
             [schema.core :as s])
   (:import [com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource]))
 
@@ -30,7 +29,7 @@
 (let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
               (.setAccessible true))]
 
-  (.put (.get field com.mchange.v2.c3p0.C3P0Registry)
+  (.put ^java.util.HashMap (.get field com.mchange.v2.c3p0.C3P0Registry)
         (.getName CheckinTracker) (->CheckinTracker)))
 
 (def ^:private application-db-connection-pool-props
@@ -55,7 +54,6 @@
     data-source
     (let [ds-name    (format "metabase-%s-app-db" (name db-type))
           pool-props (assoc application-db-connection-pool-props "dataSourceName" ds-name)]
-      (classloader/the-classloader)
       (com.mchange.v2.c3p0.DataSources/pooledDataSource
        data-source
        (connection-pool/map->properties pool-props)))))
