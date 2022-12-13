@@ -183,6 +183,7 @@
      (mt/$ids ~'bird-count
               (calculate-bird-scarcity* ~formula ~filter-clause))))
 
+;;; A bunch of cases are disabled for mongo because it doesn't allow division by zero.
 (deftest nulls-and-zeroes-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
                          ;; bigquery doesn't let you have hypthens in field, table, etc names
@@ -194,11 +195,12 @@
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              (calculate-bird-scarcity $count))))
 
-    (testing (str "do expressions automatically handle division by zero? Should return `nil` in the results for places "
-                  "where that was attempted")
-      (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
-             (calculate-bird-scarcity [:/ 100.0 $count]
-                                      [:!= $count nil]))))
+    (when (not= driver/*driver* :mongo)
+      (testing (str "do expressions automatically handle division by zero? Should return `nil` "
+                    "in the results for places where that was attempted")
+        (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
+               (calculate-bird-scarcity [:/ 100.0 $count]
+                                        [:!= $count nil])))))
 
 
     (testing (str "do expressions handle division by `nil`? Should return `nil` in the results for places where that "
@@ -209,17 +211,20 @@
                                        [:= $count nil]
                                        [:!= $count 0]]))))
 
-    (testing "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
-      (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:/ 100.0 $count]))))
+    (when (not= driver/*driver* :mongo)
+      (testing "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
+        (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
+               (calculate-bird-scarcity [:/ 100.0 $count])))))
 
-    (testing "ok, what if we use multiple args to divide, and more than one is zero?"
-      (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:/ 100.0 $count $count]))))
+    (when (not= driver/*driver* :mongo)
+      (testing "ok, what if we use multiple args to divide, and more than one is zero?"
+        (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
+               (calculate-bird-scarcity [:/ 100.0 $count $count])))))
 
-    (testing "are nulls/zeroes still handled appropriately when nested inside other expressions?"
-      (is (= [[nil] [nil] [nil] [20.0] [25.0] [40.0] [40.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))
+    (when (not= driver/*driver* :mongo)
+      (testing "are nulls/zeroes still handled appropriately when nested inside other expressions?"
+        (is (= [[nil] [nil] [nil] [20.0] [25.0] [40.0] [40.0] [nil] [nil] [nil]]
+               (calculate-bird-scarcity [:* [:/ 100.0 $count] 2])))))
 
     (testing (str "if a zero is present in the NUMERATOR we should return ZERO and not NULL "
                   "(`0 / 10 = 0`; `10 / 0 = NULL`, at least as far as MBQL is concerned)")
@@ -254,7 +259,7 @@
       [(format-fn (u.date/parse s "UTC"))])))
 
 (deftest temporal-arithmetic-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics)
     (testing "Test that we can do datetime arithemtics using MBQL `:interval` clause in expressions"
       (is (= (robust-dates
               ["2014-09-02T13:45:00"

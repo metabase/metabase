@@ -223,7 +223,7 @@
           (is (= expected (test-temporal-extract query))))))))
 
 (deftest temporal-extraction-with-datetime-arithmetic-expression-tests
-  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract :expressions :date-arithmetics)
     (mt/dataset times-mixed
       (doseq [{:keys [title expected query]}
               [{:title    "Nested interval addition expression"
