@@ -25,11 +25,7 @@ DashboardSidebars.propTypes = {
   onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
   setEditingParameter: PropTypes.func.isRequired,
   setParameter: PropTypes.func.isRequired,
-  setParameterName: PropTypes.func.isRequired,
-  setParameterDefaultValue: PropTypes.func.isRequired,
-  setParameterIsMultiSelect: PropTypes.func.isRequired,
   dashcardData: PropTypes.object,
-  setParameterFilteringParameters: PropTypes.func.isRequired,
   isSharing: PropTypes.bool.isRequired,
   isEditing: PropTypes.bool.isRequired,
   isFullscreen: PropTypes.bool.isRequired,
@@ -56,11 +52,7 @@ export function DashboardSidebars({
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   setParameter,
-  setParameterName,
-  setParameterDefaultValue,
-  setParameterIsMultiSelect,
   dashcardData,
-  setParameterFilteringParameters,
   isFullscreen,
   onCancel,
   params,
@@ -119,13 +111,9 @@ export function DashboardSidebars({
         <ParameterSidebar
           parameter={parameter}
           otherParameters={otherParameters}
-          onChange={setParameter}
-          onChangeName={setParameterName}
-          onChangeDefaultValue={setParameterDefaultValue}
-          onChangeIsMultiSelect={setParameterIsMultiSelect}
-          onChangeFilteringParameters={setParameterFilteringParameters}
-          onShowAddPopover={showAddParameterPopover}
-          onRemove={removeParameter}
+          onChangeParameter={setParameter}
+          onRemoveParameter={removeParameter}
+          onShowAddParameterPopover={showAddParameterPopover}
           onClose={closeSidebar}
         />
       );

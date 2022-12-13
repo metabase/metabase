@@ -13,41 +13,37 @@ import {
   ParameterName,
 } from "./ParameterLinkedFilters.styled";
 
-const EMPTY_ARRAY: string[] = [];
-
 export interface ParameterLinkedFiltersProps {
   parameter: Parameter;
   otherParameters: Parameter[];
-  onChangeFilteringParameters: (
-    parameterId: string,
-    filteringParameters: string[],
-  ) => void;
-  onShowAddPopover: () => void;
+  onChangeParameter: (parameter: Parameter) => void;
+  onShowAddParameterPopover: () => void;
 }
 
 const ParameterLinkedFilters = ({
   parameter,
   otherParameters,
-  onChangeFilteringParameters,
-  onShowAddPopover,
+  onChangeParameter,
+  onShowAddParameterPopover,
 }: ParameterLinkedFiltersProps): JSX.Element => {
-  const parameterId = parameter.id;
-  const filteringParameters = parameter.filteringParameters ?? EMPTY_ARRAY;
-
   const usableParameters = useMemo(
     () => otherParameters.filter(usableAsLinkedFilter),
     [otherParameters],
   );
 
   const handleFilterToggle = useCallback(
-    (parameter: Parameter, isFiltered: boolean) => {
-      const newFilteringParameters = isFiltered
-        ? filteringParameters.concat(parameter.id)
-        : filteringParameters.filter(id => id !== parameter.id);
+    (otherParameter: Parameter, isFiltered: boolean) => {
+      const oldParameters = parameter.filteringParameters ?? [];
+      const newParameters = isFiltered
+        ? oldParameters.concat(otherParameter.id)
+        : oldParameters.filter(id => id !== otherParameter.id);
 
-      onChangeFilteringParameters(parameterId, newFilteringParameters);
+      onChangeParameter({
+        ...parameter,
+        filteringParameters: newParameters,
+      });
     },
-    [parameterId, filteringParameters, onChangeFilteringParameters],
+    [parameter, onChangeParameter],
   );
 
   return (
@@ -60,7 +56,10 @@ const ParameterLinkedFilters = ({
           </SectionMessage>
           <SectionMessage>
             {jt`So first, ${(
-              <SectionMessageLink key="link" onClick={onShowAddPopover}>
+              <SectionMessageLink
+                key="link"
+                onClick={onShowAddParameterPopover}
+              >
                 {t`add another dashboard filter`}
               </SectionMessageLink>
             )}.`}
@@ -73,11 +72,11 @@ const ParameterLinkedFilters = ({
               <em key="text">{t`this`}</em>
             )} filter.`}
           </SectionMessage>
-          {usableParameters.map(parameter => (
+          {usableParameters.map(otherParameter => (
             <ParameterFilter
-              key={parameter.id}
-              parameter={parameter}
-              isFiltered={filteringParameters.includes(parameter.id)}
+              key={otherParameter.id}
+              otherParameter={otherParameter}
+              isFiltered={parameter.filteringParameters?.includes(parameter.id)}
               onFilterChange={handleFilterToggle}
             />
           ))}
@@ -88,27 +87,27 @@ const ParameterLinkedFilters = ({
 };
 
 interface ParameterFilterProps {
-  parameter: Parameter;
-  isFiltered: boolean;
-  onFilterChange: (parameter: Parameter, isFiltered: boolean) => void;
+  otherParameter: Parameter;
+  isFiltered?: boolean;
+  onFilterChange: (otherParameter: Parameter, isFiltered: boolean) => void;
 }
 
 const ParameterFilter = ({
-  parameter,
+  otherParameter,
   isFiltered,
   onFilterChange,
 }: ParameterFilterProps): JSX.Element => {
   const handleFilterToggle = useCallback(
     (isFiltered: boolean) => {
-      onFilterChange(parameter, isFiltered);
+      onFilterChange(otherParameter, isFiltered);
     },
-    [parameter, onFilterChange],
+    [otherParameter, onFilterChange],
   );
 
   return (
     <ParameterRoot>
       <ParameterBody>
-        <ParameterName>{parameter.name}</ParameterName>
+        <ParameterName>{otherParameter.name}</ParameterName>
         <Toggle value={isFiltered} onChange={handleFilterToggle} />
       </ParameterBody>
     </ParameterRoot>
