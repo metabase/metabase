@@ -135,6 +135,15 @@ export const setParameterMapping = createThunkAction(
   },
 );
 
+export const SET_PARAMETER = "metabase/dashboard/SET_PARAMETER";
+export const setParameter = createThunkAction(
+  SET_PARAMETER,
+  parameter => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameter.id, () => parameter);
+    return parameter;
+  },
+);
+
 export const SET_PARAMETER_NAME = "metabase/dashboard/SET_PARAMETER_NAME";
 export const setParameterName = createThunkAction(
   SET_PARAMETER_NAME,
