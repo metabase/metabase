@@ -16,7 +16,7 @@ export const PopoverRoot = styled.div<PopoverRootProps>`
   ${({ noTopPadding }) => noTopPadding && "padding-top: 0;"}
 `;
 
-export const PopoverTabs = styled(Radio)`
+export const PopoverTabs = styled(Radio<string>)`
   padding: 0;
   border-bottom: 1px solid ${color("border")};
   margin: 0 1rem 1rem 1rem;
