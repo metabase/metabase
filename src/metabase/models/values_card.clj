@@ -64,8 +64,7 @@
 
 (defn upsert-or-delete-for-dashboard!
   "Create, update, or delete appropriate ValuesCards for each parameter in the dashboard"
-  [{dashboard-id :id parameters :parameters :as db}]
-  (println "doing it" db)
+  [{dashboard-id :id parameters :parameters}]
   (let [upsertable?           (fn [{:keys [source_type card_id id]}] (and source_type card_id id (= source_type "card")))
         upsertable-parameters (filter upsertable? parameters)]
 
