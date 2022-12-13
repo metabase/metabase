@@ -1,6 +1,9 @@
 import React from "react";
+
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
+
 import { ITreeNodeItem, TreeNodeComponent } from "./types";
+import { ListRoot } from "./TreeNodeList.styled";
 
 interface TreeNodeListProps {
   items: ITreeNodeItem[];
@@ -8,14 +11,16 @@ interface TreeNodeListProps {
   selectedId?: ITreeNodeItem["id"];
   depth: number;
   role?: string;
+  className?: string;
   onToggleExpand: (id: ITreeNodeItem["id"]) => void;
   onSelect?: (item: ITreeNodeItem) => void;
   TreeNode: TreeNodeComponent;
 }
 
-export function TreeNodeList({
+function BaseTreeNodeList({
   items,
   role,
+  className,
   expandedIds,
   selectedId,
   depth,
@@ -26,7 +31,7 @@ export function TreeNodeList({
   const selectedRef = useScrollOnMount();
 
   return (
-    <ul role={role}>
+    <ListRoot className={className} role={role}>
       {items.map(item => {
         const isSelected = selectedId === item.id;
         const hasChildren =
@@ -49,7 +54,7 @@ export function TreeNodeList({
               depth={depth}
             />
             {isExpanded && (
-              <TreeNodeList
+              <BaseTreeNodeList
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 items={item.children!}
                 expandedIds={expandedIds}
@@ -63,6 +68,10 @@ export function TreeNodeList({
           </React.Fragment>
         );
       })}
-    </ul>
+    </ListRoot>
   );
 }
+
+export const TreeNodeList = Object.assign(BaseTreeNodeList, {
+  Root: ListRoot,
+});
