@@ -11,24 +11,24 @@ import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
-  onChangeName: (name: string) => void;
-  onChangeDefaultValue: (value: unknown) => void;
-  onChangeMultiSelect: (isMultiSelect: boolean) => void;
-  onShowAddParameterPopover: () => void;
-  onRemove: () => void;
-  onCancel: (parameter: Parameter) => void;
+  onChange: (parameterId: string, parameter: Parameter) => void;
+  onChangeName: (parameterId: string, name: string) => void;
+  onChangeDefaultValue: (parameterId: string, value: unknown) => void;
+  onChangeIsMultiSelect: (parameterId: string, isMultiSelect: boolean) => void;
+  onShowAddPopover: () => void;
+  onRemove: (parameterId: string) => void;
   onClose: () => void;
 }
 
 const ParameterSidebar = ({
   parameter,
   otherParameters,
+  onChange,
   onChangeName,
   onChangeDefaultValue,
-  onChangeMultiSelect,
-  onShowAddParameterPopover,
+  onChangeIsMultiSelect,
+  onShowAddPopover,
   onRemove,
-  onCancel,
   onClose,
 }: ParameterSidebarProps): JSX.Element => {
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
@@ -41,9 +41,15 @@ const ParameterSidebar = ({
     }
   }, [parameter, originalParameter]);
 
+  const handleRemove = useCallback(() => {
+    onRemove(originalParameter.id);
+    onClose();
+  }, [originalParameter, onRemove, onClose]);
+
   const handleCancel = useCallback(() => {
-    onCancel(originalParameter);
-  }, [originalParameter, onCancel]);
+    onChange(originalParameter.id, originalParameter);
+    onClose();
+  }, [originalParameter, onChange, onClose]);
 
   return (
     <Sidebar onCancel={handleCancel} onClose={onClose}>
@@ -61,14 +67,14 @@ const ParameterSidebar = ({
             parameter={parameter}
             onChangeName={onChangeName}
             onChangeDefaultValue={onChangeDefaultValue}
-            onChangeMultiSelect={onChangeMultiSelect}
-            onRemove={onRemove}
+            onChangeIsMultiSelect={onChangeIsMultiSelect}
+            onRemove={handleRemove}
           />
         ) : (
           <ParameterLinkedFilters
             parameter={parameter}
             otherParameters={otherParameters}
-            onShowAddParameterPopover={onShowAddParameterPopover}
+            onShowAddPopover={onShowAddPopover}
           />
         )}
       </SidebarBody>

@@ -12,13 +12,13 @@ import {
 export interface ParameterLinkedFiltersProps {
   parameter: Parameter;
   otherParameters: Parameter[];
-  onShowAddParameterPopover: () => void;
+  onShowAddPopover: () => void;
 }
 
 const ParameterLinkedFilters = ({
   parameter,
   otherParameters,
-  onShowAddParameterPopover,
+  onShowAddPopover,
 }: ParameterLinkedFiltersProps): JSX.Element => {
   const usableParameters = useMemo(
     () => otherParameters.filter(usableAsLinkedFilter),
@@ -35,10 +35,7 @@ const ParameterLinkedFilters = ({
           </SectionMessage>
           <SectionMessage>
             {jt`So first, ${(
-              <SectionMessageLink
-                key="link"
-                onClick={onShowAddParameterPopover}
-              >
+              <SectionMessageLink key="link" onClick={onShowAddPopover}>
                 {t`add another dashboard filter`}
               </SectionMessageLink>
             )}.`}

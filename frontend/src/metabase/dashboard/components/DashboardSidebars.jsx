@@ -119,29 +119,13 @@ export function DashboardSidebars({
         <ParameterSidebar
           parameter={parameter}
           otherParameters={otherParameters}
-          onChangeName={name => {
-            setParameterName(editingParameterId, name);
-          }}
-          onChangeDefaultValue={value => {
-            setParameterDefaultValue(editingParameterId, value);
-          }}
-          onChangeMultiSelect={value => {
-            setParameterIsMultiSelect(editingParameterId, value);
-          }}
-          onShowAddParameterPopover={() => {
-            showAddParameterPopover();
-          }}
-          onRemove={() => {
-            closeSidebar();
-            removeParameter(editingParameterId);
-          }}
-          onCancel={parameter => {
-            closeSidebar();
-            setParameter(editingParameterId, parameter);
-          }}
-          onClose={() => {
-            closeSidebar();
-          }}
+          onChange={setParameter}
+          onChangeName={setParameterName}
+          onChangeDefaultValue={setParameterDefaultValue}
+          onChangeIsMultiSelect={setParameterIsMultiSelect}
+          onShowAddPopover={showAddParameterPopover}
+          onRemove={removeParameter}
+          onClose={closeSidebar}
         />
       );
     }
