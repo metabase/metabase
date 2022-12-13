@@ -13513,6 +13513,7 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: Settings for rendering the action
 
+  - changeSet:
       id: v46.00-026
       author: metamben
       comment: Added 0.46.0 -- add field for tracking DBMS versions
