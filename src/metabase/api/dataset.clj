@@ -122,31 +122,37 @@
 
 (defn- render-query
   "Render the query to png as if it were an existing card."
-  [dataset-query]
+  [dataset-query card]
   (let [query-results (qp/process-query-and-save-execution!
                        (-> dataset-query
                            (assoc :async? false)
-                           (assoc-in [:middleware :process-viz-settings?] true)
-                           (assoc-in [:middleware :format-rows?] true))
+                           (assoc :middleware {:process-viz-settings?  true
+                                               :skip-results-metadata? true
+                                               :ignore-cached-results? true
+                                               :format-rows?           false
+                                               :js-int-to-string?      false}))
                        {:executed-by api/*current-user-id*
                         :context     (export-format->context "png")})
-        card          {}
-        png-bytes     (render/render-pulse-card-to-png "UTC" #_(pulse-impl/defaulted-timezone card)
-                                                       card
-                                                       query-results
-                                                       1000)]
+        png-bytes     (render/render-pulse-card-to-png
+                       (-> query-results :data :results_timezone)
+                       card
+                       (assoc-in query-results [:data :viz-settings] {}) ;; not totally sure what goes wrong when you DO pass viz-settings
+                       1000)]
     (-> png-bytes
         image-response
-        (response/header "Content-Disposition" (format "attachment; filename=\"card-%d.png\"" -1)))))
+        (response/header "Content-Disposition" "attachment; filename=\"unsaved-card.png\""))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
-  [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
+  [export-format :as {{:keys [query visualization_settings card] :or {visualization_settings "{}"}} :params}]
   {query                  su/JSONString
    visualization_settings su/JSONString
-   export-format          ExportFormat}
+   export-format          ExportFormat
+   card                   su/JSONString}
   (let [query        (json/parse-string query keyword)
+        card         (-> (json/parse-string card keyword)
+                         (update :display keyword))
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
                          (update-in [:table.columns] mbql.normalize/normalize)
                          mb.viz/db->norm)
@@ -160,7 +166,7 @@
                                                          :skip-results-metadata? true
                                                          :format-rows? false))))]
     (case export-format
-      "png" (render-query query)
+      "png" (render-query query card)
       (run-query-async
        query
        :export-format export-format
