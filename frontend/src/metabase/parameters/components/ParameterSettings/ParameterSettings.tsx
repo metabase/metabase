@@ -26,24 +26,54 @@ const MULTI_SELECT_OPTIONS = [
 
 interface ParameterSettingsProps {
   parameter: Parameter;
-  onChangeName: (name: string) => void;
-  onChangeDefaultValue: (value: unknown) => void;
-  onChangeMultiSelect: (isMultiSelect: boolean) => void;
-  onRemove: () => void;
+  onChangeName: (parameterId: string, name: string) => void;
+  onChangeDefaultValue: (parameterId: string, value: unknown) => void;
+  onChangeIsMultiSelect: (parameterId: string, isMultiSelect: boolean) => void;
+  onRemove: (parameterId: string) => void;
 }
 
 const ParameterSettings = ({
   parameter,
   onChangeName,
   onChangeDefaultValue,
-  onChangeMultiSelect,
+  onChangeIsMultiSelect,
   onRemove,
 }: ParameterSettingsProps): JSX.Element => {
+  const parameterId = parameter.id;
+
+  const handleNameChange = useCallback(
+    (name: string) => {
+      onChangeName(parameterId, name);
+    },
+    [parameterId, onChangeName],
+  );
+
+  const handleDefaultValueChange = useCallback(
+    (value: unknown) => {
+      onChangeDefaultValue(parameterId, value);
+    },
+    [parameterId, onChangeDefaultValue],
+  );
+
+  const handleMultiSelectChange = useCallback(
+    (isMultiSelect: boolean) => {
+      onChangeIsMultiSelect(parameterId, isMultiSelect);
+    },
+    [parameterId, onChangeIsMultiSelect],
+  );
+
+  const handleRemove = useCallback(() => {
+    onRemove(parameterId);
+  }, [parameterId, onRemove]);
+
   return (
     <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
-        <ParameterInput initialValue={parameter.name} onChange={onChangeName} />
+        <ParameterInput
+          initialValue={parameter.name}
+          onChange={handleNameChange}
+        />
       </SettingSection>
       <SettingSection>
         <SettingLabel>{t`Default value`}</SettingLabel>
@@ -52,7 +82,7 @@ const ParameterSettings = ({
           name={parameter.name}
           value={parameter.default}
           placeholder={t`No default`}
-          setValue={onChangeDefaultValue}
+          setValue={handleDefaultValueChange}
         />
       </SettingSection>
       {isSingleOrMultiSelectable(parameter) && (
@@ -62,11 +92,13 @@ const ParameterSettings = ({
             value={getIsMultiSelect(parameter)}
             options={MULTI_SELECT_OPTIONS}
             vertical
-            onChange={onChangeMultiSelect}
+            onChange={handleMultiSelectChange}
           />
         </SettingSection>
       )}
-      <SettingRemoveButton onClick={onRemove}>{t`Remove`}</SettingRemoveButton>
+      <SettingRemoveButton onClick={handleRemove}>
+        {t`Remove`}
+      </SettingRemoveButton>
     </SettingsRoot>
   );
 };
