@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useLayoutEffect, useCallback } from "react";
 import _ from "underscore";
 import Input, { InputProps } from "metabase/core/components/Input";
 // import { Input } from "./InputBlurChange.styled";
@@ -8,9 +8,10 @@ import Input, { InputProps } from "metabase/core/components/Input";
  * `onBlurChange` feature, otherwise you should use <input> directly
  */
 
-interface InputBlurChangeProps extends InputProps {
+interface InputBlurChangeProps extends Omit<InputProps, "onBlur"> {
   onBlurChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
+
 const InputBlurChange = ({
   value,
   onChange,
@@ -19,7 +20,7 @@ const InputBlurChange = ({
 }: InputBlurChangeProps) => {
   const [internalValue, setInternalValue] = useState(value);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setInternalValue(value);
   }, [value]);
 
@@ -30,13 +31,16 @@ const InputBlurChange = ({
     }
   };
 
-  const handleBlur = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (onBlurChange && (value || "") !== event.target.value) {
-      onBlurChange(event);
-    }
-  };
+  const handleBlur = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (onBlurChange && (value || "") !== event.target.value) {
+        onBlurChange(event);
+      }
+    },
+    [value, onBlurChange],
+  );
 
-  const inputProps = _.omit(props, "onBlur");
+  const inputProps = _.omit(props, "onBlur", "onBlurChange", "onChange");
 
   return (
     <Input
