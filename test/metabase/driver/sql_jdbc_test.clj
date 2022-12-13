@@ -11,8 +11,11 @@
             [toucan.db :as db]))
 
 (deftest describe-database-test
-  (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]
-                         {:name table, :schema "PUBLIC", :description nil}))}
+  (is (=? {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]
+                          {:name table, :schema "PUBLIC", :description nil}))
+           :version string?
+           :semantic-version #(and (vector? %) (every? nat-int? %))
+           :flavor string?}
          (driver/describe-database :h2 (mt/db)))))
 
 (deftest describe-table-test
