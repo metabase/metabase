@@ -46,11 +46,14 @@
     (is (= "Red" (test-string-extract [:substring [:field (data/id :venues :name) nil] 1 3])))
     (is (= "ed Medicine" (test-string-extract [:substring [:field (data/id :venues :name) nil] 2])))
     (is (= "Red Medicin" (test-string-extract [:substring [:field (data/id :venues :name) nil]
-                                               1 [:- [:length [:field (data/id :venues :name) nil]] 1]])))))
+                                               1 [:- [:length [:field (data/id :venues :name) nil]] 1]])))
+    (is (= "ne" (test-string-extract [:substring [:field (data/id :venues :name) nil]
+                                      [:- [:length [:field (data/id :venues :name) nil]] 1]])))))
 
 (deftest test-replace
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "Red Baloon" (test-string-extract [:replace [:field (data/id :venues :name) nil] "Medicine" "Baloon"])))))
+    (is (= "Red Baloon" (test-string-extract [:replace [:field (data/id :venues :name) nil] "Medicine" "Baloon"])))
+    (is (= "Red" (test-string-extract [:replace [:field (data/id :venues :name) nil] " Medicine" ""])))))
 
 (deftest test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)

@@ -420,20 +420,33 @@
 (defmethod ->rvalue :exp       [[_ inp]] {"$exp" (->rvalue inp)})
 (defmethod ->rvalue :sqrt      [[_ inp]] {"$sqrt" (->rvalue inp)})
 
-(defmethod ->rvalue :trim      [[_ inp]] {"$trim" (->rvalue inp)})
-(defmethod ->rvalue :ltrim     [[_ inp]] {"$ltrim" (->rvalue inp)})
-(defmethod ->rvalue :rtrim     [[_ inp]] {"$rtrim" (->rvalue inp)})
+(defmethod ->rvalue :trim      [[_ inp]] {"$trim" {"input" (->rvalue inp)}})
+(defmethod ->rvalue :ltrim     [[_ inp]] {"$ltrim" {"input" (->rvalue inp)}})
+(defmethod ->rvalue :rtrim     [[_ inp]] {"$rtrim" {"input" (->rvalue inp)}})
 (defmethod ->rvalue :upper     [[_ inp]] {"$toUpper" (->rvalue inp)})
 (defmethod ->rvalue :lower     [[_ inp]] {"$toLower" (->rvalue inp)})
 (defmethod ->rvalue :length    [[_ inp]] {"$strLenCP" (->rvalue inp)})
 
 (defmethod ->rvalue :power     [[_ & args]] {"$pow" (mapv ->rvalue args)})
-(defmethod ->rvalue :replace   [[_ & args]] {"$replaceAll" (mapv ->rvalue args)})
 (defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
-(defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
-
 (defmethod ->rvalue :temporal-extract [[_ inp unit]]
   (with-rvalue-temporal-bucketing (->rvalue inp) unit))
+
+(defmethod ->rvalue :replace
+  [[_ & args]]
+  (let [[expr fnd replacement] (mapv ->rvalue args)]
+    {"$replaceAll" {"input" expr "find" fnd "replacement" replacement}}))
+
+(defmethod ->rvalue :substring
+  [[_ & [expr idx cnt]]]
+  (let [expr-val (->rvalue expr)
+        idx-val {"$subtract" [(->rvalue idx) 1]}]
+    {"$substrCP" [expr-val
+                  idx-val
+                  ;; The last argument is not optional in mongo
+                  (if (some? cnt)
+                    (->rvalue cnt)
+                    {"$subtract" [{"$strLenCP" expr-val} idx-val]})]}))
 
 ;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
 ;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
