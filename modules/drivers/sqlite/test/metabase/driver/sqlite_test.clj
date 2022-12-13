@@ -134,7 +134,10 @@
           (mt/with-db db
             (testing "timestamp columns"
               (testing "database should be synced"
-                (is (= {:tables (set (map default-table-result ["timestamp_table"]))}
+                (is (=? {:tables (set (map default-table-result ["timestamp_table"]))
+                         :version string?
+                         :semantic-version (every-pred vector? #(every? nat-int? %))
+                         :flavor string?}
                        (driver/describe-database driver db))))
 
               (testing "timestamp column should exist"

@@ -13,7 +13,8 @@
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (testing "describe-database"
-        (is (= {:tables #{{:schema nil, :name "checkins"}}}
+        (is (=? {:tables #{{:schema nil, :name "checkins"}}
+                 :version string?}
                (driver/describe-database :druid (mt/db)))))
 
       (testing "describe-table"

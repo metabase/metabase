@@ -186,7 +186,10 @@
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
         (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-          (is (= {:tables #{(default-table-result "test_mview")}}
+          (is (= {:tables #{(default-table-result "test_mview")}
+                  :version string?
+                  :semantic-version (every-pred vector? #(every? nat-int? %))
+                  :flavor string?}
                  (driver/describe-database :postgres database))))))))
 
 (deftest foreign-tables-test
@@ -209,7 +212,10 @@
                                 OPTIONS (user '" (:user details) "');
                               GRANT ALL ON public.local_table to PUBLIC;")])
         (mt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
-          (is (= {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
+          (is (=? {:tables (set (map default-table-result ["foreign_table" "local_table"]))
+                   :version string?
+                   :semantic-version (every-pred vector? #(every? nat-int? %))
+                   :flavor string?}
                  (driver/describe-database :postgres database))))))))
 
 (deftest recreated-views-test

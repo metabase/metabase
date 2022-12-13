@@ -54,13 +54,6 @@
                   (map :name)
                   sort))))))
 
-(deftest describe-database-test
-  (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
-                    {:name "VENUES", :schema "PUBLIC", :description nil}
-                    {:name "CATEGORIES", :schema "PUBLIC", :description nil}
-                    {:name "CHECKINS", :schema "PUBLIC", :description nil}}}
-         (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))
-
 (defn- describe-database-with-open-resultset-count
   "Just like `describe-database`, but instead of returning the database description returns the number of ResultSet
   objects the sync process left open. Make sure you wrap ResultSets with `with-open`! Otherwise some JDBC drivers like
