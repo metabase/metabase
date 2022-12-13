@@ -152,9 +152,9 @@
   [{dashboard-id :id parameters :parameters :as dashboard}]
   (assoc dashboard :parameters
          (let [param-id->card-id (card-ids-by-param-id dashboard-id)]
-           (for [{:keys [id sourceType cardId] :as param} parameters]
-             (if (= sourceType "card")
-               (assoc param :cardId (get param-id->card-id id cardId))
+           (for [{:keys [id source_type card_id] :as param} parameters]
+             (if (= source_type "card")
+               (assoc param :card_id (get param-id->card-id id card_id))
                param)))))
 
 (u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Dashboard)

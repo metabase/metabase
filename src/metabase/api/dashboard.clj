@@ -743,7 +743,7 @@
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
-     (case (:sourceType param)
+     (case (:source_type param)
        "static-list" (println "TODO: Not implemented yet!!")
        "card"        (values-card/values-for-dashboard dashboard param-key query)
        (chain-filter dashboard param-key query-params query)))))

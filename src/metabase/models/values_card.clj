@@ -42,12 +42,12 @@
 
 (defn- upsert-for-dashboard!
   [dashboard-id parameters]
-  (doseq [{:keys [cardId id]} parameters]
+  (doseq [{:keys [card_id id]} parameters]
     (let [conditions {:parameterized_object_id   dashboard-id
                       :parameterized_object_type "dashboard"
                       :parameter_id              id}]
-      (or (db/update-where! ValuesCard conditions :card_id cardId)
-          (db/insert! ValuesCard (merge conditions {:card_id cardId}))))))
+      (or (db/update-where! ValuesCard conditions :card_id card_id)
+          (db/insert! ValuesCard (merge conditions {:card_id card_id}))))))
 
 (defn delete-for-dashboard!
   "Deletes any lingering ValuesCards associated with the `dashboard` and NOT listed in the optional
@@ -66,7 +66,7 @@
   "Create, update, or delete appropriate ValuesCards for each parameter in the dashboard"
   [{dashboard-id :id parameters :parameters :as db}]
   (println "doing it" db)
-  (let [upsertable?           (fn [{:keys [sourceType cardId id]}] (and sourceType cardId id (= sourceType "card")))
+  (let [upsertable?           (fn [{:keys [source_type card_id id]}] (and source_type card_id id (= source_type "card")))
         upsertable-parameters (filter upsertable? parameters)]
 
     (upsert-for-dashboard! dashboard-id upsertable-parameters)
