@@ -11,29 +11,18 @@ import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
-  onChange: (parameter: Parameter) => void;
-  onChangeName: (parameterId: string, name: string) => void;
-  onChangeDefaultValue: (parameterId: string, value: unknown) => void;
-  onChangeIsMultiSelect: (parameterId: string, isMultiSelect: boolean) => void;
-  onChangeFilteringParameters: (
-    parameterId: string,
-    filteringParameters: string[],
-  ) => void;
-  onShowAddPopover: () => void;
-  onRemove: (parameterId: string) => void;
+  onChangeParameter: (parameter: Parameter) => void;
+  onRemoveParameter: (parameterId: string) => void;
+  onShowAddParameterPopover: () => void;
   onClose: () => void;
 }
 
 const ParameterSidebar = ({
   parameter,
   otherParameters,
-  onChange,
-  onChangeName,
-  onChangeDefaultValue,
-  onChangeIsMultiSelect,
-  onChangeFilteringParameters,
-  onShowAddPopover,
-  onRemove,
+  onChangeParameter,
+  onRemoveParameter,
+  onShowAddParameterPopover,
   onClose,
 }: ParameterSidebarProps): JSX.Element => {
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
@@ -47,14 +36,14 @@ const ParameterSidebar = ({
   }, [parameter, originalParameter]);
 
   const handleRemove = useCallback(() => {
-    onRemove(originalParameter.id);
+    onRemoveParameter(originalParameter.id);
     onClose();
-  }, [originalParameter, onRemove, onClose]);
+  }, [originalParameter, onRemoveParameter, onClose]);
 
   const handleCancel = useCallback(() => {
-    onChange(originalParameter);
+    onChangeParameter(originalParameter);
     onClose();
-  }, [originalParameter, onChange, onClose]);
+  }, [originalParameter, onChangeParameter, onClose]);
 
   return (
     <Sidebar onCancel={handleCancel} onClose={onClose}>
@@ -70,17 +59,15 @@ const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
-            onChangeName={onChangeName}
-            onChangeDefaultValue={onChangeDefaultValue}
-            onChangeIsMultiSelect={onChangeIsMultiSelect}
-            onRemove={handleRemove}
+            onChangeParameter={onChangeParameter}
+            onRemoveParameter={handleRemove}
           />
         ) : (
           <ParameterLinkedFilters
             parameter={parameter}
             otherParameters={otherParameters}
-            onChangeFilteringParameters={onChangeFilteringParameters}
-            onShowAddPopover={onShowAddPopover}
+            onChangeParameter={onChangeParameter}
+            onShowAddParameterPopover={onShowAddParameterPopover}
           />
         )}
       </SidebarBody>

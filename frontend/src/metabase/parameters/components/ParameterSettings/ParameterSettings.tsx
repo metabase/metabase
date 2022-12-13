@@ -9,7 +9,7 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import { Parameter } from "metabase-types/api";
-import { getIsMultiSelect } from "../../utils/dashboards";
+import { getIsMultiSelect, setParameterName } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import {
   SettingLabel,
@@ -26,45 +26,39 @@ const MULTI_SELECT_OPTIONS = [
 
 interface ParameterSettingsProps {
   parameter: Parameter;
-  onChangeName: (parameterId: string, name: string) => void;
-  onChangeDefaultValue: (parameterId: string, value: unknown) => void;
-  onChangeIsMultiSelect: (parameterId: string, isMultiSelect: boolean) => void;
-  onRemove: (parameterId: string) => void;
+  onChangeParameter: (parameter: Parameter) => void;
+  onRemoveParameter: (parameterId: string) => void;
 }
 
 const ParameterSettings = ({
   parameter,
-  onChangeName,
-  onChangeDefaultValue,
-  onChangeIsMultiSelect,
-  onRemove,
+  onChangeParameter,
+  onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
-  const parameterId = parameter.id;
-
   const handleNameChange = useCallback(
     (name: string) => {
-      onChangeName(parameterId, name);
+      onChangeParameter(setParameterName(parameter, name));
     },
-    [parameterId, onChangeName],
+    [parameter, onChangeParameter],
   );
 
   const handleDefaultValueChange = useCallback(
     (value: unknown) => {
-      onChangeDefaultValue(parameterId, value);
+      onChangeParameter({ ...parameter, default: value });
     },
-    [parameterId, onChangeDefaultValue],
+    [parameter, onChangeParameter],
   );
 
   const handleMultiSelectChange = useCallback(
     (isMultiSelect: boolean) => {
-      onChangeIsMultiSelect(parameterId, isMultiSelect);
+      onChangeParameter({ ...parameter, isMultiSelect });
     },
-    [parameterId, onChangeIsMultiSelect],
+    [parameter, onChangeParameter],
   );
 
   const handleRemove = useCallback(() => {
-    onRemove(parameterId);
-  }, [parameterId, onRemove]);
+    onRemoveParameter(parameter.id);
+  }, [parameter, onRemoveParameter]);
 
   return (
     <SettingsRoot>
