@@ -15,6 +15,10 @@ export interface ParameterSidebarProps {
   onChangeName: (parameterId: string, name: string) => void;
   onChangeDefaultValue: (parameterId: string, value: unknown) => void;
   onChangeIsMultiSelect: (parameterId: string, isMultiSelect: boolean) => void;
+  onChangeFilteringParameters: (
+    parameterId: string,
+    filteringParameters: string[],
+  ) => void;
   onShowAddPopover: () => void;
   onRemove: (parameterId: string) => void;
   onClose: () => void;
@@ -27,6 +31,7 @@ const ParameterSidebar = ({
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
+  onChangeFilteringParameters,
   onShowAddPopover,
   onRemove,
   onClose,
@@ -74,6 +79,7 @@ const ParameterSidebar = ({
           <ParameterLinkedFilters
             parameter={parameter}
             otherParameters={otherParameters}
+            onChangeFilteringParameters={onChangeFilteringParameters}
             onShowAddPopover={onShowAddPopover}
           />
         )}

@@ -134,6 +134,7 @@ export function DashboardSidebars({
           onChangeName={setParameterName}
           onChangeDefaultValue={setParameterDefaultValue}
           onChangeIsMultiSelect={setParameterIsMultiSelect}
+          onChangeFilteringParameters={setParameterFilteringParameters}
           onShowAddPopover={showAddParameterPopover}
           onRemove={removeParameter}
           onClose={closeSidebar}
