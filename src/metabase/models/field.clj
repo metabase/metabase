@@ -203,13 +203,6 @@
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
-(defn target
-  "Return the FK target `Field` that this `Field` points to."
-  [{:keys [semantic_type fk_target_field_id]}]
-  (when (and (isa? semantic_type :type/FK)
-             fk_target_field_id)
-    (db/select-one Field :id fk_target_field_id)))
-
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]

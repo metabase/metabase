@@ -382,6 +382,7 @@
            :triggers
            (m/index-by (comp #(get % "db-id") qc/from-job-data :data))))
 
+;;; TODO -- this is only used in [[metabase.api.card-test]] now
 (defn job-info-for-individual-refresh
   "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
   []

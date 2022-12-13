@@ -1130,7 +1130,7 @@
                 "WHERE ("
                 "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(now() AS date) "
                 "AND "
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), now()) AS date)"
+                "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), CAST(now() AS datetime)) AS date)"
                 ")")
            (:query
             (qp/compile
@@ -1144,9 +1144,9 @@
       (is (= (str "SELECT CHECKINS.DATE AS DATE "
                   "FROM CHECKINS "
                   "WHERE ("
-                  "CHECKINS.DATE >= parsedatetime(formatdatetime(dateadd('month', CAST(-4 AS long), now()), 'yyyyMM'), 'yyyyMM')"
+                  "CHECKINS.DATE >= date_trunc('month', dateadd('month', CAST(-4 AS long), CAST(now() AS datetime)))"
                   " AND "
-                  "CHECKINS.DATE < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM')) "
+                  "CHECKINS.DATE < date_trunc('month', now())) "
                   "GROUP BY CHECKINS.DATE "
                   "ORDER BY CHECKINS.DATE ASC "
                   "LIMIT 1048575")
@@ -1160,7 +1160,7 @@
 (deftest field-filter-start-of-week-test
   (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
     (mt/dataset checkins:1-per-day
-      (let [query (mt/native-query {:query         (str "SELECT dayname(\"TIMESTAMP\") as day "
+      (let [query (mt/native-query {:query         (str "SELECT dayname(\"TIMESTAMP\") as \"day\" "
                                                         "FROM checkins "
                                                         "[[WHERE {{date_range}}]] "
                                                         "ORDER BY \"TIMESTAMP\" ASC "

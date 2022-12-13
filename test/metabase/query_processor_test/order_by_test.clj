@@ -63,7 +63,7 @@
                   :order-by    [[:asc [:aggregation 0]]]})))))
 
     (testing :avg
-      (let [driver-floors-average? (#{:h2 :redshift :sqlserver} driver/*driver*)]
+      (let [driver-floors-average? (#{:redshift :sqlserver} driver/*driver*)]
         (is (= [[3 22.0]
                 [2 (if driver-floors-average? 28.0 28.3)]
                 [1 (if driver-floors-average? 32.0 32.8)]

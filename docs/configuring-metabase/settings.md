@@ -4,7 +4,7 @@ redirect_from:
   - /docs/latest/administration-guide/08-configuration-settings
 ---
 
-## General settings
+# General settings
 
 This section contains settings for your whole instance, like its URL, the reporting timezone, and toggles for disabling or enabling some of Metabase's optional features.
 
@@ -18,7 +18,7 @@ How you’d like to refer to this instance of Metabase.
 
 The site URL is the web address that people use to access your Metabase instance. Make sure to include http:// or https:// to make sure it’s reachable.
 
-### Redirect to HTTPS
+## Redirect to HTTPS
 
 By default, Metabase is served over HTTP.
 
@@ -36,7 +36,7 @@ This email address will be displayed in various messages throughout Metabase whe
 
 Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2"). To allow all domains, leave the field empty. This setting doesnt affect existing subscriptions.
 
-### Anonymous Tracking
+## Anonymous Tracking
 
 This option turns determines whether or not you allow [anonymous data about your usage of Metabase](../installation-and-operation/information-collection.md) to be sent back to us to help us improve the product. _Your database’s data is never tracked or sent_.
 

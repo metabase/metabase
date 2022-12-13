@@ -304,10 +304,10 @@
                   "FROM \"PUBLIC\".\"ATTEMPTS\" "
                   "WHERE"
                   " (\"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
-                  " >= parsedatetime(formatdatetime(dateadd('month', CAST(-1 AS long), now()), 'yyyyMM'), 'yyyyMM')"
+                  " >= date_trunc('month', dateadd('month', CAST(-1 AS long), CAST(now() AS datetime)))"
                   " AND"
                   " \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
-                  " < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM'))")
+                  " < date_trunc('month', now()))")
              (:query
               (qp/compile
                (mt/mbql-query attempts
