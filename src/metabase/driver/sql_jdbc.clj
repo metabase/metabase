@@ -62,8 +62,8 @@
   (sql-jdbc.conn/notify-database-updated database))
 
 (defmethod driver/dbms-version :sql-jdbc
-  [driver database]
-  (sql-jdbc.sync/dbms-version driver (sql-jdbc.conn/db->pooled-connection-spec database)))
+  [_driver database]
+  (select-keys (:details database) [:flavor :version :semantic-version]))
 
 (defmethod driver/describe-database :sql-jdbc
   [driver database]

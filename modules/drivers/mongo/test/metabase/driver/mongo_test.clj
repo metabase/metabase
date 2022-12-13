@@ -80,16 +80,16 @@
                                                     :user   "metabase"
                                                     :pass   "metasample123"
                                                     :dbname  "bad-db-name"
-                                                    :version "5.0.0"}
+                                                    :semantic-version [5 0 0]}
                                          :expected true}
                                         {:details  {}
                                          :expected false}
-                                        {:details  {:version nil}
+                                        {:details  {:semantic-version []}
                                          :expected false}
                                         {:details  {:host    "localhost"
                                                     :port    27017
                                                     :dbname  "metabase-test"
-                                                    :version "2.2134234.lol"}
+                                                    :semantic-version [2 2134234]}
                                          :expected false}]
             :let [ssl-details (tdm/conn-details details)]]
       (testing (str "connect with " details)

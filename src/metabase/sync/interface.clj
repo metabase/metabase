@@ -18,8 +18,10 @@
 
 (def DatabaseMetadata
   "Schema for the expected output of `describe-database`."
-  {:tables                   #{DatabaseMetadataTable}
-   (s/optional-key :version) (s/maybe su/NonBlankString)})
+  {:tables                            #{DatabaseMetadataTable}
+   (s/optional-key :version)          (s/maybe su/NonBlankString)
+   (s/optional-key :semantic-version) (s/maybe [su/NonNegativeInt])
+   (s/optional-key :flavor)           (s/maybe su/NonBlankString)})
 
 (def TableMetadataField
   "Schema for a given Field as provided in `describe-table`."
