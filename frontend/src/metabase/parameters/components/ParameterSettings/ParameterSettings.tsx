@@ -26,24 +26,24 @@ const MULTI_SELECT_OPTIONS = [
 
 interface ParameterSettingsProps {
   parameter: Parameter;
-  onNameChange: (name: string) => void;
-  onDefaultValueChange: (value: unknown) => void;
-  onMultiSelectChange: (isMultiSelect: boolean) => void;
+  onChangeName: (name: string) => void;
+  onChangeDefaultValue: (value: unknown) => void;
+  onChangeMultiSelect: (isMultiSelect: boolean) => void;
   onRemove: () => void;
 }
 
 const ParameterSettings = ({
   parameter,
-  onNameChange,
-  onDefaultValueChange,
-  onMultiSelectChange,
+  onChangeName,
+  onChangeDefaultValue,
+  onChangeMultiSelect,
   onRemove,
 }: ParameterSettingsProps): JSX.Element => {
   return (
     <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
-        <ParameterInput initialValue={parameter.name} onChange={onNameChange} />
+        <ParameterInput initialValue={parameter.name} onChange={onChangeName} />
       </SettingSection>
       <SettingSection>
         <SettingLabel>{t`Default value`}</SettingLabel>
@@ -52,7 +52,7 @@ const ParameterSettings = ({
           name={parameter.name}
           value={parameter.default}
           placeholder={t`No default`}
-          setValue={onDefaultValueChange}
+          setValue={onChangeDefaultValue}
         />
       </SettingSection>
       {isSingleOrMultiSelectable(parameter) && (
@@ -62,7 +62,7 @@ const ParameterSettings = ({
             value={getIsMultiSelect(parameter)}
             options={MULTI_SELECT_OPTIONS}
             vertical
-            onChange={onMultiSelectChange}
+            onChange={onChangeMultiSelect}
           />
         </SettingSection>
       )}
