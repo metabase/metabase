@@ -61,7 +61,7 @@ const ChartSettingsWidgetPopover = ({
                   name: sectionName,
                   value: sectionName,
                 }))}
-                onChange={setCurrentSection}
+                onChange={section => setCurrentSection(String(section))}
                 variant="underlined"
               />
             )}

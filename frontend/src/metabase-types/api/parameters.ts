@@ -1,3 +1,5 @@
+import { Field } from "./field";
+
 export type StringParameterType =
   | "string/="
   | "string/!="
@@ -40,4 +42,5 @@ export interface Parameter {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: unknown;
+  fields?: Field[];
 }
