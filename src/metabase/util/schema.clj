@@ -361,6 +361,10 @@
     string?  NonBlankString
     keyword? s/Keyword))
 
+(def ParameterSourceOptions
+  "Schema for valid source_options within a Parameter"
+  {:values [s/Str]})
+
 (def Parameter
   "Schema for a valid Parameter.
   We're not using [metabase.mbql.schema/Parameter] here because this Parameter is meant to be used for
@@ -368,7 +372,7 @@
   (with-api-error-message {:id                              NonBlankString
                            :type                            keyword-or-non-blank-str
                            (s/optional-key :source_type)    (s/enum "static-list" "card")
-                           (s/optional-key :source_options) Map
+                           (s/optional-key :source_options) ParameterSourceOptions
                            (s/optional-key :card_id)        IntGreaterThanZero
                            ;; Allow blank name and slug #15279
                            (s/optional-key :name)           s/Str
