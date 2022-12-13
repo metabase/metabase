@@ -8,7 +8,7 @@ redirect_from:
 
 This section contains settings for your whole instance, like its URL, the reporting timezone, and toggles for disabling or enabling some of Metabase's optional features.
 
-You can configure these settings in the **General** section of the **Settings** tab in the **Admin Panel**.
+You can configure these settings from **Settings** > **Admin Settings** > **General**.
 
 ## Site Name
 
@@ -16,15 +16,15 @@ How you’d like to refer to this instance of Metabase.
 
 ## Site URL
 
-The site URL is the web address that people use to access your Metabase instance. Make sure to include http:// or https:// to make sure it’s reachable.
+The site URL is the web address that people use to access your Metabase instance. Make sure to include `http://` or `https://` to make sure it’s reachable.
 
-## Redirect to HTTPS
+### Redirect to HTTPS
 
 By default, Metabase is served over HTTP.
 
-To force all traffic to use HTTPS via redirect, click `http://` and select `https://` from the dropdown menu.
+To force all traffic to use HTTPS via redirect, click `http://` (under the **Site URL** section) and select `https://` from the dropdown menu.
 
-For example, say you enable HTTPS redirect for a Metabase instance at the site URL "example.com". When someone enters an address like "example.com/data" in their browser's address bar, they'll get automatically redirected to a secure connection at `https://example.com/data`.
+For example, say you enable HTTPS redirect for a Metabase instance at the site URL "example.com". When someone enters an address like `example.com/data` in their browser's address bar, they'll get automatically redirected to a secure connection at `https://example.com/data`.
 
 > Note: if you haven't set up HTTPS on your server, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
 
@@ -46,7 +46,7 @@ By default, Metabase attempts to make field and table names more readable by cha
 
 To manually fix field or table names if they still look wrong, you can go to the Metadata section of the Admin Panel, select the database that contains the table or field you want to edit, select the table, and then edit the name(s) in the input boxes that appear.
 
-## Enabled Nested Queries
+## Enable Nested Queries
 
 By default, Metabase allows your users to use a previously saved question as a source for queries. If you have a lot of slow running queries, you may want to switch this option off, as performance problem can occur.
 

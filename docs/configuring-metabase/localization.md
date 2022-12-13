@@ -14,6 +14,10 @@ The instance language is the default language across the Metabase UI, system ema
 
 ## Report timezone
 
+Use **Report timezone** to set a default display timezone for dates and times in Metabase. This is a display setting only, so changing the report timezone won't affect the time zone of any data in your database.
+
+The report timezone setting doesn't apply to `timestamp without time zone` data types, including the output of [`convertTimezone`](../questions/query-builder/expressions/converttimezone.md) expressions.
+
 This setting is currently supported on the following databases:
    - BigQuery
    - Druid
@@ -22,10 +26,6 @@ This setting is currently supported on the following databases:
    - PostgreSQL
    - Presto
    - Vertica
-
-Use **Report timezone** to set a default _display_ timezone for dates and times in Metabase. This setting won't affect the time zone of any data in your database.
-
-The report timezone setting doesn't apply to `timestamp without time zone` data types, including the output of [`convertTimezone`](../questions/query-builder/expressions/converttimezone.md) expressions.
 
 ## First day of the week
 
@@ -37,20 +37,20 @@ The Localization options allow you to set default display formats for dates, tim
 
 ### Dates and Times
 
-- `Date style:` the way dates should be displayed in tables, axis labels, and tooltips.
-- `Date separators:` you can choose between slashes, dashes, and dots here.
-- `Abbreviate names of days and months:` whenever a date is displayed with the day of the week and/or the month written out, turning this setting on will display e.g. `January` as `Jan` or `Monday` as `Mon`.
-- `Time style:` this lets you choose between a 12-hour or 24-hour clock to display the time by default where applicable.
+- **Date style:** the way dates should be displayed in tables, axis labels, and tooltips.
+- **Date separators:** you can choose between slashes, dashes, and dots here.
+- **Abbreviate names of days and months:** whenever a date is displayed with the day of the week and/or the month written out, turning this setting on will display e.g. "January" as "Jan" or "Monday" as "Mon".
+- **Time style:** this lets you choose between a 12-hour or 24-hour clock to display the time by default where applicable.
 
 ### Numbers
 
-- `Separator style:` some folks use commas to separate thousands places, and others use periods. Here's where you can indicate which camp you belong to.
+- **Separator style:** some folks use commas to separate thousands places, and others use periods. Here's where you can indicate which camp you belong to.
 
 ### Currency
 
-- `Unit of currency:` if you do most of your business in a particular currency, you can specify that here.
-- `Currency label style:` whether you want to have your currencies labeled with a symbol, a code (like `USD`), or its full name.
-- `Where to display the unit of currency:` this pertains specifically to tables, and lets you choose if you want the currency labels to appear only in the column heading, or next to each value in the column.
+- **Unit of currency:** if you do most of your business in a particular currency, you can specify that here.
+- **Currency label style:** whether you want to have your currencies labeled with a symbol, a code (like "USD"), or its full name.
+- **Where to display the unit of currency:** this pertains specifically to tables, and lets you choose if you want the currency labels to appear only in the column heading, or next to each value in the column.
 
 ## Supported languages
 

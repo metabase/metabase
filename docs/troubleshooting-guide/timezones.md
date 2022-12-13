@@ -53,7 +53,15 @@ Once you think you have identified a problem, drill down to understand exactly w
 
 **Steps to take:**
 
-1. Set a reporting time zone explicitly in your SQL query.
+Set a reporting time zone explicitly in your SQL query.
+
+For example, you can write something like this with PostgreSQL:
+
+```sql
+SELECT column::TIMESTAMP AT TIME ZONE 'EST' AS column_est
+```
+
+This statement casts the column to a `timestamp` data type first, then converts the `timestamp` into a `timestamptz` data type, with time zone 'EST'.
 
 ## Are dates without an explicit time zone being converted to another day?
 

@@ -15,7 +15,7 @@ redirect_from:
 
 Appearance settings give you the option to white label Metabase to match your company’s branding.
 
-If you're looking for date, time, number, or currency formatting, see [Localization options](./localization.md#localization-options).
+If you're looking for date, time, number, or currency formatting, see [Formatting defaults](../data-modeling/formatting.md).
 
 ## Changing Metabase's appearance
 
