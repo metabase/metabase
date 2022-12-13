@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
+import ParameterSidebar from "metabase/parameters/components/ParameterSidebar/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
@@ -24,11 +24,12 @@ DashboardSidebars.propTypes = {
   onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
   setEditingParameter: PropTypes.func.isRequired,
+  setParameter: PropTypes.func.isRequired,
   setParameterName: PropTypes.func.isRequired,
   setParameterDefaultValue: PropTypes.func.isRequired,
   setParameterIsMultiSelect: PropTypes.func.isRequired,
-  setParameterFilteringParameters: PropTypes.func.isRequired,
   dashcardData: PropTypes.object,
+  setParameterFilteringParameters: PropTypes.func.isRequired,
   isSharing: PropTypes.bool.isRequired,
   isEditing: PropTypes.bool.isRequired,
   isFullscreen: PropTypes.bool.isRequired,
@@ -54,11 +55,12 @@ export function DashboardSidebars({
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
+  setParameter,
   setParameterName,
   setParameterDefaultValue,
   setParameterIsMultiSelect,
-  setParameterFilteringParameters,
   dashcardData,
+  setParameterFilteringParameters,
   isFullscreen,
   onCancel,
   params,
@@ -109,21 +111,25 @@ export function DashboardSidebars({
       );
     case SIDEBAR_NAME.editParameter: {
       const { id: editingParameterId } = editingParameter || {};
-      const [[parameter], otherParameters] = _.partition(
+      const [[parameter]] = _.partition(
         parameters,
         p => p.id === editingParameterId,
       );
       return (
         <ParameterSidebar
           parameter={parameter}
-          otherParameters={otherParameters}
-          onChangeName={setParameterName}
-          onChangeDefaultValue={setParameterDefaultValue}
-          onChangeIsMultiSelect={setParameterIsMultiSelect}
-          onChangeFilteringParameters={setParameterFilteringParameters}
-          onRemoveParameter={removeParameter}
-          onShowAddParameterPopover={showAddParameterPopover}
-          onClose={closeSidebar}
+          onNameChange={name => setParameterName(editingParameterId, name)}
+          onDefaultValueChange={value =>
+            setParameterDefaultValue(editingParameterId, value)
+          }
+          onMultiSelectChange={value =>
+            setParameterIsMultiSelect(editingParameterId, value)
+          }
+          onRemove={() => {
+            closeSidebar();
+            removeParameter(editingParameterId);
+          }}
+          onClose={() => closeSidebar()}
         />
       );
     }
