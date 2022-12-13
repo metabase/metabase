@@ -268,7 +268,7 @@
                  (hsql/call :date_trunc (hx/literal :day) x)
                  (hsql/call :date_trunc (hx/literal :day) y))
       (:hour :minute :second)
-      (hsql/call :date_diff (hx/literal unit) x y))))
+      (hsql/call :date_diff (hx/literal unit) (hx/->timestamp x) (hx/->timestamp y)))))
 
 ;; fix to allow integer division to be cast as double (float is not supported by athena)
 (defmethod sql.qp/->float :athena
