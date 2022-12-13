@@ -35,7 +35,7 @@
   Clojure defined code is in memory in a dynamic class loader not available to c3p0's use of Class/forName. Luckily it
   looks up the instances in a cache which I pre-seed with out impl here. Issue for better access here:
   https://github.com/swaldman/c3p0/issues/166"
-  [klass]
+  [^Class klass]
   (let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
                 (.setAccessible true))]
 
