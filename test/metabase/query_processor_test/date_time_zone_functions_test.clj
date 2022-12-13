@@ -715,50 +715,59 @@
                                       ["2021-10-03T09:19:09" "2022-10-03T09:18:09" 1 "ignores time"]
                                       ["2016-02-03T09:19:09" "2017-02-02T09:19:09" 0 "starts in leap year before leap day"]
                                       ["2016-10-03T09:19:09" "2017-10-03T09:19:09" 1 "starts in leap year after leap day"]
-                                      ["2017-06-10T08:30:00" "2019-07-10T08:30:00" 2 "multiple years"]]]
+                                      ["2017-06-10T08:30:00" "2019-07-10T08:30:00" 2 "multiple years"]
+                                      ["2017-06-10" "2019-07-10" 2 "dates"]]]
                               [:quarter [["2021-10-03T09:18:09" "2022-01-02T09:18:09" 0 "day under a quarter"]
                                          ["2021-10-03T09:19:09" "2022-01-03T09:18:09" 1 "ignores time"]
-                                         ["2017-06-10T08:30:00" "2019-07-10T08:30:00" 8 "multiple years"]]]
+                                         ["2017-06-10T08:30:00" "2019-07-10T08:30:00" 8 "multiple years"]
+                                         ["2017-06-10" "2019-07-10" 8 "dates"]]]
                               [:month [["2022-10-03T09:18:09" "2022-11-02T09:18:09" 0  "day under a month"]
                                        ["2022-10-02T09:19:09" "2022-11-02T09:18:09" 1  "minute under a month"]
-                                       ["2022-10-02T09:18:09" "2023-10-03T09:18:09" 12 "over a year"]]]
+                                       ["2022-10-02T09:18:09" "2023-10-03T09:18:09" 12 "over a year"]
+                                       ["2022-10-02" "2023-10-03" 12 "dates"]]]
                               [:week [["2022-10-01T09:18:09" "2022-10-04T09:18:09" 0   "under 7 days across week boundary"]
                                       ["2022-10-02T09:19:09" "2022-10-09T09:18:09" 1   "ignores time"]
-                                      ["2022-10-02T09:18:09" "2023-10-03T09:18:09" 52 "over a year"]]]
+                                      ["2022-10-02T09:18:09" "2023-10-03T09:18:09" 52 "over a year"]
+                                      ["2022-10-02" "2023-10-03" 52 "dates"]]]
                               [:day [["2022-10-02T08:30:00" "2022-10-02T10:30:00" 0   "<24h same day"]
                                      ["2022-10-02T09:19:09" "2022-10-03T09:18:09" 1   "<24h consecutive days"]
-                                     ["2021-10-02T08:30:00" "2022-10-05T10:30:00" 368 "over a year"]]]
+                                     ["2021-10-02T08:30:00" "2022-10-05T10:30:00" 368 "over a year"]
+                                     ["2021-10-02" "2022-10-05" 368 "dates"]]]
                               [:hour [["2022-10-02T08:30:00" "2022-10-02T08:34:00" 0     "minutes"]
                                       ["2022-10-02T08:30:00" "2022-10-02T09:29:59.999" 0 "millisecond under an hour"]
                                       ["2022-10-02T08:30:00" "2022-10-05T08:34:00" 72    "hours"]
-                                      ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 8760  "over a year"]]]
+                                      ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 8760  "over a year"]
+                                      ["2021-10-02" "2022-10-02" 8760  "dates"]]]
                               [:minute [["2022-10-02T08:30:00" "2022-10-02T08:30:59.999" 0  "millisecond under a minute"]
                                         ["2022-10-02T08:30:00" "2022-10-02T08:34:00" 4      "minutes"]
                                         ["2022-10-02T08:30:00" "2022-10-02T10:30:00" 120    "hours"]
-                                        ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 525604 "over a year"]]]
+                                        ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 525604 "over a year"]
+                                        ["2021-10-02" "2022-10-02" 525600  "dates"]]]
                               [:second [["2022-10-02T08:30:00" "2022-10-02T08:30:00.999" 0    "millisecond under a second"]
                                         ["2022-10-02T08:30:00" "2022-10-02T08:34:00" 240      "minutes"]
                                         ["2022-10-02T08:30:00" "2022-10-02T10:30:00" 7200     "hours"]
-                                        ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 31536240 "over a year"]]]]
-
+                                        ["2021-10-02T08:30:00" "2022-10-02T08:34:00" 31536240 "over a year"]
+                                        ["2021-10-02" "2022-10-02" 31536000 "dates"]
+                                        ["2021-10-02" "2022-10-02T08:34:00" 31566840 "dates and datetimes"]]]]
                 [x y expected description] cases]
           (testing (name unit)
             (testing description
-              (is (= [expected (- expected)] (query x y unit))))))))
+              (is (= [expected (- expected)] (query x y unit))))))))))
+
+(deftest datetime-diff-mixed-types-test
+  (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :datetime-diff))
     (mt/dataset times-mixed
-      (testing "Can compare across dates, datetimes, and with timezones from a table"
+      (testing "Can compare across dates, datetimes with timezones from a table"
         ;; these particular numbers are not important, just that we can compare between dates, datetimes, etc.
         (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
-          (is (= [25200 -8349 33549]
+          (is (= [25200 -8349]
                  (->> (mt/run-mbql-query times
                         {:fields [[:expression "tz,dt"]
-                                  [:expression "tz,d"]
-                                  [:expression "d,dt"]]
+                                  [:expression "tz,d"]]
                          :limit 1
                          :expressions
                          {"tz,dt" [:datetime-diff $dt_tz $dt :second]
-                          "tz,d"  [:datetime-diff $dt_tz $d :second]
-                          "d,dt"  [:datetime-diff $d $dt :second]}})
+                          "tz,d"  [:datetime-diff $dt_tz $d :second]}})
                       (mt/formatted-rows [int int int])
                       first))))))))
 
@@ -791,7 +800,7 @@
          (t/format :iso-offset-date-time b)]))]]) ; b_dt_tz_text
 
 (deftest datetime-diff-time-zones-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
+  (mt/test-drivers (filter mt/supports-timestamptz-type? (mt/normal-drivers-with-feature :datetime-diff))
     (mt/dataset diff-time-zones-cases
       (let [diffs (fn [x y]
                     (let [units [:second :minute :hour :day :week :month :quarter :year]]
