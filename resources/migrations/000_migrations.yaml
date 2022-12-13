@@ -13512,6 +13512,7 @@ databaseChangeLog:
                   name: visualization_settings
                   type: ${text.type}
                   remarks: Settings for rendering the action
+
       id: v46.00-026
       author: metamben
       comment: Added 0.46.0 -- add field for tracking DBMS versions
