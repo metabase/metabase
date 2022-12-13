@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import Toggle from "metabase/core/components/Toggle";
 import { Parameter } from "metabase-types/api";
+import { UiParameter } from "metabase-lib/parameters/types";
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
 import {
   SectionRoot,
@@ -15,7 +16,7 @@ import {
 
 export interface ParameterLinkedFiltersProps {
   parameter: Parameter;
-  otherParameters: Parameter[];
+  otherParameters: UiParameter[];
   onChangeParameter: (parameter: Parameter) => void;
   onShowAddParameterPopover: () => void;
 }
@@ -32,7 +33,7 @@ const ParameterLinkedFilters = ({
   );
 
   const handleFilterToggle = useCallback(
-    (otherParameter: Parameter, isFiltered: boolean) => {
+    (otherParameter: UiParameter, isFiltered: boolean) => {
       const oldParameters = parameter.filteringParameters ?? [];
       const newParameters = isFiltered
         ? oldParameters.concat(otherParameter.id)
@@ -87,9 +88,9 @@ const ParameterLinkedFilters = ({
 };
 
 interface LinkedParameterProps {
-  otherParameter: Parameter;
+  otherParameter: UiParameter;
   isFiltered?: boolean;
-  onFilterChange: (otherParameter: Parameter, isFiltered: boolean) => void;
+  onFilterChange: (otherParameter: UiParameter, isFiltered: boolean) => void;
 }
 
 const LinkedParameter = ({

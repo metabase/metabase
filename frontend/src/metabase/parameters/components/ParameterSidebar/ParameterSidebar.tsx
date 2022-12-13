@@ -3,6 +3,7 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import { Parameter } from "metabase-types/api";
+import { UiParameter } from "metabase-lib/parameters/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import ParameterSettings from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
@@ -10,7 +11,7 @@ import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
 export interface ParameterSidebarProps {
   parameter: Parameter;
-  otherParameters: Parameter[];
+  otherParameters: UiParameter[];
   onChangeParameter: (parameter: Parameter) => void;
   onRemoveParameter: (parameterId: string) => void;
   onShowAddParameterPopover: () => void;
