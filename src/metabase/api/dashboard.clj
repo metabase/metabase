@@ -733,6 +733,17 @@
            (api/throw-403 e)
            (throw e)))))))
 
+(defn- static-parameter-values
+  [{parameters :parameters} param-key query]
+  {:values
+   (some->> parameters
+            (group-by :id)
+            (#(get %2 %1) param-key)
+            (first)
+            (:source_options)
+            (:values)
+            (values-card/query-matches query))})
+
 (defn- param-values
   ([dashboard param-key query-params]
    (param-values dashboard param-key query-params nil))
@@ -744,7 +755,7 @@
                        {:resolved-params (keys (:resolved-params dashboard))
                         :status-code     400})))
      (case (:source_type param)
-       "static-list" (println "TODO: Not implemented yet!!")
+       "static-list" (static-parameter-values dashboard param-key query)
        "card"        (values-card/values-for-dashboard dashboard param-key query)
        (chain-filter dashboard param-key query-params query)))))
 
