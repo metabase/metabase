@@ -37,6 +37,8 @@
 
 (defmethod driver/supports? [:athena :foreign-keys] [_ _] true)
 
+(defmethod driver/database-supports? [:athena :datetime-diff] [_driver _feature _database] true)
+
 (defmethod driver/supports? [:athena :nested-fields] [_ _] false #_true) ; huh? Not sure why this was `true`. Disabled
                                                                          ; for now.
 
@@ -255,6 +257,18 @@
   [_driver _semantic-type expr]
   (hx/->time expr))
 
+(defmethod sql.qp/->honeysql [:athena :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)]
+    (case unit
+      (:year :month :quarter :week :day)
+      (hsql/call :date_diff
+                 (hx/literal unit)
+                 (hsql/call :date_trunc (hx/literal :day) x)
+                 (hsql/call :date_trunc (hx/literal :day) y))
+      (:hour :minute :second)
+      (hsql/call :date_diff (hx/literal unit) x y))))
 
 ;; fix to allow integer division to be cast as double (float is not supported by athena)
 (defmethod sql.qp/->float :athena
