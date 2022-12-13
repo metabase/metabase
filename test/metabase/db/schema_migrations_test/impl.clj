@@ -185,8 +185,9 @@
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))
   (with-temp-empty-app-db [conn driver]
     ;; sanity check: make sure the DB is actually empty
-    (let [metadata (.getMetaData conn)]
-      (with-open [rs (.getTables metadata nil nil "%" (into-array String ["TABLE"]))]
+    (let [metadata (.getMetaData conn)
+          schema (when (= :h2 driver) "PUBLIC")]
+      (with-open [rs (.getTables metadata nil schema "%" (into-array String ["TABLE"]))]
         (let [tables (jdbc/result-set-seq rs)]
           (assert (zero? (count tables))
                   (str "'Empty' application DB is not actually empty. Found tables:\n"

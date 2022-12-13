@@ -357,16 +357,14 @@
                        :aggregation [[:avg &checkins_by_user.*count/Float]]
                        :breakout    [!month.last_login]})]
           (mt/with-native-query-testing-context query
-            ;; for whatever reason H2 gives slightly different answers :unamused:
-            (is (= {:rows    (let [driver-avg #(if (= driver/*driver* :h2) %1 %2)]
-                               [["2014-01-01T00:00:00Z" 77]
-                                ["2014-02-01T00:00:00Z" 81]
-                                ["2014-04-01T00:00:00Z" (driver-avg 50 49)]
-                                ["2014-07-01T00:00:00Z" (driver-avg 69 68)]
-                                ["2014-08-01T00:00:00Z" 64]
-                                ["2014-10-01T00:00:00Z" (driver-avg 66 65)]
-                                ["2014-11-01T00:00:00Z" (driver-avg 75 74)]
-                                ["2014-12-01T00:00:00Z" 70]])
+            (is (= {:rows    [["2014-01-01T00:00:00Z" 77]
+                              ["2014-02-01T00:00:00Z" 81]
+                              ["2014-04-01T00:00:00Z" 49]
+                              ["2014-07-01T00:00:00Z" 68]
+                              ["2014-08-01T00:00:00Z" 64]
+                              ["2014-10-01T00:00:00Z" 65]
+                              ["2014-11-01T00:00:00Z" 74]
+                              ["2014-12-01T00:00:00Z" 70]]
                     :columns [(mt/format-name "last_login") "avg"]}
                    (mt/format-rows-by [identity int]
                      (mt/rows+column-names
@@ -496,9 +494,9 @@
 (deftest expressions-referencing-joined-aggregation-expressions-test
   (testing (mt/normal-drivers-with-feature :nested-queries :left-join :expressions)
     (testing "Should be able to use expressions against columns that come from aggregation expressions in joins"
-      (is (= [[1 "Red Medicine"          4  10.065 -165.374 3 1.5  4 3 2 1]
-              [2 "Stout Burgers & Beers" 11 34.1   -118.329 2 2.0 11 2 1 1]
-              [3 "The Apple Pan"         11 34.041 -118.428 2 2.0 11 2 1 1]]
+      (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
+              [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
+              [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
              (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
                (mt/run-mbql-query venues
                  {:fields      [$id

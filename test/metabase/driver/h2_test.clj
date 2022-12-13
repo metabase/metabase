@@ -53,8 +53,8 @@
   (testing "Make sure we *cannot* connect to a non-existent database by default"
     (is (= ::exception-thrown
            (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
-                (catch org.h2.jdbc.JdbcSQLException e
-                  (and (re-matches #"Database .+ not found .+" (.getMessage e))
+                (catch org.h2.jdbc.JdbcSQLNonTransientConnectionException e
+                  (and (re-matches #"Database .+ not found, .+" (.getMessage e))
                        ::exception-thrown)))))))
 
 (deftest db-default-timezone-test
@@ -81,14 +81,14 @@
     (is (= (hsql/call :dateadd
              (hx/literal "millisecond")
              (hx/with-database-type-info (hsql/call :cast 100500.0 (hsql/raw "long")) "long")
-             :%now)
+             (hx/with-database-type-info (hsql/call :cast :%now (hsql/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
 
   (testing "Non-fractional seconds should remain seconds, but be cast to longs"
     (is (= (hsql/call :dateadd
              (hx/literal "second")
              (hx/with-database-type-info (hsql/call :cast 100.0 (hsql/raw "long")) "long")
-             :%now)
+             (hx/with-database-type-info (hsql/call :cast :%now (hsql/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
 (deftest clob-test
@@ -111,10 +111,10 @@
   (mt/test-driver :h2
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
       (is (= [{:display_name "D"
-               :base_type    :type/DateTime
-               :effective_type :type/DateTime
+               :base_type    :type/Date
+               :effective_type :type/Date
                :source       :native
-               :field_ref    [:field "D" {:base-type :type/DateTime}]
+               :field_ref    [:field "D" {:base-type :type/Date}]
                :name         "D"}]
              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
 
@@ -161,20 +161,14 @@
 
 (deftest classify-ddl-test
   (mt/test-driver :h2
-    (is (= [org.h2.command.dml.Select]
-           (mapv type (#'h2/parse (u/the-id (mt/db)) "select 1"))))
-    (is (= [org.h2.command.dml.Update]
-           (mapv type (#'h2/parse (u/the-id (mt/db)) "update venues set name = 'bill'"))))
-    (is (= [org.h2.command.dml.Delete]
-           (mapv type (#'h2/parse (u/the-id (mt/db)) "delete venues"))))
-    (is (= [org.h2.command.dml.Select
-            org.h2.command.dml.Update
-            org.h2.command.dml.Delete]
-           (mapv type (#'h2/parse (u/the-id (mt/db))
-                                  (str/join "; "
-                                            ["select 1"
-                                             "update venues set name = 'bill'"
-                                             "delete venues"])))))
+    (are [query] (= false (#'h2/contains-ddl? (u/the-id (mt/db)) query))
+      "select 1"
+      "update venues set name = 'bill'"
+      "delete venues"
+      "select 1;
+       update venues set name = 'bill';
+       delete venues;")
+
     (is (= nil (#'h2/check-disallow-ddl-commands
                 {:database (u/the-id (mt/db))
                  :engine :h2
@@ -187,7 +181,7 @@
                           "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                           "SELECT * FROM INFORMATION_SCHEMA.Users;"])]
       (is (thrown?
-           clojure.lang.ExceptionInfo
+           IllegalArgumentException
            #"DDL commands are not allowed to be used with h2."
            (#'h2/check-disallow-ddl-commands
             {:database (u/the-id (mt/db))

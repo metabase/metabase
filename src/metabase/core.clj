@@ -111,9 +111,6 @@
   ;; Bootstrap the event system
   (events/initialize-events!)
   (init-status/set-progress! 0.7)
-  ;; Now initialize the task runner
-  (task/init-scheduler!)
-  (init-status/set-progress! 0.8)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
   (let [new-install? (not (db/exists? User))]
@@ -123,14 +120,14 @@
       (create-setup-token-and-log-setup-url!)
       ;; publish install event
       (events/publish-event! :install {}))
-    (init-status/set-progress! 0.9)
+    (init-status/set-progress! 0.8)
     ;; deal with our sample database as needed
     (if new-install?
       ;; add the sample database DB for fresh installs
       (sample-data/add-sample-database!)
       ;; otherwise update if appropriate
       (sample-data/update-sample-database-if-needed!))
-    (init-status/set-progress! 0.95))
+    (init-status/set-progress! 0.9))
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)

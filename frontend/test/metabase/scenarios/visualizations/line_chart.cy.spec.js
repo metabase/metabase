@@ -70,7 +70,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.get(".value-labels").contains("30%");
+    cy.get(".value-labels").contains("39.75%");
   });
 
   it("should display an error message when there are more series than the chart supports", () => {
@@ -133,7 +133,7 @@ describe("scenarios > visualizations > line chart", () => {
       testPairedTooltipValues("Product → Rating", "2.7");
       testPairedTooltipValues("Count", "191");
       testPairedTooltipValues("Sum of Total", "14,747.05");
-      testPairedTooltipValues("Average of Quantity", "4");
+      testPairedTooltipValues("Average of Quantity", "4.3");
     });
   });
 
@@ -143,7 +143,7 @@ describe("scenarios > visualizations > line chart", () => {
         type: "native",
         native: {
           query:
-            "SELECT '2020-03-01'::date as date, 'cat1' as category, 23 as value\nUNION ALL\nSELECT '2020-03-01'::date, '', 44\nUNION ALL\nSELECT  '2020-03-01'::date, 'cat3', 58\n\nUNION ALL\n\nSELECT '2020-03-02'::date as date, 'cat1' as category, 20 as value\nUNION ALL\nSELECT '2020-03-02'::date, '', 50\nUNION ALL\nSELECT  '2020-03-02'::date, 'cat3', 58",
+            "SELECT '2020-03-01'::date as date, 'cat1' as category, 23 as \"value\"\nUNION ALL\nSELECT '2020-03-01'::date, '', 44\nUNION ALL\nSELECT  '2020-03-01'::date, 'cat3', 58\n\nUNION ALL\n\nSELECT '2020-03-02'::date as date, 'cat1' as category, 20 as \"value\"\nUNION ALL\nSELECT '2020-03-02'::date, '', 50\nUNION ALL\nSELECT  '2020-03-02'::date, 'cat3', 58",
           "template-tags": {},
         },
         database: SAMPLE_DB_ID,
