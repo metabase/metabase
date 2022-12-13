@@ -61,3 +61,10 @@ clojure -M:generate-automagic-dashboards-pot
 ##################
 
 msgcat "$POT_FRONTEND_NAME" "$POT_BACKEND_NAME" "$POT_AUTODASH_NAME" > "$POT_NAME"
+
+##################
+# previously at build-translation-resources #
+##################
+
+cd bin/i18n
+clojure -M -m i18n.create-artifacts $@

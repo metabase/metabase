@@ -23,6 +23,4 @@ jobs:
     - run: sudo apt install gettext
 
     - run: ./bin/i18n/update-translation-template
-      name: Check i18n tags/make sure template can be built
-    - run: ./bin/i18n/build-translation-resources
-      name: Verify i18n translations (.po files)
+      name: Check i18n tags/make sure template can be built and Verify i18n translations (.po files)
