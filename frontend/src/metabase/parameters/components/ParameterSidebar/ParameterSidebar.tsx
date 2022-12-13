@@ -11,7 +11,7 @@ import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 export interface ParameterSidebarProps {
   parameter: Parameter;
   otherParameters: Parameter[];
-  onChange: (parameterId: string, parameter: Parameter) => void;
+  onChange: (parameter: Parameter) => void;
   onChangeName: (parameterId: string, name: string) => void;
   onChangeDefaultValue: (parameterId: string, value: unknown) => void;
   onChangeIsMultiSelect: (parameterId: string, isMultiSelect: boolean) => void;
@@ -52,7 +52,7 @@ const ParameterSidebar = ({
   }, [originalParameter, onRemove, onClose]);
 
   const handleCancel = useCallback(() => {
-    onChange(originalParameter.id, originalParameter);
+    onChange(originalParameter);
     onClose();
   }, [originalParameter, onChange, onClose]);
 
