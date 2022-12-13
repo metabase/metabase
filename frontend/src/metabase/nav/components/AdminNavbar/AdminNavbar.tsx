@@ -29,6 +29,10 @@ export const AdminNavbar = ({
   path: currentPath,
   adminPaths,
 }: AdminNavbarProps) => {
+  const adminPathsFiltered = adminPaths.filter(
+    path => path.key !== "people" && path.key !== "troubleshooting",
+  );
+
   return (
     <AdminNavbarRoot className="Nav">
       <AdminLogoLink to="/admin" data-metabase-event="Navbar;Logo">
@@ -38,11 +42,11 @@ export const AdminNavbar = ({
         </AdminLogoContainer>
       </AdminLogoLink>
 
-      <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
+      <MobileNavbar adminPaths={adminPathsFiltered} currentPath={currentPath} />
 
       <MobileHide>
         <AdminNavbarItems>
-          {adminPaths.map(({ name, key, path }) => (
+          {adminPathsFiltered.map(({ name, key, path }) => (
             <AdminNavItem
               name={name}
               path={path}
@@ -52,7 +56,7 @@ export const AdminNavbar = ({
           ))}
         </AdminNavbarItems>
 
-        {!MetabaseSettings.isPaidPlan() && <StoreLink />}
+        {/* {!MetabaseSettings.isPaidPlan() && <StoreLink />} */}
         <AdminExitLink
           to="/"
           data-metabase-event="Navbar;Exit Admin"
