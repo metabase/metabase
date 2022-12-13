@@ -7,6 +7,7 @@
             [metabase.db.data-source :as mdb.data-source]
             [metabase.models :refer [Database]]
             [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan.db :as db])
   (:import [com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer PoolBackedDataSource]
            metabase.db.connection_pool_setup.CheckinTracker))
@@ -42,14 +43,22 @@
       (is (instance? CheckinTracker customizer)
           "ConnectionCustomizer is not an instance of our CheckinTracker")))
   (testing "db activity resets counter"
-    (reset! (var-get #'mdb.connection-pool-setup/latest-checkin) nil)
-    (db/count Database) ;; trigger db access which should reset the latest checkin
-    (db/count Database) ;; twice just to play nice if the customizer happens off thread
-    (let [recent-checkin (deref (var-get #'mdb.connection-pool-setup/latest-checkin))]
-      (is (some? recent-checkin)
-          "Database activity did not reset latest-checkin")
-      (is (instance? java.time.temporal.Temporal recent-checkin)
-          "recent-checkin should be a temporal type (OffsetDateTime)"))))
+    (try
+      (let [updated? (promise)]
+        (add-watch (var-get #'mdb.connection-pool-setup/latest-checkin)
+                   ::CheckinTracker-test
+                   (fn [_ _ _ _]
+                     (deliver updated? ::completed)))
+        (reset! (var-get #'mdb.connection-pool-setup/latest-checkin) nil)
+        (db/count Database) ;; trigger db access which should reset the latest checkin
+        (u/deref-with-timeout updated? 200)
+        (let [recent-checkin (deref (var-get #'mdb.connection-pool-setup/latest-checkin))]
+          (is (some? recent-checkin)
+              "Database activity did not reset latest-checkin")
+          (is (instance? java.time.temporal.Temporal recent-checkin)
+              "recent-checkin should be a temporal type (OffsetDateTime)")))
+      (finally (remove-watch (var-get #'mdb.connection-pool-setup/latest-checkin)
+                             ::CheckinTracker-test)))))
 
 (deftest recent-activity-test
   (testing "If latest-checkin is null"
