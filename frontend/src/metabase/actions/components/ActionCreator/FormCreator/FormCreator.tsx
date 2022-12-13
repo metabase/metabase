@@ -20,7 +20,7 @@ import {
   hasNewParams,
 } from "./utils";
 import { FormField } from "./FormField";
-import { OptionEditor } from "./OptionEditor";
+import { OptionPopover } from "./OptionEditor";
 
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
 
@@ -29,8 +29,6 @@ import {
   FormCreatorWrapper,
   FormItemName,
   FormSettings,
-  FormSettingsPreviewContainer,
-  EditButton,
 } from "./FormCreator.styled";
 
 export function FormCreator({
@@ -146,7 +144,6 @@ function FormItem({
   fieldSettings: FieldSettings;
   onChange: (fieldSettings: FieldSettings) => void;
 }) {
-  const [isEditingOptions, setIsEditingOptions] = useState(false);
   const name = param["display-name"] ?? param.name;
 
   const updateOptions = (newOptions: (string | number)[]) => {
@@ -154,7 +151,6 @@ function FormItem({
       ...fieldSettings,
       valueOptions: newOptions,
     });
-    setIsEditingOptions(false);
   };
 
   const hasOptions =
@@ -167,26 +163,14 @@ function FormItem({
         {name}
         {!!fieldSettings.required && " *"}
       </FormItemName>
+      <FormField param={param} fieldSettings={fieldSettings} />
       <FormSettings>
-        <FormSettingsPreviewContainer>
-          {isEditingOptions && hasOptions ? (
-            <OptionEditor
-              options={fieldSettings.valueOptions ?? []}
-              onChange={updateOptions}
-            />
-          ) : (
-            <FormField param={param} fieldSettings={fieldSettings} />
-          )}
-          {!isEditingOptions && hasOptions && (
-            <EditButton
-              onClick={() => setIsEditingOptions(true)}
-              borderless
-              small
-            >
-              {t`Edit options`}
-            </EditButton>
-          )}
-        </FormSettingsPreviewContainer>
+        {hasOptions && (
+          <OptionPopover
+            options={fieldSettings.valueOptions ?? []}
+            onChange={updateOptions}
+          />
+        )}
         <FieldSettingsPopover
           fieldSettings={fieldSettings}
           onChange={onChange}

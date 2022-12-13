@@ -7,6 +7,7 @@ import { space } from "metabase/styled-components/theme";
 export const OptionEditorContainer = styled.div`
   display: flex;
   flex-direction: column;
+  padding: ${space(2)};
 `;
 
 export const AddMorePrompt = styled.div`
