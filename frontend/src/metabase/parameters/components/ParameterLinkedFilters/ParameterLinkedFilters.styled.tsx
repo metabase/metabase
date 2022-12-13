@@ -10,7 +10,7 @@ export const SectionHeader = styled.div`
   font-weight: bold;
 `;
 
-export const SectionMessage = styled.div`
+export const SectionMessage = styled.p`
   color: ${color("text-medium")};
 `;
 
