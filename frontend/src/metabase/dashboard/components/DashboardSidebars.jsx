@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
+import ParameterSidebar from "metabase/parameters/components/ParameterSidebar/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
@@ -122,31 +122,25 @@ export function DashboardSidebars({
       );
     case SIDEBAR_NAME.editParameter: {
       const { id: editingParameterId } = editingParameter || {};
-      const [[parameter], otherParameters] = _.partition(
+      const [[parameter]] = _.partition(
         parameters,
         p => p.id === editingParameterId,
       );
       return (
         <ParameterSidebar
           parameter={parameter}
-          otherParameters={otherParameters}
-          remove={() => {
+          onNameChange={name => setParameterName(editingParameterId, name)}
+          onDefaultValueChange={value =>
+            setParameterDefaultValue(editingParameterId, value)
+          }
+          onMultiSelectChange={value =>
+            setParameterIsMultiSelect(editingParameterId, value)
+          }
+          onRemove={() => {
             closeSidebar();
             removeParameter(editingParameterId);
           }}
-          done={() => closeSidebar()}
-          showAddParameterPopover={showAddParameterPopover}
-          setParameter={setParameter}
-          setName={name => setParameterName(editingParameterId, name)}
-          setDefaultValue={value =>
-            setParameterDefaultValue(editingParameterId, value)
-          }
-          setIsMultiSelect={value =>
-            setParameterIsMultiSelect(editingParameterId, value)
-          }
-          setFilteringParameters={ids =>
-            setParameterFilteringParameters(editingParameterId, ids)
-          }
+          onClose={() => closeSidebar()}
         />
       );
     }
