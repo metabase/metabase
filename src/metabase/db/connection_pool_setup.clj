@@ -10,12 +10,16 @@
 
 (def ^:private ^java.time.Duration recent-window-duration (t/seconds 15))
 
+(defn- recent-activity?*
+  [activity duration]
+  (when activity
+    (t/after? activity (t/minus (t/offset-date-time) duration))))
+
 (defn recent-activity?
   "Returns true if there has been recent activity. Define recent activity as an application db connection checked in
   within 15 seconds. Check-in means a query succeeded and the db connection is no longer needed."
   []
-  (when-let [activity @latest-checkin]
-    (t/after? activity (t/minus (t/offset-date-time) recent-window-duration))))
+  (recent-activity?* @latest-checkin recent-window-duration))
 
 (defrecord CheckinTracker []
   ConnectionCustomizer
@@ -25,16 +29,20 @@
   (onCheckOut [_ _connection _identity-token])
   (onDestroy [_ _connection _identity-token]))
 
-;; c3p0 allows for hooking into lifecycles with its interface
-;; ConnectionCustomizer. https://www.mchange.com/projects/c3p0/apidocs/com/mchange/v2/c3p0/ConnectionCustomizer.html. But
-;; Clojure defined code is in memory in a dynamic class loader not available to c3p0's use of Class/forName. Luckily
-;; it looks up the instances in a cache which I pre-seed with out impl here. Issue for better access here:
-;; https://github.com/swaldman/c3p0/issues/166
-(let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
-              (.setAccessible true))]
+(defn- register-customizer!
+  "c3p0 allows for hooking into lifecycles with its interface
+  ConnectionCustomizer. https://www.mchange.com/projects/c3p0/apidocs/com/mchange/v2/c3p0/ConnectionCustomizer.html. But
+  Clojure defined code is in memory in a dynamic class loader not available to c3p0's use of Class/forName. Luckily it
+  looks up the instances in a cache which I pre-seed with out impl here. Issue for better access here:
+  https://github.com/swaldman/c3p0/issues/166"
+  [klass]
+  (let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
+                (.setAccessible true))]
 
-  (.put ^java.util.HashMap (.get field com.mchange.v2.c3p0.C3P0Registry)
-        (.getName CheckinTracker) (->CheckinTracker)))
+    (.put ^java.util.HashMap (.get field com.mchange.v2.c3p0.C3P0Registry)
+          (.getName klass) (.newInstance klass))))
+
+(register-customizer! CheckinTracker)
 
 (def ^:private application-db-connection-pool-props
   "Options for c3p0 connection pool for the application DB. These are set in code instead of a properties file because

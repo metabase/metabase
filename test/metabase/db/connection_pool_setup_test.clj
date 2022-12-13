@@ -7,10 +7,13 @@
             [metabase.db.data-source :as mdb.data-source]
             [metabase.models :refer [Database]]
             [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [toucan.db :as db])
   (:import [com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer PoolBackedDataSource]
            metabase.db.connection_pool_setup.CheckinTracker))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest connection-pool-spec-test
   (testing "Should be able to create a connection pool"
@@ -34,6 +37,12 @@
         (test* :h2 (mdb.data-source/raw-connection-string->DataSource
                     (format "jdbc:h2:mem:%s;DB_CLOSE_DELAY=10" (mt/random-name))))))))
 
+(defn- simulate-db-activity
+  "Hit the application db a few times. In practice, monitoring based on db checkins could be not super deterministic and
+  it is an optimization. This simulates that and reduces the potential for flakes"
+  []
+  (dotimes [_ 5] (db/count Database)))
+
 (deftest CheckinTracker-test
   (testing "connection customizer is registered"
     (let [customizer (C3P0Registry/getConnectionCustomizer (.getName CheckinTracker))]
@@ -47,10 +56,10 @@
       (let [updated? (promise)]
         (add-watch (var-get #'mdb.connection-pool-setup/latest-checkin)
                    ::CheckinTracker-test
-                   (fn [_ _ _ _]
+                   (fn [_ _ _ _nv]
                      (deliver updated? ::completed)))
         (reset! (var-get #'mdb.connection-pool-setup/latest-checkin) nil)
-        (db/count Database) ;; trigger db access which should reset the latest checkin
+        (simulate-db-activity)
         (u/deref-with-timeout updated? 200)
         (let [recent-checkin (deref (var-get #'mdb.connection-pool-setup/latest-checkin))]
           (is (some? recent-checkin)
@@ -61,25 +70,26 @@
                              ::CheckinTracker-test)))))
 
 (deftest recent-activity-test
+  ;; these tests are difficult to make non-flaky. Other threads can hit the db of course, and the lifecycle of the
+  ;; connection pool is worked from other threads. This means we can't isolate the `latest-checkin` atom. Many will
+  ;; take the value of the checkin timestamp and pass it to `recent-activity?*` to act on the value at the time it
+  ;; cares about rather than trying to suppress writes to the `latest-checkin`. If you change this, run the test about 500 times to make sure there aren't flakes.
   (testing "If latest-checkin is null"
     (reset! (var-get #'mdb.connection-pool-setup/latest-checkin) nil)
-    (is (not (mdb.connection-pool-setup/recent-activity?)))
-    (db/count Database)
+    (is (not (#'mdb.connection-pool-setup/recent-activity?* nil (t/millis 10))))
     (testing "db activity makes `recent-activity?` true"
+      (simulate-db-activity)
       (is (mdb.connection-pool-setup/recent-activity?))))
   (testing "If latest-checkin is stale"
     (let [duration (var-get #'mdb.connection-pool-setup/recent-window-duration)
           twice-duration (t/minus (t/offset-date-time) duration duration)]
-      (reset! (var-get #'mdb.connection-pool-setup/latest-checkin) twice-duration)
-      (is (not (mdb.connection-pool-setup/recent-activity?)))
-      (db/count Database)
-      (testing "db activity makes `recent-activity?` true"
-        (is (mdb.connection-pool-setup/recent-activity?)))))
+      (is (not (#'mdb.connection-pool-setup/recent-activity?* twice-duration duration)))))
   (testing "Goes stale"
-    (with-redefs [mdb.connection-pool-setup/recent-window-duration (t/millis 30)]
-      (db/count Database)
-      (is (mdb.connection-pool-setup/recent-activity?))
-      (testing "When duration elapses should report no recent-activity"
-        (Thread/sleep 60)
-        (is (not (mdb.connection-pool-setup/recent-activity?))
+    (simulate-db-activity)
+    ;; can't easily control background syncs or activity so just suppress registering
+    (is (mdb.connection-pool-setup/recent-activity?))
+    (testing "When duration elapses should report no recent-activity"
+      (let [latest-activity (deref (var-get #'mdb.connection-pool-setup/latest-checkin))]
+        (Thread/sleep 30)
+        (is (not (#'mdb.connection-pool-setup/recent-activity?* latest-activity (t/millis 10)))
             "recent-window-duration has elapsed but still recent")))))
