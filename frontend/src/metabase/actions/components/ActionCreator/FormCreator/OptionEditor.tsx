@@ -34,7 +34,7 @@ export const OptionPopover = ({
     <TippyPopoverWithTrigger
       placement="bottom-end"
       triggerContent={
-        <Icon name="list" size={14} tooltip={t`change options`} />
+        <Icon name="list" size={14} tooltip={t`Change options`} />
       }
       maxWidth={400}
       popoverContent={({ closePopover }) => (

@@ -31,7 +31,7 @@ export function FieldSettingsPopover({
         <SettingsTriggerIcon
           name="gear"
           size={14}
-          tooltip={t`change field settings`}
+          tooltip={t`Change field settings`}
         />
       }
       maxWidth={400}
