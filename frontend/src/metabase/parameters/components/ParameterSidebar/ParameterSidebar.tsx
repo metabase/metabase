@@ -5,25 +5,30 @@ import Sidebar from "metabase/dashboard/components/Sidebar";
 import { Parameter } from "metabase-types/api";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import ParameterSettings from "../ParameterSettings";
+import ParameterLinkedFilters from "../ParameterLinkedFilters";
 import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
 export interface ParameterSidebarProps {
   parameter: Parameter;
-  onParameterChange: (parameter: Parameter) => void;
-  onNameChange: (name: string) => void;
-  onDefaultValueChange: (value: unknown) => void;
-  onMultiSelectChange: (isMultiSelect: boolean) => void;
+  otherParameters: Parameter[];
+  onChangeName: (name: string) => void;
+  onChangeDefaultValue: (value: unknown) => void;
+  onChangeMultiSelect: (isMultiSelect: boolean) => void;
+  onShowAddParameterPopover: () => void;
   onRemove: () => void;
+  onCancel: (parameter: Parameter) => void;
   onClose: () => void;
 }
 
 const ParameterSidebar = ({
   parameter,
-  onParameterChange,
-  onNameChange,
-  onDefaultValueChange,
-  onMultiSelectChange,
+  otherParameters,
+  onChangeName,
+  onChangeDefaultValue,
+  onChangeMultiSelect,
+  onShowAddParameterPopover,
   onRemove,
+  onCancel,
   onClose,
 }: ParameterSidebarProps): JSX.Element => {
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
@@ -37,9 +42,8 @@ const ParameterSidebar = ({
   }, [parameter, originalParameter]);
 
   const handleCancel = useCallback(() => {
-    onParameterChange(originalParameter);
-    onClose();
-  }, [originalParameter, onParameterChange, onClose]);
+    onCancel(originalParameter);
+  }, [originalParameter, onCancel]);
 
   return (
     <Sidebar onCancel={handleCancel} onClose={onClose}>
@@ -55,12 +59,18 @@ const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
-            onNameChange={onNameChange}
-            onDefaultValueChange={onDefaultValueChange}
-            onMultiSelectChange={onMultiSelectChange}
+            onChangeName={onChangeName}
+            onChangeDefaultValue={onChangeDefaultValue}
+            onChangeMultiSelect={onChangeMultiSelect}
             onRemove={onRemove}
           />
-        ) : null}
+        ) : (
+          <ParameterLinkedFilters
+            parameter={parameter}
+            otherParameters={otherParameters}
+            onShowAddParameterPopover={onShowAddParameterPopover}
+          />
+        )}
       </SidebarBody>
     </Sidebar>
   );
