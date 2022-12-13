@@ -3,8 +3,9 @@ import {
   summarizeColumnByTimeDrill,
   summarizeColumnByTimeDrillQuestion,
 } from "metabase-lib/queries/drills/summarize-column-by-time-drill";
+import type { Drill } from "../../types";
 
-export default ({ question, clicked = {} }) => {
+const SummarizeColumnByTimeDrill: Drill = ({ question, clicked = {} }) => {
   if (!summarizeColumnByTimeDrill({ question, clicked })) {
     return [];
   }
@@ -12,11 +13,13 @@ export default ({ question, clicked = {} }) => {
   return [
     {
       name: "summarize-by-time",
-      buttonType: "horizontal",
+      title: t`Sum over time`,
       section: "summarize",
       icon: "line",
-      title: t`Sum over time`,
+      buttonType: "horizontal",
       question: () => summarizeColumnByTimeDrillQuestion({ question, clicked }),
     },
   ];
 };
+
+export default SummarizeColumnByTimeDrill;

@@ -3,8 +3,9 @@ import {
   zoomDrill,
   zoomDrillQuestion,
 } from "metabase-lib/queries/drills/zoom-drill";
+import type { Drill } from "../../types";
 
-export default ({ question, clicked }) => {
+const ZoomDrill: Drill = ({ question, clicked }) => {
   if (!zoomDrill({ question, clicked })) {
     return [];
   }
@@ -12,11 +13,13 @@ export default ({ question, clicked }) => {
   return [
     {
       name: "timeseries-zoom",
-      section: "zoom",
       title: t`Zoom in`,
-      buttonType: "horizontal",
+      section: "zoom",
       icon: "zoom_in",
+      buttonType: "horizontal",
       question: () => zoomDrillQuestion({ question, clicked }),
     },
   ];
 };
+
+export default ZoomDrill;

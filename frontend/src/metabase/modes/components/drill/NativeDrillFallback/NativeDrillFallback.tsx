@@ -1,21 +1,18 @@
 import React from "react";
 import { t } from "ttag";
+import Icon from "metabase/components/Icon";
 import MetabaseSettings from "metabase/lib/settings";
 import { getEngineNativeType } from "metabase/lib/engine";
-import Icon from "metabase/components/Icon";
-import Question from "metabase-lib/Question";
 import { nativeDrillFallback } from "metabase-lib/queries/drills/native-drill-fallback";
+
+import type { ClickAction, Drill } from "../../../types";
 import {
   DrillLearnLink,
   DrillMessage,
   DrillRoot,
 } from "./NativeDrillFallback.styled";
 
-interface NativeDrillFallbackProps {
-  question: Question;
-}
-
-const NativeDrillFallback = ({ question }: NativeDrillFallbackProps) => {
+const NativeDrillFallback: Drill = ({ question }) => {
   const drill = nativeDrillFallback({ question });
   if (!drill) {
     return [];
@@ -43,7 +40,7 @@ const NativeDrillFallback = ({ question }: NativeDrillFallbackProps) => {
           </DrillLearnLink>
         </DrillRoot>
       ),
-    },
+    } as ClickAction,
   ];
 };
 

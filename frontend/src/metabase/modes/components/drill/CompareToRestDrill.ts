@@ -5,8 +5,9 @@ import {
   compareToRestDrill,
   compareToRestDrillUrl,
 } from "metabase-lib/queries/drills/compare-to-rest-drill";
+import type { Drill } from "../../types";
 
-export default ({ question, clicked }) => {
+const CompareToRestDrill: Drill = ({ question, clicked }) => {
   const enableXrays = MetabaseSettings.get("enable-xrays");
   if (!compareToRestDrill({ question, clicked, enableXrays })) {
     return [];
@@ -15,11 +16,13 @@ export default ({ question, clicked }) => {
   return [
     {
       name: "compare-dashboard",
+      title: t`Compare to the rest`,
       section: "auto",
       icon: "bolt",
       buttonType: "token",
-      title: t`Compare to the rest`,
       url: () => compareToRestDrillUrl({ question, clicked }),
     },
   ];
 };
+
+export default CompareToRestDrill;
