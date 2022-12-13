@@ -44,6 +44,7 @@
   (testing "db activity resets counter"
     (reset! (var-get #'mdb.connection-pool-setup/latest-checkin) nil)
     (db/count Database) ;; trigger db access which should reset the latest checkin
+    (db/count Database) ;; twice just to play nice if the customizer happens off thread
     (let [recent-checkin (deref (var-get #'mdb.connection-pool-setup/latest-checkin))]
       (is (some? recent-checkin)
           "Database activity did not reset latest-checkin")
