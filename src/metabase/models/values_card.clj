@@ -19,6 +19,13 @@
   [search-term filter-term]
   (str/includes? filter-term search-term))
 
+(defn query-matches
+  "Filter the values according to the `search-term`. If `search-term` is blank, return all the values without filtering"
+  [search-term values]
+  (if (str/blank? search-term)
+    values
+    (filter (partial search-match? search-term) values)))
+
 (defn- query-for-dashboard
   [{dashboard-id :id} param-key]
   (->> (db/query {:select [:dataset_query]
@@ -38,7 +45,7 @@
   {:values
    (->> (qp/process-query (query-for-dashboard dashboard param-key) {:rff (constantly conj)})
         (map first)
-        (filter (partial search-match? search-term)))})
+        (query-matches search-term))})
 
 (defn- upsert-for-dashboard!
   [dashboard-id parameters]
