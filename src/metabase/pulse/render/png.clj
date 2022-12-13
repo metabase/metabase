@@ -80,9 +80,9 @@
    width]
   (try
     (let [html (html [:html [:body {:style (style/style
-                                            {:margin           0
-                                             :padding          0
-                                             :background-color :white})}
+                                            {:margin                  0
+                                             :padding                 0
+                                             :background-color        :white})}
                              content]])]
       (with-open [os (ByteArrayOutputStream.)]
         (-> (render-to-png html width)

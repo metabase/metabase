@@ -125,6 +125,7 @@ const QueryDownloadWidget = ({
                   <UnsavedQueryButton
                     key={type}
                     type={type}
+                    card={card}
                     result={result}
                     visualizationSettings={visualizationSettings}
                     onDownloadStart={() => {
@@ -147,6 +148,7 @@ const QueryDownloadWidget = ({
 const UnsavedQueryButton = ({
   type,
   result: { json_query = {} },
+  card,
   visualizationSettings,
   onDownloadStart,
   onDownloadResolved,
@@ -157,6 +159,7 @@ const UnsavedQueryButton = ({
     params={{
       query: JSON.stringify(_.omit(json_query, "constraints")),
       visualization_settings: JSON.stringify(visualizationSettings),
+      card: JSON.stringify(card),
     }}
     extensions={[type]}
     onDownloadStart={onDownloadStart}

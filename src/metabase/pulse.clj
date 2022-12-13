@@ -91,9 +91,8 @@
       (if-let [card-id (:card_id dashcard)]
         (execute-dashboard-subscription-card pulse-creator-id dashboard dashcard card-id parameters)
         ;; For virtual cards, return just the viz settings map, with any parameter values substituted appropriately
-        (-> dashcard
-            (params/process-virtual-dashcard parameters)
-            :visualization_settings)))))
+        (let [virtual-dashcard (params/process-virtual-dashcard dashcard parameters)]
+          (merge {:dashcard virtual-dashcard} (:visualization_settings virtual-dashcard)))))))
 
 (defn- database-id [card]
   (or (:database_id card)
