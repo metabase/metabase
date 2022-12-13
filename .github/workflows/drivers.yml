@@ -401,6 +401,9 @@ jobs:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
     - uses: actions/checkout@v3
+    - name: Wait for port ${{ env.MB_PRESTO_JDBC_TEST_PORT }} to be ready
+      run: while ! nc -z localhost ${{ env.MB_PRESTO_JDBC_TEST_PORT }}; do sleep 0.1; done
+      timeout-minutes: 15
     - name: Create temp cacerts file based on bundled JDK one
       run: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
     - name: Capture Presto server self signed CA
