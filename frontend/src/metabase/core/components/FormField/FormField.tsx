@@ -1,4 +1,5 @@
 import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
+import { t } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
 import { FieldAlignment, FieldOrientation } from "./types";
 import {
@@ -17,6 +18,7 @@ export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   description?: ReactNode;
   alignment?: FieldAlignment;
   orientation?: FieldOrientation;
+  optional?: boolean;
   error?: string;
   htmlFor?: string;
   infoLabel?: string;
@@ -34,6 +36,7 @@ const FormField = forwardRef(function FormField(
     infoLabel,
     infoTooltip,
     children,
+    optional,
     ...props
   }: FormFieldProps,
   ref: Ref<HTMLDivElement>,
@@ -49,6 +52,7 @@ const FormField = forwardRef(function FormField(
             {title && (
               <FieldLabel hasError={hasError} htmlFor={htmlFor}>
                 {title}
+                {!!optional && !hasError && t` (optional)`}
                 {hasError && <FieldLabelError>: {error}</FieldLabelError>}
               </FieldLabel>
             )}
