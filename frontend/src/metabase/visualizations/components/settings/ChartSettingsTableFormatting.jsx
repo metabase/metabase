@@ -387,7 +387,6 @@ const RuleEditor = ({
               value={rule.value}
               onChange={e => onChange({ ...rule, value: e.target.value })}
               placeholder={t`Column value`}
-              fullWidth
             />
           ) : null}
           <h3 className="mt3 mb1">{t`…turn its background this color:`}</h3>

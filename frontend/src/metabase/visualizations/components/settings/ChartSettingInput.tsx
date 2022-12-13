@@ -18,7 +18,6 @@ const ChartSettingInput = ({
     data-testid={props.id}
     value={value}
     onBlurChange={e => onChange(e.target.value)}
-    fullWidth
   />
 );
 
