@@ -230,21 +230,21 @@
   (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 
 (defmethod driver/database-supports? [:mongo :expressions]
-  [driver _feature db]
-  (boolean (some-> (driver/dbms-version driver db)
+  [_driver _feature db]
+  (boolean (some-> (:dbms_version db)
                    :semantic-version
                    (driver.u/semantic-version-gte [4]))))
 
 (defmethod driver/database-supports? [:mongo :date-arithmetics]
-  [driver _feature db]
-  (boolean (some-> (driver/dbms-version driver db)
+  [_driver _feature db]
+  (boolean (some-> (:dbms_version db)
                    :semantic-version
                    (driver.u/semantic-version-gte [5]))))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
-  [driver _feature db]
-  (boolean (some-> (driver/dbms-version driver db)
+  [_driver _feature db]
+  (boolean (some-> (:dbms_version db)
                    :semantic-version
                    (driver.u/semantic-version-gte [4 2]))))
 
