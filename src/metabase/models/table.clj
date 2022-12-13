@@ -204,14 +204,6 @@
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 
-(defn qualified-identifier
-  "Return a keyword identifier for `table` in the form `:schema.table-name` (if the Table has a non-empty `:schema` field)
-  or `:table-name` (if the Table has no `:schema`)."
-  ^clojure.lang.Keyword [{schema :schema, table-name :name}]
-  (keyword (str (when (seq schema)
-                  (str schema \.))
-                table-name)))
-
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]

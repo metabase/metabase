@@ -298,11 +298,11 @@
 (deftest yyyymmddhhmmss-binary-dates
   (mt/test-drivers #{:postgres :h2 :mysql}
     (is (= (case driver/*driver*
-             :postgres
+             (:h2 :postgres)
              [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
               [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
               [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]
-             (:h2 :mysql :sqlserver)
+             (:mysql :sqlserver)
              [[1 "foo" #t "2019-04-21T16:43"]
               [2 "bar" #t "2020-04-21T16:43"]
               [3 "baz" #t "2021-04-21T16:43"]]
@@ -321,7 +321,7 @@
              [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
               [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
               [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]]
-             (:h2 :mysql :sqlserver :bigquery-cloud-sdk)
+             (:mysql :sqlserver :bigquery-cloud-sdk)
              [[1 "foo" #t "2019-04-21T16:43"]
               [2 "bar" #t "2020-04-21T16:43"]
               [3 "baz" #t "2021-04-21T16:43"]]
@@ -329,7 +329,7 @@
              [[1 "foo" #t "2019-04-21T16:43Z[UTC]"]
               [2 "bar" #t "2020-04-21T16:43Z[UTC]"]
               [3 "baz" #t "2021-04-21T16:43Z[UTC]"]]
-             :postgres
+             (:h2 :postgres)
              [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
               [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
               [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]

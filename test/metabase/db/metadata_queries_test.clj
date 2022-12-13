@@ -25,11 +25,6 @@
     (is (= 1000
            (metadata-queries/field-count (db/select-one Field :id (mt/id :checkins :venue_id)))))))
 
-(deftest table-row-count-test
-  (mt/test-drivers (metadata-queries-test-drivers)
-    (is (= 1000
-           (metadata-queries/table-row-count (db/select-one Table :id (mt/id :checkins)))))))
-
 (deftest field-distinct-values-test
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]

@@ -2,11 +2,17 @@ import { restore, visitQuestionAdhoc, sidebar } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
-const nativeQuery = `SELECT "PRODUCTS__via__PRODUCT_ID"."CATEGORY" AS "CATEGORY", parsedatetime(formatdatetime("PUBLIC"."ORDERS"."CREATED_AT", 'yyyyMM'), 'yyyyMM') AS "CREATED_AT", count(*) AS "count"
-FROM "PUBLIC"."ORDERS"
-LEFT JOIN "PUBLIC"."PRODUCTS" "PRODUCTS__via__PRODUCT_ID" ON "PUBLIC"."ORDERS"."PRODUCT_ID" = "PRODUCTS__via__PRODUCT_ID"."ID"
-GROUP BY "PRODUCTS__via__PRODUCT_ID"."CATEGORY", parsedatetime(formatdatetime("PUBLIC"."ORDERS"."CREATED_AT", 'yyyyMM'), 'yyyyMM')
-ORDER BY "PRODUCTS__via__PRODUCT_ID"."CATEGORY" ASC, parsedatetime(formatdatetime("PUBLIC"."ORDERS"."CREATED_AT", 'yyyyMM'), 'yyyyMM') ASC
+const nativeQuery = `
+SELECT "PRODUCTS__via__PRODUCT_ID"."CATEGORY" AS "CATEGORY",
+       date_trunc('month', "ORDERS"."CREATED_AT") AS "CREATED_AT",
+       count(*) AS "count"
+FROM "ORDERS"
+LEFT JOIN "PRODUCTS" "PRODUCTS__via__PRODUCT_ID"
+       ON "ORDERS"."PRODUCT_ID" = "PRODUCTS__via__PRODUCT_ID"."ID"
+GROUP BY "PRODUCTS__via__PRODUCT_ID"."CATEGORY",
+         date_trunc('month', "ORDERS"."CREATED_AT")
+ORDER BY "PRODUCTS__via__PRODUCT_ID"."CATEGORY" ASC,
+         date_trunc('month', "ORDERS"."CREATED_AT") ASC
 `;
 
 const questionDetails = {
