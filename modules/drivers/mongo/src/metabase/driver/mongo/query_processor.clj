@@ -372,6 +372,7 @@
 
 (defmethod ->lvalue :avg       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :stddev    [[_ inp]] (->lvalue inp))
+(defmethod ->lvalue :var       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :sum       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :min       [[_ inp]] (->lvalue inp))
 (defmethod ->lvalue :max       [[_ inp]] (->lvalue inp))
@@ -404,11 +405,11 @@
 
 (defmethod ->lvalue :coalesce [[_ & args]] (->lvalue (first args)))
 
-(defmethod ->rvalue :avg       [[_ inp]] {"$avg" (->rvalue inp)})
-(defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevPop" (->rvalue inp)})
+(defmethod ->rvalue :avg       [[_ inp]] {$avg (->rvalue inp)})
+(defmethod ->rvalue :stddev    [[_ inp]] {"$stdDevSamp" (->rvalue inp)})
 (defmethod ->rvalue :sum       [[_ inp]] {"$sum" (->rvalue inp)})
-(defmethod ->rvalue :min       [[_ inp]] {"$min" (->rvalue inp)})
-(defmethod ->rvalue :max       [[_ inp]] {"$max" (->rvalue inp)})
+(defmethod ->rvalue :min       [[_ inp]] {$min (->rvalue inp)})
+(defmethod ->rvalue :max       [[_ inp]] {$max (->rvalue inp)})
 
 (defmethod ->rvalue :floor     [[_ inp]] {"$floor" (->rvalue inp)})
 (defmethod ->rvalue :ceil      [[_ inp]] {"$ceil" (->rvalue inp)})
@@ -443,14 +444,10 @@
 ;;; version of the database and throw a nice exception if it's less than 5.
 
 (defn- get-mongo-version []
-  (:version (driver/describe-database :mongo (qp.store/database))))
-
-(defn- get-major-version [version]
-  (some-> version (str/split #"\.") first parse-long))
+  (driver/dbms-version :mongo (qp.store/database)))
 
 (defn- check-date-operations-supported []
-  (let [mongo-version (get-mongo-version)
-        major-version (get-major-version mongo-version)]
+  (let [{mongo-version :version, [major-version] :semantic-version} (get-mongo-version)]
     (when (and major-version (< major-version 5))
       (throw (ex-info "Date arithmetic not supported in versions before 5"
                       {:database-version mongo-version})))))
@@ -505,18 +502,20 @@
   (if (driver/database-supports? :mongo :now (qp.store/database))
     "$$NOW"
     (throw (ex-info (tru "now is not supported for MongoDB versions before 4.2")
-                    {:database-version (get-mongo-version)}))))
+                    {:database-version (:version (get-mongo-version))}))))
 
-(defmethod ->rvalue :datetime-add        [[_ inp amount unit]] (do
-                                                                 (check-date-operations-supported)
-                                                                 {"$dateAdd" {:startDate (->rvalue inp)
-                                                                              :unit      unit
-                                                                              :amount    amount}}))
-(defmethod ->rvalue :datetime-subtract   [[_ inp amount unit]] (do
-                                                                 (check-date-operations-supported)
-                                                                 {"$dateSubtract" {:startDate (->rvalue inp)
-                                                                                   :unit      unit
-                                                                                   :amount    amount}}))
+(defmethod ->rvalue :datetime-add [[_ inp amount unit]]
+  (check-date-operations-supported)
+  {"$dateAdd" {:startDate (->rvalue inp)
+               :unit      unit
+               :amount    amount}})
+
+(defmethod ->rvalue :datetime-subtract
+  [[_ inp amount unit]]
+  (check-date-operations-supported)
+  {"$dateSubtract" {:startDate (->rvalue inp)
+                    :unit      unit
+                    :amount    amount}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               CLAUSE APPLICATION                                               |
@@ -696,21 +695,14 @@
     {$sum {$cond {:if   (->rvalue arg)
                   :then 1
                   :else 0}}}
-    [:avg arg]
-    {$avg (->rvalue arg)}
 
+    ;; these aggregation types can all be used in expressions as well so their implementations live above in the
+    ;; general [[->rvalue]] implementations
+    #{:avg :stddev :sum :min :max}
+    (->rvalue &match)
 
     [:distinct arg]
     {$addToSet (->rvalue arg)}
-
-    [:sum arg]
-    {$sum (->rvalue arg)}
-
-    [:min arg]
-    {$min (->rvalue arg)}
-
-    [:max arg]
-    {$max (->rvalue arg)}
 
     [:sum-where arg pred]
     {$sum {$cond {:if   (compile-cond pred)
@@ -744,22 +736,46 @@
                 {$size (str \$ ag-name)}
                 true)])))
 
-(defmulti ^:private expand-aggregation (comp first unwrap-named-ag))
+(defmulti ^:private expand-aggregation
+  "Expand aggregations like `:share` and `:var` that can't be done as top-level aggregations in the `$group` stage
+  alone. See [[group-and-post-aggregations]] for more info. See also
+  https://www.mongodb.com/docs/manual/reference/operator/aggregation/group/#accumulator-operator for a list of what
+  aggregation operators are allowed inside `$group` (vs the ones that have to be done in a later stage)."
+  {:arglists '([mbql-clause])}
+  (comp first unwrap-named-ag))
+
+;;; * `:group` = stuff to do in the `$group` stage
+;;;
+;;; * `:post` = stuff to do in the `$addFields` stage immediately following it
+;;;
+;;; both of these are maps of LHS column name => RHS definition
+;;;
+;;; Note that this code doesn't handle expression aggregations, but that's ok because we do not support
+;;; `:expression-aggregations` for Mongo DB.
 
 (defmethod expand-aggregation :share
   [[_ pred :as ag]]
-  (let [count-where-name (name (gensym "count-where"))
+  (let [count-where-name (name (gensym "count-where-"))
         count-name       (name (gensym "count-"))
         pred             (if (= (first pred) :share)
                            (second pred)
                            pred)]
-    [[[count-where-name (aggregation->rvalue [:count-where pred])]
-      [count-name (aggregation->rvalue [:count])]]
-     [[(annotate/aggregation-name ag) {$divide [(str "$" count-where-name) (str "$" count-name)]}]]]))
+    {:group {count-where-name (aggregation->rvalue [:count-where pred])
+             count-name       (aggregation->rvalue [:count])}
+     :post  {(annotate/aggregation-name ag) {$divide [(str "$" count-where-name) (str "$" count-name)]}}}))
+
+;; MongoDB doesn't have a variance operator, but you calculate it by taking the square of the standard deviation.
+;; However, `$pow` is not allowed in the `$group` stage. So calculate standard deviation in the
+(defmethod expand-aggregation :var
+  [ag]
+  (let [[_ expr]    (unwrap-named-ag ag)
+        stddev-name (name (gensym "stddev-"))]
+    {:group {stddev-name (aggregation->rvalue [:stddev expr])}
+     :post  {(annotate/aggregation-name ag) {:$pow [(str \$ stddev-name) 2]}}}))
 
 (defmethod expand-aggregation :default
   [ag]
-  [[[(annotate/aggregation-name ag) (aggregation->rvalue ag)]]])
+  {:group {(annotate/aggregation-name ag) (aggregation->rvalue ag)}})
 
 (defn- group-and-post-aggregations
   "Mongo is picky about which top-level aggregations it allows with groups. Eg. even
@@ -769,8 +785,8 @@
    accrued in `$group` stage are discarded in the final `$project` stage."
   [id aggregations]
   (let [expanded-ags (map expand-aggregation aggregations)
-        group-ags    (mapcat first expanded-ags)
-        post-ags     (mapcat second expanded-ags)]
+        group-ags    (mapcat :group expanded-ags)
+        post-ags     (mapcat :post expanded-ags)]
     [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}
      (when (not-empty post-ags)
        {:$addFields (into (ordered-map/ordered-map) post-ags)})]))

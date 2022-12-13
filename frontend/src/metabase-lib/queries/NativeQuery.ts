@@ -333,6 +333,10 @@ export default class NativeQuery extends AtomicQuery {
     );
   }
 
+  hasVariableTemplateTags(): boolean {
+    return this.variableTemplateTags().length > 0;
+  }
+
   hasSnippets() {
     return this.templateTags().some(t => t.type === "snippet");
   }

@@ -76,9 +76,15 @@ export const getIsAppBarVisible = createSelector(
     embedOptions,
   ) => {
     const isFullscreen = hash.includes("fullscreen");
+    const allEmbeddedAppBarElementsHidden =
+      !embedOptions.search &&
+      !embedOptions.new_button &&
+      !embedOptions.breadcrumbs;
+    const isEmbeddedAppBarHidden =
+      !embedOptions.top_nav || allEmbeddedAppBarElementsHidden;
     if (
       !currentUser ||
-      (isEmbedded && !embedOptions.top_nav) ||
+      (isEmbedded && isEmbeddedAppBarHidden) ||
       isAdminApp ||
       isEditingDashboard ||
       isFullscreen
@@ -89,7 +95,7 @@ export const getIsAppBarVisible = createSelector(
   },
 );
 
-export const getIsNavBarVisible = createSelector(
+export const getIsNavBarEnabled = createSelector(
   [
     getUser,
     getRouterPath,
@@ -159,12 +165,31 @@ export const getIsEditingDataAppQuestion = createSelector(
 );
 
 export const getIsCollectionPathVisible = createSelector(
-  [getQuestion, getDashboard, getIsEditingDataAppQuestion, getRouterPath],
-  (question, dashboard, isEditingDataAppQuestion, path) => {
+  [
+    getQuestion,
+    getDashboard,
+    getIsEditingDataAppQuestion,
+    getRouterPath,
+    getIsEmbedded,
+    getEmbedOptions,
+  ],
+  (
+    question,
+    dashboard,
+    isEditingDataAppQuestion,
+    path,
+    isEmbedded,
+    embedOptions,
+  ) => {
+    if (isEmbedded && !embedOptions.breadcrumbs) {
+      return false;
+    }
+
     if (isEditingDataAppQuestion) {
       // "Back to app" button takes over the collection breadcrumb in this case
       return false;
     }
+
     const isDashboard = dashboard != null;
     return (
       (isDashboard || question?.isSaved()) &&

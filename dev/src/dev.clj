@@ -3,6 +3,7 @@
   (:require [clojure.core.async :as a]
             [dev.debug-qp :as debug-qp]
             [honeysql.core :as hsql]
+            [malli.dev :as malli-dev]
             [metabase.api.common :as api]
             [metabase.core :as mbc]
             [metabase.db.connection :as mdb.connection]
@@ -131,3 +132,7 @@
   "Run migrations for the Metabase application database."
   []
   (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source) :up))
+
+(defn start-malli!
+  []
+  (malli-dev/start!))

@@ -2,7 +2,8 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import { updateIn } from "icepick";
 import DatabaseForm from "metabase/databases/containers/DatabaseForm";
-import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
+import { DatabaseData } from "metabase-types/api";
+import { InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import InviteUserForm from "../InviteUserForm";
@@ -11,7 +12,7 @@ import { StepDescription } from "./DatabaseStep.styled";
 
 export interface DatabaseStepProps {
   user?: UserInfo;
-  database?: DatabaseInfo;
+  database?: DatabaseData;
   engine?: string;
   invite?: InviteInfo;
   isEmailConfigured: boolean;
@@ -20,7 +21,7 @@ export interface DatabaseStepProps {
   isSetupCompleted: boolean;
   onEngineChange: (engine?: string) => void;
   onStepSelect: () => void;
-  onDatabaseSubmit: (database: DatabaseInfo) => void;
+  onDatabaseSubmit: (database: DatabaseData) => void;
   onInviteSubmit: (invite: InviteInfo) => void;
   onStepCancel: (engine?: string) => void;
 }
@@ -41,7 +42,7 @@ const DatabaseStep = ({
   onStepCancel,
 }: DatabaseStepProps): JSX.Element => {
   const handleSubmit = useCallback(
-    async (database: DatabaseInfo) => {
+    async (database: DatabaseData) => {
       try {
         await onDatabaseSubmit(database);
       } catch (error) {
@@ -99,7 +100,7 @@ const DatabaseStep = ({
 };
 
 const getStepTitle = (
-  database: DatabaseInfo | undefined,
+  database: DatabaseData | undefined,
   invite: InviteInfo | undefined,
   isStepCompleted: boolean,
 ): string => {

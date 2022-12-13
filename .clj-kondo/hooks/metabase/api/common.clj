@@ -1,7 +1,8 @@
 (ns hooks.metabase.api.common
   (:require
-   [clj-kondo.hooks-api :as api]
-   [clojure.string :as str]))
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.string :as str]
+   [hooks.common :as common]))
 
 (defn route-fn-name
   [method route]
@@ -13,11 +14,13 @@
 (defn defendpoint [{:keys [node]}]
   (let [[method route & body] (rest (:children node))]
     {:node
-     (api/list-node [(api/token-node 'do)
-                     ;; register usage of compojure core var
-                     (api/token-node (symbol (str "compojure.core")
-                                             (str method)))
-                     ;; define function with route-fn-name
-                     (api/list-node (list* (api/token-node 'clojure.core/defn)
-                                           (route-fn-name (api/sexpr method) (api/sexpr route))
-                                           body))])}))
+     (hooks/vector-node [;; register usage of compojure core var
+                         (common/with-macro-meta (hooks/token-node (symbol (str "compojure.core")
+                                                                           (str method)))
+                           node)
+                         ;; define function with route-fn-name
+                         (hooks/list-node
+                           (list* (common/with-macro-meta (hooks/token-node 'clojure.core/defn)
+                                    node)
+                                  (route-fn-name (hooks/sexpr method) (hooks/sexpr route))
+                                  body))])}))

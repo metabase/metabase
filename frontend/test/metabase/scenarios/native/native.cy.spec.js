@@ -10,24 +10,28 @@ import {
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
-    cy.intercept("POST", "api/dataset").as("dataset");
     cy.intercept("POST", "api/card").as("card");
+    cy.intercept("POST", "api/dataset").as("dataset");
+    cy.intercept("POST", "api/dataset/native").as("datasetNative");
     restore();
     cy.signInAsNormalUser();
   });
 
   it("lets you create and run a SQL question", () => {
     openNativeEditor().type("select count(*) from orders");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains("18,760");
   });
 
   it("displays an error", () => {
     openNativeEditor().type("select * from not_a_table");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
@@ -37,7 +41,7 @@ describe("scenarios > question > native", () => {
         "{leftarrow}".repeat(3) + // move left three
         "{shift}{leftarrow}".repeat(19), // highlight back to the front
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains('Table "ORD" not found');
   });
 
@@ -46,8 +50,7 @@ describe("scenarios > question > native", () => {
       parseSpecialCharSequences: false,
     });
     cy.get("input[placeholder*='Stars']").type("3");
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.wait("@dataset");
+    runQuery();
     cy.contains("Showing 168 rows");
   });
 
@@ -61,8 +64,7 @@ describe("scenarios > question > native", () => {
       .find("input")
       .click();
     cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.wait("@dataset");
+    runQuery();
 
     cy.contains("Save").click();
 
@@ -83,7 +85,7 @@ describe("scenarios > question > native", () => {
 
   it("can save a question with no rows", () => {
     openNativeEditor().type("select * from people where false");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains("No results!");
     cy.icon("contract").click();
     cy.contains("Save").click();
@@ -181,8 +183,7 @@ describe("scenarios > question > native", () => {
     cy.get("input[placeholder*='Cat']").type("Gizmo");
     cy.get("input[placeholder*='Stars']").type("3");
 
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.wait("@dataset");
+    runQuery();
 
     cy.contains("Save").click();
 
@@ -224,4 +225,57 @@ describe("scenarios > question > native", () => {
 
     cy.findByText("Here's where your results will appear").should("be.visible");
   });
+
+  it("should allow to preview a fully parameterized query", () => {
+    openNativeEditor().type(
+      "select * from PRODUCTS where CATEGORY={{category}}",
+      { parseSpecialCharSequences: false },
+    );
+    cy.findByPlaceholderText("Category").type("Gadget");
+    cy.button("Preview the query").click();
+    cy.wait("@datasetNative");
+
+    cy.findByText(/where CATEGORY='Gadget'/).should("be.visible");
+  });
+
+  it("should show errors when previewing a query", () => {
+    openNativeEditor().type(
+      "select * from PRODUCTS where CATEGORY={{category}}",
+      { parseSpecialCharSequences: false },
+    );
+    cy.button("Preview the query").click();
+    cy.wait("@datasetNative");
+
+    cy.findByText(/missing required parameters/).should("be.visible");
+  });
+
+  it("should allow to convert a structured query to a native query", () => {
+    visitQuestionAdhoc(
+      {
+        display: "table",
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            limit: 1,
+          },
+          database: SAMPLE_DB_ID,
+        },
+      },
+      { mode: "notebook", autorun: false },
+    );
+
+    cy.button("View the SQL").click();
+    cy.wait("@datasetNative");
+    cy.findByText(/FROM "PUBLIC"."ORDERS"/).should("be.visible");
+
+    cy.button("Convert this question to SQL").click();
+    runQuery();
+    cy.findByText("Showing 1 row").should("be.visible");
+  });
 });
+
+const runQuery = () => {
+  cy.get(".NativeQueryEditor .Icon-play").click();
+  cy.wait("@dataset");
+};

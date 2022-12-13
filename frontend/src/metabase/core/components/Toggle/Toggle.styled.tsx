@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { focusOutlineStyle } from "metabase/core/style/input";
 import { color } from "metabase/lib/colors";
 
 export interface ToggleRootProps {
@@ -56,11 +57,5 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
     box-shadow: 2px 2px 6px ${color("shadow")};
   }
 
-  &:focus {
-    outline: 2px solid ${() => color("focus")};
-  }
-
-  &:focus:not(:focus-visible) {
-    outline: none;
-  }
+  ${focusOutlineStyle("brand")};
 `;

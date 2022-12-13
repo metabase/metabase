@@ -547,7 +547,6 @@ function getTokenFieldPlaceholder({
   disableSearch,
   placeholder,
   disablePKRemappingForSearch,
-  loadingState,
   options,
   valuesMode,
 }) {

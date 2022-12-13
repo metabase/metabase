@@ -27,73 +27,6 @@ executors:
     docker:
       - image: metabase/ci:java-17-clj-1.11.0.1100.04-2022-build
 
-  mysql-latest:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-        environment:
-          MB_DB_TYPE: mysql
-          MB_DB_HOST: localhost
-          MB_DB_PORT: 3306
-          MB_DB_DBNAME: circle_test
-          MB_DB_USER: root
-          MB_MYSQL_TEST_USER: root
-      - image: circleci/mysql:latest
-
-  mongo-4-0-ssl:
-     working_directory: /home/circleci/metabase/metabase/
-     docker:
-       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-         environment:
-           MB_TEST_MONGO_REQUIRES_SSL: true
-       - image: metabase/qa-databases:mongo-sample-4.0
-         command: mongod --dbpath /data/db2/ --sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt
-
-  mongo-5-0-ssl:
-     working_directory: /home/circleci/metabase/metabase/
-     docker:
-       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-         environment:
-           MB_TEST_MONGO_REQUIRES_SSL: true
-       - image: metabase/qa-databases:mongo-sample-5.0
-         command: mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
-
-  presto-186:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-      - image: metabase/presto-mb-ci:0.186
-        environment:
-          JAVA_TOOL_OPTIONS: "-Xmx2g"
-    # Run instance with 8GB or RAM instead of the default 4GB for medium instances. The Presto Docker image runs
-    # OOM sometimes with the default medium size.
-    resource_class: large
-
-  presto-jdbc-env:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-      - image: metabase/presto-mb-ci:latest # version 0.254
-        environment:
-          JAVA_TOOL_OPTIONS: "-Xmx2g"
-          MB_PRESTO_JDBC_TEST_CATALOG: test_data
-          MB_PRESTO_JDBC_TEST_HOST: localhost
-          MB_PRESTO_JDBC_TEST_PORT: 8443
-          MB_PRESTO_JDBC_TEST_SSL: true
-          MB_PRESTO_JDBC_TEST_USER: metabase
-          MB_PRESTO_JDBC_TEST_PASSWORD: metabase
-          MB_ENABLE_PRESTO_JDBC_DRIVER: true
-          MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS: >
-            SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit
-    # (see above)
-    resource_class: large
-
-  vertica:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-      - image: sumitchawla/vertica
-
 ########################################################################################################################
 #                                             MAP FRAGMENTS AND CACHE KEYS                                             #
 ########################################################################################################################
@@ -381,15 +314,6 @@ jobs:
               echo 'This is a release or master branch; using cache-busting prefix'
               echo '<< pipeline.id >>' > .CACHE-PREFIX
             fi
-      - run:
-          name: Make SSL certificates for Mongo available
-          command: >-
-            curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.crt
-            -o /home/circleci/metabase/metabase/test_resources/ssl/mongo/metabase.crt
-            https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.key
-            -o /home/circleci/metabase/metabase/test_resources/ssl/mongo/metabase.key
-            https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt
-            -o /home/circleci/metabase/metabase/test_resources/ssl/mongo/metaca.crt
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -562,18 +486,6 @@ workflows:
             - checkout
 
       - clojure:
-          matrix:
-            parameters:
-              edition: ["ee"]
-              java-version: ["java-11"]
-          name: be-tests-<< matrix.java-version >>-<< matrix.edition >>
-          requires:
-            - be-deps
-          e: << matrix.java-version >>
-          clojure-args: -X:dev:ci:test
-          skip-when-no-change: true
-
-      - clojure:
           name: be-linter-cloverage
           requires:
             - be-deps
@@ -585,58 +497,6 @@ workflows:
                 command: bash <(curl -s https://codecov.io/bash) -F back-end
 
           skip-when-no-change: true
-
-      - test-driver:
-          matrix:
-            parameters:
-              driver: ["bigquery-cloud-sdk", "googleanalytics", "redshift", "athena"]
-          name: be-tests-<< matrix.driver >>-ee
-          requires:
-            - be-deps
-          driver: << matrix.driver >>
-          timeout: 30m
-
-      - test-driver:
-          name: be-google-related-drivers-classpath-test
-          requires:
-            - be-deps
-          driver: googleanalytics,bigquery-cloud-sdk
-          test-args: >-
-            :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
-                    metabase.driver.googleanalytics-test]"
-
-      - test-driver:
-          matrix:
-            parameters:
-              version: ["mongo-4-0-ssl", "mongo-5-0-ssl"]
-          name: be-tests-<< matrix.version >>-ee
-          description: "(<< matrix.version >>)"
-          requires:
-            - be-deps
-          e: << matrix.version >>
-          driver: mongo
-
-      - test-driver:
-          name: be-tests-mysql-latest-ee
-          description: "(MySQL latest)"
-          requires:
-            - be-deps
-          e:
-            name: mysql-latest
-          driver: mysql
-          # set up env vars for something named "MYSQL_SSL" to run MySQL SSL tests verifying connectivity with PEM cert
-          # they are deliberately given a different name to prevent them from affecting the regular test run against
-          # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
-          # that overrides the MB_MYSQL_TEST_* values with them
-          # the MYSQL_RDS_SSL_INSTANCE vars are secret and/or changeable, so they are defined in the CircleCI settings
-          timeout: 30m
-          extra-env: >-
-            MB_MYSQL_SSL_TEST_HOST=$MYSQL_RDS_SSL_INSTANCE_HOST
-            MB_MYSQL_SSL_TEST_SSL=true
-            MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS='verifyServerCertificate=true'
-            MB_MYSQL_SSL_TEST_SSL_CERT="$(cat /home/circleci/metabase/metabase/resources/certificates/rds-combined-ca-bundle.pem)"
-            MB_MYSQL_SSL_TEST_USER=metabase
-            MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
 
       - test-driver:
           name: be-tests-oracle-ee
@@ -657,57 +517,3 @@ workflows:
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH=/home/circleci/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_OPTIONS=local
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE=metabase
-
-      - test-driver:
-          name: be-tests-presto-jdbc-ee
-          requires:
-            - be-deps
-          e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
-          before-steps:
-            - wait-for-port:
-                port: 8443
-            - run:
-                name: Create temp cacerts file based on bundled JDK one
-                command: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
-            - run:
-                name: Capture Presto server self signed CA
-                command: |
-                  while [[ ! -s /tmp/presto-ssl-ca.pem ]];
-                    do echo "Waiting to capture SSL CA" \
-                      && openssl s_client -connect localhost:8443 2>/dev/null </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/presto-ssl-ca.pem \
-                      && sleep 1; done
-            - run:
-                name: Convert Presto CA from PEM to DER
-                command: openssl x509 -outform der -in /tmp/presto-ssl-ca.pem -out /tmp/presto-ssl-ca.der
-            - run:
-                name: Add write permission on cacerts file
-                command: chmod u+w /tmp/cacerts-with-presto-ssl.jks
-            - run:
-                name: Import Presto CA into temp cacerts file
-                command: |
-                  keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
-                   -storepass changeit -file /tmp/presto-ssl-ca.der -trustcacerts
-          after-steps:
-            - run:
-                name: Capture max memory usage
-                command: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
-                when: always
-          driver: presto-jdbc
-
-      - test-driver:
-          name: be-tests-snowflake-ee
-          requires:
-            - be-deps
-          driver: snowflake
-          timeout: 115m # whut
-
-      - test-driver:
-          name: be-tests-vertica-ee
-          requires:
-            - be-deps
-          e: vertica
-          before-steps:
-            - fetch-jdbc-driver:
-                source: VERTICA_JDBC_JAR
-                dest: vertica-jdbc-7.1.2-0.jar
-          driver: vertica

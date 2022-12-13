@@ -1,3 +1,4 @@
+import _ from "underscore";
 import { getParameterType } from "metabase-lib/parameters/utils/parameter-type";
 
 export function getValuePopulatedParameters(parameters, parameterValues) {
@@ -19,6 +20,17 @@ export function hasDefaultParameterValue(parameter) {
 
 export function hasParameterValue(value) {
   return value != null;
+}
+
+export function normalizeParameters(parameters) {
+  return parameters
+    .filter(parameter => _.has(parameter, "value"))
+    .map(({ type, value, target, id }) => ({
+      id,
+      type,
+      value: normalizeParameterValue(type, value),
+      target,
+    }));
 }
 
 export function normalizeParameterValue(type, value) {

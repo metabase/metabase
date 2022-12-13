@@ -1,9 +1,8 @@
 import * as Yup from "yup";
 import type { TestContext } from "yup";
 import * as Errors from "metabase/core/utils/errors";
-import { Engine, EngineField, ScheduleType } from "metabase-types/api";
+import { DatabaseData, Engine, EngineField } from "metabase-types/api";
 import { ADVANCED_FIELDS, FIELD_OVERRIDES } from "../constants";
-import { DatabaseValues } from "../types";
 
 const SCHEDULE_SCHEMA = Yup.object({
   schedule_type: Yup.mixed().nullable(),
@@ -41,7 +40,7 @@ export const getValidationSchema = (
 
 export const getVisibleFields = (
   engine: Engine | undefined,
-  values: DatabaseValues,
+  values: DatabaseData,
   isAdvanced: boolean,
 ) => {
   const fields = getDefinedFields(engine, isAdvanced);
@@ -61,7 +60,7 @@ export const getDefinedFields = (
 
 export const getSubmitValues = (
   engine: Engine | undefined,
-  values: DatabaseValues,
+  values: DatabaseData,
   isAdvanced: boolean,
 ) => {
   const fields = getVisibleFields(engine, values, isAdvanced);

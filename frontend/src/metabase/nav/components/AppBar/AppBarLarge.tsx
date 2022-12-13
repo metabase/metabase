@@ -24,7 +24,7 @@ export interface AppBarLargeProps {
   currentUser: User;
   collectionId?: CollectionId;
   isNavBarOpen?: boolean;
-  isNavBarVisible?: boolean;
+  isNavBarEnabled?: boolean;
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
@@ -39,7 +39,7 @@ const AppBarLarge = ({
   currentUser,
   collectionId,
   isNavBarOpen,
-  isNavBarVisible,
+  isNavBarEnabled,
   isSearchVisible,
   isNewButtonVisible,
   isProfileLinkVisible,
@@ -49,17 +49,19 @@ const AppBarLarge = ({
   onToggleNavbar,
   onLogout,
 }: AppBarLargeProps): JSX.Element => {
+  const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+
   return (
-    <AppBarRoot isNavBarOpen={isNavBarOpen}>
-      <AppBarLeftContainer isNavBarVisible={isNavBarVisible}>
+    <AppBarRoot isNavBarOpen={isNavBarVisible}>
+      <AppBarLeftContainer isNavBarEnabled={isNavBarEnabled}>
         <AppBarLogo
-          isNavBarOpen={isNavBarOpen}
-          isToggleVisible={isNavBarVisible}
+          isNavBarOpen={isNavBarVisible}
+          isNavBarEnabled={isNavBarEnabled}
           onToggleClick={onToggleNavbar}
         />
         <AppBarInfoContainer
           isVisible={
-            !isNavBarOpen ||
+            !isNavBarVisible ||
             isQuestionLineageVisible ||
             isEditingDataAppQuestion
           }

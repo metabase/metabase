@@ -171,42 +171,42 @@
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
   implementation of `describe-database`.
   Also syncs the database metadata taken from describe-database if there is any"
-  [database :- i/DatabaseInstance]
-  ;; determine what's changed between what info we have and what's in the DB
-  (let [db-metadata             (fetch-metadata/db-metadata database)
-        db-tables               (table-set db-metadata)
-        our-metadata            (our-metadata database)
-        strip-desc              (fn [metadata]
-                                  (set (map #(dissoc % :description) metadata)))
-        [new-tables old-tables] (data/diff
+  ([database :- i/DatabaseInstance] (sync-tables-and-database! database (fetch-metadata/db-metadata database)))
+  ([database :- i/DatabaseInstance db-metadata]
+   ;; determine what's changed between what info we have and what's in the DB
+   (let [db-tables               (table-set db-metadata)
+         our-metadata            (our-metadata database)
+         strip-desc              (fn [metadata]
+                                   (set (map #(dissoc % :description) metadata)))
+         [new-tables old-tables] (data/diff
                                   (strip-desc db-tables)
                                   (strip-desc our-metadata))
-        [changed-tables]        (data/diff db-tables our-metadata)]
-    ;; update database metadata from database
-    (when (some? (:version db-metadata))
-      (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
-                                             (sync-util/name-for-logging database))
-        (update-database-metadata! database db-metadata)))
-    ;; create new tables as needed or mark them as active again
-    (when (seq new-tables)
-      (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
-                                             (sync-util/name-for-logging database))
-        (create-or-reactivate-tables! database new-tables)))
-    ;; mark old tables as inactive
-    (when (seq old-tables)
-      (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
-        (retire-tables! database old-tables)))
+         [changed-tables]        (data/diff db-tables our-metadata)]
+     ;; update database metadata from database
+     (when (some? (:version db-metadata))
+       (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
+                                              (sync-util/name-for-logging database))
+         (update-database-metadata! database db-metadata)))
+     ;; create new tables as needed or mark them as active again
+     (when (seq new-tables)
+       (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
+                                              (sync-util/name-for-logging database))
+         (create-or-reactivate-tables! database new-tables)))
+     ;; mark old tables as inactive
+     (when (seq old-tables)
+       (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
+         (retire-tables! database old-tables)))
 
-    ;; update description for changed tables
-    (when (seq changed-tables)
-      (sync-util/with-error-handling (format "Error updating table description for %s" (sync-util/name-for-logging database))
-        (update-table-description! database changed-tables)))
+     ;; update description for changed tables
+     (when (seq changed-tables)
+       (sync-util/with-error-handling (format "Error updating table description for %s" (sync-util/name-for-logging database))
+         (update-table-description! database changed-tables)))
 
-    ;; update native download perms for all groups if any tables were added or removed
-    (when (or (seq new-tables) (seq old-tables))
-      (sync-util/with-error-handling (format "Error updating native download perms for %s" (sync-util/name-for-logging database))
-        (doseq [{id :id} (perms-group/non-admin-groups)]
-          (perms/update-native-download-permissions! id (u/the-id database)))))
+     ;; update native download perms for all groups if any tables were added or removed
+     (when (or (seq new-tables) (seq old-tables))
+       (sync-util/with-error-handling (format "Error updating native download perms for %s" (sync-util/name-for-logging database))
+         (doseq [{id :id} (perms-group/non-admin-groups)]
+           (perms/update-native-download-permissions! id (u/the-id database)))))
 
-    {:updated-tables (+ (count new-tables) (count old-tables))
-     :total-tables   (count our-metadata)}))
+     {:updated-tables (+ (count new-tables) (count old-tables))
+      :total-tables   (count our-metadata)})))

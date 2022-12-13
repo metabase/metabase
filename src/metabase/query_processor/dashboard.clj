@@ -1,6 +1,7 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.driver.common.parameters.operators :as params.ops]
@@ -73,10 +74,13 @@
        request-param
        ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
        ;; vector so the parameter handling code doesn't explode.
-       (when (and (params.ops/operator? (:type matching-param))
-                  (seq (:value request-param))
-                  (not (sequential? (:value request-param))))
-         {:value [(:value request-param)]})
+       (let [value (:value request-param)]
+         (when (and (params.ops/operator? (:type matching-param))
+                    (if (string? value)
+                      (not (str/blank? value))
+                      (some? value))
+                    (not (sequential? value)))
+           {:value [value]}))
        {:id     param-id
         :target (:target matching-mapping)}))))
 

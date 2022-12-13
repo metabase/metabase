@@ -176,12 +176,18 @@
                                                              first))
        (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
+(defmethod driver/dbms-version :mongo
+  [_ database]
+  (with-mongo-connection [^com.mongodb.DB conn database]
+    (let [build-info (mg/command conn {:buildInfo 1})]
+      {:version (get build-info "version")
+       :semantic-version (get build-info "versionArray")})))
+
 (defmethod driver/describe-database :mongo
   [_ database]
   (with-mongo-connection [^com.mongodb.DB conn database]
     {:tables  (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
-                    {:schema nil, :name collection}))
-     :version (get (mg/command conn {:buildInfo 1}) "version")}))
+                    {:schema nil, :name collection}))}))
 
 (defn- table-sample-column-info
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
@@ -218,8 +224,9 @@
 
 (doseq [feature [:basic-aggregations
                  :nested-fields
-                 :native-parameters]]
-  (defmethod driver/supports? [:mongo feature] [_ _] true))
+                 :native-parameters
+                 :standard-deviation-aggregations]]
+  (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 
 (defn- db-version [db]
   (get-in db [:details :version]))
