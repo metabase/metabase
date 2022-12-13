@@ -218,24 +218,24 @@
                                                            :name           "value",
                                                            :type           "category",
                                                            :source_type    "static-list"
-                                                           :source_options {"values" [1 2 3]}}
+                                                           :source_options {"values" ["a" "b" "c"]}}
                                                           {:id             "_value-with-label_",
                                                            :name           "value_with_label",
                                                            :type           "category",
                                                            :source_type    "static-list"
-                                                           :source_options {"values" [[1 "one"] [2 "two"] [3 "three"]]}}]})]
+                                                           :source_options {"values" ["one" "two" "three"]}}]})]
 
 
         (is (= [{:id             "_value_",
                  :name           "value",
                  :type           "category",
                  :source_type    "static-list"
-                 :source_options {:values [1 2 3]}}
+                 :source_options {:values ["a" "b" "c"]}}
                 {:id             "_value-with-label_",
                  :name           "value_with_label",
                  :type           "category",
                  :source_type    "static-list"
-                 :source_options {:values [[1 "one"] [2 "two"] [3 "three"]]}}]
+                 :source_options {:values ["one" "two" "three"]}}]
                (:parameters dashboard)))
 
         (testing "make sure we could update and delete the params"
@@ -244,17 +244,17 @@
                                                                :name           "value",
                                                                :type           "category",
                                                                :source_type    "static-list"
-                                                               :source_options {"values" [4 5 6]}}]})]
+                                                               :source_options {"values" ["a" "b" "c"]}}]})]
 
 
             (is (= [{:id             "_value_",
                      :name           "value",
                      :type           "category",
                      :source_type    "static-list"
-                     :source_options {:values [4 5 6]}}]
+                     :source_options {:values ["a" "b" "c"]}}]
                    (:parameters dashboard))))))
 
-      (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
+      (testing "source-options must be a map with valid `:values` and sourcetype must be `card` or `static-list` must be a string"
         (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
                (get-in (mt/user-http-request :rasta :post 400 "dashboard"
                                              {:name       "a dashboard"
@@ -262,7 +262,7 @@
                                                             :name           "value",
                                                             :type           "category",
                                                             :source_type    "random-type"
-                                                            :source_options {"values" [1 2 3]}}]})
+                                                            :source_options {"values" ["a" "b" "c"]}}]})
                        [:errors :parameters])))
         (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
                (get-in (mt/user-http-request :rasta :post 400 "dashboard"
@@ -272,6 +272,15 @@
                                                             :type           "category",
                                                             :source_type    "static-list"
                                                             :source_options []}]})
+                       [:errors :parameters])))
+        (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+               (get-in (mt/user-http-request :rasta :post 400 "dashboard"
+                                             {:name       "a dashboard"
+                                              :parameters [{:id             "_value_",
+                                                            :name           "value",
+                                                            :type           "category",
+                                                            :source_type    "static-list"
+                                                            :source_options {"values" [1 2 3]}}]})
                        [:errors :parameters])))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
