@@ -4,11 +4,8 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import { color } from "metabase/lib/colors";
 
 export const FieldNameInput = styled(InputBlurChange)`
-  display: block;
+  width: auto;
   margin-bottom: 0.5rem;
-  ${InputBlurChange.Field} {
-    background-color: ${color("bg-light")};
-  }
 `;
 
 export const BackButtonLink = styled(Link)`

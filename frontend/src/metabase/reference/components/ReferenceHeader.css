@@ -10,7 +10,7 @@
 }
 
 :local(.headerTextInput) {
-  composes: p1 pl2 pr2 from "style";
+  composes: p1 from "style";
   font-size: 18px;
   color: var(--title-color);
   max-width: 550px;

@@ -440,7 +440,7 @@ export class FieldHeader extends React.Component {
         />
         <InputBlurChange
           name="description"
-          className="text text-measure block full"
+          className="text-measure"
           value={this.props.field.description}
           onBlurChange={this.onDescriptionChange}
           placeholder={t`No description for this field yet`}

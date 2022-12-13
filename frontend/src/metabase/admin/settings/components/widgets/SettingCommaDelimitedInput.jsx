@@ -31,7 +31,6 @@ const SettingCommaDelimitedInput = ({
         !fireOnChange ? e => onChange(maybeSingletonList(e.target.value)) : null
       }
       autoFocus={autoFocus}
-      fullWidth
     />
   );
 };

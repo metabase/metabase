@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 import { monospaceFontFamily, space } from "metabase/styled-components/theme";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { focusOutlineStyle } from "metabase/core/style/input";
+import { inputPadding, inputTypography } from "metabase/core/style/input";
 import { InputSize } from "./types";
 
 export interface InputProps {
@@ -47,11 +48,10 @@ export const InputRoot = styled.div<InputRootProps>`
 `;
 
 export const InputField = styled.input<InputProps>`
+  ${inputPadding}
+  ${inputTypography}
   font-family: inherit;
-  font-weight: 700;
-  font-size: 1rem;
   color: ${color("text-dark")};
-  padding: 0.75rem;
   border: 1px solid ${color("border")};
   border-radius: ${space(1)};
   background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};

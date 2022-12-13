@@ -48,10 +48,9 @@ const InputBlurChange = ({
       value={internalValue}
       onBlur={handleBlur}
       onChange={handleChange}
+      fullWidth
     />
   );
 };
 
-export default Object.assign(InputBlurChange, {
-  Field: Input.Field,
-});
+export default InputBlurChange;

@@ -3,8 +3,4 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 
 export const SettingInputBlurChange = styled(InputBlurChange)`
   width: 400px;
-
-  ${InputBlurChange.Field} {
-    flex: 1;
-  }
 `;

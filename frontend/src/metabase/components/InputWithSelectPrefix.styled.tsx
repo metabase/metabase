@@ -1,10 +1,11 @@
 import styled from "@emotion/styled";
+import Input from "metabase/core/components/Input";
 import InputBlurChange from "./InputBlurChange";
 
 export const SelectPrefixInput = styled(InputBlurChange)`
-  flex: 1 0 auto;
+  width: auto;
 
-  ${InputBlurChange.Field} {
+  ${Input.Field} {
     border: none;
   }
 `;

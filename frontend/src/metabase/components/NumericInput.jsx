@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { NumbericInputBlurChange } from "./NumericInput.styled";
+import { NumericInputBlurChange } from "./NumericInput.styled";
 
 const NumericInput = ({ value, onChange, ...props }) => (
-  <NumbericInputBlurChange
+  <NumericInputBlurChange
     value={value == null ? "" : String(value)}
     onBlurChange={({ target: { value } }) => {
       value = value ? parseFloat(value) : null;
