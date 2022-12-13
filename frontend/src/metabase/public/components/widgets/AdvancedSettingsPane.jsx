@@ -31,8 +31,6 @@ const AdvancedSettingsPane = ({
   displayOptions,
   onChangeDisplayOptions,
   onUnpublish,
-  pane,
-  onChangePane,
   previewParameters,
   parameterValues,
   onChangeParameterValue,
