@@ -420,22 +420,24 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :now :datetime-diff)
     (testing "should work as an argument to datetime-diff"
       (is (= 0
-             (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:datetime-diff [:now] [:now] :month]}
-                    :fields [[:expression "1"]]
-                    :limit  1})
-                 mt/rows ffirst)))))
+             (->> (mt/run-mbql-query venues
+                    {:expressions {"1" [:datetime-diff [:now] [:now] :month]}
+                     :fields [[:expression "1"]]
+                     :limit  1})
+                  (mt/formatted-rows [int])
+                  ffirst)))))
   (mt/test-drivers (mt/normal-drivers-with-feature :now :date-arithmetics :datetime-diff)
     (testing "should work in combination with datetime-diff and date-arithmetics"
       (is (= [1 1]
-             (-> (mt/run-mbql-query venues
-                   {:expressions {"1" [:datetime-diff [:now] [:datetime-add [:now] 1 :month] :month]
-                                  "2" [:now]
-                                  "3" [:datetime-diff [:expression "2"] [:datetime-add [:expression "2"] 1 :month] :month]}
-                    :fields [[:expression "1"]
-                             [:expression "3"]]
-                    :limit  1})
-                 mt/rows first))))))
+             (->> (mt/run-mbql-query venues
+                    {:expressions {"1" [:datetime-diff [:now] [:datetime-add [:now] 1 :month] :month]
+                                   "2" [:now]
+                                   "3" [:datetime-diff [:expression "2"] [:datetime-add [:expression "2"] 1 :month] :month]}
+                     :fields [[:expression "1"]
+                              [:expression "3"]]
+                     :limit  1})
+                  (mt/formatted-rows [int int])
+                  first))))))
 
 (defn- close-minute?
   "Tests whether two minute integers are within 1 minute of each other on the clock.
