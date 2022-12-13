@@ -96,8 +96,8 @@ function ActionParametersInputForm({
   );
 
   const initialValues = useMemo(
-    () => getInitialValues(form, prefetchValues),
-    [form, prefetchValues],
+    () => getInitialValues(fieldSettings, prefetchValues),
+    [fieldSettings, prefetchValues],
   );
 
   const handleSubmit = useCallback(

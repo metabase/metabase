@@ -26,8 +26,7 @@ export function FieldSettingsButtons({
   };
 
   const hasOptions =
-    fieldSettings.inputType === "dropdown" ||
-    fieldSettings.inputType === "radio";
+    fieldSettings.inputType === "select" || fieldSettings.inputType === "radio";
 
   return (
     <FieldSettingsButtonsContainer>

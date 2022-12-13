@@ -1,27 +1,34 @@
-import type { Validator, FormFieldDefinition } from "metabase-types/forms";
 import type Field from "metabase-lib/metadata/Field";
 import type { ParameterId } from "./parameters";
 
 export type ActionDisplayType = "form" | "button";
 export type FieldType = "string" | "number" | "date" | "category";
 
-export type DateInputType =
-  | "date"
-  | "time"
-  | "datetime"
-  | "monthyear"
-  | "quarteryear";
+export type DateInputType = "date" | "time" | "datetime";
 
-export type InputType =
+// these types are saved in visualization_settings
+export type InputSettingType =
   | DateInputType
   | "string"
   | "text"
   | "number"
-  | "dropdown"
+  | "select"
   | "radio"
-  | "email"
-  | "password"
   | "boolean"
+  | "category";
+
+// these types get passed to the input components
+export type InputComponentType =
+  | "text"
+  | "input" // this will be removed
+  | "textarea"
+  | "number"
+  | "boolean"
+  | "select"
+  | "radio"
+  | "date"
+  | "time"
+  | "datetime-local"
   | "category";
 
 export type Size = "small" | "medium" | "large";
@@ -30,13 +37,14 @@ export type DateRange = [string, string];
 export type NumberRange = [number, number];
 
 export interface FieldSettings {
+  id: string;
   name: string;
   title: string;
   order: number;
   description?: string | null;
   placeholder?: string;
   fieldType: FieldType;
-  inputType: InputType;
+  inputType: InputSettingType;
   required: boolean;
   defaultValue?: string | number;
   hidden: boolean;
@@ -66,9 +74,19 @@ export type ActionFormOption = {
   value: string | number;
 };
 
-export type ActionFormFieldProps = FormFieldDefinition & {
+export type Validator = (value: string) => undefined | string;
+
+export type ActionFormFieldProps = {
+  name: string;
+  title: string;
+  description?: string;
+  placeholder?: string;
+  type: InputComponentType;
+  required?: boolean;
+  validate?: Validator;
   validator?: Validator;
   fieldInstance?: Field;
+  options?: ActionFormOption[];
 };
 
 export type ActionFormProps = {

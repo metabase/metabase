@@ -1,6 +1,7 @@
 import type {
   Database as IDatabase,
   WritebackAction,
+  ActionFormSettings,
 } from "metabase-types/api";
 import type { Parameter } from "metabase-types/types/Parameter";
 
@@ -67,3 +68,11 @@ export const shouldPrefetchValues = (action: WritebackAction) => {
   // for custom actions
   return action.type === "implicit" && action.kind === "row/update";
 };
+
+export const sortActionParams =
+  (formSettings: ActionFormSettings) => (a: Parameter, b: Parameter) => {
+    const aOrder = formSettings.fields[a.id]?.order ?? 0;
+    const bOrder = formSettings.fields[b.id]?.order ?? 0;
+
+    return aOrder - bOrder;
+  };
