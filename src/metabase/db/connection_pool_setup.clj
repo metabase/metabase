@@ -22,10 +22,14 @@
   (onAcquire [_ _connection _identity-token])
   (onCheckIn [_ _connection _identity-token]
     (reset! latest-checkin (t/offset-date-time)))
-  (onCheckOut [_ _connection _identity-token]
-    (reset! latest-checkin (t/offset-date-time)))
+  (onCheckOut [_ _connection _identity-token])
   (onDestroy [_ _connection _identity-token]))
 
+;; c3p0 allows for hooking into lifecycles with its interface
+;; ConnectionCustomizer. https://www.mchange.com/projects/c3p0/apidocs/com/mchange/v2/c3p0/ConnectionCustomizer.html. But
+;; Clojure defined code is in memory in a dynamic class loader not available to c3p0's use of Class/forName. Luckily
+;; it looks up the instances in a cache which I pre-seed with out impl here. Issue for better access here:
+;; https://github.com/swaldman/c3p0/issues/166
 (let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
               (.setAccessible true))]
 
