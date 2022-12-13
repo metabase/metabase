@@ -383,7 +383,7 @@ jobs:
     timeout-minutes: 60
     env:
       CI: 'true'
-      DRIVERS: presto
+      DRIVERS: presto-jdbc
       MB_PRESTO_JDBC_TEST_CATALOG: test_data
       MB_PRESTO_JDBC_TEST_HOST: localhost
       MB_PRESTO_JDBC_TEST_PORT: 8443
@@ -417,9 +417,6 @@ jobs:
       run: |
           keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
                   -storepass changeit -file /tmp/presto-ssl-ca.der -trustcacerts
-    - name: Wait for port ${{ env.MB_PRESTO_JDBC_TEST_PORT }} to be ready
-      run: while ! nc -z localhost ${{ env.MB_PRESTO_JDBC_TEST_PORT }}; do sleep 0.1; done
-      timeout-minutes: 15
     - name: Test Presto JDBC driver
       uses: ./.github/actions/test-driver
       with:
