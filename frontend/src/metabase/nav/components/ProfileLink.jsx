@@ -26,11 +26,12 @@ export default connect(mapStateToProps)(ProfileLink);
 
 function ProfileLink({ user, adminItems, onLogout }) {
   const [modalOpen, setModalOpen] = useState(null);
-  const [bugReportDetails, setBugReportDetails] = useState(null);
+  // const [bugReportDetails, setBugReportDetails] = useState(null);
+  const [setBugReportDetails] = useState(null);
 
-  const openModal = modalName => {
-    setModalOpen(modalName);
-  };
+  // const openModal = modalName => {
+  //   setModalOpen(modalName);
+  // };
 
   const closeModal = () => {
     setModalOpen(null);
@@ -38,11 +39,11 @@ function ProfileLink({ user, adminItems, onLogout }) {
 
   const generateOptionsForUser = () => {
     const { tag } = MetabaseSettings.get("version");
-    const isAdmin = user.is_superuser;
+    // const isAdmin = user.is_superuser;
     const showAdminSettingsItem = adminItems?.length > 0;
-    const compactBugReportDetailsForUrl = encodeURIComponent(
-      JSON.stringify(bugReportDetails),
-    );
+    // const compactBugReportDetailsForUrl = encodeURIComponent(
+    //   JSON.stringify(bugReportDetails),
+    // );
 
     return [
       {
@@ -63,6 +64,7 @@ function ProfileLink({ user, adminItems, onLogout }) {
         link: "/activity",
         event: `Navbar;Profile Dropdown;Activity ${tag}`,
       },
+      /*
       {
         title: t`Help`,
         icon: null,
@@ -80,6 +82,7 @@ function ProfileLink({ user, adminItems, onLogout }) {
         action: () => openModal("about"),
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
+      */
       {
         title: t`Sign out`,
         icon: null,
@@ -94,6 +97,7 @@ function ProfileLink({ user, adminItems, onLogout }) {
     if (isAdmin && MetabaseSettings.isPaidPlan()) {
       UtilApi.bug_report_details().then(setBugReportDetails);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.is_superuser]);
 
   const { tag, date, ...versionExtra } = MetabaseSettings.get("version");
