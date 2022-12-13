@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import InputBase from "metabase/core/components/Input";
-import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 
 import { color, lighten } from "metabase/lib/colors";
@@ -16,15 +15,16 @@ export const FormCreatorWrapper = styled.div`
 
 export const FormItemWrapper = styled.div`
   border: 1px solid ${color("border")};
-  padding: ${space(2)};
+  padding: ${space(2)} ${space(2)} ${space(1)} ${space(2)};
   border-radius: ${space(1)};
   margin-bottom: ${space(1)};
   background-color: ${color("bg-white")};
 `;
 
-export const FormSettings = styled.div`
+export const FieldSettingsButtonsContainer = styled.div`
+  padding-top: ${space(1)};
   display: flex;
-  gap: ${space(2)};
+  gap: ${space(1)};
   align-items: center;
   justify-content: flex-end;
 `;

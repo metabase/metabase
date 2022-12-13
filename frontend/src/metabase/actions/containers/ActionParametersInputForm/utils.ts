@@ -3,8 +3,10 @@ import { isEmpty } from "metabase/lib/validate";
 
 import type {
   FieldSettings,
+  InputSettingType,
   ParametersForActionExecution,
   ActionFormProps,
+  FieldSettingsMap,
 } from "metabase-types/api";
 
 // set user-defined default values for any non-required empty parameters
@@ -55,13 +57,13 @@ export const getChangedValues = (
 
 export const formatValue = (
   value: string | number | null,
-  inputType?: string,
+  inputType?: InputSettingType,
 ) => {
   if (!isEmpty(value)) {
     if (inputType === "date" && moment(value).isValid()) {
       return moment(value).utc(false).format("YYYY-MM-DD");
     }
-    if (inputType === "datetime-local" && moment(value).isValid()) {
+    if (inputType === "datetime" && moment(value).isValid()) {
       return moment(value).utc(false).format("YYYY-MM-DDTHH:mm:ss");
     }
     if (inputType === "time") {
@@ -71,15 +73,15 @@ export const formatValue = (
   return value;
 };
 
-// maps intial values, if any, into an intialValues map
+// maps initial values, if any, into an initialValues map
 export const getInitialValues = (
-  form: ActionFormProps,
+  fieldSettings: FieldSettingsMap,
   prefetchValues: ParametersForActionExecution,
 ) => {
   return Object.fromEntries(
-    form.fields.map(field => [
-      field.name,
-      formatValue(prefetchValues[field.name], field.type),
+    Object.values(fieldSettings).map(field => [
+      field.id,
+      formatValue(prefetchValues[field.id], field.inputType),
     ]),
   );
 };

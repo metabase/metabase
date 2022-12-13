@@ -4,7 +4,6 @@ import Field from "metabase-lib/metadata/Field";
 import {
   reorderFields,
   hasNewParams,
-  sortActionParams,
   getDefaultFieldSettings,
   getDefaultFormSettings,
   generateFieldSettingsFromParameters,
@@ -254,13 +253,6 @@ describe("actions > ActionCreator > FormCreator > utils", () => {
       });
     });
 
-    it('should return "email" for email', () => {
-      const field = createField({
-        semantic_type: "type/Email",
-      });
-      expect(getInputType(createParameter(), field)).toEqual("email");
-    });
-
     it('should return "category" for categories', () => {
       const field = createField({
         semantic_type: "type/Category",
@@ -288,37 +280,6 @@ describe("actions > ActionCreator > FormCreator > utils", () => {
       expect(reorderedFields.a.order).toEqual(1);
       expect(reorderedFields.b.order).toEqual(0);
       expect(reorderedFields.c.order).toEqual(2);
-    });
-  });
-
-  describe("sortActionParams", () => {
-    const formSettings = getDefaultFormSettings({
-      fields: {
-        a: getDefaultFieldSettings({ order: 0 }),
-        b: getDefaultFieldSettings({ order: 1 }),
-        c: getDefaultFieldSettings({ order: 2 }),
-      },
-    });
-
-    it("should return a sorting function", () => {
-      const sortFn = sortActionParams(formSettings);
-      expect(typeof sortFn).toBe("function");
-    });
-
-    it("should sort params by the settings-defined field order", () => {
-      const sortFn = sortActionParams(formSettings);
-
-      const params = [
-        createParameter({ id: "c" }),
-        createParameter({ id: "a" }),
-        createParameter({ id: "b" }),
-      ];
-
-      const sortedParams = params.sort(sortFn);
-
-      expect(sortedParams[0].id).toEqual("a");
-      expect(sortedParams[1].id).toEqual("b");
-      expect(sortedParams[2].id).toEqual("c");
     });
   });
 

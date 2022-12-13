@@ -34,13 +34,14 @@ const WIDGETS = {
   section: FormSectionWidget,
   select: FormSelectWidget,
   integer: FormNumericInputWidget,
+  number: FormNumericInputWidget,
   boolean: FormBooleanWidget,
   collection: FormCollectionWidget,
   snippetCollection: FormSnippetCollectionWidget,
   hidden: FormHiddenWidget,
   textFile: FormTextFileWidget,
   model: FormModelWidget,
-  categoryPillOrSearch: CategoryFieldPicker,
+  category: CategoryFieldPicker,
 };
 
 export function getWidgetComponent(formField) {
