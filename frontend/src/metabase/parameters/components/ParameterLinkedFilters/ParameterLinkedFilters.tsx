@@ -73,7 +73,7 @@ const ParameterLinkedFilters = ({
             )} filter.`}
           </SectionMessage>
           {usableParameters.map(otherParameter => (
-            <ParameterFilter
+            <LinkedParameter
               key={otherParameter.id}
               otherParameter={otherParameter}
               isFiltered={parameter.filteringParameters?.includes(parameter.id)}
@@ -86,17 +86,17 @@ const ParameterLinkedFilters = ({
   );
 };
 
-interface ParameterFilterProps {
+interface LinkedParameterProps {
   otherParameter: Parameter;
   isFiltered?: boolean;
   onFilterChange: (otherParameter: Parameter, isFiltered: boolean) => void;
 }
 
-const ParameterFilter = ({
+const LinkedParameter = ({
   otherParameter,
   isFiltered,
   onFilterChange,
-}: ParameterFilterProps): JSX.Element => {
+}: LinkedParameterProps): JSX.Element => {
   const handleFilterToggle = useCallback(
     (isFiltered: boolean) => {
       onFilterChange(otherParameter, isFiltered);
