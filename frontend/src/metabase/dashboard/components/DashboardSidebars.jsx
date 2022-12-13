@@ -118,6 +118,9 @@ export function DashboardSidebars({
       return (
         <ParameterSidebar
           parameter={parameter}
+          onParameterChange={parameter =>
+            setParameter(editingParameterId, parameter)
+          }
           onNameChange={name => setParameterName(editingParameterId, name)}
           onDefaultValueChange={value =>
             setParameterDefaultValue(editingParameterId, value)

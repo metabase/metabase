@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
@@ -9,6 +9,7 @@ import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
 export interface ParameterSidebarProps {
   parameter: Parameter;
+  onParameterChange: (parameter: Parameter) => void;
   onNameChange: (name: string) => void;
   onDefaultValueChange: (value: unknown) => void;
   onMultiSelectChange: (isMultiSelect: boolean) => void;
@@ -18,17 +19,30 @@ export interface ParameterSidebarProps {
 
 const ParameterSidebar = ({
   parameter,
+  onParameterChange,
   onNameChange,
   onDefaultValueChange,
   onMultiSelectChange,
   onRemove,
   onClose,
 }: ParameterSidebarProps): JSX.Element => {
-  const [tab, setTab] = useState("settings");
-  const tabs = getTabs(parameter);
+  const tabs = useMemo(() => getTabs(parameter), [parameter]);
+  const [tab, setTab] = useState(tabs[0].value);
+  const [originalParameter, setOriginalParameter] = useState(parameter);
+
+  useLayoutEffect(() => {
+    if (parameter.id !== originalParameter.id) {
+      setOriginalParameter(parameter);
+    }
+  }, [parameter, originalParameter]);
+
+  const handleCancel = useCallback(() => {
+    onParameterChange(originalParameter);
+    onClose();
+  }, [originalParameter, onParameterChange, onClose]);
 
   return (
-    <Sidebar onClose={onClose}>
+    <Sidebar onCancel={handleCancel} onClose={onClose}>
       <SidebarHeader>
         <Radio
           value={tab}
