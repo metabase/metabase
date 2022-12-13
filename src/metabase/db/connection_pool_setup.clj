@@ -8,14 +8,14 @@
 
 (def ^:private latest-checkin (atom nil))
 
-(def ^:private recent-window-seconds 15)
+(def ^:private ^java.time.Duration recent-window-duration (t/seconds 15))
 
 (defn recent-activity?
   "Returns true if there has been recent activity. Define recent activity as an application db connection checked in
   within 15 seconds. Check-in means a query succeeded and the db connection is no longer needed."
   []
   (when-let [activity @latest-checkin]
-    (t/after? activity (t/minus (t/offset-date-time) (t/seconds recent-window-seconds)))))
+    (t/after? activity (t/minus (t/offset-date-time) recent-window-duration))))
 
 (defrecord CheckinTracker []
   ConnectionCustomizer
