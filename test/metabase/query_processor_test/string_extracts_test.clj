@@ -53,6 +53,7 @@
 (deftest test-replace
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "Red Baloon" (test-string-extract [:replace [:field (data/id :venues :name) nil] "Medicine" "Baloon"])))
+    (is (= "Rod Modicino" (test-string-extract [:replace [:field (data/id :venues :name) nil] "e" "o"])))
     (is (= "Red" (test-string-extract [:replace [:field (data/id :venues :name) nil] " Medicine" ""])))))
 
 (deftest test-coalesce

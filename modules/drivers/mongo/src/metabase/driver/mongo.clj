@@ -223,7 +223,6 @@
                         column-info))})))
 
 (doseq [feature [:basic-aggregations
-                 :expressions
                  :nested-fields
                  :native-parameters
                  :standard-deviation-aggregations]]
@@ -243,6 +242,12 @@
 (defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
   (let [version (db-major-version db)]
     (and (some? version) (>= version 5))))
+
+(defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
+  ;; $round was introduced in 4.2
+  ;; $replaceAll was introduced in 4.4 (will error on 4.2)
+  (let [version (some-> (db-version db) parse-version)]
+    (and (some? version) (>= (first version) 4) (>= (second version) 2))))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
