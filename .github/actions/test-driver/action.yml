@@ -25,3 +25,4 @@ runs:
       with:
         path: 'target/junit/**/*_test.xml'
         name: JUnit Test Report ${{ inputs.junit-name }}
+        reporter: java-junit
