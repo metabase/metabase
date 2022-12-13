@@ -1,6 +1,5 @@
 import React, { useCallback } from "react";
 import PropTypes from "prop-types";
-import _ from "underscore";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
@@ -103,13 +102,12 @@ export function DashboardSidebars({
       );
     case SIDEBAR_NAME.editParameter: {
       const { id: editingParameterId } = editingParameter || {};
-      const [[parameter], otherParameters] = _.partition(
-        parameters,
-        p => p.id === editingParameterId,
+      const otherParameters = parameters.filter(
+        p => p.id !== editingParameterId,
       );
       return (
         <ParameterSidebar
-          parameter={parameter}
+          parameter={editingParameter}
           otherParameters={otherParameters}
           onChangeParameter={setParameter}
           onRemoveParameter={removeParameter}
