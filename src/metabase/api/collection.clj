@@ -4,39 +4,43 @@
   `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
   To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
   `?namespace=snippet`)."
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [compojure.core :refer [GET POST PUT]]
-            [honeysql.core :as hsql]
-            [honeysql.helpers :as hh]
-            [medley.core :as m]
-            [metabase.api.card :as api.card]
-            [metabase.api.common :as api]
-            [metabase.api.timeline :as api.timeline]
-            [metabase.db :as mdb]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.common.parameters.parse :as params.parse]
-            [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.collection.graph :as graph]
-            #_:clj-kondo/ignore ;; bug: when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
-            [metabase.models.collection.root :as collection.root]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as mi]
-            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
-            [metabase.models.permissions :as perms]
-            [metabase.models.pulse :as pulse :refer [Pulse]]
-            [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.revision.last-edit :as last-edit]
-            [metabase.models.timeline :as timeline :refer [Timeline]]
-            [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [compojure.core :refer [GET POST PUT]]
+   [honeysql.core :as hsql]
+   [honeysql.helpers :as hh]
+   [malli.core :as mc]
+   [malli.experimental :as mx]
+   [malli.transform :as mt]
+   [medley.core :as m]
+   [metabase.api.card :as api.card]
+   [metabase.api.common :as api]
+   [metabase.api.timeline :as api.timeline]
+   [metabase.db :as mdb]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection.graph :as graph]
+   #_:clj-kondo/ignore ;; bug: when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
+   [metabase.models.collection.root :as collection.root]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
+   [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.pulse-card :refer [PulseCard]]
+   [metabase.models.revision.last-edit :as last-edit]
+   [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.util :as u]
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]
+   [toucan.hydrate :refer [hydrate]]))
 
 (declare root-collection)
 
@@ -882,31 +886,44 @@
 
 (defn- ->int [id] (Integer/parseInt (name id)))
 
-(defn- dejsonify-collections [collections]
-  (into {} (for [[collection-id perms] collections]
-             [(if (= (keyword collection-id) :root)
-                :root
-                (->int collection-id))
-              (keyword perms)])))
+(def CollectionID "an id for a [[Collection]]."
+  [pos-int? {:title "Collection ID"
+             :decode/graph ->int}])
 
-(defn- dejsonify-groups [groups]
-  (into {} (for [[group-id collections] groups]
-             {(->int group-id) (dejsonify-collections collections)})))
+(def GroupID "an id for a [[PermissionsGroup]]."
+  [pos-int? {:title "Group ID"
+             :decode/graph ->int}])
 
-(defn- dejsonify-graph
-  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
-  parsing object keys as integers."
-  [graph]
-  (update graph :groups dejsonify-groups))
+(def CollectionPermissions
+  "Malli enum for what sort of colleciton permissions we have. (:write :read or :none)"
+  [:enum {:decode/graph keyword}
+   :write :read :none])
+
+(def GroupPermissionsGraph
+  "Map describing permissions for a (Group x Collection)"
+  [:map-of
+   [:or [:= :root] CollectionID]
+   CollectionPermissions])
+
+(def PermissionsGraph
+  "Map describing permissions for 1 or more groups.
+  Revision # is used for consistency"
+  [:map
+   [:revision int?]
+   [:groups [:map-of GroupID GroupPermissionsGraph]]])
+
+(mx/defn ^:private graph-decoder [permissions-graph] :- PermissionsGraph
+  (mc/decode PermissionsGraph permissions-graph (mt/transformer {:name :graph})))
 
 (api/defendpoint PUT "/graph"
-  "Do a batch update of Collections Permissions by passing in a modified graph."
+  "Do a batch update of Collections Permissions by passing in a modified graph.
+  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
   [:as {{:keys [namespace], :as body} :body}]
   {body      su/Map
    namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
   (->> (dissoc body :namespace)
-       dejsonify-graph
+       graph-decoder
        (graph/update-graph! namespace))
   (graph/graph namespace))
 
