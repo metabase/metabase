@@ -6,7 +6,6 @@ import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -22,6 +21,7 @@ import {
   FieldMappingRoot,
   FieldSelectButton,
   ForeignKeyList,
+  FieldValueMappingInput,
 } from "./FieldRemapping.styled";
 
 const MAP_OPTIONS = {
@@ -442,8 +442,8 @@ export class FieldValueMapping extends React.Component {
     return (
       <div className="flex align-center">
         <h3>{original}</h3>
-        <InputBlurChange
-          className="AdminInput input ml-auto"
+        <FieldValueMappingInput
+          className="ml-auto"
           value={mapped}
           onChange={this.onInputChange}
           placeholder={t`Enter value`}

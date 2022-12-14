@@ -946,7 +946,7 @@
       (mt/dataset attempted-murders
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Only datetime, timestamp, or date types allowed. Found .*"
+             #"datetimeDiff only allows datetime, timestamp, or date types. Found .*"
              (mt/rows
               (mt/run-mbql-query attempts
                 {:limit 1
