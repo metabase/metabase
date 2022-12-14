@@ -10,15 +10,15 @@ The **Localization** settings allow you to set global defaults for your Metabase
 
 ## Instance language
 
-The instance language is the default language across the Metabase UI, system emails, pulses, and alerts. People can pick a different language from their own account settings page.
+The instance language is the default language across the Metabase UI, system [emails](./email.md), [dashboard subscriptions](../dashboards/subscriptions.md), and [alerts](../questions/sharing/alerts.md). People can pick a different language from their own [account settings](../people-and-groups/account-settings.md).
 
 ## Report timezone
 
-Use **Report timezone** to set a default display timezone for dates and times in Metabase. This is a display setting only, so changing the report timezone won't affect the time zone of any data in your database.
+Use **report timezone** to set a default display time zone for dates and times in Metabase. This is a display setting only, so changing the **report timezone** won't affect the time zone of any data in your database.
 
-The report timezone setting doesn't apply to `timestamp without time zone` data types, including the output of [`convertTimezone`](../questions/query-builder/expressions/converttimezone.md) expressions.
+**Report timezone** doesn't apply to `timestamp without time zone` data types, including the output of [`convertTimezone`](../questions/query-builder/expressions/converttimezone.md) expressions.
 
-This setting is currently supported on the following databases:
+**Report timezone** is only supported for the following databases:
    - BigQuery
    - Druid
    - MySQL
@@ -33,7 +33,9 @@ If you need to, you can change the first day of the week for your instance (the 
 
 ## Localization options
 
-The Localization options allow you to set default display formats for dates, times, numbers, and currencies.
+**Localization options** allow you to set global default display formats for dates, times, numbers, and currencies.
+
+You can also override these global defaults for specific fields or questions. For more info, see [Formatting](../data-modeling/formatting.md).
 
 ### Dates and Times
 
