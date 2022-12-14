@@ -119,6 +119,10 @@
     honeysql.helpers                                                hh
     honeysql.types                                                  htypes
     java-time                                                       t
+    malli.core                                                      mc
+    malli.experimental                                              mx
+    malli.transform                                                 mtx
+    medley.core                                                     m
     metabase-enterprise.audit-app.pages.common                      common
     metabase-enterprise.sandbox.api.table                           table
     metabase.analytics.stats                                        stats
