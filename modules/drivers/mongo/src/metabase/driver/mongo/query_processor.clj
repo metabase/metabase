@@ -20,13 +20,14 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [monger.operators :refer [$add $addToSet $and $avg $cond $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
+            [monger.operators :refer [$add $addToSet $and $avg $cond
+                                      $dayOfMonth $dayOfWeek $dayOfYear $divide $eq
                                       $group $gt $gte $hour $limit $lt $lte $match $max $min $minute $mod $month
                                       $multiply $ne $not $or $project $regex $second $size $skip $sort $strcasecmp $subtract
                                       $sum $toLower $year]]
             [schema.core :as s])
-  (:import [org.bson.types ObjectId Binary]
-           org.bson.BsonBinarySubType))
+  (:import org.bson.BsonBinarySubType
+           [org.bson.types Binary ObjectId]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -448,6 +449,20 @@
                     (->rvalue cnt)
                     {"$subtract" [{"$strLenCP" expr-val} idx-val]})]}))
 
+(defmethod ->rvalue :/
+  [[_ & [_ & divisors :as args]]]
+  (let [build-division (fn build-division
+                         [[dividend & divisors]]
+                         (if (seq divisors)
+                           {"$divide" [(build-division divisors) (->rvalue dividend)]}
+                           (->rvalue dividend)))
+        division (build-division (reverse args))
+        nil-check (if (= 1 (count divisors))
+              {"$eq" [(->rvalue (first divisors)) 0]}
+              {"$or" (mapv (fn [divisor] {"$eq" [(->rvalue divisor) 0]}) divisors)})]
+    {"$cond" [nil-check nil
+              division]}))
+
 ;;; Intervals are not first class Mongo citizens, so they cannot be translated on their own.
 ;;; The only thing we can do with them is adding to or subtracting from a date valued expression.
 ;;; Also, date arithmetic with intervals was first implemented in version 5. (Before that only
@@ -507,7 +522,6 @@
     {"$subtract" (mapv ->rvalue args)}))
 
 (defmethod ->rvalue :* [[_ & args]] {"$multiply" (mapv ->rvalue args)})
-(defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
 
 (defmethod ->rvalue :coalesce [[_ & args]] {"$ifNull" (mapv ->rvalue args)})
 
