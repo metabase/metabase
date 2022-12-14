@@ -679,10 +679,13 @@
   [driver [_ arg amount unit]]
   (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
 
-(defn datetime-diff-check-args [x y type-pred]
+(defn datetime-diff-check-args
+  "Raises an exception if the database-type of `x` and `y` do not match the given predicate.
+   Note this doesn't raise an error if the database-type is nil, which can be the case for some drivers."
+  [x y pred]
   (doseq [arg [x y]
           :let [db-type (hx/database-type arg)]
-          :when (and db-type (not (type-pred db-type)))]
+          :when (and db-type (not (pred db-type)))]
     (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
                          (pr-str db-type))
                     {:found db-type
@@ -692,7 +695,7 @@
   [driver [_ x y unit]]
   (let [x (->honeysql driver x)
         y (->honeysql driver y)]
-    (datetime-diff-check-args x y #(re-find #"(?i)^(timestamp|date)" %))
+    (datetime-diff-check-args x y #(hx/is-of-type? % #"(?i)^(timestamp|date)"))
     (datetime-diff driver unit x y)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
