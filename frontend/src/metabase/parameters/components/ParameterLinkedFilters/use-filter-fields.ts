@@ -1,11 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 import { DashboardApi } from "metabase/services";
-import { useOnMount } from "metabase/hooks/use-on-mount";
 import { UiParameter } from "metabase-lib/parameters/types";
 
 export interface UseFilterFieldsState {
-  data?: string[][];
+  data?: Record<string, string[]>;
   error?: string;
   loading: boolean;
 }
@@ -13,6 +12,7 @@ export interface UseFilterFieldsState {
 const useFilterFields = (
   parameter: UiParameter,
   otherParameter: UiParameter,
+  isExpanded: boolean,
 ): UseFilterFieldsState => {
   const [state, setState] = useState<UseFilterFieldsState>({ loading: false });
 
@@ -20,7 +20,7 @@ const useFilterFields = (
     const filtered = getParameterFieldIds(parameter);
     const filtering = getParameterFieldIds(otherParameter);
 
-    if (!filtered.length || !filtering.length) {
+    if (!filtered.length || !filtered.length) {
       const errorParameter = !filtered.length ? parameter : otherParameter;
       const error = getParameterError(errorParameter);
       setState({ error, loading: false });
@@ -28,13 +28,21 @@ const useFilterFields = (
       setState({ loading: true });
       const request = { filtered, filtering };
       const response = await DashboardApi.validFilterFields(request);
-      setState({ data: getParameterMapping(response), loading: false });
+      setState({ data: response, loading: false });
     }
   }, [parameter, otherParameter]);
 
-  useOnMount(() => {
-    handleLoad();
-  });
+  const handleReset = useCallback(() => {
+    setState({ loading: false });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (isExpanded) {
+      handleLoad();
+    } else {
+      handleReset();
+    }
+  }, [isExpanded, handleLoad, handleReset]);
 
   return state;
 };
@@ -49,12 +57,6 @@ const getParameterFieldIds = (parameter: UiParameter) => {
   } else {
     return [];
   }
-};
-
-const getParameterMapping = (data: Record<string, string[]>) => {
-  return Object.entries(data).flatMap(([filteredId, filteringIds]) =>
-    filteringIds.map(filteringId => [filteringId, filteredId]),
-  );
 };
 
 export default useFilterFields;
