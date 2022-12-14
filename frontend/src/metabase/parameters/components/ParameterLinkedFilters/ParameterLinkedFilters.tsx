@@ -1,9 +1,12 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import Toggle from "metabase/core/components/Toggle";
-import { Parameter } from "metabase-types/api";
+import Fields from "metabase/entities/fields";
+import Tables from "metabase/entities/tables";
+import { Field, Parameter, Table } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
+import useFilterFields from "./use-filter-fields";
 import {
   SectionRoot,
   SectionHeader,
@@ -12,11 +15,18 @@ import {
   ParameterRoot,
   ParameterBody,
   ParameterName,
+  FieldRoot,
+  FieldLabel,
+  FieldListRoot,
+  FieldListItem,
+  FieldListHeader,
+  FieldListTitle,
 } from "./ParameterLinkedFilters.styled";
 
 export interface ParameterLinkedFiltersProps {
-  parameter: Parameter;
+  parameter: UiParameter;
   otherParameters: UiParameter[];
+  editingParameter: Parameter;
   onChangeParameter: (parameter: Parameter) => void;
   onShowAddParameterPopover: () => void;
 }
@@ -24,27 +34,41 @@ export interface ParameterLinkedFiltersProps {
 const ParameterLinkedFilters = ({
   parameter,
   otherParameters,
+  editingParameter,
   onChangeParameter,
   onShowAddParameterPopover,
 }: ParameterLinkedFiltersProps): JSX.Element => {
+  const [expandedParameterId, setExpandedParameterId] = useState<string>();
+
+  const filteringParameters = useMemo(
+    () => editingParameter.filteringParameters ?? [],
+    [editingParameter],
+  );
+
   const usableParameters = useMemo(
     () => otherParameters.filter(usableAsLinkedFilter),
     [otherParameters],
   );
 
-  const handleFilterToggle = useCallback(
+  const handleFilterChange = useCallback(
     (otherParameter: UiParameter, isFiltered: boolean) => {
-      const oldParameters = parameter.filteringParameters ?? [];
       const newParameters = isFiltered
-        ? oldParameters.concat(otherParameter.id)
-        : oldParameters.filter(id => id !== otherParameter.id);
+        ? filteringParameters.concat(otherParameter.id)
+        : filteringParameters.filter(id => id !== otherParameter.id);
 
       onChangeParameter({
-        ...parameter,
+        ...editingParameter,
         filteringParameters: newParameters,
       });
     },
-    [parameter, onChangeParameter],
+    [editingParameter, filteringParameters, onChangeParameter],
+  );
+
+  const handleExpandedChange = useCallback(
+    (otherParameter: UiParameter, isExpanded: boolean) => {
+      setExpandedParameterId(isExpanded ? otherParameter.id : undefined);
+    },
+    [],
   );
 
   return (
@@ -76,9 +100,12 @@ const ParameterLinkedFilters = ({
           {usableParameters.map(otherParameter => (
             <LinkedParameter
               key={otherParameter.id}
+              parameter={parameter}
               otherParameter={otherParameter}
-              isFiltered={parameter.filteringParameters?.includes(parameter.id)}
-              onFilterChange={handleFilterToggle}
+              isFiltered={filteringParameters.includes(parameter.id)}
+              isExpanded={otherParameter.id === expandedParameterId}
+              onFilterChange={handleFilterChange}
+              onExpandedChange={handleExpandedChange}
             />
           ))}
         </div>
@@ -88,15 +115,21 @@ const ParameterLinkedFilters = ({
 };
 
 interface LinkedParameterProps {
+  parameter: UiParameter;
   otherParameter: UiParameter;
-  isFiltered?: boolean;
+  isFiltered: boolean;
+  isExpanded: boolean;
   onFilterChange: (otherParameter: UiParameter, isFiltered: boolean) => void;
+  onExpandedChange: (otherParameter: UiParameter, isExpanded: boolean) => void;
 }
 
 const LinkedParameter = ({
+  parameter,
   otherParameter,
   isFiltered,
+  isExpanded,
   onFilterChange,
+  onExpandedChange,
 }: LinkedParameterProps): JSX.Element => {
   const handleFilterToggle = useCallback(
     (isFiltered: boolean) => {
@@ -105,13 +138,75 @@ const LinkedParameter = ({
     [otherParameter, onFilterChange],
   );
 
+  const handleExpandedChange = useCallback(() => {
+    onExpandedChange(otherParameter, !isExpanded);
+  }, [isExpanded, otherParameter, onExpandedChange]);
+
   return (
     <ParameterRoot>
       <ParameterBody>
-        <ParameterName>{otherParameter.name}</ParameterName>
+        <ParameterName onClick={handleExpandedChange}>
+          {otherParameter.name}
+        </ParameterName>
         <Toggle value={isFiltered} onChange={handleFilterToggle} />
       </ParameterBody>
+      {isExpanded && (
+        <LinkedFieldList
+          parameter={parameter}
+          otherParameter={otherParameter}
+        />
+      )}
     </ParameterRoot>
+  );
+};
+
+interface LinkedFieldListProps {
+  parameter: UiParameter;
+  otherParameter: UiParameter;
+}
+
+const LinkedFieldList = ({
+  parameter,
+  otherParameter,
+}: LinkedFieldListProps) => {
+  const { data, error, loading } = useFilterFields(parameter, otherParameter);
+
+  return (
+    <FieldListRoot loading={loading} error={error}>
+      {data && data.length > 0 && (
+        <FieldListHeader>
+          <FieldListTitle>{t`Filtering column`}</FieldListTitle>
+          <FieldListTitle>{t`Filtered column`}</FieldListTitle>
+        </FieldListHeader>
+      )}
+      {data?.map(([filteringId, filteredId]) => (
+        <FieldListItem key={filteredId}>
+          <LinkedField fieldId={filteringId} />
+          <LinkedField fieldId={filteredId} />
+        </FieldListItem>
+      ))}
+    </FieldListRoot>
+  );
+};
+
+interface LinkedFieldProps {
+  fieldId: string;
+}
+
+const LinkedField = ({ fieldId }: LinkedFieldProps) => {
+  return (
+    <Fields.Loader id={fieldId}>
+      {({ field }: { field: Field }) => (
+        <FieldRoot>
+          <FieldLabel>
+            <Tables.Loader id={field.table_id}>
+              {({ table }: { table: Table }) => table.display_name}
+            </Tables.Loader>
+          </FieldLabel>
+          <div>{field.display_name}</div>
+        </FieldRoot>
+      )}
+    </Fields.Loader>
   );
 };
 

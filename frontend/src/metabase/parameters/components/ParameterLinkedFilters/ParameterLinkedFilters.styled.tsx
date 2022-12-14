@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export const SectionRoot = styled.div`
   padding: 1.5rem 1rem;
@@ -36,4 +37,31 @@ export const ParameterName = styled.div`
   cursor: pointer;
   border-bottom: 1px dashed ${color("border")};
   font-weight: bold;
+`;
+
+export const FieldListRoot = styled(LoadingAndErrorWrapper)`
+  font-size: 0.765rem;
+`;
+
+export const FieldListItem = styled.div`
+  border-top: 1px solid ${color("border")};
+`;
+
+export const FieldListHeader = styled.div`
+  display: flex;
+`;
+
+export const FieldListTitle = styled.div`
+  color: ${color("brand")};
+  width: 50%;
+  padding: 0.5rem 1rem 0;
+`;
+
+export const FieldRoot = styled.div`
+  width: 100%;
+  padding: 0.5rem 1rem;
+`;
+
+export const FieldLabel = styled.div`
+  color: ${color("text-medium")};
 `;

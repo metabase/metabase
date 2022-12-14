@@ -25,65 +25,65 @@ const MULTI_SELECT_OPTIONS = [
 ];
 
 interface ParameterSettingsProps {
-  parameter: Parameter;
+  editingParameter: Parameter;
   onChangeParameter: (parameter: Parameter) => void;
   onRemoveParameter: (parameterId: string) => void;
 }
 
 const ParameterSettings = ({
-  parameter,
+  editingParameter,
   onChangeParameter,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
   const handleNameChange = useCallback(
     (name: string) => {
-      onChangeParameter(setParameterName(parameter, name));
+      onChangeParameter(setParameterName(editingParameter, name));
     },
-    [parameter, onChangeParameter],
+    [editingParameter, onChangeParameter],
   );
 
   const handleDefaultValueChange = useCallback(
     (value: unknown) => {
-      onChangeParameter({ ...parameter, default: value });
+      onChangeParameter({ ...editingParameter, default: value });
     },
-    [parameter, onChangeParameter],
+    [editingParameter, onChangeParameter],
   );
 
   const handleMultiSelectChange = useCallback(
     (isMultiSelect: boolean) => {
-      onChangeParameter({ ...parameter, isMultiSelect });
+      onChangeParameter({ ...editingParameter, isMultiSelect });
     },
-    [parameter, onChangeParameter],
+    [editingParameter, onChangeParameter],
   );
 
   const handleRemove = useCallback(() => {
-    onRemoveParameter(parameter.id);
-  }, [parameter, onRemoveParameter]);
+    onRemoveParameter(editingParameter.id);
+  }, [editingParameter, onRemoveParameter]);
 
   return (
     <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
         <ParameterInput
-          initialValue={parameter.name}
+          initialValue={editingParameter.name}
           onChange={handleNameChange}
         />
       </SettingSection>
       <SettingSection>
         <SettingLabel>{t`Default value`}</SettingLabel>
         <SettingValueWidget
-          parameter={parameter}
-          name={parameter.name}
-          value={parameter.default}
+          parameter={editingParameter}
+          name={editingParameter.name}
+          value={editingParameter.default}
           placeholder={t`No default`}
           setValue={handleDefaultValueChange}
         />
       </SettingSection>
-      {isSingleOrMultiSelectable(parameter) && (
+      {isSingleOrMultiSelectable(editingParameter) && (
         <SettingSection>
           <SettingLabel>{t`Users can pick`}</SettingLabel>
           <Radio
-            value={getIsMultiSelect(parameter)}
+            value={getIsMultiSelect(editingParameter)}
             options={MULTI_SELECT_OPTIONS}
             vertical
             onChange={handleMultiSelectChange}

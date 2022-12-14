@@ -4,7 +4,7 @@ import { DashboardApi } from "metabase/services";
 import { UiParameter } from "metabase-lib/parameters/types";
 
 export interface UseFilterFieldsState {
-  data?: Record<string, string[]>;
+  data?: string[][];
   error?: string;
   loading: boolean;
 }
@@ -12,7 +12,6 @@ export interface UseFilterFieldsState {
 const useFilterFields = (
   parameter: UiParameter,
   otherParameter: UiParameter,
-  isExpanded: boolean,
 ): UseFilterFieldsState => {
   const [state, setState] = useState<UseFilterFieldsState>({ loading: false });
 
@@ -28,21 +27,13 @@ const useFilterFields = (
       setState({ loading: true });
       const request = { filtered, filtering };
       const response = await DashboardApi.validFilterFields(request);
-      setState({ data: response, loading: false });
+      setState({ data: getParameterMapping(response), loading: false });
     }
   }, [parameter, otherParameter]);
 
-  const handleReset = useCallback(() => {
-    setState({ loading: false });
-  }, []);
-
   useLayoutEffect(() => {
-    if (isExpanded) {
-      handleLoad();
-    } else {
-      handleReset();
-    }
-  }, [isExpanded, handleLoad, handleReset]);
+    handleLoad();
+  }, [handleLoad]);
 
   return state;
 };
@@ -57,6 +48,12 @@ const getParameterFieldIds = (parameter: UiParameter) => {
   } else {
     return [];
   }
+};
+
+const getParameterMapping = (data: Record<string, string[]>) => {
+  return Object.entries(data).flatMap(([filteredId, filteringIds]) =>
+    filteringIds.map(filteringId => [filteringId, filteredId]),
+  );
 };
 
 export default useFilterFields;
