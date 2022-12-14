@@ -1,7 +1,6 @@
 import React, { useState, useLayoutEffect, useCallback } from "react";
 import _ from "underscore";
 import Input, { InputProps } from "metabase/core/components/Input";
-// import { Input } from "./InputBlurChange.styled";
 
 /**
  * A small wrapper around <input>, primarily should be used for the
