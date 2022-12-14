@@ -207,7 +207,7 @@
       (.addAppender logger appender (->Level level) nil)
       (f (fn [] (appender-logs appender)))
       (finally
-       (.removeAppender logger appender-name)))))
+        (.removeAppender logger appender-name)))))
 
 ;; TODO -- this macro should probably just take a binding for the `logs` function so you can eval when needed
 (defmacro with-log-messages-for-level
