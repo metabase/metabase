@@ -1,36 +1,34 @@
 (ns metabase.driver.bigquery-cloud-sdk.query-processor
-  (:require
-   [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
-   [honeysql.format :as hformat]
-   [java-time :as t]
-   [metabase.driver :as driver]
-   [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-   [metabase.driver.common :as driver.common]
-   [metabase.driver.sql :as sql]
-   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
-   [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.setting :as setting]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [trs tru]]
-   [pretty.core :refer [PrettyPrintable]]
-   [schema.core :as s])
-  (:import
-   (com.google.cloud.bigquery Field$Mode FieldValue)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (metabase.driver.common.parameters FieldFilter)
-   (metabase.util.honeysql_extensions Identifier TypedHoneySQLForm)))
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
+            [java-time :as t]
+            [metabase.driver :as driver]
+            [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+            [metabase.driver.common :as driver.common]
+            [metabase.driver.sql :as sql]
+            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
+            [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.setting :as setting]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.util.add-alias-info :as add]
+            [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [trs tru]]
+            [pretty.core :refer [PrettyPrintable]]
+            [schema.core :as s])
+  (:import [com.google.cloud.bigquery Field$Mode FieldValue]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           metabase.driver.common.parameters.FieldFilter
+           [metabase.util.honeysql_extensions Identifier TypedHoneySQLForm]))
 
 (defn- valid-project-identifier?
   "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
