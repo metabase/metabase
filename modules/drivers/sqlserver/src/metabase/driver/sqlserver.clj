@@ -679,7 +679,7 @@
 ;;; --- PERCENTILE AGGREGATIONS WITH USE OF WINDOW FUNCTION ----------------------------------------------------------
 
 (defn percentile-aggregation? [aggregation]
-  (mbql.u/match aggregation #{:percentile}))
+  (mbql.u/match aggregation #{:percentile :median}))
 
 (defn percentile-query? [inner-query]
   (some #(when (percentile-aggregation? %) %) (:aggregation inner-query)))

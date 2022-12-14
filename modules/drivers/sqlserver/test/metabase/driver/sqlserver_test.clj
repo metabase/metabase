@@ -346,6 +346,29 @@
 
 ;;; --- PERCENTILE AGGREGATIONS WITH USE OF WINDOW FUNCTION ----------------------------------------------------------
 
+(deftest median-aggregation-test
+  (mt/test-driver
+   :sqlserver
+   ;; Only verify that median function works. No more tests should be needed for explicit median,
+   ;; as under the hood it is translated as percentile 0.5.
+   ;; TODO verify this is actually true !!!
+   (testing "Compute aggregate median with breakout"
+     (let [result
+           (mt/run-mbql-query venues
+                              {:aggregation [[:aggregation-options
+                                              [:median [:field (mt/id :venues :price) nil]]
+                                              {:name "median of price over category"}]]
+                               :breakout    [[:field (mt/id :venues :category_id) nil]]
+                               :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]
+                               :limit 3})]
+       (is (= [[2 2.5] [3 2.0] [4 2.0]]
+              (mt/formatted-rows [int double] result)))))))
+
+(comment
+  (mt/set-test-drivers! [:sqlserver :postgres])
+  (metabase.test-runner/run [#'metabase.driver.sqlserver-test/median-aggregation-test])
+  )
+
 ;; TODO -- rewrite to sanity?
 (deftest simple-percentile-aggregations-test
   (mt/test-driver
