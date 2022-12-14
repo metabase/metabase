@@ -31,7 +31,7 @@ export const AdminNavbar = ({
   adminPaths,
 }: AdminNavbarProps) => {
   const adminPathsFiltered = adminPaths.filter(
-    path => path.key !== "troubleshooting",
+    path => path.key !== "troubleshooting" && path.key !== "permissions",
   );
 
   return (
