@@ -884,25 +884,22 @@
   (api/check-superuser)
   (graph/graph namespace))
 
-(defn- ->int [id] (Integer/parseInt (name id)))
-
 (def CollectionID "an id for a [[Collection]]."
-  [pos-int? {:title "Collection ID"
-             :decode/graph ->int}])
+  [pos-int? {:title "Collection ID"}])
 
 (def GroupID "an id for a [[PermissionsGroup]]."
-  [pos-int? {:title "Group ID"
-             :decode/graph ->int}])
+  [pos-int? {:title "Group ID"}])
 
 (def CollectionPermissions
   "Malli enum for what sort of colleciton permissions we have. (:write :read or :none)"
-  [:enum {:decode/graph keyword}
-   :write :read :none])
+  [:and
+   keyword?
+   [:enum :write :read :none]])
 
 (def GroupPermissionsGraph
   "Map describing permissions for a (Group x Collection)"
   [:map-of
-   [:or [:= :root] CollectionID]
+   [:or [:and keyword? [:= :root]] CollectionID]
    CollectionPermissions])
 
 (def PermissionsGraph
@@ -912,8 +909,8 @@
    [:revision int?]
    [:groups [:map-of GroupID GroupPermissionsGraph]]])
 
-(mx/defn ^:private graph-decoder [permissions-graph] :- PermissionsGraph
-  (mc/decode PermissionsGraph permissions-graph (mtx/transformer {:name :graph})))
+(def ^:private graph-decoder
+  (mc/decoder PermissionsGraph (mtx/string-transformer)))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
