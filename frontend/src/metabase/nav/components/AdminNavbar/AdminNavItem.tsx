@@ -17,7 +17,7 @@ export const AdminNavItem = ({ name, path, currentPath, id }: AdminNavItem) => {
         <a
           rel="noreferrer"
           target="_blank"
-          href="https://app.dadosfera.ai/settings/access-management"
+          href="https://app.dadosfera.ai/settings/access-management?from=metabase"
         >
           <ExternalNavLink>{name}</ExternalNavLink>
         </a>
