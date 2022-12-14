@@ -30,7 +30,7 @@ const ParameterSidebar = ({
 }: ParameterSidebarProps): JSX.Element => {
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
   const [tab, setTab] = useState(tabs[0].value);
-  const [originalParameter, setOriginalParameter] = useState(parameter);
+  const [originalParameter, setOriginalParameter] = useState(editingParameter);
 
   useLayoutEffect(() => {
     if (editingParameter.id !== originalParameter.id) {
