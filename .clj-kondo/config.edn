@@ -335,6 +335,7 @@
     metabase.util.files                                             u.files
     metabase.util.i18n                                              i18n
     metabase.util.i18n.impl                                         i18n.impl
+    metabase.util.malli                                             mu
     metabase.util.password                                          u.password
     metabase.util.schema                                            su
     metabase.util.ui-logic                                          ui-logic
@@ -399,6 +400,7 @@
   metabase.test/with-temp-dir                                                          clojure.core/let
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
+  metabase.util.malli/defn                                                             schema.core/defn
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   monger.operators/defoperator                                                         clojure.core/def

@@ -892,14 +892,14 @@
 
 (def CollectionPermissions
   "Malli enum for what sort of colleciton permissions we have. (:write :read or :none)"
-  [:and
-   keyword?
-   [:enum :write :read :none]])
+  [:and keyword? [:enum :write :read :none]])
 
 (def GroupPermissionsGraph
   "Map describing permissions for a (Group x Collection)"
   [:map-of
-   [:or [:and keyword? [:= :root]] CollectionID]
+   [:or [:and keyword?
+         [:= :root]]
+    CollectionID]
    CollectionPermissions])
 
 (def PermissionsGraph

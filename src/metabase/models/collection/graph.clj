@@ -9,6 +9,7 @@
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.malli :as mu]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -16,21 +17,35 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PERMISSIONS GRAPH                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
+                                        
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
-(def ^:private CollectionPermissions
-  (s/enum :write :read :none))
+(def CollectionID "An id for a [[Collection]]." [pos-int? {:title "Collection ID"}])
+(def GroupID "An id for a [[PermissionsGroup]]." [pos-int? {:title "PermissionsGroup ID"}])
 
-(def ^:private GroupPermissionsGraph
-  "collection-id -> status"
-  {(s/optional-key :root) CollectionPermissions   ; when doing a delta between old graph and new graph root won't always
-   su/IntGreaterThanZero  CollectionPermissions}) ; be present, which is why it's *optional*
+(def CollectionPermissions
+  "Malli enum for what sort of colleciton permissions we have. (:write :read or :none)"
+  [:and {:title "Collection Permissions"}
+   keyword?
+   [:enum :write :read :none]])
 
-(def ^:private PermissionsGraph
-  {:revision s/Int
-   :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
+(def RootOrCollectionID
+  "Either A [[CollectionID]], or special value :root"
+  [:or [:and keyword? [:= :root]] CollectionID])
 
+(def GroupPermissionsGraph
+  "Map describing permissions for a (Group x Collection)"
+  [:map-of
+   RootOrCollectionID
+   CollectionPermissions])
+
+(def PermissionsGraph
+  "Map describing permissions for the cross product of groups x collections.
+  revision # is used to ensure consistency"
+  [:map
+   [:revision int?]
+   [:groups
+    [:map-of GroupID GroupPermissionsGraph]]])
 
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
@@ -38,14 +53,15 @@
   (into {} (for [[group-id perms] (group-by :group_id (db/select Permissions))]
              {group-id (set (map :object perms))})))
 
-(s/defn ^:private perms-type-for-collection :- CollectionPermissions
-  [permissions-set collection-or-id]
+(mu/defn ^:private perms-type-for-collection :- CollectionPermissions
+  [permissions-set :- [:maybe [:set string?]]
+   collection-or-id :- [:or map? pos-int?]]
   (cond
     (perms/set-has-full-permissions? permissions-set (perms/collection-readwrite-path collection-or-id)) :write
     (perms/set-has-full-permissions? permissions-set (perms/collection-read-path collection-or-id))      :read
     :else                                                                                                :none))
 
-(s/defn ^:private group-permissions-graph :- GroupPermissionsGraph
+(defn ^:private group-permissions-graph
   "Return the permissions graph for a single group having `permissions-set`."
   [collection-namespace permissions-set collection-ids]
   (into
@@ -53,10 +69,10 @@
    (for [collection-id collection-ids]
      {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
-(s/defn ^:private non-personal-collection-ids :- #{su/IntGreaterThanZero}
+(mu/defn ^:private non-personal-collection-ids :- [:set pos-int?]
   "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
-  [collection-namespace :- (s/maybe su/KeywordOrString)]
+  [collection-namespace :- [:maybe [:or keyword? string?]]]
   (let [personal-collection-ids (db/select-ids Collection :personal_owner_id [:not= nil])
         honeysql-form           {:select [[:id :id]]
                                  :from   [Collection]
@@ -67,7 +83,7 @@
                                                  [:not [:like :location (hx/literal (format "/%d/%%" collection-id))]]))}]
     (set (map :id (db/query honeysql-form)))))
 
-(s/defn graph :- PermissionsGraph
+(mu/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
   works just like the function of the same name in `metabase.models.permissions`; see also the documentation for that
   function.
@@ -83,7 +99,7 @@
   ([]
    (graph nil))
 
-  ([collection-namespace :- (s/maybe su/KeywordOrString)]
+  ([collection-namespace :- [:maybe [:or keyword? string?]]]
    (let [group-id->perms (group-id->permissions-set)
          collection-ids  (non-personal-collection-ids collection-namespace)]
      {:revision (c-perm-revision/latest-id)
@@ -93,10 +109,10 @@
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
-(s/defn ^:private update-collection-permissions!
-  [collection-namespace :- (s/maybe su/KeywordOrString)
-   group-id             :- su/IntGreaterThanZero
-   collection-id        :- (s/cond-pre (s/eq :root) su/IntGreaterThanZero)
+(mu/defn ^:private update-collection-permissions!
+  [collection-namespace :- [:maybe [:or keyword? string?]]
+   group-id             :- pos-int?
+   collection-id        :- RootOrCollectionID
    new-collection-perms :- CollectionPermissions]
   (let [collection-id (if (= collection-id :root)
                         (assoc collection/root-collection :namespace collection-namespace)
@@ -108,21 +124,22 @@
       :read  (perms/grant-collection-read-permissions! group-id collection-id)
       :none  nil)))
 
-(s/defn ^:private update-group-permissions!
-  [collection-namespace :- (s/maybe su/KeywordOrString)
-   group-id             :- su/IntGreaterThanZero
+(mu/defn ^:private update-group-permissions!
+  [collection-namespace :- [:maybe [:or keyword? string?]]
+   group-id             :- pos-int?
    new-group-perms      :- GroupPermissionsGraph]
   (doseq [[collection-id new-perms] new-group-perms]
     (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
 
-(s/defn update-graph!
+(mu/defn update-graph!
   "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
   namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
   refer to that function's extensive documentation to get a sense for how this works."
   ([new-graph]
    (update-graph! nil new-graph))
 
-  ([collection-namespace :- (s/maybe su/KeywordOrString), new-graph :- PermissionsGraph]
+  ([collection-namespace :- [:maybe [:or keyword? string?]]
+    new-graph :- PermissionsGraph]
    (let [old-graph          (graph collection-namespace)
          old-perms          (:groups old-graph)
          new-perms          (:groups new-graph)
@@ -130,13 +147,13 @@
          new-perms          (select-keys new-perms (keys old-perms))
          ;; filter out any collections not in the old graph
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
-                                      [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
+                                       [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
          [diff-old changes] (data/diff old-perms new-perms)]
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
      (when (seq changes)
        (db/transaction
-         (doseq [[group-id changes] changes]
-           (update-group-permissions! collection-namespace group-id changes))
-         (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
-                                      (assoc old-graph :namespace collection-namespace) changes))))))
+        (doseq [[group-id changes] changes]
+          (update-group-permissions! collection-namespace group-id changes))
+        (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
+                                    (assoc old-graph :namespace collection-namespace) changes))))))
