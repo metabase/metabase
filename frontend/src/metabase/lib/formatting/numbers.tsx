@@ -1,7 +1,6 @@
 import React from "react";
 
 import { format_number } from "cljs/metabase.shared.formatting.numbers";
-import { kebab_keys } from "cljs/metabase.shared.util";
 import { getCurrencySymbol } from "./currency";
 
 interface FormatNumberOptionsType {
@@ -26,7 +25,7 @@ export function formatNumber(
   number: number,
   options: FormatNumberOptionsType = {},
 ) {
-  let formatted = format_number(number, kebab_keys(options));
+  let formatted = format_number(number, options);
   // TODO This logic should properly live in the table formatting.
   if (
     options.number_style === "currency" &&

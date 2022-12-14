@@ -38,58 +38,68 @@
       (apply str (map transform parts)))))
 
 ;; Core internals =================================================================================================
+;; TODO(braden) We could get more nicely localized currency values by using the user's locale.
+;; The problem is that then we don't know what the number separators are. We could determine it
+;; with a simple test like formatting 12345.67, though.
+;; Using "en" here means, among other things, that currency values are not localized as well
+;; as they could be. Many European languages put currency signs as suffixes, eg. 123 euros is:
+;; - "€123.00" in "en"
+;; - "€123,00" with "en" but fixing up the separators for a German locale
+;; - "123,00 €" in actual German convention, which is what we would get with a native "de" locale here.
+(defn- number-formatter-for-options-baseline [options]
+  (let [default-fraction-digits (when (= (:number-style options) "currency")
+                                  2)]
+    (js/Intl.NumberFormat.
+      "en"
+      (clj->js (su/remove-nils
+                 {:style    (when-not (= (:number-style options) "scientific")
+                              (:number-style options "decimal"))
+                  :notation (when (= (:number-style options) "scientific")
+                              "scientific")
+                  :currency (:currency options)
+                  :currencyDisplay (:currency-style options)
+                  ;; Always use grouping separators, but we may remove them per number_separators.
+                  :useGrouping              true
+                  :minimumIntegerDigits     (:minimum-integer-digits     options)
+                  :minimumFractionDigits    (:minimum-fraction-digits options default-fraction-digits)
+                  :maximumFractionDigits    (:maximum-fraction-digits options default-fraction-digits)
+                  :minimumSignificantDigits (:minimum-significant-digits options)
+                  :maximumSignificantDigits (:maximum-significant-digits options)})))))
+
+(defn- currency-symbols? [options]
+  (let [style (:currency-style options)]
+    (and (:currency options)
+         (or (nil? style)
+             (= style "symbol")))))
+
+(defn- formatter-fn [nf options]
+  (case (:number-style options)
+    "scientific" #(base-format-scientific nf %)
+    #(.format nf %)))
+
 (defn number-formatter-for-options
   "The key function implemented for each language, and called by the top-level number formatting.
   Returns a [[core/NumberFormatter]] instance for each set of options.
   These formatters are reusable, but this does no caching."
   [options]
-  (let [default-fraction-digits (when (= (:number-style options) "currency")
-                                  2)
-        nf (js/Intl.NumberFormat.
-             ;; TODO(braden) We could get more nicely localized currency values by using the user's locale.
-             ;; The problem is that then we don't know what the number separators are. We could determine it
-             ;; with a simple test like formatting 12345.67, though.
-             ;; Using "en" here means, among other things, that currency values are not localized as well
-             ;; as they could be. Many European languages put currency signs as suffixes, eg. 123 euros is:
-             ;; - "€123.00" in "en"
-             ;; - "€123,00" with "en" but fixing up the separators for a German locale
-             ;; - "123,00 €" in actual German convention, which is what we would get with a native "de" locale here.
-             "en"
-             (clj->js (su/remove-nils
-                        {:style    (when-not (= (:number-style options) "scientific")
-                                     (:number-style options "decimal"))
-                         :notation (when (= (:number-style options) "scientific")
-                                     "scientific")
-                         :currency (:currency options)
-                         :currencyDisplay (:currency-style options)
-                         ;; Always use grouping separators, but we may remove them per number_separators.
-                         :useGrouping              true
-                         :minimumIntegerDigits     (:minimum-integer-digits     options)
-                         :minimumFractionDigits    (:minimum-fraction-digits options default-fraction-digits)
-                         :maximumFractionDigits    (:maximum-fraction-digits options default-fraction-digits)
-                         :minimumSignificantDigits (:minimum-significant-digits options)
-                         :maximumSignificantDigits (:maximum-significant-digits options)})))]
+  (let [nf        (number-formatter-for-options-baseline options)
+        symbols?  (currency-symbols? options)
+        formatter (formatter-fn nf options)]
     (reify
       core/NumberFormatter
       (format-number-basic [_ number]
-        (cond-> (case (:number-style options)
-                  "scientific" (base-format-scientific nf number)
-                  (.format nf number))
-          true                                    (adjust-number-separators (:number-separators options))
-          (let [style (:currency-style options)]
-            (and (:currency options)
-                 (or (nil? style)
-                     (= style "symbol"))))        (fix-currency-symbols (:currency options))))
+        (cond-> (formatter number)
+          true     (adjust-number-separators (:number-separators options))
+          symbols? (fix-currency-symbols (:currency options))))
 
       (wrap-currency [_ text]
         ;; Intl.NumberFormat.formatToParts(1) returns, eg. [currency, integer, decimal, fraction]
         ;; Drop decimal and fraction, and replace integer's :value with our provided text.
-        (->> (js->clj (.formatToParts nf 1) :keywordize-keys true)
-             (remove (comp #{"decimal" "fraction"} :type))
-             (map #(if (= (:type %) "integer")
-                     text
-                     (:value %)))
-             (apply str)))
+        (apply str (for [{:keys [type value]} (js->clj (.formatToParts nf 1) :keywordize-keys true)
+                         :when (not (#{"decimal" "fraction"} type))]
+                     (if (= type "integer")
+                       text
+                       value))))
 
       (split-exponent [_ formatted] (throw (ex-info "split-exponent not implemented" {:text formatted}))))))
 

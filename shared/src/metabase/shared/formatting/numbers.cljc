@@ -1,6 +1,8 @@
 (ns metabase.shared.formatting.numbers
-  (:require [metabase.shared.formatting.internal.numbers :as internal]
-            [metabase.shared.formatting.internal.numbers-core :as core]))
+  (:require
+    [metabase.shared.formatting.internal.numbers :as internal]
+    [metabase.shared.formatting.internal.numbers-core :as core]
+    [metabase.shared.util :as su]))
 
 (declare format-number)
 
@@ -85,19 +87,20 @@
       - \"scientific\" renders in scientific notation with 1 integer digit: eg. 0.00432 as \"4.32e-3\".
       - \"decimal\" (the default) is basic numeric notation.
   - `:scale` number: Gives a factor by which to multiply the value before rendering it."
-  [number {:keys [compact negative-in-parentheses number-style scale] :as options}]
-  (cond
-    (and scale (not (NaN? scale))) (format-number (* scale number) (dissoc options :scale))
+  [number options]
+  (let [{:keys [compact negative-in-parentheses number-style scale] :as options} (su/normalize-map options)]
+    (cond
+      (and scale (not (NaN? scale))) (format-number (* scale number) (dissoc options :scale))
 
-    (and (neg? number)
-         negative-in-parentheses)  (str "("
-                                        (format-number (- number) (assoc options :negative-in-parentheses false))
-                                        ")")
+      (and (neg? number)
+           negative-in-parentheses)  (str "("
+                                          (format-number (- number) (assoc options :negative-in-parentheses false))
+                                          ")")
 
-    compact                        (format-number-compact    number options)
-    (= (keyword number-style)
-       :scientific)                (internal/format-number-scientific number options)
-    :else                          (format-number-standard   number options)))
+      compact                        (format-number-compact    number options)
+      (= (keyword number-style)
+         :scientific)                (internal/format-number-scientific number options)
+      :else                          (format-number-standard   number options))))
 
 ;; TODO(braden) We have recommended decimal places for currencies (eg. 2 for USD and EUR, 0 for JPY, 6 for BTC) in our
 ;; currency.cljc table. We should use that for formatting (non-compact) currencies, unless the input overrides.

@@ -1,6 +1,7 @@
 (ns metabase.shared.util
-  (:require [medley.core :as m]
-            #?@(:cljs [[clojure.string :as str]])))
+  (:require
+    [clojure.string :as str]
+    [medley.core :as m]))
 
 (defn qualified-name
   "Return `k` as a string, qualified by its namespace, if any (unlike `name`). Handles `nil` values gracefully as well
@@ -20,10 +21,29 @@
   [m]
   (m/filter-vals some? m))
 
-#?(:cljs
-   (defn ^:export kebab-keys
-     "Given a JS object with JS-style \"snake_case\" string keys, return a Clojure map with :kebab-case keyword keys."
-     [js-obj]
-     (-> js-obj
-         js->clj
-         (update-keys #(keyword (str/replace % #"_" "-"))))))
+(defn normalize-key
+  "Given a string or keyword, in snake_case or kebab-case, normalize it to a :kebab-case keyword.
+
+  Note that namespaces on input keywords are dropped! This is intended for turning idiomatic JSON
+  `\"snake_case_string_keys\"` into idiomatic Clojure `:kebab-case-keywords`."
+  [k]
+  (-> k name (#(str/replace % #"_" "-")) keyword))
+
+(defn normalize-map
+  "Given any map-like object, return it as a Clojure map with :kebab-case keyword keys.
+  The input map can be a:
+  - Clojure map with string or keyword keys,
+  - JS object (with string keys)
+  The keys are converted to kebab-case from snake_case as necessary, and turned into keywords.
+
+  Returns an empty map if nil is input (like [[update-keys]]).
+
+  Note that namespaces on keys are dropped (see [[normalize-key]]). Since this is intended for accepting JSON options
+  maps and things like that, we don't expect inputs to include namespaced keys."
+  [m]
+  (let [base #?(:clj  m
+                ;; If we're running in CLJS, convert to a ClojureScript map as needed.
+                :cljs (if (object? m)
+                        (js->clj m)
+                        m))]
+    (update-keys base normalize-key)))
