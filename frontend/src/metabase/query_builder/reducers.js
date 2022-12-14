@@ -57,6 +57,8 @@ import {
   onCloseTimelines,
   SHOW_TIMELINES,
   HIDE_TIMELINES,
+  HIDE_TIMELINE_EVENTS,
+  SHOW_TIMELINE_EVENTS,
   SELECT_TIMELINE_EVENTS,
   DESELECT_TIMELINE_EVENTS,
   SET_DOCUMENT_TITLE,
@@ -553,6 +555,25 @@ export const visibleTimelineIds = handleActions(
       next: (state, { payload: timelines }) =>
         _.without(state, ...timelines.map(t => t.id)),
     },
+    [RESET_QB]: { next: () => [] },
+  },
+  [],
+);
+
+export const hiddenTimelineEventIds = handleActions(
+  {
+    [INITIALIZE_QB]: { next: () => [] },
+    [HIDE_TIMELINE_EVENTS]: {
+      next: (state, { payload: events = [] }) => events.map(e => e.id),
+    },
+    [SHOW_TIMELINE_EVENTS]: {
+      next: () => [],
+    },
+    // [HIDE_TIMELINES]: {
+    //   next: (state, { payload: timelines }) =>
+    //     _.without(state, ...timelines.flatMap(t => t.events.map(e => e.id))),
+    // },
+    // [onCloseTimelines]: { next: () => [] },
     [RESET_QB]: { next: () => [] },
   },
   [],

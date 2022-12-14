@@ -15,6 +15,8 @@ export interface TimelineSidebarProps {
   xDomain?: [Moment, Moment];
   onShowTimelines?: (timelines: Timeline[]) => void;
   onHideTimelines?: (timelines: Timeline[]) => void;
+  onShowTimelineEvents?: (timelineEvent: TimelineEvent) => void;
+  onHideTimelineEvents?: (timelineEvent: TimelineEvent) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
   onOpenModal?: (modal: string, modalContext?: unknown) => void;
@@ -30,6 +32,8 @@ const TimelineSidebar = ({
   onOpenModal,
   onShowTimelines,
   onHideTimelines,
+  onShowTimelineEvents,
+  onHideTimelineEvents,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
   onClose,
@@ -63,6 +67,17 @@ const TimelineSidebar = ({
     [onSelectTimelineEvents, onDeselectTimelineEvents],
   );
 
+  const handleToggleEventVisibility = useCallback(
+    (event: TimelineEvent, isHidden: boolean) => {
+      if (isHidden) {
+        onShowTimelineEvents?.(event);
+      } else {
+        onHideTimelineEvents?.(event);
+      }
+    },
+    [onShowTimelineEvents, onHideTimelineEvents],
+  );
+
   const handleToggleTimeline = useCallback(
     (timeline: Timeline, isVisible: boolean) => {
       if (isVisible) {
@@ -85,6 +100,7 @@ const TimelineSidebar = ({
         onEditEvent={handleEditEvent}
         onMoveEvent={handleMoveEvent}
         onToggleEventSelected={handleToggleEventSelected}
+        onToggleEventVisibility={handleToggleEventVisibility}
         onToggleTimeline={handleToggleTimeline}
       />
     </SidebarContent>

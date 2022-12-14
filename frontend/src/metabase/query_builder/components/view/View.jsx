@@ -158,6 +158,8 @@ class View extends React.Component {
       xDomain,
       showTimelines,
       hideTimelines,
+      showTimelineEvents,
+      hideTimelineEvents,
       selectTimelineEvents,
       deselectTimelineEvents,
       onOpenModal,
@@ -190,6 +192,8 @@ class View extends React.Component {
           xDomain={xDomain}
           onShowTimelines={showTimelines}
           onHideTimelines={hideTimelines}
+          onShowTimelineEvents={showTimelineEvents}
+          onHideTimelineEvents={hideTimelineEvents}
           onSelectTimelineEvents={selectTimelineEvents}
           onDeselectTimelineEvents={deselectTimelineEvents}
           onOpenModal={onOpenModal}

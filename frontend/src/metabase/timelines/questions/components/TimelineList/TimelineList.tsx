@@ -10,6 +10,7 @@ export interface TimelineListProps {
   onMoveEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
+  onToggleEventVisibility?: (event: TimelineEvent, isSelected: boolean) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
 }
 
@@ -21,6 +22,7 @@ const TimelineList = ({
   onMoveEvent,
   onArchiveEvent,
   onToggleEventSelected,
+  onToggleEventVisibility,
   onToggleTimeline,
 }: TimelineListProps): JSX.Element => {
   return (
@@ -36,6 +38,7 @@ const TimelineList = ({
           onEditEvent={onEditEvent}
           onMoveEvent={onMoveEvent}
           onToggleEventSelected={onToggleEventSelected}
+          onToggleEventVisibility={onToggleEventVisibility}
           onArchiveEvent={onArchiveEvent}
         />
       ))}

@@ -4,6 +4,7 @@ import Settings from "metabase/lib/settings";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import EntityMenu from "metabase/components/EntityMenu";
+import Checkbox from "metabase/core/components/CheckBox/CheckBox";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import {
@@ -26,6 +27,7 @@ export interface EventCardProps {
   onMove?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
   onToggleSelected?: (event: TimelineEvent, isSelected: boolean) => void;
+  onToggleEventVisibility?: (event: TimelineEvent, isSelected: boolean) => void;
 }
 
 const EventCard = ({
@@ -36,6 +38,7 @@ const EventCard = ({
   onMove,
   onArchive,
   onToggleSelected,
+  onToggleEventVisibility,
 }: EventCardProps): JSX.Element => {
   const selectedRef = useScrollOnMount();
   const menuItems = getMenuItems(event, timeline, onEdit, onMove, onArchive);
@@ -46,9 +49,15 @@ const EventCard = ({
     onToggleSelected?.(event, !isSelected);
   }, [event, isSelected, onToggleSelected]);
 
+  const handleChangeVisibility = useCallback(() => {
+    onToggleEventVisibility?.(event, !isSelected);
+  }, [event, isSelected, onToggleEventVisibility]);
+
   const handleAsideClick = useCallback((event: SyntheticEvent) => {
     event.stopPropagation();
   }, []);
+
+  console.log("🚀", { event });
 
   return (
     <CardRoot
@@ -56,6 +65,8 @@ const EventCard = ({
       isSelected={isSelected}
       onClick={handleEventClick}
     >
+      <Checkbox checked={isSelected} onChange={handleChangeVisibility} />
+
       <CardIconContainer>
         <CardIcon name={event.icon} />
       </CardIconContainer>

@@ -87,6 +87,7 @@ export const getMetadataDiff = state => state.qb.metadataDiff;
 
 export const getEntities = state => state.entities;
 export const getVisibleTimelineIds = state => state.qb.visibleTimelineIds;
+export const getHiddenTimelineEventIds = state => state.qb.TimelineEventIds;
 export const getSelectedTimelineEventIds = state =>
   state.qb.selectedTimelineEventIds;
 
