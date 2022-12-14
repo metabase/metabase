@@ -960,3 +960,17 @@
                             :query)]
           (is (not (str/includes? sql-query name-with-spaces))
               (format "Query `%s' should not contain `%s'" sql-query name-with-spaces)))))))
+
+(deftest parse-bigquery-bignumeric-correctly-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [query (mt/native-query {:query (str/join \newline
+                                                   ["select"
+                                                    "  1234.1234567890123456                     as extremely_long_undef"
+                                                    ", cast(1234.1234567890123456 as decimal)    as extremely_long_decimal"
+                                                    ", cast(1234.1234567890123456 as float64)    as extremely_long_float64"
+                                                    ",  cast(1234.1234567890123456 as bigdecimal) as extremely_long_BIGdecimal"])})]
+      (is (= [[1234.1234567890124
+               1234.123456789M
+               1234.1234567890124
+               1234.1234567890123456M]]
+             (mt/rows (mt/process-query query)))))))
