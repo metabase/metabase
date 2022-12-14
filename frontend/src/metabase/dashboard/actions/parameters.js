@@ -5,7 +5,6 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 
 import {
   createParameter,
-  setParameterName as setParamName,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
@@ -144,28 +143,6 @@ export const setParameter = createThunkAction(
   },
 );
 
-export const SET_PARAMETER_NAME = "metabase/dashboard/SET_PARAMETER_NAME";
-export const setParameterName = createThunkAction(
-  SET_PARAMETER_NAME,
-  (parameterId, name) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter =>
-      setParamName(parameter, name),
-    );
-    return { id: parameterId, name };
-  },
-);
-
-export const setParameterFilteringParameters = createThunkAction(
-  SET_PARAMETER_NAME,
-  (parameterId, filteringParameters) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter => ({
-      ...parameter,
-      filteringParameters,
-    }));
-    return { id: parameterId, filteringParameters };
-  },
-);
-
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
@@ -176,32 +153,6 @@ export const setParameterValue = createThunkAction(
 
 export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
 export const setParameterValues = createAction(SET_PARAMETER_VALUES);
-
-export const SET_PARAMETER_DEFAULT_VALUE =
-  "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
-export const setParameterDefaultValue = createThunkAction(
-  SET_PARAMETER_DEFAULT_VALUE,
-  (parameterId, defaultValue) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter => ({
-      ...parameter,
-      default: defaultValue,
-    }));
-    return { id: parameterId, defaultValue };
-  },
-);
-
-export const SET_PARAMETER_IS_MULTI_SELECT =
-  "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
-export const setParameterIsMultiSelect = createThunkAction(
-  SET_PARAMETER_DEFAULT_VALUE,
-  (parameterId, isMultiSelect) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter => ({
-      ...parameter,
-      isMultiSelect: isMultiSelect,
-    }));
-    return { id: parameterId, isMultiSelect };
-  },
-);
 
 export const SET_PARAMETER_INDEX = "metabase/dashboard/SET_PARAMETER_INDEX";
 export const setParameterIndex = createThunkAction(
