@@ -20,6 +20,10 @@ on:
       - "**/frontend/test/**"
       - "**/frontend/**.unit.*"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'release-x')) }}
+
 jobs:
 
   be-tests-athena-ee:
