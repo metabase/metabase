@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
 import SelectButton from "metabase/core/components/SelectButton";
 import FieldList from "metabase/query_builder/components/FieldList";
+import InputBlurChange from "metabase/components/InputBlurChange";
 
 export const FieldMappingRoot = styled.div`
   padding: 1rem 4rem;
@@ -25,4 +26,8 @@ export const FieldSelectButton = styled(SelectButton)<FieldSelectButtonProps>`
 
 export const ForeignKeyList = styled(FieldList)`
   color: ${color("filter")};
+`;
+
+export const FieldValueMappingInput = styled(InputBlurChange)`
+  width: auto;
 `;

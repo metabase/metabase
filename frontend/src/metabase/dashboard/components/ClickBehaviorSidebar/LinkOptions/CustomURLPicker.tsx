@@ -89,7 +89,7 @@ function CustomURLPicker({
             value={clickBehavior.linkTemplate}
             placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
             onChange={handleLinkTemplateChange}
-            className="input block full"
+            className="block full"
           />
           {isTableDisplay(dashcard) && (
             <CustomLinkText

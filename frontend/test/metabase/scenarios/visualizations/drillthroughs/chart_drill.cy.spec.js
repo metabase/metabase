@@ -403,7 +403,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         type: "native",
         native: {
           query:
-            "select 1 as axis, 5 as value, 9 as breakout union all\nselect 2 as axis, 6 as value, 10 as breakout union all\nselect 2 as axis, 6 as value, 10 as breakout",
+            'select 1 as axis, 5 as "VALUE", 9 as breakout union all\nselect 2 as axis, 6 as "VALUE", 10 as breakout union all\nselect 2 as axis, 6 as "VALUE", 10 as breakout',
         },
         database: SAMPLE_DB_ID,
       },

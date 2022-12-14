@@ -290,7 +290,7 @@
           (doseq [[tbl-nm col-nms] (group-by first all-text-cols)]
             (let [^String exp-type (case driver/*driver*
                                      :mysql "longtext"
-                                     :h2    "CLOB"
+                                     :h2    "CHARACTER LARGE OBJECT"
                                      "text")
                   name-fn          (case driver/*driver*
                                      :h2 str/upper-case
@@ -318,7 +318,7 @@
         (migrate!)                      ; run migrations, then check the new type
         (let [^String exp-type (case driver/*driver*
                                  :mysql    "longblob"
-                                 :h2       "BLOB"
+                                 :h2       "BINARY LARGE OBJECT"
                                  :postgres "bytea")
               name-fn          (case driver/*driver*
                                  :h2 str/upper-case

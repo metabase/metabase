@@ -36,7 +36,7 @@
 (defn- token-status-response
   [token premium-features-response]
   (http-fake/with-fake-routes-in-isolation
-    {{:address      (#'premium-features/token-status-url token)
+    {{:address      (#'premium-features/token-status-url token @#'premium-features/token-check-url)
       :query-params {:users     (str (#'premium-features/active-user-count))
                      :site-uuid (public-settings/site-uuid-for-premium-features-token-checks)}}
      (constantly premium-features-response)}
@@ -77,7 +77,7 @@
                   :status        "Unable to validate token"
                   :error-details "network issues"}
                  (premium-features/fetch-token-status (apply str (repeat 64 "b")))))))
-      (testing "Only attempt the token once"
+      (testing "Only attempt the token twice (default and fallback URLs)"
         (let [call-count (atom 0)
               token      (random-token)]
           (binding [clj-http.client/request (fn [& _]
@@ -100,7 +100,7 @@
                                     #'premium-features/enable-serialization?]]
                 (testing (format "\n%s is false" (:name (meta has-feature?)))
                   (is (not (has-feature?)))))
-              (is (= 1
+              (is (= 2
                      @call-count))))))
 
       (testing "With a valid token"

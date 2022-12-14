@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Select, { Option } from "metabase/core/components/Select";
-import InputBlurChange from "./InputBlurChange";
+import { SelectPrefixInput } from "./InputWithSelectPrefix.styled";
 
 function splitValue({
   value,
@@ -77,12 +77,13 @@ export default class InputWithSelectPrefix extends Component {
             </Option>
           ))}
         </Select>
-        <InputBlurChange
+        <SelectPrefixInput
           type="text"
-          className="Form-input flex-full borderless"
+          className="flex-full"
           value={rest}
           placeholder={this.props.placeholder}
           onBlurChange={e => this.setState({ rest: e.target.value })}
+          size="large"
         />
       </div>
     );

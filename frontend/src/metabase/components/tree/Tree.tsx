@@ -73,4 +73,5 @@ function BaseTree({
 
 export const Tree = Object.assign(BaseTree, {
   Node: DefaultTreeNode,
+  NodeList: TreeNodeList,
 });

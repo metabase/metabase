@@ -77,7 +77,32 @@ Only available in [some plans](https://www.metabase.com/pricing)<br>
 Type: string<br>
 Default: `"{}"`
 
-JSON object of primary colors used in charts and throughout Metabase.
+JSON object of primary colors used in charts and throughout Metabase. Examples:
+
+To change the user interface colors:
+
+```
+{
+   "brand":"#ff003b",
+   "filter":"#FF003B",
+   "summarize":"#FF003B"
+}
+```
+
+To change the chart colors:
+
+```
+{
+   "accent0":"#FF0005",
+   "accent1":"#E6C367",
+   "accent2":"#B9E68A",
+   "accent3":"#8AE69F",
+   "accent4":"#8AE6E4",
+   "accent5":"#8AA2E6",
+   "accent6":"#B68AE6",
+   "accent7":"#E68AD0"
+}
+```
 
 ### `MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE`
 
