@@ -680,7 +680,8 @@
   (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
 
 (defn datetime-diff-check-args
-  "Raises an exception if the database-type of `x` and `y` do not match the given predicate.
+  "This is a util function designed to be used by SQL implementations of ->honeysql for the `:datetime-diff` clause.
+   Raises an exception if the database-type of the arguments `x` and `y` do not match the given predicate.
    Note this doesn't raise an error if the database-type is nil, which can be the case for some drivers."
   [x y pred]
   (doseq [arg [x y]
