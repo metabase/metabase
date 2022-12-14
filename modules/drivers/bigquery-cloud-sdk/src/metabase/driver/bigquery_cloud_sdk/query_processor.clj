@@ -567,7 +567,7 @@
         y                (hx/->timestamp y)]
     (when (seq disallowed-types)
       (throw
-       (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+       (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
                      (pr-str disallowed-types))
                 {:allowed #{:timestamp :datetime :date}
                  :found   disallowed-types

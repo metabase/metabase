@@ -291,7 +291,7 @@
                                     #{"time"}))
                           [x y])
         _ (when (seq disallowed-types)
-            (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+            (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
                                  (pr-str disallowed-types))
                             {:found disallowed-types
                              :type  qp.error-type/invalid-query})))
