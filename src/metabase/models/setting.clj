@@ -910,8 +910,18 @@
 
   ###### `:visibility`
 
-  `:public`, `:authenticated`, `:settings-manager`, `:admin` (default), or `:internal`. Controls where this setting is
-  visible. `:settings-manager` refers to non-admins with the 'settings' permission.
+  Controls where this setting is visibile, and who can update it. Possible values are:
+
+    Visibility       | Who Can See It?              | Who Can Update It?
+    ---------------- | ---------------------------- | --------------------
+    :public          | The entire world             | Admins and Settings Managers
+    :authenticated   | Logged-in Users              | Admins and Settings Managers
+    :settings-manager| Admins and Settings Managers | Admins and Settings Managers
+    :admin           | Admins                       | Admins
+    :internal        | Nobody                       | No one (usually for env-var-only settings)
+
+  'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
+  in the Admin Panel.
 
   ###### `:getter`
 
