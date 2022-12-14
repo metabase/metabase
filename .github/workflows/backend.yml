@@ -26,6 +26,8 @@ jobs:
     timeout-minutes: 60
     steps:
     - uses: actions/checkout@v3
+    - name: Build static viz frontend
+      run: yarn build-static-viz
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
       with:
