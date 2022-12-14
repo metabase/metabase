@@ -137,10 +137,6 @@
        (map (partial sql.qp/->honeysql driver))
        (reduce (partial hsql/call :concat))))
 
-(comment
-  (remove-method sql.qp/->honeysql [:vertica :datetime-diff])
-  )
-
 (defmethod sql.qp/datetime-diff [:vertica :year]
   [_driver _unit x y]
   (let [positive-diff (fn [a b] ; precondition: a <= b
