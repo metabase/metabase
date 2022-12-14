@@ -226,8 +226,8 @@
                        (hx/floor
                         (hx// (hx/- (hsql/call :datediff (hsql/raw "month") a b)
                                     (hx/cast :integer
-                                             ;; coalesce is required because extract(day, a) > extract(day, b)
-                                             ;; returns null if a and b's days are equal
+                                             ;; coalesce is needed because extract(day, a) > extract(day, b)
+                                             ;; returns null if a and b are equal
                                              (hsql/call :coalesce
                                                         (hsql/call :> (extract :day a) (extract :day b))
                                                         false)))
@@ -240,6 +240,8 @@
               (hx/-
                (hsql/call :datediff (hsql/raw "month") a b)
                (hx/cast :integer
+                        ;; coalesce is needed because extract(day, a) > extract(day, b)
+                        ;; returns null if a and b are equal
                         (hsql/call :coalesce
                                    (hsql/call :> (extract :day a) (extract :day b))
                                    false))))]
