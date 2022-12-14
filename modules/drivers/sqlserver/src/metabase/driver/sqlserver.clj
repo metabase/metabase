@@ -744,6 +744,7 @@
 
   ;; 4.
   {:fields       (into (:breakout original-inner)
+                       ;; aggregation fields resulting from following expression are distinct
                        (mapv #(vector :field (-> % (nth 2) :name) {:base-type :type/Float})
                              (:aggregation original-inner)))
    :source-query (->
@@ -751,12 +752,11 @@
                   (dissoc original-inner :source-table :source-query :joins :filter)
                   ;; 2.
                   update-aggregations
-                  (update :breakout #(into (vec %) (->> (:aggregation original-inner)
-                                                        (filter percentile-aggregation?)
-                                                        (map aggregation->field)
-                                                        ;; remove duplicit fields in case multiple aggregations 
-                                                        ;; are computed over the same field
-                                                        distinct)))
+                  (update :breakout #(into (vec %)
+                                           ;; aggregation fields resulting from following expression are distinct
+                                           (->> (:aggregation original-inner)
+                                                (filter percentile-aggregation?)
+                                                (map aggregation->field))))
                   ;; 3.
                   (assoc :source-query (percentile-source-query original-inner)))})
 

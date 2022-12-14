@@ -369,6 +369,27 @@
   (metabase.test-runner/run [#'metabase.driver.sqlserver-test/median-aggregation-test])
   )
 
+(deftest aggregations-over-same-field-test
+  (mt/test-driver
+   :sqlserver
+   (testing "Compute aggregations over same field, use percentile aggregatinos with same name"
+     (let [result
+           (mt/run-mbql-query venues
+                              {:aggregation [[:aggregation-options
+                                              [:median [:field (mt/id :venues :price) nil]]
+                                              {:name "median of price over category"}]
+                                             [:aggregation-options
+                                              [:median [:field (mt/id :venues :price) nil]]
+                                              {:name "median of price over category"}]
+                                             [:aggregation-options
+                                              [:sum [:field (mt/id :venues :price) nil]]
+                                              {:name "sum of price over category"}]]
+                               :breakout    [[:field (mt/id :venues :category_id) nil]]
+                               :order-by [[:asc [:field (mt/id :venues :category_id) nil]]]
+                               :limit 3})]
+       (is (= [[2 2.5 2.5 20.0] [3 2.0 2.0 4.0] [4 2.0 2.0 4.0]]
+              (mt/formatted-rows [int double double double] result)))))))
+
 ;; TODO -- rewrite to sanity?
 (deftest simple-percentile-aggregations-test
   (mt/test-driver
