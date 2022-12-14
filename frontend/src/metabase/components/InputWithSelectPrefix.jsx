@@ -83,6 +83,7 @@ export default class InputWithSelectPrefix extends Component {
           value={rest}
           placeholder={this.props.placeholder}
           onBlurChange={e => this.setState({ rest: e.target.value })}
+          size="large"
         />
       </div>
     );

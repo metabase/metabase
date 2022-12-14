@@ -4,6 +4,7 @@ import Icon from "metabase/components/Icon";
 
 export const CalendarIcon = styled(Icon)`
   margin-right: 0.5rem;
+  margin-left: 0.5rem;
   cursor: pointer;
 
   &:hover {

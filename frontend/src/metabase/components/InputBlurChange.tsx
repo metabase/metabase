@@ -23,12 +23,15 @@ const InputBlurChange = ({
     setInternalValue(value);
   }, [value]);
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setInternalValue(event.target.value);
-    if (onChange) {
-      onChange(event);
-    }
-  };
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setInternalValue(event.target.value);
+      if (onChange) {
+        onChange(event);
+      }
+    },
+    [onChange],
+  );
 
   const handleBlur = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {

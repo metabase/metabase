@@ -7,5 +7,6 @@ export const SelectPrefixInput = styled(InputBlurChange)`
 
   ${Input.Field} {
     border: none;
+    outline: none;
   }
 `;
