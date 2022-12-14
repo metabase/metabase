@@ -22,7 +22,7 @@
 (defn- db-details []
   (merge
    (select-keys (mt/db) [:id :timezone :initial_sync_status])
-   (dissoc (mt/object-defaults Database) :details :initial_sync_status)
+   (dissoc (mt/object-defaults Database) :details :initial_sync_status :dbms_version)
    {:engine        "h2"
     :name          "test-data"
     :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -57,7 +57,7 @@
                  :position         1
                  :id               (mt/id :users :name)
                  :visibility_type  "normal"
-                 :database_type    "VARCHAR"
+                 :database_type    "CHARACTER VARYING"
                  :base_type        "type/Text"
                  :effective_type   "type/Text"
                  :has_field_values "list"
@@ -66,7 +66,7 @@
                  :name_field       nil})
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone] [:table :db :settings]))
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
-               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))))))
+               (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))))
 
 (deftest get-field-summary-test
   (testing "GET /api/field/:id/summary"

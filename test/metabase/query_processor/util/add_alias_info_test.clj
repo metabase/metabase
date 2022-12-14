@@ -341,7 +341,7 @@
                                                                           ::add/position      0}]
                                               [:value 1 {:base_type         :type/Text
                                                          :coercion_strategy nil
-                                                         :database_type     "VARCHAR"
+                                                         :database_type     "CHARACTER VARYING"
                                                          :effective_type    :type/Text
                                                          :name              "CATEGORY"
                                                          :semantic_type     :type/Category}]]}]
@@ -531,7 +531,7 @@
                                             "Doohickey"
                                             {:base_type         :type/Text
                                              :coercion_strategy nil
-                                             :database_type     "VARCHAR"
+                                             :database_type     "CHARACTER VARYING"
                                              :effective_type    :type/Text
                                              :name              "CATEGORY"
                                              :semantic_type     :type/Category}]]}

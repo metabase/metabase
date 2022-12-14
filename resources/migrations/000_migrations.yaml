@@ -8699,22 +8699,10 @@ databaseChangeLog:
 
 
   - changeSet:
-      id: 310
-      author: howonlee
-      comment: Added 0.40.0 Migrate friendly field names
-      changes:
-        - update:
-            tableName: setting
-            columns:
-              - column:
-                  name: value
-                  value: 'simple'
-            where: "'key'='humanization-strategy' AND value='advanced'"
-
-  - changeSet:
       id: 311
       author: howonlee
       comment: Added 0.40.0 Migrate friendly field names, not noop
+      validCheckSum: ANY # Quoting changes for H2.
       changes:
         - sql:
             dbms: mariadb,mysql
@@ -8722,10 +8710,15 @@ databaseChangeLog:
                 UPDATE setting SET value='simple' WHERE `key`='humanization-strategy'
                 AND value='advanced'
         - sql:
-            dbms: postgresql,h2
+            dbms: postgresql
             sql: |
                 UPDATE setting SET value='simple' WHERE key='humanization-strategy'
                 AND value='advanced'
+        - sql:
+            dbms: h2
+            sql: |
+                UPDATE setting SET "VALUE"='simple' WHERE "KEY"='humanization-strategy'
+                AND "VALUE"='advanced'
 
   - changeSet:
       id: 312
@@ -10332,15 +10325,22 @@ databaseChangeLog:
       author: camsaul
       comment: >-
         Added 0.43.0. Migrate legacy '-site-url' Setting to 'site-url'. Trim trailing slashes.
+      validCheckSum: ANY # Quoting changes in H2 don't need to be re-run
       preConditions:
         - onFail: MARK_RAN
         - or:
             - and:
                 - dbms:
-                    type: postgresql,h2
+                    type: postgresql
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM setting WHERE key = 'site-url';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'site-url';
             - and:
                 - dbms:
                     type: mysql,mariadb
@@ -10349,7 +10349,16 @@ databaseChangeLog:
                     sql: SELECT count(*) FROM setting WHERE `key` = 'site-url';
       changes:
         - sql:
-            dbms: h2,postgresql
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT
+                'site-url' AS "KEY",
+                regexp_replace("VALUE", '/$', '') AS "VALUE"
+              FROM setting
+              WHERE "KEY" = '-site-url';
+        - sql:
+            dbms: postgresql
             sql: >-
               INSERT INTO setting (key, value)
               SELECT
@@ -10386,14 +10395,22 @@ databaseChangeLog:
       author: camsaul
       comment: >-
         Added 0.43.0. Make sure 'site-url' Setting includes protocol.
+      validCheckSum: ANY # Quoting changes in H2 don't need to be re-run
       changes:
         - sql:
-            dbms: h2,postgresql
+            dbms: postgresql
             sql: >-
               UPDATE setting
               SET value = concat('http://', value)
               WHERE key = 'site-url'
                 AND value NOT LIKE 'http%';
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE setting
+              SET "VALUE" = concat('http://', "VALUE")
+              WHERE "KEY" = 'site-url'
+                AND "VALUE" NOT LIKE 'http%';
         - sql:
             dbms: mysql,mariadb
             sql: >-
@@ -10416,15 +10433,22 @@ databaseChangeLog:
       author: camsaul
       comment: >-
         Added 0.43.0. Migrates value of legacy enable-advanced-humanization Setting to humanization-strategy Setting added in 0.28.0.
+      validCheckSum: ANY # Quoting changes in H2 don't need to be re-run
       preConditions:
         - onFail: MARK_RAN
         - or:
             - and:
                 - dbms:
-                    type: postgresql,h2
+                    type: postgresql
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM setting WHERE key = 'humanization-strategy';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'humanization-strategy';
             - and:
                 - dbms:
                     type: mysql,mariadb
@@ -10433,7 +10457,7 @@ databaseChangeLog:
                     sql: SELECT count(*) FROM setting WHERE `key` = 'humanization-strategy';
       changes:
         - sql:
-            dbms: h2,postgresql
+            dbms: postgresql
             sql: >-
               INSERT INTO setting (key, value)
               SELECT
@@ -10441,6 +10465,16 @@ databaseChangeLog:
                 (CASE WHEN value = 'true' THEN 'advanced' ELSE 'simple' END) AS value
               FROM setting
               WHERE key = 'enable-advanced-humanization';
+        # key and value have to be quoted in H2
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT
+                'humanization-strategy'                                      AS "KEY",
+                (CASE WHEN "VALUE" = 'true' THEN 'advanced' ELSE 'simple' END) AS "VALUE"
+              FROM setting
+              WHERE "KEY" = 'enable-advanced-humanization';
         # key has to be quoted in MySQL/MariaDB
         - sql:
             dbms: mysql,mariadb
@@ -10458,11 +10492,17 @@ databaseChangeLog:
       author: camsaul
       comment: >-
         Added 0.43.0. Remove legacy enable-advanced-humanization Setting.
+      validCheckSum: ANY # Quoting changes in H2 don't need to be re-run
       changes:
         - sql:
-            dbms: h2,postgresql
+            dbms: postgresql
             sql: >-
               DELETE FROM setting WHERE key = 'enable-advanced-humanization';
+        # key has to be quoted in H2
+        - sql:
+            dbms: h2
+            sql: >-
+              DELETE FROM setting WHERE "KEY" = 'enable-advanced-humanization';
         # key has to be quoted in MySQL/MariaDB
         - sql:
             dbms: mysql,mariadb
@@ -13006,6 +13046,19 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
+      id: v46.00-026
+      author: metamben
+      comment: Added 0.46.0 -- add field for tracking DBMS versions
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: dbms_version
+                  type: ${text.type}
+                  remarks: 'A JSON object describing the flavor and version of the DBMS.'
+
+  - changeSet:
       id: v46.00-027
       author: snoe
       comment: Added 0.46.0 -- add last_used_at to FieldValues
@@ -13020,6 +13073,67 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValueComputed: current_timestamp
+
+  # Make Dimension <=> Field a 1t1 relationship. Replace unique field_id + name with unique field_id.
+  # See issue #27054.
+  - changeSet:
+      id: v46.00-029
+      author: camsaul
+      comment: Make Dimension <=> Field a 1t1 relationship. Drop unique constraint on field_id + name. (1/3)
+      changes:
+        - dropUniqueConstraint:
+            tableName: dimension
+            constraintName: unique_dimension_field_id_name
+      rollback:
+        - addUniqueConstraint:
+            tableName: dimension
+            constraintName: unique_dimension_field_id_name
+            columnNames: field_id, name
+
+  - changeSet:
+      id: v46.00-030
+      author: camsaul
+      comment: Make Dimension <=> Field a 1t1 relationship. Delete duplicate entries. (2/3)
+      changes:
+        - sql:
+            # Which rows to keep is not 100% clear. I decided to keep newer entries, by ID. I considered keeping new
+            # entries by `updated_at` but the SQL for doing that across the three databases was such a hairball and
+            # having duplicates in the first place was such an edge case I decided this approach is fine for now. The
+            # `row_number()` window function would have made this easier to do but we haven't merged H2 v2 yet.
+            #
+            # Writing the query with these unnecessary subselects is stupid, but MySQL 5.7 doesn't work without them.
+            # See https://metaboat.slack.com/archives/CKZEMT1MJ/p1670624514320419 for more info
+            sql: >-
+              DELETE FROM dimension
+              WHERE field_id IN (
+                SELECT field_id
+                FROM (
+                  SELECT field_id
+                  FROM dimension
+                  GROUP BY field_id
+                  HAVING COUNT(*) > 1
+                ) duplicates
+              )
+              AND id NOT IN (
+                SELECT id FROM (
+                  SELECT max(id) AS id
+                  FROM dimension
+                  GROUP BY field_id
+                ) most_recents
+              );
+      rollback: # don't need to roll back anything, deleting duplicate entries doesn't need to be reversed.
+
+  - changeSet:
+      id: v46.00-031
+      author: camsaul
+      comment: Make Dimension <=> Field a 1t1 relationship. Add unique constraint on field_id. (3/3)
+      changes:
+        - addUniqueConstraint:
+            tableName: dimension
+            columnNames: field_id
+            constraintName: unique_dimension_field_id
+        # this change can roll back automatically.
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

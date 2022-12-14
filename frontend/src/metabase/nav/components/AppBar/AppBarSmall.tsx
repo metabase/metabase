@@ -20,7 +20,7 @@ import {
 export interface AppBarSmallProps {
   currentUser: User;
   isNavBarOpen?: boolean;
-  isNavBarVisible?: boolean;
+  isNavBarEnabled?: boolean;
   isSearchVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
@@ -33,7 +33,7 @@ export interface AppBarSmallProps {
 const AppBarSmall = ({
   currentUser,
   isNavBarOpen,
-  isNavBarVisible,
+  isNavBarEnabled,
   isSearchVisible,
   isProfileLinkVisible,
   isCollectionPathVisible,
@@ -42,9 +42,11 @@ const AppBarSmall = ({
   onCloseNavbar,
   onLogout,
 }: AppBarSmallProps): JSX.Element => {
+  const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+
   const [isSearchActive, setSearchActive] = useState(false);
   const isInfoVisible = isQuestionLineageVisible || isCollectionPathVisible;
-  const isSubheaderVisible = !isNavBarOpen && isInfoVisible;
+  const isSubheaderVisible = !isNavBarVisible && isInfoVisible;
 
   const handleLogoClick = useCallback(() => {
     onCloseNavbar();
@@ -64,9 +66,9 @@ const AppBarSmall = ({
       <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
         <AppBarMainContainer>
           <AppBarToggleContainer>
-            {isNavBarVisible && (
+            {isNavBarEnabled && (
               <AppBarToggle
-                isNavBarOpen={isNavBarOpen}
+                isNavBarOpen={isNavBarVisible}
                 onToggleClick={onToggleNavbar}
               />
             )}
@@ -90,7 +92,7 @@ const AppBarSmall = ({
         </AppBarLogoContainer>
       </AppBarHeader>
       {isSubheaderVisible && (
-        <AppBarSubheader isNavBarOpen={isNavBarOpen}>
+        <AppBarSubheader isNavBarOpen={isNavBarVisible}>
           {isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (

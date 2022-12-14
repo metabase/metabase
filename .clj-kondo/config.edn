@@ -6,7 +6,7 @@
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [partial= query= re= schema= sql=])
+    (clojure.test/is [partial= query= re= schema= sql= =?])
     (clojure.tools.macro/macrolet)
     (metabase.async.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
@@ -51,64 +51,37 @@
   ;; :shadowed-var                          {:level :warning}
   :deprecated-var
   {:exclude
-   {metabase.query-processor.util/normalize-token
-    {:namespaces ["metabase.*"]}
-    metabase.db.data-migrations/data-migrations
-    {:namespaces ["metabase.db.data-migrations"]}
-    metabase.db.data-migrations/defmigration
-    {:namespaces ["metabase.db.data-migrations"]}
-    metabase.db.data-migrations/run-migration-if-needed!
-    {:namespaces ["metabase.db.data-migrations"]}
-    metabase.driver/supports?
-    {:namespaces ["metabase.*"]}
-    metabase.driver/current-db-time
-    {:namespaces ["metabase.*"]}
-    metabase.driver.common/current-db-time-native-query
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/current-db-time-date-formatters
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute.old-impl/read-column
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/first-successful-parse
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/ThreadSafeSimpleDateFormat
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/create-db-time-formatters
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.common/current-db-time
-    {:namespaces ["metabase.*"]}
-    metabase.driver.sql.query-processor.deprecated/*field-options*
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*source-query*
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/field->identifier
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/field->alias
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/prefix-field-alias
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table
-    {:namespaces ["metabase.*"]}
-    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sq
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql.query-processor.deprecated/*table-alias*
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.public-settings.premium-features/enable-enhancements?
-    {:namespaces ["metabase\\.models.*"]}
-    metabase.driver.sql.query-processor.deprecated/escape-alias
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.sync.interface/syncable-schemas
-    {:namespaces ["metabase\\.driver.*"]}
-    metabase.util/key-by
-    {:namespaces ["metabase(?:-enterprise)?.*"]}
-    schema.core/either
-    {:namespaces ["metabase.*"]}
-    schema.core/both
-    {:namespaces ["metabase.*"]}}}
+   {metabase.cmd/dump                                                            {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
+    metabase.cmd/load                                                            {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
+    metabase.db.data-migrations/data-migrations                                  {:namespaces ["metabase.db.data-migrations"]}
+    metabase.db.data-migrations/defmigration                                     {:namespaces ["metabase.db.data-migrations"]}
+    metabase.db.data-migrations/run-migration-if-needed!                         {:namespaces ["metabase.db.data-migrations"]}
+    metabase.driver.common/ThreadSafeSimpleDateFormat                            {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.common/create-db-time-formatters                             {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.common/current-db-time                                       {:namespaces ["metabase.*"]}
+    metabase.driver.common/current-db-time-date-formatters                       {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.common/current-db-time-native-query                          {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.common/first-successful-parse                                {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.execute.old-impl/read-column                        {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sq                    {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.sync.interface/syncable-schemas                     {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/*field-options*               {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/*source-query*                {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/*table-alias*                 {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/escape-alias                  {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/field->alias                  {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/field->identifier             {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql.query-processor.deprecated/prefix-field-alias            {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
+    metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
+    metabase.public-settings.premium-features/enable-enhancements?               {:namespaces ["metabase\\.models.*"]}
+    metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
+    metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}
+    metabase.util/key-by                                                         {:namespaces ["metabase(?:-enterprise)?.*"]}
+    schema.core/both                                                             {:namespaces ["metabase.*"]}
+    schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
   :unresolved-var               {:exclude [colorize.core
                                            metabase.test/with-gtaps
@@ -224,13 +197,14 @@
     metabase.driver.mongo.parameters                                mongo.params
     metabase.driver.mongo.query-processor                           mongo.qp
     metabase.driver.mongo.util                                      mongo.util
+    metabase.driver.sql-jdbc.common                                 sql-jdbc.common
     metabase.driver.sql-jdbc.connection                             sql-jdbc.conn
     metabase.driver.sql-jdbc.execute                                sql-jdbc.execute
     metabase.driver.sql-jdbc.execute.diagnostic                     sql-jdbc.execute.diagnostic
     metabase.driver.sql-jdbc.execute.legacy-impl                    sql-jdbc.legacy
     metabase.driver.sql-jdbc.execute.old-impl                       sql-jdbc.execute.old
     metabase.driver.sql-jdbc.sync                                   sql-jdbc.sync
-    metabase.driver.sql-jdbc.sync.common                            sql-jdbc.common
+    metabase.driver.sql-jdbc.sync.common                            sql-jdbc.sync.common
     metabase.driver.sql-jdbc.sync.describe-database                 sql-jdbc.describe-database
     metabase.driver.sql-jdbc.sync.describe-table                    sql-jdbc.describe-table
     metabase.driver.sql-jdbc.sync.interface                         sql-jdbc.sync.interface
@@ -580,7 +554,6 @@
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
    metabase.test.data/mbql-query                                                                                             hooks.metabase.test.data/mbql-query
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
-   metabase.test.util.async/with-chans                                                                                       hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
    metabase.test.util.log/with-log-messages-for-level                                                                        hooks.common/with-ignored-first-arg

@@ -274,9 +274,11 @@
 (defn- database-metrics
   "Get metrics based on Databases."
   []
-  {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} (db/select [Database :is_full_sync])]
-                                  {:total    1
-                                   :analyzed is-full-sync?}))})
+  (let [databases (db/select [Database :is_full_sync :engine :dbms_version])]
+    {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} databases]
+                                    {:total    1
+                                     :analyzed is-full-sync?}))
+     :dbms_versions (frequencies (map #(assoc (:dbms_version %) :engine (:engine %)) databases))}))
 
 
 (defn- table-metrics

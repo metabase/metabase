@@ -29,7 +29,7 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone :creator_id :initial_sync_status :dbms_version])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -158,7 +158,7 @@
                                      :table_id                 (mt/id :users)
                                      :name                     "NAME"
                                      :display_name             "Name"
-                                     :database_type            "VARCHAR"
+                                     :database_type            "CHARACTER VARYING"
                                      :base_type                "type/Text"
                                      :effective_type           "type/Text"
                                      :visibility_type          "normal"
@@ -187,7 +187,7 @@
                                      :table_id         (mt/id :users)
                                      :name             "PASSWORD"
                                      :display_name     "Password"
-                                     :database_type    "VARCHAR"
+                                     :database_type    "CHARACTER VARYING"
                                      :base_type        "type/Text"
                                      :effective_type   "type/Text"
                                      :visibility_type  "sensitive"
@@ -224,7 +224,7 @@
                                      :semantic_type     "type/Name"
                                      :name             "NAME"
                                      :display_name     "Name"
-                                     :database_type    "VARCHAR"
+                                     :database_type    "CHARACTER VARYING"
                                      :base_type        "type/Text"
                                      :effective_type   "type/Text"
                                      :has_field_values "list"
@@ -447,7 +447,7 @@
                               :semantic_type            "type/Name"
                               :name                     "NAME"
                               :display_name             "Name"
-                              :database_type            "VARCHAR"
+                              :database_type            "CHARACTER VARYING"
                               :base_type                "type/Text"
                               :effective_type           "type/Text"
                               :dimension_options        []

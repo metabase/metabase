@@ -29,11 +29,11 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec])
-  (:import [java.sql ResultSet Types]
+  (:import java.io.File
+           java.nio.charset.StandardCharsets
+           [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
-           java.io.File
-           metabase.util.honeysql_extensions.Identifier
-           java.nio.charset.StandardCharsets))
+           metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
@@ -252,10 +252,22 @@
                                 (hsql/call :> (extract :day a) (extract :day b)))))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
+      :quarter
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx//
+                               (hx/-
+                                (hsql/call :datediff (hsql/raw "month") a b)
+                                (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b))))
+                               3))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
       :month
       (let [positive-diff (fn [a b]
                             (hx/-
-                             (hsql/call :datediff (hsql/raw (name unit)) a b)
+                             (hsql/call :datediff (hsql/raw "month") a b)
                              (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
@@ -357,10 +369,7 @@
                                               (qp.store/fetch-and-store-database! (u/the-id database))
                                               (sql.qp/->honeysql driver table))]}))
 
-(defmethod driver/describe-database :snowflake
-  [driver database]
-  ;; using the JDBC `.getTables` method seems to be pretty buggy -- it works sometimes but other times randomly
-  ;; returns nothing
+(defmethod driver/describe-database :snowflake [driver database]
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-store
@@ -395,7 +404,7 @@
       (->> (assoc (select-keys table [:name :schema])
                   :fields (sql-jdbc.sync/describe-table-fields driver conn table (db-name database)))
            ;; find PKs and mark them
-           (sql-jdbc.sync/add-table-pks (.getMetaData conn))))))
+           (sql-jdbc.sync/add-table-pks driver conn (db-name database))))))
 
 (defmethod driver/describe-table-fks :snowflake
   [driver database table]

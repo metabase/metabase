@@ -334,8 +334,8 @@
        (date-trunc :day y)
        (date-trunc :day x))))
 
-    :week
-    (hx// (datetime-diff-helper x y :day) 7)
+    :quarter
+    (hx// (datetime-diff-helper x y :month) 3)
 
     :month
     (hx/cast
@@ -349,6 +349,9 @@
         :age
         (date-trunc :day y)
         (date-trunc :day x)))))
+
+    :week
+    (hx// (datetime-diff-helper x y :day) 7)
 
     (:hour :minute :second)
     (let [ex            (extract :epoch x)

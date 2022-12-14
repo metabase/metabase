@@ -22,6 +22,10 @@ jobs:
         curl -OL $JAR_DOWNLOAD_URL
         stat ./metabase.jar
         date | tee timestamp
+    - name: Verify that this is a valid JAR file
+      run: file --mime-type ./metabase.jar | grep "application/zip"
+    - name: Reveal its version.properties
+      run: jar xf metabase.jar version.properties && cat version.properties
     - name: Calculate SHA256 checksum
       run: sha256sum ./metabase.jar | tee SHA256.sum
     - name: Upload Uberjar as artifact
@@ -48,7 +52,7 @@ jobs:
         java-package: jre
         java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       name: Retrieve previously downloaded Uberjar
       with:
         name: metabase-uberjar-${{ github.ref_name }}

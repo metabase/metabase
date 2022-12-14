@@ -6,17 +6,16 @@
   SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
   these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
   [[metabase.driver.sql-jdbc]] for more details."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.driver.impl :as driver.impl]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [potemkin :as p]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [potemkin :as p]
+   [toucan.db :as db]))
 
 (declare notify-database-updated)
 
@@ -254,6 +253,19 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti dbms-version
+  "Return a map containing information that describes the version of the DBMS. This typically includes a
+  `:version` containing the (semantic) version of the DBMS as a string and potentially a `:flavor`
+  specifying the flavor like `MySQL` or `MariaDB`."
+  {:arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+;; Some drivers like BigQuery or Snowflake cannot provide a meaningful stable version.
+(defmethod dbms-version :default
+  [_ _]
+  nil)
+
 (defmulti describe-database
   "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
   model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
@@ -292,41 +304,44 @@
 (defmethod describe-table-fks ::driver [_ _ _]
   nil)
 
-(def ConnectionDetailsProperty
-  "Schema for a map containing information about a connection property we should ask the user to supply when setting up
+;;; this is no longer used but we can leave it around for not for documentation purposes. Maybe we can actually do
+;;; something useful with it like write a test that validates that drivers return correct connection details?
+
+#_(def ConnectionDetailsProperty
+    "Schema for a map containing information about a connection property we should ask the user to supply when setting up
   a new database, as returned by an implementation of `connection-properties`."
-  (s/constrained
-   {
-    ;; The key that should be used to store this property in the `details` map.
-    :name su/NonBlankString
+    (s/constrained
+     {
+      ;; The key that should be used to store this property in the `details` map.
+      :name su/NonBlankString
 
-    ;; Human-readable name that should be displayed to the User in UI for editing this field.
-    :display-name su/NonBlankString
+      ;; Human-readable name that should be displayed to the User in UI for editing this field.
+      :display-name su/NonBlankString
 
-    ;; Human-readable text that gives context about a field's input.
-    (s/optional-key :helper-text) s/Str
+      ;; Human-readable text that gives context about a field's input.
+      (s/optional-key :helper-text) s/Str
 
-    ;; Type of this property. Defaults to `:string` if unspecified.
-    ;; `:select` is a `String` in the backend.
-    (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
+      ;; Type of this property. Defaults to `:string` if unspecified.
+      ;; `:select` is a `String` in the backend.
+      (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
 
-    ;; A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
-    ;; placeholder.
-    (s/optional-key :default) s/Any
+      ;; A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
+      ;; placeholder.
+      (s/optional-key :default) s/Any
 
-    ;; Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value
-    ;; is *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as
-    ;; placeholders, you cannot specify both `:default` and `:placeholder`.
-    (s/optional-key :placeholder) s/Any
+      ;; Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value
+      ;; is *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as
+      ;; placeholders, you cannot specify both `:default` and `:placeholder`.
+      (s/optional-key :placeholder) s/Any
 
-    ;; Is this property required? Defaults to `false`.
-    (s/optional-key :required?) s/Bool
+      ;; Is this property required? Defaults to `false`.
+      (s/optional-key :required?) s/Bool
 
-    ;; Any options for `:select` types
-    (s/optional-key :options) {s/Keyword s/Str}}
+      ;; Any options for `:select` types
+      (s/optional-key :options) {s/Keyword s/Str}}
 
-   (complement (every-pred #(contains? % :default) #(contains? % :placeholder)))
-   "connection details that does not have both default and placeholder"))
+     (complement (every-pred #(contains? % :default) #(contains? % :placeholder)))
+     "connection details that does not have both default and placeholder"))
 
 (defmulti connection-properties
   "Return information about the connection properties that should be exposed to the user for databases that will use
@@ -386,7 +401,9 @@
     ;; DEFAULTS TO TRUE.
     :basic-aggregations
 
-    ;; Does this driver support standard deviation and variance aggregations?
+    ;; Does this driver support standard deviation and variance aggregations? Note that if variance is not supported
+    ;; directly, you can calculate it manually by taking the square of the standard deviation. See the MongoDB driver
+    ;; for example.
     :standard-deviation-aggregations
 
     ;; Does this driver support expressions (e.g. adding the values of 2 columns together)?
@@ -759,5 +776,19 @@
   "Execute a writeback query (from an `is_write` Card) e.g. one powering a custom
   `QueryAction` (see [[metabase.models.action]]). Drivers that support `:actions/custom` must implement this method."
   {:added "0.44.0", :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti table-rows-sample
+  "Processes a sample of rows produced by `driver`, from the `table`'s `fields`
+  using the query result processing function `rff`.
+  The default implementation defined in [[metabase.db.metadata-queries]] runs a
+  row sampling MBQL query using the regular query processor to produce the
+  sample rows. This is good enough in most cases so this multimethod should not
+  be implemented unless really necessary.
+  `opts` is a map that may contain additional parameters:
+  `:truncation-size`: size to truncate text fields to if the driver supports
+  expressions."
+  {:arglists '([driver table fields rff opts]), :added "0.46.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

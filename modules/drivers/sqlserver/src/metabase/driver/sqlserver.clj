@@ -19,9 +19,11 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [trs tru]])
   (:import [java.sql Connection ResultSet Time]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
@@ -34,6 +36,7 @@
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
 (defmethod driver/supports? [:sqlserver :now] [_ _] true)
+(defmethod driver/supports? [:sqlserver :datetime-diff] [_ _] true)
 
 (defmethod driver/database-supports? [:sqlserver :convert-timezone]
   [_driver _feature _database]
@@ -129,6 +132,9 @@
 
 (defn- date-add [unit & exprs]
   (apply hsql/call :dateadd (hsql/raw (name unit)) exprs))
+
+(defn- date-diff [unit x y]
+  (hsql/call :datediff_big (hsql/raw (name unit)) x y))
 
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
 ;; details on the functions we're using.
@@ -270,6 +276,111 @@
           (hx/->AtTimeZone expr (zone-id->windows-zone source-timezone)))
         (hx/->AtTimeZone (zone-id->windows-zone target-timezone))
         hx/->datetime)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [v]
+                            (some-> v
+                                    hx/type-info
+                                    hx/type-info->db-type
+                                    name
+                                    str/lower-case
+                                    #{"time"}))
+                          [x y])
+        _ (when (seq disallowed-types)
+            (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                                 (pr-str disallowed-types))
+                            {:found disallowed-types
+                             :type  qp.error-type/invalid-query})))
+        x (if (hx/is-of-type? x "datetimeoffset")
+            (hx/->AtTimeZone x (zone-id->windows-zone (qp.timezone/results-timezone-id)))
+            x)
+        x (hx/cast "datetime2" x)
+        y (if (hx/is-of-type? y "datetimeoffset")
+            (hx/->AtTimeZone y (zone-id->windows-zone (qp.timezone/results-timezone-id)))
+            y)
+        y (hx/cast "datetime2" y)]
+    (case unit
+      :year
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             (date-diff :year a b)
+                             (hsql/call
+                              :case
+                              (hsql/call
+                               :or
+                               (hsql/call :> (date-part :month a) (date-part :month b))
+                               (hsql/call
+                                :and
+                                (hsql/call := (date-part :month a) (date-part :month b))
+                                (hsql/call :> (date-part :day a) (date-part :day b))))
+                              1
+                              :else
+                              0)))]
+        (hsql/call :case
+                   (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
+
+      :quarter
+      (let [positive-diff
+            (fn [a b]
+              (hx/cast
+               :integer
+               (hx/floor (hx// (hx/- (date-diff :month a b)
+                                     (hsql/call :case (hsql/call :> (date-part :day a) (date-part :day b)) 1 :else 0))
+                               3))))]
+        (hsql/call :case
+                   (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
+
+      :month
+      (let [positive-diff (fn [a b]
+                            (hx/-
+                             (date-diff :month a b)
+                             (hsql/call
+                              :case
+                              (hsql/call :> (date-part :day a) (date-part :day b))
+                              1
+                              :else
+                              0)))]
+        (hsql/call :case
+                   (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
+
+      :week
+      (let [positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (date-diff :day a b) 7))))]
+        (hsql/call :case
+                   (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x))))
+
+      :day
+      (date-diff :day x y)
+
+      (:hour :minute :second)
+      (let [positive-diff (fn [a b]
+                            (hx/floor
+                             (hx// (date-diff :millisecond a b)
+                                   (case unit :hour 3600000 :minute 60000 :second 1000))))]
+        (hsql/call :case
+                   (hsql/call :<= (hx/->datetime x) (hx/->datetime y))
+                   (positive-diff x y)
+                   :else
+                   (hx/* -1 (positive-diff y x)))))))
 
 (defmethod sql.qp/cast-temporal-string [:sqlserver :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]

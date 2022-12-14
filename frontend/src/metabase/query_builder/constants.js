@@ -17,6 +17,8 @@ export const MODAL_TYPES = {
   NEW_EVENT: "new-event",
   EDIT_EVENT: "edit-event",
   MOVE_EVENT: "move-event",
+  PREVIEW_QUERY: "preview-query",
+  CONVERT_QUERY: "convert-query",
 };
 
 export const SIDEBAR_SIZES = {

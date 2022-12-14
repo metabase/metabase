@@ -2,6 +2,12 @@
   (:require [clj-kondo.hooks-api :as hooks]
             [clojure.pprint]))
 
+(defn with-macro-meta
+  "When introducing internal nodes (let, defn, etc) it is important to provide a meta of an existing token
+   as the current version of kondo will use the whole form by default."
+  [new-node hook-node]
+  (with-meta new-node (meta (first (:children hook-node)))))
+
 ;;; This stuff is to help debug hooks. Trace a function and it will pretty-print the before & after sexprs.
 ;;;
 ;;;    (hooks.common/trace #'calculate-bird-scarcity)

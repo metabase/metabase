@@ -207,7 +207,8 @@
                                        :metadata_sync_schedule      :cron-string
                                        :cache_field_values_schedule :cron-string
                                        :start_of_week               :keyword
-                                       :settings                    :encrypted-json})
+                                       :settings                    :encrypted-json
+                                       :dbms_version                :json})
           :post-insert    post-insert
           :post-select    post-select
           :pre-insert     pre-insert
@@ -227,25 +228,12 @@
   ;; TODO - do we want to include tables that should be `:hidden`?
   (db/select 'Table, :db_id id, :active true, {:order-by [[:%lower.display_name :asc]]}))
 
-(defn schema-names
-  "Return a *sorted set* of schema names (as strings) associated with this `Database`."
-  [{:keys [id]}]
-  (when id
-    (apply sorted-set (db/select-field :schema 'Table
-                        :db_id id
-                        {:modifiers [:DISTINCT]}))))
-
 (defn pk-fields
   "Return all the primary key `Fields` associated with this `database`."
   [{:keys [id]}]
   (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
     (when (seq table-ids)
       (db/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
-
-(defn schema-exists?
-  "Does `database` have any tables with `schema`?"
-  ^Boolean [{:keys [id]}, schema]
-  (db/exists? 'Table :db_id id, :schema (some-> schema name)))
 
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------

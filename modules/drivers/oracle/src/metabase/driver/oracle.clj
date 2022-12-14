@@ -14,6 +14,8 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
             [metabase.driver.sql.util :as sql.u]
@@ -25,7 +27,7 @@
             [metabase.util.i18n :refer [trs]]
             [metabase.util.ssh :as ssh])
   (:import com.mchange.v2.c3p0.C3P0ProxyConnection
-           [java.sql Connection ResultSet Types]
+           [java.sql Connection DatabaseMetaData ResultSet Types]
            [java.time Instant OffsetDateTime ZonedDateTime]
            [oracle.jdbc OracleConnection OracleTypes]
            oracle.sql.TIMESTAMPTZ))
@@ -448,6 +450,13 @@
 (defmethod driver/escape-entity-name-for-metadata :oracle
   [_ entity-name]
   (str/replace entity-name "/" "//"))
+
+(defmethod sql-jdbc.describe-table/get-table-pks :oracle
+  [_driver ^Connection conn _ table]
+  (let [^DatabaseMetaData metadata (.getMetaData conn)]
+    (into #{} (sql-jdbc.sync.common/reducible-results
+               #(.getPrimaryKeys metadata nil nil (:name table))
+               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle
   [_]

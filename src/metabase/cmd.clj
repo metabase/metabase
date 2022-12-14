@@ -14,7 +14,7 @@
 
   You can see what commands are available by running the command `help`. This command uses the docstrings and arglists
   associated with each command's entrypoint function to generate descriptions for each command."
-  (:refer-clojure :exclude [load])
+  (:refer-clojure :exclude [load import])
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :as env]
@@ -139,26 +139,70 @@
                       {:command symb}
                       e)))))
 
-(defn ^:command load
-  "Load serialized metabase instance as created by `dump` command from directory `path`.
+;;; [[load]] and [[dump]] are the SerDes v1 versions. [[import]] and [[export]] are SerDes v2 versions of [[load]]
+;;; and [[dump]]. The v1 versions are deprecated.
 
-   `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
-  ([path] (load path {"--mode" :skip
-                      "--on-error" :continue}))
+(defn- import*
+  "Impl for [[load]] (v1) and [[import]] (v2)."
+  ([path v2?]
+   (import* path v2? "--mode" :skip "--on-error" :continue))
 
-  ([path & args]
-   (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/load)]
-     (cmd path (->> args
+  ([path v2? & options]
+   (when-not v2?
+     (log/warn (u/colorize :red (trs "''load'' is deprecated and will be removed in a future release. Please migrate to ''import''."))))
+   (let [options (cond-> options
+                   v2?
+                   (concat ["--v2" "true"]))
+         cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/load)]
+     (cmd path (->> options
                     cmd-args->map
                     (m/map-vals mbql.u/normalize-token))))))
 
-(defn ^:command dump
-  "Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
+(defn ^:command ^:deprecated load
+  "Deprecated: prefer [[import]] instead.
+
+  Load serialized metabase instance as created by [[dump]] command from directory `path`.
+
+  `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
+  [path & options]
+  (apply import* path false options))
+
+(defn ^:command import
+  "Load serialized Metabase instance as created by the [[export]] command from directory `path`. Replaces the [[load]]
+  command. Options are the same as for `load`.
+
+  `--mode` can be one of `:update` or `:skip` (default). `--on-error` can be `:abort` or `:continue` (default)."
+  [path & options]
+  (apply import* path true options))
+
+(defn- export*
+  ([path v2?]
+   (export* path v2? "--state" :active))
+
+  ([path v2? & options]
+   (when-not v2?
+     (log/warn (u/colorize :red (trs "''dump'' is deprecated and will be removed in a future release. Please migrate to ''export''."))))
+   (let [options (cond-> options
+                   v2?
+                   (concat ["--v2" true]))
+         cmd     (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)]
+     (cmd path (cmd-args->map options)))))
+
+(defn ^:command ^:deprecated dump
+  "Deprecated: prefer [[export]] instead.
+
+  Serialized metabase instance into directory `path`. `args` options may contain --state option with one of
   `active` (default), `all`. With `active` option, do not dump archived entities."
-  ([path] (dump path {"--state" :active}))
-  ([path & args]
-   (let [cmd (resolve-enterprise-command 'metabase-enterprise.serialization.cmd/dump)]
-     (cmd path (cmd-args->map args)))))
+  [path & options]
+  (apply export* path false options))
+
+(defn ^:command export
+  "Serialize a Metabase into directory `path`. Replaces the [[dump]] command. Options are the same as for `path`.
+
+  `options` may contain `--state` option with one of `active` (default), `all`. With `active` option, do not dump
+  archived entities."
+  [path & options]
+  (apply export* path true options))
 
 (defn ^:command seed-entity-ids
   "Add entity IDs for instances of serializable models that don't already have them."

@@ -3,17 +3,17 @@
 
   TODO -- these have nothing to do with the application database. This namespace should be renamed something like
   `metabase.driver.util.metadata-queries`."
-  (:require [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.sync.interface :as i]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.sync.interface :as i]
+   [metabase.util :as u]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (defn- qp-query [db-id mbql-query]
   {:pre [(integer? db-id)]}
@@ -32,19 +32,6 @@
             ;; this seeming useless `merge` statement IS in fact doing something important. `ql/query` is a threading
             ;; macro for building queries. Do not remove
             (assoc mbql-query :source-table table-id)))
-
-(defn table-row-count
-  "Fetch the row count of `table` via the query processor."
-  [table]
-  {:pre  [(map? table)]
-   :post [(integer? %)]}
-  (let [results (qp-query (:db_id table) {:source-table (u/the-id table)
-                                          :aggregation  [[:count]]})]
-    (try (-> results first first long)
-         (catch Throwable e
-           (log/error "Error fetching table row count. Query returned:\n"
-                      (u/pprint-to-str results))
-           (throw e)))))
 
 (def ^Integer absolute-max-distinct-values-limit
   "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
@@ -143,3 +130,7 @@
    (let [query   (table-rows-sample-query table fields opts)
          qp      (resolve 'metabase.query-processor/process-query)]
      (qp query {:rff rff}))))
+
+(defmethod driver/table-rows-sample :default
+  [_driver table fields rff opts]
+  (table-rows-sample table fields rff opts))

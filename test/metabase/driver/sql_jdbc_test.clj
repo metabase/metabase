@@ -25,7 +25,7 @@
                      :database-position 0
                      :database-required false}
                     {:name              "NAME"
-                     :database-type     "VARCHAR"
+                     :database-type     "CHARACTER VARYING"
                      :base-type         :type/Text
                      :database-position 1
                      :database-required false}
@@ -35,12 +35,12 @@
                      :database-position 2
                      :database-required false}
                     {:name              "LATITUDE"
-                     :database-type     "DOUBLE"
+                     :database-type     "DOUBLE PRECISION"
                      :base-type         :type/Float
                      :database-position 3
                      :database-required false}
                     {:name              "LONGITUDE"
-                     :database-type     "DOUBLE"
+                     :database-type     "DOUBLE PRECISION"
                      :base-type         :type/Float
                      :database-position 4
                      :database-required false}
