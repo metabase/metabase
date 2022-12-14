@@ -33,10 +33,10 @@ const ParameterSidebar = ({
   const [originalParameter, setOriginalParameter] = useState(parameter);
 
   useLayoutEffect(() => {
-    if (parameter.id !== originalParameter.id) {
-      setOriginalParameter(parameter);
+    if (editingParameter.id !== originalParameter.id) {
+      setOriginalParameter(editingParameter);
     }
-  }, [parameter, originalParameter]);
+  }, [editingParameter, originalParameter]);
 
   const handleRemove = useCallback(() => {
     onRemoveParameter(originalParameter.id);
