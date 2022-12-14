@@ -21,8 +21,8 @@ on:
       - "**/frontend/**.unit.*"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'release-x')) }}
+  group: ${{ github.head_ref || github.run_id}}
+  cancel-in-progress: true
 
 jobs:
 
