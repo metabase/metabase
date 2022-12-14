@@ -74,12 +74,12 @@ export default class DatabaseList extends Component {
     return (
       <div className="wrapper">
         <section className="PageHeader px2 clearfix">
-          {isAdmin && (
+          {/* {isAdmin && (
             <Link
               to="/admin/databases/create"
               className="Button Button--primary float-right"
             >{t`Add database`}</Link>
-          )}
+          )} */}
           <h2 className="PageTitle">{t`Databases`}</h2>
         </section>
         {error && (

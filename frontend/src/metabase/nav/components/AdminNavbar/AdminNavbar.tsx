@@ -16,6 +16,7 @@ import {
   AdminMobileNavbar,
   AdminMobileNavBarItems,
   MobileHide,
+  FlexColumnContainer,
 } from "./AdminNavbar.styled";
 import { AdminNavItem } from "./AdminNavItem";
 
@@ -29,30 +30,38 @@ export const AdminNavbar = ({
   path: currentPath,
   adminPaths,
 }: AdminNavbarProps) => {
+  const adminPathsFiltered = adminPaths.filter(
+    path => path.key !== "troubleshooting",
+  );
+
   return (
     <AdminNavbarRoot className="Nav">
       <AdminLogoLink to="/admin" data-metabase-event="Navbar;Logo">
         <AdminLogoContainer>
           <LogoIcon className="text-brand my2" dark />
-          <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
+          <FlexColumnContainer>
+            <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
+            <AdminLogoText>Accelerated By Dadosfera</AdminLogoText>
+          </FlexColumnContainer>
         </AdminLogoContainer>
       </AdminLogoLink>
 
-      <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
+      <MobileNavbar adminPaths={adminPathsFiltered} currentPath={currentPath} />
 
       <MobileHide>
         <AdminNavbarItems>
-          {adminPaths.map(({ name, key, path }) => (
+          {adminPathsFiltered.map(({ name, key, path }) => (
             <AdminNavItem
               name={name}
               path={path}
               key={key}
+              id={key}
               currentPath={currentPath}
             />
           ))}
         </AdminNavbarItems>
 
-        {!MetabaseSettings.isPaidPlan() && <StoreLink />}
+        {/* {!MetabaseSettings.isPaidPlan() && <StoreLink />} */}
         <AdminExitLink
           to="/"
           data-metabase-event="Navbar;Exit Admin"
@@ -92,6 +101,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
               name={name}
               path={path}
               key={key}
+              id={key}
               currentPath={currentPath}
             />
           ))}
