@@ -127,6 +127,7 @@ function CreateCollectionForm({
             title={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
             nullable
+            optional
           />
           <FormCollectionPicker
             name="parent_id"
