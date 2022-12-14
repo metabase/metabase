@@ -190,8 +190,7 @@
          :limit items
          ::offset (* items (dec page))))
 
-;;; Helper function for truncating dates - currently unused
-#_(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
 
 ;;; Example of handling report timezone
 ;;; (defn- date-trunc
@@ -263,10 +262,7 @@
         y (sql.qp/->honeysql driver y)]
     (case unit
       (:year :month :quarter :week :day)
-      (hsql/call :date_diff
-                 (hx/literal unit)
-                 (hsql/call :date_trunc (hx/literal :day) x)
-                 (hsql/call :date_trunc (hx/literal :day) y))
+      (hsql/call :date_diff (hx/literal unit) (date-trunc :day x) (date-trunc :day y))
       (:hour :minute :second)
       (hsql/call :date_diff (hx/literal unit) (hx/->timestamp x) (hx/->timestamp y)))))
 
