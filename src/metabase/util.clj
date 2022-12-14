@@ -1,30 +1,31 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.data :as data]
-            [clojure.java.classpath :as classpath]
-            [clojure.math.numeric-tower :as math]
-            [clojure.pprint :refer [pprint]]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns.find]
-            [clojure.walk :as walk]
-            [colorize.core :as colorize]
-            [flatland.ordered.map :refer [ordered-map]]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.shared.util :as shared.u]
-            [metabase.util.i18n :refer [trs tru]]
-            [nano-id.core :as nano-id]
-            [potemkin :as p]
-            [ring.util.codec :as codec]
-            [weavejester.dependency :as dep])
-  (:import [java.math MathContext RoundingMode]
-           [java.net InetAddress InetSocketAddress Socket]
-           [java.text Normalizer Normalizer$Form]
-           [java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue]
-           java.util.concurrent.TimeoutException
-           [org.apache.commons.validator.routines RegexValidator UrlValidator]))
+  (:require
+   [clojure.data :as data]
+   [clojure.java.classpath :as classpath]
+   [clojure.math.numeric-tower :as math]
+   [clojure.pprint :refer [pprint]]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [clojure.tools.namespace.find :as ns.find]
+   [clojure.walk :as walk]
+   [colorize.core :as colorize]
+   [flatland.ordered.map :refer [ordered-map]]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.shared.util :as shared.u]
+   [metabase.util.i18n :refer [trs tru]]
+   [nano-id.core :as nano-id]
+   [potemkin :as p]
+   [ring.util.codec :as codec]
+   [weavejester.dependency :as dep])
+  (:import
+   (java.net InetAddress InetSocketAddress Socket)
+   (java.text Normalizer Normalizer$Form)
+   (java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue)
+   (java.util.concurrent TimeoutException)
+   (org.apache.commons.validator.routines RegexValidator UrlValidator)))
 
 (comment shared.u/keep-me)
 
@@ -241,11 +242,6 @@
     (fn [_ x]
       (str x))))
 
-(defn decolorize
-  "Remove ANSI escape sequences from a String `s`."
-  ^String [s]
-  (some-> s (str/replace #"\[[;\d]*m" "")))
-
 (defn format-color
   "With one arg, converts something to a string and colorizes it. With two args, behaves like `format`, but colorizes
   the output.
@@ -345,19 +341,6 @@
   ^Double [^Integer decimal-place, ^Number number]
   {:pre [(integer? decimal-place) (number? number)]}
   (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
-
-(defn round-to-precision
-  "Round (presumably floating-point) `number` to a precision of `sig-figures`. Returns a `Double`.
-
-  This rounds by significant figures, not decimal places. See [[round-to-decimals]] for that.
-
-    (round-to-precision 4 1234567.89) -> 123500.0"
-  ^Double [^Integer sig-figures ^Number number]
-  {:pre [(integer? sig-figures) (number? number)]}
-  (-> number
-      bigdec
-      (.round (MathContext. sig-figures RoundingMode/HALF_EVEN))
-      double))
 
 (defn real-number?
   "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"
@@ -587,6 +570,7 @@
   ^bytes [^String string]
   (.decode base64-decoder string))
 
+;;; TODO -- this is only used [[metabase.analytics.snowplow-test]] these days
 (defn decode-base64
   "Decodes the Base64 string `input` to a UTF-8 string."
   [input]

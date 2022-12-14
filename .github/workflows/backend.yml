@@ -107,11 +107,12 @@ jobs:
       run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
     - name: Publish Test Report (JUnit)
-      uses: mikepenz/action-junit-report@v3
+      uses: dorny/test-reporter@v1
       if: always()
       with:
-        report_paths: 'target/junit/**/*_test.xml'
-        check_name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+        path: 'target/junit/**/*_test.xml'
+        name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+        reporter: java-junit
 
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.

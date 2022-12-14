@@ -41,7 +41,9 @@
 
 (defn- raw-value [keyy]
   (:value (first (jdbc/query {:datasource (mdb.connection/data-source)}
-                             ["select value from setting where setting.key=?;" keyy]))))
+                             [(if (= driver/*driver* :h2)
+                                "select \"VALUE\" from setting where setting.\"KEY\"=?;"
+                                "select value from setting where setting.key=?;") keyy]))))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
   (with-redefs [rotate-encryption-key! #(throw "err")

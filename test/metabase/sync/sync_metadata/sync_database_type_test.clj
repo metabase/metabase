@@ -26,9 +26,9 @@
             (is (= #{{:name "PRICE",       :database_type "INTEGER"}
                      {:name "CATEGORY_ID", :database_type "INTEGER"}
                      {:name "ID",          :database_type "BIGINT"}
-                     {:name "LATITUDE",    :database_type "DOUBLE"}
-                     {:name "LONGITUDE",   :database_type "DOUBLE"}
-                     {:name "NAME",        :database_type "VARCHAR"}}
+                     {:name "LATITUDE",    :database_type "DOUBLE PRECISION"}
+                     {:name "LONGITUDE",   :database_type "DOUBLE PRECISION"}
+                     {:name "NAME",        :database_type "CHARACTER VARYING"}}
                    (set (mt/derecordize
                          (db/select [Field :name :database_type] :table_id (u/the-id venues-table))))))))))))
 

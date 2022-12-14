@@ -764,7 +764,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it("should display correct tooltip value for multiple series charts on dashboard (metabase#15612)", () => {
     cy.createNativeQuestion({
       name: "15612_1",
-      native: { query: "select 1 as axis, 5 as value" },
+      native: { query: 'select 1 as AXIS, 5 as "VALUE"' },
       display: "bar",
       visualization_settings: {
         "graph.dimensions": ["AXIS"],
@@ -773,7 +773,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     }).then(({ body: { id: QUESTION1_ID } }) => {
       cy.createNativeQuestion({
         name: "15612_2",
-        native: { query: "select 1 as axis, 10 as value" },
+        native: { query: 'select 1 as AXIS, 10 as "VALUE"' },
         display: "bar",
         visualization_settings: {
           "graph.dimensions": ["AXIS"],
