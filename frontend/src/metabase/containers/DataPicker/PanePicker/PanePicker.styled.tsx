@@ -54,4 +54,5 @@ export const TreeContainer = styled.div``;
 export const RightPaneContainer = styled.div`
   display: flex;
   flex: 1;
+  overflow-y: auto;
 `;
