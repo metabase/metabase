@@ -46,6 +46,7 @@ const SettingInput = ({
         SettingsInput: type !== "password",
         SettingsPassword: type === "password",
       })}
+      size="large"
       error={!!errorMessage}
       id={id}
       type={type}

@@ -18,7 +18,7 @@ const getColor = ({ hasValue, highlighted }: SelectButtonRootProps) => {
 };
 
 export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
-  ${inputPadding}
+  ${inputPadding()}
   cursor: pointer;
   display: flex;
   width: ${props => (props.fullWidth ? "100%" : "unset")};
