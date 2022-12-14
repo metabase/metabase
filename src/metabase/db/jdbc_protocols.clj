@@ -7,6 +7,7 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.db.connection :as mdb.connection]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date])
   (:import java.io.BufferedReader
            [java.sql PreparedStatement ResultSet ResultSetMetaData Types]
@@ -104,7 +105,7 @@
     :postgres
     ;; for some reason postgres `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems
     ;; like a bug with the JDBC driver?
-    (let [^Class klass (if (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+    (let [^Class klass (if (= (u/lower-case-en (.getColumnTypeName rsmeta i)) "timestamptz")
                          OffsetDateTime
                          LocalDateTime)]
       (.getObject rs i klass))
