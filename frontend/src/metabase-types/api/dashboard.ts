@@ -1,5 +1,9 @@
-import { ParameterTarget } from "metabase-types/types/Parameter";
-import { Parameter, ParameterId } from "./parameters";
+import type { EntityId } from "metabase-types/types";
+import type {
+  ParameterTarget,
+  ParameterId,
+  Parameter,
+} from "metabase-types/types/Parameter";
 
 import type { Card, CardId } from "./card";
 import type { Dataset } from "./dataset";
@@ -18,7 +22,7 @@ export interface Dashboard {
   cache_ttl: number | null;
 }
 
-export type DashCardId = number;
+export type DashCardId = EntityId;
 
 export type BaseDashboardOrderedCard = {
   id: DashCardId;

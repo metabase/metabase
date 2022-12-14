@@ -1,8 +1,7 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import { Parameter } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import ParameterSettings from "../ParameterSettings";
@@ -78,7 +77,7 @@ const ParameterSidebar = ({
   );
 };
 
-const getTabs = (parameter: Parameter) => {
+const getTabs = (parameter: UiParameter) => {
   const tabs = [{ value: "settings", name: t`Settings`, icon: "gear" }];
 
   if (canUseLinkedFilters(parameter)) {
