@@ -31,13 +31,13 @@ const DefaultTokenFieldLayout = ({
 
 interface CategoryFieldInputProps {
   value: string | number;
-  field: Field;
+  fieldInstance: Field;
   onChange: (newValue: string) => void;
 }
 
 function CategoryFieldInput({
   value,
-  field,
+  fieldInstance,
   onChange,
 }: CategoryFieldInputProps) {
   return (
@@ -45,8 +45,8 @@ function CategoryFieldInput({
       <StyledFieldValuesWidget
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore, typescript is very confused about the value type for this non-tsx component
-        value={value ? [String(value)] : ([] as any)}
-        fields={[field]}
+        value={[String(value ?? "")]}
+        fields={[fieldInstance]}
         onChange={(newVals: string[]) => onChange(newVals[0])}
         multi={false}
         autoFocus={false}

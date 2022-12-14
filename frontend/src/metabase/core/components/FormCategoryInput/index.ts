@@ -1,1 +1,1 @@
-export { default } from "./CategoryFieldPicker";
+export { default } from "./FormCategoryInput";

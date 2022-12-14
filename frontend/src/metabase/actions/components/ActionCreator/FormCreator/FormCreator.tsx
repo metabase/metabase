@@ -1,34 +1,18 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { t } from "ttag";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
-import type {
-  DraggableProvided,
-  OnDragEndResponder,
-  DroppableProvided,
-} from "react-beautiful-dnd";
+import _ from "underscore";
 import type { Parameter } from "metabase-types/types/Parameter";
-import type { ActionFormSettings, FieldSettings } from "metabase-types/api";
+import type { ActionFormSettings } from "metabase-types/api";
 
-import { sortActionParams } from "metabase/actions/utils";
+import { ActionForm } from "metabase/actions/components/ActionForm";
+
 import { addMissingSettings } from "metabase/entities/actions/utils";
+import { sortActionParams } from "metabase/actions/utils";
 
-import {
-  getDefaultFormSettings,
-  getDefaultFieldSettings,
-  reorderFields,
-  hasNewParams,
-} from "./utils";
+import { getDefaultFormSettings, hasNewParams } from "./utils";
 
-import { FormField } from "./FormField";
 import { EmptyFormPlaceholder } from "./EmptyFormPlaceholder";
-import { FieldSettingsButtons } from "./FieldSettingsButtons";
-
-import {
-  FormItemWrapper,
-  FormCreatorWrapper,
-  FormItemName,
-} from "./FormCreator.styled";
+import { FormCreatorWrapper } from "./FormCreator.styled";
 
 export function FormCreator({
   params,
@@ -56,103 +40,28 @@ export function FormCreator({
     }
   }, [params, formSettings]);
 
-  const handleChangeFieldSettings = (
-    paramId: string,
-    newFieldSettings: FieldSettings,
-  ) => {
-    setFormSettings({
-      ...formSettings,
-      fields: {
-        ...formSettings.fields,
-        [paramId]: newFieldSettings,
-      },
-    });
-  };
-
-  const handleDragEnd: OnDragEndResponder = ({ source, destination }) => {
-    const oldOrder = source.index;
-    const newOrder = destination?.index ?? source.index;
-
-    const reorderedFields = reorderFields(
-      formSettings.fields,
-      oldOrder,
-      newOrder,
-    );
-    setFormSettings({
-      ...formSettings,
-      fields: reorderedFields,
-    });
-  };
-
   const sortedParams = useMemo(
     () => params.sort(sortActionParams(formSettings)),
     [params, formSettings],
   );
 
+  if (!sortedParams.length) {
+    return (
+      <FormCreatorWrapper>
+        <EmptyFormPlaceholder onExampleClick={onExampleClick} />
+      </FormCreatorWrapper>
+    );
+  }
+
   return (
     <FormCreatorWrapper>
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="action-form-droppable">
-          {(provided: DroppableProvided) => (
-            <div {...provided.droppableProps} ref={provided.innerRef}>
-              {sortedParams.map((param, index) => (
-                <Draggable
-                  key={`draggable-${param.id}`}
-                  draggableId={param.id}
-                  index={index}
-                >
-                  {(provided: DraggableProvided) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      className="mb1"
-                    >
-                      <FormItem
-                        key={param.id}
-                        param={param}
-                        fieldSettings={
-                          formSettings.fields?.[param.id] ??
-                          getDefaultFieldSettings()
-                        }
-                        onChange={(newSettings: FieldSettings) =>
-                          handleChangeFieldSettings(param.id, newSettings)
-                        }
-                      />
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {!params.length && (
-                <EmptyFormPlaceholder onExampleClick={onExampleClick} />
-              )}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+      <ActionForm
+        parameters={sortedParams}
+        onClose={_.noop}
+        onSubmit={_.noop}
+        formSettings={formSettings}
+        setFormSettings={setFormSettings}
+      />
     </FormCreatorWrapper>
-  );
-}
-
-function FormItem({
-  param,
-  fieldSettings,
-  onChange,
-}: {
-  param: Parameter;
-  fieldSettings: FieldSettings;
-  onChange: (fieldSettings: FieldSettings) => void;
-}) {
-  const name = param["display-name"] ?? param.name;
-
-  return (
-    <FormItemWrapper>
-      <FormItemName>
-        {name}
-        {!!fieldSettings.required && " *"}
-      </FormItemName>
-      <FormField param={param} fieldSettings={fieldSettings} />
-      <FieldSettingsButtons fieldSettings={fieldSettings} onChange={onChange} />
-    </FormItemWrapper>
   );
 }
