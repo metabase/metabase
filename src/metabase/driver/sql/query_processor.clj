@@ -153,6 +153,12 @@
 (defmethod date [:sql :year-of-era]      [_driver _ expr] (hx/year expr))
 (defmethod date [:sql :week-of-year-iso] [_driver _ expr] (hx/week expr))
 
+(defmulti datetime-diff
+  "Return a HoneySQL form for calculating the datetime-diff for a given unit."
+  {:arglists '([driver unit field-or-value field-or-value])}
+  (fn [driver unit _ _] [(driver/dispatch-on-initialized-driver driver) unit])
+  :hierarchy #'driver/hierarchy)
+
 (defn- days-till-start-of-first-full-week
   "Takes a datetime expession, return a HoneySQL form
   that calculate how many days from the Jan 1st till the start of `first full week`.
@@ -673,6 +679,21 @@
   [driver [_ arg amount unit]]
   (add-interval-honeysql-form driver (->honeysql driver arg) (- amount) unit))
 
+(defn datetime-diff-check-args [x y type-pred]
+  (doseq [arg [x y]
+          :let [db-type (hx/database-type arg)]
+          :when (and db-type (not (type-pred db-type)))]
+    (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
+                         (pr-str db-type))
+                    {:found db-type
+                     :type  qp.error-type/invalid-query}))))
+
+(defmethod ->honeysql [:sql :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (->honeysql driver x)
+        y (->honeysql driver y)]
+    (datetime-diff-check-args x y #(re-find #"(?i)^(timestamp|date)" %))
+    (datetime-diff driver unit x y)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |
