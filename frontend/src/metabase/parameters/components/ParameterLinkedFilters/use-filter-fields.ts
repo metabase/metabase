@@ -1,6 +1,7 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 import { DashboardApi } from "metabase/services";
+import { useOnMount } from "metabase/hooks/use-on-mount";
 import { UiParameter } from "metabase-lib/parameters/types";
 
 export interface UseFilterFieldsState {
@@ -31,9 +32,9 @@ const useFilterFields = (
     }
   }, [parameter, otherParameter]);
 
-  useLayoutEffect(() => {
+  useOnMount(() => {
     handleLoad();
-  }, [handleLoad]);
+  });
 
   return state;
 };
