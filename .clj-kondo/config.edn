@@ -290,8 +290,8 @@
     metabase.server.middleware.ssl                                  mw.ssl
     metabase.server.middleware.util                                 mw.util
     metabase.server.protocols                                       server.protocols
-    metabase.shared.util                                            su
-    metabase.shared.util.currency                                   su.currency
+    metabase.shared.util                                            shared.u
+    metabase.shared.util.currency                                   currency
     metabase.sync.analyze.classifiers.category                      classifiers.category
     metabase.sync.analyze.classifiers.name                          classifiers.name
     metabase.sync.analyze.classifiers.no-preview-display            classifiers.no-preview-display

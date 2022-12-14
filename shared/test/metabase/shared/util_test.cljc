@@ -1,10 +1,10 @@
 (ns metabase.shared.util-test
   (:require
     [clojure.test :refer [are deftest is testing]]
-    [metabase.shared.util :as su]))
+    [metabase.shared.util :as shared.u]))
 
 (deftest normalize-key-test
-  (are [out in] (= out (su/normalize-key in))
+  (are [out in] (= out (shared.u/normalize-key in))
        ;; snake_case strings
        :key                "key"
        :Key                "Key"
@@ -31,15 +31,15 @@
        :long-key-goes-here :long-key-goes-here)
 
   (testing "it drops namespaces off input keywords"
-    (is (= :base-name (su/normalize-key :some.namespace/base-name)))))
+    (is (= :base-name (shared.u/normalize-key :some.namespace/base-name)))))
 
 (deftest normalize-map-test
   (testing "nil and empty maps return empty maps"
-    (is (= {} (su/normalize-map nil)))
-    (is (= {} (su/normalize-map {}))))
+    (is (= {} (shared.u/normalize-map nil)))
+    (is (= {} (shared.u/normalize-map {}))))
 
   (testing "Clojure maps have their keys normalized"
-    (are [exp in] (= exp (su/normalize-map in))
+    (are [exp in] (= exp (shared.u/normalize-map in))
          {:some-key 1 :other-key 2} {:some-key 1 :other-key 2}
          {:some-key 1 :other-key 2} {:some_key 1 :other_key 2}
          {:some-key 1 :other-key 2} {"some-key" 1 "other-key" 2}
@@ -47,6 +47,6 @@
 
   #?(:cljs
      (testing "JS objects get turned into Clojure maps"
-       (are [exp in] (= exp (su/normalize-map in))
+       (are [exp in] (= exp (shared.u/normalize-map in))
             {:some-key 1 :other-key 2} #js {"some-key" 1 "other-key" 2}
             {:some-key 1 :other-key 2} #js {"some_key" 1 "other_key" 2}))))

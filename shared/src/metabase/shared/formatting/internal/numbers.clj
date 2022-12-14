@@ -2,7 +2,7 @@
   "JVM Clojure implementation of the [[core/NumberFormatter]] abstaction."
   (:require [clojure.string :as str]
             [metabase.shared.formatting.internal.numbers-core :as core]
-            [metabase.shared.util.currency :as su.currency])
+            [metabase.shared.util.currency :as currency])
   (:import [java.math BigDecimal MathContext RoundingMode]
            [java.text DecimalFormat NumberFormat]
            [java.util Currency Locale]))
@@ -15,7 +15,7 @@
   (apply str (repeatedly n (constantly x))))
 
 (defn- attach-currency-symbol [text ^NumberFormat nf ^Locale locale currency]
-  (str (su.currency/currency-symbol currency)
+  (str (currency/currency-symbol currency)
        (subs text (count (.getSymbol (.getCurrency nf) locale)))))
 
 (defn- apply-currency-style [text ^Currency currency ^Locale locale style currency-key]

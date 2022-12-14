@@ -3,8 +3,8 @@
   Implements the [[NumberFormatter]] protocol from numbers_core, plus some helpers."
   (:require [clojure.string :as str]
             [metabase.shared.formatting.internal.numbers-core :as core]
-            [metabase.shared.util :as su]
-            [metabase.shared.util.currency :as su.currency]))
+            [metabase.shared.util :as shared.u]
+            [metabase.shared.util.currency :as currency]))
 
 (def ^:private default-number-separators ".,")
 
@@ -18,7 +18,7 @@
     text))
 
 (defn- fix-currency-symbols [text currency]
-  (let [sym (su.currency/currency-symbol currency)]
+  (let [sym (currency/currency-symbol currency)]
     (-> text
         ;; Some have spaces and some don't - remove the space if it's there.
         (str/replace (str (name currency) core/non-breaking-space) sym)
@@ -51,7 +51,7 @@
                                   2)]
     (js/Intl.NumberFormat.
       "en"
-      (clj->js (su/remove-nils
+      (clj->js (shared.u/remove-nils
                  {:style    (when-not (= (:number-style options) "scientific")
                               (:number-style options "decimal"))
                   :notation (when (= (:number-style options) "scientific")
