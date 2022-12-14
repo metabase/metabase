@@ -39,11 +39,12 @@ export const ParameterName = styled.div`
   font-weight: bold;
 `;
 
-export const FieldListRoot = styled(LoadingAndErrorWrapper)`
+export const FieldListRoot = styled.div`
   font-size: 0.765rem;
 `;
 
 export const FieldListItem = styled.div`
+  display: flex;
   border-top: 1px solid ${color("border")};
 `;
 
@@ -54,7 +55,7 @@ export const FieldListHeader = styled.div`
 export const FieldListTitle = styled.div`
   color: ${color("brand")};
   width: 50%;
-  padding: 0.5rem 1rem 0;
+  padding: 0.5rem 1rem;
 `;
 
 export const FieldRoot = styled.div`

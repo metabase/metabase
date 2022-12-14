@@ -3,6 +3,7 @@ import { jt, t } from "ttag";
 import Toggle from "metabase/core/components/Toggle";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Field, Parameter, Table } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
@@ -172,20 +173,22 @@ const LinkedFieldList = ({
   const { data, error, loading } = useFilterFields(parameter, otherParameter);
 
   return (
-    <FieldListRoot loading={loading} error={error}>
-      {data && data.length > 0 && (
-        <FieldListHeader>
-          <FieldListTitle>{t`Filtering column`}</FieldListTitle>
-          <FieldListTitle>{t`Filtered column`}</FieldListTitle>
-        </FieldListHeader>
-      )}
-      {data?.map(([filteringId, filteredId]) => (
-        <FieldListItem key={filteredId}>
-          <LinkedField fieldId={filteringId} />
-          <LinkedField fieldId={filteredId} />
-        </FieldListItem>
-      ))}
-    </FieldListRoot>
+    <LoadingAndErrorWrapper loading={loading} error={error}>
+      <FieldListRoot>
+        {data && data.length > 0 && (
+          <FieldListHeader>
+            <FieldListTitle>{t`Filtering column`}</FieldListTitle>
+            <FieldListTitle>{t`Filtered column`}</FieldListTitle>
+          </FieldListHeader>
+        )}
+        {data?.map(([filteringId, filteredId]) => (
+          <FieldListItem key={filteredId}>
+            <LinkedField fieldId={filteringId} />
+            <LinkedField fieldId={filteredId} />
+          </FieldListItem>
+        ))}
+      </FieldListRoot>
+    </LoadingAndErrorWrapper>
   );
 };
 
@@ -200,7 +203,9 @@ const LinkedField = ({ fieldId }: LinkedFieldProps) => {
         <FieldRoot>
           <FieldLabel>
             <Tables.Loader id={field.table_id}>
-              {({ table }: { table: Table }) => table.display_name}
+              {({ table }: { table: Table }) => (
+                <span>{table.display_name}</span>
+              )}
             </Tables.Loader>
           </FieldLabel>
           <div>{field.display_name}</div>
