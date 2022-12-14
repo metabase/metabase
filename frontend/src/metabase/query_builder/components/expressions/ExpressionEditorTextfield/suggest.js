@@ -1,20 +1,23 @@
 import _ from "underscore";
 
-import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
-import { partialMatch, enclosingFunction } from "./completer";
+import {
+  partialMatch,
+  enclosingFunction,
+} from "metabase-lib/expressions/completer";
 import {
   EXPRESSION_FUNCTIONS,
   AGGREGATION_FUNCTIONS,
   MBQL_CLAUSES,
   getMBQLName,
   EDITOR_FK_SYMBOLS,
-} from "./config";
+} from "metabase-lib/expressions/config";
 import {
   getDimensionName,
   formatDimensionName,
   formatMetricName,
   formatSegmentName,
-} from "./index";
+} from "metabase-lib/expressions/index";
+import { getHelpText } from "./helper-text-strings";
 
 const suggestionText = func => {
   const { displayName, args } = func;
