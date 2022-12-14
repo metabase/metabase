@@ -42,5 +42,4 @@ export interface Parameter {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: unknown;
-  fields?: Field[];
 }

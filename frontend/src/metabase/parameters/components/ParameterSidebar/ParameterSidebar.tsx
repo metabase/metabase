@@ -10,8 +10,9 @@ import ParameterLinkedFilters from "../ParameterLinkedFilters";
 import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
 export interface ParameterSidebarProps {
-  parameter: Parameter;
+  parameter: UiParameter;
   otherParameters: UiParameter[];
+  editingParameter: Parameter;
   onChangeParameter: (parameter: Parameter) => void;
   onRemoveParameter: (parameterId: string) => void;
   onShowAddParameterPopover: () => void;
@@ -21,6 +22,7 @@ export interface ParameterSidebarProps {
 const ParameterSidebar = ({
   parameter,
   otherParameters,
+  editingParameter,
   onChangeParameter,
   onRemoveParameter,
   onShowAddParameterPopover,
@@ -59,7 +61,7 @@ const ParameterSidebar = ({
       <SidebarBody>
         {tab === "settings" ? (
           <ParameterSettings
-            parameter={parameter}
+            editingParameter={editingParameter}
             onChangeParameter={onChangeParameter}
             onRemoveParameter={handleRemove}
           />
@@ -67,6 +69,7 @@ const ParameterSidebar = ({
           <ParameterLinkedFilters
             parameter={parameter}
             otherParameters={otherParameters}
+            editingParameter={editingParameter}
             onChangeParameter={onChangeParameter}
             onShowAddParameterPopover={onShowAddParameterPopover}
           />
