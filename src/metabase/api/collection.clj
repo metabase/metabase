@@ -12,7 +12,7 @@
    [honeysql.helpers :as hh]
    [malli.core :as mc]
    [malli.experimental :as mx]
-   [malli.transform :as mt]
+   [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
@@ -913,7 +913,7 @@
    [:groups [:map-of GroupID GroupPermissionsGraph]]])
 
 (mx/defn ^:private graph-decoder [permissions-graph] :- PermissionsGraph
-  (mc/decode PermissionsGraph permissions-graph (mt/transformer {:name :graph})))
+  (mc/decode PermissionsGraph permissions-graph (mtx/transformer {:name :graph})))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
