@@ -32,6 +32,7 @@ Metabase is a deep product with a lot of tools to simplify business intelligence
 ## Documentation topics
 
 Metabase's reference documentation.
+
 ### Installation
 
 - [Installation overview](./installation-and-operation/start.md)
