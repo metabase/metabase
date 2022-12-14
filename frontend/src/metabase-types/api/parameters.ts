@@ -1,5 +1,3 @@
-import { Field } from "./field";
-
 export type StringParameterType =
   | "string/="
   | "string/!="
@@ -31,15 +29,3 @@ export type ParameterType =
 export type ParameterId = string;
 
 export type ActionParameterValue = string | number;
-
-export interface Parameter {
-  id: ParameterId;
-  name: string;
-  type: string;
-  slug: string;
-  sectionId?: string;
-  default?: unknown;
-  filteringParameters?: ParameterId[];
-  isMultiSelect?: boolean;
-  value?: unknown;
-}
