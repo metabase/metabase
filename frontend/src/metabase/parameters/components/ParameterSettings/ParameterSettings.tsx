@@ -9,6 +9,7 @@ import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import { Parameter } from "metabase-types/api";
+import { UiParameter } from "metabase-lib/parameters/types";
 import { getIsMultiSelect, setParameterName } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import {
@@ -25,12 +26,14 @@ const MULTI_SELECT_OPTIONS = [
 ];
 
 interface ParameterSettingsProps {
+  parameter: UiParameter;
   editingParameter: Parameter;
   onChangeParameter: (parameter: Parameter) => void;
   onRemoveParameter: (parameterId: string) => void;
 }
 
 const ParameterSettings = ({
+  parameter,
   editingParameter,
   onChangeParameter,
   onRemoveParameter,
@@ -72,7 +75,7 @@ const ParameterSettings = ({
       <SettingSection>
         <SettingLabel>{t`Default value`}</SettingLabel>
         <SettingValueWidget
-          parameter={editingParameter}
+          parameter={parameter}
           name={editingParameter.name}
           value={editingParameter.default}
           placeholder={t`No default`}

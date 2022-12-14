@@ -61,6 +61,7 @@ const ParameterSidebar = ({
       <SidebarBody>
         {tab === "settings" ? (
           <ParameterSettings
+            parameter={parameter}
             editingParameter={editingParameter}
             onChangeParameter={onChangeParameter}
             onRemoveParameter={handleRemove}
