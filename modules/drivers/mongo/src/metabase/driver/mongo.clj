@@ -15,7 +15,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
-            [monger.collection :as mc]
+            [monger.collection :as mcoll]
             [monger.command :as cmd]
             [monger.conversion :as m.conversion]
             [monger.core :as mg]
@@ -197,7 +197,7 @@
        :severity {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil}}"
   [^com.mongodb.DB conn, table]
   (try
-    (->> (mc/find-maps conn (:name table))
+    (->> (mcoll/find-maps conn (:name table))
          (take metadata-queries/max-sample-rows)
          (reduce
           (fn [field-defs row]

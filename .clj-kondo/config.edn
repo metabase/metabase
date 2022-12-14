@@ -342,6 +342,7 @@
     metabuild-common.core                                           u
     metabuild-common.output                                         out
     metabuild-common.shell                                          shell
+    monger.collection                                               mcoll
     ring.mock.request                                               ring.mock
     ring.util.codec                                                 codec
     ring.util.response                                              response
