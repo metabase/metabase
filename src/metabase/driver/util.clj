@@ -200,6 +200,24 @@
              :when  (driver/available? driver)]
          driver)))
 
+(defn semantic-version-gte
+  "Returns true if xv is greater than or equal to yv according to semantic versioning.
+   xv and yv are sequences of integers of the form `[major minor ...]`, where only
+   major is obligatory. Missing (`nil`) version numbers are treated as `0`.
+   Examples:
+   (semantic-version-gte [4 1] [4 1]) => true
+   (semantic-version-gte [4 0 1] [4 1]) => false
+   (semantic-version-gte [4 1] [4]) => true
+   (semantic-version-gte [3 1] [4]) => false"
+  [xv yv]
+  (or (empty? yv)
+      (let [[x & xs] xv
+            [y & ys] yv
+            x (if (nil? x) 0 x)
+            y (if (nil? y) 0 y)]
+        (or (> x y)
+            (and (>= x y) (recur xs ys))))))
+
 (defn- file-upload-props [{prop-name :name, visible-if :visible-if, disp-nm :display-name, :as conn-prop}]
   (if (premium-features/is-hosted?)
     [(-> (assoc conn-prop

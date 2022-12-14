@@ -368,6 +368,25 @@
       (hsql/call :convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
       "datetime")))
 
+(defn- datetime-diff-helper [x y unit]
+  (case unit
+    (:year :month)
+    (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))
+
+    :week
+    (let [positive-diff (fn [a b] (hx/floor (hx// (hsql/call :datediff b a) 7)))]
+      (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+    :quarter
+    (let [positive-diff (fn [a b] (hx/floor (hx// (datetime-diff-helper a b :month) 3)))]
+      (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+    :day
+    (hsql/call :datediff y x)
+
+    (:hour :minute :second)
+    (hsql/call :timestampdiff (hsql/raw (name unit)) x y)))
+
 (defmethod sql.qp/->honeysql [:mysql :datetime-diff]
   [driver [_ x y unit]]
   (let [x (sql.qp/->honeysql driver x)
@@ -384,19 +403,7 @@
                            (pr-str disallowed-types))
                       {:found disallowed-types
                        :type  qp.error-type/invalid-query})))
-    (case unit
-      (:year :month)
-      (hsql/call :timestampdiff (hsql/raw (name unit)) (hsql/call :date x) (hsql/call :date y))
-
-      :week
-      (let [positive-diff (fn [a b] (hx/floor (hx// (hsql/call :datediff b a) 7)))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
-
-      :day
-      (hsql/call :datediff y x)
-
-      (:hour :minute :second)
-      (hsql/call :timestampdiff (hsql/raw (name unit)) x y))))
+    (datetime-diff-helper x y unit)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

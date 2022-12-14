@@ -57,7 +57,7 @@
                  :position         1
                  :id               (mt/id :users :name)
                  :visibility_type  "normal"
-                 :database_type    "VARCHAR"
+                 :database_type    "CHARACTER VARYING"
                  :base_type        "type/Text"
                  :effective_type   "type/Text"
                  :has_field_values "list"

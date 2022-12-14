@@ -75,27 +75,19 @@
 (deftest database-supports?-test
  (mt/test-driver
     :mongo
-    (doseq [{:keys [details expected]} [{:details  {:host    "localhost"
-                                                    :port    3000
-                                                    :user   "metabase"
-                                                    :pass   "metasample123"
-                                                    :dbname  "bad-db-name"
-                                                    :version "5.0.0"}
-                                         :expected true}
-                                        {:details  {}
-                                         :expected false}
-                                        {:details  {:version nil}
-                                         :expected false}
-                                        {:details  {:host    "localhost"
-                                                    :port    27017
-                                                    :dbname  "metabase-test"
-                                                    :version "2.2134234.lol"}
-                                         :expected false}]
-            :let [ssl-details (tdm/conn-details details)]]
-      (testing (str "connect with " details)
+    (doseq [{:keys [dbms_version expected]}
+            [{:dbms_version {:semantic-version [5 0 0 0]}
+              :expected true}
+             {:dbms_version  {}
+              :expected false}
+             {:dbms_version  {:semantic-version []}
+              :expected false}
+             {:dbms_version  {:semantic-version [2 2134234]}
+              :expected false}]]
+      (testing (str "supports with " dbms_version)
         (is (= expected
-               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :details ssl-details})]
-                 (driver/database-supports? :mongo :date-arithmetics db))))))))
+               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version})]
+                 (driver/database-supports? :mongo :expressions db))))))))
 
 
 (def ^:private native-query

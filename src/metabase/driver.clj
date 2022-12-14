@@ -6,17 +6,16 @@
   SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
   these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
   [[metabase.driver.sql-jdbc]] for more details."
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.driver.impl :as driver.impl]
-            [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [metabase.util.schema :as su]
-            [potemkin :as p]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [java-time :as t]
+   [metabase.driver.impl :as driver.impl]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [potemkin :as p]
+   [toucan.db :as db]))
 
 (declare notify-database-updated)
 
@@ -305,41 +304,44 @@
 (defmethod describe-table-fks ::driver [_ _ _]
   nil)
 
-(def ConnectionDetailsProperty
-  "Schema for a map containing information about a connection property we should ask the user to supply when setting up
+;;; this is no longer used but we can leave it around for not for documentation purposes. Maybe we can actually do
+;;; something useful with it like write a test that validates that drivers return correct connection details?
+
+#_(def ConnectionDetailsProperty
+    "Schema for a map containing information about a connection property we should ask the user to supply when setting up
   a new database, as returned by an implementation of `connection-properties`."
-  (s/constrained
-   {
-    ;; The key that should be used to store this property in the `details` map.
-    :name su/NonBlankString
+    (s/constrained
+     {
+      ;; The key that should be used to store this property in the `details` map.
+      :name su/NonBlankString
 
-    ;; Human-readable name that should be displayed to the User in UI for editing this field.
-    :display-name su/NonBlankString
+      ;; Human-readable name that should be displayed to the User in UI for editing this field.
+      :display-name su/NonBlankString
 
-    ;; Human-readable text that gives context about a field's input.
-    (s/optional-key :helper-text) s/Str
+      ;; Human-readable text that gives context about a field's input.
+      (s/optional-key :helper-text) s/Str
 
-    ;; Type of this property. Defaults to `:string` if unspecified.
-    ;; `:select` is a `String` in the backend.
-    (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
+      ;; Type of this property. Defaults to `:string` if unspecified.
+      ;; `:select` is a `String` in the backend.
+      (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
 
-    ;; A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
-    ;; placeholder.
-    (s/optional-key :default) s/Any
+      ;; A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
+      ;; placeholder.
+      (s/optional-key :default) s/Any
 
-    ;; Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value
-    ;; is *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as
-    ;; placeholders, you cannot specify both `:default` and `:placeholder`.
-    (s/optional-key :placeholder) s/Any
+      ;; Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value
+      ;; is *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as
+      ;; placeholders, you cannot specify both `:default` and `:placeholder`.
+      (s/optional-key :placeholder) s/Any
 
-    ;; Is this property required? Defaults to `false`.
-    (s/optional-key :required?) s/Bool
+      ;; Is this property required? Defaults to `false`.
+      (s/optional-key :required?) s/Bool
 
-    ;; Any options for `:select` types
-    (s/optional-key :options) {s/Keyword s/Str}}
+      ;; Any options for `:select` types
+      (s/optional-key :options) {s/Keyword s/Str}}
 
-   (complement (every-pred #(contains? % :default) #(contains? % :placeholder)))
-   "connection details that does not have both default and placeholder"))
+     (complement (every-pred #(contains? % :default) #(contains? % :placeholder)))
+     "connection details that does not have both default and placeholder"))
 
 (defmulti connection-properties
   "Return information about the connection properties that should be exposed to the user for databases that will use
@@ -512,9 +514,8 @@
   (e.g., :left-join is not supported by any version of Mongo DB).
 
   In some cases, a feature may only be supported by certain versions of the database engine.
-  In this case, after implementing `:version` in `describe-database` for the driver,
-  you can check in `(get-in db [:details :version])` and determine
-  whether a feature is supported for this particular database.
+  In this case, after implementing `[[dbms-version]]` for your driver
+  you can determine whether a feature is supported for this particular database.
 
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}

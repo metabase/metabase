@@ -12,6 +12,7 @@
             [metabase.driver.mongo.parameters :as mongo.params]
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
+            [metabase.driver.util :as driver.u]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
@@ -228,32 +229,24 @@
                  :standard-deviation-aggregations]]
   (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
 
-(defn- db-version [db]
-  (:version (driver/dbms-version :mongo db)))
+(defmethod driver/database-supports? [:mongo :expressions]
+  [_driver _feature db]
+  (boolean (some-> (:dbms_version db)
+                   :semantic-version
+                   (driver.u/semantic-version-gte [4 2]))))
 
-(defn- parse-version [version]
-  (->> (str/split version #"\.")
-       (take 2)
-       (map #(Integer/parseInt %))))
-
-(defn- db-major-version [db]
-  (some-> (db-version db) parse-version first))
-
-(defmethod driver/database-supports? [:mongo :date-arithmetics] [_ _ db]
-  (let [version (db-major-version db)]
-    (and (some? version) (>= version 5))))
-
-(defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
-  ;; $round was introduced in 4.2
-  ;; $replaceAll was introduced in 4.4 (will error on 4.2)
-  (let [version (some-> (db-version db) parse-version)]
-    (and (some? version) (>= (first version) 4) (>= (second version) 2))))
+(defmethod driver/database-supports? [:mongo :date-arithmetics]
+  [_driver _feature db]
+  (boolean (some-> (:dbms_version db)
+                   :semantic-version
+                   (driver.u/semantic-version-gte [5]))))
 
 (defmethod driver/database-supports? [:mongo :now]
   ;; The $$NOW aggregation expression was introduced in version 4.2.
-  [_ _ db]
-  (let [version (some-> (db-version db) parse-version)]
-    (and (some? version) (>= (first version) 4) (>= (second version) 2))))
+  [_driver _feature db]
+  (boolean (some-> (:dbms_version db)
+                   :semantic-version
+                   (driver.u/semantic-version-gte [4 2]))))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
@@ -314,7 +307,6 @@
 
 (comment
   (require '[clojure.java.io :as io]
-           '[metabase.driver.util :as driver.u]
            '[monger.credentials :as mcred])
   (import javax.net.ssl.SSLSocketFactory)
 

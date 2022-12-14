@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -21,7 +22,13 @@
 
 (deftest test-round
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= 1.0 (test-math-expression [:round 0.7])))))
+    (if (or (not= driver/*driver* :mongo)
+            ;; mongo supports $round since version 4.2
+            (driver.u/semantic-version-gte
+             (-> (mt/db) :dbms_version :semantic-version)
+             [4 2]))
+      (is (= 1.0 (test-math-expression [:round 0.7])))
+      (is (= 0 0)))))
 
 (deftest test-floor
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
