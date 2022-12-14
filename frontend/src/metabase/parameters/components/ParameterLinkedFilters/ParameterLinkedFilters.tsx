@@ -40,7 +40,7 @@ const ParameterLinkedFilters = ({
   onChangeFilteringParameters,
   onShowAddParameterPopover,
 }: ParameterLinkedFiltersProps): JSX.Element => {
-  const parameterId = parameter.id;
+  const currentParameterId = parameter.id;
   const [expandedParameterId, setExpandedParameterId] = useState<string>();
 
   const filteringParameters = useMemo(
@@ -59,9 +59,9 @@ const ParameterLinkedFilters = ({
         ? filteringParameters.concat(otherParameter.id)
         : filteringParameters.filter(id => id !== otherParameter.id);
 
-      onChangeFilteringParameters(parameterId, newParameters);
+      onChangeFilteringParameters(currentParameterId, newParameters);
     },
-    [parameterId, filteringParameters, onChangeFilteringParameters],
+    [currentParameterId, filteringParameters, onChangeFilteringParameters],
   );
 
   const handleExpandedChange = useCallback(
