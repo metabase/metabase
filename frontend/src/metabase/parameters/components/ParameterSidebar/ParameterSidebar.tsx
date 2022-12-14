@@ -12,8 +12,13 @@ import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 export interface ParameterSidebarProps {
   parameter: UiParameter;
   otherParameters: UiParameter[];
-  editingParameter: Parameter;
-  onChangeParameter: (parameter: Parameter) => void;
+  onChangeName: (parameterId: string, name: string) => void;
+  onChangeDefaultValue: (parameterId: string, value: unknown) => void;
+  onChangeIsMultiSelect: (parameterId: string, isMultiSelect: boolean) => void;
+  onChangeFilteringParameters: (
+    parameterId: string,
+    filteringParameters: string[],
+  ) => void;
   onRemoveParameter: (parameterId: string) => void;
   onShowAddParameterPopover: () => void;
   onClose: () => void;
@@ -22,34 +27,27 @@ export interface ParameterSidebarProps {
 const ParameterSidebar = ({
   parameter,
   otherParameters,
-  editingParameter,
-  onChangeParameter,
+  onChangeName,
+  onChangeDefaultValue,
+  onChangeIsMultiSelect,
+  onChangeFilteringParameters,
   onRemoveParameter,
   onShowAddParameterPopover,
   onClose,
 }: ParameterSidebarProps): JSX.Element => {
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
   const [tab, setTab] = useState(tabs[0].value);
-  const [originalParameter, setOriginalParameter] = useState(editingParameter);
 
-  useLayoutEffect(() => {
-    if (editingParameter.id !== originalParameter.id) {
-      setOriginalParameter(editingParameter);
-    }
-  }, [editingParameter, originalParameter]);
-
-  const handleRemove = useCallback(() => {
-    onRemoveParameter(originalParameter.id);
-    onClose();
-  }, [originalParameter, onRemoveParameter, onClose]);
-
-  const handleCancel = useCallback(() => {
-    onChangeParameter(originalParameter);
-    onClose();
-  }, [originalParameter, onChangeParameter, onClose]);
+  const handleRemove = useCallback(
+    (parameterId: string) => {
+      onRemoveParameter(parameterId);
+      onClose();
+    },
+    [onRemoveParameter, onClose],
+  );
 
   return (
-    <Sidebar onCancel={handleCancel} onClose={onClose}>
+    <Sidebar onClose={onClose}>
       <SidebarHeader>
         <Radio
           value={tab}
@@ -62,16 +60,16 @@ const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
-            editingParameter={editingParameter}
-            onChangeParameter={onChangeParameter}
+            onChangeName={onChangeName}
+            onChangeDefaultValue={onChangeDefaultValue}
+            onChangeIsMultiSelect={onChangeIsMultiSelect}
             onRemoveParameter={handleRemove}
           />
         ) : (
           <ParameterLinkedFilters
             parameter={parameter}
             otherParameters={otherParameters}
-            editingParameter={editingParameter}
-            onChangeParameter={onChangeParameter}
+            onChangeFilteringParameters={onChangeFilteringParameters}
             onShowAddParameterPopover={onShowAddParameterPopover}
           />
         )}

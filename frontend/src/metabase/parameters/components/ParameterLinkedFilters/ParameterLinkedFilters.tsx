@@ -4,7 +4,7 @@ import Toggle from "metabase/core/components/Toggle";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { Field, Parameter, Table } from "metabase-types/api";
+import { Field, Table } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
 import useFilterFields from "./use-filter-fields";
@@ -27,23 +27,25 @@ import {
 export interface ParameterLinkedFiltersProps {
   parameter: UiParameter;
   otherParameters: UiParameter[];
-  editingParameter: Parameter;
-  onChangeParameter: (parameter: Parameter) => void;
+  onChangeFilteringParameters: (
+    parameterId: string,
+    filteringParameters: string[],
+  ) => void;
   onShowAddParameterPopover: () => void;
 }
 
 const ParameterLinkedFilters = ({
   parameter,
   otherParameters,
-  editingParameter,
-  onChangeParameter,
+  onChangeFilteringParameters,
   onShowAddParameterPopover,
 }: ParameterLinkedFiltersProps): JSX.Element => {
+  const parameterId = parameter.id;
   const [expandedParameterId, setExpandedParameterId] = useState<string>();
 
   const filteringParameters = useMemo(
-    () => editingParameter.filteringParameters ?? [],
-    [editingParameter],
+    () => parameter.filteringParameters ?? [],
+    [parameter],
   );
 
   const usableParameters = useMemo(
@@ -57,12 +59,9 @@ const ParameterLinkedFilters = ({
         ? filteringParameters.concat(otherParameter.id)
         : filteringParameters.filter(id => id !== otherParameter.id);
 
-      onChangeParameter({
-        ...editingParameter,
-        filteringParameters: newParameters,
-      });
+      onChangeFilteringParameters(parameterId, newParameters);
     },
-    [editingParameter, filteringParameters, onChangeParameter],
+    [parameterId, filteringParameters, onChangeFilteringParameters],
   );
 
   const handleExpandedChange = useCallback(

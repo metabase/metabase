@@ -8,9 +8,8 @@ import React, {
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
-import { Parameter } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
-import { getIsMultiSelect, setParameterName } from "../../utils/dashboards";
+import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import {
   SettingLabel,
@@ -27,48 +26,52 @@ const MULTI_SELECT_OPTIONS = [
 
 interface ParameterSettingsProps {
   parameter: UiParameter;
-  editingParameter: Parameter;
-  onChangeParameter: (parameter: Parameter) => void;
+  onChangeName: (parameterId: string, name: string) => void;
+  onChangeDefaultValue: (parameterId: string, value: unknown) => void;
+  onChangeIsMultiSelect: (parameterId: string, isMultiSelect: boolean) => void;
   onRemoveParameter: (parameterId: string) => void;
 }
 
 const ParameterSettings = ({
   parameter,
-  editingParameter,
-  onChangeParameter,
+  onChangeName,
+  onChangeDefaultValue,
+  onChangeIsMultiSelect,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
+  const parameterId = parameter.id;
+
   const handleNameChange = useCallback(
     (name: string) => {
-      onChangeParameter(setParameterName(editingParameter, name));
+      onChangeName(parameterId, name);
     },
-    [editingParameter, onChangeParameter],
+    [parameterId, onChangeName],
   );
 
   const handleDefaultValueChange = useCallback(
     (value: unknown) => {
-      onChangeParameter({ ...editingParameter, default: value });
+      onChangeDefaultValue(parameterId, value);
     },
-    [editingParameter, onChangeParameter],
+    [parameterId, onChangeDefaultValue],
   );
 
   const handleMultiSelectChange = useCallback(
     (isMultiSelect: boolean) => {
-      onChangeParameter({ ...editingParameter, isMultiSelect });
+      onChangeIsMultiSelect(parameterId, isMultiSelect);
     },
-    [editingParameter, onChangeParameter],
+    [parameterId, onChangeIsMultiSelect],
   );
 
   const handleRemove = useCallback(() => {
-    onRemoveParameter(editingParameter.id);
-  }, [editingParameter, onRemoveParameter]);
+    onRemoveParameter(parameterId);
+  }, [parameterId, onRemoveParameter]);
 
   return (
     <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
         <ParameterInput
-          initialValue={editingParameter.name}
+          initialValue={parameter.name}
           onChange={handleNameChange}
         />
       </SettingSection>
@@ -76,17 +79,17 @@ const ParameterSettings = ({
         <SettingLabel>{t`Default value`}</SettingLabel>
         <SettingValueWidget
           parameter={parameter}
-          name={editingParameter.name}
-          value={editingParameter.default}
+          name={parameter.name}
+          value={parameter.default}
           placeholder={t`No default`}
           setValue={handleDefaultValueChange}
         />
       </SettingSection>
-      {isSingleOrMultiSelectable(editingParameter) && (
+      {isSingleOrMultiSelectable(parameter) && (
         <SettingSection>
           <SettingLabel>{t`Users can pick`}</SettingLabel>
           <Radio
-            value={getIsMultiSelect(editingParameter)}
+            value={getIsMultiSelect(parameter)}
             options={MULTI_SELECT_OPTIONS}
             vertical
             onChange={handleMultiSelectChange}
