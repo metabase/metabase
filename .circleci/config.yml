@@ -485,19 +485,6 @@ workflows:
           requires:
             - checkout
 
-      - clojure:
-          name: be-linter-cloverage
-          requires:
-            - be-deps
-          # TODO FIXME
-          clojure-args: -X:dev:ee:ee-dev:test:cloverage
-          after-steps:
-            - run:
-                name: Upload code coverage to codecov.io
-                command: bash <(curl -s https://codecov.io/bash) -F back-end
-
-          skip-when-no-change: true
-
       - test-driver:
           name: be-tests-oracle-ee
           requires:
