@@ -43,19 +43,23 @@ export const FieldListRoot = styled.div`
   font-size: 0.765rem;
 `;
 
-export const FieldListItem = styled.div`
-  display: flex;
-  border-top: 1px solid ${color("border")};
-`;
-
 export const FieldListHeader = styled.div`
   display: flex;
+  border-top: 1px solid ${color("border")};
 `;
 
 export const FieldListTitle = styled.div`
   color: ${color("brand")};
   width: 50%;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 1rem 0;
+`;
+
+export const FieldListItem = styled.div`
+  display: flex;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid ${color("border")};
+  }
 `;
 
 export const FieldRoot = styled.div`
