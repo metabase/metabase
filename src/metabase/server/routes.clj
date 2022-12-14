@@ -8,6 +8,7 @@
             [metabase.api.routes :as api]
             [metabase.core.initialization-status :as init-status]
             [metabase.db.connection :as mdb.connection]
+            [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -49,7 +50,8 @@
   ;; ^/api/health -> Health Check Endpoint
   (GET "/api/health" []
        (if (init-status/complete?)
-         (try (if (sql-jdbc.conn/can-connect-with-spec? {:datasource (mdb.connection/data-source)})
+         (try (if (or (mdb.connection-pool-setup/recent-activity?)
+                      (sql-jdbc.conn/can-connect-with-spec? {:datasource (mdb.connection/data-source)}))
                 {:status 200, :body {:status "ok"}}
                 {:status 503 :body {:status "Unable to get app-db connection"}})
               (catch Exception e
