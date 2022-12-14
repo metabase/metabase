@@ -205,3 +205,12 @@
                                             :rollback {:sql {:sql "select 1"}}))))))
   (testing "change types with automatic rollback support are allowed"
     (is (= :ok (validate (mock-change-set :id "v45.12-345" :changes [(mock-add-column-changes)]))))))
+
+(deftest disallow-deletecascade-in-addcolumn-test
+  (testing "addColumn with deleteCascade fails"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"disallow-delete-cascade"
+         (validate (mock-change-set :id "v45.12-345"
+                                    :changes [(mock-add-column-changes
+                                               :columns [(mock-column :constraints {:deleteCascade true})])]))))))
