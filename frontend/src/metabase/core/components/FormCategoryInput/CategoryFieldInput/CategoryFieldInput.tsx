@@ -45,7 +45,7 @@ function CategoryFieldInput({
       <StyledFieldValuesWidget
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore, typescript is very confused about the value type for this non-tsx component
-        value={value ? [String(value)] : ([""] as any)}
+        value={[String(value ?? "")]}
         fields={[fieldInstance]}
         onChange={(newVals: string[]) => onChange(newVals[0])}
         multi={false}

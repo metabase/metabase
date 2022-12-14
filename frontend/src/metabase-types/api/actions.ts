@@ -64,6 +64,8 @@ export type ParametersForActionExecution = {
   [id: ParameterId]: string | number | null;
 };
 
+export type ActionFormInitialValues = ParametersForActionExecution;
+
 export interface ActionFormSubmitResult {
   success: boolean;
   message?: string;

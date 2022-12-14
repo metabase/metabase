@@ -57,7 +57,6 @@ export function FormCreator({
     <FormCreatorWrapper>
       <ActionForm
         parameters={sortedParams}
-        initialValues={[]}
         onClose={_.noop}
         onSubmit={_.noop}
         formSettings={formSettings}

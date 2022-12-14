@@ -8,23 +8,26 @@ import type {
   OnDragEndResponder,
   DroppableProvided,
 } from "react-beautiful-dnd";
+import type { FormikHelpers } from "formik";
 
 import Button from "metabase/core/components/Button";
 import Form from "metabase/core/components/Form";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
+import Icon from "metabase/components/Icon";
 
 import type {
   ActionFormSettings,
   FieldSettings,
   WritebackParameter,
+  ParametersForActionExecution,
+  ActionFormInitialValues,
 } from "metabase-types/api";
 
 import type { Parameter } from "metabase-types/types/Parameter";
 
 import { reorderFields } from "metabase/actions/components/ActionCreator/FormCreator";
-import Icon from "metabase/components/Icon";
 import { FieldSettingsButtons } from "../ActionCreator/FormCreator/FieldSettingsButtons";
 import { FormFieldWidget } from "./ActionFormFieldWidget";
 import {
@@ -38,9 +41,12 @@ import { getForm } from "./utils";
 
 export interface ActionFormComponentProps {
   parameters: WritebackParameter[] | Parameter[];
-  initialValues?: any;
+  initialValues?: ActionFormInitialValues;
   onClose?: () => void;
-  onSubmit: (params: any, actions: any) => void;
+  onSubmit?: (
+    params: ParametersForActionExecution,
+    actions: FormikHelpers<ParametersForActionExecution>,
+  ) => void;
   submitTitle?: string;
   submitButtonColor?: string;
   formSettings?: ActionFormSettings;
@@ -53,12 +59,12 @@ export const ActionForm = ({
   onClose,
   onSubmit,
   submitTitle,
-  submitButtonColor,
+  submitButtonColor = "primary",
   formSettings,
   setFormSettings,
 }: ActionFormComponentProps): JSX.Element => {
   // allow us to change the color of the submit button
-  const submitButtonVariant = { [submitButtonColor ?? "primary"]: true };
+  const submitButtonVariant = { [submitButtonColor]: true };
 
   const isSettings = !!(formSettings && setFormSettings);
 
@@ -149,7 +155,7 @@ export const ActionForm = ({
   }
 
   return (
-    <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
+    <FormProvider initialValues={initialValues} onSubmit={onSubmit ?? _.noop}>
       <Form role="form" data-testid="action-form">
         {form.fields.map(field => (
           <FormFieldWidget key={field.name} formField={field} />

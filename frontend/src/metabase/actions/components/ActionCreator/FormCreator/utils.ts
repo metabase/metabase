@@ -144,9 +144,6 @@ export const getInputType = (param: Parameter, field?: Field) => {
   if (field.isDate()) {
     return field.isDateWithoutTime() ? "date" : "datetime";
   }
-  if (field.semantic_type === TYPE.Email) {
-    return "string";
-  }
   if (
     field.semantic_type === TYPE.Description ||
     field.semantic_type === TYPE.Comment ||
@@ -154,7 +151,10 @@ export const getInputType = (param: Parameter, field?: Field) => {
   ) {
     return "text";
   }
-  if (field.semantic_type === TYPE.Title) {
+  if (
+    field.semantic_type === TYPE.Title ||
+    field.semantic_type === TYPE.Email
+  ) {
     return "string";
   }
   if (field.isCategory() && field.semantic_type !== TYPE.Name) {
