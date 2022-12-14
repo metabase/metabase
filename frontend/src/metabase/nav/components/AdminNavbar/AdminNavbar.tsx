@@ -30,7 +30,7 @@ export const AdminNavbar = ({
   adminPaths,
 }: AdminNavbarProps) => {
   const adminPathsFiltered = adminPaths.filter(
-    path => path.key !== "people" && path.key !== "troubleshooting",
+    path => path.key !== "troubleshooting",
   );
 
   return (
@@ -51,6 +51,7 @@ export const AdminNavbar = ({
               name={name}
               path={path}
               key={key}
+              id={key}
               currentPath={currentPath}
             />
           ))}
@@ -96,6 +97,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
               name={name}
               path={path}
               key={key}
+              id={key}
               currentPath={currentPath}
             />
           ))}
