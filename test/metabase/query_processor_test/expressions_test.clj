@@ -9,8 +9,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [toucan.db :as db]
-            [clojure.data.xml :as xml]))
+            [toucan.db :as db]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
