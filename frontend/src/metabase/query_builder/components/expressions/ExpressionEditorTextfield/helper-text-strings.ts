@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { HelpText } from "./types";
+import { HelpText } from "metabase-lib/expressions/types";
 
 const helperTextStrings: HelpText[] = [
   {
