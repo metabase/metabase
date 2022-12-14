@@ -8,6 +8,7 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
@@ -78,6 +79,9 @@
 
 ;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
+
+(defn- get-mongo-version []
+  (driver/dbms-version :mongo (qp.store/database)))
 
 (defmulti ^:private ->rvalue
   "Format this `Field` or value for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s
@@ -435,8 +439,12 @@
 
 (defmethod ->rvalue :replace
   [[_ & args]]
-  (let [[expr fnd replacement] (mapv ->rvalue args)]
-    {"$replaceAll" {"input" expr "find" fnd "replacement" replacement}}))
+  (let [version (get-mongo-version)]
+    (if (driver.u/semantic-version-gte (:semantic-version version) [4 4])
+      (let [[expr fnd replacement] (mapv ->rvalue args)]
+        {"$replaceAll" {"input" expr "find" fnd "replacement" replacement}})
+      (throw (ex-info "Replace requires MongoDB 4.4 or above"
+                      {:database-version version})))))
 
 (defmethod ->rvalue :substring
   [[_ & [expr idx cnt]]]
@@ -470,9 +478,6 @@
 ;;; rest of the operands had to be integers and would be treated as milliseconds.)
 ;;; Because of this, whenever we translate date arithmetic with intervals, we check the major
 ;;; version of the database and throw a nice exception if it's less than 5.
-
-(defn- get-mongo-version []
-  (driver/dbms-version :mongo (qp.store/database)))
 
 (defn- check-date-operations-supported []
   (let [{mongo-version :version, [major-version] :semantic-version} (get-mongo-version)]
