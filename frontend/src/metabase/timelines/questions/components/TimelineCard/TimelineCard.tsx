@@ -29,6 +29,7 @@ export interface TimelineCardProps {
   onMoveEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
+  onToggleEventVisibility?: (event: TimelineEvent, isSelected: boolean) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
 }
 
@@ -41,6 +42,7 @@ const TimelineCard = ({
   onMoveEvent,
   onArchiveEvent,
   onToggleEventSelected,
+  onToggleEventVisibility,
   onToggleTimeline,
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
@@ -106,6 +108,7 @@ const TimelineCard = ({
               onMove={onMoveEvent}
               onArchive={onArchiveEvent}
               onToggleSelected={handleToggleEventSelected}
+              onToggleEventVisibility={onToggleEventVisibility}
             />
           ))}
         </CardContent>

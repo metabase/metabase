@@ -16,6 +16,7 @@ export interface TimelinePanelProps {
   onMoveEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
+  onToggleEventVisibility?: (event: TimelineEvent, isSelected: boolean) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
 }
 
@@ -29,6 +30,7 @@ const TimelinePanel = ({
   onMoveEvent,
   onArchiveEvent,
   onToggleEventSelected,
+  onToggleEventVisibility,
   onToggleTimeline,
 }: TimelinePanelProps): JSX.Element => {
   const isEmpty = timelines.length === 0;
@@ -50,6 +52,7 @@ const TimelinePanel = ({
           onEditEvent={onEditEvent}
           onMoveEvent={onMoveEvent}
           onToggleEventSelected={onToggleEventSelected}
+          onToggleEventVisibility={onToggleEventVisibility}
           onArchiveEvent={onArchiveEvent}
         />
       ) : (

@@ -78,6 +78,7 @@ import {
   getIsBookmarked,
   getVisibleTimelineIds,
   getVisibleTimelineEvents,
+  getHiddenTimelineEventIds,
   getSelectedTimelineEventIds,
   getFilteredTimelines,
   getTimeseriesXDomain,
@@ -131,6 +132,7 @@ const mapStateToProps = (state, props) => {
     timelineEvents: getVisibleTimelineEvents(state),
     visibleTimelineIds: getVisibleTimelineIds(state),
     selectedTimelineEventIds: getSelectedTimelineEventIds(state),
+    hiddenTimelineEventIds: getHiddenTimelineEventIds(state),
     xDomain: getTimeseriesXDomain(state),
 
     result: getFirstQueryResult(state),
