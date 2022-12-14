@@ -121,13 +121,13 @@
       ;; prevent events to be passed to the root logger's appenders which will log to the Console
       ;; https://logging.apache.org/log4j/2.x/manual/configuration.html#Additivity
       (when parent-is-root?
-       (.setAdditive logger false))
+        (.setAdditive logger false))
       (set-ns-log-level! a-namespace level)
       (thunk)
       (finally
-       (when parent-is-root?
-        (.setAdditive logger is-additive))
-       (set-ns-log-level! a-namespace original-log-level)))))
+        (when parent-is-root?
+          (.setAdditive logger is-additive))
+        (set-ns-log-level! a-namespace original-log-level)))))
 
 (defmacro with-log-level
   "Sets the log level (e.g. `:debug` or `:trace`) while executing `body`. Not thread safe! But good for debugging from

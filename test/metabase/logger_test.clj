@@ -22,15 +22,15 @@
 
   (testing "set isAdditive = false if parent logger is root to prevent logging to console (#26468)"
     (testing "make sure it's true to starts with"
-     (is (true? (.isAdditive (log.impl/get-logger log/*logger-factory* 'metabase)))))
+      (is (true? (.isAdditive (log.impl/get-logger log/*logger-factory* 'metabase)))))
 
     (testing "set to false if parent logger is root"
-     (mt/with-log-level :warn
-       (is (false? (.isAdditive (log.impl/get-logger log/*logger-factory* 'metabase))))))
+      (mt/with-log-level :warn
+        (is (false? (.isAdditive (log.impl/get-logger log/*logger-factory* 'metabase))))))
 
     (testing "still true if the parent logger is not root"
-     (mt/with-log-level [metabase.logger :warn]
-       (is (true? (.isAdditive (log.impl/get-logger log/*logger-factory* 'metabase.logger))))))))
+      (mt/with-log-level [metabase.logger :warn]
+        (is (true? (.isAdditive (log.impl/get-logger log/*logger-factory* 'metabase.logger))))))))
 
 (deftest logger-test
   (testing "Using log4j2 logger"
