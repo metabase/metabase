@@ -10,8 +10,6 @@
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.malli :as mu]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
             [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
