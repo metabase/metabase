@@ -16,6 +16,7 @@ import {
   AdminMobileNavbar,
   AdminMobileNavBarItems,
   MobileHide,
+  FlexColumnContainer,
 } from "./AdminNavbar.styled";
 import { AdminNavItem } from "./AdminNavItem";
 
@@ -38,7 +39,10 @@ export const AdminNavbar = ({
       <AdminLogoLink to="/admin" data-metabase-event="Navbar;Logo">
         <AdminLogoContainer>
           <LogoIcon className="text-brand my2" dark />
-          <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
+          <FlexColumnContainer>
+            <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
+            <AdminLogoText>Accelerated By Dadosfera</AdminLogoText>
+          </FlexColumnContainer>
         </AdminLogoContainer>
       </AdminLogoLink>
 
