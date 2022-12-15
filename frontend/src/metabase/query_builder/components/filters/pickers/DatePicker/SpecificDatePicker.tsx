@@ -12,7 +12,7 @@ import {
 } from "metabase-lib/queries/utils/query-time";
 import HoursMinutesInput from "./HoursMinutesInput";
 
-import { CalendarIcon, DateInputContainer } from "./SpecificDatePicker.styled";
+import { DateInputContainer } from "./SpecificDatePicker.styled";
 
 interface SpecificDatePickerProps {
   className?: string;
@@ -74,15 +74,10 @@ const SpecificDatePicker = ({
               handleChange();
             }
           }}
+          rightIcon={hasCalendar ? "calendar" : undefined}
+          onRightIconClick={() => setShowCalendar(!showCalendar)}
+          rightIconTooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
         />
-
-        {hasCalendar && (
-          <CalendarIcon
-            name="calendar"
-            onClick={() => setShowCalendar(!showCalendar)}
-            tooltip={showCalendar ? t`Hide calendar` : t`Show calendar`}
-          />
-        )}
       </DateInputContainer>
 
       {showTimeSelectors && (

@@ -93,7 +93,7 @@ export const InputField = styled.input<InputProps>`
   padding-right: ${props =>
     getHorizontalPadding(
       props.fieldSize,
-      props.hasLeftIcon,
+      props.hasRightIcon,
       props.hasClearButton,
     )};
 
@@ -110,7 +110,7 @@ type InputButtonProps = {
 
 export const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
   position: absolute;
-  color: ${color("text-light")};
+  color: ${props => color(props.onClick != null ? "text-dark" : "text-light")};
   padding: ${props => (props.size === "small" ? "0.5rem" : "0.75rem")};
   border-radius: 50%;
   bottom: ${props => (props.size === "large" ? "0.125rem" : 0)};
