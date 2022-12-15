@@ -243,8 +243,9 @@
                         :dataset_query       (s/eq {})
                         :parameter_mappings  (s/eq [{:parameter_id "deadbeef"
                                                      :card_id      c1-eid
-                                                     :target [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
-                                                                          {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}])
+                                                     :source_type  "field"
+                                                     :target       [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
+                                                                                {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}])
                         :created_at          LocalDateTime
                         s/Keyword            s/Any}
                        ser))
