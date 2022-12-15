@@ -227,69 +227,68 @@
   [_driver _unit expr]
   (extract :dayofweek expr))
 
-(defmethod sql.qp/->honeysql [:snowflake :datetime-diff]
-  [driver [_ x y unit]]
-  (let [x (hsql/call :convert_timezone
-                     (qp.timezone/results-timezone-id)
-                     (sql.qp/->honeysql driver x))
-        y (hsql/call :convert_timezone
-                     (qp.timezone/results-timezone-id)
-                     (sql.qp/->honeysql driver y))]
-    (case unit
-      :year
-      (let [positive-diff (fn [a b] ; precondition: a <= b
-                            (hx/-
-                             (hx/- (extract :year b) (extract :year a))
-                             ;; decrement if a is later than b in the year calendar
-                             (hx/cast
-                              :integer
-                              (hsql/call
-                               :or
-                               (hsql/call :> (extract :month a) (extract :month b))
-                               (hsql/call
-                                :and
-                                (hsql/call := (extract :month a) (extract :month b))
-                                (hsql/call :> (extract :day a) (extract :day b)))))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defn- time-zoned-datediff
+  "Same as snowflake's `datediff` but converts the args to the results time zone
+   before calculating date boundaries. This is needed when an argument could be of
+   timestamptz type and the unit is day, week, month, quarter or year."
+  [unit x y]
+  (let [x (cond->> x
+            (hx/is-of-type? x "timestamptz")
+            (hsql/call :convert_timezone (qp.timezone/results-timezone-id)))
+        y (cond->> y
+            (hx/is-of-type? y "timestamptz")
+            (hsql/call :convert_timezone (qp.timezone/results-timezone-id)))]
+    (hsql/call :datediff (hsql/raw (name unit)) x y)))
 
-      :quarter
-      (let [positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                              (hx//
-                               (hx/-
-                                (hsql/call :datediff (hsql/raw "month") a b)
-                                (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b))))
-                               3))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defn- time-zoned-extract
+  "Same as `extract` but converts the arg to the results time zone if it's a timestamptz."
+  [unit x]
+  (let [x (cond->> x
+            (hx/is-of-type? x "timestamptz")
+            (hsql/call :convert_timezone (qp.timezone/results-timezone-id)))]
+    (extract unit x)))
 
-      :month
-      (let [positive-diff (fn [a b]
-                            (hx/-
-                             (hsql/call :datediff (hsql/raw "month") a b)
-                             (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defn- sub-day-datediff
+  "Same as snowflake's `datediff`, but accurate to the millisecond for sub-day units."
+  [unit x y]
+  (let [milliseconds (hx/cast :float (hsql/call :datediff (hsql/raw "milliseconds") x y))]
+    ; millseconds needs to be cast to float because division rounds incorrectly with large integers
+    (hsql/call :trunc (hx// (hx/cast :float milliseconds)
+                            (case unit :hour 3600000 :minute 60000 :second 1000)))))
 
-      :week
-      (let [positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                              (hx// (hsql/call :datediff (hsql/raw "day") a b) 7))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:snowflake :year]
+  [driver _unit x y]
+  (hsql/call :trunc (hx// (sql.qp/datetime-diff driver :month x y) 12)))
 
-      :day
-      (hsql/call :datediff (hsql/raw (name unit)) x y)
+(defmethod sql.qp/datetime-diff [:snowflake :quarter]
+  [driver _unit x y]
+  (hsql/call :trunc (hx// (sql.qp/datetime-diff driver :month x y) 3)))
 
-      (:hour :minute :second)
-      (let [positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                              (hx// (hx/cast :float (hsql/call :datediff (hsql/raw "millisecond") a b)) ; datediff returns integer, so cast to float
-                                    (case unit :hour 3600000 :minute 60000 :second 1000)))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x)))))))
+(defmethod sql.qp/datetime-diff [:snowflake :month]
+  [_driver _unit x y]
+  (hx/+ (time-zoned-datediff :month x y)
+        ;; datediff counts month boundaries not whole months, so we need to adjust
+        ;; if x<y but x>y in the month calendar then subtract one month
+        ;; if x>y but x<y in the month calendar then add one month
+        (hsql/call
+         :case
+         (hsql/call :and (hsql/call :< x y) (hsql/call :> (time-zoned-extract :day x) (time-zoned-extract :day y)))
+         -1
+         (hsql/call :and (hsql/call :> x y) (hsql/call :< (time-zoned-extract :day x) (time-zoned-extract :day y)))
+         1
+         :else 0)))
+
+(defmethod sql.qp/datetime-diff [:snowflake :week]
+  [_driver _unit x y]
+  (hsql/call :trunc (hx// (time-zoned-datediff :day x y) 7)))
+
+(defmethod sql.qp/datetime-diff [:snowflake :day]
+  [_driver _unit x y]
+  (time-zoned-datediff :day x y))
+
+(defmethod sql.qp/datetime-diff [:snowflake :hour] [_driver _unit x y] (sub-day-datediff :hour x y))
+(defmethod sql.qp/datetime-diff [:snowflake :minute] [_driver _unit x y] (sub-day-datediff :minute x y))
+(defmethod sql.qp/datetime-diff [:snowflake :second] [_driver _unit x y] (sub-day-datediff :second x y))
 
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
   [driver [_ arg pattern]]
