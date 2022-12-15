@@ -1,4 +1,5 @@
 import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
+import { t } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
 import { FieldAlignment, FieldOrientation } from "./types";
 import {
@@ -10,6 +11,7 @@ import {
   FieldLabelContainer,
   FieldLabelError,
   FieldRoot,
+  OptionalTag,
 } from "./FormField.styled";
 
 export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
@@ -17,6 +19,7 @@ export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   description?: ReactNode;
   alignment?: FieldAlignment;
   orientation?: FieldOrientation;
+  optional?: boolean;
   error?: string;
   htmlFor?: string;
   infoLabel?: string;
@@ -34,6 +37,7 @@ const FormField = forwardRef(function FormField(
     infoLabel,
     infoTooltip,
     children,
+    optional,
     ...props
   }: FormFieldProps,
   ref: Ref<HTMLDivElement>,
@@ -51,6 +55,9 @@ const FormField = forwardRef(function FormField(
                 {title}
                 {hasError && <FieldLabelError>: {error}</FieldLabelError>}
               </FieldLabel>
+            )}
+            {!!optional && !hasError && (
+              <OptionalTag>{t`(optional)`}</OptionalTag>
             )}
             {(infoLabel || infoTooltip) && (
               <Tooltip tooltip={infoTooltip} maxWidth="100%">
