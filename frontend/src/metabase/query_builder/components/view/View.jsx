@@ -223,6 +223,8 @@ class View extends React.Component {
       toggleSnippetSidebar,
       showTimelines,
       hideTimelines,
+      showTimelineEvents,
+      hideTimelineEvents,
       selectTimelineEvents,
       deselectTimelineEvents,
       onCloseTimelines,
@@ -250,6 +252,8 @@ class View extends React.Component {
           {...this.props}
           onShowTimelines={showTimelines}
           onHideTimelines={hideTimelines}
+          onShowTimelineEvents={showTimelineEvents}
+          onHideTimelineEvents={hideTimelineEvents}
           onSelectTimelineEvents={selectTimelineEvents}
           onDeselectTimelineEvents={deselectTimelineEvents}
           onClose={onCloseTimelines}
