@@ -785,11 +785,12 @@ export const getVisibleTimelines = createSelector(
 );
 
 export const getVisibleTimelineEvents = createSelector(
-  [getVisibleTimelines],
-  timelines =>
+  [getVisibleTimelines, getHiddenTimelineEventIds],
+  (timelines, hiddenTimelineEventIds) =>
     _.chain(timelines)
       .map(timeline => timeline.events)
       .flatten()
+      .filter(event => !hiddenTimelineEventIds.includes(event.id))
       .sortBy(event => event.timestamp)
       .value(),
 );
