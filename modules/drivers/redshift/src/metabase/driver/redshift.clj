@@ -222,19 +222,30 @@
       :quarter
       (let [positive-diff
             (fn [a b] ; precondition: a <= b
-              (hx/cast
-               :integer
-               (hx/floor (hx// (hx/- (hsql/call :datediff (hsql/raw "month") a b)
-                                     (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b))))
-                               3))))]
+              (hx/cast :integer
+                       (hx/floor
+                        (hx// (hx/- (hsql/call :datediff (hsql/raw "month") a b)
+                                    (hx/cast :integer
+                                             ;; coalesce is needed because extract(day, a) > extract(day, b)
+                                             ;; returns null if a and b are equal
+                                             (hsql/call :coalesce
+                                                        (hsql/call :> (extract :day a) (extract :day b))
+                                                        false)))
+                              3))))]
         (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :month
-      (let [positive-diff (fn [a b] ; precondition: a <= b
-                            (hx/-
-                             (hsql/call :datediff (hsql/raw "month") a b)
-                             (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+      (let [positive-diff
+            (fn [a b] ; precondition: a <= b
+              (hx/-
+               (hsql/call :datediff (hsql/raw "month") a b)
+               (hx/cast :integer
+                        ;; coalesce is needed because extract(day, a) > extract(day, b)
+                        ;; returns null if a and b are equal
+                        (hsql/call :coalesce
+                                   (hsql/call :> (extract :day a) (extract :day b))
+                                   false))))]
+          (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
 
       :week
       (let [positive-diff (fn [a b]

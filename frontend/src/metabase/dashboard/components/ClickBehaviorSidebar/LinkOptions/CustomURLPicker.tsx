@@ -89,10 +89,8 @@ function CustomURLPicker({
             autoFocus
             value={url}
             placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
-            onChange={(e: React.FormEvent<HTMLInputElement>) =>
-              setUrl(e.currentTarget.value)
-            }
-            className="input block full"
+            onChange={handleLinkTemplateChange}
+            className="block full"
           />
           {isTableDisplay(dashcard) && (
             <CustomLinkText

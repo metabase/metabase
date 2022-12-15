@@ -21,6 +21,25 @@ on:
 
 jobs:
 
+  be-linter-cloverage:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build static viz frontend
+      run: yarn build-static-viz
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cloverage'
+    - name: Collect the test coverage
+      run: clojure -X:dev:ee:ee-dev:test:cloverage
+    - name: Upload coverage to codecov.io
+      uses: codecov/codecov-action@v2
+      with:
+        files: ./target/coverage/codecov.json
+        flags: back-end
+
   be-linter-clj-kondo:
     runs-on: ubuntu-20.04
     timeout-minutes: 10

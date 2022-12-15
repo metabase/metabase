@@ -46,3 +46,4 @@ export function BaseSelectListItem({
 }
 
 BaseSelectListItem.propTypes = propTypes;
+BaseSelectListItem.Root = BaseItemRoot;

@@ -33,7 +33,8 @@ describe("issue 21452", () => {
 
   it("should not fire POST request after every character during display name change (metabase#21452)", () => {
     openSeriesSettings("Sum of Quantity");
-    cy.findByDisplayValue("Sum of Quantity").clear().type("Foo").blur();
+    cy.findByDisplayValue("Sum of Quantity").clear().type("Foo");
+    cy.findByText("Display type").click();
     // Blur will result in another POST request which is expected
     cy.wait("@dataset");
     // Dismiss the popup and close settings

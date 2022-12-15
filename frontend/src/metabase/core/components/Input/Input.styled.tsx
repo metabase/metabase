@@ -3,8 +3,12 @@ import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import { monospaceFontFamily, space } from "metabase/styled-components/theme";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { focusOutlineStyle } from "metabase/core/style/input";
-import { InputSize } from "./types";
+import {
+  focusOutlineStyle,
+  inputPadding,
+  inputTypography,
+} from "metabase/core/style/input";
+import { InputSize } from "../../style/types";
 
 export interface InputProps {
   fieldSize?: InputSize;
@@ -47,11 +51,10 @@ export const InputRoot = styled.div<InputRootProps>`
 `;
 
 export const InputField = styled.input<InputProps>`
+  ${props => inputPadding(props.fieldSize)}
+  ${props => inputTypography(props.fieldSize)}
   font-family: inherit;
-  font-weight: 700;
-  font-size: 1rem;
   color: ${color("text-dark")};
-  padding: 0.75rem;
   border: 1px solid ${color("border")};
   border-radius: ${space(1)};
   background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};
@@ -104,12 +107,13 @@ export const InputField = styled.input<InputProps>`
 type InputButtonProps = {
   size: InputSize;
 };
+
 export const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
   position: absolute;
   color: ${color("text-light")};
-  padding: 0.75rem;
+  padding: ${props => (props.size === "small" ? "0.5rem" : "0.75rem")};
   border-radius: 50%;
-  bottom: ${props => (props.size === "medium" ? "0.125rem" : 0)};
+  bottom: ${props => (props.size === "large" ? "0.125rem" : 0)};
 
   &:disabled {
     cursor: default;
@@ -129,7 +133,7 @@ type InputResetButtonProps = {
 };
 
 export const InputResetButton = styled(InputButton)<InputResetButtonProps>`
-  right: ${props => (props.hasRightIcon ? "0.75rem" : 0)};
+  right: ${props => (props.hasRightIcon ? "1.25rem" : 0)};
 `;
 
 export const InputSubtitle = styled.div`

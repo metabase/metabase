@@ -205,6 +205,14 @@
                 :is_group_manager is_group_manager)
     (db/select-one PermissionsGroupMembership :id (:id old))))
 
+(api/defendpoint PUT "/membership/:group-id/clear"
+  "Remove all members from a `PermissionsGroup`."
+  [group-id]
+  (validation/check-manager-of-group group-id)
+  (api/check-404 (db/exists? PermissionsGroup :id group-id))
+  (db/delete! PermissionsGroupMembership :group_id group-id)
+  api/generic-204-no-content)
+
 (api/defendpoint DELETE "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
   [id]

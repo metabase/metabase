@@ -1,7 +1,6 @@
 import React from "react";
-
 import cx from "classnames";
-import InputBlurChange from "metabase/components/InputBlurChange";
+import { SettingInputBlurChange } from "./SettingInput.styled";
 
 const getValue = (value: string, type: string) => {
   if (type === "number") {
@@ -42,12 +41,13 @@ const SettingInput = ({
   };
 
   return (
-    <InputBlurChange
-      className={cx("Form-input", {
+    <SettingInputBlurChange
+      className={cx({
         SettingsInput: type !== "password",
         SettingsPassword: type === "password",
-        "border-error bg-error-input": errorMessage,
       })}
+      size="large"
+      error={!!errorMessage}
       id={id}
       type={type}
       value={setting.value || ""}
