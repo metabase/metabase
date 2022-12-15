@@ -46,7 +46,7 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId, NativeQueryForm } from "metabase-types/api";
+import { CollectionId } from "metabase-types/api";
 
 import {
   getParameterValuesBySlug,
@@ -527,7 +527,10 @@ class QuestionInner {
     return filter(this, operator, column, value) || this;
   }
 
-  pivot(breakouts = [], dimensions = []): Question {
+  pivot(
+    breakouts: (Breakout | Dimension | Field)[] = [],
+    dimensions = [],
+  ): Question {
     return pivot(this, breakouts, dimensions) || this;
   }
 
@@ -1119,13 +1122,6 @@ class QuestionInner {
       );
       return Promise.all(datasetQueries.map(getDatasetQueryResult));
     }
-  }
-
-  apiGetNativeQueryForm(): Promise<NativeQueryForm> {
-    const query = this.datasetQuery();
-    const parameters = normalizeParameters(this.parameters());
-
-    return MetabaseApi.native({ ...query, parameters });
   }
 
   setParameters(parameters) {

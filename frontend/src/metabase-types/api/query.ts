@@ -1,4 +1,5 @@
 import { DatabaseId } from "./database";
+import { FieldId } from "./field";
 import { TableId } from "./table";
 
 export interface StructuredQuery {
@@ -74,7 +75,6 @@ export type ReferenceOptionsKeys =
   | "temporal-unit"
   | "binning";
 
-export type FieldId = number;
 export type ColumnName = string;
 export type FieldReference = [
   "field",

@@ -25,12 +25,11 @@ DashboardSidebars.propTypes = {
   onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
   onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
   setEditingParameter: PropTypes.func.isRequired,
-  setParameter: PropTypes.func.isRequired,
   setParameterName: PropTypes.func.isRequired,
   setParameterDefaultValue: PropTypes.func.isRequired,
   setParameterIsMultiSelect: PropTypes.func.isRequired,
-  dashcardData: PropTypes.object,
   setParameterFilteringParameters: PropTypes.func.isRequired,
+  dashcardData: PropTypes.object,
   isSharing: PropTypes.bool.isRequired,
   isEditing: PropTypes.bool.isRequired,
   isFullscreen: PropTypes.bool.isRequired,
@@ -56,12 +55,11 @@ export function DashboardSidebars({
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
-  setParameter,
   setParameterName,
   setParameterDefaultValue,
   setParameterIsMultiSelect,
-  dashcardData,
   setParameterFilteringParameters,
+  dashcardData,
   isFullscreen,
   onCancel,
   params,
@@ -130,23 +128,13 @@ export function DashboardSidebars({
         <ParameterSidebar
           parameter={parameter}
           otherParameters={otherParameters}
-          remove={() => {
-            closeSidebar();
-            removeParameter(editingParameterId);
-          }}
-          done={() => closeSidebar()}
-          showAddParameterPopover={showAddParameterPopover}
-          setParameter={setParameter}
-          setName={name => setParameterName(editingParameterId, name)}
-          setDefaultValue={value =>
-            setParameterDefaultValue(editingParameterId, value)
-          }
-          setIsMultiSelect={value =>
-            setParameterIsMultiSelect(editingParameterId, value)
-          }
-          setFilteringParameters={ids =>
-            setParameterFilteringParameters(editingParameterId, ids)
-          }
+          onChangeName={setParameterName}
+          onChangeDefaultValue={setParameterDefaultValue}
+          onChangeIsMultiSelect={setParameterIsMultiSelect}
+          onChangeFilteringParameters={setParameterFilteringParameters}
+          onRemoveParameter={removeParameter}
+          onShowAddParameterPopover={showAddParameterPopover}
+          onClose={closeSidebar}
         />
       );
     }

@@ -19,6 +19,7 @@
     (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
          "Please use a new Slack app integration instead."))
   :deprecated "0.42.0"
+  :visibility :settings-manager
   :doc        false)
 
 (defsetting slack-app-token
@@ -30,8 +31,9 @@
   (deferred-tru
     (str "Whether the current Slack app token, if set, is valid. "
          "Set to 'false' if a Slack API request returns an auth error."))
-  :type :boolean
-  :doc  false)
+  :type       :boolean
+  :visibility :settings-manager
+  :doc        false)
 
 (defn process-files-channel-name
   "Converts empty strings to `nil`, and removes leading `#` from the channel name if present."
@@ -58,6 +60,7 @@
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :default "metabase_files"
+  :visibility :settings-manager
   :setter (fn [channel-name]
             (setting/set-value-of-type! :string :slack-files-channel (process-files-channel-name channel-name))))
 

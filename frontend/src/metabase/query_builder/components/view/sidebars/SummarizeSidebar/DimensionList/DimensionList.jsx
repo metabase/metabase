@@ -93,7 +93,6 @@ export const DimensionList = ({
           fullWidth
           placeholder={t`Find...`}
           value={filter}
-          size="small"
           leftIcon="search"
           onResetClick={() => setFilter("")}
           onChange={handleFilterChange}

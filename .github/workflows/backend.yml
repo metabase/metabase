@@ -21,6 +21,25 @@ on:
 
 jobs:
 
+  be-linter-cloverage:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build static viz frontend
+      run: yarn build-static-viz
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cloverage'
+    - name: Collect the test coverage
+      run: clojure -X:dev:ee:ee-dev:test:cloverage
+    - name: Upload coverage to codecov.io
+      uses: codecov/codecov-action@v2
+      with:
+        files: ./target/coverage/codecov.json
+        flags: back-end
+
   be-linter-clj-kondo:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
@@ -107,11 +126,12 @@ jobs:
       run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
     - name: Publish Test Report (JUnit)
-      uses: mikepenz/action-junit-report@v3
+      uses: dorny/test-reporter@v1
       if: always()
       with:
-        report_paths: 'target/junit/**/*_test.xml'
-        check_name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+        path: 'target/junit/**/*_test.xml'
+        name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+        reporter: java-junit
 
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.

@@ -13,6 +13,10 @@ title: Driver interface changelog
   necessary. Currently, the only case when a special implementation is used is for BigQuery, which does not
   respect limit clauses.
 
+- `metabase.driver.sql.query-processor/datetime-diff` has been added. This method is used by implementations of 
+  `->honeysql` for the `:datetime-diff` clause. It is recommended to implement this if you want to use the default SQL
+   implementation of `->honeysql` for the `:datetime-diff`, which includes validation of argument types across all units.
+
 ## Metabase 0.45.0
 
 - `metabase.driver.sql-jdbc.connection/details->connection-spec-for-testing-connection` has been removed in Metabase

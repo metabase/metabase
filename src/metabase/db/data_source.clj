@@ -5,6 +5,7 @@
             [metabase.config :as config]
             [metabase.connection-pool :as connection-pool]
             [metabase.db.spec :as mdb.spec]
+            [metabase.db.update-h2 :as update-h2]
             [potemkin :as p]
             [pretty.core :as pretty])
   (:import java.sql.DriverManager
@@ -21,6 +22,7 @@
 
   javax.sql.DataSource
   (getConnection [_]
+    (update-h2/update-if-needed url)
     (if properties
       (DriverManager/getConnection url properties)
       (DriverManager/getConnection url)))
