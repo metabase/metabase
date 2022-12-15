@@ -192,8 +192,7 @@
   ;;    (dev/start!)
   :dev
   {:extra-deps
-   {
-    clj-http-fake/clj-http-fake  {:mvn/version "1.0.3"
+   {clj-http-fake/clj-http-fake  {:mvn/version "1.0.3"
                                   :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo          {:mvn/version "2022.08.03"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage          {:mvn/version "1.2.2"}
@@ -210,8 +209,8 @@
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
     ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
-    talltale/talltale            {:mvn/version "0.5.8"}                     ; generates fake data, useful for prototyping or load testing
-    }
+    talltale/talltale            {:mvn/version "0.5.8"}}                    ; generates fake data, useful for prototyping or load testing
+
 
    :extra-paths ["dev/src" "local/src" "test" "shared/test" "test_resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
