@@ -198,7 +198,7 @@
     clj-kondo/clj-kondo          {:mvn/version "2022.08.03"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
     cloverage/cloverage          {:mvn/version "1.2.2"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.13"}                    ; generating strings from regexes (useful with malli)
-    djblue/portal                {:mvn/version "0.30.0"}                    ; ui for inspectinv values
+    djblue/portal                {:mvn/version "0.30.0"}                    ; ui for inspecting values
     eftest/eftest                {:mvn/version "0.5.9"}
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     jonase/eastwood              {:mvn/version "1.2.2"}                     ; inspects namespaces and reports possible problems using tools.analyzer
