@@ -5,7 +5,7 @@ import {
 } from "metabase/lib/redux";
 
 const DEFAULT_OPTIONS = {
-  top_nav: true,
+  top_nav: false,
   side_nav: "default",
   search: false,
   new_button: false,
