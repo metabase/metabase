@@ -9,7 +9,6 @@ import {
   extractCollectionId,
   isCollectionPath,
 } from "metabase/lib/urls";
-import { createMockCollection } from "metabase-types/api/mocks";
 
 describe("urls", () => {
   describe("question", () => {
@@ -219,15 +218,6 @@ describe("urls", () => {
         }),
       ).toBe("/collection/1-john-doe-s-personal-collection");
     });
-
-    it("handles data app collections", () => {
-      const appCollection = createMockCollection({
-        id: 2,
-        app_id: 5,
-        name: "My App",
-      });
-      expect(collection(appCollection)).toBe("/apps/5-my-app");
-    });
   });
 
   describe("bookmarks", () => {
@@ -272,18 +262,6 @@ describe("urls", () => {
           type: "collection",
         }),
       ).toBe("/collection/8-growth");
-    });
-
-    it("returns data app bookmark path", () => {
-      expect(
-        bookmark({
-          id: "collection-3",
-          item_id: 3,
-          name: "Shop",
-          type: "collection",
-          app_id: 14,
-        }),
-      ).toBe("/apps/14-shop");
     });
   });
 

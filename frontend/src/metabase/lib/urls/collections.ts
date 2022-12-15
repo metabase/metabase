@@ -11,7 +11,7 @@ export const otherUsersPersonalCollections = () => "/collection/users";
 
 type Collection = Pick<
   BaseCollection,
-  "id" | "name" | "originalName" | "personal_owner_id" | "app_id"
+  "id" | "name" | "originalName" | "personal_owner_id"
 >;
 
 function slugifyPersonalCollection(collection: Collection) {
