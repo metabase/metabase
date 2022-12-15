@@ -8,6 +8,7 @@ import { UiParameter } from "metabase-lib/parameters/types";
 import { ModalMessage, ModalTextArea } from "./ParameterListSourceModal.styled";
 
 const NEW_LINE = "\n";
+const PLACEHOLDER = [t`banana`, t`orange`].join(NEW_LINE);
 
 export interface ParameterListSourceModalProps {
   parameter: UiParameter;
@@ -20,21 +21,21 @@ const ParameterListSourceModal = ({
   onChangeSourceOptions,
   onClose,
 }: ParameterListSourceModalProps): JSX.Element => {
-  const { values } = getSourceOptions(parameter);
-  const [text, setText] = useState(values?.join(NEW_LINE) ?? "");
+  const options = getSourceOptions(parameter);
+  const [value, setValue] = useState(options.values?.join(NEW_LINE) ?? "");
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
-      setText(event.target.value);
+      setValue(event.target.value);
     },
     [],
   );
 
   const handleSubmit = useCallback(() => {
-    const values = text.split(NEW_LINE);
+    const values = value.split(NEW_LINE);
     onChangeSourceOptions({ values });
     onClose?.();
-  }, [text, onChangeSourceOptions, onClose]);
+  }, [value, onChangeSourceOptions, onClose]);
 
   return (
     <ModalContent
@@ -48,7 +49,8 @@ const ParameterListSourceModal = ({
       <div>
         <ModalMessage>{t`Enter one value per line.`}</ModalMessage>
         <ModalTextArea
-          value={text}
+          value={value}
+          placeholder={PLACEHOLDER}
           autoFocus
           fullWidth
           onChange={handleChange}
