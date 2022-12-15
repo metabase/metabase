@@ -10,7 +10,6 @@ import * as Urls from "metabase/lib/urls";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { isDataAppCollection } from "metabase/entities/data-apps";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import Collections, {
   buildCollectionTree,
@@ -93,10 +92,8 @@ function MainNavbarContainer({
       collections,
       currentUser.id,
     );
-    const displayableCollections = collections.filter(
-      collection =>
-        nonPersonalOrArchivedCollection(collection) &&
-        !isDataAppCollection(collection),
+    const displayableCollections = collections.filter(collection =>
+      nonPersonalOrArchivedCollection(collection),
     );
 
     preparedCollections.push(...userPersonalCollections);

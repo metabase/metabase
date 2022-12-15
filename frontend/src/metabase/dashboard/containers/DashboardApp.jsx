@@ -33,7 +33,6 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import DataAppContext from "metabase/writeback/containers/DataAppContext";
 import * as dashboardActions from "../actions";
 import {
   getIsEditing,
@@ -59,13 +58,11 @@ import {
   getIsAdditionalInfoVisible,
 } from "../selectors";
 
-function getDashboardId({ dashboardId, location, params }) {
+function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
     return dashboardId;
   }
-  return Urls.isDataAppPagePath(location.pathname)
-    ? parseInt(params.pageId)
-    : Urls.extractEntityId(params.slug);
+  return Urls.extractEntityId(params.slug);
 }
 
 const mapStateToProps = (state, props) => {
@@ -161,28 +158,22 @@ const DashboardApp = props => {
   }, []);
 
   return (
-    <DataAppContext>
-      <div className="shrink-below-content-size full-height">
-        <Dashboard
-          editingOnLoad={editingOnLoad}
-          addCardOnLoad={addCardOnLoad}
-          {...props}
-        />
-        {/* For rendering modal urls */}
-        {props.children}
-        <Toaster
-          message={
-            dashboard?.is_app_page
-              ? t`Would you like to be notified when this page is done loading?`
-              : t`Would you like to be notified when this dashboard is done loading?`
-          }
-          isShown={isShowingToaster}
-          onDismiss={onDismissToast}
-          onConfirm={onConfirmToast}
-          fixed
-        />
-      </div>
-    </DataAppContext>
+    <div className="shrink-below-content-size full-height">
+      <Dashboard
+        editingOnLoad={editingOnLoad}
+        addCardOnLoad={addCardOnLoad}
+        {...props}
+      />
+      {/* For rendering modal urls */}
+      {props.children}
+      <Toaster
+        message={t`Would you like to be notified when this dashboard is done loading?`}
+        isShown={isShowingToaster}
+        onDismiss={onDismissToast}
+        onConfirm={onConfirmToast}
+        fixed
+      />
+    </div>
   );
 };
 

@@ -10,7 +10,6 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import DashboardInfoSidebar from "./DashboardInfoSidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
-import { AddActionSidebar } from "./AddActionSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
@@ -89,16 +88,6 @@ export function DashboardSidebars({
         <AddCardSidebar
           initialCollection={dashboard.collection_id}
           onSelect={handleAddCard}
-        />
-      );
-    case SIDEBAR_NAME.addActionForm:
-    case SIDEBAR_NAME.addActionButton:
-      return (
-        <AddActionSidebar
-          dashboard={dashboard}
-          displayType={
-            sidebar.name === SIDEBAR_NAME.addActionForm ? "form" : "button"
-          }
         />
       );
     case SIDEBAR_NAME.clickBehavior:
