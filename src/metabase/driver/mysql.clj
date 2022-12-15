@@ -245,6 +245,17 @@
   [_ value]
   (hx/maybe-cast :signed value))
 
+(defmethod sql.qp/->honeysql [:mysql :substring]
+  [driver [_ arg start length]]
+  ;; Unlike most databases, MySQL returns an empty string when start=0, so to make MBQL substring
+  ;; work consistently across all RDMBSs we turn a 0 start index into 1
+  (let [start (if (and (number? start) (zero? start))
+                1
+                start)]
+    (if length
+      (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+      (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start)))))
+
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
