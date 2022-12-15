@@ -8,6 +8,7 @@ import React, {
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+import { InputSize } from "../../style/types";
 import {
   InputField,
   InputLeftButton,
@@ -16,7 +17,6 @@ import {
   InputSubtitle,
   InputResetButton,
 } from "./Input.styled";
-import { InputSize } from "./types";
 
 export type InputColorScheme = "brand" | "filter";
 

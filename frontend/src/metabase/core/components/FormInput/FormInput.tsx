@@ -54,6 +54,7 @@ const FormInput = forwardRef(function FormInput(
       error={touched ? error : undefined}
     >
       <Input
+        size="large"
         {...props}
         id={id}
         name={name}

@@ -8,6 +8,7 @@ import { Link } from "react-router";
 
 import Schemas from "metabase/entities/schemas";
 import Toggle from "metabase/core/components/Toggle";
+import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/core/components/Select";
 
 import { getParameterOptionsForField } from "metabase/parameters/utils/template-tag-options";
@@ -23,7 +24,6 @@ import {
   TagContainer,
   ContainerLabel,
   InputContainer,
-  WidgetLabelInput,
   DefaultParameterValueWidget,
 } from "./TagEditorParam.styled";
 
@@ -255,7 +255,7 @@ export class TagEditorParam extends Component {
               {t`Filter widget label`}
               {hasNoWidgetLabel && <ErrorSpan>{t`(required)`}</ErrorSpan>}
             </ContainerLabel>
-            <WidgetLabelInput
+            <InputBlurChange
               type="text"
               value={tag["display-name"]}
               onBlurChange={e =>
