@@ -1,8 +1,20 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 import { List, WindowScroller, AutoSizer } from "react-virtualized";
 
-function VirtualizedList({ items, rowHeight, renderItem, scrollElement }) {
+interface VirtualizedListProps<Item = unknown>
+  extends React.HTMLProps<HTMLUListElement> {
+  items: Item[];
+  rowHeight: number;
+  renderItem: (props: { item: Item; index: number }) => React.ReactNode;
+  scrollElement?: HTMLElement | null;
+}
+
+function VirtualizedList<Item>({
+  items,
+  rowHeight,
+  renderItem,
+  scrollElement,
+}: VirtualizedListProps<Item>) {
   const rowRenderer = React.useCallback(
     ({ index, key, style }) => (
       <div key={key} style={style}>
@@ -15,7 +27,7 @@ function VirtualizedList({ items, rowHeight, renderItem, scrollElement }) {
   const renderScrollComponent = React.useCallback(
     ({ width }) => {
       return (
-        <WindowScroller scrollElement={scrollElement}>
+        <WindowScroller scrollElement={scrollElement || undefined}>
           {({ height, isScrolling, scrollTop }) => (
             <List
               autoHeight
