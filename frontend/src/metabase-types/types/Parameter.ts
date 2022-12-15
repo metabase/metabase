@@ -3,7 +3,10 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { ParameterSourceType } from "metabase-types/api";
+import {
+  ParameterSourceOptions,
+  ParameterSourceType,
+} from "metabase-types/api";
 import { CardId } from "./Card";
 import { LocalFieldReference, ForeignFieldReference } from "./Query";
 
@@ -48,7 +51,8 @@ export interface Parameter {
   filteringParameters?: ParameterId[];
   isMultiSelect?: boolean;
   value?: any;
-  source_type?: ParameterSourceType | null;
+  source_type?: ParameterSourceType;
+  source_options?: ParameterSourceOptions;
 }
 
 export type ParameterQueryObject = {

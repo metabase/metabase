@@ -12,6 +12,7 @@ import type {
   DashboardParameterMapping,
   DashboardOrderedCard,
   ParameterSourceType,
+  ParameterSourceOptions,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
@@ -69,6 +70,10 @@ export function setParameterName(
 
 export function getSourceType(parameter: Parameter): ParameterSourceType {
   return parameter.source_type ?? "field";
+}
+
+export function getSourceOptions(parameter: Parameter): ParameterSourceOptions {
+  return parameter.source_options ?? {};
 }
 
 export function getIsMultiSelect(parameter: Parameter): boolean {
