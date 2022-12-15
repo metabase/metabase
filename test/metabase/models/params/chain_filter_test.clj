@@ -192,29 +192,29 @@
   (mt/dataset airports
     (mt/$ids nil
       (testing "airport -> municipality"
-        (is (= [{:lhs {:table $$airport, :field %airport.municipality-id}
+        (is (= [{:lhs {:table $$airport, :field %airport.municipality_id}
                  :rhs {:table $$municipality, :field %municipality.id}}]
                (#'chain-filter/find-joins (mt/id) $$airport $$municipality))))
       (testing "airport [-> municipality -> region] -> country"
-        (is (= [{:lhs {:table $$airport, :field %airport.municipality-id}
+        (is (= [{:lhs {:table $$airport, :field %airport.municipality_id}
                  :rhs {:table $$municipality, :field %municipality.id}}
-                {:lhs {:table $$municipality, :field %municipality.region-id}
+                {:lhs {:table $$municipality, :field %municipality.region_id}
                  :rhs {:table $$region, :field %region.id}}
-                {:lhs {:table $$region, :field %region.country-id}
+                {:lhs {:table $$region, :field %region.country_id}
                  :rhs {:table $$country, :field %country.id}}]
                (#'chain-filter/find-joins (mt/id) $$airport $$country))))
       (testing "[backwards]"
         (testing "municipality -> airport"
           (is (= [{:lhs {:table $$municipality, :field %municipality.id}
-                   :rhs {:table $$airport, :field %airport.municipality-id}}]
+                   :rhs {:table $$airport, :field %airport.municipality_id}}]
                  (#'chain-filter/find-joins (mt/id) $$municipality $$airport))))
         (testing "country [-> region -> municipality] -> airport"
           (is (= [{:lhs {:table $$country, :field %country.id}
-                   :rhs {:table $$region, :field %region.country-id}}
+                   :rhs {:table $$region, :field %region.country_id}}
                   {:lhs {:table $$region, :field %region.id}
-                   :rhs {:table $$municipality, :field %municipality.region-id}}
+                   :rhs {:table $$municipality, :field %municipality.region_id}}
                   {:lhs {:table $$municipality, :field %municipality.id}
-                   :rhs {:table $$airport, :field %airport.municipality-id}}]
+                   :rhs {:table $$airport, :field %airport.municipality_id}}]
                  (#'chain-filter/find-joins (mt/id) $$country $$airport))))))))
 
 (deftest find-all-joins-test
@@ -227,9 +227,9 @@
     (mt/$ids nil
       (testing "airport [-> municipality] -> region"
         (testing "even though we're joining against the same Table multiple times, duplicate joins should be removed"
-          (is (= [{:lhs {:table $$airport, :field %airport.municipality-id}
+          (is (= [{:lhs {:table $$airport, :field %airport.municipality_id}
                    :rhs {:table $$municipality, :field %municipality.id}}
-                  {:lhs {:table $$municipality, :field %municipality.region-id}
+                  {:lhs {:table $$municipality, :field %municipality.region_id}
                    :rhs {:table $$region, :field %region.id}}]
                  (#'chain-filter/find-all-joins $$airport #{%region.name %municipality.name %region.id}))))))))
 

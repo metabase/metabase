@@ -1,4 +1,4 @@
-import * as Query from "metabase/lib/query/query";
+import * as Query from "metabase-lib/queries/utils/query";
 
 describe("Query", () => {
   describe("isBareRows", () => {

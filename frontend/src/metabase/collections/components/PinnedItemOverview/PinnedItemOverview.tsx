@@ -10,7 +10,7 @@ import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItem
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Metadata from "metabase-lib/metadata/Metadata";
 
 import {
   Container,

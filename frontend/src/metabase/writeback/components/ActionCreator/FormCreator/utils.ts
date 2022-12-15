@@ -4,6 +4,7 @@ import type {
   ActionFormSettings,
   WritebackAction,
   FieldSettings,
+  ParameterId,
 } from "metabase-types/api";
 
 import validate from "metabase/lib/validate";
@@ -15,7 +16,7 @@ export const getDefaultFormSettings = (
   overrides: Partial<ActionFormSettings> = {},
 ): ActionFormSettings => ({
   name: "",
-  type: "modal",
+  type: "button",
   description: "",
   fields: {},
   confirmMessage: "",
@@ -102,12 +103,28 @@ export const getFormFieldForParameter = (
   fieldSettings: FieldSettings,
 ) => ({
   name: parameter.id,
-  title: parameter.name,
+  title: parameter.name ?? parameter.id,
   ...getParameterFieldProps(fieldSettings),
 });
 
 export const getFormTitle = (action: WritebackAction): string =>
-  action.visualization_settings?.name || action.name || "Action form";
+  action.visualization_settings?.name ||
+  action.name ||
+  action.slug ||
+  "Action form";
 
 export const getSubmitButtonLabel = (action: WritebackAction): string =>
   action.visualization_settings?.submitButtonLabel || t`Save`;
+
+export const generateFieldSettingsFromParameters = (params: Parameter[]) => {
+  const fieldSettings: Record<ParameterId, FieldSettings> = {};
+
+  params.forEach(param => {
+    fieldSettings[param.id] = getDefaultFieldSettings({
+      name: param.name ?? param.id,
+      fieldType: param.type.includes("Integer") ? "number" : "string",
+      inputType: param.type.includes("Integer") ? "number" : "string",
+    });
+  });
+  return fieldSettings;
+};

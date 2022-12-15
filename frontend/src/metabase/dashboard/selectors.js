@@ -15,7 +15,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 import { isVirtualDashCard } from "./utils";
 
@@ -236,22 +236,4 @@ export const getIsHeaderVisible = createSelector(
 export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
-);
-
-const getMissingActionParametersModalState = state =>
-  state.dashboard.missingActionParameters;
-
-export const getActionParametersModalAction = createSelector(
-  [getDashboardComplete, getMissingActionParametersModalState],
-  (dashboard, missingActionParametersModalState) => {
-    const dashcardId = missingActionParametersModalState?.dashcardId;
-    const dashcard = dashboard?.ordered_cards.find(dc => dc.id === dashcardId);
-    return dashcard?.action;
-  },
-);
-
-export const getActionParametersModalFormProps = createSelector(
-  [getMissingActionParametersModalState],
-  missingActionParametersModalState =>
-    missingActionParametersModalState?.props || {},
 );

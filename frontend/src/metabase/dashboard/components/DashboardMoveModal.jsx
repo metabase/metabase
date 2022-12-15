@@ -21,9 +21,7 @@ const mapDispatchToProps = {
 class DashboardMoveModalInner extends React.Component {
   render() {
     const { dashboard, onClose, setDashboardCollection } = this.props;
-    const title = dashboard.is_app_page
-      ? t`Move page to…`
-      : t`Move dashboard to…`;
+    const title = t`Move dashboard to…`;
     return (
       <CollectionMoveModal
         title={title}

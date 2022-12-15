@@ -8,12 +8,12 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
 import Button from "metabase/core/components/Button";
 
-import * as Query from "metabase/lib/query/query";
-import * as Filter from "metabase/lib/query/filter";
-import * as Card from "metabase/meta/Card";
+import * as Card from "metabase-lib/queries/utils/card";
+import { generateTimeFilterValuesDescriptions } from "metabase-lib/queries/utils/query-time";
+import * as Query from "metabase-lib/queries/utils/query";
+import * as Filter from "metabase-lib/queries/utils/filter";
 
-import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
-import { FieldDimension } from "metabase-lib/lib/Dimension";
+import { FieldDimension } from "metabase-lib/Dimension";
 
 export default class TimeseriesFilterWidget extends Component {
   state = {

@@ -7,6 +7,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.setting :as setting]
    [metabase.util :as u]
@@ -42,6 +43,17 @@
       (handler request respond raise)
       (raise (ex-info (i18n/tru "Actions are not enabled.")
                       {:status-code 400})))))
+
+(defn +check-data-apps-enabled
+  "Ring middleware that checks that the [[metabase.model.action/check-data-apps-enabled]], and
+  returns a 400 response if not"
+  [handler]
+  (fn [request respond raise]
+    (try
+      (action/check-data-apps-enabled)
+      (catch Exception e
+        (raise e)))
+    (handler request respond raise)))
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
@@ -168,6 +180,11 @@
         (when-not (database-enable-actions)
           (throw (ex-info (i18n/tru "Actions are not enabled for Database {0}." database-id)
                           {:status-code 400})))
+        ;; TODO -- need to check permissions once we have Actions-specific perms in place. For now just make sure the
+        ;; current User is an admin. This check is only done if [[api/*current-user*]] is bound (which will always be
+        ;; the case when invoked from an API endpoint) to make Actions testable separately from the API endpoints.
+        (when @api/*current-user*
+          (api/check-superuser))
         ;; Ok, now we can hand off to [[perform-action!*]]
         (perform-action!* driver action db arg-map)))))
 

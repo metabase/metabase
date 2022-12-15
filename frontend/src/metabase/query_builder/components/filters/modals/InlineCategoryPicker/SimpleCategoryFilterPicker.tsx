@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import Checkbox from "metabase/core/components/CheckBox";
 
-import type Filter from "metabase-lib/lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 
 import { PickerContainer, PickerGrid } from "./InlineCategoryPicker.styled";
 

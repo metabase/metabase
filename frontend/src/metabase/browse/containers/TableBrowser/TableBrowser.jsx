@@ -2,11 +2,11 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getXraysEnabled } from "metabase/selectors/settings";
+import { getSetting } from "metabase/selectors/settings";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 import { RELOAD_INTERVAL } from "../../constants";
 import TableBrowser from "../../components/TableBrowser";
 
@@ -62,7 +62,7 @@ export default _.compose(
     dbId: getDatabaseId(props, { includeVirtual: true }),
     schemaName: getSchemaName(props),
     metadata: getMetadata(state),
-    xraysEnabled: getXraysEnabled(state),
+    xraysEnabled: getSetting(state, "enable-xrays"),
     getTableUrl,
   })),
 )(TableBrowser);

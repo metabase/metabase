@@ -10,7 +10,7 @@ import QuestionActivityTimeline from "metabase/query_builder/components/Question
 import { Card } from "metabase-types/types/Card";
 
 import EditableText from "metabase/core/components/EditableText";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";
 import { Root, ContentSection, Header } from "./QuestionInfoSidebar.styled";

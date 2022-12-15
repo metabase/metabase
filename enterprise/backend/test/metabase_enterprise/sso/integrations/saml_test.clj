@@ -95,9 +95,18 @@
              (client :get 403 "/auth/sso"))))))
 
 (deftest require-saml-enabled-test
-  (testing "SSO requests fail if SAML hasn't been enabled"
+  (testing "SSO requests fail if SAML hasn't been configured or enabled"
     (with-valid-premium-features-token
-      (mt/with-temporary-setting-values [saml-enabled false]
+      (mt/with-temporary-setting-values [saml-enabled                       false
+                                         saml-identity-provider-uri         nil
+                                         saml-identity-provider-certificate nil]
+        (is (some? (client :get 400 "/auth/sso"))))))
+
+  (testing "SSO requests fail if SAML has been configured but not enabled"
+    (with-valid-premium-features-token
+      (mt/with-temporary-setting-values [saml-enabled                       false
+                                         saml-identity-provider-uri         default-idp-uri
+                                         saml-identity-provider-certificate default-idp-cert]
         (is (some? (client :get 400 "/auth/sso"))))))
 
   (testing "SSO requests fail if SAML is enabled but hasn't been configured"

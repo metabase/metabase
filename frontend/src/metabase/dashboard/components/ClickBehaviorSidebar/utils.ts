@@ -1,14 +1,13 @@
 import { t } from "ttag";
 import { getIn } from "icepick";
 
-import { hasActionsMenu } from "metabase/lib/click-behavior";
-import { keyForColumn } from "metabase/lib/dataset";
-
 import type {
   ClickBehaviorType,
   DashboardOrderedCard,
+  DatasetColumn,
 } from "metabase-types/api";
-import type { Column } from "metabase-types/types/Dataset";
+import { hasActionsMenu } from "metabase/lib/click-behavior";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 type ClickBehaviorOption = {
   value: ClickBehaviorType | "menu";
@@ -19,7 +18,6 @@ export const clickBehaviorOptions: ClickBehaviorOption[] = [
   { value: "menu", icon: "popover" },
   { value: "link", icon: "link" },
   { value: "crossfilter", icon: "filter" },
-  { value: "action", icon: "play" },
 ];
 
 export function getClickBehaviorOptionName(
@@ -44,12 +42,12 @@ export function getClickBehaviorOptionName(
 }
 export function getClickBehaviorForColumn(
   dashcard: DashboardOrderedCard,
-  column: Column,
+  column: DatasetColumn,
 ) {
   return getIn(dashcard, [
     "visualization_settings",
     "column_settings",
-    keyForColumn(column),
+    getColumnKey(column),
     "click_behavior",
   ]);
 }

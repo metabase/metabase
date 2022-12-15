@@ -9,8 +9,11 @@
 
   If the model is not exported, add it to the exclusion lists in the tests. Every model should be explicitly listed as
   exported or not, and a test enforces this so serialization isn't forgotten for new models."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [metabase.models.interface :as mi]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -68,7 +71,8 @@
   against existing entities.
 
   The default implementation is a single level, using the model name provided and the ID from either
-  [[serdes-entity-id]] or [[serdes.hash/identity-hash]].
+  [[serdes-entity-id]] or [[serdes.hash/identity-hash]], and any `:name` field as the `:label`.
+  This default implementation is factored out as [[maybe-labeled]] for reuse.
 
   Implementation notes:
   - `:serdes/meta` might be defined - if so it's coming from ingestion and might have truncated values in it, and should
@@ -97,9 +101,22 @@
                 (throw (ex-info "Could not infer-self-path on this entity - maybe implement serdes-entity-id ?"
                                 {:model model-name :entity entity})))}))
 
+(defn maybe-labeled
+  "Common helper for defining [[serdes-generate-path]] for an entity that is
+  (1) top-level, ie. a one layer path;
+  (2) labeled by a single field, slugified.
+
+  For example, a Card's or Dashboard's `:name` field."
+  [model-name entity slug-key]
+  (let [self  (infer-self-path model-name entity)
+        label (get entity slug-key)]
+    [(if label
+       (assoc self :label (u/slugify label {:unicode? true}))
+       self)]))
+
 (defmethod serdes-generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for nested ones.
-  [(infer-self-path model-name entity)])
+  (maybe-labeled model-name entity :name))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Serialization Process                                                 |
@@ -136,6 +153,18 @@
 ;;; The storage system might transform that stream in some arbitrary way. Storage is a dead end - it should perform side
 ;;; effects like writing to the disk or network, and return nothing.
 ;;;
+;;; Not all storage solutions use directory structure, but for those that do, [[storage-path]] should give the path as
+;;; a list of strings: `["foo" "bar" "some_file"]`. Note the lack of a file extension on the last segment - that
+;;; is deliberately left off so that no filename surgery is required to support eg. both JSON and YAML output.
+;;;
+;;; By convention, models are named as plural and in lower case:
+;;; `["collections" "1234ABC_my_collection" "dashboards" "8765def_health_metrics"]`.
+;;;
+;;; As a final remark, note that some entities have their own directories and some do not. For example a Field is
+;;; simply a file, while a Table has a directory. So a Table's itself is
+;;; `["databases" "some-db" "schemas" "PUBLIC" "tables" "Customer" "Customer"]`
+;;; so that's a directory called `Customer` with a file called (for YAML output) `Customer.yaml` in it.
+;;;
 ;;; Selective Serialization:
 ;;; Sometimes we want to export a "subtree" instead of the complete appdb. At the simplest, we might serialize a single
 ;;; question. Moving up, it might be a Dashboard and all its questions, or a Collection and all its content Cards and
@@ -165,20 +194,11 @@
 
   Keyed on the model name, the first argument.
 
-  Returns a reducible stream of maps with `:serdes/meta` keys on them. It should *not* be a stream of Toucan entities,
-  but vanilla Clojure maps.
+  Returns a reducible stream of modeled Toucan maps.
 
-  In fact, Toucan's high-level niceties (eg. expanding JSON-encoded fields to Clojure data, decrypting, type
-  conversions, or hydrating some relationship by default) are counterproductive when our goal is a database-level
-  export. As a specific example, [[db/simple-select]] expands JSON but [[db/simple-insert!]] doesn't put it back.
-  There's also no `simple-update!`, making a fresh insert diverge from an update.
+  Defaults to using `(toucan.db/select model)` for the entire table.
 
-  Defaults to using the helper `(raw-reducible-query model)` for the entire table, which is equivalent to
-  `(db/simple-select-reducible model)` but without running post-select handlers. This returns vanilla maps, not
-  [[db/IModel]] instances.
-
-  You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized. Prefer using
-  the two-argument form of [[raw-reducible-query]]."
+  You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized."
   (fn [model _] model))
 
 (defmulti extract-one
@@ -204,42 +224,36 @@
   (eduction (map (partial extract-one model opts))
             (extract-query model opts)))
 
-(defn- model-name->table
-  "The model name is not necessarily the table name. This pulls the table name from the Toucan model."
-  [model-name]
-  (-> model-name
-      symbol
-      db/resolve-model
-      :table))
-
-(defn raw-reducible-query
-  "Helper for calling Toucan's raw [[db/reducible-query]]. With just the model name, fetches everything. You can filter
-  with a HoneySQL map like `{:where [:= :archived true]}`.
-
-  Returns a reducible stream of JDBC row maps."
-  ([model-name]
-   (raw-reducible-query model-name nil))
-  ([model-name honeysql-form]
-   (db/reducible-query (merge {:select [:*] :from [(model-name->table model-name)]}
-                              honeysql-form))))
+(defn extract-query-collections
+  "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
+  collection."
+  [model {:keys [collection-set]}]
+  (if collection-set
+    ;; If collection-set is defined, select everything in those collections, or with nil :collection_id.
+    (let [in-colls  (db/select-reducible model :collection_id [:in collection-set])]
+      (if (contains? collection-set nil)
+        (eduction cat [in-colls (db/select-reducible model :collection_id nil)])
+        in-colls))
+    ;; If collection-set is nil, just select everything.
+    (db/select-reducible model)))
 
 (defmethod extract-query :default [model-name _]
-  (raw-reducible-query model-name))
+  (db/select-reducible (symbol model-name)))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
   - Convert to a vanilla Clojure map.
   - Add `:serdes/meta` by calling [[serdes-generate-path]].
   - Drop the primary key.
-  - Making :created_at and :updated_at into UTC-based LocalDateTimes.
+  - Drop :updated_at; it's noisy in git and not really used anywhere.
 
   Returns the Clojure map."
   [model-name entity]
   (let [model (db/resolve-model (symbol model-name))
         pk    (models/primary-key model)]
-    (-> entity
-      (assoc :serdes/meta (serdes-generate-path model-name entity))
-      (dissoc pk))))
+    (-> (into {} entity)
+        (assoc :serdes/meta (serdes-generate-path model-name entity))
+        (dissoc pk :updated_at))))
 
 (defmethod extract-one :default [model-name _opts entity]
   (extract-one-basics model-name entity))
@@ -275,7 +289,7 @@
 ;;;       collection's ancestors before the collection itself.
 ;;;     - Dependencies are loaded recursively in postorder; circular dependencies cause the process to throw.
 ;;; - Having found an entity it can really load, check for any existing one:
-;;;     - `(load-find-local path)` returns the corresponding primary key, or nil.
+;;;     - `(load-find-local path)` returns the corresponding entity, or nil.
 ;;; - Then it calls `(load-one! ingested maybe-local-entity)`, passing the `ingested` value and either `nil` or the
 ;;;       Toucan entity corresponding to the incoming map.
 ;;;     - `load-one!` is a side-effecting black box to the rest of the deserialization process.
@@ -291,7 +305,6 @@
 ;;;     - `(load-update! ingested local-entity)` if the local entity exists, or
 ;;;     - `(load-insert! ingested)` if the entity is new.
 ;;;   Both of these have the obvious defaults of [[jdbc/update!]] or [[jdbc/insert!]].
-
 (defn- ingested-model
   "The dispatch function for several of the load multimethods: dispatching on the model of the incoming entity."
   [ingested]
@@ -306,7 +319,7 @@
 (defmulti load-find-local
   "Given a path, tries to look up any corresponding local entity.
 
-  Returns nil, or the primary key of the local entity.
+  Returns nil, or the local Toucan entity that corresponds to the given path.
   Keyed on the model name at the leaf of the path.
 
   By default, this tries to look up the entity by its `:entity_id` column, or identity hash, depending on the shape of
@@ -320,11 +333,9 @@
 
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
-        model                      (db/resolve-model (symbol model-name))
-        pk                         (models/primary-key model)]
-    (some-> model
-            (lookup-by-id id)
-            (get pk))))
+        model                      (db/resolve-model (symbol model-name))]
+    (when model
+      (lookup-by-id model id))))
 
 (defmulti serdes-dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
@@ -340,7 +351,7 @@
 
 (defmulti load-xform
   "Given the incoming vanilla map as ingested, transform it so it's suitable for sending to the database (in eg.
-  [[db/simple-insert!]]).
+  [[db/insert!]]).
   For example, this should convert any foreign keys back from a portable entity ID or identity hash into a numeric
   database ID. This is the mirror of [[extract-one]], in spirit. (They're not strictly inverses - [[extract-one]] drops
   the primary key but this need not put one back, for example.)
@@ -371,40 +382,36 @@
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
-  Returns the primary key of the updated entity."
+  Returns the updated entity."
   {:arglists '([model-name ingested local])}
   (fn [model _ _] model))
 
 (defmethod load-update! :default [model-name ingested local]
-  (let [model (db/resolve-model (symbol model-name))
-        pk    (models/primary-key model)
-        id    (get local pk)]
+  (let [model    (db/resolve-model (symbol model-name))
+        pk       (models/primary-key model)
+        id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
-    ; Using the two-argument form of [[db/update!]] that takes the model and a HoneySQL form for the actual update.
-    ; It works differently from the more typical `(db/update! 'Model id updates...)` form: this form doesn't run any of
-    ; the pre-update magic, it just updates the database directly.
-    (db/update! (symbol model-name) {:where [:= pk id] :set ingested})
-    id))
+    (db/update! model id ingested)
+    (db/select-one model pk id)))
 
 (defmulti load-insert!
   "Called by the default [[load-one!]] if there is no corresponding entity already in the appdb.
   `(load-insert! \"ModelName\" ingested-and-xformed)`
 
-  Defaults to a straightforward [[db/simple-insert!]], and you probably don't need to implement this.
-  Note that [[db/insert!]] should be avoided - we don't want to populate the `:entity_id` field if it wasn't already
-  set!
+  Defaults to a straightforward [[db/insert!]], and you probably don't need to implement this.
+
+  Note that any [[db/insert!]] behavior we don't want to run (like generating an `:entity_id`!) should be skipped based
+  on the [[mi/*deserializing?*]] dynamic var.
 
   Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
-  Returns the primary key of the newly inserted entity."
+  Returns the newly inserted entity."
   {:arglists '([model ingested])}
   (fn [model _] model))
 
-(defmethod load-insert! :default [model ingested]
-  (log/tracef "Inserting %s: %s" model (pr-str ingested))
-  ; Toucan's simple-insert! actually does the right thing for our purposes: it doesn't call pre-insert or post-insert,
-  ; and it returns the new primary key.
-  (db/simple-insert! (symbol model) ingested))
+(defmethod load-insert! :default [model-name ingested]
+  (log/tracef "Inserting %s: %s" model-name (pr-str ingested))
+  (db/insert! (symbol model-name) ingested))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -424,13 +431,13 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
-(defmethod load-one! :default [ingested maybe-local-id]
+(defmethod load-one! :default [ingested maybe-local]
   (let [model    (ingested-model ingested)
-        pkey     (models/primary-key (db/resolve-model (symbol model)))
         adjusted (load-xform ingested)]
-    (if (nil? maybe-local-id)
-      (load-insert! model adjusted)
-      (load-update! model adjusted (db/select-one (symbol model) pkey maybe-local-id)))))
+    (binding [mi/*deserializing?* true]
+      (if (nil? maybe-local)
+        (load-insert! model adjusted)
+        (load-update! model adjusted maybe-local)))))
 
 (defmulti serdes-descendants
   "Captures the notion that eg. a dashboard \"contains\" its cards.
@@ -468,7 +475,9 @@
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."
   [id-str]
-  (boolean (and id-str (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
+  (boolean (and id-str
+                (string? id-str)
+                (re-matches #"^[A-Za-z0-9_-]{21}$" id-str))))
 
 (defn- find-by-identity-hash
   "Given a model and a target identity hash, this scans the appdb for any instance of the model corresponding to the
@@ -489,3 +498,136 @@
   (if (entity-id? id-str)
     (db/select-one model :entity_id id-str)
     (find-by-identity-hash model id-str)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Storage                                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; These storage multimethods take a second argument known as the context. This is a good place for a particular
+;;; storage implementation to include some precomputed information, or options.
+;;; In particular, it should include a table of collection IDs to path fragments that is precomputed by the host.
+;;; [[storage-base-context]] computes that, since many things go in a collections tree.
+(def ^:private max-label-length 100)
+
+(defn- truncate-label [s]
+  (if (> (count s) max-label-length)
+      (subs s 0 max-label-length)
+      s))
+
+(defn- lower-plural [s]
+  (-> s u/lower-case-en (str "s")))
+
+(defn storage-leaf-file-name
+  "Captures the common pattern for leaf file names as `entityID_label`."
+  ([id]       (str id))
+  ([id label] (if (nil? label)
+                (storage-leaf-file-name id)
+                (str id "_" (truncate-label label)))))
+
+(defn storage-default-collection-path
+  "Implements the most common structure for [[storage-path]] - `collections/c1/c2/c3/models/entityid_slug.ext`"
+  [entity {:keys [collections]}]
+  (let [{:keys [model id label]} (-> entity serdes-path last)]
+    (concat ["collections"]
+            (get collections (:collection_id entity)) ;; This can be nil, but that's fine - that's the root collection.
+            [(lower-plural model) (storage-leaf-file-name id label)])))
+
+(defmulti storage-path
+  "Computes the complete storage path for a given entity.
+  `(storage-path entity ctx)`
+  Dispatches on the model name, eg. \"Dashboard\".
+
+  Returns a list of strings giving the path, with the final entry being the file name with no extension.
+
+  The default implementation works for entities which are:
+  - Part of the regular (not snippet) collections tree, per a :collection_id field; and
+  - Stored as `foos/1234abc_slug.extension` underneath their collection
+  eg. Cards, Dashboards, Timelines
+
+  The default logic is captured by [[storage-default-collection-path]] so it can be reused."
+  {:arglists '([entity ctx])}
+  (fn [entity _] (ingested-model entity)))
+
+(defmethod storage-path :default [entity ctx]
+  (storage-default-collection-path entity ctx))
+
+(defn storage-base-context
+  "Creates the basic context for storage. This is a map with a single entry: `:collections` is a map from collection ID
+  to the path of collections."
+  []
+  (let [colls      (db/select ['Collection :id :entity_id :location :slug])
+        coll-names (into {} (for [{:keys [id entity_id slug]} colls]
+                              [(str id) (storage-leaf-file-name entity_id slug)]))
+        coll->path (into {} (for [{:keys [entity_id id location]} colls
+                                  :let [parents (rest (str/split location #"/"))]]
+                              [entity_id (map coll-names (concat parents [(str id)]))]))]
+    {:collections coll->path}))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Ingestion                                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+(defonce ^:private ingest-path-matchers (atom {}))
+
+(defn ingest-path
+  "Transforms a file path (as a sequence of strings with no file extension on the last part) into a `:serdes/meta`
+  hierarchy, or nil if nothing matches.
+
+  The set of matchers is maintained in an atom, and each model should call [[register-ingestion-path!]] to add its
+  matcher.
+
+  Note that the input format is the same as the return value of [[storage-path]]."
+  [path]
+  (first (keep #(% path) (vals @ingest-path-matchers))))
+
+(defn register-ingestion-path!
+  "Registers the matcher for the given model. Expects the model name to be a string.
+  The matcher is a function from a path (see [[ingest-path]] for the format) to a `:serdes/meta` hierarchy, or nil
+  if there's no match."
+  [model-name matcher]
+  (swap! ingest-path-matchers assoc model-name matcher)
+  ;; Return a readable symbol so this call shows up nicely when (a buffer containing) a register-ingestion-path! call
+  ;; is evaluated at the REPL.
+  ['register-ingestion-path! model-name])
+
+(defn split-leaf-file-name
+  "Given a leaf file name of the type generated by [[storage-leaf-file-name]], break it apart into an [id slug] pair,
+  where the slug might be nil."
+  [file]
+  (when-let [[_ id slug] (or (re-matches #"^([A-Za-z0-9_\.:-]{21})_(.*)$" file)    ; entity_id and slug
+                             (re-matches #"^([A-Za-z0-9_\.:-]{21})$"      file)    ; entity_id only
+                             (re-matches #"^([a-fA-F0-9]{8})_(.*)$"       file)    ; Hash and slug
+                             (re-matches #"^([a-fA-F0-9]{8})$"            file))]  ; Hash only
+    [id slug]))
+
+(defn ingestion-matcher-collected
+  "A helper for the common case of paths like `collections/some/nested/collections/model-name/entityID_slug`.
+  Expects the (lowercase) first segment, and the model name (eg. \"Dashboard\", not \"dashboards\" as it appears in
+  the path).
+  For example `(ingestion-matcher-collected \"collections\" \"Card\")`.
+
+  Returns a matcher function.
+  The resulting hierarchy is "
+  [first-segment model-name]
+  (fn [path]
+    (let [head         (first path)
+          [model file] (take-last 2 path)]
+      (when-let [[id slug] (and (= head first-segment)
+                                (= model (lower-plural model-name))
+                                (split-leaf-file-name file))]
+        (cond-> {:model model-name :id id}
+          slug (assoc :label slug)
+          true vector)))))
+
+(defn- match-pairs [path pattern]
+  (let [chunks (take (count pattern) (partition 2 path))]
+    (when (= pattern (map first chunks))
+      (reduce (fn [out [k v]] (assoc out k v)) {} chunks))))
+
+(defn ingestion-matcher-pairs
+  "A helper for the common case of paths like `databases/my-db/schemas/my-schema/tables/my-table` which alternate
+  fixed and arbitrary segments.
+  The input is a *list* of sequences like `[[\"databases\" \"schemas\" \"tables\"] [\"databases\" \"tables\"]]` and the
+  response is a map of those fixed tokens as keys to the following segment as values, eg.
+  `{\"databases\" \"my-db\"  \"schemas\" \"my-schema\"  \"tables\" \"my-table\"}`.
+  This matches a *prefix*, not necessarily the entire sequence."
+  [path patterns]
+  (some (partial match-pairs path) patterns))

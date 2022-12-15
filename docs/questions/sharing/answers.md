@@ -36,7 +36,7 @@ Once you save your question, a down arrow will appear to the right of the questi
 - **Archive** (Folder with down arrow). See [Archiving items][archiving-items].
 - **Bookmark** Save the question as a favorite, which will show up in the bookmarks section of your navigation sidebar. See [Bookmarks](../../exploration-and-organization/exploration.md#bookmarks).
 
-### Caching results
+## Caching results
 
 {% include plans-blockquote.html feature="Question-specific caching" %}
 
@@ -45,26 +45,6 @@ If your results don't change frequently, you may want to cache your results, tha
 Administrators can set global caching controls, but if you're using a paid version of Metabase you can set caching per question. To cache results, click on the down arrow next to the question's title to open the __Question detail sidebar__, then click on the __Pencil icon__ to __Edit details__. In the Modal that pops up, in the bottom left, select __More options__. There you'll be able to tell Metabase how long it should cache the question's results. This caching will only apply to this specific question; admins can [configure database-wide caching settings][caching] in the __Admin panel__.
 
 Admins can still set global caching, but setting a cache duration on a specific question will override that global setting–useful for when a particular question has a different natural cadence.
-
-### Question moderation
-
-{% include plans-blockquote.html feature="Question moderation" %}
-
-Administrators can **Verify** a question by clicking on the **Verify checkmark** in the **Moderation** section of the **Question detail sidebar**. Verifying a question is a simple way for an administrator to signal that they've reviewed the question and deemed it to be trustworthy. That is: the question is filtering the right columns, or summarizing the right metrics, and querying records from the right tables.
-
-Once verified, the question will have a verified icon next to the question's title.
-
-![Verified icon](../images/verified-icon.png)
-
-Verified questions are also more likely to show up higher in search suggestions and search results.
-
-If someone modifies a verified question, the question will lose its verified status, and an administrator will need to review and verify the question again to restore its verified status.
-
-### Question and model histories
-
-You can see the history of a question or [model][model], including edits and verifications, in the **History** section of the **Question detail sidebar**.
-
-Below each edit entry in the timeline, you can click on **Revert** to reinstate the question at the time of the edit.
 
 ## Sharing questions with public links
 
@@ -79,7 +59,7 @@ To share a question, click on the arrow pointing up and to the right in the bott
 You can set up questions to run periodically and notify you if the results are interesting. Check out [Alerts][alerts].
 
 [alerts]: ./alerts.md
-[archiving-items]: ../../exploration-and-organization/collections.md#archiving-items
+[archiving-items]: ../../exploration-and-organization/history.md#archiving-items
 [caching]: ../../configuring-metabase/caching.md
 [collections]: ../../exploration-and-organization/collections.md
 [collection-permissions]: ../../permissions/collections.md

@@ -21,9 +21,11 @@ describe("scenarios > question > native > mongo", { tags: "@external" }, () => {
   });
 
   it("can save a native MongoDB query", () => {
-    cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
-      parseSpecialCharSequences: false,
-    });
+    cy.get(".ace_content")
+      .should("be.visible")
+      .type(`[ { $count: "Total" } ]`, {
+        parseSpecialCharSequences: false,
+      });
     cy.get(".NativeQueryEditor .Icon-play").click();
 
     cy.wait("@dataset");
@@ -32,7 +34,7 @@ describe("scenarios > question > native > mongo", { tags: "@external" }, () => {
 
     cy.findByText("Save").click();
 
-    cy.findByTextEnsureVisible("Save question");
+    cy.findByTextEnsureVisible("Save new question");
 
     modal().within(() => {
       cy.findByLabelText("Name").clear().should("be.empty").type("mongo count");

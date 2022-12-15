@@ -61,7 +61,10 @@ export interface RadioOption<TValue> {
   value: TValue;
 }
 
-function RadioInner<TValue extends Key, TOption = RadioOption<TValue>>(
+const Radio = forwardRef(function Radio<
+  TValue extends Key,
+  TOption = RadioOption<TValue>,
+>(
   {
     name,
     value,
@@ -79,7 +82,7 @@ function RadioInner<TValue extends Key, TOption = RadioOption<TValue>>(
     ...props
   }: RadioProps<TValue, TOption>,
   ref: Ref<HTMLDivElement>,
-): JSX.Element {
+) {
   const { RadioGroup } = VARIANTS[variant];
   const groupName = useMemo(() => name ?? _.uniqueId("radio-"), [name]);
 
@@ -87,7 +90,7 @@ function RadioInner<TValue extends Key, TOption = RadioOption<TValue>>(
     <RadioGroup
       {...props}
       role="radiogroup"
-      ref={ref as any}
+      ref={ref}
       variant={variant}
       vertical={vertical}
     >
@@ -116,11 +119,7 @@ function RadioInner<TValue extends Key, TOption = RadioOption<TValue>>(
       })}
     </RadioGroup>
   );
-}
-
-const Radio = forwardRef(RadioInner) as <T extends Key>(
-  props: RadioProps<T> & { ref?: React.Ref<HTMLDivElement> },
-) => ReturnType<typeof RadioInner>;
+});
 
 interface RadioItemProps<TValue extends Key> {
   name: string;
@@ -223,7 +222,7 @@ function isDefaultOption<TValue>(
 
 export default Object.assign(Radio, {
   RadioGroupVariants: [RadioGroupBubble, RadioGroupNormal],
-  RadioLabelVariants: [RadioLabelBubble, RadioLabelNormal, RadioLabelText],
+  RadioLabelVariants: [RadioLabelBubble, RadioLabelNormal],
   RadioContainerVariants: [
     RadioContainerBubble,
     RadioContainerNormal,

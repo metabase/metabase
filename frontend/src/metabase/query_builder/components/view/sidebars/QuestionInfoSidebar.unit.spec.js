@@ -7,7 +7,7 @@ import {
 } from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import MetabaseSettings from "metabase/lib/settings";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 import { QuestionInfoSidebar } from "./QuestionInfoSidebar";
 
 const BASE_QUESTION = {

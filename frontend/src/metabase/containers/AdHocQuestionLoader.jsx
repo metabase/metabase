@@ -7,7 +7,7 @@ import { deserializeCardFromUrl } from "metabase/lib/card";
 import { loadMetadataForCard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 // type annotations
 

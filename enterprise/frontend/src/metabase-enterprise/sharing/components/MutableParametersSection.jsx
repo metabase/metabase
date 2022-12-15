@@ -10,11 +10,11 @@ import { t } from "ttag";
 import CollapseSection from "metabase/components/CollapseSection";
 import ParametersList from "metabase/parameters/components/ParametersList";
 
-import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 import {
   getPulseParameters,
   getActivePulseParameters,
 } from "metabase/lib/pulse";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 function MutableParametersSection({
   className,

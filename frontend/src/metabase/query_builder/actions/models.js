@@ -1,13 +1,14 @@
 import { createAction } from "redux-actions";
+import { push } from "react-router-redux";
 import { merge } from "icepick";
 import { t } from "ttag";
 
-import { isSameField } from "metabase/lib/query/field_ref";
 import { addUndo } from "metabase/redux/undo";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 import Questions from "metabase/entities/questions";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
 import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
@@ -16,6 +17,11 @@ import { setQueryBuilderMode } from "./ui";
 
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
   dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
+  dispatch(runDirtyQuestionQuery());
+};
+
+export const onCancelCreateNewModel = () => async dispatch => {
+  await dispatch(push("/"));
 };
 
 export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";

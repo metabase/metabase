@@ -23,13 +23,16 @@ import { connect } from "react-redux";
 import slugg from "slugg";
 
 import { isEventOverElement } from "metabase/lib/dom";
+import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import Modal from "metabase/components/Modal";
 
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
-import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
+import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import Questions from "metabase/entities/questions";
+import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
 import { ResponsiveParametersList } from "./ResponsiveParametersList";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
@@ -142,7 +145,7 @@ class NativeQueryEditor extends Component {
       editorElement.classList.add("read-only");
     }
 
-    const aceMode = query.aceMode();
+    const aceMode = getEngineNativeAceMode(query.engine());
     const session = this._editor.getSession();
 
     if (session.$modeId !== aceMode) {
@@ -177,12 +180,25 @@ class NativeQueryEditor extends Component {
   }
 
   // this is overwritten when the editor mounts
-  swapCompleters = () => undefined;
+  nextCompleters = undefined;
+
+  cardTagIdAtCursor = ({ row, column }) => {
+    const line = this._editor.getValue().split("\n")[row];
+    const matches = Array.from(line.matchAll(CARD_TAG_REGEX));
+    const match = matches.find(
+      m => column > m.index && column < m.index + m[0].length,
+    );
+    return parseInt(match?.[2]) || null;
+  };
 
   handleCursorChange = _.debounce((e, { cursor }) => {
-    this.swapCompleters(cursor);
+    this._editor.completers = this.nextCompleters(cursor);
     if (this.props.setNativeEditorSelectedRange) {
       this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
+    }
+    const cardTagId = this.cardTagIdAtCursor(cursor);
+    if (cardTagId) {
+      this.props.openDataReferenceAtQuestion(cardTagId);
     }
   }, 100);
 
@@ -339,13 +355,14 @@ class NativeQueryEditor extends Component {
     // the completers when the editor mounts are the standard ones
     const standardCompleters = [...this._editor.completers];
 
-    this.swapCompleters = pos => {
-      this._editor.completers =
-        this.getSnippetNameAtCursor(pos) !== null
-          ? [{ getCompletions: this.getSnippetCompletions }]
-          : this.getCardSlugAtCursor(pos) !== null
-          ? [{ getCompletions: this.getCardTagCompletions }]
-          : standardCompleters;
+    this.nextCompleters = pos => {
+      if (this.getSnippetNameAtCursor(pos)) {
+        return [{ getCompletions: this.getSnippetCompletions }];
+      } else if (this.getCardTagNameAtCursor(pos)) {
+        return [{ getCompletions: this.getCardTagCompletions }];
+      } else {
+        return standardCompleters;
+      }
     };
   }
 
@@ -353,14 +370,14 @@ class NativeQueryEditor extends Component {
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
     const match = linePrefix.match(/\{\{\s*snippet:\s*([^\}]*)$/);
-    return match ? match[1] : null;
+    return match?.[1] || null;
   };
 
-  getCardSlugAtCursor = ({ row, column }) => {
+  getCardTagNameAtCursor = ({ row, column }) => {
     const lines = this._editor.getValue().split("\n");
     const linePrefix = lines[row].slice(0, column);
-    const match = linePrefix.match(/\{\{\s*#([^\}]*)$/);
-    return match ? match[1] : null;
+    const match = linePrefix.match(/\{\{\s*(#[^\}]*)$/);
+    return match?.[1] || null;
   };
 
   getSnippetCompletions = (editor, session, pos, prefix, callback) => {
@@ -384,18 +401,24 @@ class NativeQueryEditor extends Component {
     // e.g. if `|` is the cursor position and the user is typing:
     //   - {{#123-foo|}} will fetch completions for the word "123-foo"
     //   - {{#123 foo|}} will not fetch completions because the word "foo" is not the first word in the tag.
-    if (prefix !== this.getCardSlugAtCursor(pos)) {
+    // Note we need to drop the leading `#` from the card tag name because the prefix only includes alphanumerics
+    if (prefix !== this.getCardTagNameAtCursor(pos).substring(1)) {
       callback(null, null);
-      return null;
     }
     const apiResults = await this.props.cardAutocompleteResultsFn(prefix);
-    // Convert to format ace expects
-    const resultsForAce = apiResults.map(({ id, name, dataset }) => ({
-      name: `${id}-${slugg(name)}`,
-      value: `${id}-${slugg(name)}`,
-      meta: dataset ? t`Model` : t`Question`,
-      score: dataset ? 100000 : 0, // prioritize models above questions
-    }));
+    const resultsForAce = apiResults.map(
+      ({ id, name, dataset, collection_name }) => {
+        const collectionName = collection_name || t`Our analytics`;
+        return {
+          name: `${id}-${slugg(name)}`,
+          value: `${id}-${slugg(name)}`,
+          meta: dataset
+            ? t`Model in ${collectionName}`
+            : t`Question in ${collectionName}`,
+          score: dataset ? 100000 : 0, // prioritize models above questions
+        };
+      },
+    );
     callback(null, resultsForAce);
   };
 
@@ -562,17 +585,20 @@ class NativeQueryEditor extends Component {
           />
 
           {this.props.modalSnippet && (
-            <SnippetModal
-              onSnippetUpdate={(newSnippet, oldSnippet) => {
-                if (newSnippet.name !== oldSnippet.name) {
-                  setDatasetQuery(query.updateSnippetNames([newSnippet]));
-                }
-              }}
-              snippet={this.props.modalSnippet}
-              insertSnippet={this.props.insertSnippet}
-              closeModal={this.props.closeSnippetModal}
-            />
+            <Modal onClose={this.props.closeSnippetModal}>
+              <SnippetFormModal
+                snippet={this.props.modalSnippet}
+                onCreate={this.props.insertSnippet}
+                onUpdate={(newSnippet, oldSnippet) => {
+                  if (newSnippet.name !== oldSnippet.name) {
+                    setDatasetQuery(query.updateSnippetNames([newSnippet]));
+                  }
+                }}
+                onClose={this.props.closeSnippetModal}
+              />
+            </Modal>
           )}
+
           {hasEditingSidebar && !readOnly && (
             <NativeQueryEditorSidebar
               runQuery={this.runQuery}
@@ -585,24 +611,21 @@ class NativeQueryEditor extends Component {
   }
 }
 
-const mapStateToProps = () => ({});
-const mapDispatchToProps = dispatch => {
-  return {
-    fetchQuestion: async id => {
-      const action = await dispatch(
-        Questions.actions.fetch(
-          { id },
-          { noEvent: true, useCachedForbiddenError: true },
-        ),
-      );
-      return Questions.HACK_getObjectFromAction(action);
-    },
-  };
-};
+const mapDispatchToProps = dispatch => ({
+  fetchQuestion: async id => {
+    const action = await dispatch(
+      Questions.actions.fetch(
+        { id },
+        { noEvent: true, useCachedForbiddenError: true },
+      ),
+    );
+    return Questions.HACK_getObjectFromAction(action);
+  },
+});
 
 export default _.compose(
   ExplicitSize(),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(null, mapDispatchToProps),
 )(NativeQueryEditor);

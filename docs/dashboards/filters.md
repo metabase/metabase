@@ -94,9 +94,9 @@ Once you’ve added a filter to your dashboard, just click on the filter to sele
 
 You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).
 
-## Choosing between a dropdown or autocomplete for your filter
+## Default filter types
 
-If the column you're using for a filter has more than 100 unique values, you'll now automatically see a search box with autocomplete suggestions:
+If the column you're using for a filter has more than 100 unique values, you'll automatically see a search box with autocomplete suggestions.
 
 ![Autocomplete](./images/autocomplete.png)
 
@@ -108,9 +108,9 @@ In both cases, you can pick one or multiple selections for your filter.
 
 ![Multi-select](./images/multi-select.png)
 
-If Metabase somehow picked the wrong behavior for your field, admins can go to the [Data Model](../data-modeling/metadata-editing.md) section of the admin panel and click on the **gear** icon by the field in question to specify a list, search box, or plain input box.
+## Creating a dropdown filter
 
-![Search options](./images/search-options.png)
+To override the default text box or search box filter widget, ask your Metabase admin to help you [update the column's settings](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) on the Data Model page.
 
 ## Linking filters
 

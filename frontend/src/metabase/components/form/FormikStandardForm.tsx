@@ -14,6 +14,9 @@ interface Props<Values extends BaseFieldValues>
   onClose?: () => void;
 }
 
+/**
+ * @deprecated
+ */
 function StandardForm<Values extends BaseFieldValues>({
   submitTitle,
   submitFullWidth,

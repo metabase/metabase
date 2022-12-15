@@ -40,7 +40,7 @@ export const useListKeyboardNavigation = <T>({
           setCursorIndex((list.length + (cursorIndex ?? 0) - 1) % list.length);
           break;
         case "Enter":
-          if (cursorIndex != null) {
+          if (cursorIndex != null && !isNaN(cursorIndex)) {
             onEnter(list[cursorIndex]);
           }
           break;

@@ -141,7 +141,7 @@
   (when (= (mdb/db-type) :postgres)
     (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
 
-(defn init-scheduler!
+(defn- init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []
@@ -160,15 +160,13 @@
   (some-> (env/env :mb-disable-scheduler) Boolean/parseBoolean))
 
 (defn start-scheduler!
-  "Start an initialized scheduler. Tasks do not run before calling this function. It is an error to call this function
-  when [[*quartz-scheduler*]] has not been set. The function [[init-scheduler!]] will initialize this correctly."
+  "Start the task scheduler. Tasks do not run before calling this function."
   []
   (if (disable-scheduler?)
     (log/warn (trs "Metabase task scheduler disabled. Scheduled tasks will not be ran."))
-    (if-let [scheduler (scheduler)]
-      (do (qs/start scheduler)
-          (log/info (trs "Task scheduler started")))
-      (throw (trs "Scheduler not initialized but `start-scheduler!` called. Please call `init-scheduler!` before attempting to start.")))))
+    (do (init-scheduler!)
+        (qs/start (scheduler))
+        (log/info (trs "Task scheduler started")))))
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."

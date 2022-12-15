@@ -1,41 +1,7 @@
 import type { FieldSettingsMap } from "metabase-types/api";
-import { formatParametersBeforeSubmit, setDefaultValues } from "./utils";
+import { setDefaultValues } from "./utils";
 
 describe("writeback > containers > ActionParametersInputForm > utils", () => {
-  describe("formatParametersBeforeSubmit", () => {
-    it("should format with their ids for the API", () => {
-      const values = {
-        "abc-def": "1",
-        "ghi-jkl": 2,
-      };
-      const missingParameters: any = [
-        {
-          id: "abc-def",
-          type: "string/=",
-          target: "",
-        },
-        {
-          id: "ghi-jkl",
-          type: "number/=",
-          target: "",
-        },
-      ];
-      const result = formatParametersBeforeSubmit(values, missingParameters);
-      expect(result).toEqual([
-        {
-          value: "1",
-          type: "string/=",
-          target: "",
-        },
-        {
-          value: 2,
-          type: "number/=",
-          target: "",
-        },
-      ]);
-    });
-  });
-
   describe("setDefaultValues", () => {
     it("should set a default value for a non-required empty form field", () => {
       const params = {

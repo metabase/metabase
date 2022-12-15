@@ -1,5 +1,5 @@
-import Field from "metabase-lib/lib/metadata/Field";
-import { DimensionOption } from "metabase-lib/lib/queries/StructuredQuery";
+import Field from "metabase-lib/metadata/Field";
+import { DimensionOption } from "metabase-lib/queries/StructuredQuery";
 import { sortDimensions } from "./utils";
 
 const mockDimensionOption = (

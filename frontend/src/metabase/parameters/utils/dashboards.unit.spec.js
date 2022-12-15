@@ -1,22 +1,16 @@
 import {
   createParameter,
   setParameterName,
-  setParameterDefaultValue,
   hasMapping,
   isDashboardParameterWithoutMapping,
   getParametersMappedToDashcard,
   hasMatchingParameters,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
-  getTargetField,
   getDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
-import {
-  SAMPLE_DATABASE,
-  PRODUCTS,
-  metadata,
-} from "__support__/sample_database_fixture";
-import Field from "metabase-lib/lib/metadata/Field";
+import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
+import Field from "metabase-lib/metadata/Field";
 
 describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
@@ -101,15 +95,6 @@ describe("metabase/parameters/utils/dashboards", () => {
       expect(setParameterName({}, "")).toEqual({
         name: "unnamed",
         slug: "unnamed",
-      });
-    });
-  });
-
-  describe("setParameterDefaultValue", () => {
-    it("should set a `default` property on a parameter", () => {
-      expect(setParameterDefaultValue({ foo: "bar" }, 123)).toEqual({
-        foo: "bar",
-        default: 123,
       });
     });
   });
@@ -588,37 +573,6 @@ describe("metabase/parameters/utils/dashboards", () => {
         }),
       ).toEqual(
         "dashboardId: 123, parameterId: 456, query: abc, filteringParameterValues: []",
-      );
-    });
-  });
-
-  describe("getTargetField", () => {
-    const target = ["dimension", ["field", PRODUCTS.CATEGORY.id, null]];
-
-    it("should return null when given a card without a `dataset_query`", () => {
-      const card = {
-        id: 1,
-      };
-
-      expect(getTargetField(target, card, metadata)).toBe(null);
-    });
-
-    it("should return the field that maps to the mapping target", () => {
-      const field = PRODUCTS.CATEGORY;
-
-      const card = {
-        id: 1,
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DATABASE.id,
-          query: {
-            "source-table": PRODUCTS.id,
-          },
-        },
-      };
-
-      expect(getTargetField(target, card, metadata)).toEqual(
-        expect.objectContaining({ id: field.id }),
       );
     });
   });

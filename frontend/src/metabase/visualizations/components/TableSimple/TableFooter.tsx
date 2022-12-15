@@ -4,7 +4,7 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 
-import { HARD_ROW_LIMIT } from "metabase/lib/query";
+import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 
 import {
   TableFooterRoot,

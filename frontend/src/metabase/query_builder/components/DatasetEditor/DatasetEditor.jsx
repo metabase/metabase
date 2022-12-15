@@ -8,6 +8,7 @@ import { merge } from "icepick";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
+import Confirm from "metabase/components/Confirm";
 
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
@@ -19,16 +20,17 @@ import { calcInitialEditorHeight } from "metabase/query_builder/components/Nativ
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import {
   getDatasetEditorTab,
+  getResultsMetadata,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 
-import { isSameField } from "metabase/lib/query/field_ref";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
-import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { isSameField } from "metabase-lib/queries/utils/field-ref";
+import { checkCanBeModel } from "metabase-lib/metadata/utils/models";
 import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
@@ -50,6 +52,7 @@ const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
+  resultsMetadata: PropTypes.shape({ columns: PropTypes.array }),
   isMetadataDirty: PropTypes.bool.isRequired,
   result: PropTypes.object,
   height: PropTypes.number,
@@ -59,6 +62,7 @@ const propTypes = {
   setDatasetEditorTab: PropTypes.func.isRequired,
   setFieldMetadata: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
+  onCancelCreateNewModel: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
@@ -80,6 +84,7 @@ function mapStateToProps(state) {
   return {
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
+    resultsMetadata: getResultsMetadata(state),
   };
 }
 
@@ -168,6 +173,7 @@ function DatasetEditor(props) {
     question: dataset,
     datasetEditorTab,
     result,
+    resultsMetadata,
     metadata,
     isMetadataDirty,
     height,
@@ -176,6 +182,7 @@ function DatasetEditor(props) {
     setDatasetEditorTab,
     setFieldMetadata,
     onCancelDatasetChanges,
+    onCancelCreateNewModel,
     onSave,
     handleResize,
     onOpenModal,
@@ -186,12 +193,17 @@ function DatasetEditor(props) {
   );
 
   const fields = useMemo(() => {
-    // Columns in results_metadata contain all the necessary metadata
+    const virtualCardTable = dataset.table();
+    const virtualCardColumns = (virtualCardTable?.fields ?? []).map(field =>
+      field.column(),
+    );
+    // Columns in resultsMetadata contain all the necessary metadata
     // orderedColumns contain properly sorted columns, but they only contain field names and refs.
-    // Normally, columns in results_metadata are ordered too,
+    // Normally, columns in resultsMetadata are ordered too,
     // but they only get updated after running a query (which is not triggered after reordering columns).
     // This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
-    const columns = result?.data?.results_metadata?.columns;
+    const columns = resultsMetadata?.columns;
+
     if (!Array.isArray(columns)) {
       return [];
     }
@@ -199,9 +211,13 @@ function DatasetEditor(props) {
       return columns;
     }
     return orderedColumns
-      .map(col => columns.find(c => isSameField(c.field_ref, col.fieldRef)))
+      .map(
+        col =>
+          columns.find(c => isSameField(c.field_ref, col.fieldRef)) ||
+          virtualCardColumns.find(c => isSameField(c.field_ref, col.fieldRef)),
+      )
       .filter(Boolean);
-  }, [orderedColumns, result]);
+  }, [dataset, orderedColumns, resultsMetadata]);
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
@@ -253,10 +269,10 @@ function DatasetEditor(props) {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
     const hasQueryResults = !!result;
-    if (!focusedFieldRef && hasQueryResults && !result.error) {
+    if (!focusedField && hasQueryResults && !result.error) {
       focusFirstField();
     }
-  }, [result, focusedFieldRef, focusFirstField]);
+  }, [result, focusedFieldRef, fields, focusFirstField, focusedField]);
 
   const inheritMappedFieldProperties = useCallback(
     changes => {
@@ -297,13 +313,22 @@ function DatasetEditor(props) {
     [initialEditorHeight, setDatasetEditorTab],
   );
 
-  const handleCancel = useCallback(() => {
+  const handleCancelCreate = useCallback(() => {
+    onCancelCreateNewModel();
+  }, [onCancelCreateNewModel]);
+
+  const handleCancelEdit = useCallback(() => {
     onCancelDatasetChanges();
     setQueryBuilderMode("view");
   }, [setQueryBuilderMode, onCancelDatasetChanges]);
 
   const handleSave = useCallback(async () => {
-    if (checkCanBeModel(dataset)) {
+    const canBeDataset = checkCanBeModel(dataset);
+    const isBrandNewDataset = !dataset.id();
+
+    if (canBeDataset && isBrandNewDataset) {
+      onOpenModal(MODAL_TYPES.SAVE);
+    } else if (canBeDataset) {
       await onSave(dataset.card());
       setQueryBuilderMode("view");
     } else {
@@ -405,21 +430,38 @@ function DatasetEditor(props) {
             onChange={onChangeEditorTab}
             options={[
               { id: "query", name: t`Query`, icon: "notebook" },
-              { id: "metadata", name: t`Metadata`, icon: "label" },
+              {
+                id: "metadata",
+                name: t`Metadata`,
+                icon: "label",
+                disabled: !resultsMetadata,
+              },
             ]}
           />
         }
         buttons={[
-          <Button
-            key="cancel"
-            onClick={handleCancel}
-            small
-          >{t`Cancel`}</Button>,
+          dataset.isSaved() ? (
+            <Button
+              key="cancel"
+              small
+              onClick={handleCancelEdit}
+            >{t`Cancel`}</Button>
+          ) : (
+            <Confirm
+              key="cancel"
+              action={handleCancelCreate}
+              title={t`Discard changes?`}
+              message={t`Your model won't be created.`}
+              confirmButtonText={t`Discard`}
+            >
+              <Button small>{t`Cancel`}</Button>
+            </Confirm>
+          ),
           <ActionButton
             key="save"
             disabled={!canSaveChanges}
             actionFn={handleSave}
-            normalText={t`Save changes`}
+            normalText={dataset.isSaved() ? t`Save changes` : t`Save`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}
             successText={t`Saved`}

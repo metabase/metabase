@@ -61,14 +61,14 @@ Metabase's reference documentation.
 #### Query builder
 
 - [Asking questions](./questions/query-builder/introduction.md)
+- [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Custom expressions](./questions/query-builder/expressions.md)
 - [List of expressions](./questions/query-builder/expressions-list.md)
-- [Joining data](./questions/query-builder//join.md)
+- [Joining data](./questions/query-builder/join.md)
 
 #### SQL and native queries
 
 - [The SQL editor](./questions/native-editor/writing-sql.md)
-- [Data reference](./questions/native-editor/data-model-reference.md)
 - [SQL parameters](./questions/native-editor/sql-parameters.md)
 - [Referencing models and saved questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
 - [SQL snippets](./questions/native-editor/sql-snippets.md)
@@ -77,7 +77,6 @@ Metabase's reference documentation.
 #### Sharing
 
 - [Sharing answers](./questions/sharing/answers.md)
-- [Visualizing data](./questions/sharing/visualizing-results.md)
 - [Setting and getting alerts](./questions/sharing/alerts.md)
 - [Public links](./questions/sharing/public-links.md)
 
@@ -104,7 +103,10 @@ Metabase's reference documentation.
 - [Organization overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
+- [History](./exploration-and-organization/history.md)
+- [Data reference](./exploration-and-organization/data-model-reference.md)
 - [Events and timelines](./exploration-and-organization/events-and-timelines.md)
+- [X-rays](./exploration-and-organization/x-rays.md)
 
 ### People
 
@@ -151,7 +153,8 @@ Metabase's reference documentation.
 - [Email](./configuring-metabase/email.md)
 - [Slack](./configuring-metabase/slack.md)
 - [Environment variables](./configuring-metabase/environment-variables.md)
-- [Metabase logs](./configuring-metabase/log-configuration.md)
+- [Configuration file](./configuring-metabase/config-file.md)
+- [Metabase log configuration](./configuring-metabase/log-configuration.md)
 - [Timezones](./configuring-metabase/timezones.md)
 - [Languages and localization](./configuring-metabase/localization.md)
 - [Appearance](./configuring-metabase/appearance.md)

@@ -60,6 +60,7 @@ function FormikFormViewAdapter<Values extends BaseFieldValues>({
   resetForm,
   initialValues,
   submitForm,
+  disablePristineSubmit = formObject.disablePristineSubmit,
   ...rest
 }: FormikFormViewAdapterProps<Values>) {
   const [active, setActive] = useState<string | null>(null);
@@ -123,7 +124,7 @@ function FormikFormViewAdapter<Values extends BaseFieldValues>({
       invalid={!isValid}
       valid={isValid}
       pristine={!dirty}
-      disablePristineSubmit={formObject.disablePristineSubmit}
+      disablePristineSubmit={disablePristineSubmit}
       values={values}
       submitting={isSubmitting}
       asyncValidate={validateForm}

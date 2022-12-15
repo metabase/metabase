@@ -7,10 +7,10 @@ import moment from "moment-timezone";
 
 import { t } from "ttag";
 
-import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 
 import { hasEventAxis } from "metabase/visualizations/lib/timelines";
+import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { computeTimeseriesTicksInterval } from "./timeseries";
 import timeseriesScale from "./timeseriesScale";
 import { isMultipleOf } from "./numeric";

@@ -11,8 +11,8 @@ import {
   PRODUCTS,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/lib/Question";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Question from "metabase-lib/Question";
+import Filter from "metabase-lib/queries/structured/Filter";
 import FilterPopover from "./FilterPopover";
 
 const QUERY = Question.create({

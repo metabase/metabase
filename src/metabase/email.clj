@@ -71,7 +71,8 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     #(boolean (email-smtp-host)))
+  :getter     #(boolean (email-smtp-host))
+  :doc        false)
 
 (defn- add-ssl-settings [m ssl-setting]
   (merge

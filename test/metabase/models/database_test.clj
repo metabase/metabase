@@ -1,25 +1,26 @@
 (ns metabase.models.database-test
-  (:require [cheshire.core :refer [decode encode]]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.api.common :as api]
-            [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.models :refer [Database Permissions]]
-            [metabase.models.database :as database]
-            [metabase.models.interface :as mi]
-            [metabase.models.permissions :as perms]
-            [metabase.models.secret :as secret :refer [Secret]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.user :as user]
-            [metabase.server.middleware.session :as mw.session]
-            [metabase.task :as task]
-            [metabase.task.sync-databases :as task.sync-databases]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :refer [decode encode]]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.models :refer [Database Permissions]]
+   [metabase.models.database :as database]
+   [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
+   [metabase.models.secret :as secret :refer [Secret]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.user :as user]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.task :as task]
+   [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [schema.core :as s]
+   [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -52,7 +53,6 @@
         (is (schema= {:description         (s/eq (format "sync-and-analyze Database %d" db-id))
                       :key                 (s/eq (format "metabase.task.sync-and-analyze.trigger.%d" db-id))
                       :misfire-instruction (s/eq "DO_NOTHING")
-                      :state               (s/eq "NORMAL")
                       :may-fire-again?     (s/eq true)
                       :schedule            (s/eq "0 50 * * * ? *")
                       :final-fire-time     (s/eq nil)
@@ -215,9 +215,9 @@
                 (testing " updating the value works as expected"
                   (db/update! Database id :details (assoc details :password-path  "/path/to/my/password-file"))
                   (check-db-fn (db/select-one Database :id id) {:kind    :password
-                                              :source  :file-path
-                                              :version 2
-                                              :value   "/path/to/my/password-file"}))))
+                                                                :source  :file-path
+                                                                :version 2
+                                                                :value   "/path/to/my/password-file"}))))
             (testing "Secret instances are deleted from the app DB when the DatabaseInstance is deleted"
               (is (seq @secret-ids) "At least one Secret instance should have been created")
               (doseq [secret-id @secret-ids]

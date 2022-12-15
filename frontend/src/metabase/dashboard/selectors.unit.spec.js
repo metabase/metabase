@@ -8,7 +8,7 @@ import {
   getIsEditingParameter,
   getClickBehaviorSidebarDashcard,
 } from "metabase/dashboard/selectors";
-import Field from "metabase-lib/lib/metadata/Field";
+import Field from "metabase-lib/metadata/Field";
 import { SIDEBAR_NAME } from "./constants";
 
 const STATE = {

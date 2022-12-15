@@ -52,7 +52,7 @@
   (testing "single field user-specified value"
     (let [expected (str/replace
                     (str
-                     "-- /* partner: \"metabase\", {\"dashboard_id\":null,\"chart_id\":1234,\"optional_user_id\":1000,"
+                     "-- /* partner: \"metabase\", {\"dashboard_id\":5678,\"chart_id\":1234,\"optional_user_id\":1000,"
                      "\"optional_account_id\":\"" (public-settings/site-uuid) "\","
                      "\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */"
                      " Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\n"
@@ -72,11 +72,12 @@
                  :parameters [{:type   "id"
                                :target [:dimension [:field (mt/id :users :id) nil]]
                                :value  ["1" "2" "3"]}]
-                 :info {:executed-by        1000
-                        :card-id            1234
-                        :context            :ad-hoc
-                        :query-hash         (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
-                                                         93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
+                 :info {:executed-by  1000
+                        :card-id      1234
+                        :dashboard-id 5678
+                        :context      :ad-hoc
+                        :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                   93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
             "if I run a Redshift query, does it get a remark added to it?")))))
 
 ;; the extsales table is a Redshift Spectrum linked table, provided by AWS's sample data set for Redshift.

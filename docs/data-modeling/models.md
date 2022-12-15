@@ -28,9 +28,23 @@ The idea with models is to give other people a good "starting point table" that 
 
 ## Create a model
 
-First, search for models that already exist. If you can't find one that meets your needs, you can create a model like so:
+First, search for models that already exist. If you can't find one that meets your needs, you can create a model:
 
-1. [Ask a question][question] using either the query builder or the SQL editor.
+- [from scratch](#create-a-model-from-scratch), or
+- [from a saved question](#create-a-model-from-a-saved-question).
+
+Models you create are automatically [pinned to the current collection](../exploration-and-organization/collections.md#pinned-items).
+
+### Create a model from scratch
+
+1. In the upper right, click **New +** > **Model**.
+2. Choose either the query builder or a native query (if you want to use SQL). The advantage of using the query builder is that Metabase will be able to fill out some of the metadata for you; if you use SQL, you'll have to fill out that metadata manually.
+3. Select your data.
+4. Create and save your query.
+
+### Create a model from a saved question
+
+1. [Ask a question][question] using either the query builder or the SQL editor, or select an existing saved question that you want to convert to a model.
 2. Save the question.
 3. Click on the **...** > **Turn this into a model**.
 
@@ -84,7 +98,7 @@ You can refer to a model in a SQL query just like you can refer to a saved quest
 
 ```
 {% raw %}
-SELECT * FROM {{#1}}
+SELECT * FROM {{#1-customer-model}}
 {% endraw %}
 ```
 
@@ -92,11 +106,15 @@ Or as a [common table expression (CTE)][cte]:
 
 ```
 {% raw %}
-WITH model AS {{#3807}}
+WITH model AS {{#3807-invoice-model}}
 SELECT *
 FROM model;
 {% endraw %}
 ```
+
+Simply typing `{% raw %}{{#}} {% endraw %}` will allow you to search for models (for example, you could type in `{% raw %}{{#customer}}{% endraw %}` to search models, questions, and tables with the word "customer" in the title.
+
+You can also use the data reference sidebar to browse the models available. To open the data reference sidebar, click on the **book** icon.
 
 ## Model history
 

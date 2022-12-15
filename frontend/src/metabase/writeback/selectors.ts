@@ -3,7 +3,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import type { WritebackQueryAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 export function getWritebackEnabled(state: State) {
   return getSetting(state, "experimental-enable-actions");

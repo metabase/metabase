@@ -81,31 +81,29 @@
                 {:is_match is-match
                  :text     (tokens->string text-tokens (not is-match))})))))
 
-(defn- text-score-with
-  "Scores a search result. Returns a map with the score and other info about the text match,
-   if there is one. If there is no match, the score is 0."
+(defn- text-scores-with
+  "Scores a search result. Returns a vector of score maps, each containing `:weight`, `:score`, and other info about
+  the text match, if there is one. If there is no match, the score is 0."
   [weighted-scorers query-tokens search-result]
-  (let [total-weight (reduce + (map :weight weighted-scorers))
-        scores       (for [column (search-config/searchable-columns-for-model (:model search-result))
-                           :let   [matched-text (-> search-result
-                                                    (get column)
-                                                    (search-config/column->string (:model search-result) column))
-                                   match-tokens (some-> matched-text normalize tokenize)
-                                   score        (and matched-text
-                                                     (reduce (fn [tally f]
-                                                               (+ tally
-                                                                  (f query-tokens match-tokens)))
-                                                             0
-                                                             (map :scorer weighted-scorers)))]
-                           :when  (and matched-text
-                                       (pos? score))]
-                       {:score               (/ score total-weight)
-                        :match               matched-text
-                        :match-context-thunk #(match-context query-tokens match-tokens)
-                        :column              column})]
+  ;; TODO is pmap over search-result worth it?
+  (let [scores (for [column      (search-config/searchable-columns-for-model (:model search-result))
+                     {:keys [scorer name weight]
+                      :as   _ws} weighted-scorers
+                     :let        [matched-text (-> search-result
+                                                   (get column)
+                                                   (search-config/column->string (:model search-result) column))
+                                  match-tokens (some-> matched-text normalize tokenize)
+                                  raw-score (scorer query-tokens match-tokens)]
+                     :when       (and matched-text (pos? raw-score))]
+                 {:score               raw-score
+                  :name                (str "text-" name)
+                  :weight              weight
+                  :match               matched-text
+                  :match-context-thunk #(match-context query-tokens match-tokens)
+                  :column              column})]
     (if (seq scores)
-      (apply max-key :score scores)
-      {:score 0})))
+      (vec scores)
+      [{:score 0 :weight 0}])))
 
 (defn- consecutivity-scorer
   [query-tokens match-tokens]
@@ -138,7 +136,7 @@
      (count query-tokens)))
 
 (defn fullness-scorer
-  "How much of the *result* is covered by the search query?"
+  "How much of the result is covered by the search query?"
   [query-tokens match-tokens]
   (let [match-token-count (count match-tokens)]
     (if (zero? match-token-count)
@@ -146,15 +144,36 @@
       (/ (occurrences query-tokens match-tokens matches-in?)
          match-token-count))))
 
+(defn- prefix-counter
+  [query-string item-string]
+  (reduce
+   (fn [cnt [a b]]
+     (if (= a b) (inc cnt) (reduced cnt)))
+   0
+   (map vector query-string item-string)))
+
+(defn- count-token-chars
+  "Tokens is a seq of strings, like [\"abc\" \"def\"]"
+  [tokens]
+  (reduce
+   (fn [cnt x] (+ cnt (count x)))
+   0
+   tokens))
+
+(defn prefix-scorer
+  "How much does the search query match the beginning of the result? "
+  [query-tokens match-tokens]
+  (let [query (str/lower-case (str/join " " query-tokens))
+        match (str/lower-case (str/join " " match-tokens))]
+    (/ (prefix-counter query match)
+       (count-token-chars query-tokens))))
+
 (def ^:private match-based-scorers
-  [{:scorer consecutivity-scorer
-    :weight 1}
-   {:scorer total-occurrences-scorer
-    :weight 1}
-   {:scorer fullness-scorer
-    :weight 1/2}
-   {:scorer exact-match-scorer
-    :weight 2}])
+  [{:scorer exact-match-scorer :name "exact-match" :weight 4}
+   {:scorer consecutivity-scorer :name "consecutivity" :weight 2}
+   {:scorer total-occurrences-scorer :name "total-occurrences" :weight 2}
+   {:scorer fullness-scorer :name "fullness" :weight 1}
+   {:scorer prefix-scorer :name "prefix" :weight 1}])
 
 (def ^:private model->sort-position
   (zipmap (reverse search-config/all-models) (range)))
@@ -164,14 +183,13 @@
   (/ (or (model->sort-position model) 0)
      (count model->sort-position)))
 
-(defn- text-score-with-match
+(defn- text-scores-with-match
   [raw-search-string result]
   (if (seq raw-search-string)
-    (text-score-with match-based-scorers
-                     (tokenize (normalize raw-search-string))
-                     result)
-    {:score  0
-     :match  ""}))
+    (text-scores-with match-based-scorers
+                      (tokenize (normalize raw-search-string))
+                      result)
+    [{:score 0 :weight 0}]))
 
 (defn- pinned-score
   [{:keys [model collection_position]}]
@@ -209,31 +227,27 @@
      (max (- stale-time days-ago) 0)
      stale-time)))
 
-(defn- compare-score-and-result
-  "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
-  compared in order."
-  [{score-1 :score} {score-2 :score}]
-  (compare score-1 score-2))
-
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
-  [result {:keys [column match-context-thunk]} scores]
-  (let [{:keys [name display_name
-                collection_id collection_name collection_authority_level collection_app_id]} result]
+  [result all-scores relevant-scores]
+  (let [{:keys [name display_name collection_id collection_name collection_authority_level
+                collection_app_id]} result
+        matching-columns            (into #{} (remove nil? (map :column relevant-scores)))
+        match-context-thunk         (first (keep :match-context-thunk relevant-scores))]
     (-> result
         (assoc
-         :name           (if (or (= column :name)
-                                 (nil? display_name))
-                           name
-                           display_name)
-         :context        (when (and (not (search-config/displayed-columns column))
-                                    match-context-thunk)
+         :name           (if (and (contains? matching-columns :display_name) display_name)
+                           display_name
+                           name)
+         :context        (when (and match-context-thunk
+                                    (empty?
+                                     (remove matching-columns search-config/displayed-columns)))
                            (match-context-thunk))
          :collection     {:id              collection_id
                           :name            collection_name
                           :authority_level collection_authority_level
                           :app_id          collection_app_id}
-         :scores          scores)
+         :scores          all-scores)
         (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
         (dissoc
          :collection_id
@@ -244,21 +258,11 @@
 (defn weights-and-scores
   "Default weights and scores for a given result."
   [result]
-  [{:weight 2
-    :score  (pinned-score result)
-    :name   "pinned"}
-   {:weight 2
-    :score  (bookmarked-score result)
-    :name   "bookmarked"}
-   {:weight 3/2
-    :score  (recency-score result)
-    :name   "recency"}
-   {:weight 1
-    :score  (dashboard-count-score result)
-    :name   "dashboard"}
-   {:weight 1/2
-    :score  (model-score result)
-    :name   "model"}])
+  [{:weight 2 :score (pinned-score result) :name "pinned"}
+   {:weight 2 :score (bookmarked-score result) :name "bookmarked"}
+   {:weight 3/2 :score (recency-score result) :name "recency"}
+   {:weight 1 :score (dashboard-count-score result) :name "dashboard"}
+   {:weight 1/2 :score (model-score result) :name "model"}])
 
 (defenterprise score-result
   "Score a result, returning a collection of maps with score and weight. Should not include the text scoring, done
@@ -271,31 +275,70 @@
    [result]
    (weights-and-scores result))
 
+(defn- sum-weights [weights]
+  (reduce
+   (fn [acc {:keys [weight] :or {weight 0}}]
+     (+ acc weight))
+   0
+   weights))
+
+(defn- compute-normalized-score [scores]
+  (let [weight-sum (sum-weights scores)]
+    (if (zero? weight-sum)
+      0
+      (let [score-sum (reduce
+                       (fn [acc {:keys [weight score]
+                                 :or {weight 0 score 0}}]
+                         (+ acc (* score weight)))
+                       0
+                       scores)]
+        (/ score-sum weight-sum)))))
+
+(defn force-weight
+  "Reweight `scores` such that the sum of their weights equals `total`, and their proportions do not change."
+  [scores total]
+  (let [total-weight (sum-weights scores)
+        weight-calc-fn (if (contains? #{nil 0} total-weight)
+                         (fn weight-calc-fn [_] 0)
+                         (fn weight-calc-fn [weight] (* total (/ weight total-weight))))]
+    (mapv #(update % :weight weight-calc-fn) scores)))
+
+(def ^:const text-scores-weight
+  "This is used to control the total weight of text-based scorers in [[score-and-result]]"
+  10)
+
 (defn score-and-result
-  "Returns a map with the `:score` and `:result`."
-  ([raw-search-string result]
-   (let [text-match (text-score-with-match raw-search-string result)
-         text-score {:score  (:score text-match)
-                     :weight 10
-                     :name   "text score"}
-         scores (conj (score-result result) text-score)]
-     ;; Searches with a blank search string mean "show me everything, ranked";
-     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
-     ;; If the search string is non-blank, results with no text match have a score of zero.
-     (if (or (str/blank? raw-search-string)
-             (pos? (:score text-match)))
-       {:score  (/ (reduce + (map (fn [{:keys [weight score]}] (* weight score)) scores))
-                   (reduce + (map :weight scores)))
-        :result (serialize result text-match scores)}
-       {:score 0}))))
+  "Returns a map with the normalized, combined score from relevant-scores as `:score` and `:result`."
+  [raw-search-string result]
+  (let [text-matches     (-> raw-search-string
+                             (text-scores-with-match result)
+                             (force-weight text-scores-weight))
+        all-scores       (into (vec (score-result result)) text-matches)
+        relevant-scores  (remove #(= 0 (:score %)) all-scores)
+        total-score      (compute-normalized-score all-scores)]
+    ;; Searches with a blank search string mean "show me everything, ranked";
+    ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
+    ;; If the search string is non-blank, results with no text match have a score of zero.
+    (if (or (str/blank? raw-search-string)
+            (pos? (reduce (fn [acc {:keys [score] :or {score 0}}] (+ acc score))
+                          0
+                          text-matches)))
+      {:score total-score
+       :result (serialize result all-scores relevant-scores)}
+      {:score 0})))
+
+(defn compare-score
+  "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
+  compared in order."
+  [{score-1 :score} {score-2 :score}]
+  (compare score-1 score-2))
 
 (defn top-results
   "Given a reducible collection (i.e., from `jdbc/reducible-query`) and a transforming function for it, applies the
   transformation and returns a seq of the results sorted by score. The transforming function is expected to output
   maps with `:score` and `:result` keys."
-  [reducible-results xf]
+  [reducible-results max-results xf]
   (->> reducible-results
-       (transduce xf (u/sorted-take search-config/max-filtered-results compare-score-and-result))
-       ;; Make it descending: high scores first
+       (transduce xf (u/sorted-take max-results compare-score))
        rseq
        (map :result)))

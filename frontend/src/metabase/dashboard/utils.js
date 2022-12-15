@@ -1,12 +1,12 @@
 import _ from "underscore";
 import { t } from "ttag";
 import Utils from "metabase/lib/utils";
-import { isNative } from "metabase/lib/query";
 import {
   isDateParameter,
   isNumberParameter,
   isStringParameter,
-} from "metabase/parameters/utils/parameter-type";
+} from "metabase-lib/parameters/utils/parameter-type";
+import { isNative } from "metabase-lib/queries/utils";
 
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {

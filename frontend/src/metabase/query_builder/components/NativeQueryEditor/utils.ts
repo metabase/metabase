@@ -1,4 +1,4 @@
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
 import { SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
 
 const LINE_HEIGHT = 16;

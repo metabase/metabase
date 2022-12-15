@@ -14,7 +14,7 @@ import {
   PRODUCTS,
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import JoinStep from "./JoinStep";
 
 // These tests appeared to be flaky, so they're disabled for now

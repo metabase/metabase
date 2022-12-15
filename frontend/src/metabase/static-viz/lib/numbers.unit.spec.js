@@ -46,7 +46,7 @@ describe("formatNumber", () => {
       number_style: "scientific",
     });
 
-    expect(text).toEqual("1.2E3");
+    expect(text).toEqual("1.2e+3");
   });
 
   it("should format a number with custom number separators", () => {
@@ -98,6 +98,16 @@ describe("formatNumber", () => {
     });
 
     expect(text).toEqual("10000.11");
+  });
+
+  it("should format `,.` number separators", () => {
+    const number = 10000.11;
+
+    const text = formatNumber(number, {
+      number_separators: ",.",
+    });
+
+    expect(text).toEqual("10.000,11");
   });
 
   it("should format small number", () => {

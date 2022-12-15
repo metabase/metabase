@@ -10,9 +10,9 @@ import {
 
 import { deserializeCardFromUrl } from "metabase/lib/card";
 import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
-import Question from "metabase-lib/lib/Question";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Question from "metabase-lib/Question";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 const card = {
   display: "table",
@@ -86,6 +86,27 @@ const orders_metric_filter_card = {
   },
 };
 
+const orders_multi_stage_card = {
+  id: 2,
+  name: "# orders data",
+  display: "line",
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATABASE.id,
+    query: {
+      "source-query": {
+        "source-table": ORDERS.id,
+        filter: [">", ["field", ORDERS.TOTAL.id, null], 10],
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }],
+        ],
+      },
+      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 20],
+    },
+  },
+};
+
 const native_orders_count_card = {
   id: 3,
   name: "# orders data",
@@ -149,9 +170,6 @@ describe("Question", () => {
       });
       it("has correct display settings", () => {
         expect(question.display()).toBe("table");
-      });
-      it("has correct mode", () => {
-        expect(question.mode().name()).toBe("segment");
       });
     });
 
@@ -360,31 +378,6 @@ describe("Question", () => {
   // At the same time, the choice that which actions are visible depend on the question's properties
   // as actions are filtered using those
   describe("METHODS FOR DRILL-THROUGH / ACTION WIDGET", () => {
-    const rawDataQuestion = new Question(orders_raw_card, metadata);
-    const timeBreakoutQuestion = Question.create({
-      databaseId: SAMPLE_DATABASE.id,
-      tableId: ORDERS.id,
-      metadata,
-    })
-      .query()
-      .aggregate(["count"])
-      .breakout(["field", 1, { "temporal-unit": "day" }])
-      .question()
-      .setDisplay("table");
-
-    describe("mode()", () => {
-      describe("for a new question with Orders table and Raw data aggregation", () => {
-        it("returns the correct mode", () => {
-          expect(rawDataQuestion.mode().name()).toBe("segment");
-        });
-      });
-      describe("for a question with an aggregation and a time breakout", () => {
-        it("returns the correct mode", () => {
-          expect(timeBreakoutQuestion.mode().name()).toBe("timeseries");
-        });
-      });
-    });
-
     describe("aggregate(...)", () => {
       const question = new Question(orders_raw_card, metadata);
       it("returns the correct query for a summarization of a raw data table", () => {
@@ -616,6 +609,28 @@ describe("Question", () => {
               "and",
               ["=", ["field", ORDERS.ID.id, null], 1],
               [">", ORDERS.TOTAL.id, 20],
+            ],
+          },
+        });
+      });
+
+      it("removes post-aggregation filters from a given query", () => {
+        const question = new Question(orders_multi_stage_card, metadata);
+        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
+
+        const newQuestion = question
+          .topLevelQuestion()
+          .drillUnderlyingRecords(dimensions);
+
+        expect(newQuestion._card.dataset_query).toEqual({
+          type: "query",
+          database: SAMPLE_DATABASE.id,
+          query: {
+            "source-table": ORDERS.id,
+            filter: [
+              "and",
+              [">", ["field", ORDERS.TOTAL.id, null], 10],
+              ["=", ["field", ORDERS.ID.id, null], 1],
             ],
           },
         });

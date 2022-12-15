@@ -118,6 +118,18 @@
                                              {:cols [{:base_type :type/Temporal}
                                                      {:base_type :type/Number}]
                                               :rows [[#t "2020" 2]
+                                                     [#t "2021" 3]]}))))
+        (is (= :multiple
+           (mt/with-temp* [Card                [card1 {:display :line}]
+                           Card                [card2 {:display :funnel}]
+                           Dashboard           [dashboard]
+                           DashboardCard       [dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}]
+                           DashboardCardSeries [_   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
+             (render/detect-pulse-chart-type card1
+                                             dc1
+                                             {:cols [{:base_type :type/Temporal}
+                                                     {:base_type :type/Number}]
+                                              :rows [[#t "2020" 2]
                                                      [#t "2021" 3]]}))))))
 
 (deftest make-description-if-needed-test

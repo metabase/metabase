@@ -1,9 +1,9 @@
-import { merge } from "icepick";
+import { formatNumber as appFormatNumber } from "metabase/lib/formatting/numbers";
 
 export type NumberFormatOptions = {
   number_style?: "currency" | "decimal" | "scientific" | "percentage";
   currency?: string;
-  currency_style?: string;
+  currency_style?: "symbol" | "code" | "name";
   number_separators?: ".,";
   decimals?: number;
   scale?: number;
@@ -24,71 +24,13 @@ const DEFAULT_OPTIONS = {
 };
 
 export const formatNumber = (number: number, options?: NumberFormatOptions) => {
-  const {
-    number_style,
-    currency,
-    currency_style,
-    number_separators: [decimal_separator, grouping_separator],
-    decimals,
-    scale,
-    prefix,
-    suffix,
-    compact,
-  } = handleSmallNumberFormat(number, { ...DEFAULT_OPTIONS, ...options });
+  const optionsWithDefault = {
+    ...DEFAULT_OPTIONS,
+    ...options,
+  };
+  const { prefix, suffix } = optionsWithDefault;
 
-  function createFormat(compact?: boolean) {
-    if (compact) {
-      return new Intl.NumberFormat("en", {
-        style: number_style !== "scientific" ? number_style : "decimal",
-        notation: "compact",
-        compactDisplay: "short",
-        currency: currency,
-        currencyDisplay: currency_style,
-        useGrouping: true,
-        maximumFractionDigits: decimals != null ? decimals : 2,
-      });
-    }
-
-    return new Intl.NumberFormat("en", {
-      style: number_style !== "scientific" ? number_style : "decimal",
-      notation: number_style !== "scientific" ? "standard" : "scientific",
-      currency: currency,
-      currencyDisplay: currency_style,
-      useGrouping: true,
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals != null ? decimals : 2,
-    });
-  }
-
-  const format = createFormat(compact);
-
-  const formattedNumber = format
-    .format(number * scale)
-    .replace(/\./g, decimal_separator)
-    .replace(/,/g, grouping_separator ?? "");
-
-  return `${prefix}${formattedNumber}${suffix}`;
-};
-
-// Simple hack to handle small decimal numbers (0-1)
-function handleSmallNumberFormat<T>(value: number, options: T): T {
-  const hasAtLeastThreeDecimalPoints = Math.abs(value) < 0.01;
-  if (hasAtLeastThreeDecimalPoints && Math.abs(value) > 0) {
-    options = maybeMerge(options, {
-      compact: true,
-      decimals: 4,
-    });
-  }
-
-  return options;
-}
-
-const maybeMerge = <T, S1>(collection: T, object: S1) => {
-  if (collection == null) {
-    return collection;
-  }
-
-  return merge(collection, object);
+  return `${prefix}${appFormatNumber(number, optionsWithDefault)}${suffix}`;
 };
 
 export const formatPercent = (percent: number) =>

@@ -40,6 +40,9 @@ export interface CustomFormProps<Values extends BaseFieldValues>
     | ((props: FormRenderProps<Values>) => JSX.Element);
 }
 
+/**
+ * @deprecated
+ */
 function CustomForm<Values extends BaseFieldValues>(
   props: CustomFormProps<Values>,
 ) {

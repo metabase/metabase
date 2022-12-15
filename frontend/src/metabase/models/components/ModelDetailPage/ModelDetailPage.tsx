@@ -8,8 +8,8 @@ import TabContent from "metabase/core/components/TabContent";
 import * as Urls from "metabase/lib/urls";
 
 import type { Card } from "metabase-types/api";
-import type Question from "metabase-lib/lib/Question";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
 
 import ModelActionDetails from "./ModelActionDetails";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
@@ -78,7 +78,7 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
             options={[
               { value: "usage", name: t`Used by` },
               { value: "schema", name: t`Schema` },
-              // { value: "actions", name: t`Actions` },
+              { value: "actions", name: t`Actions` },
             ]}
             onChange={tab => setTab(tab as ModelTab)}
           />
@@ -89,7 +89,7 @@ function ModelDetailPage({ model, mainTable, onChangeModel }: Props) {
             <ModelSchemaDetails model={model} />
           </TabPanel>
           <TabPanel value="actions">
-            <ModelActionDetails model={model} />
+            <ModelActionDetails modelId={model.id()} />
           </TabPanel>
         </TabContent>
       </ModelMain>

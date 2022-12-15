@@ -7,12 +7,12 @@ import {
 import Dimension, {
   FieldDimension,
   TemplateTagDimension,
-} from "metabase-lib/lib/Dimension";
-import Field from "metabase-lib/lib/metadata/Field";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import Question from "metabase-lib/lib/Question";
-import TemplateTagVariable from "metabase-lib/lib/variables/TemplateTagVariable";
+} from "metabase-lib/Dimension";
+import Field from "metabase-lib/metadata/Field";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Question from "metabase-lib/Question";
+import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 const nestedQuestionCard = {
   table_id: null,
@@ -188,7 +188,7 @@ describe("Dimension", () => {
   });
 
   describe("INSTANCE METHODS", () => {
-    describe("foriegn", () => {
+    describe("foreign", () => {
       it("should return a FieldDimension", () => {
         const dimension = ORDERS.PRODUCT_ID.dimension().foreign(
           PRODUCTS.CATEGORY.dimension(),
@@ -212,31 +212,6 @@ describe("Dimension", () => {
       ["field", PRODUCTS.CATEGORY.id, null],
       metadata,
     );
-
-    describe("STATIC METHODS", () => {
-      describe("normalizeOptions()", () => {
-        it("should remove empty options map", () => {
-          expect(FieldDimension.normalizeOptions(null)).toEqual(null);
-          expect(FieldDimension.normalizeOptions({})).toEqual(null);
-        });
-        it("should remove null/undefined keys", () => {
-          expect(
-            FieldDimension.normalizeOptions({
-              x: false,
-              y: null,
-              z: undefined,
-            }),
-          ).toEqual({ x: false });
-        });
-        it("should recursively normalize maps options", () => {
-          expect(
-            FieldDimension.normalizeOptions({ binning: { x: null } }),
-          ).toBe(null);
-        });
-        // TODO -- it should also remove empty arrays, but we currently don't have any situations where there might be
-        // one.
-      });
-    });
 
     describe("INSTANCE METHODS", () => {
       describe("mbql()", () => {
@@ -940,24 +915,6 @@ describe("Dimension", () => {
             ).toBeNull();
           });
         });
-
-        describe("isTemplateTagClause", () => {
-          it("returns false for a field clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(["field", 123, null]),
-            ).toBe(false);
-          });
-
-          it("returns false for a non-array clause", () => {
-            expect(TemplateTagDimension.isTemplateTagClause("foo")).toBe(false);
-          });
-
-          it("returns true for a template tag clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(templateTagClause),
-            ).toBe(true);
-          });
-        });
       });
 
       describe("INSTANCE METHODS", () => {
@@ -1093,24 +1050,6 @@ describe("Dimension", () => {
             expect(
               TemplateTagDimension.parseMBQL(["field", 123, null], metadata),
             ).toBeNull();
-          });
-        });
-
-        describe("isTemplateTagClause", () => {
-          it("returns false for a field clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(["field", 123, null]),
-            ).toBe(false);
-          });
-
-          it("returns false for a non-array clause", () => {
-            expect(TemplateTagDimension.isTemplateTagClause("foo")).toBe(false);
-          });
-
-          it("returns true for a template tag clause", () => {
-            expect(
-              TemplateTagDimension.isTemplateTagClause(templateTagClause),
-            ).toBe(true);
           });
         });
       });

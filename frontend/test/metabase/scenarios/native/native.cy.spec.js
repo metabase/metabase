@@ -1,6 +1,5 @@
 import {
   restore,
-  popover,
   modal,
   openNativeEditor,
   visitQuestionAdhoc,
@@ -11,24 +10,28 @@ import {
 } from "__support__/e2e/helpers";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
-    cy.intercept("POST", "api/dataset").as("dataset");
     cy.intercept("POST", "api/card").as("card");
+    cy.intercept("POST", "api/dataset").as("dataset");
+    cy.intercept("POST", "api/dataset/native").as("datasetNative");
     restore();
     cy.signInAsNormalUser();
   });
 
   it("lets you create and run a SQL question", () => {
     openNativeEditor().type("select count(*) from orders");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains("18,760");
   });
 
   it("displays an error", () => {
     openNativeEditor().type("select * from not_a_table");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
@@ -38,44 +41,8 @@ describe("scenarios > question > native", () => {
         "{leftarrow}".repeat(3) + // move left three
         "{shift}{leftarrow}".repeat(19), // highlight back to the front
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains('Table "ORD" not found');
-  });
-
-  it("should show referenced cards in the template tag sidebar", () => {
-    openNativeEditor()
-      // start typing a question referenced
-      .type("select * from {{#}}", {
-        parseSpecialCharSequences: false,
-      });
-
-    cy.contains("Question #…")
-      .parent()
-      .parent()
-      .contains("Pick a question or a model")
-      .click({ force: true });
-
-    // selecting a question should update the query
-    popover().contains("Orders").click();
-
-    cy.contains("select * from {{#1-orders}}");
-
-    // run query and see that a value from the results appears
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("37.65");
-
-    // update the text of the query to reference question 2
-    // :visible is needed because there is an unused .ace_content present in the DOM
-    cy.get(".ace_content:visible").type(
-      "{leftarrow}{leftarrow}{backspace}{backspace}{backspace}{backspace}{backspace}{backspace}{backspace}{backspace}2",
-    );
-
-    // sidebar should show updated question title and name
-    cy.contains("Question #2").parent().parent().contains("Orders, Count");
-
-    // run query again and see new result
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.contains("18,760");
   });
 
   it("should handle template tags", () => {
@@ -83,8 +50,7 @@ describe("scenarios > question > native", () => {
       parseSpecialCharSequences: false,
     });
     cy.get("input[placeholder*='Stars']").type("3");
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.wait("@dataset");
+    runQuery();
     cy.contains("Showing 168 rows");
   });
 
@@ -98,8 +64,7 @@ describe("scenarios > question > native", () => {
       .find("input")
       .click();
     cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.wait("@dataset");
+    runQuery();
 
     cy.contains("Save").click();
 
@@ -120,7 +85,7 @@ describe("scenarios > question > native", () => {
 
   it("can save a question with no rows", () => {
     openNativeEditor().type("select * from people where false");
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    runQuery();
     cy.contains("No results!");
     cy.icon("contract").click();
     cy.contains("Save").click();
@@ -201,7 +166,7 @@ describe("scenarios > question > native", () => {
     cy.findByTestId("sidebar-left")
       .as("sidebar")
       .contains(/hidden/i)
-      .siblings(".Icon-eye_filled")
+      .siblings(".Icon-eye_outline")
       .click();
     cy.get("@editor").type("{movetoend}, 3 as added");
     cy.get("@runQuery").click();
@@ -218,8 +183,7 @@ describe("scenarios > question > native", () => {
     cy.get("input[placeholder*='Cat']").type("Gizmo");
     cy.get("input[placeholder*='Stars']").type("3");
 
-    cy.get(".NativeQueryEditor .Icon-play").click();
-    cy.wait("@dataset");
+    runQuery();
 
     cy.contains("Save").click();
 
@@ -244,27 +208,6 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it("should link correctly from the variables sidebar (metabase#16212)", () => {
-    cy.createNativeQuestion({
-      name: "test-question",
-      native: { query: 'select 1 as "a", 2 as "b"' },
-    }).then(({ body: { id: questionId } }) => {
-      openNativeEditor().type(`{{#${questionId}}}`, {
-        parseSpecialCharSequences: false,
-      });
-      cy.get(".NativeQueryEditor .Icon-play").click();
-      cy.get(".Visualization").within(() => {
-        cy.findByText("a");
-        cy.findByText("b");
-        cy.findByText("1");
-        cy.findByText("2");
-      });
-      cy.findByRole("link", { name: `Question #${questionId}` })
-        .should("have.attr", "href")
-        .and("eq", `/question/${questionId}-test-question`);
-    });
-  });
-
   it("should not autorun ad-hoc native queries by default", () => {
     visitQuestionAdhoc(
       {
@@ -282,4 +225,57 @@ describe("scenarios > question > native", () => {
 
     cy.findByText("Here's where your results will appear").should("be.visible");
   });
+
+  it("should allow to preview a fully parameterized query", () => {
+    openNativeEditor().type(
+      "select * from PRODUCTS where CATEGORY={{category}}",
+      { parseSpecialCharSequences: false },
+    );
+    cy.findByPlaceholderText("Category").type("Gadget");
+    cy.button("Preview the query").click();
+    cy.wait("@datasetNative");
+
+    cy.findByText(/where CATEGORY='Gadget'/).should("be.visible");
+  });
+
+  it("should show errors when previewing a query", () => {
+    openNativeEditor().type(
+      "select * from PRODUCTS where CATEGORY={{category}}",
+      { parseSpecialCharSequences: false },
+    );
+    cy.button("Preview the query").click();
+    cy.wait("@datasetNative");
+
+    cy.findByText(/missing required parameters/).should("be.visible");
+  });
+
+  it("should allow to convert a structured query to a native query", () => {
+    visitQuestionAdhoc(
+      {
+        display: "table",
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            limit: 1,
+          },
+          database: SAMPLE_DB_ID,
+        },
+      },
+      { mode: "notebook", autorun: false },
+    );
+
+    cy.button("View the SQL").click();
+    cy.wait("@datasetNative");
+    cy.findByText(/FROM "PUBLIC"."ORDERS"/).should("be.visible");
+
+    cy.button("Convert this question to SQL").click();
+    runQuery();
+    cy.findByText("Showing 1 row").should("be.visible");
+  });
 });
+
+const runQuery = () => {
+  cy.get(".NativeQueryEditor .Icon-play").click();
+  cy.wait("@dataset");
+};

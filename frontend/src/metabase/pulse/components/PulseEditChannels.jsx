@@ -5,7 +5,7 @@ import _ from "underscore";
 import { assoc, assocIn } from "icepick";
 import { t } from "ttag";
 
-import SchedulePicker from "metabase/components/SchedulePicker";
+import SchedulePicker from "metabase/containers/SchedulePicker";
 import ActionButton from "metabase/components/ActionButton";
 import Toggle from "metabase/core/components/Toggle";
 import Icon from "metabase/components/Icon";

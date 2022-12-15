@@ -49,8 +49,6 @@
    "/data-model/db/1/schema/PUBLIC/table/1/"
    ;; db details permissions
    "/details/db/1/"
-   ;; execution permissions
-   "/execute/"
    ;; full admin (everything) root permissions
    "/"])
 
@@ -395,6 +393,16 @@
 
 ;;; ---------------------------------------------- is-permissions-set? -----------------------------------------------
 
+;;; This originally lived in [[metabase.models.permissions]] but it is only used in tests these days so I moved it here.
+(defn is-permissions-set?
+  "Is `permissions-set` a valid set of permissions object paths?"
+  ^Boolean [permissions-set]
+  (and (set? permissions-set)
+       (every? (fn [path]
+                 (or (= path "/")
+                     (perms/valid-path? path)))
+               permissions-set)))
+
 (deftest is-permissions-set?-test
   (testing "valid permissions sets"
     (doseq [perms-set [#{}
@@ -409,9 +417,9 @@
                        #{"/db/1/schema/" "/db/2/schema/public/"}
                        #{"/db/1/schema/public/" "/db/2/schema/public/table/3/"}
                        #{"/db/1/schema/public/table/2/" "/db/3/schema/public/table/4/"}]]
-      (testing (pr-str (list 'perms/is-permissions-set? perms-set))
+      (testing (pr-str (list 'is-permissions-set? perms-set))
         (is (= true
-               (perms/is-permissions-set? perms-set))))))
+               (is-permissions-set? perms-set))))))
 
   (testing "invalid permissions sets"
     (doseq [[group sets] {"things that aren't sets"
@@ -422,13 +430,13 @@
                            #{"/db/1/" "//"}
                            #{"/db/1/" "/db/1/table/2/"}
                            #{"/db/1/native/schema/"}
-                           #{"/db/1/schema/public/" "/kanye/"}
+                           #{"/db/1/schema/public/" "/parroty/"}
                            #{"/db/1/schema/public/table/1/" "/ocean/"}]}]
       (testing group
         (doseq [perms-set sets]
-          (testing (pr-str (list 'perms/is-permissions-set? perms-set))
+          (testing (pr-str (list 'is-permissions-set? perms-set))
             (is (= false
-                   (perms/is-permissions-set? perms-set)))))))))
+                   (is-permissions-set? perms-set)))))))))
 
 
 ;;; ------------------------------------------- set-has-full-permissions? --------------------------------------------
@@ -682,7 +690,7 @@
                        :details    :yes}}
                (-> (perms/data-perms-graph)
                    (get-in [:groups group_id])
-                   (select-keys [db-id :execute]))))))))
+                   (select-keys [db-id]))))))))
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
@@ -717,7 +725,6 @@
             (is (= nil
                    (perms)))))))))
 
-
 (deftest get-graph-should-unescape-slashes-test
   (testing "If a schema name contains slash, getting graph should unescape it"
     (testing "slash"
@@ -735,6 +742,22 @@
                (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas])
                    keys
                    first)))))))
+
+(deftest no-op-partial-graph-updates
+  (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
+    (mt/with-temp PermissionsGroup [group]
+      ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
+      (mt/with-current-user 1
+        (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
+                                                   :revision (:revision (perms/data-perms-graph))})))
+        (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :none :schemas :none}}}}
+                                                   :revision (:revision (perms/data-perms-graph))})))
+
+        (perms/grant-permissions! group (perms/data-perms-path (mt/id)))
+        (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :write :schemas :all}}}}
+                                                   :revision (:revision (perms/data-perms-graph))})))
+        (is (nil? (perms/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:data {:native :write :schemas :all}}}}
+                                                   :revision (:revision (perms/data-perms-graph))})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |

@@ -1,8 +1,8 @@
 import { state, ORDERS } from "__support__/sample_database_fixture";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import Table from "metabase-lib/lib/metadata/Table";
-import Database from "metabase-lib/lib/metadata/Database";
+import Table from "metabase-lib/metadata/Table";
+import Database from "metabase-lib/metadata/Database";
 
 describe("Table", () => {
   const metadata = getMetadata(state);

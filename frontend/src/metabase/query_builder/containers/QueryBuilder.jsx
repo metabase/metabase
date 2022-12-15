@@ -40,6 +40,7 @@ import View from "../components/view/View";
 import {
   getCard,
   getDatabasesList,
+  getDataReferenceStack,
   getOriginalCard,
   getLastRunCard,
   getFirstQueryResult,
@@ -65,7 +66,6 @@ import {
   getQuery,
   getQuestion,
   getOriginalQuestion,
-  getSettings,
   getQueryStartTime,
   getRawSeries,
   getQuestionAlerts,
@@ -139,6 +139,7 @@ const mapStateToProps = (state, props) => {
 
     uiControls: getUiControls(state),
     ...state.qb.uiControls,
+    dataReferenceStack: getDataReferenceStack(state),
     isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isBookmarked: getIsBookmarked(state, props),
@@ -166,8 +167,6 @@ const mapStateToProps = (state, props) => {
 
     autocompleteResultsFn: getAutocompleteResultsFn(state),
     cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
-
-    instanceSettings: getSettings(state),
 
     initialCollectionId: Collections.selectors.getInitialCollectionId(
       state,
@@ -267,8 +266,14 @@ function QueryBuilder(props) {
 
   const handleCreate = useCallback(
     async card => {
-      const questionWithUpdatedCard = question.setCard(card).setPinned(false);
+      const shouldBePinned = Boolean(card.dataset);
+
+      const questionWithUpdatedCard = question
+        .setCard(card)
+        .setPinned(shouldBePinned);
+
       await apiCreateQuestion(questionWithUpdatedCard);
+
       setRecentlySaved("created");
     },
     [question, apiCreateQuestion, setRecentlySaved],

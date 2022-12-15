@@ -189,7 +189,7 @@
             {:database (mt/id)
              :type     :query
              :query    {:source-table (mt/id table)
-                        :breakout     [[:field-id (mt/id table col)]]}})))
+                        :breakout     [[:field (mt/id table col) nil]]}})))
        (map first)
        set))
 

@@ -12,13 +12,18 @@
   (encode [data]
     (u.date/format data)))
 
+(defn- generate-yaml [obj]
+  (yaml/generate-string (into (sorted-map) obj)
+                        :dumper-options {:flow-style  :block
+                                         :split-lines false}))
+
 (defn- spit-yaml
   [file obj]
   (io/make-parents file)
-  (spit (io/file file) (yaml/generate-string (into (sorted-map) obj) :dumper-options {:flow-style :block})))
+  (spit (io/file file) (generate-yaml obj)))
 
-(defn- store-entity! [{:keys [root-dir]} entity]
-  (spit-yaml (u.yaml/hierarchy->file root-dir (serdes.base/serdes-path entity))
+(defn- store-entity! [opts entity]
+  (spit-yaml (u.yaml/hierarchy->file opts entity)
              (dissoc entity :serdes/meta)))
 
 (defn- store-settings! [{:keys [root-dir]} settings]
@@ -32,7 +37,8 @@
                 (instance? java.io.File (:root-dir opts)))
     (throw (ex-info ":yaml storage requires the :root-dir option to be a string or File"
                     {:opts opts})))
-  (let [settings (atom [])]
+  (let [settings (atom [])
+        opts     (merge opts (serdes.base/storage-base-context))]
     (doseq [entity stream]
       (if (-> entity :serdes/meta last :model (= "Setting"))
         (swap! settings conj entity)

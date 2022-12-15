@@ -7,7 +7,7 @@ import {
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 const DEFAULT_CELL_VALUE = 1;
 

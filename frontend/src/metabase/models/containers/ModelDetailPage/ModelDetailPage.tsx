@@ -17,8 +17,8 @@ import type { Card } from "metabase-types/api";
 import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type { State } from "metabase-types/store";
 
-import Question from "metabase-lib/lib/Question";
-import Table from "metabase-lib/lib/metadata/Table";
+import Question from "metabase-lib/Question";
+import Table from "metabase-lib/metadata/Table";
 
 type OwnProps = {
   params: {

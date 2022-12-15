@@ -42,7 +42,7 @@
 
   Since there are some cases were you might want to execute compound statements without splitting, an upside-down
   ampersand (`⅋`) is understood as an \"escaped\" semicolon in the resulting SQL statement."
-  [driver context dbdef sql  & {:keys [execute!] :or {execute! default-execute-sql!}}]
+  [driver context dbdef sql & {:keys [execute!] :or {execute! default-execute-sql!}}]
   (when sql
     (doseq [statement (map str/trim (str/split sql #";+"))]
       (when (seq statement)

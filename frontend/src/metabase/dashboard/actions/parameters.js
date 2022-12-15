@@ -6,7 +6,6 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
   createParameter,
   setParameterName as setParamName,
-  setParameterDefaultValue as setParamDefaultValue,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
@@ -137,14 +136,6 @@ export const setParameterMapping = createThunkAction(
 );
 
 export const SET_PARAMETER_NAME = "metabase/dashboard/SET_PARAMETER_NAME";
-export const setParameter = createThunkAction(
-  SET_PARAMETER_NAME,
-  (parameterId, parameter) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, () => parameter);
-    return { id: parameterId, ...parameter };
-  },
-);
-
 export const setParameterName = createThunkAction(
   SET_PARAMETER_NAME,
   (parameterId, name) => (dispatch, getState) => {
@@ -182,10 +173,24 @@ export const SET_PARAMETER_DEFAULT_VALUE =
 export const setParameterDefaultValue = createThunkAction(
   SET_PARAMETER_DEFAULT_VALUE,
   (parameterId, defaultValue) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter =>
-      setParamDefaultValue(parameter, defaultValue),
-    );
+    updateParameter(dispatch, getState, parameterId, parameter => ({
+      ...parameter,
+      default: defaultValue,
+    }));
     return { id: parameterId, defaultValue };
+  },
+);
+
+export const SET_PARAMETER_IS_MULTI_SELECT =
+  "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
+export const setParameterIsMultiSelect = createThunkAction(
+  SET_PARAMETER_DEFAULT_VALUE,
+  (parameterId, isMultiSelect) => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameterId, parameter => ({
+      ...parameter,
+      isMultiSelect: isMultiSelect,
+    }));
+    return { id: parameterId, isMultiSelect };
   },
 );
 

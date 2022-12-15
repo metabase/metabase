@@ -1,9 +1,6 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
 
-import { isTableDisplay } from "metabase/lib/click-behavior";
-
-import type { UiParameter } from "metabase/parameters/types";
 import type {
   DashboardOrderedCard,
   ArbitraryCustomDestinationClickBehavior,
@@ -11,6 +8,8 @@ import type {
   CustomDestinationClickBehavior,
   CustomDestinationClickBehaviorLinkType,
 } from "metabase-types/api";
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { UiParameter } from "metabase-lib/parameters/types";
 import { SidebarContent } from "../ClickBehaviorSidebar.styled";
 import CustomLinkText from "./CustomLinkText";
 import LinkedEntityPicker from "./LinkedEntityPicker";
@@ -33,7 +32,6 @@ function LinkTypeOptions({
   const linkTypeOptions: LinkTypeOption[] = [
     { type: "dashboard", icon: "dashboard", name: t`Dashboard` },
     { type: "question", icon: "bar", name: t`Saved question` },
-    { type: "page", icon: "document", name: t`Page` },
     { type: "url", icon: "link", name: t`URL` },
   ];
   return (

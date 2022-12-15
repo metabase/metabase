@@ -24,13 +24,13 @@ import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import QuestionNotebookButton from "./QuestionNotebookButton";
+import ConvertQueryButton from "./ConvertQueryButton";
 import QuestionFilters, {
   FilterHeaderToggle,
   FilterHeader,
   QuestionFilterWidget,
 } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
-import NativeQueryButton from "./NativeQueryButton";
 import {
   AdHocViewHeading,
   SaveButton,
@@ -371,7 +371,6 @@ function ViewTitleHeaderRightSide(props) {
     isResultDirty,
     isActionListVisible,
     runQuestionQuery,
-    updateQuestion,
     cancelQuery,
     onOpenModal,
     onEditSummary,
@@ -463,15 +462,8 @@ function ViewTitleHeaderRightSide(props) {
           />
         </ViewHeaderIconButtonContainer>
       )}
-      {NativeQueryButton.shouldRender(props) && (
-        <ViewHeaderIconButtonContainer>
-          <NativeQueryButton
-            size={16}
-            question={question}
-            updateQuestion={updateQuestion}
-            data-metabase-event="Notebook Mode; Convert to SQL Click"
-          />
-        </ViewHeaderIconButtonContainer>
+      {ConvertQueryButton.shouldRender(props) && (
+        <ConvertQueryButton question={question} onOpenModal={onOpenModal} />
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (

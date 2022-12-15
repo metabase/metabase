@@ -7,12 +7,22 @@ import { t } from "ttag";
 import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
 import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
-import * as Q_DEPRECATED from "metabase/lib/query";
-import { generateQueryDescription } from "metabase/lib/query/description";
 import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import * as Q_DEPRECATED from "metabase-lib/queries/utils";
+import { generateQueryDescription } from "metabase-lib/queries/utils/description";
 
 import "./SaveQuestionModal.css";
+
+const getSingleStepTitle = (questionType, showSaveType) => {
+  if (questionType === "model") {
+    return t`Save model`;
+  } else if (showSaveType) {
+    return t`Save question`;
+  } else {
+    return t`Save new question`;
+  }
+};
 
 export default class SaveQuestionModal extends Component {
   static propTypes = {
@@ -97,15 +107,27 @@ export default class SaveQuestionModal extends Component {
           : "create",
     };
 
-    const title = this.props.multiStep
-      ? t`First, save your question`
-      : t`Save question`;
+    const questionType = card.dataset ? "model" : "question";
+
+    const multiStepTitle =
+      questionType === "question"
+        ? t`First, save your question`
+        : t`First, save your model`;
 
     const showSaveType =
       !card.id &&
       !!originalCard &&
       !originalCard.dataset &&
       originalCard.can_write;
+
+    const singleStepTitle = getSingleStepTitle(questionType, showSaveType);
+
+    const title = this.props.multiStep ? multiStepTitle : singleStepTitle;
+
+    const nameInputPlaceholder =
+      questionType === "question"
+        ? t`What is the name of your question?`
+        : t`What is the name of your model?`;
 
     return (
       <ModalContent
@@ -148,7 +170,7 @@ export default class SaveQuestionModal extends Component {
                       autoFocus
                       name="name"
                       title={t`Name`}
-                      placeholder={t`What is the name of your card?`}
+                      placeholder={nameInputPlaceholder}
                     />
                     <FormField
                       name="description"

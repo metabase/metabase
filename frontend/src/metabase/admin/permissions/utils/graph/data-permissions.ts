@@ -6,8 +6,8 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
 } from "metabase/plugins";
 import type { GroupsPermissions, ConcreteTableId } from "metabase-types/api";
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Database from "metabase-lib/metadata/Database";
+import type Table from "metabase-lib/metadata/Table";
 import type {
   DatabaseEntityId,
   DataPermission,

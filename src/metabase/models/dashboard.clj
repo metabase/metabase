@@ -141,10 +141,11 @@
           :pre-insert  pre-insert
           :pre-update  pre-update
           :post-update post-update
-          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
+(defmethod serdes.hash/identity-hash-fields Dashboard
+  [_dashboard]
+  [:name (serdes.hash/hydrated-hash :collection "<none>") :created_at])
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -408,36 +409,72 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-(defmethod serdes.base/extract-query "Dashboard" [_ {:keys [user]}]
-  ;; TODO This join over the subset of collections this user can see is shared by a few things - factor it out?
-  (serdes.base/raw-reducible-query
-    "Dashboard"
-    {:select     [:dash.*]
-     :from       [[:report_dashboard :dash]]
-     :left-join  [[:collection :coll] [:= :coll.id :dash.collection_id]]
-     :where      (if user
-                   [:or [:= :coll.personal_owner_id user] [:is :coll.personal_owner_id nil]]
-                   [:is :coll.personal_owner_id nil])}))
+(defmethod serdes.base/extract-query "Dashboard" [_ opts]
+  (eduction (map #(hydrate % :ordered_cards))
+            (serdes.base/extract-query-collections Dashboard opts)))
 
-;; TODO Maybe nest collections -> dashboards -> dashcards?
+(defn- extract-dashcard
+  [dashcard]
+  (-> (into (sorted-map) dashcard)
+      (dissoc :id :collection_authority_level :dashboard_id :updated_at)
+      (update :card_id                serdes.util/export-fk 'Card)
+      (update :parameter_mappings     serdes.util/export-parameter-mappings)
+      (update :visualization_settings serdes.util/export-visualization-settings)))
+
 (defmethod serdes.base/extract-one "Dashboard"
   [_model-name _opts dash]
-  (-> (serdes.base/extract-one-basics "Dashboard" dash)
-      (update :collection_id serdes.util/export-fk 'Collection)
-      (update :creator_id    serdes.util/export-user)))
+  (let [dash (if (contains? dash :ordered_cards)
+               dash
+               (hydrate dash :ordered_cards))]
+    (-> (serdes.base/extract-one-basics "Dashboard" dash)
+        (update :ordered_cards     #(mapv extract-dashcard %))
+        (update :collection_id     serdes.util/export-fk 'Collection)
+        (update :creator_id        serdes.util/export-user)
+        (update :made_public_by_id serdes.util/export-user))))
 
 (defmethod serdes.base/load-xform "Dashboard"
   [dash]
   (-> dash
       serdes.base/load-xform-basics
-      (update :collection_id serdes.util/import-fk 'Collection)
-      (update :creator_id    serdes.util/import-user)))
+      ;; Deliberately not doing anything to :ordered_cards - they get handled by load-insert! and load-update! below.
+      (update :collection_id     serdes.util/import-fk 'Collection)
+      (update :creator_id        serdes.util/import-user)
+      (update :made_public_by_id serdes.util/import-user)))
+
+(defn- dashcard-for [dashcard dashboard]
+  (assoc dashcard
+         :dashboard_id (:entity_id dashboard)
+         :serdes/meta [{:model "Dashboard"     :id (:entity_id dashboard)}
+                       {:model "DashboardCard" :id (:entity_id dashcard)}]))
+
+;; Call the default load-one! for the Dashboard, then for each DashboardCard.
+(defmethod serdes.base/load-one! "Dashboard" [ingested maybe-local]
+  (let [dashboard ((get-method serdes.base/load-one! :default) (dissoc ingested :ordered_cards) maybe-local)]
+    (doseq [dashcard (:ordered_cards ingested)]
+      (serdes.base/load-one! (dashcard-for dashcard dashboard)
+                             (db/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
+
+(defn- serdes-deps-dashcard
+  [{:keys [card_id parameter_mappings visualization_settings]}]
+  (->> (mapcat serdes.util/mbql-deps parameter_mappings)
+       (concat (serdes.util/visualization-settings-deps visualization_settings))
+       (concat (when card_id #{[{:model "Card" :id card_id}]}))
+       set))
 
 (defmethod serdes.base/serdes-dependencies "Dashboard"
-  [{:keys [collection_id]}]
-  [[{:model "Collection" :id collection_id}]])
+  [{:keys [collection_id ordered_cards]}]
+  (->> ordered_cards
+       (map serdes-deps-dashcard)
+       (reduce set/union #{[{:model "Collection" :id collection_id}]})))
 
 (defmethod serdes.base/serdes-descendants "Dashboard" [_model-name id]
-  ;; Return the set of DashboardCards that belong to this dashboard.
-  (set (for [dc-id (db/select-ids 'DashboardCard :dashboard_id id)]
-         ["DashboardCard" dc-id])))
+  ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
+  ;; here. So their cards, both direct and mentioned in their parameters.
+  (set (for [{:keys [card_id parameter_mappings]} (db/select ['DashboardCard :card_id :parameter_mappings]
+                                                             :dashboard_id id)
+             ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
+             card-id  (cond-> (set (keep :card_id parameter_mappings))
+                        card_id (conj card_id))]
+         ["Card" card-id])))
+
+(serdes.base/register-ingestion-path! "Dashboard" (serdes.base/ingestion-matcher-collected "collections" "Dashboard"))

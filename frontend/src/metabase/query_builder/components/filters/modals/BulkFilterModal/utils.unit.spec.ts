@@ -1,11 +1,15 @@
-import { SAMPLE_DATABASE, ORDERS } from "__support__/sample_database_fixture";
+import {
+  SAMPLE_DATABASE,
+  ORDERS,
+  PEOPLE,
+} from "__support__/sample_database_fixture";
 
 import StructuredQuery, {
   isDimensionOption,
   DimensionOption,
   SegmentOption,
-} from "metabase-lib/lib/queries/StructuredQuery";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+} from "metabase-lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
 
 import {
   fixBetweens,
@@ -138,7 +142,7 @@ describe("BulkFilterModal utils", () => {
       expect(newFilter.operatorName()).toEqual("between");
     });
 
-    it("ignores non-betwee filters", () => {
+    it("ignores non-between filters", () => {
       const filter = new Filter(
         ["=", ["field", ORDERS.fields[1].id, null], 40, 50],
         null,
@@ -149,6 +153,24 @@ describe("BulkFilterModal utils", () => {
       const newFilter = newQuery.filters()[0];
       expect(newFilter.arguments()).toEqual([40, 50]);
       expect(newFilter.operatorName()).toEqual("=");
+    });
+
+    it("ignores between custom expressions", () => {
+      const filter = new Filter(
+        [
+          "between",
+          ["field", ORDERS.CREATED_AT.id, null],
+          ["field", PEOPLE.BIRTH_DATE.id, { "source-field": PEOPLE.ID.id }],
+          ["field", PEOPLE.CREATED_AT.id, { "source-field": PEOPLE.ID.id }],
+        ],
+        null,
+        query,
+      );
+
+      const newQuery = fixBetweens(filter.add());
+      const newFilter = newQuery.filters()[0];
+
+      expect(newFilter).toEqual(filter);
     });
 
     it("handles multiple invalid between filters", () => {

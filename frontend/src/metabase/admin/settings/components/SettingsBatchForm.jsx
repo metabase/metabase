@@ -188,7 +188,8 @@ class SettingsBatchForm extends Component {
     return formErrors;
   }
 
-  handleSubmit = updateSettings => {
+  handleSubmit = () => {
+    const { updateSettings } = this.props;
     const { formData, valid } = this.state;
 
     if (valid) {
@@ -217,7 +218,7 @@ class SettingsBatchForm extends Component {
 
   handleSubmitClick = event => {
     event.preventDefault();
-    this.handleSubmit(this.props.updateSettings);
+    this.handleSubmit();
   };
 
   render() {

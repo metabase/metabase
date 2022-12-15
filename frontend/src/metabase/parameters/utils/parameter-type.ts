@@ -1,46 +1,20 @@
 import _ from "underscore";
-import { FIELD_FILTER_PARAMETER_TYPES } from "metabase/parameters/constants";
-
-import { FieldFilterUiParameter } from "metabase/parameters/types";
 import { Parameter } from "metabase-types/types/Parameter";
+import { SINGLE_OR_MULTI_SELECTABLE_TYPES } from "metabase-lib/parameters/constants";
+import {
+  getParameterType,
+  getParameterSubType,
+} from "metabase-lib/parameters/utils/parameter-type";
 
-export function getParameterType(parameter: Parameter | string) {
-  return typeof parameter === "string"
-    ? splitType(parameter)[0]
-    : parameter.sectionId || splitType(parameter)[0];
-}
+export function isSingleOrMultiSelectable(parameter: Parameter): boolean {
+  const type: string = getParameterType(parameter);
+  const subType: string = getParameterSubType(parameter);
 
-export function getParameterSubType(parameter: Parameter) {
-  const [, subtype] = splitType(parameter);
-  return subtype;
-}
-
-function splitType(parameterOrType: Parameter | string) {
-  const parameterType = _.isString(parameterOrType)
-    ? parameterOrType
-    : parameterOrType?.type || "";
-
-  return parameterType.split("/");
-}
-
-export function isDateParameter(parameter: Parameter | string) {
-  const type = getParameterType(parameter);
-  return type === "date";
-}
-
-export function isNumberParameter(parameter: Parameter) {
-  const type = getParameterType(parameter);
-  return type === "number";
-}
-
-export function isStringParameter(parameter: Parameter) {
-  const type = getParameterType(parameter);
-  return type === "string";
-}
-
-export function isFieldFilterParameter(
-  parameter: Parameter,
-): parameter is FieldFilterUiParameter {
-  const type = getParameterType(parameter);
-  return FIELD_FILTER_PARAMETER_TYPES.includes(type);
+  if (!SINGLE_OR_MULTI_SELECTABLE_TYPES[type]) {
+    return false;
+  }
+  if (SINGLE_OR_MULTI_SELECTABLE_TYPES[type] === "any") {
+    return true;
+  }
+  return SINGLE_OR_MULTI_SELECTABLE_TYPES[type].includes(subType);
 }

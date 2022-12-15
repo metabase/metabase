@@ -29,7 +29,9 @@
   ^Path [& path-components]
   (apply get-path-in-filesystem (FileSystems/getDefault) path-components))
 
-(defn- append-to-path ^Path [^Path path & components]
+(defn append-to-path
+  "Appends string `components` to the end of a Path, returning a new Path."
+  ^Path [^Path path & components]
   (loop [^Path path path, [^String component & more] components]
     (let [path (.resolve path component)]
       (if-not (seq more)
@@ -106,7 +108,7 @@
 
 (defn do-with-open-path-to-resource
   "Impl for `with-open-path-to-resource`."
-  [^String resource, f]
+  [^String resource f]
   (let [url (io/resource resource)]
     (when-not url
       (throw (FileNotFoundException. (trs "Resource does not exist."))))

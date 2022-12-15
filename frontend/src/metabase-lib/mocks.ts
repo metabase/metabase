@@ -12,10 +12,10 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 
-import Question from "./lib/Question";
-import NativeQuery from "./lib/queries/NativeQuery";
-import StructuredQuery from "./lib/queries/StructuredQuery";
-import Query from "./lib/queries/Query";
+import Question from "metabase-lib/Question";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Query from "metabase-lib/queries/Query";
 
 type NativeSavedCard = SavedCard<NativeDatasetQuery>;
 type NativeUnsavedCard = UnsavedCard<NativeDatasetQuery>;

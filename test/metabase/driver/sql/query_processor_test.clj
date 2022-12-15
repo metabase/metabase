@@ -1,18 +1,18 @@
 (ns metabase.driver.sql.query-processor-test
-  (:require [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [metabase.driver :as driver]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.setting :as setting]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.test :as mt]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [honeysql.core :as hsql]
+   [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.setting :as setting]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.test :as mt]
+   [metabase.util.honeysql-extensions :as hx]
+   [schema.core :as s]))
 
 (deftest sql-source-query-validation-test
   (testing "[[sql.qp/sql-source-query]] should throw Exceptions if you pass in invalid nonsense"
@@ -46,17 +46,6 @@
       (-> (sql.qp/mbql->native :h2 (qp/preprocess query))
           :query
           sql.qp-test-util/pretty-sql))))
-
-(deftest compile-FieldInstance-test
-  (testing "For legacy compatibility, we should still be able to compile Field instances (for now)"
-    (driver/with-driver :h2
-      (mt/with-everything-store
-        (is (= "SELECT VENUES.PRICE AS PRICE WHERE VENUES.PRICE = 4"
-               (->> {:query {:fields [[:field (mt/id :venues :price)]]
-                             :filter [:= (db/select-one Field :id (mt/id :venues :price)) [:value 4 {:base-type :type/Integer}]]}}
-                    (sql.qp/mbql->native :h2)
-                    :query
-                    sql.qp-test-util/pretty-sql)))))))
 
 (deftest not-null-test
   (is (= '{:select [count (*) AS count]
@@ -231,9 +220,13 @@
       (is (= (hsql/call :dateadd
                (hx/literal "day")
                (hx/with-database-type-info (hsql/call :cast -1 #sql/raw "long") "long")
-               (hsql/call :week (hsql/call :dateadd (hx/literal "day")
-                                  (hx/with-database-type-info (hsql/call :cast 1 #sql/raw "long") "long")
-                                  :created_at)))
+               (hx/with-database-type-info
+                 (hsql/call :cast
+                   (hsql/call :week (hsql/call :dateadd (hx/literal "day")
+                                    (hx/with-database-type-info (hsql/call :cast 1 #sql/raw "long") "long")
+                                    (hx/with-database-type-info (hsql/call :cast :created_at #sql/raw "datetime") "datetime")))
+                   #sql/raw "datetime")
+                   "datetime"))
              (sql.qp/adjust-start-of-week :h2 (partial hsql/call :week) :created_at))))
     (testing "Do we skip the adjustment if offset = 0"
       (with-redefs [driver/db-start-of-week   (constantly :monday)
@@ -380,7 +373,7 @@
     (mt/dataset sample-dataset
       (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                           source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE
-                          parsedatetime (year (source.CREATED_AT) "yyyy") AS CREATED_AT
+                          date_trunc ("year" source.CREATED_AT) AS CREATED_AT
                           source.pivot-grouping AS pivot-grouping
                           count (*) AS count]
                :from     [{:select    [ORDERS.ID                          AS ID
@@ -408,16 +401,16 @@
                            AND
                            (source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ? OR source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?)
                            AND
-                           source.CREATED_AT >= parsedatetime (year (dateadd ("year" CAST (-2 AS long) now ())) "yyyy")
+                           source.CREATED_AT >= date_trunc ("year" dateadd ("year" CAST (-2 AS long) CAST (now () AS datetime)))
                            AND
-                           source.CREATED_AT < parsedatetime (year (now ()) "yyyy"))]
+                           source.CREATED_AT < date_trunc ("year" now ()))]
                :group-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY
                           source.PEOPLE__via__USER_ID__SOURCE
-                          parsedatetime (year (source.CREATED_AT) "yyyy")
+                          date_trunc ("year" source.CREATED_AT)
                           source.pivot-grouping]
                :order-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY ASC
                           source.PEOPLE__via__USER_ID__SOURCE ASC
-                          parsedatetime (year (source.CREATED_AT) "yyyy") ASC
+                          date_trunc ("year" source.CREATED_AT) ASC
                           source.pivot-grouping ASC]}
              (-> (mt/mbql-query orders
                    {:aggregation [[:aggregation-options [:count] {:name "count"}]]
@@ -658,12 +651,12 @@
   (is (= '{:select [source.DATE  AS DATE
                     source.sum   AS sum
                     source.sum_2 AS sum_2]
-           :from   [{:select   [parsedatetime (formatdatetime (CHECKINS.DATE "yyyyMM") "yyyyMM") AS DATE
+           :from   [{:select   [date_trunc ("month" CHECKINS.DATE) AS DATE
                                 sum (CHECKINS.USER_ID)                                           AS sum
                                 sum (CHECKINS.VENUE_ID)                                          AS sum_2]
                      :from     [CHECKINS]
-                     :group-by [parsedatetime (formatdatetime (CHECKINS.DATE "yyyyMM") "yyyyMM")]
-                     :order-by [parsedatetime (formatdatetime (CHECKINS.DATE "yyyyMM") "yyyyMM") ASC]}
+                     :group-by [date_trunc ("month" CHECKINS.DATE)]
+                     :order-by [date_trunc ("month" CHECKINS.DATE) ASC]}
                     source]
            :where  [source.sum > 300]
            :limit  [2]}

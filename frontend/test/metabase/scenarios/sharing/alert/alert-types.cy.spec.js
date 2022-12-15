@@ -69,6 +69,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
       cy.findByText("Settings").click();
       cy.findByText("Line options");
+      cy.findByText("Display").click();
 
       setGoal("7000");
 

@@ -32,7 +32,7 @@ const activeTabCSS = css`
   border-color: ${getActiveTabColor()};
 `;
 
-export const Tab = styled.label<{ selected: boolean }>`
+export const Tab = styled.label<{ selected: boolean; disabled?: boolean }>`
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -53,6 +53,9 @@ export const Tab = styled.label<{ selected: boolean }>`
   }
 
   ${props => (props.selected ? activeTabCSS : inactiveTabCSS)};
+
+  opacity: ${props => (props.disabled ? 0.5 : 1)};
+  cursor: ${props => (props.disabled ? "default" : "pointer")};
 `;
 
 export const RadioInput = styled.input`

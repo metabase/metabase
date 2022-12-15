@@ -10,12 +10,14 @@
             [metabase.driver.sql :as sql]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.setting :as setting]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -113,12 +115,12 @@
     (u.date/parse s timezone-id)))
 
 (defmethod parse-result-of-type "DATE"
-  [_ column-mode timezone-id v]
-  (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
+  [_ column-mode _timezone-id v]
+  (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "DATETIME"
-  [_ column-mode timezone-id v]
-  (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
+  [_ column-mode _timezone-id v]
+  (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "TIMESTAMP"
   [_ column-mode timezone-id v]
@@ -289,7 +291,11 @@
         bigquery-type
         (do
           (log/tracef "Coercing %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (pr-str (temporal-type x)) bigquery-type)
-          (with-temporal-type (hsql/call :cast (sql.qp/->honeysql :bigquery-cloud-sdk x) (hsql/raw (name bigquery-type))) target-type))
+          (let [expr (sql.qp/->honeysql :bigquery-cloud-sdk x)]
+            (if-let [report-zone (when (contains? #{bigquery-type (temporal-type hsql-form)} :timestamp)
+                                   (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
+              (with-temporal-type (hsql/call bigquery-type expr (hx/literal report-zone)) target-type)
+              (with-temporal-type (hsql/call bigquery-type expr) target-type))))
 
         :else
         x))))
@@ -324,7 +330,9 @@
               :time      :time_trunc
               :datetime  :datetime_trunc
               :timestamp :timestamp_trunc)]
-      (hformat/to-sql (hsql/call f (->temporal-type t hsql-form) (hsql/raw (name unit)))))))
+      (if-let [report-zone (when (= f :timestamp_trunc) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
+        (hformat/to-sql (hsql/call f (->temporal-type t hsql-form) (hsql/raw (name unit)) (hx/literal report-zone)))
+        (hformat/to-sql (hsql/call f (->temporal-type t hsql-form) (hsql/raw (name unit))))))))
 
 (defmethod temporal-type TruncForm
   [trunc-form]
@@ -344,6 +352,15 @@
 
 (def ^:private valid-time-extract-units
   #{:microsecond :millisecond :second :minute :hour})
+
+(defrecord AtTimeZone
+  ;; record type to support applying BigQuery's `AT TIME ZONE` operator to an expression
+  [expr zone]
+  hformat/ToSql
+  (to-sql [_]
+    (format "%s AT TIME ZONE %s"
+      (hformat/to-sql expr)
+      (hformat/to-sql (hx/literal zone)))))
 
 (defn- extract [unit expr]
   (condp = (temporal-type expr)
@@ -366,7 +383,9 @@
       (assert (or (valid-date-extract-units unit)
                   (valid-time-extract-units unit))
               (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
-      (with-temporal-type (hsql/call :extract unit expr) nil))
+      (if-let [report-zone (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk)]
+        (with-temporal-type (hsql/call :extract unit (->AtTimeZone expr report-zone)) nil)
+        (with-temporal-type (hsql/call :extract unit expr) nil)))
 
     ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
     (recur unit (->temporal-type :timestamp expr))))
@@ -403,12 +422,27 @@
   [_ _ expr]
   (trunc (keyword (format "week(%s)" (name (setting/get-value-of-type :keyword :start-of-week)))) expr))
 
+;; TODO: bigquery supports week(weekday), maybe we don't have to do the complicated math for bigquery?
+(defmethod sql.qp/date [:bigquery-cloud-sdk :week-of-year-iso] [_ _ expr] (extract :isoweek expr))
+
 (doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
                                            :milliseconds :timestamp_millis
                                            :microseconds :timestamp_micros}]
   (defmethod sql.qp/unix-timestamp->honeysql [:bigquery-cloud-sdk unix-timestamp-type]
     [_ _ expr]
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [datetime     (partial hsql/call :datetime)
+        hsql-form    (sql.qp/->honeysql driver arg)
+        timestamptz? (hx/is-of-type? hsql-form "timestamp")]
+    (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+    (-> (if timestamptz?
+          hsql-form
+          (hsql/call :timestamp hsql-form (or source-timezone (qp.timezone/results-timezone-id))))
+        (datetime target-timezone)
+        (with-temporal-type :datetime))))
 
 (defmethod sql.qp/->float :bigquery-cloud-sdk
   [_ value]
@@ -519,6 +553,81 @@
     (cond->> ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)
       t (->temporal-type t))))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x               (sql.qp/->honeysql driver x)
+        y               (sql.qp/->honeysql driver y)
+        disallowed-types (keep
+                          (fn [x]
+                            (when-not (contains? #{:timestamp :date :datetime} (temporal-type x))
+                              (or (some-> (temporal-type x) name)
+                                  (hx/type-info->db-type (hx/type-info x)))))
+                          [x y])
+        x                (hx/->timestamp x)
+        y                (hx/->timestamp y)]
+    (when (seq disallowed-types)
+      (throw
+       (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+                     (pr-str disallowed-types))
+                {:allowed #{:timestamp :datetime :date}
+                 :found   disallowed-types
+                 :type    qp.error-type/invalid-query})))
+    (case unit
+      :year
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             (hx/- (extract :year b) (extract :year a))
+                             ;; decrement if a is later than b in the year calendar
+                             (hx/cast
+                              :integer
+                              (hsql/call
+                               :or
+                               (hsql/call :> (extract :month a) (extract :month b))
+                               (hsql/call
+                                :and
+                                (hsql/call := (extract :month a) (extract :month b))
+                                (hsql/call :> (extract :day a) (extract :day b)))))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :quarter
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                               (hx//
+                                (hx/-
+                                 ;; timestamp_diff doesn't support months, so convert to datetime to use datetime_diff
+                                 (hsql/call :datetime_diff (hx/->datetime b) (hx/->datetime a) (hsql/raw "month"))
+                                 (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b))))
+                                3))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :month
+      (let [positive-diff (fn [a b] ; precondition: a <= b
+                            (hx/-
+                             ;; timestamp_diff doesn't support months, so convert to datetime to use datetime_diff
+                             (hsql/call :datetime_diff (hx/->datetime b) (hx/->datetime a) (hsql/raw "month"))
+                             (hx/cast :integer (hsql/call :> (extract :day a) (extract :day b)))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :week
+      (let [x (trunc :day x)
+            y (trunc :day y)
+            positive-diff (fn [a b]
+                            (hx/cast
+                             :integer
+                             (hx/floor
+                              (hx// (hsql/call :timestamp_diff b a (hsql/raw "day")) 7))))]
+        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+
+      :day
+      (let [x (trunc :day x)
+            y (trunc :day y)]
+        (hsql/call :timestamp_diff y x (hsql/raw (name unit))))
+
+      (:hour :minute :second)
+      (hsql/call :timestamp_diff y x (hsql/raw (name unit))))))
+
 (defmethod driver/escape-alias :bigquery-cloud-sdk
   [driver s]
   ;; Convert field alias `s` to a valid BigQuery field identifier. From the dox: Fields must contain only letters,
@@ -617,6 +726,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- interval [amount unit]
+  ;; todo: can bigquery have an expression here or just a numeric literal?
   (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit))))
 
 ;; We can coerce the HoneySQL form this wraps to whatever we want and generate the appropriate SQL.
@@ -685,12 +795,16 @@
 (defrecord ^:private CurrentMomentForm [t]
   hformat/ToSql
   (to-sql [_]
-    (hformat/to-sql
-     (case (or t :timestamp)
-       :time      :%current_time
-       :date      :%current_date
-       :datetime  :%current_datetime
-       :timestamp :%current_timestamp))))
+    (let [f (case (or t :timestamp)
+              :time      :current_time
+              :date      :current_date
+              :datetime  :current_datetime
+              :timestamp :current_timestamp),
+          report-zone (when (not= f :current_timestamp) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
+      (hformat/to-sql
+        (if report-zone
+          (hsql/call f (hx/literal report-zone))
+          (hsql/call f))))))
 
 (defmethod temporal-type CurrentMomentForm
   [^CurrentMomentForm current-moment]
@@ -703,6 +817,11 @@
 (defmethod sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk
   [_]
   (CurrentMomentForm. nil))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :now]
+  [driver _clause]
+  (->> (sql.qp/current-datetime-honeysql-form driver)
+       (->temporal-type :timestamp)))
 
 (defmethod sql.qp/quote-style :bigquery-cloud-sdk
   [_]

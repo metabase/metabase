@@ -32,11 +32,11 @@
            (public-settings/site-url)))))
 
 (deftest site-url-settings-https
-  (testing "if https:// was specified it should keep it")
-  (mt/discard-setting-changes [site-url]
-    (public-settings/site-url! "https://localhost:3000")
-    (is (= "https://localhost:3000"
-           (public-settings/site-url)))))
+  (testing "if https:// was specified it should keep it"
+    (mt/discard-setting-changes [site-url]
+      (public-settings/site-url! "https://localhost:3000")
+      (is (= "https://localhost:3000"
+             (public-settings/site-url))))))
 
 (deftest site-url-settings-validate-site-url
   (testing "we should not be allowed to set an invalid `site-url` (#9850)"

@@ -3,7 +3,7 @@ import * as Urls from "metabase/lib/urls";
 import { coerceCollectionId } from "metabase/collections/utils";
 
 import type { Dashboard } from "metabase-types/api";
-import type Question from "metabase-lib/lib/Question";
+import type Question from "metabase-lib/Question";
 
 import { SelectedItem } from "./types";
 

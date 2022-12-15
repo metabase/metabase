@@ -1,43 +1,39 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthProvider } from "metabase/auth/types";
-import PasswordPanel from "./PasswordPanel";
+import PasswordPanel, { PasswordPanelProps } from "./PasswordPanel";
 
 describe("PasswordPanel", () => {
   it("should login successfully", () => {
-    const onLogin = jest.fn().mockResolvedValue({});
+    const props = getProps();
+    const data = { username: "user@example.test", password: "password" };
 
-    render(<PasswordPanel onLogin={onLogin} />);
+    render(<PasswordPanel {...props} />);
+    userEvent.type(screen.getByLabelText("Email address"), data.username);
+    userEvent.type(screen.getByLabelText("Password"), data.password);
     userEvent.click(screen.getByText("Sign in"));
 
-    expect(onLogin).toHaveBeenCalled();
+    waitFor(() => expect(props.onLogin).toHaveBeenCalledWith(data));
   });
 
   it("should render a link to reset the password and a list of auth providers", () => {
-    const providers = [getAuthProvider()];
-    const onLogin = jest.fn();
+    const props = getProps({ providers: [getAuthProvider()] });
 
-    render(<PasswordPanel providers={providers} onLogin={onLogin} />);
+    render(<PasswordPanel {...props} />);
 
     expect(screen.getByText(/forgotten my password/)).toBeInTheDocument();
     expect(screen.getByText("Sign in with Google")).toBeInTheDocument();
   });
 });
 
-interface FormMockProps {
-  submitTitle: string;
-  onSubmit: () => void;
-}
-
-const FormMock = ({ submitTitle, onSubmit }: FormMockProps) => {
-  return <button onClick={onSubmit}>{submitTitle}</button>;
-};
-
-jest.mock("metabase/entities/users", () => ({
-  forms: { login: jest.fn() },
-  Form: FormMock,
-}));
+const getProps = (opts?: Partial<PasswordPanelProps>): PasswordPanelProps => ({
+  providers: [],
+  isLdapEnabled: false,
+  hasSessionCookies: false,
+  onLogin: jest.fn(),
+  ...opts,
+});
 
 const getAuthProvider = (opts?: Partial<AuthProvider>): AuthProvider => ({
   name: "google",

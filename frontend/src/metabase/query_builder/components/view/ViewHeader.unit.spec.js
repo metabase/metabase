@@ -8,7 +8,7 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 import MetabaseSettings from "metabase/lib/settings";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 import { ViewTitleHeader } from "./ViewHeader";
 
 const BASE_GUI_QUESTION = {

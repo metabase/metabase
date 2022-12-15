@@ -13,6 +13,7 @@ Thanks to our amazing user community, Metabase has been translated into many dif
 The languages you can currently pick from are:
 
 - English (default)
+- Arabic
 - Bulgarian
 - Catalan
 - Chinese (simplified)

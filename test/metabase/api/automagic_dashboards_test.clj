@@ -59,7 +59,7 @@
 
 (deftest segment-xray-test
   (tt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
-                                           :definition {:filter [:> [:field-id (mt/id :venues :price)] 10]}}]
+                                           :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
     (testing "GET /api/automagic-dashboards/segment/:id"
       (is (some? (api-call "segment/%s" [segment-id]))))
 
@@ -77,7 +77,7 @@
 
 (deftest card-xray-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [cell-query (#'magic/encode-base64-json [:> [:field-id (mt/id :venues :price)] 5])]
+    (let [cell-query (#'magic/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
       (doseq [test-fn
               [(fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id"
@@ -107,7 +107,7 @@
                (mt/mbql-query venues
                  {:filter [:> $price 10]}))
         cell-query (#'magic/encode-base64-json
-                    [:> [:field-id (mt/id :venues :price)] 5])]
+                    [:> [:field (mt/id :venues :price) nil] 5])]
     (testing "GET /api/automagic-dashboards/adhoc/:query"
       (is (some? (api-call "adhoc/%s" [query]))))
 
@@ -123,7 +123,7 @@
 (def ^:private segment
   (delay
     {:table_id   (mt/id :venues)
-     :definition {:filter [:> [:field-id (mt/id :venues :price)] 10]}}))
+     :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}))
 
 (deftest comparisons-test
   (tt/with-temp Segment [{segment-id :id} @segment]
@@ -143,7 +143,7 @@
                      [(->> (mt/mbql-query venues
                              {:filter [:> $price 10]})
                            (#'magic/encode-base64-json))
-                      (->> [:= [:field-id (mt/id :venues :price)] 15]
+                      (->> [:= [:field (mt/id :venues :price) nil] 15]
                            (#'magic/encode-base64-json))
                       segment-id]))))))
 
@@ -184,18 +184,18 @@
         (test.de/with-test-domain-entity-specs
           (mt/with-model-cleanup [Card Collection]
             (tf/apply-transform! (mt/id) "PUBLIC" (first @tf.specs/transform-specs))
-            (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 1.5 4 3 2 1]
-                    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0 11 2 1 1]
-                    [3 "The Apple Pan" 11 34.0406 -118.428 2 2.0 11 2 1 1]]
-                   (api-call "transform/%s" ["Test transform"]
-                             #(revoke-collection-permissions!
-                               (tf.materialize/get-collection "Test transform"))
-                             (fn [dashboard]
-                               (->> dashboard
-                                    :ordered_cards
-                                    (sort-by (juxt :row :col))
-                                    last
-                                    :card
-                                    :dataset_query
-                                    qp/process-query
-                                    mt/rows)))))))))))
+            (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
+                    [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
+                    [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
+                   (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
+                     (api-call "transform/%s" ["Test transform"]
+                               #(revoke-collection-permissions!
+                                 (tf.materialize/get-collection "Test transform"))
+                               (fn [dashboard]
+                                 (->> dashboard
+                                      :ordered_cards
+                                      (sort-by (juxt :row :col))
+                                      last
+                                      :card
+                                      :dataset_query
+                                      qp/process-query))))))))))))

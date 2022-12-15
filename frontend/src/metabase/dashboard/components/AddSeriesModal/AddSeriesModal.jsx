@@ -17,7 +17,7 @@ import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 
 import { getVisualizationRaw } from "metabase/visualizations";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 import { QuestionList } from "./QuestionList";
 

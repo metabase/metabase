@@ -45,6 +45,7 @@ export interface Parameter {
   sectionId?: string;
   default?: any;
   filteringParameters?: ParameterId[];
+  isMultiSelect?: boolean;
   value?: any;
 }
 

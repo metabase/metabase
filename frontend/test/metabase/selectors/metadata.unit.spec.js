@@ -6,6 +6,7 @@ import {
 } from "__support__/sample_database_fixture";
 import {
   copyObjects,
+  getMetadata,
   instantiateDatabase,
   instantiateSchema,
   instantiateTable,
@@ -14,14 +15,14 @@ import {
   instantiateMetric,
   instantiateQuestion,
 } from "metabase/selectors/metadata";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import Database from "metabase-lib/lib/metadata/Database";
-import Schema from "metabase-lib/lib/metadata/Schema";
-import Table from "metabase-lib/lib/metadata/Table";
-import Field from "metabase-lib/lib/metadata/Field";
-import Metric from "metabase-lib/lib/metadata/Metric";
-import Segment from "metabase-lib/lib/metadata/Segment";
-import Question from "metabase-lib/lib/Question";
+import Metadata from "metabase-lib/metadata/Metadata";
+import Database from "metabase-lib/metadata/Database";
+import Schema from "metabase-lib/metadata/Schema";
+import Table from "metabase-lib/metadata/Table";
+import Field from "metabase-lib/metadata/Field";
+import Metric from "metabase-lib/metadata/Metric";
+import Segment from "metabase-lib/metadata/Segment";
+import Question from "metabase-lib/Question";
 
 const NUM_TABLES = Object.keys(state.entities.tables).length;
 const NUM_DBS = Object.keys(state.entities.databases).length;
@@ -154,5 +155,26 @@ describe("instantiateQuestion", () => {
     expect(instance).toBeInstanceOf(Question);
     expect(instance.card()).toHaveProperty("id", 123);
     expect(instance.metadata()).toBe(metadata);
+  });
+});
+
+describe("databasesList", () => {
+  it("should filter out saved questions", () => {
+    const metadata = getMetadata(state);
+    const savedQuestionDb = {
+      id: "saved-question-id",
+      name: "Saved Questions",
+      is_saved_questions: true,
+    };
+    metadata.databases[savedQuestionDb.id] = savedQuestionDb;
+
+    expect(
+      metadata.databasesList().find(d => d.name === "Saved Questions"),
+    ).toEqual(savedQuestionDb);
+    expect(
+      metadata
+        .databasesList({ savedQuestions: false })
+        .find(d => d.name === "Saved Questions"),
+    ).toBeUndefined();
   });
 });

@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { assocIn, getIn, merge } from "icepick";
 
 // eslint-disable-next-line import/named
-import { Formik, FormikProps, FormikErrors, FormikHelpers } from "formik";
+import { Formik, FormikErrors, FormikHelpers } from "formik";
 
 import {
   BaseFieldValues,
@@ -14,16 +14,13 @@ import {
   PopulatedFormObject,
 } from "metabase-types/forms";
 
-import {
-  makeFormObject,
-  cleanObject,
-  isNestedFieldName,
-  getMaybeNestedValue,
-} from "../formUtils";
+import { OptionalFormViewProps } from "metabase/components/form/FormikCustomForm/types";
+import { makeFormObject, cleanObject, isNestedFieldName } from "../formUtils";
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
 import useInlineFields from "./useInlineFields";
 
-interface FormContainerProps<Values extends BaseFieldValues> {
+interface FormContainerProps<Values extends BaseFieldValues>
+  extends OptionalFormViewProps {
   form?: FormObject<Values>;
 
   fields?: FormFieldDefinition[];
@@ -36,6 +33,7 @@ interface FormContainerProps<Values extends BaseFieldValues> {
   initial?: () => void;
   normalize?: () => void;
 
+  onValuesChange?: (newValues: Record<string, any>) => void;
   onSubmit: (
     values: Values,
     formikHelpers?: FormikHelpers<Values>,
@@ -47,7 +45,8 @@ interface FormContainerProps<Values extends BaseFieldValues> {
   submitTitle?: string;
   onClose?: () => void;
   footerExtraButtons?: any;
-  children?: (opts: any) => any;
+  disablePristineSubmit?: boolean;
+  children?: ReactNode | ((opts: any) => any);
 }
 
 type ServerErrorResponse = {
@@ -85,6 +84,9 @@ function getGeneralErrorMessage(error: ServerErrorResponse) {
   }
 }
 
+/**
+ * @deprecated
+ */
 function Form<Values extends BaseFieldValues>({
   form,
   fields,
@@ -94,12 +96,18 @@ function Form<Values extends BaseFieldValues>({
   validate,
   initial,
   normalize,
+  onValuesChange,
   onSubmit,
   onSubmitSuccess,
   ...props
 }: FormContainerProps<Values>) {
   const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState({});
+
+  const handleValuesChange = (newValues: any) => {
+    onValuesChange?.(newValues);
+    setValues(newValues);
+  };
 
   const { inlineFields, registerFormField, unregisterFormField } =
     useInlineFields();
@@ -251,7 +259,7 @@ function Form<Values extends BaseFieldValues>({
           error={error}
           registerFormField={registerFormField}
           unregisterFormField={unregisterFormField}
-          onValuesChange={setValues}
+          onValuesChange={handleValuesChange}
         />
       )}
     </Formik>

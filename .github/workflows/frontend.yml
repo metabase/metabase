@@ -5,11 +5,30 @@ on:
     branches:
       - 'master'
       - 'release-**'
-  pull_request:
     paths-ignore:
+      # documentation
       - "docs/**"
       - "**.md"
-      - "**_test.clj"
+      # backend
+      - "enterprise/backend/**"
+      - "src/**"
+      - "test/**"
+      - "*modules/**" # modules/, test_modules/
+      # E2E
+      - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
+      - "frontend/test/__support__/e2e/**"
+      - "frontend/test/__runner__/*cypress*"
+  pull_request:
+    paths-ignore:
+      # documentation
+      - "docs/**"
+      - "**.md"
+      # backend
+      - "enterprise/backend/**"
+      - "src/**"
+      - "test/**"
+      - "*modules/**" # modules/, test_modules/
+      # E2E
       - "**.cy.*.js" # .cy.spec.js, .cy.snap.js
       - "frontend/test/__support__/e2e/**"
       - "frontend/test/__runner__/*cypress*"
@@ -42,6 +61,8 @@ jobs:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - run: yarn build-quick:cljs
+      name: Compile CLJS
     - run: yarn type-check
       name: Check types
 
@@ -61,7 +82,7 @@ jobs:
         flags: front-end
 
   fe-tests-timezones:
-    runs-on: buildjet-2vcpu-ubuntu-2004
+    runs-on: ubuntu-20.04
     timeout-minutes: 14
     steps:
     - uses: actions/checkout@v3

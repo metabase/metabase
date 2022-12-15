@@ -6,6 +6,7 @@ import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
+import { getNativeQueryLanguage } from "metabase/lib/engine";
 
 const DataSourceSelectorsPropTypes = {
   isNativeEditorOpen: PropTypes.bool.isRequired,
@@ -178,7 +179,7 @@ TableSelector.propTypes = TableSelectorPropTypes;
 
 const Placeholder = ({ query }) => (
   <div className="ml2 p2 text-medium">
-    {t`This question is written in ${query.nativeQueryLanguage()}.`}
+    {t`This question is written in ${getNativeQueryLanguage(query.engine())}.`}
   </div>
 );
 

@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import Table from "metabase-lib/lib/metadata/Table";
+import Table from "metabase-lib/metadata/Table";
 import { LabelContainer, Label } from "../MetadataInfo.styled";
 import { TableIcon } from "./TableLabel.styled";
 

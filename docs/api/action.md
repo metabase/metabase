@@ -18,6 +18,10 @@ summary: |
 
 Returns cards that can be used for QueryActions.
 
+### PARAMS:
+
+*  **`model-id`** value must be an integer greater than zero.
+
 ## `GET /api/action/:action-id`
 
 ### PARAMS:
@@ -48,28 +52,6 @@ Create a new HTTP action.
 *  **`error_handle`** value may be nil, or if non-nil, must be a valid json-query
 
 *  **`action`**
-
-## `POST /api/action/:action-namespace/:action-name`
-
-Generic API endpoint for executing any sort of Action.
-
-### PARAMS:
-
-*  **`action-namespace`** 
-
-*  **`action-name`**
-
-## `POST /api/action/:action-namespace/:action-name/:table-id`
-
-Generic API endpoint for executing any sort of Action with source Table ID specified as part of the route.
-
-### PARAMS:
-
-*  **`action-namespace`** 
-
-*  **`action-name`** 
-
-*  **`table-id`**
 
 ## `PUT /api/action/:id`
 

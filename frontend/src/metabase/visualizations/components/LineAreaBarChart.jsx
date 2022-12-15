@@ -9,12 +9,6 @@ import { iconPropTypes } from "metabase/components/Icon";
 
 import "./LineAreaBarChart.css";
 
-import {
-  isNumeric,
-  isDate,
-  isDimension,
-  isMetric,
-} from "metabase/lib/schema_metadata";
 import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
@@ -22,9 +16,25 @@ import { formatValue } from "metabase/lib/formatting";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import {
-  MinRowsError,
-  ChartSettingsError,
-} from "metabase/visualizations/lib/errors";
+  validateChartDataSettings,
+  validateDatasetRows,
+  validateStacking,
+} from "metabase/visualizations/lib/settings/validation";
+import { findSeriesByKey } from "metabase/visualizations/lib/series";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import {
+  isNumeric,
+  isDate,
+  isDimension,
+  isMetric,
+} from "metabase-lib/types/utils/isa";
+
+import {
+  LineAreaBarChartRoot,
+  ChartLegendCaption,
+} from "./LineAreaBarChart.styled";
+import LegendLayout from "./legend/LegendLayout";
+import CardRenderer from "./CardRenderer";
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
@@ -66,14 +76,6 @@ for (let i = 0; i < MAX_SERIES; i++) {
   addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
 
-import { getAccentColors } from "metabase/lib/colors/groups";
-import {
-  LineAreaBarChartRoot,
-  ChartLegendCaption,
-} from "./LineAreaBarChart.styled";
-import LegendLayout from "./legend/LegendLayout";
-import CardRenderer from "./CardRenderer";
-
 export default class LineAreaBarChart extends Component {
   static noHeader = true;
   static supportsSeries = true;
@@ -99,30 +101,9 @@ export default class LineAreaBarChart extends Component {
       throw new Error(t`${this.uiName} chart does not support multiple series`);
     }
 
-    const singleSeriesHasNoRows = ({ data: { cols, rows } }) => rows.length < 1;
-    if (_.every(series, singleSeriesHasNoRows)) {
-      throw new MinRowsError(1, 0);
-    }
-
-    const dimensions = (settings["graph.dimensions"] || []).filter(
-      name => name,
-    );
-    const metrics = (settings["graph.metrics"] || []).filter(name => name);
-    if (dimensions.length < 1 || metrics.length < 1) {
-      throw new ChartSettingsError(
-        t`Which fields do you want to use for the X and Y axes?`,
-        { section: t`Data` },
-        t`Choose fields`,
-      );
-    }
-    const seriesOrder = (settings["graph.series_order"] || []).filter(
-      series => series.enabled,
-    );
-    if (dimensions.length > 1 && seriesOrder.length === 0) {
-      throw new ChartSettingsError(t`No breakouts are enabled`, {
-        section: t`Data`,
-      });
-    }
+    validateDatasetRows(series);
+    validateChartDataSettings(settings);
+    validateStacking(settings);
   }
 
   static seriesAreCompatible(initialSeries, newSeries) {
@@ -364,7 +345,6 @@ export default class LineAreaBarChart extends Component {
       isFullscreen,
       isQueryBuilder,
       onHoverChange,
-      onAddSeries,
       onRemoveSeries,
       settings,
     } = this.props;
@@ -373,7 +353,7 @@ export default class LineAreaBarChart extends Component {
       (settings["graph.dimensions"]?.length > 1 &&
         settings["graph.series_order"]
           ?.filter(orderedItem => orderedItem.enabled)
-          .map(orderedItem => series[orderedItem.originalIndex])) ||
+          .map(orderedItem => findSeriesByKey(series, orderedItem.key))) ||
       series;
 
     const {
@@ -414,7 +394,6 @@ export default class LineAreaBarChart extends Component {
           isFullscreen={isFullscreen}
           isQueryBuilder={isQueryBuilder}
           onHoverChange={onHoverChange}
-          onAddSeries={!hasBreakout ? onAddSeries : undefined}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
           onSelectSeries={this.handleSelectSeries}
         >

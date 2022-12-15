@@ -15,18 +15,15 @@
             [metabase.http-client :as client]
             [metabase.models :refer [Card
                                      CardBookmark
-                                     CardEmitter
                                      Collection
                                      Dashboard
                                      Database
-                                     Emitter
                                      ModerationReview
                                      PersistedInfo
                                      Pulse
                                      PulseCard
                                      PulseChannel
                                      PulseChannelRecipient
-                                     QueryAction
                                      Table
                                      Timeline
                                      TimelineEvent
@@ -774,22 +771,6 @@
                           :moderation_reviews
                           (map clean)))))))))))
 
-(deftest fetch-card-emitter-test
-  (testing "GET /api/card/:id"
-    (testing "Fetch card with an emitter"
-      (mt/with-temp* [Card [read-card {:name "Test Read Card"}]
-                      Card [write-card {:is_write true :name "Test Write Card"}]
-                      Emitter [{emitter-id :id} {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))}]]
-        (db/insert! CardEmitter {:emitter_id emitter-id
-                                 :card_id (u/the-id read-card)})
-        (testing "admin sees emitters"
-          (is (partial=
-               {:emitters [{:action {:type "query" :card {:name "Test Write Card"}}}]}
-               (mt/user-http-request :crowberto :get 200 (format "card/%d" (u/the-id read-card))))))
-        (testing "non-admin does not see emitters"
-          (is (nil?
-               (:emitters (mt/user-http-request :rasta :get 200 (format "card/%d" (u/the-id read-card)))))))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       UPDATING A CARD (PUT /api/card/:id)
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1291,8 +1272,8 @@
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                     {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:datetime-field (mt/id :checkins :date) "hour"]
-                                                                                                  [:datetime-field (mt/id :checkins :date) "minute"]])}))}
+                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}
            {:message        "Adding an additional breakout will cause the alert to be removed if a goal is set"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}
@@ -1307,8 +1288,8 @@
             :f              (fn [{:keys [card]}]
                               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                     {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                              [:query :breakout] [[:datetime-field (mt/id :checkins :date) "hour"]
-                                                                                                  [:datetime-field (mt/id :checkins :date) "minute"]])}))}]]
+                                                                              [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
+                                                                                                  [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
     (testing message
       (mt/with-temp* [Card                  [card  card]
                       Pulse                 [pulse {:alert_condition  "rows"
@@ -2359,6 +2340,16 @@
       :result-fn   (fn [result _]
                      (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Saved Question is a Dataset."}}
                             result)))})))
+
+(deftest set-is-write-user-is-not-admin-test
+  (with-actions-enabled
+    (doseq [f [test-update-is-write-card
+               test-create-is-write-card]]
+      (f {:status-code 403
+          :user                 :rasta
+          :result-fn            (fn [result _]
+                                  (is (= "You don't have permissions to do that."
+                                         result)))}))))
 
 (deftest set-is-write-card-query-is-not-native-query-test
   (with-actions-enabled

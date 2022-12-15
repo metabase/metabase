@@ -199,6 +199,17 @@ describe("scenarios > collection defaults", () => {
       cy.signInAsAdmin();
     });
 
+    it.skip("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
+      const questionDetails = {
+        native: { query: "select 1 --[[]]", "template-tags": {} },
+      };
+
+      cy.createNativeQuestion(questionDetails);
+
+      visitRootCollection();
+      cy.findByText("Orders in a dashboard");
+    });
+
     it("should be able to drag an item to the root collection (metabase#16498)", () => {
       moveItemToCollection("Orders", "First collection");
 

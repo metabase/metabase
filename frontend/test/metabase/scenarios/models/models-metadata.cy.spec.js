@@ -152,6 +152,34 @@ describe("scenarios > models metadata", () => {
     cy.findByText("Pre-tax ($)");
   });
 
+  it("should keep metadata in sync with the query", () => {
+    cy.createNativeQuestion(
+      {
+        name: "Native Model",
+        dataset: true,
+        native: {
+          query: "SELECT * FROM ORDERS",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openQuestionActions();
+    popover().within(() => {
+      cy.findByText("Edit query definition").click();
+    });
+
+    cy.get(".ace_content").type(
+      "{selectAll}{backspace}SELECT TOTAL FROM ORDERS",
+    );
+
+    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("header-cell").should("have.length", 1);
+    cy.findByLabelText("Display name").should("have.value", "TOTAL");
+  });
+
   it("should allow reverting to a specific metadata revision", () => {
     cy.intercept("POST", "/api/revision/revert").as("revert");
 

@@ -1,23 +1,23 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
-  (:require
-    [clojure.core.async :as a]
-    [dev.debug-qp :as debug-qp]
-    [honeysql.core :as hsql]
-    [metabase.api.common :as api]
-    [metabase.core :as mbc]
-    [metabase.db.connection :as mdb.connection]
-    [metabase.db.setup :as mdb.setup]
-    [metabase.driver :as driver]
-    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-    [metabase.query-processor.timezone :as qp.timezone]
-    [metabase.server :as server]
-    [metabase.server.handler :as handler]
-    [metabase.test :as mt]
-    [metabase.test.data.impl :as data.impl]
-    [metabase.util :as u]
-    [potemkin :as p]
-    [test-plus.core :as test-plus]))
+  (:require [clojure.core.async :as a]
+            [dev.debug-qp :as debug-qp]
+            [honeysql.core :as hsql]
+            [malli.dev :as malli-dev]
+            [metabase.api.common :as api]
+            [metabase.core :as mbc]
+            [metabase.db.connection :as mdb.connection]
+            [metabase.db.setup :as mdb.setup]
+            [metabase.driver :as driver]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.server :as server]
+            [metabase.server.handler :as handler]
+            [metabase.test :as mt]
+            [metabase.test.data.impl :as data.impl]
+            [metabase.util :as u]
+            [potemkin :as p]
+            [test-plus.core :as test-plus]))
 
 ;; add a `testing-only` macro to clojure.core.testing
 ;; it's convienient for development to trick the test runner to
@@ -139,3 +139,7 @@
   "Run migrations for the Metabase application database."
   []
   (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source) :up))
+
+(defn start-malli!
+  []
+  (malli-dev/start!))

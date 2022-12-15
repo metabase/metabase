@@ -28,7 +28,8 @@
 (defn- scorer->score
   [scorer]
   (comp :score
-        (partial #'scoring/text-score-with [{:weight 1 :scorer scorer}])))
+        first
+        (partial #'scoring/text-scores-with [{:weight 1 :scorer scorer}])))
 
 (deftest ^:parallel consecutivity-scorer-test
   (let [score (scorer->score #'scoring/consecutivity-scorer)]
@@ -123,27 +124,41 @@
            (score ["rasta" "the" "toucan"]
                   (result-row "Rasta the toucan"))))))
 
+(deftest ^:parallel prefix-match-scorer-test
+  (let [score (scorer->score #'scoring/prefix-scorer)]
+    (is (= 5/9 (score ["Crowberto" "the" "toucan"]
+                      (result-row "Crowberto el tucan"))))
+    (is (= 3/7
+           (score ["rasta" "the" "toucan"]
+                  (result-row "Rasta el tucan"))))
+    (is (= 0
+           (score ["rasta" "the" "toucan"]
+                  (result-row "Crowberto the toucan"))))))
+
 (deftest ^:parallel top-results-test
-  (let [xf (map identity)]
+  (let [xf (map identity)
+        small 10
+        medium 20
+        large 200]
     (testing "a non-full queue behaves normally"
-      (let [items (->> (range 10)
+      (let [items (->> (range small)
                        reverse ;; descending order
                        (map (fn [i]
                               {:score  [2 2 i]
                                :result (str "item " i)})))]
         (is (= (map :result items)
-               (scoring/top-results items xf)))))
+               (scoring/top-results items large xf)))))
     (testing "a full queue only saves the top items"
-      (let [sorted-items (->> (+ 10 search-config/max-filtered-results)
+      (let [sorted-items (->> (+ small search-config/max-filtered-results)
                               range
                               reverse ;; descending order
                               (map (fn [i]
                                      {:score  [1 2 3 i]
                                       :result (str "item " i)})))]
         (is (= (->> sorted-items
-                    (take search-config/max-filtered-results)
+                    (take medium)
                     (map :result))
-               (scoring/top-results (shuffle sorted-items) xf)))))))
+               (scoring/top-results (shuffle sorted-items) 20 xf)))))))
 
 (deftest ^:parallel match-context-test
   (let [context  #'scoring/match-context
@@ -302,3 +317,19 @@
     (is (nil? (-> {:name "dash" :model "dashboard"}
                   (#'scoring/serialize {} {})
                   :dataset_query)))))
+
+(deftest force-weight-test
+  (is (= [{:weight 10}]
+         (scoring/force-weight [{:weight 1}] 10)))
+
+  (is (= [{:weight 5} {:weight 5}]
+         (scoring/force-weight [{:weight 1} {:weight 1}] 10)))
+
+  (is (= [{:weight 0} {:weight 10}]
+         (scoring/force-weight [{:weight 0} {:weight 1}] 10)))
+
+  (is (= 10 (count (scoring/force-weight (repeat 10 {:weight 1}) 10))))
+  (is (= #{[:weight 1]} (into #{} (first (scoring/force-weight (repeat 10 {:weight 1}) 10)))))
+
+  (is (= 100 (count (scoring/force-weight (repeat 100 {:weight 10}) 10))))
+  (is (= #{{:weight 1/10}} (into #{} (scoring/force-weight (repeat 100 {:weight 10}) 10)))))

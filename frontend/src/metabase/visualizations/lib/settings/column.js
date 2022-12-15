@@ -5,15 +5,6 @@ import _ from "underscore";
 
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 
-import { keyForColumn } from "metabase/lib/dataset";
-import {
-  isDate,
-  isNumber,
-  isCoordinate,
-  isCurrency,
-  isDateWithoutTime,
-} from "metabase/lib/schema_metadata";
-
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
 function getVisualizationRaw(...args) {
@@ -42,8 +33,8 @@ export function columnSettings({
     section: t`Formatting`,
     objectName: "column",
     getObjects: getColumns,
-    getObjectKey: keyForColumn,
-    getSettingDefintionsForObject: getSettingDefintionsForColumn,
+    getObjectKey: getColumnKey,
+    getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
     useRawSeries: true,
@@ -52,6 +43,14 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
+import {
+  isDate,
+  isNumber,
+  isCoordinate,
+  isCurrency,
+  isDateWithoutTime,
+} from "metabase-lib/types/utils/isa";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(column) {
@@ -182,7 +181,6 @@ export const DATE_COLUMN_SETTINGS = {
   date_style: {
     title: t`Date style`,
     widget: "select",
-    variant: "form-field",
     getDefault: ({ unit }) => {
       // Grab the first option's value. If there were no options (for
       // hour-of-day probably), use an empty format string instead.
@@ -206,7 +204,6 @@ export const DATE_COLUMN_SETTINGS = {
     title: t`Date separators`,
     widget: "radio",
     default: "/",
-    variant: "form-field",
     getProps: (column, settings) => {
       const style = /\//.test(settings["date_style"])
         ? settings["date_style"]
@@ -235,7 +232,6 @@ export const DATE_COLUMN_SETTINGS = {
   time_enabled: {
     title: t`Show the time`,
     widget: "radio",
-    variant: "form-field",
     isValid: ({ unit }, settings) => {
       const options = getTimeEnabledOptionsForUnit(unit);
       return !!_.findWhere(options, { value: settings["time_enabled"] });
@@ -252,7 +248,6 @@ export const DATE_COLUMN_SETTINGS = {
     title: t`Time style`,
     widget: "radio",
     default: "h:mm A",
-    variant: "form-field",
     getProps: (column, settings) => ({
       options: [
         timeStyleOption("h:mm A", t`12-hour clock`),
@@ -283,7 +278,6 @@ export const NUMBER_COLUMN_SETTINGS = {
   number_style: {
     title: t`Style`,
     widget: "select",
-    variant: "form-field",
     props: {
       options: [
         { name: "Normal", value: "decimal" },
@@ -302,7 +296,6 @@ export const NUMBER_COLUMN_SETTINGS = {
   currency: {
     title: t`Unit of currency`,
     widget: "select",
-    variant: "form-field",
     props: {
       // FIXME: rest of these options
       options: currency.map(([_, currency]) => ({
@@ -318,7 +311,6 @@ export const NUMBER_COLUMN_SETTINGS = {
   currency_style: {
     title: t`Currency label style`,
     widget: "radio",
-    variant: "form-field",
     getProps: (column, settings) => {
       const c = settings["currency"] || "USD";
       const symbol = getCurrencySymbol(c);
@@ -357,7 +349,6 @@ export const NUMBER_COLUMN_SETTINGS = {
   currency_in_header: {
     title: t`Where to display the unit of currency`,
     widget: "radio",
-    variant: "form-field",
     props: {
       options: [
         { name: t`In the column heading`, value: true },
@@ -374,7 +365,6 @@ export const NUMBER_COLUMN_SETTINGS = {
     // uses 1-2 character string to represent decimal and thousands separators
     title: t`Separator style`,
     widget: "select",
-    variant: "form-field",
     props: {
       options: [
         { name: "100,000.00", value: ".," },
@@ -389,7 +379,6 @@ export const NUMBER_COLUMN_SETTINGS = {
   decimals: {
     title: t`Minimum number of decimal places`,
     widget: "number",
-    variant: "form-field",
     props: {
       placeholder: "1",
     },
@@ -397,7 +386,6 @@ export const NUMBER_COLUMN_SETTINGS = {
   scale: {
     title: t`Multiply by a number`,
     widget: "number",
-    variant: "form-field",
     props: {
       placeholder: "1",
     },
@@ -405,7 +393,6 @@ export const NUMBER_COLUMN_SETTINGS = {
   prefix: {
     title: t`Add a prefix`,
     widget: "input",
-    variant: "form-field",
     props: {
       placeholder: "$",
     },
@@ -413,7 +400,6 @@ export const NUMBER_COLUMN_SETTINGS = {
   suffix: {
     title: t`Add a suffix`,
     widget: "input",
-    variant: "form-field",
     props: {
       placeholder: t`dollars`,
     },
@@ -475,7 +461,7 @@ const COMMON_COLUMN_SETTINGS = {
   },
 };
 
-export function getSettingDefintionsForColumn(series, column) {
+export function getSettingDefinitionsForColumn(series, column) {
   const { visualization } = getVisualizationRaw(series);
   const extraColumnSettings =
     typeof visualization.columnSettings === "function"

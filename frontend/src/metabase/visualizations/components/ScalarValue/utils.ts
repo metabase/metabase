@@ -27,7 +27,7 @@ export const findSize = ({
     size: `${size}${unit}`,
     family: fontFamily,
     weight: fontWeight,
-  }).width;
+  });
 
   if (width > targetWidth) {
     while (width > targetWidth && size > min) {
@@ -37,7 +37,7 @@ export const findSize = ({
         size: `${size}${unit}`,
         family: fontFamily,
         weight: fontWeight,
-      }).width;
+      });
     }
 
     return `${size}${unit}`;

@@ -1,17 +1,15 @@
 (ns metabase.models.segment-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.revision :as revision]
-            [metabase.models.segment :as segment :refer [Segment]]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.table :refer [Table]]
-            [metabase.test :as mt]
-            [metabase.util :as u]
-            [toucan.db :as db]))
-
-(defn- user-details
-  [username]
-  (dissoc (mt/fetch-user username) :date_joined :last_login))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.revision :as revision]
+   [metabase.models.segment :as segment :refer [Segment]]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
+   [toucan.db :as db])
+  (:import
+   (java.time LocalDateTime)))
 
 (deftest update-test
   (testing "Updating"
@@ -29,28 +27,6 @@
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
         (is (= true
                (db/update! Segment id {:creator_id (mt/user->id :rasta)})))))))
-
-(deftest retrieve-segments-test
-  (mt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id-1 :id} {:db_id database-id}]
-                  Table    [{table-id-2 :id} {:db_id database-id}]
-                  Segment  [segment-1 {:table_id table-id-1, :name "Segment 1", :description nil}]
-                  Segment  [_         {:table_id table-id-2}]
-                  Segment  [_         {:table_id table-id-1, :archived true}]]
-    (is (= [{:creator_id              (mt/user->id :rasta)
-             :creator                 (user-details :rasta)
-             :name                    "Segment 1"
-             :description             nil
-             :show_in_getting_started false
-             :caveats                 nil
-             :points_of_interest      nil
-             :archived                false
-             :definition              nil
-             :entity_id               (:entity_id segment-1)}]
-           (for [segment (u/prog1 (segment/retrieve-segments table-id-1)
-                           (assert (= 1 (count <>))))]
-             (-> (dissoc (into {} segment) :id :table_id :created_at :updated_at)
-                 (update :creator #(dissoc % :date_joined :last_login))))))))
 
 (deftest serialize-segment-test
   (mt/with-temp* [Database [{database-id :id}]
@@ -128,9 +104,10 @@
 
 (deftest identity-hash-test
   (testing "Segment hashes are composed of the segment name and table identity-hash"
-    (mt/with-temp* [Database [db      {:name "field-db" :engine :h2}]
-                    Table    [table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                    Segment  [segment {:name "big customers" :table_id (:id table)}]]
-      (is (= "a40066a4"
-             (serdes.hash/raw-hash ["big customers" (serdes.hash/identity-hash table)])
-             (serdes.hash/identity-hash segment))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Database [db      {:name "field-db" :engine :h2}]
+                      Table    [table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                      Segment  [segment {:name "big customers" :table_id (:id table) :created_at now}]]
+        (is (= "be199b7c"
+               (serdes.hash/raw-hash ["big customers" (serdes.hash/identity-hash table) now])
+               (serdes.hash/identity-hash segment)))))))

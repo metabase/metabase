@@ -26,8 +26,13 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByText("Link").click();
 
+    cy.findByTestId("link_text").type("{{C");
+    cy.findByTestId("select-list").within(() => {
+      cy.findAllByText("CITY").click();
+    });
+
     cy.findByTestId("link_text")
-      .type("{{CITY}} {{ID}} fixed text", {
+      .type(" {{ID}} fixed text", {
         parseSpecialCharSequences: false,
       })
       .blur();

@@ -12,9 +12,7 @@ describe("scenarios > admin > databases > edit", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.server();
-    cy.route("GET", "/api/database/*").as("databaseGet");
-    cy.route("PUT", "/api/database/*").as("databaseUpdate");
+    cy.intercept("PUT", "/api/database/*").as("databaseUpdate");
   });
 
   describe("Database type", () => {
@@ -97,17 +95,15 @@ describe("scenarios > admin > databases > edit", () => {
         cy.wait("@databaseUpdate").then(({ request, response }) => {
           expect(request.body.cache_ttl).to.equal(32);
           expect(response.body.cache_ttl).to.equal(32);
+        });
 
-          cy.visit("/admin/databases");
-          cy.findByTextEnsureVisible("Sample Database").click();
+        cy.findByTextEnsureVisible("Custom").click();
+        popover().findByText("Use instance default (TTL)").click();
 
-          cy.findByTextEnsureVisible("Custom").click();
-          popover().findByText("Use instance default (TTL)").click();
-
-          cy.button("Save changes").click();
-          cy.wait("@databaseUpdate").then(({ request }) => {
-            expect(request.body.cache_ttl).to.equal(null);
-          });
+        // We need to wait until "Success" button state is gone first
+        cy.button("Save changes", { timeout: 10000 }).click();
+        cy.wait("@databaseUpdate").then(({ request }) => {
+          expect(request.body.cache_ttl).to.equal(null);
         });
       });
     });
@@ -128,29 +124,30 @@ describe("scenarios > admin > databases > edit", () => {
       cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
 
       cy.findByText("Show advanced options").click();
-      cy.findByText("Database syncing")
-        .closest(".Form-field")
-        .findByText("Hourly");
-
-      cy.findByText("Regularly, on a schedule")
-        .closest("div")
-        .should("have.class", "text-brand");
+      cy.findByText("Regularly, on a schedule").should("exist");
+      cy.findByText("Hourly").should("exist");
+      cy.findByLabelText("Regularly, on a schedule").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
     });
 
     it("lets you change the metadata_sync period", () => {
       cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
 
       cy.findByText("Show advanced options").click();
-      cy.findByText("Database syncing").closest(".Form-field").as("sync");
 
-      cy.get("@sync").findByText("Hourly").click();
+      cy.findByText("Hourly").click();
       popover().within(() => {
         cy.findByText("Daily").click({ force: true });
       });
 
-      cy.findByText("Regularly, on a schedule")
-        .closest("div")
-        .should("have.class", "text-brand");
+      cy.findByLabelText("Regularly, on a schedule").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
 
       cy.findByText("Save changes").click();
       cy.wait("@databaseUpdate").then(({ response }) =>
@@ -209,7 +206,7 @@ describe("scenarios > admin > databases > edit", () => {
 
   describe("Actions sidebar", () => {
     it("lets you trigger the manual database schema sync", () => {
-      cy.route("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`).as(
+      cy.intercept("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`).as(
         "sync_schema",
       );
 
@@ -220,7 +217,7 @@ describe("scenarios > admin > databases > edit", () => {
     });
 
     it("lets you trigger the manual rescan of field values", () => {
-      cy.route("POST", `/api/database/${SAMPLE_DB_ID}/rescan_values`).as(
+      cy.intercept("POST", `/api/database/${SAMPLE_DB_ID}/rescan_values`).as(
         "rescan_values",
       );
 
@@ -231,7 +228,7 @@ describe("scenarios > admin > databases > edit", () => {
     });
 
     it("lets you discard saved field values", () => {
-      cy.route("POST", `/api/database/${SAMPLE_DB_ID}/discard_values`).as(
+      cy.intercept("POST", `/api/database/${SAMPLE_DB_ID}/discard_values`).as(
         "discard_values",
       );
 
@@ -242,7 +239,7 @@ describe("scenarios > admin > databases > edit", () => {
     });
 
     it("lets you remove the Sample Database", () => {
-      cy.route("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
+      cy.intercept("DELETE", `/api/database/${SAMPLE_DB_ID}`).as("delete");
 
       cy.visit(`/admin/databases/${SAMPLE_DB_ID}`);
       cy.findByText("Remove this database").click();

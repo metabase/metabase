@@ -1,17 +1,33 @@
-import type { DatetimeUnit } from "metabase-types/api/query";
+import { Card } from "./card";
 import { DatabaseId } from "./database";
+import { FieldId } from "./field";
+import { DatetimeUnit, DimensionReference } from "./query";
 import { DownloadPermission } from "./permissions";
 
+export type RowValue = string | number | null | boolean;
+export type RowValues = RowValue[];
+
 export interface DatasetColumn {
+  id?: FieldId;
+  name: string;
   display_name: string;
   source: string;
-  name: string;
+  // FIXME: this prop does not come from API
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
+  field_ref?: DimensionReference;
+  expression_name?: any;
+  base_type?: string;
+  semantic_type?: string;
+  remapped_from?: string;
+  remapped_to?: string;
+  binning_info?: {
+    bin_width?: number;
+  };
 }
 
 export interface DatasetData {
-  rows: any[][];
+  rows: RowValues[];
   cols: DatasetColumn[];
   rows_truncated: number;
   download_perms?: DownloadPermission;
@@ -23,3 +39,21 @@ export interface Dataset {
   row_count: number;
   running_time: number;
 }
+
+export interface NativeQueryForm {
+  query: string;
+}
+
+export type SingleSeries = {
+  card: Card;
+  data: DatasetData;
+  error_type?: string;
+  error?: {
+    status: number; // HTTP status code
+    data?: string;
+  };
+};
+
+export type RawSeries = SingleSeries[];
+export type TransformedSeries = RawSeries & { _raw: Series };
+export type Series = RawSeries | TransformedSeries;

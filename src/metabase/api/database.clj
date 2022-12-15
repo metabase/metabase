@@ -430,26 +430,27 @@
                         second
                         (str/replace #"-" " ")
                         str/lower-case)]
-    (db/select [Card :id :dataset :database_id :name :collection_id]
+    (db/select [Card :id :dataset :database_id :name :collection_id [:collection.name :collection_name]]
                {:where    [:and
-                           [:= :database_id database-id]
-                           [:= :archived false]
+                           [:= :report_card.database_id database-id]
+                           [:= :report_card.archived false]
                            (cond
                              ;; e.g. search-string = "123"
                              (and (not-empty search-id) (empty? search-name))
-                             [:like (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text) :id) (str search-id "%")]
+                             [:like (hx/cast (if (= (mdb.connection/db-type) :mysql) :char :text) :report_card.id) (str search-id "%")]
 
                              ;; e.g. search-string = "123-foo"
                              (and (not-empty search-id) (not-empty search-name))
                              [:and
-                              [:= :id (Integer/parseInt search-id)]
+                              [:= :report_card.id (Integer/parseInt search-id)]
                               ;; this is a prefix match to be consistent with substring matches on the entire slug
-                              [:like :%lower.name (str search-name "%")]]
+                              [:like :%lower.report_card.name (str search-name "%")]]
 
                              ;; e.g. search-string = "foo"
                              (and (empty? search-id) (not-empty search-name))
-                             [:like :%lower.name (str "%" search-name "%")])]
-                :order-by [[:id :desc]]
+                             [:like :%lower.report_card.name (str "%" search-name "%")])]
+                :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
+                :order-by [[:report_card.id :desc]]
                 :limit    50})))
 
 (defn- autocomplete-fields [db-id search-string limit]
@@ -544,7 +545,7 @@
   (try
     (->> (autocomplete-cards id query)
          (filter mi/can-read?)
-         (map #(select-keys % [:id :name :dataset])))
+         (map #(select-keys % [:id :name :dataset :collection_name])))
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 

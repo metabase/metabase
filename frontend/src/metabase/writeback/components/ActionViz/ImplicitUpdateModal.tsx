@@ -17,7 +17,7 @@ import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm
 import type { State } from "metabase-types/store";
 import type { DashboardOrderedCard } from "metabase-types/api";
 import type { Row } from "metabase-types/types/Dataset";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Table from "metabase-lib/metadata/Table";
 
 interface OwnProps {
   isOpen: boolean;

@@ -2,20 +2,18 @@
   "A Metric is a saved MBQL 'macro' expanding to a combination of `:aggregation` and/or `:filter` clauses.
   It is passed in as an `:aggregation` clause but is replaced by the `expand-macros` middleware with the appropriate
   clauses."
-  (:require [clojure.set :as set]
-            [medley.core :as m]
-            [metabase.models.interface :as mi]
-            [metabase.models.revision :as revision]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.models :as models]))
+  (:require
+   [clojure.set :as set]
+   [medley.core :as m]
+   [metabase.models.interface :as mi]
+   [metabase.models.revision :as revision]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel Metric :metric)
 
@@ -44,10 +42,11 @@
    {:types      (constantly {:definition :metric-segment-definition})
     :properties (constantly {:timestamped? true
                              :entity_id    true})
-    :pre-update pre-update})
+    :pre-update pre-update}))
 
-  serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
+(defmethod serdes.hash/identity-hash-fields Metric
+  [_metric]
+  [:name (serdes.hash/hydrated-hash :table "<none>") :created_at])
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
@@ -75,44 +74,30 @@
 
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
-
-(defmethod serdes.base/serdes-generate-path "Metric"
-  [_ metric]
-  (let [base (serdes.base/infer-self-path "Metric" metric)]
-    [(assoc base :label (:name metric))]))
-
 (defmethod serdes.base/extract-one "Metric"
   [_model-name _opts metric]
   (-> (serdes.base/extract-one-basics "Metric" metric)
       (update :table_id   serdes.util/export-table-fk)
       (update :creator_id serdes.util/export-user)
-      (update :definition serdes.util/export-json-mbql)))
+      (update :definition serdes.util/export-mbql)))
 
 (defmethod serdes.base/load-xform "Metric" [metric]
   (-> metric
       serdes.base/load-xform-basics
       (update :table_id   serdes.util/import-table-fk)
       (update :creator_id serdes.util/import-user)
-      (update :definition serdes.util/import-json-mbql)))
+      (update :definition serdes.util/import-mbql)))
 
 (defmethod serdes.base/serdes-dependencies "Metric" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes.util/table->path table_id)}
                       (serdes.util/mbql-deps definition))))
 
-;;; ----------------------------------------------------- OTHER ------------------------------------------------------
+(defmethod serdes.base/storage-path "Metric" [metric _ctx]
+  (let [{:keys [id label]} (-> metric serdes.base/serdes-path last)]
+    (-> metric
+        :table_id
+        serdes.util/table->path
+        serdes.util/storage-table-path-prefix
+        (concat ["metrics" (serdes.base/storage-leaf-file-name id label)]))))
 
-(s/defn retrieve-metrics :- [(mi/InstanceOf Metric)]
-  "Fetch all `Metrics` for a given `Table`. Optional second argument allows filtering by active state by providing one
-  of 3 keyword values: `:active`, `:deleted`, `:all`. Default filtering is for `:active`."
-  ([table-id :- su/IntGreaterThanZero]
-   (retrieve-metrics table-id :active))
-
-  ([table-id :- su/IntGreaterThanZero, state :- (s/enum :all :active :deleted)]
-   (-> (db/select Metric
-         {:where    [:and [:= :table_id table-id]
-                     (case state
-                       :all     true
-                       :active  [:= :archived false]
-                       :deleted [:= :archived true])]
-          :order-by [[:name :asc]]})
-       (hydrate :creator))))
+(serdes.base/register-ingestion-path! "Metric" (serdes.base/ingestion-matcher-collected "databases" "Metric"))

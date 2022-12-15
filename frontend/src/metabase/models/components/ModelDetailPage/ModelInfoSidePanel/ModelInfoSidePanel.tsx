@@ -2,8 +2,8 @@ import React from "react";
 import { t } from "ttag";
 
 import type { Card } from "metabase-types/api";
-import type Question from "metabase-lib/lib/Question";
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
 
 import ModelRelationships from "./ModelRelationships";
 import {

@@ -21,7 +21,8 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.time.LocalDateTime))
 
 ;; ## Dashboard Revisions
 
@@ -315,8 +316,9 @@
 
 (deftest identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"
-    (mt/with-temp* [Collection [c1   {:name "top level" :location "/"}]
-                    Dashboard  [dash {:name "my dashboard" :collection_id (:id c1)}]]
-      (is (= "38c0adf9"
-             (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1)])
-             (serdes.hash/identity-hash dash))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection [c1   {:name "top level" :location "/" :created_at now}]
+                      Dashboard  [dash {:name "my dashboard" :collection_id (:id c1) :created_at now}]]
+        (is (= "8cbf93b7"
+               (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1) now])
+               (serdes.hash/identity-hash dash)))))))

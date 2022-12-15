@@ -1,8 +1,7 @@
 import styled from "@emotion/styled";
+import Input from "metabase/core/components/Input";
 
-import TextInput from "metabase/components/TextInput";
-
-export const AuditParametersInput = styled(TextInput)`
+export const AuditParametersInput = styled(Input)`
   display: inline-flex;
   width: 240px;
 

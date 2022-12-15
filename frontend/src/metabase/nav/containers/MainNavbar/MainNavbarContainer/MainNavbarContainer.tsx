@@ -3,29 +3,26 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { LocationDescriptor } from "history";
 
-import { IconProps } from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { Bookmark, Collection, DataApp, User } from "metabase-types/api";
+import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import DataApps, { isDataAppCollection } from "metabase/entities/data-apps";
+import { isDataAppCollection } from "metabase/entities/data-apps";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import Collections, {
   buildCollectionTree,
   getCollectionIcon,
   ROOT_COLLECTION,
+  CollectionTreeItem,
 } from "metabase/entities/collections";
 import { logout } from "metabase/auth/actions";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import {
-  getHasDataAccess,
-  getHasOwnDatabase,
-} from "metabase/new_query/selectors";
+import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
 
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
@@ -53,11 +50,6 @@ const mapDispatchToProps = {
   onReorderBookmarks: Bookmarks.actions.reorder,
 };
 
-interface CollectionTreeItem extends Collection {
-  icon: string | IconProps;
-  children: CollectionTreeItem[];
-}
-
 interface Props extends MainNavbarProps {
   isAdmin: boolean;
   currentUser: User;
@@ -65,7 +57,6 @@ interface Props extends MainNavbarProps {
   bookmarks: Bookmark[];
   collections: Collection[];
   rootCollection: Collection;
-  dataApps: DataApp[];
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   allFetched: boolean;
@@ -83,7 +74,6 @@ function MainNavbarContainer({
   hasOwnDatabase,
   collections = [],
   rootCollection,
-  dataApps = [],
   hasDataAccess,
   allFetched,
   location,
@@ -148,9 +138,9 @@ function MainNavbarContainer({
   const renderModalContent = useCallback(() => {
     if (modal === "MODAL_NEW_COLLECTION") {
       return (
-        <CollectionCreate
+        <CreateCollectionModal
           onClose={closeModal}
-          onSaved={(collection: Collection) => {
+          onCreate={(collection: Collection) => {
             closeModal();
             onChangeLocation(Urls.collection(collection));
           }}
@@ -173,7 +163,6 @@ function MainNavbarContainer({
         isOpen={isOpen}
         currentUser={currentUser}
         collections={collectionTree}
-        dataApps={dataApps}
         hasOwnDatabase={hasOwnDatabase}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}
@@ -199,9 +188,6 @@ export default _.compose(
   }),
   Collections.loadList({
     query: () => ({ tree: true, "exclude-archived": true }),
-    loadingAndErrorWrapper: false,
-  }),
-  DataApps.loadList({
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),

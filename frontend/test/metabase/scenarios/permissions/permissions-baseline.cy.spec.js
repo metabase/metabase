@@ -38,12 +38,10 @@ describe("scenarios > permissions", () => {
     cy.findAllByRole("button", { name: "refresh icon" }).should("be.disabled");
   });
 
-  // There's no pulse in the fixture data, so we stub out the api call to
-  // replace the 404 with a 403.
   it("should display the permissions screen for pulses", () => {
     cy.signIn("none");
-    cy.server();
-    cy.route({ url: /\/api\/pulse\/1/, status: 403, response: {} });
+    // There's no pulse in the fixture data, so we stub out the api call to replace the 404 with a 403.
+    cy.intercept("api/pulse/1", { statusCode: 403, body: {} });
     cy.visit("/pulse/1");
     checkUnauthorized();
   });

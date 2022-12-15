@@ -2,6 +2,7 @@
 
 import d3 from "d3";
 import { createSelector } from "reselect";
+import createCachedSelector from "re-reselect";
 import _ from "underscore";
 import { assocIn, getIn, merge, updateIn } from "icepick";
 
@@ -13,11 +14,6 @@ import {
 } from "metabase/visualizations";
 import { MetabaseApi } from "metabase/services";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getCardUiParameters } from "metabase/parameters/utils/cards";
-import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
-import { isPK } from "metabase/lib/schema_metadata";
-
-import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
 import Timelines from "metabase/entities/timelines";
@@ -26,6 +22,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { parseTimestamp } from "metabase/lib/time";
+import { getMode as getQuestionMode } from "metabase/modes/lib/modes";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -35,9 +32,16 @@ import {
 import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
-import Mode from "metabase-lib/lib/Mode";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import Question from "metabase-lib/lib/Question";
+import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
+import {
+  normalizeParameters,
+  normalizeParameterValue,
+} from "metabase-lib/parameters/utils/parameter-values";
+import { isPK } from "metabase-lib/types/utils/isa";
+import Mode from "metabase-lib/Mode";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import Question from "metabase-lib/Question";
+import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 
 export const getUiControls = state => state.qb.uiControls;
 const getQueryStatus = state => state.qb.queryStatus;
@@ -166,9 +170,6 @@ export const getPKRowIndexMap = createSelector(
   },
 );
 
-// get instance settings, used for determining whether to display certain actions
-export const getSettings = state => state.settings.values;
-
 export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
 export const getQueryStartTime = state => state.qb.queryStartTime;
@@ -277,6 +278,10 @@ const getNextRunParameterValues = createSelector([getParameters], parameters =>
     .filter(p => p !== undefined),
 );
 
+const getNextRunParameters = createSelector([getParameters], parameters =>
+  normalizeParameters(parameters),
+);
+
 export const getQueryBuilderMode = createSelector(
   [getUiControls],
   uiControls => uiControls.queryBuilderMode,
@@ -328,6 +333,14 @@ export const getQuestion = createSelector(
       : question;
   },
 );
+
+// This jsdoc keeps the TS typechecker happy.
+// Otherwise TS thinks this `getQuestionFromCard` requires two args.
+/** @type {function(unknown, unknown): Question} */
+export const getQuestionFromCard = createCachedSelector(
+  [getMetadata, (_state, card) => card],
+  (metadata, card) => new Question(card, metadata),
+)((_state, card) => card.id);
 
 function normalizeClause(clause) {
   return typeof clause?.raw === "function" ? clause.raw() : clause;
@@ -551,7 +564,9 @@ const isZoomingRow = createSelector(
 export const getMode = createSelector(
   [getLastRunQuestion, isZoomingRow],
   (question, isZoomingRow) =>
-    isZoomingRow ? new Mode(question, ObjectMode) : question && question.mode(),
+    isZoomingRow
+      ? new Mode(question, ObjectMode)
+      : question && getQuestionMode(question),
 );
 
 export const getIsObjectDetail = createSelector(
@@ -934,3 +949,25 @@ export const getAutocompleteResultsFn = state => {
     return apiCall;
   };
 };
+
+export const getDataReferenceStack = createSelector(
+  [getUiControls, getDatabaseId],
+  (uiControls, dbId) =>
+    uiControls.dataReferenceStack
+      ? uiControls.dataReferenceStack
+      : dbId
+      ? [{ type: "database", item: { id: dbId } }]
+      : [],
+);
+
+export const getNativeQueryFn = createSelector(
+  [getNextRunDatasetQuery, getNextRunParameters],
+  (datasetQuery, parameters) => {
+    let lastResult = undefined;
+
+    return async () => {
+      lastResult ??= await MetabaseApi.native({ ...datasetQuery, parameters });
+      return lastResult;
+    };
+  },
+);

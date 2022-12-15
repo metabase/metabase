@@ -5,7 +5,7 @@ import {
 } from "__support__/sample_database_fixture";
 
 import { Card } from "metabase-types/types/Card";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 import { getObjectName, getDisplayId, getIdValue } from "./utils";
 

@@ -56,7 +56,7 @@ export const RowActionButtonContainer = styled(CellRoot)`
 `;
 
 export const ListItemContainer = styled.tr<{ disabled?: boolean }>`
-  height: 4rem;
+  height: 2.75rem;
 
   background-color: ${color("bg-white")};
 
@@ -148,4 +148,11 @@ export const TableBody = styled.tbody`
 
 export const Footer = styled(TableFooter)`
   margin-top: 0.5rem;
+`;
+
+export const RowIconContainer = styled.td`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1em 0.25em 1em 1em;
 `;

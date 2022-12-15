@@ -7,9 +7,9 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import FieldList from "metabase/query_builder/components/FieldList";
-import { isDateTimeField } from "metabase/lib/query/field_ref";
 import Select from "metabase/core/components/Select";
-import Join from "metabase-lib/lib/queries/structured/Join";
+import { isDateTimeField } from "metabase-lib/queries/utils/field-ref";
+import Join from "metabase-lib/queries/structured/Join";
 
 import { NotebookCellItem, NotebookCellAdd } from "../NotebookCell";
 import {
@@ -54,10 +54,9 @@ const stepShape = {
   revert: PropTypes.func.isRequired,
   clean: PropTypes.func.isRequired,
   actions: PropTypes.array.isRequired,
-
-  previous: stepShape,
-  next: stepShape,
 };
+stepShape.previous = stepShape;
+stepShape.next = stepShape;
 
 const joinStepPropTypes = {
   query: PropTypes.object.isRequired,

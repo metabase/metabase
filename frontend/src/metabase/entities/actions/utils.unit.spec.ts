@@ -6,7 +6,8 @@ import {
 import { metadata } from "__support__/sample_database_fixture";
 import type { Parameter as ParameterObject } from "metabase-types/types/Parameter";
 import { NativeDatasetQuery } from "metabase-types/types/Card";
-import Question from "metabase-lib/lib/Question";
+import { ModelAction } from "metabase-types/api";
+import Question from "metabase-lib/Question";
 
 import {
   removeOrphanSettings,

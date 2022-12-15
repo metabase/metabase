@@ -2,9 +2,9 @@ import React from "react";
 import styled from "@emotion/styled";
 
 import Icon from "metabase/components/Icon";
-import TextInput from "metabase/components/TextInput";
+import Input from "metabase/core/components/Input";
 
-const SearchInput = styled(TextInput)`
+const SearchInput = styled(Input)`
   min-width: 286px;
 `;
 

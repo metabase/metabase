@@ -3,7 +3,7 @@
             [metabase.pulse.render.color :as color]
             [metabase.pulse.render.table :as table]
             [metabase.pulse.render.test-util :as render.tu]
-            [metabase.test.util :as tu]))
+            [metabase.test :as mt]))
 
 (defn- query-results->header+rows
   "Makes pulse header and data rows with no bar-width. Including bar-width just adds extra HTML that will be ignored."
@@ -17,7 +17,7 @@
   results."
   [pred collect-fn form]
   (let [results (atom [])]
-    (tu/postwalk-pred pred
+    (mt/postwalk-pred pred
                       (fn [node]
                         (when-let [result (collect-fn node)]
                           (swap! results conj result))
@@ -83,3 +83,67 @@
       (is (= normal-heading normal-rendered))
       (is (= "A..." (subs long-rendered (- (count long-rendered) 4) (count long-rendered))))
       (is (not= long-heading long-rendered)))))
+
+(deftest table-columns-test
+  (let [rows [["As" "Bs" "Cs"]
+              ["a" "b" "c"]]]
+    (testing "Column reordering is applied correctly to the table"
+      (let [{:keys [viz-tree]} (render.tu/make-viz-data
+                                rows :table {:reordered-columns {:order [1 0 2]}})]
+        (is (= ["Bs" "As" "Cs" "b" "a" "c"]
+               (-> viz-tree
+                   render.tu/remove-attrs
+                   ((juxt #(render.tu/nodes-with-tag % :th)
+                          #(render.tu/nodes-with-tag % :td)))
+                   (->> (apply concat))
+                   (->> (map second)))))))
+    (testing "A table with hidden columns does not render hidden columns"
+      (let [{:keys [viz-tree]} (render.tu/make-viz-data
+                                rows :table {:hidden-columns {:hide [1]}})]
+        (is (= ["As" "Cs" "a" "c"]
+               (-> viz-tree
+                   render.tu/remove-attrs
+                   ((juxt #(render.tu/nodes-with-tag % :th)
+                          #(render.tu/nodes-with-tag % :td)))
+                   (->> (apply concat))
+                   (->> (map second)))))))))
+
+(deftest table-column-formatting-test
+  (let [rows [["A" "B" "C" "D" "E"]
+              [0.1 9000 "2022-10-12T00:00:00Z" 0.123 0.6666667]]]
+    (testing "Custom column titles are respected in render."
+      (is (= ["Eh" "Bee" "Sea" "D" "E"]
+             (-> rows
+                 (render.tu/make-card-and-data :table)
+                 (render.tu/make-column-settings [{:column-title "Eh"}
+                                                  {:column-title "Bee"}
+                                                  {:column-title "Sea"}])
+                 render.tu/render-as-hiccup
+                 render.tu/remove-attrs
+                 (render.tu/nodes-with-tag :th)
+                 (->> (map second))))))
+    (testing "Column format settings are respected in render."
+      (is (= ["10%" "9E3" "12/10/2022" "---0.12___" "0.667"]
+             (-> rows
+                 (render.tu/make-card-and-data :table)
+                 (render.tu/make-column-settings [{:number-style "percent"}
+                                                  {:number-style "scientific"}
+                                                  {:date-style "D/M/YYYY"}
+                                                  {:prefix "---" :suffix "___"}
+                                                  {:decimals 3}])
+                 render.tu/render-as-hiccup
+                 render.tu/remove-attrs
+                 (render.tu/nodes-with-tag :td)
+                 (->> (map second))))))
+    (testing "Site Localization Settings are respected in columns."
+      (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style      "D/M/YYYY"
+                                                                            :date_separator  "-"
+                                                                            :date_abbreviate false}
+                                                            :type/Number   {:number_separators ",."}}]
+        (is (= ["0,1" "9.000" "12-10-2022" "0,12" "0,67"]
+             (-> rows
+                 (render.tu/make-card-and-data :table)
+                 render.tu/render-as-hiccup
+                 render.tu/remove-attrs
+                 (render.tu/nodes-with-tag :td)
+                 (->> (map second)))))))))

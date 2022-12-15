@@ -12,7 +12,7 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
-import Question from "metabase-lib/lib/Question";
+import Question from "metabase-lib/Question";
 
 function mockCachingEnabled(enabled = true) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);

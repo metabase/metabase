@@ -1,14 +1,13 @@
-import { TYPE } from "metabase/lib/types";
-
 import type {
   ActionDashboardCard,
   BaseDashboardOrderedCard,
-  ClickBehavior,
+  Card,
   Database as IDatabase,
+  WritebackAction,
 } from "metabase-types/api";
-import type { SavedCard } from "metabase-types/types/Card";
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Field from "metabase-lib/lib/metadata/Field";
+import { TYPE } from "metabase-lib/types/constants";
+import type Database from "metabase-lib/metadata/Database";
+import type Field from "metabase-lib/metadata/Field";
 
 const DB_WRITEBACK_FEATURE = "actions";
 const DB_WRITEBACK_SETTING = "database-enable-actions";
@@ -61,13 +60,13 @@ export const isEditableField = (field: Field) => {
   return true;
 };
 
-export const isActionCard = (card: SavedCard) => card?.display === "action";
+export const isActionCard = (card: Card) => card?.display === "action";
 
 export function isActionDashCard(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionDashboardCard {
   const virtualCard = dashCard?.visualization_settings?.virtual_card;
-  return isActionCard(virtualCard as SavedCard);
+  return isActionCard(virtualCard as Card);
 }
 
 /**
@@ -82,41 +81,8 @@ export function isMappedExplicitActionButton(
   dashCard: BaseDashboardOrderedCard,
 ): dashCard is ActionDashboardCard {
   const isAction = isActionDashCard(dashCard);
-  return isAction && typeof dashCard.action_id === "number";
-}
-
-export function isValidImplicitActionClickBehavior(
-  clickBehavior?: ClickBehavior,
-) {
-  if (
-    !clickBehavior ||
-    clickBehavior.type !== "action" ||
-    !("actionType" in clickBehavior)
-  ) {
-    return false;
-  }
-  if (clickBehavior.actionType === "insert") {
-    return clickBehavior.tableId != null;
-  }
-  if (
-    clickBehavior.actionType === "update" ||
-    clickBehavior.actionType === "delete"
-  ) {
-    return typeof clickBehavior.objectDetailDashCardId === "number";
-  }
-  return false;
-}
-
-export function isImplicitActionButton(
-  dashCard: BaseDashboardOrderedCard,
-): boolean {
-  const isAction = isActionDashCard(dashCard);
   return (
-    isAction &&
-    dashCard.action_id == null &&
-    isValidImplicitActionClickBehavior(
-      dashCard.visualization_settings?.click_behavior,
-    )
+    isAction && typeof dashCard.visualization_settings.action_slug === "string"
   );
 }
 
@@ -124,3 +90,9 @@ export function getActionButtonLabel(dashCard: ActionDashboardCard) {
   const label = dashCard.visualization_settings?.["button.label"];
   return label || "";
 }
+
+export const hasImplicitActions = (actions: WritebackAction[]): boolean =>
+  actions.some(isImplicitAction);
+
+export const isImplicitAction = (action: WritebackAction): boolean =>
+  action.type === "implicit";

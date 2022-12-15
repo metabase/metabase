@@ -17,13 +17,13 @@ import { MAX_ROTATED_TICK_WIDTH } from "metabase/static-viz/components/XYChart/c
 import { getX } from "metabase/static-viz/components/XYChart/utils/series";
 
 import type {
-  ContinuousDomain,
   Series,
   XAxisType,
   XValue,
   XScale,
   ChartSettings,
 } from "metabase/static-viz/components/XYChart/types";
+import { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 
 const getRotatedXTickHeight = (tickWidth: number) => {
   return tickWidth;

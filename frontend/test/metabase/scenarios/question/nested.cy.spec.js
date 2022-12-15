@@ -61,7 +61,7 @@ describe("scenarios > question > nested", () => {
       { loadBaseQuestionMetadata: true },
     );
 
-    cy.contains("Count").click();
+    openHeaderCellContextMenu("Count");
     cy.contains("Distribution").click();
     cy.wait("@dataset");
     cy.contains("Count by Count: Auto binned");
@@ -70,7 +70,7 @@ describe("scenarios > question > nested", () => {
     // Go back to the nested question and make sure Sum over time works
     cy.findByText("Nested GUI").click();
 
-    cy.contains("Count").click();
+    openHeaderCellContextMenu("Count");
     cy.contains("Sum over time").click();
     cy.contains("Sum of Count");
     cy.findByText("137");
@@ -93,7 +93,7 @@ describe("scenarios > question > nested", () => {
       { loadBaseQuestionMetadata: true },
     );
 
-    cy.contains("COUNT").click();
+    openHeaderCellContextMenu("COUNT");
     cy.contains("Distribution").click();
     cy.wait("@dataset");
     cy.contains("Count by COUNT: Auto binned");
@@ -101,7 +101,7 @@ describe("scenarios > question > nested", () => {
 
     cy.findByText("Nested SQL").click();
 
-    cy.contains("COUNT").click();
+    openHeaderCellContextMenu("COUNT");
     cy.contains("Sum over time").click();
     cy.wait("@dataset");
     cy.contains("Sum of COUNT");
@@ -598,4 +598,8 @@ function visitNestedQueryAdHoc(id) {
       query: { "source-table": `card__${id}` },
     },
   });
+}
+
+function openHeaderCellContextMenu(cell) {
+  cy.findAllByTestId("header-cell").should("be.visible").contains(cell).click();
 }

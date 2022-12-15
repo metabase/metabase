@@ -29,6 +29,8 @@ import BulkFilterModal from "metabase/query_builder/components/filters/modals/Bu
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
+import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
+import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import QuestionMoveToast from "./QuestionMoveToast";
 
 const mapDispatchToProps = {
@@ -67,6 +69,8 @@ class QueryModals extends React.Component {
       initialCollectionId,
       onCloseModal,
       onOpenModal,
+      updateQuestion,
+      setQueryBuilderMode,
     } = this.props;
 
     return modal === MODAL_TYPES.SAVE ? (
@@ -83,7 +87,12 @@ class QueryModals extends React.Component {
           }}
           onCreate={async card => {
             await this.props.onCreate(card);
-            onOpenModal(MODAL_TYPES.SAVED);
+            if (question.isDataset()) {
+              onCloseModal();
+              setQueryBuilderMode("view");
+            } else {
+              onOpenModal(MODAL_TYPES.SAVED);
+            }
           }}
           onClose={onCloseModal}
         />
@@ -269,6 +278,17 @@ class QueryModals extends React.Component {
         <MoveEventModal
           eventId={modalContext}
           collectionId={question.collectionId()}
+          onClose={onCloseModal}
+        />
+      </Modal>
+    ) : modal === MODAL_TYPES.PREVIEW_QUERY ? (
+      <Modal fit onClose={onCloseModal}>
+        <PreviewQueryModal onClose={onCloseModal} />
+      </Modal>
+    ) : modal === MODAL_TYPES.CONVERT_QUERY ? (
+      <Modal fit onClose={onCloseModal}>
+        <ConvertQueryModal
+          onUpdateQuestion={updateQuestion}
           onClose={onCloseModal}
         />
       </Modal>

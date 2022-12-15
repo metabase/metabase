@@ -10,7 +10,8 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.time.LocalDateTime))
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
@@ -332,7 +333,7 @@
            (mt/with-temp Card [_ {:parameter_mappings {:a :b}}])))
 
      (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "valid-id"
-                                                     :target       [:field-id 1000]}]}]
+                                                     :target       [:field 1000 nil]}]}]
        (is (some? card))))
 
     (testing "updating"
@@ -343,7 +344,7 @@
              (db/update! Card id :parameter_mappings [{:parameter_id 100}])))
 
         (is (some? (db/update! Card id :parameter_mappings [{:parameter_id "new-valid-id"
-                                                             :target       [:field-id 1000]}])))))))
+                                                             :target       [:field 1000 nil]}])))))))
 
 (deftest normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
@@ -357,11 +358,12 @@
 
 (deftest identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
-    (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/"}]
-                    Card        [card  {:name "the card" :collection_id (:id coll)}]]
-      (is (= "ead6cc05"
-             (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll)])
-             (serdes.hash/identity-hash card))))))
+    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+      (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/" :created_at now}]
+                      Card        [card  {:name "the card" :collection_id (:id coll) :created_at now}]]
+        (is (= "5199edf0"
+               (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll) now])
+               (serdes.hash/identity-hash card)))))))
 
 (deftest serdes-descendants-test
   (testing "regular cards don't depend on anything"
@@ -375,3 +377,21 @@
       (is (empty? (serdes.base/serdes-descendants "Card" (:id card1))))
       (is (= #{["Card" (:id card1)]}
              (serdes.base/serdes-descendants "Card" (:id card2)))))))
+
+
+;;; ------------------------------------------ Viz Settings Tests  ------------------------------------------
+
+(deftest upgrade-to-v2-db-test
+  (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
+    (mt/with-temp Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
+        (is (= {:version 2
+                :pie.show_legend true
+                :pie.percent_visibility "inside"}
+               (db/select-one-field :visualization_settings Card :id card-id)))))
+  (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
+    (mt/with-temp Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
+      (db/update! Card card-id :name "Favorite Toucan Foods")
+      (is (= {:version 2
+              :pie.show_legend true
+              :pie.percent_visibility "inside"}
+             (:visualization_settings (db/simple-select-one Card {:where [:= :id card-id]})))))))

@@ -12,6 +12,7 @@ import {
   calculateFunnelSteps,
   calculateStepOpacity,
   getFormattedStep,
+  reorderData,
 } from "metabase/static-viz/components/FunnelChart/utils/funnel";
 import { calculateMargin } from "./utils/margin";
 
@@ -43,8 +44,10 @@ type FunnelProps = {
 const Funnel = ({ data, settings }: FunnelProps) => {
   const palette = { ...layout.colors, ...settings.colors };
 
+  const reorderedData = reorderData(data, settings);
+
   const margin = calculateMargin(
-    data[0],
+    reorderedData[0],
     layout.stepFontSize,
     layout.percentFontSize,
     layout.measureFontSize,
@@ -59,7 +62,7 @@ const Funnel = ({ data, settings }: FunnelProps) => {
   const stepWidth = (layout.width - margin.left) / (data.length - 1);
   const maxStepTextWidth = stepWidth - layout.stepTextOffset * 2;
 
-  const steps = calculateFunnelSteps(data, stepWidth, funnelHeight);
+  const steps = calculateFunnelSteps(reorderedData, stepWidth, funnelHeight);
 
   const firstMeasureTop = margin.top + steps[0].top + steps[0].height / 2;
   const stepLabelTop = firstMeasureTop + measureTextHeight(layout.nameFontSize);

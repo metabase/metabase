@@ -52,6 +52,7 @@ const PASSWORD_COMPLEXITY_CLAUSES = {
 
 // TODO: dump this from backend settings definitions
 export type SettingName =
+  | "application-name"
   | "admin-email"
   | "analytics-uuid"
   | "anon-tracking-enabled"
@@ -71,6 +72,7 @@ export type SettingName =
   | "engines"
   | "ga-code"
   | "ga-enabled"
+  | "google-auth-enabled"
   | "google-auth-client-id"
   | "has-sample-database?"
   | "has-user-setup"
@@ -78,7 +80,7 @@ export type SettingName =
   | "is-hosted?"
   | "ldap-enabled"
   | "ldap-configured?"
-  | "other-sso-configured?"
+  | "other-sso-enabled?"
   | "enable-password-login"
   | "map-tile-server-url"
   | "password-complexity"
@@ -105,7 +107,8 @@ export type SettingName =
   | "application-font"
   | "available-fonts"
   | "enable-query-caching"
-  | "start-of-week";
+  | "start-of-week"
+  | "report-timezone-short";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
@@ -183,8 +186,8 @@ class Settings {
     return this.get("hide-embed-branding?");
   }
 
-  isGoogleAuthConfigured() {
-    return this.get("google-auth-client-id") != null;
+  isGoogleAuthEnabled() {
+    return this.get("google-auth-enabled");
   }
 
   isLdapEnabled() {
@@ -195,16 +198,16 @@ class Settings {
     return this.get("ldap-configured?");
   }
 
-  // JWT or SAML is configured
-  isOtherSsoConfigured() {
-    return this.get("other-sso-configured?");
+  // JWT or SAML is enabled
+  isOtherSsoEnabled() {
+    return this.get("other-sso-enabled?");
   }
 
   isSsoEnabled() {
     return (
-      this.isGoogleAuthConfigured() ||
       this.isLdapEnabled() ||
-      this.isGoogleAuthConfigured()
+      this.isGoogleAuthEnabled() ||
+      this.isOtherSsoEnabled()
     );
   }
 
@@ -293,6 +296,10 @@ class Settings {
     }
 
     return `https://www.metabase.com/docs/${tag}/${page}${anchor}`;
+  }
+
+  learnUrl(path = "") {
+    return `https://www.metabase.com/learn/${path}`;
   }
 
   storeUrl(path = "") {
@@ -403,4 +410,8 @@ function makeRegexTest(property: string, regex: RegExp) {
     (password.match(regex) || []).length >= (requirements[property] || 0);
 }
 
-export default new Settings(_.clone(window.MetabaseBootstrap));
+// window is not defined for static charts SSR
+const initValues =
+  typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
+
+export default new Settings(initValues);

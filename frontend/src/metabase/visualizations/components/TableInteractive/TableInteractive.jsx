@@ -17,7 +17,6 @@ import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
-import { isID, isPK, isFK } from "metabase/lib/schema_metadata";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -25,8 +24,6 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import { fieldRefForColumn } from "metabase/lib/dataset";
-import { isAdHocModelQuestionCard } from "metabase/lib/data-modeling/utils";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { zoomInRow } from "metabase/query_builder/actions";
 import { getQueryBuilderMode } from "metabase/query_builder/selectors";
@@ -35,8 +32,11 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
-import Dimension from "metabase-lib/lib/Dimension";
-import { memoizeClass } from "metabase-lib/lib/utils";
+import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
+import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
+import Dimension from "metabase-lib/Dimension";
+import { memoizeClass } from "metabase-lib/utils";
+import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
 import MiniBar from "../MiniBar";
 import {
   ExpandButton,
@@ -659,13 +659,7 @@ class TableInteractive extends Component {
       return undefined;
     }
 
-    const dimension = Dimension.parseMBQL(
-      column.field_ref,
-      query.metadata(),
-      query,
-    );
-
-    return dimension;
+    return query.parseFieldReference(column.field_ref);
   }
 
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)

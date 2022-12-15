@@ -88,7 +88,7 @@ jobs:
           --config-file frontend/test/metabase/scenarios/cross-version/target/cross-version-target.config.js \
           --spec frontend/test/metabase/scenarios/cross-version/target/**/*.cy.spec.js
     - name: Upload Cypress Artifacts upon failure
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: failure()
       with:
         name: cypress-artifacts-${{ matrix.version.source}}-to-${{ matrix.version.target }}

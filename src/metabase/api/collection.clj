@@ -297,13 +297,6 @@
   [_ collection options]
   (card-query false collection options))
 
-(defn- bit->boolean
-  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
-  [v]
-  (if (number? v)
-    (not (zero? v))
-    v))
-
 (defn- fully-parametrized-text?
   "Decide if `text`, usually (a part of) a query, is fully parametrized given the parameter types
   described by `template-tags` (usually the template tags of a native query).
@@ -322,16 +315,21 @@
   without the necessary constraints. (Marking parameters in optional blocks as required doesn't
   seem to be useful any way, but if the user said it is required, we honor this flag.)"
   [text template-tags]
-  (let [obligatory-params (into #{}
-                                (comp (filter params/Param?)
-                                      (map :k))
-                                (params.parse/parse text))]
-    (and (every? #(or (#{:dimension :snippet} (:type %))
-                      (:default %))
-                 (map template-tags obligatory-params))
-         (every? #(or (not (:required %))
-                      (:default %))
-                 (vals template-tags)))))
+  (try
+    (let [obligatory-params (into #{}
+                                  (comp (filter params/Param?)
+                                        (map :k))
+                                  (params.parse/parse text))]
+      (and (every? #(or (#{:dimension :snippet} (:type %))
+                        (:default %))
+                   (map template-tags obligatory-params))
+           (every? #(or (not (:required %))
+                        (:default %))
+                   (vals template-tags))))
+    (catch clojure.lang.ExceptionInfo _
+      ;; An exception might be thrown during parameter parsing if the syntax is invalid. In this case we return
+      ;; true so that we still can try to generate a preview for the query and display an error.
+      false)))
 
 (defn- fully-parametrized-query? [row]
   (let [native-query (-> row :dataset_query json/parse-string mbql.normalize/normalize :native)]
@@ -342,7 +340,7 @@
 (defn- post-process-card-row [row]
   (-> row
       (dissoc :authority_level :icon :personal_owner_id :dataset_query)
-      (update :collection_preview bit->boolean)
+      (update :collection_preview api/bit->boolean)
       (assoc :fully_parametrized (fully-parametrized-query? row))))
 
 (defmethod post-process-collection-children :card
@@ -854,7 +852,7 @@
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
     (when (and (contains? collection-updates :authority_level)
-                    (not= authority_level (:authority_level collection-before-update)))
+               (not= authority_level (:authority_level collection-before-update)))
       (api/check-403 (and api/*is-superuser?*
                           ;; pre-update of model checks if the collection is a personal collection and rejects changes
                           ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that
