@@ -24,13 +24,13 @@ export interface TimelineCardProps {
   timeline: Timeline;
   isDefault?: boolean;
   isVisible?: boolean;
-  hiddenEventIds?: number[];
+  hiddenEventIds: number[];
   selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
   onMoveEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
-  onToggleEventVisibility?: (event: TimelineEvent, isSelected: boolean) => void;
+  onToggleEventVisibility: (event: TimelineEvent, isSelected: boolean) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
 }
 

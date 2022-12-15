@@ -24,13 +24,12 @@ export interface EventCardProps {
   event: TimelineEvent;
   timeline: Timeline;
   isSelected?: boolean;
-  isHidden?: boolean;
-  isVisible?: boolean;
+  isHidden: boolean;
   onEdit?: (event: TimelineEvent) => void;
   onMove?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
   onToggleSelected?: (event: TimelineEvent, isSelected: boolean) => void;
-  onToggleEventVisibility?: (event: TimelineEvent, isSelected: boolean) => void;
+  onToggleEventVisibility: (event: TimelineEvent, isSelected: boolean) => void;
 }
 
 const EventCard = ({
@@ -56,7 +55,7 @@ const EventCard = ({
   const handleChangeVisibility = useCallback(
     (e: SyntheticEvent) => {
       e.stopPropagation();
-      onToggleEventVisibility?.(event, isHidden);
+      onToggleEventVisibility(event, isHidden);
     },
     [event, isHidden, onToggleEventVisibility],
   );
