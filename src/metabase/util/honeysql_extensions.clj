@@ -173,7 +173,7 @@
   {(s/optional-key ::database-type) (s/constrained
                                      su/NonBlankString
                                      (fn [s]
-                                       (= s (str/lower-case s)))
+                                       (= s (u/lower-case-en s)))
                                      "lowercased string")})
 
 (s/defn ^:private normalize-type-info :- NormalizedTypeInfo
@@ -181,7 +181,7 @@
   `::database-type` to a lower-case string)."
   [type-info]
   (cond-> type-info
-    (::database-type type-info) (update ::database-type (comp str/lower-case name))))
+    (::database-type type-info) (update ::database-type (comp u/lower-case-en name))))
 
 (extend-protocol TypedHoneySQL
   Object
@@ -222,11 +222,11 @@
     (is-of-type? expr #\"int*\") ; -> true"
 
   [honeysql-form database-type]
-  (let [form-type (some-> honeysql-form type-info type-info->db-type str/lower-case)]
+  (let [form-type (some-> honeysql-form type-info type-info->db-type u/lower-case-en)]
     (if (instance? java.util.regex.Pattern database-type)
       (and (some? form-type) (some? (re-find database-type form-type)))
       (= form-type
-         (some-> database-type name str/lower-case)))))
+         (some-> database-type name u/lower-case-en)))))
 
 (s/defn with-database-type-info
   "Convenience for adding only database type information to a `honeysql-form`. Wraps `honeysql-form` and returns a

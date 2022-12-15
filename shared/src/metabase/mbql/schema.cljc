@@ -112,7 +112,7 @@
 (def DatetimeDiffUnits
   "Valid units for a datetime-diff clause."
   (s/named
-    (apply s/enum #{:second :minute :hour :day :week :month :year})
+    (apply s/enum #{:second :minute :hour :day :week :month :quarter :year})
     "datetime-diff-units"))
 
 (def ExtractWeekModes

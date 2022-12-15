@@ -7,10 +7,11 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.db.connection :as mdb.connection]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date])
   (:import java.io.BufferedReader
            [java.sql PreparedStatement ResultSet ResultSetMetaData Types]
-           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset]))
+           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (defn- set-object
   [^PreparedStatement stmt ^Integer index object ^Integer target-sql-type]
@@ -87,14 +88,7 @@
 
   org.h2.jdbc.JdbcBlob
   (result-set-read-column [^org.h2.jdbc.JdbcBlob blob _ _]
-    (.getBytes blob 0 (.length blob)))
-
-  org.h2.api.TimestampWithTimeZone
-  (result-set-read-column [t _ _]
-    (let [date        (t/local-date (.getYear t) (.getMonth t) (.getDay t))
-          time        (LocalTime/ofNanoOfDay (.getNanosSinceMidnight t))
-          zone-offset (ZoneOffset/ofTotalSeconds (* (.getTimeZoneOffsetMins t) 60))]
-      (t/offset-date-time date time zone-offset))))
+    (.getBytes blob 0 (.length blob))))
 
 (defmulti ^:private read-column
   {:arglists '([rs rsmeta i])}
@@ -111,7 +105,7 @@
     :postgres
     ;; for some reason postgres `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems
     ;; like a bug with the JDBC driver?
-    (let [^Class klass (if (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+    (let [^Class klass (if (= (u/lower-case-en (.getColumnTypeName rsmeta i)) "timestamptz")
                          OffsetDateTime
                          LocalDateTime)]
       (.getObject rs i klass))

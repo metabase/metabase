@@ -114,7 +114,6 @@ const ListField = ({
         <Input
           fullWidth
           autoFocus
-          size="small"
           placeholder={placeholder}
           value={filter}
           onChange={handleFilterChange}

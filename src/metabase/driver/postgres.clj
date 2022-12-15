@@ -334,8 +334,8 @@
        (date-trunc :day y)
        (date-trunc :day x))))
 
-    :week
-    (hx// (datetime-diff-helper x y :day) 7)
+    :quarter
+    (hx// (datetime-diff-helper x y :month) 3)
 
     :month
     (hx/cast
@@ -349,6 +349,9 @@
         :age
         (date-trunc :day y)
         (date-trunc :day x)))))
+
+    :week
+    (hx// (datetime-diff-helper x y :day) 7)
 
     (:hour :minute :second)
     (let [ex            (extract :epoch x)
@@ -374,7 +377,7 @@
                                   (name db-type)))))
                           [x y])]
     (when (seq disallowed-types)
-      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+      (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
                            (pr-str disallowed-types))
                       {:found disallowed-types
                        :type  qp.error-type/invalid-query})))
