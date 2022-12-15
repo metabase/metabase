@@ -48,7 +48,7 @@
   (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                 (:all :archived)  true
                                                 :mine [:= :creator_id api/*current-user-id*])
-                                         [:= :archived (= (keyword filter-option) :archived)]]
+                                              [:= :archived (= (keyword filter-option) :archived)]]
                               :order-by [:%lower.name]}) <>
     (hydrate <> :creator)
     (filter mi/can-read? <>)))
@@ -92,11 +92,11 @@
                         :collection_position collection_position
                         :is_app_page         (boolean is_app_page)}
         dash           (db/transaction
-                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
-                         ;; position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
-                         ;; Ok, now save the Dashboard
-                         (db/insert! Dashboard dashboard-data))]
+                        ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
+                        ;; position, check that and fix up if needed
+                        (api/maybe-reconcile-collection-position! dashboard-data)
+                        ;; Ok, now save the Dashboard
+                        (db/insert! Dashboard dashboard-data))]
     (events/publish-event! :dashboard-create dash)
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
@@ -261,11 +261,11 @@
                         (if (:dataset card)
                           card
                           (api.card/create-card!
-                            (cond-> (assoc card :collection_id dest-coll-id)
-                              same-collection?
-                              (update :name #(str % " -- " (tru "Duplicate"))))
-                            ;; creating cards from a transaction. wait until tx complete to signal event
-                            true))))
+                           (cond-> (assoc card :collection_id dest-coll-id)
+                             same-collection?
+                             (update :name #(str % " -- " (tru "Duplicate"))))
+                           ;; creating cards from a transaction. wait until tx complete to signal event
+                           true))))
             {:copied {}
              :uncopied discard}
             copy)))
@@ -331,23 +331,23 @@
                         :is_app_page         (:is_app_page existing-dashboard)}
         new-cards      (atom nil)
         dashboard      (db/transaction
-                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                         ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
-                         ;; Ok, now save the Dashboard
-                         (let [dash (db/insert! Dashboard dashboard-data)
-                               {id->new-card :copied uncopied :uncopied}
-                               (when is_deep_copy
-                                 (duplicate-cards existing-dashboard collection_id))]
-                           (reset! new-cards (vals id->new-card))
-                           (doseq [card (update-cards-for-copy from-dashboard-id
-                                                               (:ordered_cards existing-dashboard)
-                                                               is_deep_copy
-                                                               id->new-card)]
-                             (api/check-500 (dashboard/add-dashcard! dash (:card_id card) card)))
-                           (cond-> dash
-                             (seq uncopied)
-                             (assoc :uncopied uncopied))))]
+                        ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                        ;; collection to change position, check that and fix up if needed
+                        (api/maybe-reconcile-collection-position! dashboard-data)
+                        ;; Ok, now save the Dashboard
+                        (let [dash (db/insert! Dashboard dashboard-data)
+                              {id->new-card :copied uncopied :uncopied}
+                              (when is_deep_copy
+                                (duplicate-cards existing-dashboard collection_id))]
+                          (reset! new-cards (vals id->new-card))
+                          (doseq [card (update-cards-for-copy from-dashboard-id
+                                                              (:ordered_cards existing-dashboard)
+                                                              is_deep_copy
+                                                              id->new-card)]
+                            (api/check-500 (dashboard/add-dashcard! dash (:card_id card) card)))
+                          (cond-> dash
+                            (seq uncopied)
+                            (assoc :uncopied uncopied))))]
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
     ;; must signal event outside of tx so cards are visible from other threads
     (when-let [newly-created-cards (seq @new-cards)]
@@ -403,19 +403,19 @@
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
     (check-allowed-to-change-embedding dash-before-update dash-updates)
     (api/check-500
-      (db/transaction
+     (db/transaction
 
-        ;;If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
-        ;;adjust the collection position of other dashboards in the collection
-        (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
+       ;;If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
+       ;;adjust the collection position of other dashboards in the collection
+       (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
 
-        (db/update! Dashboard id
-                    ;; description, position, collection_id, and collection_position are allowed to be `nil`.
-                    ;; Everything else must be non-nil
-                    (u/select-keys-when dash-updates
-                                        :present #{:description :position :collection_id :collection_position :cache_ttl}
-                                        :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                                   :embedding_params :archived :is_app_page})))))
+       (db/update! Dashboard id
+         ;; description, position, collection_id, and collection_position are allowed to be `nil`.
+         ;; Everything else must be non-nil
+         (u/select-keys-when dash-updates
+           :present #{:description :position :collection_id :collection_position :cache_ttl}
+           :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                      :embedding_params :archived :is_app_page})))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (db/select-one Dashboard :id id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
@@ -491,16 +491,16 @@
   (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card
                                                                  (assoc :creator_id api/*current-user*)
                                                                  (dissoc :cardId))))
-           (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})
-           (snowplow/track-event! ::snowplow/question-added-to-dashboard
-                                  api/*current-user-id*
-                                  {:dashboard-id id, :question-id cardId})))
+    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})
+    (snowplow/track-event! ::snowplow/question-added-to-dashboard
+                           api/*current-user-id*
+                           {:dashboard-id id, :question-id cardId})))
 
 (defn- existing-parameter-mappings
   "Returns a map of DashboardCard ID -> parameter mappings for a Dashboard of the form
 
   {<dashboard-card-id> #{{:target       [:dimension [:field 1000 nil]]
-  :parameter_id \"abcdef\"}}}"
+                          :parameter_id \"abcdef\"}}}"
   [dashboard-id]
   (m/map-vals (fn [mappings]
                 (into #{} (map #(select-keys % [:target :parameter_id])) mappings))
@@ -523,8 +523,8 @@
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
         dashcard-id->card-id           (when (seq new-mappings)
                                          (db/select-id->field :card_id DashboardCard
-                                                              :dashboard_id dashboard-id
-                                                              :id           [:in (set (map :dashcard-id new-mappings))]))
+                                           :dashboard_id dashboard-id
+                                           :id           [:in (set (map :dashcard-id new-mappings))]))
         new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
                                          (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
@@ -548,15 +548,15 @@
 (api/defendpoint PUT "/:id/cards"
   "Update `Cards` on a Dashboard. Request body should have the form:
 
-  {:cards [{:id                 ... ; DashboardCard ID
-  :size_x             ...
-  :size_y             ...
-  :row                ...
-  :col                ...
-  :parameter_mappings ...
-  :series             [{:id 123
-  ...}]}
-  ...]}"
+    {:cards [{:id                 ... ; DashboardCard ID
+              :size_x             ...
+              :size_y             ...
+              :row                ...
+              :col                ...
+              :parameter_mappings ...
+              :series             [{:id 123
+                                    ...}]}
+             ...]}"
   [id :as {{:keys [cards]} :body}]
   {cards (su/non-empty [UpdatedDashboardCard])}
   (api/check-not-archived (api/write-check Dashboard id))
@@ -603,9 +603,9 @@
   (api/check-not-archived (api/read-check Dashboard dashboard-id))
   {:uuid (or (db/select-one-field :public_uuid Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
-                      (db/update! Dashboard dashboard-id
-                                  :public_uuid       <>
-                                  :made_public_by_id api/*current-user-id*)))})
+               (db/update! Dashboard dashboard-id
+                 :public_uuid       <>
+                 :made_public_by_id api/*current-user-id*)))})
 
 (api/defendpoint DELETE "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
@@ -614,8 +614,8 @@
   (validation/check-public-sharing-enabled)
   (api/check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (db/update! Dashboard dashboard-id
-              :public_uuid       nil
-              :made_public_by_id nil)
+    :public_uuid       nil
+    :made_public_by_id nil)
   {:status 204, :body nil})
 
 (api/defendpoint GET "/public"
@@ -654,7 +654,7 @@
   (let [parent-collection-id (if api/*is-superuser?*
                                (:id (populate/get-or-create-root-container-collection))
                                (db/select-one-field :id 'Collection
-                                                    :personal_owner_id api/*current-user-id*))]
+                                 :personal_owner_id api/*current-user-id*))]
     (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
          (events/publish-event! :dashboard-create))))
 
@@ -677,8 +677,8 @@
 (defn- param-key->field-ids
   "Get Field ID(s) associated with a parameter in a Dashboard.
 
-  (param-key->field-ids (db/select-one Dashboard :id 62) \"ee876336\")
-  ;; -> #{276}"
+    (param-key->field-ids (db/select-one Dashboard :id 62) \"ee876336\")
+    ;; -> #{276}"
   [dashboard param-key]
   {:pre [(string? param-key)]}
   (let [{:keys [resolved-params]} (hydrate dashboard :resolved-params)
@@ -692,12 +692,10 @@
 
 (s/defn chain-filter
   "C H A I N filters!
-
   ;; show me categories
   (chain-filter 62 \"ee876336\" {})
   ;; -> {:values          (\"African\" \"American\" \"Artisan\" ...)
   :has_more_values false}
-
   ;; show me categories that have expensive restaurants
   (chain-filter 62 \"ee876336\" {\"6f10a41f\" 4})
   ;; -> {:values          (\"Japanese\" \"Steakhouse\")
@@ -736,11 +734,12 @@
 
 (defn- static-values-search
   [values query]
-  (letfn [(pred [value]
-            (if (string? value)
-              (str/includes? (str/lower-case value) query)
-              ;; search by label
-              (str/includes? (str/lower-case (second value)) query)))]
+  (let [query (str/lower-case query)
+        pred  (fn [value]
+                (if (string? value)
+                  (str/includes? (str/lower-case value) query)
+                  ;; search by label
+                  (str/includes? (str/lower-case (second value)) query)))]
     (filter pred values)))
 
 (defn- static-parameter-values
@@ -777,13 +776,6 @@
   [id param-key :as {:keys [query-params]}]
   (let [dashboard (api/read-check Dashboard id)]
     (param-values dashboard param-key query-params)))
-
-(comment
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (param-values (api/read-check Dashboard 4) "f48bfe95" {}))
-  ;; bug with toucan?
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (param-values (db/select Dashboard :id 4) "f48bfe95" nil)))
 
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
