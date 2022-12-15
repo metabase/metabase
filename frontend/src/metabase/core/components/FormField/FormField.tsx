@@ -53,7 +53,6 @@ const FormField = forwardRef(function FormField(
             {title && (
               <FieldLabel hasError={hasError} htmlFor={htmlFor}>
                 {title}
-                {!!optional && !hasError && t` (optional)`}
                 {hasError && <FieldLabelError>: {error}</FieldLabelError>}
               </FieldLabel>
             )}

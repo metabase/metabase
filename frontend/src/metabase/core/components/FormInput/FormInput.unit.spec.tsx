@@ -13,6 +13,7 @@ interface TestFormInputProps {
   initialValue?: string;
   optional?: boolean;
   onSubmit: () => void;
+  optional?: boolean;
 }
 
 const TestFormInput = ({
