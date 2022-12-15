@@ -10,7 +10,6 @@
             [humane-are.core :as humane-are]
             [java-time :as t]
             [medley.core :as m]
-            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -43,19 +42,11 @@
             [metabase.util :as u]
             [pjstadig.humane-test-output :as humane-test-output]
             [potemkin :as p]
-            [test-plus.core :as test-plus]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (humane-are/install!)
 (humane-test-output/activate!)
-
-(when config/is-dev?
-  ;; add a `testing-only` macro to clojure.core.testing
-  ;; it's convienient for development to trick the test runner to
-  ;; execute a single testing inside a deftest
-  ;; See #26600 for example of usage
-  (test-plus/install!))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
 ;; https://github.com/clojure-emacs/refactor-nrepl/pull/270
