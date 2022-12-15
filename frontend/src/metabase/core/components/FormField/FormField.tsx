@@ -11,6 +11,7 @@ import {
   FieldLabelContainer,
   FieldLabelError,
   FieldRoot,
+  OptionalTag,
 } from "./FormField.styled";
 
 export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
@@ -52,9 +53,11 @@ const FormField = forwardRef(function FormField(
             {title && (
               <FieldLabel hasError={hasError} htmlFor={htmlFor}>
                 {title}
-                {!!optional && !hasError && t` (optional)`}
                 {hasError && <FieldLabelError>: {error}</FieldLabelError>}
               </FieldLabel>
+            )}
+            {!!optional && !hasError && (
+              <OptionalTag>{t`(optional)`}</OptionalTag>
             )}
             {(infoLabel || infoTooltip) && (
               <Tooltip tooltip={infoTooltip} maxWidth="100%">

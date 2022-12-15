@@ -99,4 +99,12 @@ describe("FormInput", () => {
 
     expect(screen.queryByText(/optional/i)).not.toBeInTheDocument();
   });
+
+  it("should be selectable by label text", () => {
+    const onSubmit = jest.fn();
+
+    render(<TestFormInput initialValue="" onSubmit={onSubmit} optional />);
+
+    expect(screen.getByLabelText("Label")).toBeInTheDocument();
+  });
 });
