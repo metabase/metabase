@@ -36,7 +36,7 @@
               :size_y                 2
               :col                    0
               :row                    0
-              :parameter_mappings     [{:foo "bar"}]
+              :parameter_mappings     [{:foo "bar", :source_type "field"}]
               :visualization_settings {}
               :series                 []}
              (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))))
@@ -122,7 +122,7 @@
                   :size_y                 3
                   :col                    1
                   :row                    1
-                  :parameter_mappings     [{:foo "bar"}]
+                  :parameter_mappings     [{:foo "bar", :source_type "field"}]
                   :visualization_settings {}
                   :series                 [{:name                   "Test Card"
                                             :description            nil
@@ -135,7 +135,7 @@
                   :size_y                 3
                   :col                    1
                   :row                    1
-                  :parameter_mappings     [{:foo "bar"}]
+                  :parameter_mappings     [{:foo "bar", :source_type "field"}]
                   :visualization_settings {}
                   :series                 [{:name                   "Test Card"
                                             :description            nil
@@ -160,7 +160,7 @@
                 :size_y                 2
                 :col                    0
                 :row                    0
-                :parameter_mappings     [{:foo "bar"}]
+                :parameter_mappings     [{:foo "bar", :source_type "field"}]
                 :visualization_settings {}
                 :series                 []}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))
@@ -169,7 +169,7 @@
                 :size_y                 3
                 :col                    1
                 :row                    1
-                :parameter_mappings     [{:foo "barbar"}]
+                :parameter_mappings     [{:foo "barbar", :source_type "field"}]
                 :visualization_settings {}
                 :series                 [{:name                   "Test Card 2"
                                           :description            nil
@@ -199,7 +199,7 @@
                 :size_y                 3
                 :col                    1
                 :row                    1
-                :parameter_mappings     [{:foo "barbar"}]
+                :parameter_mappings     [{:foo "barbar", :source_type "field"}]
                 :visualization_settings {}
                 :series                 [{:name                   "Test Card 2"
                                           :description            nil
@@ -227,6 +227,7 @@
                                                                    :target       [:dimension [:field-id (mt/id :venues :id)]]}]}]]
       (is (= [{:parameter_id "22486e00"
                :card_id      (u/the-id card)
+               :source_type  "field"
                :target       [:dimension [:field (mt/id :venues :id) nil]]}]
              (db/select-one-field :parameter_mappings DashboardCard :id (u/the-id dashcard)))))))
 
@@ -244,13 +245,13 @@
 
 (deftest normalize-parameter-mappings-test-2
   (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"
-    (is (= [{:target [:dimension [:field 30 {:source-field 23}]]}]
+    (is (= [{:target [:dimension [:field 30 {:source-field 23}]], :source_type "field"}]
            ((i.test/type-fn :parameters-list :out)
             (json/generate-string
              [{:target [:dimension [:fk-> 23 30]]}]))))
 
     (testing "...but parameter mappings we should not normalize things like :target"
-      (is (= [{:card-id 123, :hash "abc", :target "foo"}]
+      (is (= [{:card-id 123, :hash "abc", :target "foo", :source_type "field"}]
              ((i.test/type-fn :parameters-list :out)
               (json/generate-string
                [{:card-id 123, :hash "abc", :target "foo"}])))))))
