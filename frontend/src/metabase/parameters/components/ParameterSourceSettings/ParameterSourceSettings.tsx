@@ -28,28 +28,8 @@ const ParameterSourceSettings = ({
   const sourceType = getSourceType(parameter);
   const [modalType, setModalType] = useState<ParameterSourceType>();
 
-  const options = useMemo(
-    () => [
-      {
-        name: (
-          <RadioLabel
-            title={t`Values from column`}
-            isSelected={sourceType === "field"}
-          />
-        ),
-        value: "field",
-      },
-      {
-        name: (
-          <RadioLabel
-            title={t`Custom list`}
-            isSelected={sourceType === "static-list"}
-            onEditClick={() => setModalType("static-list")}
-          />
-        ),
-        value: "static-list",
-      },
-    ],
+  const radioOptions = useMemo(
+    () => getRadioOptions(sourceType, setModalType),
     [sourceType],
   );
 
@@ -68,7 +48,7 @@ const ParameterSourceSettings = ({
     <>
       <Radio
         value={sourceType}
-        options={options}
+        options={radioOptions}
         vertical
         onChange={handleSourceTypeChange}
       />
@@ -111,6 +91,33 @@ const RadioLabel = ({
       )}
     </RadioLabelRoot>
   );
+};
+
+const getRadioOptions = (
+  sourceType: ParameterSourceType,
+  onModalOpen: (sourceType: ParameterSourceType) => void,
+) => {
+  return [
+    {
+      name: (
+        <RadioLabel
+          title={t`Values from column`}
+          isSelected={sourceType === "field"}
+        />
+      ),
+      value: "field",
+    },
+    {
+      name: (
+        <RadioLabel
+          title={t`Custom list`}
+          isSelected={sourceType === "static-list"}
+          onEditClick={() => onModalOpen("static-list")}
+        />
+      ),
+      value: "static-list",
+    },
+  ];
 };
 
 export default ParameterSourceSettings;
