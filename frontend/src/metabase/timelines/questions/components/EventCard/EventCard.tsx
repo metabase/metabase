@@ -71,7 +71,7 @@ const EventCard = ({
       isSelected={isSelected}
       onClick={handleEventClick}
     >
-      <CardCheckboxContainer>
+      <CardCheckboxContainer data-testid="toggle-event-visibility">
         <Checkbox checked={!isHidden} onClick={handleChangeVisibility} />
       </CardCheckboxContainer>
       <CardBody>

@@ -256,6 +256,15 @@ describe("scenarios > organization > timelines > question", () => {
 
       cy.findByText("Visualization").should("be.visible");
       cy.findByLabelText("star icon").should("be.visible");
+
+      // should hide individual events from chart if hidden in sidebar
+      cy.icon("calendar").click();
+      cy.findByTestId("toggle-event-visibility").within(() =>
+        cy.findByRole("checkbox").click(),
+      );
+
+      cy.icon("calendar").click();
+      cy.findByLabelText("star icon").should("not.exist");
     });
   });
 
