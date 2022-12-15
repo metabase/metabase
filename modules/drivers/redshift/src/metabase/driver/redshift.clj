@@ -196,76 +196,60 @@
 (defn- extract [unit temporal]
   (hsql/call :extract (format "'%s'" (name unit)) temporal))
 
+(defn- datediff [unit x y]
+  (hsql/call :datediff (hsql/raw (name unit)) x y))
+
 (defmethod sql.qp/->honeysql [:redshift :datetime-diff]
-  ;; postgres uses `extract` around a call to `age` to calculate datediffs.
-  ;; redshift doesn't have `age`, so we have to use `extract` instead.
   [driver [_ x y unit]]
-  (let [x (hx/->timestamp (sql.qp/->honeysql driver x))
-        y (hx/->timestamp (sql.qp/->honeysql driver y))]
-    (case unit
-      :year
-      (let [positive-diff (fn [a b] ; precondition: a <= b
-                            (hx/-
-                             (hx/- (extract :year b) (extract :year a))
-                             ;; decrement if a is later than b in the year calendar
-                             (hx/cast
-                              :integer
-                              (hsql/call
-                               :or
-                               (hsql/call :> (extract :month a) (extract :month b))
-                               (hsql/call
-                                :and
-                                (hsql/call := (extract :month a) (extract :month b))
-                                (hsql/call :> (extract :day a) (extract :day b)))))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)
+        _ (sql.qp/datetime-diff-check-args x y (partial re-find #"(?i)^(timestamp|date)"))
+        ;; unlike postgres, we need to make sure the values are timestamps before we
+        ;; can do the calculation. otherwise, we'll get an error like
+        ;; ERROR: function pg_catalog.date_diff("unknown", ..., ...) does not exist
+        x (hx/->timestamp x)
+        y (hx/->timestamp y)]
+    (sql.qp/datetime-diff driver unit x y)))
 
-      :quarter
-      (let [positive-diff
-            (fn [a b] ; precondition: a <= b
-              (hx/cast :integer
-                       (hx/floor
-                        (hx// (hx/- (hsql/call :datediff (hsql/raw "month") a b)
-                                    (hx/cast :integer
-                                             ;; coalesce is needed because extract(day, a) > extract(day, b)
-                                             ;; returns null if a and b are equal
-                                             (hsql/call :coalesce
-                                                        (hsql/call :> (extract :day a) (extract :day b))
-                                                        false)))
-                              3))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:redshift :year]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 12))
 
-      :month
-      (let [positive-diff
-            (fn [a b] ; precondition: a <= b
-              (hx/-
-               (hsql/call :datediff (hsql/raw "month") a b)
-               (hx/cast :integer
-                        ;; coalesce is needed because extract(day, a) > extract(day, b)
-                        ;; returns null if a and b are equal
-                        (hsql/call :coalesce
-                                   (hsql/call :> (extract :day a) (extract :day b))
-                                   false))))]
-          (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:redshift :quarter]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :month x y) 3))
 
-      :week
-      (let [positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                              (hx// (hsql/call :datediff (hsql/raw "day") a b) 7))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x))))
+(defmethod sql.qp/datetime-diff [:redshift :month]
+  [_driver _unit x y]
+  (hx/+ (datediff :month x y)
+        ;; redshift's datediff counts month boundaries not whole months, so we need to adjust
+        (hsql/call
+         :case
+         ;; if x<y but x>y in the month calendar then subtract one month
+         (hsql/call :and (hsql/call :< x y) (hsql/call :> (extract :day x) (extract :day y))) -1
+         ;; if x>y but x<y in the month calendar then add one month
+         (hsql/call :and (hsql/call :> x y) (hsql/call :< (extract :day x) (extract :day y))) 1
+         :else 0)))
 
-      :day
-      (hsql/call :datediff (hsql/raw (name unit)) x y)
+(defmethod sql.qp/datetime-diff [:redshift :week]
+  [_driver _unit x y]
+  (hx// (datediff :day x y) 7))
 
-      (:hour :minute :second)
-      (let [positive-diff (fn [a b]
-                            (hx/cast
-                             :integer
-                             (hx/floor
-                              (hx// (hx/cast :float (hsql/call :datediff (hsql/raw "millisecond") a b)) ; datediff returns integer, so cast to float
-                                    (case unit :hour 3600000 :minute 60000 :second 1000)))))]
-        (hsql/call :case (hsql/call :<= x y) (positive-diff x y) :else (hx/* -1 (positive-diff y x)))))))
+(defmethod sql.qp/datetime-diff [:redshift :day]
+  [_driver _unit x y]
+  (datediff :day x y))
+
+(defmethod sql.qp/datetime-diff [:redshift :hour]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :seconds x y) 3600))
+
+(defmethod sql.qp/datetime-diff [:redshift :minute]
+  [driver _unit x y]
+  (hx// (sql.qp/datetime-diff driver :seconds x y) 60))
+
+(defmethod sql.qp/datetime-diff [:redshift :second]
+  [_driver _unit x y]
+  (hx/- (extract :epoch y) (extract :epoch x)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
