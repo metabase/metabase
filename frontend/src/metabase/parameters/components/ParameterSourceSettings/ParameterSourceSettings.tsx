@@ -75,19 +75,11 @@ const RadioLabel = ({
   isSelected,
   onEditClick,
 }: RadioLabelProps): JSX.Element => {
-  const handleEditClick = useCallback(
-    (event: MouseEvent) => {
-      event.preventDefault();
-      onEditClick?.();
-    },
-    [onEditClick],
-  );
-
   return (
     <RadioLabelRoot>
       <RadioLabelTitle>{title}</RadioLabelTitle>
       {isSelected && onEditClick && (
-        <RadioLabelButton onClick={handleEditClick}>{t`Edit`}</RadioLabelButton>
+        <RadioLabelButton onClick={onEditClick}>{t`Edit`}</RadioLabelButton>
       )}
     </RadioLabelRoot>
   );
