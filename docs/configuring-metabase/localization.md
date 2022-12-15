@@ -12,9 +12,9 @@ The **Localization** settings allow you to set global defaults for your Metabase
 
 Here you can set the default language (also called the "instance language") across your Metabase UI, system [emails](./email.md), [dashboard subscriptions](../dashboards/subscriptions.md), and [alerts](../questions/sharing/alerts.md). People can pick a different language from their own [account settings](../people-and-groups/account-settings.md).
 
-### Supported languages
+## Supported languages
 
-Thanks to our amazing user community, Metabase has been translated into many different languages. Due to [the way we collect translations](#policy-for-adding-and-removing-translations), languages may be added or removed during major releases depending on translation coverage.
+Thanks to our amazing user community, Metabase has been translated into many different languages. Due to [the way we collect translations](#translations), languages may be added or removed during major releases depending on translation coverage.
 
 The languages you can currently pick from are:
 
@@ -48,7 +48,7 @@ The languages you can currently pick from are:
 
 Our community contributes to Metabase translations on our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh). If you'd like to help make Metabase available in a language you're fluent in, we'd love your help!
 
-For a new translation to be added to Metabase, it must reach 100%. Once it does, we add it in the next major or minor release of Metabase. All _existing_ translations in Metabase _must stay at 100%_ to continue being included in the next _major_ version of Metabase. This rule ensures that no one encounters a confusing mishmash of English and another language when using Metabase.
+For a new language to be added to Metabase, it must reach 100%. Once it does, we add it in the next major or minor release of Metabase. All _existing_ languages in Metabase _must stay at 100%_ to continue being included in the next _major_ version of Metabase. This rule ensures that no one encounters a confusing mishmash of English and another language when using Metabase.
 
 We understand that this is a high bar, so we commit to making sure that before each major release, any additions or changes to text in the product are completed at least 10 calendar days before the release ships, at which point we notify all translators that a new release will be happening soon.
 
@@ -60,7 +60,7 @@ Use **report timezone** to set a default display time zone for dates and times i
 
 Report timezone doesn't apply to `timestamp without time zone` data types, including the output of [`convertTimezone`](../questions/query-builder/expressions/converttimezone.md) expressions. For example:
 
-| Raw timestamp in your database           | Data type                     | Report time zone | Displayed in Metabase  |
+| Raw timestamp in your database           | Data type                     | Report time zone | Displayed as           |
 | ---------------------------------------- | ----------------------------- | ---------------- | ---------------------- |
 | `2022-12-28T12:00:00 AT TIME ZONE 'CST'` | `timestamp with time zone`    | 'Canada/Eastern' | Dec 28, 2022, 7:00 AM  |
 | `2022-12-28T12:00:00-06:00`              | `timestamp with offset`       | 'Canada/Eastern' | Dec 28, 2022, 7:00 AM  |
