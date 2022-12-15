@@ -564,10 +564,11 @@ export const hiddenTimelineEventIds = handleActions(
   {
     [INITIALIZE_QB]: { next: () => [] },
     [HIDE_TIMELINE_EVENTS]: {
-      next: (state, { payload: events = [] }) => events.map(e => e.id),
+      next: (state, { payload: events }) => [...state, events.id],
     },
     [SHOW_TIMELINE_EVENTS]: {
-      next: () => [],
+      next: (state, { payload: events }) =>
+        state.filter(item => item !== events.id),
     },
     // [HIDE_TIMELINES]: {
     //   next: (state, { payload: timelines }) =>
