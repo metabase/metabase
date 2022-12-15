@@ -10,8 +10,9 @@ import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import { ParameterSourceType } from "metabase-types/api";
 import { UiParameter } from "metabase-lib/parameters/types";
-import { getIsMultiSelect, getSourceType } from "../../utils/dashboards";
+import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
+import ParameterSourceSettings from "../ParameterSourceSettings";
 import {
   SettingLabel,
   SettingRemoveButton,
@@ -19,11 +20,6 @@ import {
   SettingsRoot,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
-
-const SOURCE_TYPE_OPTIONS = [
-  { name: t`Values from column`, value: "field" },
-  { name: t`Custom list`, value: "custom-list" },
-];
 
 const MULTI_SELECT_OPTIONS = [
   { name: t`Multiple values`, value: true },
@@ -73,13 +69,6 @@ const ParameterSettings = ({
     [parameterId, onChangeIsMultiSelect],
   );
 
-  const handleSourceTypeChange = useCallback(
-    (sourceType: ParameterSourceType) => {
-      onChangeSourceType(parameterId, sourceType);
-    },
-    [parameterId, onChangeSourceType],
-  );
-
   const handleRemove = useCallback(() => {
     onRemoveParameter(parameterId);
   }, [parameterId, onRemoveParameter]);
@@ -95,11 +84,9 @@ const ParameterSettings = ({
       </SettingSection>
       <SettingSection>
         <SettingLabel>{t`Options to pick from`}</SettingLabel>
-        <Radio
-          value={getSourceType(parameter)}
-          options={SOURCE_TYPE_OPTIONS}
-          vertical
-          onChange={handleSourceTypeChange}
+        <ParameterSourceSettings
+          parameter={parameter}
+          onChangeSourceType={onChangeSourceType}
         />
       </SettingSection>
       <SettingSection>
