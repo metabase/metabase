@@ -9,12 +9,14 @@ import type {
   ActionFormProps,
   ActionFormFieldProps,
   ActionFormOption,
+  FieldSettingsMap,
   InputSettingType,
   InputComponentType,
 } from "metabase-types/api";
 
-import { sortActionParams, isEditableField } from "metabase/actions/utils";
 import type { Parameter } from "metabase-types/types/Parameter";
+import { sortActionParams, isEditableField } from "metabase/actions/utils";
+import { isEmpty } from "metabase/lib/validate";
 
 const getOptionsFromArray = (
   options: (number | string)[],
@@ -93,9 +95,20 @@ export const getForm = (
   };
 };
 
+const getFieldValidationType = (fieldSettings: FieldSettings) => {
+  switch (fieldSettings.inputType) {
+    case "number":
+      return Yup.number();
+    case "boolean":
+      return Yup.boolean();
+    default:
+      return Yup.string();
+  }
+};
+
 export const getFormValidationSchema = (
   parameters: WritebackParameter[] | Parameter[],
-  fieldSettings: Record<string, FieldSettings> = {},
+  fieldSettings: FieldSettingsMap = {},
 ) => {
   const requiredMessage = t`This field is required`;
 
@@ -105,15 +118,15 @@ export const getFormValidationSchema = (
       parameters.find(parameter => parameter.id === fieldSetting.id),
     )
     .map(fieldSetting => {
-      let yupType =
-        fieldSetting.fieldType === "number" ? Yup.number() : Yup.string();
+      let yupType: Yup.AnySchema = getFieldValidationType(fieldSetting);
 
       if (fieldSetting.required) {
         yupType = yupType.required(requiredMessage);
+      } else {
+        yupType = yupType.nullable();
       }
 
       return [fieldSetting.id, yupType];
     });
-
   return Yup.object(Object.fromEntries(schema));
 };

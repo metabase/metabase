@@ -416,6 +416,51 @@ describe("Actions > ActionForm", () => {
 
       expect(container.querySelector("input")?.value).toBe("");
     });
+
+    it("allows submission of a null non-required boolean field", async () => {
+      const formSettings: ActionFormSettings = {
+        type: "form",
+        fields: {
+          "abc-123": makeFieldSettings({
+            inputType: "string",
+            id: "abc-123",
+            title: "foo input",
+            required: true,
+          }),
+          "def-456": makeFieldSettings({
+            inputType: "boolean",
+            id: "def-456",
+            title: "bar input",
+            required: false,
+          }),
+        },
+      };
+      const params = [
+        makeParameter({ id: "abc-123" }),
+        makeParameter({ id: "def-456" }),
+      ];
+
+      const submitSpy = jest.fn();
+
+      render(
+        <ActionForm
+          parameters={params as WritebackParameter[]}
+          formSettings={formSettings}
+          onSubmit={submitSpy}
+        />,
+      );
+
+      await act(async () => {
+        await userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
+        await userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      expect(
+        screen.queryByText(/this field is required/i),
+      ).not.toBeInTheDocument();
+      expect(submitSpy).toHaveBeenCalled();
+    });
   });
 
   describe("Form Creation", () => {
