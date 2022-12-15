@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 
 import { executeRowAction } from "metabase/dashboard/actions";
-import { setNumericValues } from "metabase/actions/containers/ActionParametersInputForm/utils";
 
 import type {
   ActionDashboardCard,
@@ -77,15 +76,10 @@ function ActionComponent({
         ...parameterMap,
       };
 
-      const paramsForExecution = setNumericValues(
-        params,
-        generateFieldSettingsFromParameters(dashcard?.action?.parameters ?? []),
-      );
-
       return executeRowAction({
         page,
         dashcard,
-        parameters: paramsForExecution,
+        parameters: params,
         dispatch,
         shouldToast: shouldDisplayButton,
       });

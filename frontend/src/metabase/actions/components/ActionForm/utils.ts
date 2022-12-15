@@ -126,6 +126,10 @@ export const getFormValidationSchema = (
         yupType = yupType.nullable();
       }
 
+      if (!isEmpty(fieldSetting.defaultValue)) {
+        yupType = yupType.default(fieldSetting.defaultValue);
+      }
+
       return [fieldSetting.id, yupType];
     });
   return Yup.object(Object.fromEntries(schema));

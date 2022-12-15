@@ -22,12 +22,7 @@ import type {
 import { ActionsApi } from "metabase/services";
 import { shouldPrefetchValues } from "metabase/actions/utils";
 
-import {
-  setDefaultValues,
-  setNumericValues,
-  getChangedValues,
-  getInitialValues,
-} from "./utils";
+import { getChangedValues, getInitialValues } from "./utils";
 
 interface Props {
   missingParameters: WritebackParameter[];
@@ -97,15 +92,7 @@ function ActionParametersInputForm({
   const handleSubmit = useCallback(
     async (params, actions) => {
       actions.setSubmitting(true);
-      const paramsWithDefaultValues = setDefaultValues(params, fieldSettings);
-      const paramsWithNumericValues = setNumericValues(
-        paramsWithDefaultValues,
-        fieldSettings,
-      );
-      const paramsWithChangedValues = getChangedValues(
-        paramsWithNumericValues,
-        initialValues,
-      );
+      const paramsWithChangedValues = getChangedValues(params, initialValues);
 
       const { success, error } = await onSubmit(paramsWithChangedValues);
 
@@ -121,7 +108,6 @@ function ActionParametersInputForm({
     [
       onSubmit,
       onSubmitSuccess,
-      fieldSettings,
       initialValues,
       fetchInitialValues,
       shouldPrefetch,

@@ -461,6 +461,108 @@ describe("Actions > ActionForm", () => {
       ).not.toBeInTheDocument();
       expect(submitSpy).toHaveBeenCalled();
     });
+
+    it("sets a default value for an empty field", async () => {
+      const formSettings: ActionFormSettings = {
+        type: "form",
+        fields: {
+          "abc-123": makeFieldSettings({
+            inputType: "string",
+            id: "abc-123",
+            title: "foo input",
+            required: true,
+          }),
+          "def-456": makeFieldSettings({
+            inputType: "boolean",
+            id: "def-456",
+            title: "bar input",
+            required: false,
+          }),
+        },
+      };
+      const params = [
+        makeParameter({ id: "abc-123" }),
+        makeParameter({ id: "def-456" }),
+      ];
+
+      const submitSpy = jest.fn();
+
+      render(
+        <ActionForm
+          parameters={params as WritebackParameter[]}
+          formSettings={formSettings}
+          onSubmit={submitSpy}
+        />,
+      );
+
+      await act(async () => {
+        await userEvent.type(await screen.findByLabelText(/foo input/i), "baz");
+        await userEvent.type(await screen.findByLabelText(/bar input/i), "baz");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      expect(
+        screen.queryByText(/this field is required/i),
+      ).not.toBeInTheDocument();
+      expect(submitSpy).toHaveBeenCalled();
+    });
+
+    it("sets types on form submissions correctly", async () => {
+      const formSettings: ActionFormSettings = {
+        type: "form",
+        fields: {
+          "abc-123": makeFieldSettings({
+            inputType: "string",
+            id: "abc-123",
+            title: "foo input",
+            required: false,
+          }),
+          "def-456": makeFieldSettings({
+            inputType: "boolean",
+            id: "def-456",
+            title: "bar input",
+            required: false,
+          }),
+          "ghi-789": makeFieldSettings({
+            inputType: "number",
+            id: "ghi-789",
+            title: "baz input",
+            required: false,
+          }),
+        },
+      };
+      const params = [
+        makeParameter({ id: "abc-123" }),
+        makeParameter({ id: "def-456" }),
+        makeParameter({ id: "ghi-789" }),
+      ];
+
+      const submitSpy = jest.fn();
+
+      render(
+        <ActionForm
+          parameters={params as WritebackParameter[]}
+          formSettings={formSettings}
+          onSubmit={submitSpy}
+        />,
+      );
+
+      await act(async () => {
+        await userEvent.type(await screen.findByLabelText(/foo input/i), "1");
+        await userEvent.type(await screen.findByLabelText(/bar input/i), "1");
+        await userEvent.type(await screen.findByLabelText(/baz input/i), "1");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      });
+
+      expect(submitSpy).toHaveBeenCalledWith(
+        {
+          "abc-123": "1",
+          "def-456": true,
+          "ghi-789": 1,
+        },
+        expect.anything(),
+      );
+    });
   });
 
   describe("Form Creation", () => {
