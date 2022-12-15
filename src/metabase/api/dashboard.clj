@@ -750,12 +750,19 @@
                values)
      :has_more_values false}))
 
-(defn param-values
-  "Fetch values for a param"
+(s/defn param-values
+  "Fetch values for a parameter.
+  The source of values could be:
+  - a static list
+  - result of a card
+  - chain-filter"
   ([dashboard param-key query-params]
    (param-values dashboard param-key query-params nil))
 
-  ([dashboard param-key query-params query]
+  ([dashboard                   :- su/Map
+    param-key                   :- su/NonBlankString
+    constraint-param-key->value :- su/Map
+    query                       :- (s/maybe su/NonBlankString)]
    (let [dashboard (hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param
@@ -765,7 +772,7 @@
      (case (:source_type param)
        "static-list" (static-parameter-values param query)
        "card"        (throw (ex-info "to be implemented" {:status-code 400}))
-       (chain-filter dashboard param-key query-params query)))))
+       (chain-filter dashboard param-key constraint-param-key->value query)))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
