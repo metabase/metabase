@@ -1,22 +1,23 @@
 (ns metabase.models.table
-  (:require [honeysql.core :as hsql]
-            [metabase.db.connection :as mdb.connection]
-            [metabase.db.util :as mdb.u]
-            [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :refer [FieldValues]]
-            [metabase.models.humanization :as humanization]
-            [metabase.models.interface :as mi]
-            [metabase.models.metric :refer [Metric retrieve-metrics]]
-            [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.segment :refer [retrieve-segments Segment]]
-            [metabase.models.serialization.base :as serdes.base]
-            [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.util :as serdes.util]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [honeysql.core :as hsql]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.util :as mdb.u]
+   [metabase.driver :as driver]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.field-values :refer [FieldValues]]
+   [metabase.models.humanization :as humanization]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.serialization.base :as serdes.base]
+   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization.util :as serdes.util]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
 
@@ -143,16 +144,6 @@
     :visibility_type [:not= "retired"]
     {:order-by field-order-rule}))
 
-(defn metrics
-  "Retrieve the Metrics for a single `table`."
-  [{:keys [id]}]
-  (retrieve-metrics id :all))
-
-(defn segments
-  "Retrieve the Segments for a single `table`."
-  [{:keys [id]}]
-  (retrieve-segments id :all))
-
 (defn field-values
   "Return the FieldValues for all Fields belonging to a single `table`."
   {:hydrate :field_values, :arglists '([table])}
@@ -212,14 +203,6 @@
     tables))
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
-
-(defn qualified-identifier
-  "Return a keyword identifier for `table` in the form `:schema.table-name` (if the Table has a non-empty `:schema` field)
-  or `:table-name` (if the Table has no `:schema`)."
-  ^clojure.lang.Keyword [{schema :schema, table-name :name}]
-  (keyword (str (when (seq schema)
-                  (str schema \.))
-                table-name)))
 
 (defn database
   "Return the `Database` associated with this `Table`."

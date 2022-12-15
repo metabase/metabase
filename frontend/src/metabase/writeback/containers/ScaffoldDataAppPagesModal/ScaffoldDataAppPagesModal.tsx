@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -6,9 +6,10 @@ import Button from "metabase/core/components/Button";
 
 import DataApps, { ScaffoldNewPagesParams } from "metabase/entities/data-apps";
 
-import DataAppDataPicker from "metabase/writeback/components/DataAppDataPicker";
+import { useDataPickerValue } from "metabase/containers/DataPicker";
+import DataAppScaffoldingDataPicker from "metabase/writeback/components/DataAppScaffoldingDataPicker";
 
-import type { DataApp, TableId } from "metabase-types/api";
+import type { DataApp } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
 import {
@@ -48,16 +49,19 @@ function ScaffoldDataAppPagesModal({
   onScaffold,
   onClose,
 }: Props) {
-  const [tableId, setTableId] = useState<TableId | null>(null);
+  const [value, setValue] = useDataPickerValue();
+  const { tableIds } = value;
 
   const handleAdd = useCallback(async () => {
     const dataApp = await onScaffold({
       dataAppId,
-      tables: [tableId] as number[],
+      tables: tableIds as number[],
     });
     onClose();
     onAdd(dataApp);
-  }, [dataAppId, tableId, onAdd, onScaffold, onClose]);
+  }, [dataAppId, tableIds, onAdd, onScaffold, onClose]);
+
+  const canSubmit = tableIds.length > 0;
 
   return (
     <ModalRoot>
@@ -65,13 +69,13 @@ function ScaffoldDataAppPagesModal({
         <ModalTitle>{t`Pick your data`}</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <DataAppDataPicker tableId={tableId} onTableChange={setTableId} />
+        <DataAppScaffoldingDataPicker value={value} onChange={setValue} />
       </ModalBody>
       <ModalFooter>
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button
           primary
-          disabled={tableId == null}
+          disabled={!canSubmit}
           onClick={handleAdd}
         >{t`Add`}</Button>
       </ModalFooter>

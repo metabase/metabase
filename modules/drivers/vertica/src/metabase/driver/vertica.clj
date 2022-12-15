@@ -17,6 +17,7 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]])
@@ -148,11 +149,11 @@
                                     hx/type-info
                                     hx/type-info->db-type
                                     name
-                                    str/lower-case
+                                    u/lower-case-en
                                     #{"time" "timetz"}))
                           [x y])]
     (when (seq disallowed-types)
-      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+      (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
                            (pr-str disallowed-types))
                       {:found disallowed-types
                        :type  qp.error-type/invalid-query})))

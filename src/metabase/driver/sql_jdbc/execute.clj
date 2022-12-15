@@ -450,7 +450,9 @@
               (or (old-read-column-thunk driver rs rsmeta i)
                   (read-column-thunk driver rs rsmeta (long i))))]
     (log-readers driver rsmeta fns)
-    (let [thunk (apply juxt fns)]
+    (let [thunk (if (seq fns)
+                  (apply juxt fns)
+                  (constantly []))]
       (fn row-thunk* []
         (when (.next rs)
           (thunk))))))

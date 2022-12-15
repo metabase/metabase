@@ -32,6 +32,7 @@ Metabase is a deep product with a lot of tools to simplify business intelligence
 ## Documentation topics
 
 Metabase's reference documentation.
+
 ### Installation
 
 - [Installation overview](./installation-and-operation/start.md)
@@ -78,7 +79,7 @@ Metabase's reference documentation.
 
 - [Sharing answers](./questions/sharing/answers.md)
 - [Setting and getting alerts](./questions/sharing/alerts.md)
-- [Public links](./questions/sharing/public-links.md)
+- [Public sharing](./questions/sharing/public-links.md)
 
 ### Dashboards
 
@@ -142,8 +143,8 @@ Metabase's reference documentation.
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
 - [Signed embedding](./embedding/signed-embedding.md)
+- [Parameters for signed embeds](./embedding/signed-embedding-parameters.md)
 - [Full-app embedding](./embedding/full-app-embedding.md)
-- [Embedding example apps](https://github.com/metabase/embedding-reference-apps)
 
 ### Configuration
 

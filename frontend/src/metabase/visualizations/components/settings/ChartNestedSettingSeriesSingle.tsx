@@ -3,9 +3,10 @@ import React from "react";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorSelector from "metabase/core/components/ColorSelector";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import { Series } from "metabase-types/types/Visualization";
 import { VisualizationSettings } from "metabase-types/api/card";
+
+import { SeriesNameInput } from "./ChartNestedSettingSeries.styled";
 
 export interface ChartNestedSettingsSeriesSingleProps {
   object: Series;
@@ -34,10 +35,10 @@ const ChartNestedSettingsSeriesSingle = ({
           colors={getAccentColors()}
           onChange={value => onChangeObjectSettings(object, { color: value })}
         />
-        <InputBlurChange
-          className="input flex-full ml1 align-self-stretch"
-          size={1}
+        <SeriesNameInput
+          className="flex-full ml1 align-self-stretch"
           value={computedSettings.title}
+          data-testid="series-name-input"
           onBlurChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             onChangeObjectSettings(object, { title: e.target.value })
           }

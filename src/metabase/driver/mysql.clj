@@ -279,7 +279,7 @@
 
         "boolean" json-extract+jsonpath
 
-        (hsql/call :convert json-extract+jsonpath (hsql/raw (str/upper-case field-type)))))))
+        (hsql/call :convert json-extract+jsonpath (hsql/raw (u/upper-case-en field-type)))))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as clause]]
@@ -393,13 +393,13 @@
         y (sql.qp/->honeysql driver y)
         disallowed-types (keep
                           (fn [v]
-                            (when-let [db-type (some-> v hx/type-info hx/type-info->db-type str/upper-case keyword)]
+                            (when-let [db-type (some-> v hx/type-info hx/type-info->db-type u/upper-case-en keyword)]
                               (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
                                 (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
                                   (name db-type)))))
                           [x y])]
     (when (seq disallowed-types)
-      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
+      (throw (ex-info (tru "datetimeDiff only allows datetime, timestamp, or date types. Found {0}"
                            (pr-str disallowed-types))
                       {:found disallowed-types
                        :type  qp.error-type/invalid-query})))

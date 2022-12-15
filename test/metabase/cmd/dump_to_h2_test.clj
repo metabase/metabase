@@ -86,7 +86,7 @@
               (testing "decodes settings and dashboard.details"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]
                   (is (= "baz" (:value (first (jdbc/query {:connection target-conn}
-                                                          "select value from SETTING where key='my-site-admin';")))))
+                                                          "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';")))))
                   (is (= "{\"db\":\"/tmp/test.db\"}"
                          (:details (first (jdbc/query {:connection target-conn}
                                                       "select details from metabase_database where id=1;")))))))
@@ -95,7 +95,7 @@
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-enc))]
                   (is (not (= "baz"
                               (:value (first (jdbc/query {:connection target-conn}
-                                                         "select value from SETTING where key='my-site-admin';"))))))
+                                                         "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
                                                            "select details from metabase_database where id=1;"))))))))
@@ -104,7 +104,7 @@
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-default-enc))]
                   (is (not (= "baz"
                               (:value (first (jdbc/query {:connection target-conn}
-                                                         "select value from SETTING where key='my-site-admin';"))))))
+                                                         "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
                                                            "select details from metabase_database where id=1;")))))))))))))))

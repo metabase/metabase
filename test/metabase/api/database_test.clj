@@ -325,7 +325,7 @@
                                                              :semantic_type     "type/Name"
                                                              :name              "NAME"
                                                              :display_name      "Name"
-                                                             :database_type     "VARCHAR"
+                                                             :database_type     "CHARACTER VARYING"
                                                              :base_type         "type/Text"
                                                              :effective_type    "type/Text"
                                                              :visibility_type   "normal"

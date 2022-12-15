@@ -527,7 +527,10 @@ class QuestionInner {
     return filter(this, operator, column, value) || this;
   }
 
-  pivot(breakouts = [], dimensions = []): Question {
+  pivot(
+    breakouts: (Breakout | Dimension | Field)[] = [],
+    dimensions = [],
+  ): Question {
     return pivot(this, breakouts, dimensions) || this;
   }
 
