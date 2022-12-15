@@ -1,7 +1,7 @@
 import React from "react";
 import { List, WindowScroller, AutoSizer } from "react-virtualized";
 
-interface VirtualizedListProps<Item = unknown>
+export interface VirtualizedListProps<Item = unknown>
   extends React.HTMLProps<HTMLUListElement> {
   items: Item[];
   rowHeight: number;
