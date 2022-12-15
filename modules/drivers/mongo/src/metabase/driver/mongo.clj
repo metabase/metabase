@@ -12,16 +12,18 @@
             [metabase.driver.mongo.parameters :as mongo.params]
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
+            [metabase.models :refer [Field]]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
-            [monger.collection :as mc]
             [monger.command :as cmd]
             [monger.conversion :as m.conversion]
             [monger.core :as mg]
             [monger.db :as mdb]
             monger.json
-            [taoensso.nippy :as nippy])
+            [monger.query :as mq]
+            [taoensso.nippy :as nippy]
+            [toucan.db :as db])
   (:import com.mongodb.DB
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            org.bson.types.ObjectId))
@@ -186,7 +188,7 @@
 (defmethod driver/describe-database :mongo
   [_ database]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    {:tables  (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
+    {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
 (defn- table-sample-column-info
@@ -197,15 +199,18 @@
        :severity {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil}}"
   [^com.mongodb.DB conn, table]
   (try
-    (->> (mc/find-maps conn (:name table))
-         (take metadata-queries/max-sample-rows)
-         (reduce
-          (fn [field-defs row]
-            (loop [[k & more-keys] (keys row), fields field-defs]
-              (if-not k
-                fields
-                (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
-          {}))
+    (reduce
+     (fn [field-defs row]
+       (loop [[k & more-keys] (keys row), fields field-defs]
+         (if-not k
+           fields
+           (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
+     {}
+     (-> (.getCollection conn (:name table))
+         mq/empty-query
+         (assoc :sort {:_id -1}
+                :limit metadata-queries/nested-field-sample-limit)
+         mq/exec))
     (catch Throwable t
       (log/error (format "Error introspecting collection: %s" (:name table)) t))))
 
@@ -309,6 +314,18 @@
 (defmethod driver/db-start-of-week :mongo
   [_]
   :sunday)
+
+(defn- get-id-field-id [table]
+  (db/select-one-id Field :name "_id" :table_id (u/the-id table)))
+
+(defmethod driver/table-rows-sample :mongo
+  [_driver table fields rff opts]
+  (let [mongo-opts {;; setting :truncation-start is needed because of a bug
+                    ;; in our mongo drivers handling of :substring (#27270)
+                    :truncation-start 0
+                    :limit metadata-queries/nested-field-sample-limit
+                    :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
+    (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts))))
 
 (comment
   (require '[clojure.java.io :as io]
